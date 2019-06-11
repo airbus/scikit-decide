@@ -1,0 +1,8 @@
+# IDE
+.*/
+
+# Python
+__pycache__/
+
+# Temp files
+*.tmp
