@@ -1,0 +1,6 @@
+SET(CPP_LIBRARY_SOURCES
+        ${CPP_LIBRARY_SOURCES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/domain.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/requirements.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/parser.cc
+        PARENT_SCOPE)
