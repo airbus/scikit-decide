@@ -1,5 +1,4 @@
-SET(PYTHON_BINDING_SOURCES
-        ${PYTHON_BINDING_SOURCES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/py_aostar.cc
-        PARENT_SCOPE)
-
+IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
+        TARGET_SOURCES(__airlaps PRIVATE
+                        ${CMAKE_CURRENT_SOURCE_DIR}/py_aostar.cc)
+ENDIF ()

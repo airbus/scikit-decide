@@ -131,7 +131,9 @@ class MyDomain(GoalMDP):
 
 if __name__ == '__main__':
 
-    solver = AOstar(heuristic=lambda s, d: sqrt((s.x-9)*(s.x-9)+(s.y-9)*(s.y-9)), detect_cycles=True)
+    solver = AOstar(heuristic=lambda s, d: sqrt((s.x-9)*(s.x-9)+(s.y-9)*(s.y-9)),
+                    detect_cycles=True,
+                    debug_logs=True)
     solver.reset(lambda: MyDomain(10, 10, 20))
     # Check that the solver is compatible with the domain
     assert solver.check_domain()

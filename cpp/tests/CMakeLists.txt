@@ -10,6 +10,8 @@ INCLUDE(Catch)
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src
                     ${JSON_INCLUDE_DIR}
+                    ${PEGTL_INCLUDE_DIR}
+                    ${SPDLOG_INCLUDE_DIR}
                     ${CATCH2_INCLUDE_DIR})
 
 ADD_LIBRARY(tests-main OBJECT tests_main.cc)

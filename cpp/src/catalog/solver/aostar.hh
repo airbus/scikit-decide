@@ -6,6 +6,10 @@
 #include <unordered_set>
 #include <queue>
 #include <list>
+#include <chrono>
+
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 #include "utils.hh"
 
@@ -26,10 +30,17 @@ public :
                  const std::function<double (const State&)>& heuristic,
                  double discount = 1.0,
                  unsigned int max_tip_expansions = 1,
-                 bool detect_cycles = false)
+                 bool detect_cycles = false,
+                 bool debug_logs = false)
         : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
           _discount(discount), _max_tip_expansions(max_tip_expansions),
-          _detect_cycles(detect_cycles) {}
+          _detect_cycles(detect_cycles), _debug_logs(debug_logs) {
+              if (debug_logs) {
+                spdlog::set_level(spdlog::level::debug);
+              } else {
+                  spdlog::set_level(spdlog::level::info);
+              }
+          }
 
     // reset the solver (clears the search graph, thus preventing from reusing
     // previous search results)
@@ -39,6 +50,9 @@ public :
 
     // solves from state s using heuristic function h
     void solve(const State& s) {
+        spdlog::info("Running AO* solver from state " + s.print());
+        auto start_time = std::chrono::high_resolution_clock::now();
+
         auto si = _graph.emplace(s);
         if (si.first->solved || _goal_checker(s)) { // problem already solved from this state (was present in _graph and already solved)
             return;
@@ -48,6 +62,10 @@ public :
         q.push(&root_node);
 
         while (!q.empty()) {
+            if (_debug_logs) {
+                spdlog::debug("Current number of tip nodes: " + std::to_string(q.size()));
+                spdlog::debug("Current number of explored nodes: " + std::to_string(_graph.size()));
+            }
             unsigned int nb_expansions = std::min((unsigned int) q.size(), _max_tip_expansions);
             std::unordered_set<StateNode*> frontier;
             for (unsigned int cnt = 0 ; cnt < nb_expansions ; cnt++) {
@@ -55,18 +73,21 @@ public :
                 StateNode* best_tip_node = q.top();
                 q.pop();
                 frontier.insert(best_tip_node);
+                if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print());
 
                 // Expand best tip node
                 for (const auto& a : _domain.get_applicable_actions(best_tip_node->state)->get_elements()) {
                     best_tip_node->actions.push_back(std::make_unique<ActionNode>(a));
                     ActionNode& an = *(best_tip_node->actions.back());
                     an.parent = best_tip_node;
+                    if (_debug_logs) spdlog::debug("Current expanded action: " + an.action.print());
                     for (const auto& ns : _domain.get_next_state_distribution(best_tip_node->state, a)->get_values()) {
                         typename Domain::OutcomeExtractor oe(ns);
                         auto i = _graph.emplace(oe.state());
                         StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                         an.outcomes.push_back(std::make_tuple(oe.probability(), _domain.get_transition_value(best_tip_node->state, a, next_node.state), &next_node));
                         next_node.parents.push_back(&an);
+                        if (_debug_logs) spdlog::debug("Current next state expansion: " + next_node.state.print());
                         if (i.second) { // new node
                             if (_goal_checker(next_node.state)) {
                                 next_node.solved = true;
@@ -139,6 +160,10 @@ public :
                 frontier = new_frontier;
             }
         }
+
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::nanoseconds(end_time - start_time);
+        spdlog::info("AO* finished to solve from state " + s.print() + " in " + std::to_string((double) duration.count() / (double) 1e12) + " seconds.");
     }
 
     const Action& get_best_action(const State& s) const {
@@ -164,6 +189,7 @@ private :
     double _discount;
     unsigned int _max_tip_expansions;
     bool _detect_cycles;
+    bool _debug_logs;
 
     struct ActionNode;
 

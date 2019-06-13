@@ -1,5 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
+#include <pybind11/iostream.h>
+
 #include "aostar.hh"
 #include "core.hh"
 
@@ -129,7 +131,8 @@ public :
                    const std::function<double (const py::object&)>& heuristic,
                    double discount = 1.0,
                    unsigned int max_tip_expansions = 1,
-                   bool detect_cycles = false)
+                   bool detect_cycles = false,
+                   bool debug_logs = false)
         : _goal_checker(goal_checker), _heuristic(heuristic) {
         _domain = std::make_unique<PyAOStarDomain>(domain);
         _solver = std::make_unique<airlaps::AOStarSolver<PyAOStarDomain>>(*_domain,
@@ -137,7 +140,12 @@ public :
                                                                           [this](const PyAOStarDomain::State& s)->double {return _heuristic(s._state);},
                                                                           discount,
                                                                           max_tip_expansions,
-                                                                          detect_cycles);
+                                                                          detect_cycles,
+                                                                          debug_logs);
+        _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
+                                                                         py::module::import("sys").attr("stdout"));
+        _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
+                                                                         py::module::import("sys").attr("stderr"));
     }
 
     void reset() {
@@ -162,6 +170,9 @@ private :
 
     std::function<bool (const py::object&)> _goal_checker;
     std::function<double (const py::object&)> _heuristic;
+
+    std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
+    std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
 };
 
 void init_pyaostar(py::module& m) {
@@ -172,13 +183,15 @@ void init_pyaostar(py::module& m) {
                           const std::function<double (const py::object&)>&,
                           double,
                           unsigned int,
+                          bool,
                           bool>(),
                  py::arg("domain"),
                  py::arg("goal_checker"),
                  py::arg("heuristic"),
                  py::arg("discount")=1.0,
                  py::arg("max_tip_expansions")=1,
-                 py::arg("detect_cycles")=false)
+                 py::arg("detect_cycles")=false,
+                 py::arg("debug_logs")=false)
             .def("reset", &PyAOStarSolver::reset)
             .def("solve", &PyAOStarSolver::solve, py::arg("state"))
             .def("get_next_action", &PyAOStarSolver::get_next_action, py::arg("state"))
