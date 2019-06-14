@@ -1,7 +1,7 @@
-import random
 import functools
+import random
 from collections import deque
-from typing import TypeVar, Generic, Optional, Tuple, Iterable, Sequence, MutableSequence, Deque, Callable
+from typing import TypeVar, Generic, Optional, Union, Tuple, Iterable, Sequence, MutableSequence, Deque, Callable
 
 from airlaps.dataclasses import dataclass, \
     field  # TODO: replace 'airlaps.dataclasses' by 'dataclasses' once transitioned to Python 3.7
@@ -363,7 +363,8 @@ class Constraint(Generic[T_state, T_event]):
         self._check_function = check_function
         self._depends_on_next_state = depends_on_next_state
 
-    def check(self, memory: Memory[T_state], event: T_event, next_state: Optional[T_state] = None) -> bool:
+    def check(self, memory: Union[Memory[T_state], T_state], event: T_event,
+              next_state: Optional[T_state] = None) -> bool:
         """Check this constraint.
 
         !!! tip
@@ -371,6 +372,9 @@ class Constraint(Generic[T_state, T_event]):
             indicate it by overriding #Constraint._is_constraint_dependent_on_next_state_() to return False. This
             information can then be exploited by solvers to avoid computing next state to evaluate the constraint (more
             efficient).
+
+        !!! tip
+            If a state is passed as memory parameter, the boilerplate code will automatically wrap it in a Memory first.
 
         # Parameters
         memory: The source memory (state or history) of the transition.
@@ -380,6 +384,8 @@ class Constraint(Generic[T_state, T_event]):
         # Returns
         True if the constraint is checked (False otherwise).
         """
+        if type(memory) is not Memory:
+            memory = Memory([memory])
         return self._check_function(memory, event, next_state)
 
     @functools.lru_cache()
@@ -444,10 +450,12 @@ class BoundConstraint(Constraint[T_state, T_event]):
                                 '>': (lambda val, bnd: val > bnd), '>=': (lambda val, bnd: val >= bnd)}
         self._check_function = inequality_functions[inequality]
 
-    def check(self, memory: Memory[T_state], event: T_event, next_state: Optional[T_state] = None) -> bool:
+    def check(self, memory: Union[Memory[T_state], T_state], event: T_event,
+              next_state: Optional[T_state] = None) -> bool:
         return self._check_function(self.evaluate(memory, event, next_state), self._bound)
 
-    def evaluate(self, memory: Memory[T_state], event: T_event, next_state: Optional[T_state] = None) -> float:
+    def evaluate(self, memory: Union[Memory[T_state], T_state], event: T_event,
+                 next_state: Optional[T_state] = None) -> float:
         """Evaluate the left side of this BoundConstraint.
 
         !!! tip
@@ -455,6 +463,9 @@ class BoundConstraint(Constraint[T_state, T_event]):
             indicate it by overriding #Constraint._is_constraint_dependent_on_next_state_() to return False. This
             information can then be exploited by solvers to avoid computing next state to evaluate the constraint (more
             efficient).
+
+        !!! tip
+            If a state is passed as memory parameter, the boilerplate code will automatically wrap it in a Memory first.
 
         # Parameters
         memory: The source memory (state or history) of the transition.
@@ -464,6 +475,8 @@ class BoundConstraint(Constraint[T_state, T_event]):
         # Returns
         The float value resulting from the evaluation.
         """
+        if type(memory) is not Memory:
+            memory = Memory([memory])
         return self._evaluate_function(memory, event, next_state)
 
     def get_inequality(self) -> str:

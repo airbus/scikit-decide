@@ -1,1 +1,1 @@
-AIRLAPS Is a Reinforcement Learning, Automated Planning and Scheduling toolbox
+AIRLAPS: AI toolbox for Reinforcement Learning, Automated Planning and Scheduling
