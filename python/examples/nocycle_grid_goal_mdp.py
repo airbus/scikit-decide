@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import NamedTuple, Iterable
 from math import sqrt
+import getopt, sys
 
 from airlaps import GoalMDP, Memory, TransitionValue, Space, ImplicitSpace, EnumerableSpace
 from airlaps.builders.domain import UnrestrictedActionDomain
@@ -131,14 +132,46 @@ class MyDomain(GoalMDP):
 
 if __name__ == '__main__':
 
-    solver = AOstar(heuristic=lambda s, d: sqrt((s.x-9)*(s.x-9)+(s.y-9)*(s.y-9)),
-                    detect_cycles=True,
-                    debug_logs=True)
-    solver.reset(lambda: MyDomain(10, 10, 20))
+    try:
+        options, remainder = getopt.getopt(sys.argv[1:],
+                                           "x:y:b:c:l:p:",
+                                           ["rows=", "columns=", "budget", "detect_cycles=", "debug_logs=", "parallel="])
+    except getopt.GetoptError as err:
+        # print help information and exit:
+        print(err) # will print something like "option -a not recognized"
+        usage()
+        sys.exit(2)
+    
+    rows = 10
+    columns = 10
+    budget = 20
+    detect_cycles = False
+    debug_logs = False
+    parallel = True
+
+    for opt, arg in options:
+        if opt in ('-x', '--rows'):
+            rows = int(arg)
+        elif opt in ('-y', '--columns'):
+            columns = int(arg)
+        elif opt in ('-b', '--budget'):
+            budget = int(arg)
+        elif opt in ('-c', '--detect_cycles'):
+            detect_cycles = True if arg == 'yes' else False
+        elif opt in ('-l', '--debug_logs'):
+            debug_logs = True if arg == 'yes' else False
+        elif opt in ('-p', '--parallel'):
+            parallel = True if arg == 'yes' else False
+    
+    solver = AOstar(heuristic=lambda s, d: sqrt((s.x-(rows-1))*(s.x-(rows-1))+(s.y-(columns-1))*(s.y-(columns-1))),
+                    parallel=parallel,
+                    detect_cycles=detect_cycles,
+                    debug_logs=debug_logs)
+    solver.reset(lambda: MyDomain(rows, columns, budget))
     # Check that the solver is compatible with the domain
     assert solver.check_domain()
-    solver.solve(Memory([State(x=0, y=0, t=20)]))
+    solver.solve(Memory([State(x=0, y=0, t=budget)]))
     # Test solver solution on domain
     print('==================== TEST SOLVER ====================')
-    rollout(MyDomain(10, 10, 20), solver, max_steps=1000,
+    rollout(MyDomain(rows, columns, budget), solver, max_steps=2*budget,
             outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

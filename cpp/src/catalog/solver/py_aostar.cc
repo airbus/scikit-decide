@@ -124,6 +124,7 @@ private :
 };
 
 
+template <typename Texecution>
 class PyAOStarSolver {
 public :
     PyAOStarSolver(py::object& domain,
@@ -135,13 +136,14 @@ public :
                    bool debug_logs = false)
         : _goal_checker(goal_checker), _heuristic(heuristic) {
         _domain = std::make_unique<PyAOStarDomain>(domain);
-        _solver = std::make_unique<airlaps::AOStarSolver<PyAOStarDomain>>(*_domain,
-                                                                          [this](const PyAOStarDomain::State& s)->bool {return _goal_checker(s._state);},
-                                                                          [this](const PyAOStarDomain::State& s)->double {return _heuristic(s._state);},
-                                                                          discount,
-                                                                          max_tip_expansions,
-                                                                          detect_cycles,
-                                                                          debug_logs);
+        _solver = std::make_unique<airlaps::AOStarSolver<PyAOStarDomain, Texecution>>(
+                                                                        *_domain,
+                                                                        [this](const PyAOStarDomain::State& s)->bool {return _goal_checker(s._state);},
+                                                                        [this](const PyAOStarDomain::State& s)->double {return _heuristic(s._state);},
+                                                                        discount,
+                                                                        max_tip_expansions,
+                                                                        detect_cycles,
+                                                                        debug_logs);
         _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                          py::module::import("sys").attr("stdout"));
         _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
@@ -166,7 +168,7 @@ public :
 
 private :
     std::unique_ptr<PyAOStarDomain> _domain;
-    std::unique_ptr<airlaps::AOStarSolver<PyAOStarDomain>> _solver;
+    std::unique_ptr<airlaps::AOStarSolver<PyAOStarDomain, Texecution>> _solver;
 
     std::function<bool (const py::object&)> _goal_checker;
     std::function<double (const py::object&)> _heuristic;
@@ -176,8 +178,8 @@ private :
 };
 
 void init_pyaostar(py::module& m) {
-    py::class_<PyAOStarSolver> py_aostar_solver(m, "__AOStarSolver");
-        py_aostar_solver
+    py::class_<PyAOStarSolver<airlaps::SequentialExecution>> py_aostar_seq_solver(m, "__AOStarSeqSolver");
+        py_aostar_seq_solver
             .def(py::init<py::object&,
                           const std::function<bool (const py::object&)>&,
                           const std::function<double (const py::object&)>&,
@@ -192,9 +194,31 @@ void init_pyaostar(py::module& m) {
                  py::arg("max_tip_expansions")=1,
                  py::arg("detect_cycles")=false,
                  py::arg("debug_logs")=false)
-            .def("reset", &PyAOStarSolver::reset)
-            .def("solve", &PyAOStarSolver::solve, py::arg("state"))
-            .def("get_next_action", &PyAOStarSolver::get_next_action, py::arg("state"))
-            .def("get_utility", &PyAOStarSolver::get_utility, py::arg("state"))
+            .def("reset", &PyAOStarSolver<airlaps::SequentialExecution>::reset)
+            .def("solve", &PyAOStarSolver<airlaps::SequentialExecution>::solve, py::arg("state"))
+            .def("get_next_action", &PyAOStarSolver<airlaps::SequentialExecution>::get_next_action, py::arg("state"))
+            .def("get_utility", &PyAOStarSolver<airlaps::SequentialExecution>::get_utility, py::arg("state"))
+        ;
+    
+    py::class_<PyAOStarSolver<airlaps::ParallelExecution>> py_aostar_par_solver(m, "__AOStarParSolver");
+        py_aostar_par_solver
+            .def(py::init<py::object&,
+                          const std::function<bool (const py::object&)>&,
+                          const std::function<double (const py::object&)>&,
+                          double,
+                          unsigned int,
+                          bool,
+                          bool>(),
+                 py::arg("domain"),
+                 py::arg("goal_checker"),
+                 py::arg("heuristic"),
+                 py::arg("discount")=1.0,
+                 py::arg("max_tip_expansions")=1,
+                 py::arg("detect_cycles")=false,
+                 py::arg("debug_logs")=false)
+            .def("reset", &PyAOStarSolver<airlaps::ParallelExecution>::reset)
+            .def("solve", &PyAOStarSolver<airlaps::ParallelExecution>::solve, py::arg("state"))
+            .def("get_next_action", &PyAOStarSolver<airlaps::ParallelExecution>::get_next_action, py::arg("state"))
+            .def("get_utility", &PyAOStarSolver<airlaps::ParallelExecution>::get_utility, py::arg("state"))
         ;
 }

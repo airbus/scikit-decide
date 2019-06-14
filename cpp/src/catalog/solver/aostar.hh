@@ -1,6 +1,7 @@
 #ifndef AIRLAPS_AOSTAR_HH
 #define AIRLAPS_AOSTAR_HH
 
+#include <execution>
 #include <functional>
 #include <memory>
 #include <unordered_set>
@@ -15,15 +16,14 @@
 
 namespace airlaps {
 
-template <typename Tdomain>
+template <typename Tdomain,
+          typename Texecution_policy = ParallelExecution>
 class AOStarSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
-    typedef std::shared_ptr<State> StatePtr;
     typedef typename Domain::Event Action;
-    typedef std::shared_ptr<Action> ActionPtr;
-
+    typedef Texecution_policy ExecutionPolicy;
 
     AOStarSolver(Domain& domain,
                  const std::function<bool (const State&)>& goal_checker,
@@ -50,7 +50,7 @@ public :
 
     // solves from state s using heuristic function h
     void solve(const State& s) {
-        spdlog::info("Running AO* solver from state " + s.print());
+        spdlog::info("Running " + ExecutionPolicy::print() + " AO* solver from state " + s.print());
         auto start_time = std::chrono::high_resolution_clock::now();
 
         auto si = _graph.emplace(s);
@@ -76,17 +76,26 @@ public :
                 if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print());
 
                 // Expand best tip node
-                for (const auto& a : _domain.get_applicable_actions(best_tip_node->state)->get_elements()) {
-                    best_tip_node->actions.push_back(std::make_unique<ActionNode>(a));
+                auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state)->get_elements();
+                std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node](const auto& a){
+                    _execution_policy.protect([&best_tip_node, &a]{
+                        best_tip_node->actions.push_back(std::make_unique<ActionNode>(a));
+                    });
                     ActionNode& an = *(best_tip_node->actions.back());
                     an.parent = best_tip_node;
                     if (_debug_logs) spdlog::debug("Current expanded action: " + an.action.print());
-                    for (const auto& ns : _domain.get_next_state_distribution(best_tip_node->state, a)->get_values()) {
+                    auto next_states = _domain.get_next_state_distribution(best_tip_node->state, a)->get_values();
+                    for (const auto& ns : next_states) {
                         typename Domain::OutcomeExtractor oe(ns);
-                        auto i = _graph.emplace(oe.state());
+                        std::pair<typename Graph::iterator, bool> i;
+                        _execution_policy.protect([this, &i, &oe]{
+                            i = _graph.emplace(oe.state());;
+                        });
                         StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                         an.outcomes.push_back(std::make_tuple(oe.probability(), _domain.get_transition_value(best_tip_node->state, a, next_node.state), &next_node));
-                        next_node.parents.push_back(&an);
+                        _execution_policy.protect([&next_node, &an]{
+                            next_node.parents.push_back(&an);
+                        });
                         if (_debug_logs) spdlog::debug("Current next state expansion: " + next_node.state.print());
                         if (i.second) { // new node
                             if (_goal_checker(next_node.state)) {
@@ -97,7 +106,7 @@ public :
                             }
                         }
                     }
-                }
+                });
             }
 
             // Back-propagate value function from best tip node
@@ -105,8 +114,8 @@ public :
             if (_detect_cycles) explored_states = std::make_unique<std::unordered_set<StateNode*>>(frontier);
             while (!frontier.empty()) {
                 std::unordered_set<StateNode*> new_frontier;
-                for (const auto& fs : frontier) {
-                    // update Q-values and V-value
+                std::for_each(ExecutionPolicy::policy, frontier.begin(), frontier.end(), [this, &new_frontier](const auto& fs){
+                     // update Q-values and V-value
                     fs->best_value = std::numeric_limits<double>::infinity();
                     fs->best_action = nullptr;
                     for (const auto& a : fs->actions) {
@@ -126,10 +135,12 @@ public :
                         fs->solved = fs->solved && std::get<2>(ns)->solved;
                     }
                     // update new frontier
-                    for (const auto& ps : fs->parents) {
-                        new_frontier.insert(ps->parent);
-                    }
-                }
+                    _execution_policy.protect([&fs, &new_frontier]{
+                        for (const auto& ps : fs->parents) {
+                            new_frontier.insert(ps->parent);
+                        }
+                    });
+                });
                 frontier = new_frontier;
                 if (_detect_cycles) {
                     for (const auto& ps : new_frontier) {
@@ -162,8 +173,8 @@ public :
         }
 
         auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::nanoseconds(end_time - start_time);
-        spdlog::info("AO* finished to solve from state " + s.print() + " in " + std::to_string((double) duration.count() / (double) 1e12) + " seconds.");
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+        spdlog::info("AO* finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
     }
 
     const Action& get_best_action(const State& s) const {
@@ -190,6 +201,7 @@ private :
     unsigned int _max_tip_expansions;
     bool _detect_cycles;
     bool _debug_logs;
+    ExecutionPolicy _execution_policy;
 
     struct ActionNode;
 
@@ -227,7 +239,8 @@ private :
         }
     };
 
-    typename SetTypeDeducer<StateNode, State>::Set _graph;
+    typedef typename SetTypeDeducer<StateNode, State>::Set Graph;
+    Graph _graph;
 };
 
 } // namespace airlaps

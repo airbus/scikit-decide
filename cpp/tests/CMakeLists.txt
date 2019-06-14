@@ -1,6 +1,3 @@
-ENABLE_LANGUAGE(CXX)
-SET(CMAKE_CXX_STANDARD 14)
-
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
                       "${CMAKE_SOURCE_DIR}/sdk/Catch2-${CATCH2_VERSION}/CMake"
                       "${CMAKE_SOURCE_DIR}/sdk/Catch2-${CATCH2_VERSION}/contrib")
@@ -45,5 +42,5 @@ TARGET_LINK_LIBRARIES(test-dynamics Catch2::Catch2)
 CATCH_DISCOVER_TESTS(test-dynamics)
 
 ADD_EXECUTABLE(test-aostar test_aostar.cc $<TARGET_OBJECTS:tests-main>)
-TARGET_LINK_LIBRARIES(test-aostar Catch2::Catch2)
+TARGET_LINK_LIBRARIES(test-aostar Catch2::Catch2 ${TBB_IMPORTED_TARGETS})
 CATCH_DISCOVER_TESTS(test-aostar)

@@ -6,8 +6,12 @@ OPTION(ONLY_PYTHON OFF)
 OPTION(BUILD_PYTHON_BINDING ON)
 
 ENABLE_LANGUAGE(CXX)
-SET(CMAKE_CXX_STANDARD 14)
-SET(CMAKE_CXX_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
+SET(CMAKE_CXX_STANDARD 17)
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+SET(CMAKE_CXX_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS}")
+
+# For multi-threading with C++-17
+FIND_PACKAGE(TBB REQUIRED)
 
 # SDK
 

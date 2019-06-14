@@ -36,6 +36,9 @@ class CMakeBuild(build_ext):
         cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
                       '-DPYTHON_EXECUTABLE=' + sys.executable,
                       '-DONLY_PYTHON=ON']
+        
+        if os.path.isfile('airlaps_cmake_toolchain.txt'):
+            cmake_args += ['-DCMAKE_TOOLCHAIN_FILE=' + os.path.abspath('airlaps_cmake_toolchain.txt')]
 
         cfg = 'Debug' if self.debug else 'Release'
         build_args = ['--config', cfg]

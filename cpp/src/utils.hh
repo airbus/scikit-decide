@@ -6,6 +6,7 @@
 #include <set>
 #include <unordered_map>
 #include <map>
+#include <execution>
 
 namespace airlaps {
     
@@ -122,6 +123,28 @@ namespace airlaps {
         
     };
 
-} // namespace airlap
+    struct SequentialExecution {
+        static constexpr std::execution::sequenced_policy policy = std::execution::seq;
+        inline void protect(const std::function<void ()>& f) {
+            f();
+        }
+        inline static std::string print() {
+            return "sequential";
+        }
+    };
+
+    struct ParallelExecution {
+        static constexpr std::execution::parallel_policy policy = std::execution::par;
+        inline void protect(const std::function<void ()>& f) {
+            std::scoped_lock lock(_mutex);
+            f();
+        }
+        inline static std::string print() {
+            return "parallel";
+        }
+        std::mutex _mutex;
+    };
+
+} // namespace airlaps
 
 #endif // AIRLAPS_UTLS_HH
