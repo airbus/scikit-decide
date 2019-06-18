@@ -13,8 +13,9 @@ IF (NOT ONLY_PYTHON)
     TARGET_LINK_LIBRARIES(airlaps PRIVATE
                             $<TARGET_OBJECTS:airlaps_pddl>
                             spdlog::spdlog
-                            ${TBB_IMPORTED_TARGETS})
-    ADD_BACKWARD(airlaps)
+                            ${TBB_IMPORTED_TARGETS}
+                            INTERFACE Backward::Backward)
+    # ADD_BACKWARD(airlaps)
 ENDIF ()
 
 IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
@@ -25,8 +26,9 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
     TARGET_LINK_LIBRARIES(__airlaps PRIVATE
                             #$<TARGET_OBJECTS:airlaps_pddl>
                             spdlog::spdlog
-                            ${TBB_IMPORTED_TARGETS})
-    ADD_BACKWARD(__airlaps)
+                            ${TBB_IMPORTED_TARGETS}
+                            INTERFACE Backward::Backward)
+    # ADD_BACKWARD(__airlaps)
 ENDIF ()
 
 ADD_SUBDIRECTORY(catalog)
