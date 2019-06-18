@@ -5,42 +5,25 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 INCLUDE(CTest)
 INCLUDE(Catch)
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src
-                    ${JSON_INCLUDE_DIR}
-                    ${PEGTL_INCLUDE_DIR}
-                    ${SPDLOG_INCLUDE_DIR}
-                    ${CATCH2_INCLUDE_DIR})
+LIST(APPEND INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/src)
+LIST(APPEND INCLUDE_DIRS ${CATCH2_INCLUDE_DIR})
+
+MACRO(airlaps_test name)
+    ADD_EXECUTABLE(test-${name} test_${name}.cc $<TARGET_OBJECTS:tests-main>)
+    TARGET_INCLUDE_DIRECTORIES(test-${name} PRIVATE ${INCLUDE_DIRS})
+    TARGET_LINK_LIBRARIES(test-${name}
+                            PRIVATE Catch2::Catch2 ${LIBS}
+                            INTERFACE ${INTERFACES})
+    CATCH_DISCOVER_TESTS(test-${name})
+ENDMACRO ()
 
 ADD_LIBRARY(tests-main OBJECT tests_main.cc)
 
-ADD_EXECUTABLE(test-core test_core.cc $<TARGET_OBJECTS:tests-main>)
-TARGET_LINK_LIBRARIES(test-core Catch2::Catch2)
-CATCH_DISCOVER_TESTS(test-core)
-
-ADD_EXECUTABLE(test-memory test_memory.cc $<TARGET_OBJECTS:tests-main>)
-TARGET_LINK_LIBRARIES(test-memory Catch2::Catch2)
-CATCH_DISCOVER_TESTS(test-memory)
-
-ADD_EXECUTABLE(test-observability test_observability.cc $<TARGET_OBJECTS:tests-main>)
-TARGET_LINK_LIBRARIES(test-observability Catch2::Catch2)
-CATCH_DISCOVER_TESTS(test-observability)
-
-ADD_EXECUTABLE(test-events test_events.cc $<TARGET_OBJECTS:tests-main>)
-TARGET_LINK_LIBRARIES(test-events Catch2::Catch2)
-CATCH_DISCOVER_TESTS(test-events)
-
-ADD_EXECUTABLE(test-initialization test_initialization.cc $<TARGET_OBJECTS:tests-main>)
-TARGET_LINK_LIBRARIES(test-initialization Catch2::Catch2)
-CATCH_DISCOVER_TESTS(test-initialization)
-
-ADD_EXECUTABLE(test-goals test_goals.cc $<TARGET_OBJECTS:tests-main>)
-TARGET_LINK_LIBRARIES(test-goals Catch2::Catch2)
-CATCH_DISCOVER_TESTS(test-goals)
-
-ADD_EXECUTABLE(test-dynamics test_dynamics.cc $<TARGET_OBJECTS:tests-main>)
-TARGET_LINK_LIBRARIES(test-dynamics Catch2::Catch2)
-CATCH_DISCOVER_TESTS(test-dynamics)
-
-ADD_EXECUTABLE(test-aostar test_aostar.cc $<TARGET_OBJECTS:tests-main>)
-TARGET_LINK_LIBRARIES(test-aostar Catch2::Catch2 ${TBB_IMPORTED_TARGETS})
-CATCH_DISCOVER_TESTS(test-aostar)
+airlaps_test(core)
+airlaps_test(memory)
+airlaps_test(observability)
+airlaps_test(events)
+airlaps_test(initialization)
+airlaps_test(goals)
+airlaps_test(dynamics)
+airlaps_test(aostar)
