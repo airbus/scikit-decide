@@ -83,7 +83,7 @@ ADD_SUBDIRECTORY(src)
 # TESTS
 IF (BUILD_TESTS AND NOT ONLY_PYTHON)
     ENABLE_TESTING()  # leave it outside the 'tests' directory so ctest can find the CTestTestFile.cmake in the top build directory
-    # ADD_SUBDIRECTORY(tests)
+    ADD_SUBDIRECTORY(tests)
 ENDIF()
 
 # CONFIG FILE

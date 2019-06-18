@@ -18,6 +18,7 @@ MACRO(airlaps_test name)
 ENDMACRO ()
 
 ADD_LIBRARY(tests-main OBJECT tests_main.cc)
+TARGET_INCLUDE_DIRECTORIES(tests-main PRIVATE ${CATCH2_INCLUDE_DIR})
 
 airlaps_test(core)
 airlaps_test(memory)
