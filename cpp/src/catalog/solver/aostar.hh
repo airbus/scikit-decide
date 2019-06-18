@@ -1,7 +1,6 @@
 #ifndef AIRLAPS_AOSTAR_HH
 #define AIRLAPS_AOSTAR_HH
 
-#include <execution>
 #include <functional>
 #include <memory>
 #include <unordered_set>

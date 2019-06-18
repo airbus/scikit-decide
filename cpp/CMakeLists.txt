@@ -76,15 +76,15 @@ IF (BUILD_TESTS AND NOT ONLY_PYTHON)
     ADD_SUBDIRECTORY(sdk/Catch2-${CATCH2_VERSION})
 ENDIF()
 
+# CONFIG FILE
+CONFIGURE_FILE(config.h.in ${PROJECT_BINARY_DIR}/src/config.h)
+LIST(APPEND INCLUDE_DIRS "${PROJECT_BINARY_DIR}/src")
+
 # LIB
 ADD_SUBDIRECTORY(src)
-
 
 # TESTS
 IF (BUILD_TESTS AND NOT ONLY_PYTHON)
     ENABLE_TESTING()  # leave it outside the 'tests' directory so ctest can find the CTestTestFile.cmake in the top build directory
     ADD_SUBDIRECTORY(tests)
 ENDIF()
-
-# CONFIG FILE
-CONFIGURE_FILE(config.h.in src/config.h)
