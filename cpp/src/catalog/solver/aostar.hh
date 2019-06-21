@@ -88,7 +88,7 @@ public :
                         typename Domain::OutcomeExtractor oe(ns);
                         std::pair<typename Graph::iterator, bool> i;
                         _execution_policy.protect([this, &i, &oe]{
-                            i = _graph.emplace(oe.state());;
+                            i = _graph.emplace(oe.state());
                         });
                         StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                         an.outcomes.push_back(std::make_tuple(oe.probability(), _domain.get_transition_value(best_tip_node->state, a, next_node.state), &next_node));
