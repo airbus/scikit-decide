@@ -44,21 +44,29 @@ public :
         struct Hash {
             std::size_t operator()(const State& s) const {
                 typename GilControl<Texecution>::Acquire acquire;
-                if (!py::hasattr(s._state, "__hash__")) {
-                    throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python states for implementing __hash__()");
+                try {
+                    if (!py::hasattr(s._state, "__hash__")) {
+                        throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python states for implementing __hash__()");
+                    }
+                    // python __hash__ can return negative integers but c++ expects positive integers only
+                    return s._state.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
+                } catch(const py::error_already_set& e) {
+                    throw std::runtime_error(e.what());
                 }
-                // python __hash__ can return negative integers but c++ expects positive integers only
-                return s._state.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
             }
         };
 
         struct Equal {
             bool operator()(const State& s1, const State& s2) const {
                 typename GilControl<Texecution>::Acquire acquire;
-                if (!py::hasattr(s1._state, "__eq__")) {
-                    throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python states for implementing __eq__()");
+                try {
+                    if (!py::hasattr(s1._state, "__eq__")) {
+                        throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python states for implementing __eq__()");
+                    }
+                    return s1._state.attr("__eq__")(s2._state).template cast<bool>();
+                } catch(const py::error_already_set& e) {
+                    throw std::runtime_error(e.what());
                 }
-                return s1._state.attr("__eq__")(s2._state).template cast<bool>();
             }
         };
     };
@@ -111,10 +119,12 @@ public :
             }
 
             py::iterator begin() const {
+                typename GilControl<Texecution>::Acquire acquire;
                 return _elements.begin();
             }
 
             py::iterator end() const {
+                typename GilControl<Texecution>::Acquire acquire;
                 return _elements.end();
             }
         };
@@ -153,17 +163,23 @@ public :
             }
 
             py::iterator begin() const {
+                typename GilControl<Texecution>::Acquire acquire;
                 return _values.begin();
             }
 
             py::iterator end() const {
+                typename GilControl<Texecution>::Acquire acquire;
                 return _values.end();
             }
         };
 
         NextStateDistributionValues get_values() const {
             typename GilControl<Texecution>::Acquire acquire;
-            return NextStateDistributionValues(_next_state_distribution.attr("get_values")());
+            try {
+                return NextStateDistributionValues(_next_state_distribution.attr("get_values")());
+            } catch(const py::error_already_set& e) {
+                throw std::runtime_error(e.what());
+            }
         }
     };
 
@@ -192,11 +208,14 @@ public :
 
     PyAOStarDomain(const py::object& domain)
     : _domain(domain) {
-        if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python domain for implementing get_applicable_actions()");
+        if (!py::hasattr(domain, "wrapped_get_applicable_actions")) {
+            throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python domain for implementing wrapped_get_applicable_actions()");
         }
-        if (!py::hasattr(domain, "get_next_state_distribution")) {
-            throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python domain for implementing get_next_state_distribution()");
+        if (!py::hasattr(domain, "wrapped_compute_next_state_distribution")) {
+            throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python domain for implementing wrapped_compute_next_state_distribution()");
+        }
+        if (!py::hasattr(domain, "wrapped_get_next_state_distribution")) {
+            throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python domain for implementing wrapped_get_next_state_distribution()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
             throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python domain for implementing get_transition_value()");
@@ -205,17 +224,38 @@ public :
 
     std::unique_ptr<ApplicableActionSpace> get_applicable_actions(const State& s) {
         typename GilControl<Texecution>::Acquire acquire;
-        return std::make_unique<ApplicableActionSpace>(_domain.attr("get_applicable_actions")(s._state));
+        try {
+            return std::make_unique<ApplicableActionSpace>(_domain.attr("wrapped_get_applicable_actions")(s._state));
+        } catch(const py::error_already_set& e) {
+            throw std::runtime_error(e.what());
+        }
+    }
+
+    void compute_next_state_distribution(const State& s, const py::handle& a) {
+        typename GilControl<Texecution>::Acquire acquire;
+        try {
+            _domain.attr("wrapped_compute_next_state_distribution")(s._state, a);
+        } catch(const py::error_already_set& e) {
+            throw std::runtime_error(e.what());
+        }
     }
 
     std::unique_ptr<NextStateDistribution> get_next_state_distribution(const State& s, const py::handle& a) {
         typename GilControl<Texecution>::Acquire acquire;
-        return std::make_unique<NextStateDistribution>(_domain.attr("get_next_state_distribution")(s._state, a));
+        try {
+            return std::make_unique<NextStateDistribution>(_domain.attr("wrapped_get_next_state_distribution")(s._state, a));
+        } catch(const py::error_already_set& e) {
+            throw std::runtime_error(e.what());
+        }
     }
 
     double get_transition_value(const State& s, const py::handle& a, const State& sp) {
         typename GilControl<Texecution>::Acquire acquire;
-        return py::cast<double>(_domain.attr("get_transition_value")(s._state, a, sp._state).attr("cost"));
+        try {
+            return py::cast<double>(_domain.attr("get_transition_value")(s._state, a, sp._state).attr("cost"));
+        } catch(const py::error_already_set& e) {
+            throw std::runtime_error(e.what());
+        }
     }
 
 private :

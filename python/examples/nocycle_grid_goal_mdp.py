@@ -170,7 +170,10 @@ if __name__ == '__main__':
     solver.reset(lambda: MyDomain(rows, columns, budget))
     # Check that the solver is compatible with the domain
     assert solver.check_domain()
-    solver.solve(Memory([State(x=0, y=0, t=budget)]))
+    try :
+        solver.solve(Memory([State(x=0, y=0, t=budget)]))
+    except Exception as e:
+        print("Oops!", e)
     # Test solver solution on domain
     print('==================== TEST SOLVER ====================')
     rollout(MyDomain(rows, columns, budget), solver, max_steps=2*budget,
