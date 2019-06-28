@@ -5,8 +5,8 @@ from airlaps import Memory, T_state, T_event, Domain
 from airlaps.builders.domain import EnumerableTransitionDomain, ActionDomain, GoalDomain, \
     DeterministicInitializedDomain, MarkovianDomain, PositiveCostDomain, FullyObservableDomain
 from airlaps.builders.solver import DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver
-from __airlaps import __AOStarParSolver as aostar_par_solver
-from __airlaps import __AOStarSeqSolver as aostar_seq_solver
+from __airlaps import _AOStarParSolver_ as aostar_par_solver
+from __airlaps import _AOStarSeqSolver_ as aostar_seq_solver
 
 aostar_pool = None  # must be separated from the domain since it cannot be pickled
 aostar_nsd_results = None  # must be separated from the domain since it cannot be pickled

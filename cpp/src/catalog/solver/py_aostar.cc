@@ -325,7 +325,7 @@ private :
 
 
 void init_pyaostar(py::module& m) {
-    py::class_<PyAOStarSolver<airlaps::SequentialExecution>> py_aostar_seq_solver(m, "__AOStarSeqSolver");
+    py::class_<PyAOStarSolver<airlaps::SequentialExecution>> py_aostar_seq_solver(m, "_AOStarSeqSolver_");
         py_aostar_seq_solver
             .def(py::init<py::object&,
                           const std::function<bool (const py::object&)>&,
@@ -347,7 +347,7 @@ void init_pyaostar(py::module& m) {
             .def("get_utility", &PyAOStarSolver<airlaps::SequentialExecution>::get_utility, py::arg("state"))
         ;
     
-    py::class_<PyAOStarSolver<airlaps::ParallelExecution>> py_aostar_par_solver(m, "__AOStarParSolver");
+    py::class_<PyAOStarSolver<airlaps::ParallelExecution>> py_aostar_par_solver(m, "_AOStarParSolver_");
         py_aostar_par_solver
             .def(py::init<py::object&,
                           const std::function<bool (const py::object&)>&,

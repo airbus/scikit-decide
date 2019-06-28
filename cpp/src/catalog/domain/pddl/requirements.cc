@@ -125,7 +125,7 @@ Requirements& Requirements::set_disjunctive_preconditions(bool disjunctive_preco
 }
 
 
-bool Requirements::has_disjuntive_preconditions() const {
+bool Requirements::has_disjunctive_preconditions() const {
     return _disjunctive_preconditions;
 }
 

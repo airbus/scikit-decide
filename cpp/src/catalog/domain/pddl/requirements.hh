@@ -24,7 +24,7 @@ namespace airlaps {
             bool has_negative_preconditions() const;
 
             Requirements& set_disjunctive_preconditions(bool disjunctive_preconditions = true);
-            bool has_disjuntive_preconditions() const;
+            bool has_disjunctive_preconditions() const;
 
             Requirements& set_existential_preconditions(bool existential_preconditions = true);
             bool has_existential_preconditions() const;

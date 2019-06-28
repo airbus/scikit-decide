@@ -1,8 +1,10 @@
 #include <exception>
 #include "pegtl.hpp"
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 #include "parser.hh"
-#include "domain.hh"
+#include "utils/pegtl_spdlog_tracer.hh"
 
 namespace pegtl = tao::TAO_PEGTL_NAMESPACE;  // NOLINT
 
@@ -313,7 +315,11 @@ namespace airlaps {
 
             // parse domain
 
-            struct domain : pegtl::seq<pegtl::one<'('>, domain_name, preamble, pegtl::one<')'>>{};
+            struct domain : pegtl::seq<pegtl::one<'('>,
+                                       pegtl::string<'d', 'e', 'f', 'i', 'n', 'e'>,
+                                       domain_name,
+                                       preamble,
+                                       pegtl::one<')'>>{};
 
             struct problem : pegtl::any {};
 
@@ -323,15 +329,41 @@ namespace airlaps {
 
         } // namespace parser
 
-        struct PDDLDomain {};
+        void Parser::parse(const std::string& domain_file, const std::string& problem_file,
+                           Domain& domain,
+                           bool debug_logs) {
+            std::string parsed_files_msg = domain_file + (problem_file.empty() ? "" : (" and " + problem_file));
+            
+            if (debug_logs) {
+                spdlog::set_level(spdlog::level::debug);
+            } else {
+                spdlog::set_level(spdlog::level::info);
+            }
 
-        void Parser::parse(const std::string& domain, const std::string& problem) {
-            // Parse the domain
-            Domain pddl_domain;
-            parser::state s(pddl_domain);
-            pegtl::read_input<> in(domain);
-            if (!pegtl::parse<parser::grammar, parser::action>(in, s)) {
-                throw std::runtime_error("AIRLAPS exception: unable to parse PDDL file '" + domain + "'");
+            try {
+                // Parse the domain
+                spdlog::info("Parsing " + parsed_files_msg);
+                parser::state s(domain);
+                pegtl::read_input<> in(domain_file);
+
+                if (debug_logs) {
+                    pegtl::trace_state t;
+                    if (!pegtl::parse<parser::grammar, parser::action, pegtl::tracer>(in, t, s)) {
+                        spdlog::error("unable to parse " + parsed_files_msg);
+                        throw std::runtime_error("AIRLAPS exception: unable to parse " + parsed_files_msg);
+                    }
+                } else {
+                    if (!pegtl::parse<parser::grammar, parser::action>(in, s)) {
+                        spdlog::error("unable to parse " + parsed_files_msg);
+                        throw std::runtime_error("AIRLAPS exception: unable to parse " + parsed_files_msg);
+                    }
+                }
+            } catch (const pegtl::parse_error& e) {
+                spdlog::error("Error when parsing " + parsed_files_msg + ": " + e.what());
+                throw std::runtime_error("Error when parsing " + parsed_files_msg + ": " + e.what());
+            } catch (const pegtl::input_error& e) {
+                spdlog::error("Error when reading " + parsed_files_msg + ": " + e.what());
+                throw std::runtime_error("Error when reasing " + parsed_files_msg + ": " + e.what());
             }
         }
 

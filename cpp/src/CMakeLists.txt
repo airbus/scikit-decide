@@ -16,7 +16,7 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
                             ${BACKWARD_ENABLE})
     TARGET_INCLUDE_DIRECTORIES(__airlaps PRIVATE ${INCLUDE_DIRS})
     TARGET_LINK_LIBRARIES(__airlaps PRIVATE
-                            #$<TARGET_OBJECTS:airlaps_pddl>
+                            $<TARGET_OBJECTS:airlaps_pddl>
                             ${LIBS}
                             INTERFACE ${INTERFACES})
 ENDIF ()
