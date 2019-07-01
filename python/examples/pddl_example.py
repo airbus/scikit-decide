@@ -1,6 +1,6 @@
 import getopt, sys, os
 
-from airlaps.catalog.domain.pddl import PDDL
+from airlaps.catalog.domain.pddl import *
 
 if __name__ == '__main__':
 
@@ -28,8 +28,8 @@ if __name__ == '__main__':
     
     try:
         mypddl = PDDL(domain, problem, debug_logs)
-        print('name', mypddl.get_domain().get_name())
-        print('has durative actions:', str(mypddl.get_domain().get_requirements().has_durative_actions()))
-        print('has disjunctive preconditions:', str(mypddl.get_domain().get_requirements().has_disjunctive_preconditions()))
+        t = Type('t0')
+        mypddl.add_type('t1').add_parent(t)
+        print(str(mypddl.get_domain()))
     except RuntimeError as err:
         print(err)

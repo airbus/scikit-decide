@@ -80,6 +80,8 @@ namespace airlaps {
             Requirements& set_constraints(bool constraints = true);
             bool has_constraints() const;
 
+            std::string print() const;
+
         private :
             bool _equality;
             bool _strips;
@@ -106,5 +108,8 @@ namespace airlaps {
     } // namespace pddl
 
 } // namespace airlaps
+
+// Requirements printing operator
+std::ostream& operator<<(std::ostream& o, const airlaps::pddl::Requirements& r);
 
 #endif // AIRLAPS_PDDL_REQUIREMENTS_HH

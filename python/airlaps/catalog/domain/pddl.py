@@ -1,5 +1,7 @@
 from __airlaps import _PDDL_ as PDDL
 from __airlaps import _PDDL_Domain_ as Domain
+from __airlaps import _PDDL_Requirements_ as Requirements
+from __airlaps import _PDDL_Type_ as Type
 
 # class PDDL:
 

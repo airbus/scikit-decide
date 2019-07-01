@@ -1,5 +1,7 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/functional.h>
 #include <pybind11/iostream.h>
+#include <sstream>
 
 #include "pddl.hh"
 
@@ -24,6 +26,22 @@ void init_pypddl(py::module& m) {
             .def("get_name", &airlaps::pddl::Domain::get_name)
             .def("set_requirements", &airlaps::pddl::Domain::set_requirements, py::arg("requirements"))
             .def("get_requirements", &airlaps::pddl::Domain::get_requirements)
+            .def("add_type", [](airlaps::pddl::Domain& d, const py::object& t) {
+                if (py::isinstance<py::str>(t)) {
+                    d.add_type(py::cast<std::string>(t));
+                } else {
+                    d.add_type(py::cast<airlaps::pddl::Type>(t));
+                }
+            }, py::arg("type"))
+            .def("remove_type", [](airlaps::pddl::Domain& d, const py::object& t) {
+                if (py::isinstance<py::str>(t)) {
+                    d.remove_type(py::cast<std::string>(t));
+                } else {
+                    d.remove_type(py::cast<airlaps::pddl::Type>(t));
+                }
+            }, py::arg("type"))
+            .def("get_types", &airlaps::pddl::Domain::get_types)
+            .def("__str__", &airlaps::pddl::Domain::print)
         ;
     
     py::class_<airlaps::pddl::Requirements> py_requirements(m, "_PDDL_Requirements_");
@@ -75,5 +93,16 @@ void init_pypddl(py::module& m) {
             .def("has_preferences", &airlaps::pddl::Requirements::has_preferences)
             .def("set_constraints", &airlaps::pddl::Requirements::set_constraints)
             .def("has_constraints", &airlaps::pddl::Requirements::has_constraints)
+            .def("__str__", &airlaps::pddl::Requirements::print)
+        ;
+    
+    py::class_<airlaps::pddl::Type> py_type(m, "_PDDL_Type_");
+        py_type
+            .def(py::init<std::string>(), py::arg("name"))
+            .def("get_name", &airlaps::pddl::Type::get_name)
+            .def("add_parent", &airlaps::pddl::Type::add_parent, py::arg("type"))
+            .def("remove_parent", &airlaps::pddl::Type::remove_parent, py::arg("type"))
+            .def("get_parents", &airlaps::pddl::Type::get_parents)
+            .def("__str__", &airlaps::pddl::Type::print)
         ;
 }

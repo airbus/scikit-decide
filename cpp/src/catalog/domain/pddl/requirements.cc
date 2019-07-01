@@ -1,3 +1,5 @@
+#include <ostream>
+#include <sstream>
 #include "requirements.hh"
 
 using namespace airlaps::pddl;
@@ -339,4 +341,50 @@ Requirements& Requirements::set_constraints(bool constraints) {
 
 bool Requirements::has_constraints() const {
     return _constraints;
+}
+
+
+std::string Requirements::print() const {
+    std::ostringstream o;
+    o << *this;
+    return o.str();
+}
+
+
+std::ostream& operator<< (std::ostream& o, const Requirements& r) {
+    o << "(:requirements";
+    if (r.has_fluents()) o << " :fluents"; else {
+        if (r.has_numeric_fluents()) o << " :numeric-fluents";
+        if (r.has_object_fluents()) o << " :object-fluents";
+    }
+    if (r.has_time()) o << " :time"; else {
+        if (r.has_numeric_fluents() && !r.has_fluents()) o << " :numeric-fluents";
+        if (r.has_durative_actions()) o << " :durative-actions";
+    }
+    if (r.has_action_costs()) o << " :action-costs"; else {
+        if (r.has_numeric_fluents() && !r.has_fluents() && !r.has_time()) o << " :numeric-fluents";
+    }
+    if (r.has_adl()) o << " :adl"; else {
+        if (r.has_strips()) o << " :strips";
+        if (r.has_typing()) o << " :typing";
+        if (r.has_negative_preconditions()) o << " :negative-preconditions";
+        if (r.has_disjunctive_preconditions()) o << " :disjunctive-preconditions";
+        if (r.has_equality()) o << " :equality";
+        if (r.has_existential_preconditions()) o << " :existential-preconditions";
+        if (r.has_universal_preconditions()) o << " :universal-preconditions";
+        if (r.has_conditional_effects()) o << " :conditional-effects";
+    }
+    if (r.has_quantified_preconditions()) o << " :quantified-preconditions"; else {
+        if (r.has_existential_preconditions()) o << " :existential-preconditions";
+        if (r.has_universal_preconditions()) o << " :universal-preconditions";
+    }
+    if (r.has_modules()) o << " :modules";
+    if (r.has_duration_inequalities()) o << " :duration-inequalities";
+    if (r.has_continuous_effects()) o << " :continuous-effects";
+    if (r.has_derived_predicates()) o << " :derived-predicates";
+    if (r.has_timed_initial_literals()) o << " :timed-initial-literals";
+    if (r.has_preferences()) o << " :preferences";
+    if (r.has_constraints()) o << " :constraints";
+    o << ")" << std::endl;
+    return o;
 }

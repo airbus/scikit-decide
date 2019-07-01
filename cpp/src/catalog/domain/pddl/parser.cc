@@ -19,7 +19,7 @@ namespace airlaps {
             struct state {
                 std::string name; // current parsed name
                 Domain& domain; // PDDL domain
-                Requirements requirements;
+                Requirements requirements; // current parsed requirements
 
                 state(Domain& d) : domain(d) {}
             };
@@ -29,9 +29,17 @@ namespace airlaps {
             template <typename Rule>
             struct action : pegtl::nothing<Rule> {};
 
+            // Ignore spaces and comments
+
+            struct comment : pegtl::if_must<pegtl::one<';'>, pegtl::until<pegtl::eolf>> {};
+            
+            struct ignored : pegtl::star<pegtl::sor<pegtl::space, comment>> {};
+
             // parse a name
 
-            struct name : pegtl::seq<pegtl::plus<pegtl::identifier_first>, pegtl::star<pegtl::sor<pegtl::one<'-'>, pegtl::identifier_other>>> {};
+            struct name : pegtl::seq<pegtl::plus<pegtl::identifier_first>,
+                                     pegtl::star<pegtl::sor<pegtl::one<'-'>,
+                                     pegtl::identifier_other>>> {};
             
             template <> struct action<name> {
                 template <typename Input>
@@ -42,7 +50,10 @@ namespace airlaps {
 
             // parse domain name
 
-            struct domain_name : pegtl::seq<pegtl::one<'('>, pegtl::string<'d', 'o', 'm', 'a', 'i', 'n'>, name, pegtl::one<')'>>{};
+            struct domain_name : pegtl::seq<pegtl::one<'('>, ignored,
+                                            pegtl::string<'d', 'o', 'm', 'a', 'i', 'n'>, ignored,
+                                            name, ignored,
+                                            pegtl::one<')'>>{};
 
             template <> struct action<domain_name> {
                 static void apply0(state& s) {
@@ -212,9 +223,9 @@ namespace airlaps {
                 }
             };
 
-            struct req_times_initial_literals : pegtl::string<':', 't', 'i', 'm', 'e', 'd', '-', 'i', 'n', 'i', 't', 'i', 'a', 'l', '-', 'l', 'i', 't', 'e', 'r', 'a', 'l', 's'> {};
+            struct req_timed_initial_literals : pegtl::string<':', 't', 'i', 'm', 'e', 'd', '-', 'i', 'n', 'i', 't', 'i', 'a', 'l', '-', 'l', 'i', 't', 'e', 'r', 'a', 'l', 's'> {};
             
-            template <> struct action<req_times_initial_literals> {
+            template <> struct action<req_timed_initial_literals> {
                 static void apply0(state& s) {
                     s.requirements.set_timed_initial_literals();
                 }
@@ -246,7 +257,6 @@ namespace airlaps {
                                             req_conditional_effects,
                                             req_fluents,
                                             req_durative_actions,
-                                            req_time,
                                             req_action_costs,
                                             req_object_fluents,
                                             req_numeric_fluents,
@@ -256,16 +266,17 @@ namespace airlaps {
                                             req_duration_inequalities,
                                             req_continuous_effects,
                                             req_derived_predicates,
-                                            req_times_initial_literals,
+                                            req_timed_initial_literals,
+                                            req_time,                       // sub-string of the previous one so must be parsed after
                                             req_preferences,
                                             req_constraints> {};
 
 
             // parse domain requirement definition
 
-            struct domain_require_def : pegtl::seq<pegtl::one<'('>,
-                                                   pegtl::string<':', 'r', 'e', 'q', 'u', 'i', 'r', 'e', 'm', 'e', 'n', 't', 's'>,
-                                                   pegtl::star<require_key>,
+            struct domain_require_def : pegtl::seq<pegtl::one<'('>, ignored,
+                                                   pegtl::string<':', 'r', 'e', 'q', 'u', 'i', 'r', 'e', 'm', 'e', 'n', 't', 's'>, ignored,
+                                                   pegtl::list<require_key, ignored>,
                                                    pegtl::one<')'>> {};
             
             template <> struct action<domain_require_def> {
@@ -274,9 +285,41 @@ namespace airlaps {
                 }
             };
 
+            // parse domain typed types
+
+            struct new_primitive_type : name {};
+
+            struct new_primitive_types : pegtl::list<new_primitive_type, ignored> {};
+            
+            struct primitive_type : name {};
+
+            struct primitive_types : pegtl::list<primitive_type, ignored> {};
+
+            struct either_type : pegtl::seq<pegtl::one<'('>, ignored,
+                                            pegtl::string<'e', 'i', 't', 'h', 'e', 'r'>, ignored,
+                                            primitive_types, ignored,
+                                            pegtl::one<')'>> {};
+
+            struct primitive_type_with_primitive_type : pegtl::seq<new_primitive_types, ignored,
+                                                                   pegtl::one<'-'>, ignored,
+                                                                   primitive_type> {};
+            
+            struct primitive_type_with_either_type : pegtl::seq<new_primitive_types, ignored,
+                                                                pegtl::one<'-'>, ignored,
+                                                                either_type> {};
+
+            struct typed_type : pegtl::sor<primitive_type_with_either_type,
+                                           primitive_type_with_primitive_type,
+                                           primitive_types> {};
+            
+            struct typed_types : pegtl::list<typed_type, ignored> {};
+
             // parse domain type names
 
-            struct type_names : pegtl::any {};
+            struct type_names : pegtl::seq<pegtl::one<'('>, ignored,
+                                           pegtl::string<':', 't', 'y', 'p', 'e', 's'>, ignored,
+                                           typed_types, ignored,
+                                           pegtl::one<')'>> {};
 
             // parse domain constants
 
@@ -304,21 +347,23 @@ namespace airlaps {
 
             // parse domain preamble
 
-            struct preamble : pegtl::sor<pegtl::seq<domain_require_def, preamble>,
-                                         pegtl::seq<type_names, preamble>,
-                                         pegtl::seq<domain_constants, preamble>,
-                                         pegtl::seq<predicates, preamble>,
-                                         pegtl::seq<functions_def, preamble>,
-                                         pegtl::seq<constraints_def, preamble>,
-                                         pegtl::seq<classes, preamble>,
-                                         structure_defs> {};
+            struct preamble_item : pegtl::sor<domain_require_def,
+                                              type_names,
+                                              domain_constants,
+                                              predicates,
+                                              functions_def,
+                                              constraints_def,
+                                              classes,
+                                              structure_defs> {};
+
+            struct preamble : pegtl::list<preamble_item, ignored>{};
 
             // parse domain
 
-            struct domain : pegtl::seq<pegtl::one<'('>,
-                                       pegtl::string<'d', 'e', 'f', 'i', 'n', 'e'>,
-                                       domain_name,
-                                       preamble,
+            struct domain : pegtl::seq<pegtl::one<'('>, ignored,
+                                       pegtl::string<'d', 'e', 'f', 'i', 'n', 'e'>, ignored,
+                                       domain_name, ignored,
+                                       preamble, ignored,
                                        pegtl::one<')'>>{};
 
             struct problem : pegtl::any {};
