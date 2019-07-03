@@ -1,6 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
+#include <pybind11/stl.h>
 #include <sstream>
 
 #include "pddl.hh"
@@ -10,37 +11,44 @@ namespace py = pybind11;
 void init_pypddl(py::module& m) {
     py::class_<airlaps::pddl::PDDL> py_pddl(m, "_PDDL_");
         py_pddl
-            .def(py::init<const std::string&, const std::string&, bool>(),
+            .def(py::init<>())
+            .def("load", &airlaps::pddl::PDDL::load,
                 py::arg("domain"),
                 py::arg("problem")=std::string(""),
                 py::arg("debug_logs")=false,
                 py::call_guard<py::scoped_ostream_redirect,
                                py::scoped_estream_redirect>())
-            .def("get_domain", &airlaps::pddl::PDDL::get_domain)
+            .def("get_domain", &airlaps::pddl::PDDL::get_domain,
+                               py::return_value_policy::reference_internal)
         ;
     
     py::class_<airlaps::pddl::Domain> py_domain(m, "_PDDL_Domain_");
         py_domain
             .def(py::init<>())
             .def("set_name", &airlaps::pddl::Domain::set_name, py::arg("name"))
-            .def("get_name", &airlaps::pddl::Domain::get_name)
+            .def("get_name", &airlaps::pddl::Domain::get_name,
+                             py::return_value_policy::reference_internal)
             .def("set_requirements", &airlaps::pddl::Domain::set_requirements, py::arg("requirements"))
-            .def("get_requirements", &airlaps::pddl::Domain::get_requirements)
+            .def("get_requirements", &airlaps::pddl::Domain::get_requirements,
+                                     py::return_value_policy::reference_internal)
             .def("add_type", [](airlaps::pddl::Domain& d, const py::object& t) {
                 if (py::isinstance<py::str>(t)) {
-                    d.add_type(py::cast<std::string>(t));
+                    return d.add_type(py::cast<std::string>(t));
                 } else {
-                    d.add_type(py::cast<airlaps::pddl::Type>(t));
+                    return d.add_type(py::cast<airlaps::pddl::Type::Ptr>(t));
                 }
-            }, py::arg("type"))
+            }, py::arg("type"), py::return_value_policy::reference_internal)
             .def("remove_type", [](airlaps::pddl::Domain& d, const py::object& t) {
                 if (py::isinstance<py::str>(t)) {
                     d.remove_type(py::cast<std::string>(t));
                 } else {
-                    d.remove_type(py::cast<airlaps::pddl::Type>(t));
+                    d.remove_type(py::cast<airlaps::pddl::Type::Ptr>(t));
                 }
             }, py::arg("type"))
-            .def("get_types", &airlaps::pddl::Domain::get_types)
+            .def("get_type", &airlaps::pddl::Domain::get_type, py::arg("type"),
+                             py::return_value_policy::reference_internal)
+            .def("get_types", &airlaps::pddl::Domain::get_types,
+                              py::return_value_policy::reference_internal)
             .def("__str__", &airlaps::pddl::Domain::print)
         ;
     
@@ -96,13 +104,17 @@ void init_pypddl(py::module& m) {
             .def("__str__", &airlaps::pddl::Requirements::print)
         ;
     
-    py::class_<airlaps::pddl::Type> py_type(m, "_PDDL_Type_");
+    py::class_<airlaps::pddl::Type, airlaps::pddl::Type::Type::Ptr> py_type(m, "_PDDL_Type_");
         py_type
             .def(py::init<std::string>(), py::arg("name"))
-            .def("get_name", &airlaps::pddl::Type::get_name)
+            .def("get_name", &airlaps::pddl::Type::get_name,
+                             py::return_value_policy::reference_internal)
             .def("add_parent", &airlaps::pddl::Type::add_parent, py::arg("type"))
             .def("remove_parent", &airlaps::pddl::Type::remove_parent, py::arg("type"))
-            .def("get_parents", &airlaps::pddl::Type::get_parents)
+            .def("get_parent", &airlaps::pddl::Type::get_parent, py::arg("type"),
+                               py::return_value_policy::reference_internal)
+            .def("get_parents", &airlaps::pddl::Type::get_parents,
+                                py::return_value_policy::reference_internal)
             .def("__str__", &airlaps::pddl::Type::print)
         ;
 }

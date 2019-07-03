@@ -1,8 +1,17 @@
 #include <ostream>
 #include <sstream>
+#include <stack>
+#include <algorithm>
+
 #include "domain.hh"
 
 using namespace airlaps::pddl;
+
+Domain::Domain() {
+    add_type(Type::object());
+    add_type(Type::number());
+}
+
 
 void Domain::set_name(const std::string& name) {
     _name = name;
@@ -24,19 +33,21 @@ const Requirements& Domain::get_requirements() const {
 }
 
 
-void Domain::add_type(const Type& t) {
+const Type::Ptr& Domain::add_type(const Type::Ptr& t) {
     if (!_types.emplace(t).second) {
         throw std::logic_error("AIRLAPS exception: type '" +
-                               t.get_name() +
+                               t->get_name() +
                                "' already in the set of types of domain '" +
                                this->get_name() +
                                "'");
+    } else {
+        return t;
     }
 }
 
 
-Type& Domain::add_type(const std::string& t) {
-    std::pair<TypeSet::iterator, bool> i = _types.insert(t);
+const Type::Ptr& Domain::add_type(const std::string& t) {
+    std::pair<Type::Set::iterator, bool> i = _types.emplace(std::make_shared<Type>(t));
     if (!i.second) {
         throw std::logic_error("AIRLAPS exception: type '" +
                                t +
@@ -44,15 +55,15 @@ Type& Domain::add_type(const std::string& t) {
                                this->get_name() +
                                "'");
     } else {
-        return const_cast<Type&>(*i.first); // the name of a type cannot be changed after construction of the type so we are safe
+        return *i.first;
     }
 }
 
 
-void Domain::remove_type(const Type& t) {
+void Domain::remove_type(const Type::Ptr& t) {
     if (_types.erase(t) == 0) {
         throw std::logic_error("AIRLAPS exception: type '" +
-                               t.get_name() +
+                               t->get_name() +
                                "' not in the set of types of domain '" +
                                this->get_name() +
                                "'");
@@ -61,11 +72,25 @@ void Domain::remove_type(const Type& t) {
 
 
 void Domain::remove_type(const std::string& t) {
-    remove_type(Type(t));
+    remove_type(std::make_shared<Type>(t));
 }
 
 
-const Domain::TypeSet& Domain::get_types() const {
+const Type::Ptr& Domain::get_type(const std::string& t) const {
+    Type::Set::const_iterator i = _types.find(std::make_shared<Type>(t));
+    if (i == _types.end()) {
+        throw std::logic_error("AIRLAPS exception: type '" +
+                               t +
+                               "' not in the set of types of domain '" +
+                               this->get_name() +
+                               "'");
+    } else {
+        return *i;
+    }
+}
+
+
+const Type::Set& Domain::get_types() const {
     return _types;
 }
 
@@ -81,11 +106,33 @@ std::ostream& operator<<(std::ostream& o, const Domain& d) {
     o << "(define (domain " << d.get_name() << ")" << std::endl <<
          d.get_requirements() ;
     if (!d.get_types().empty()) {
-        o << "(:types";
-        for (const auto& t : d.get_types()) {
-            o << " " << t;
+        // Extract the types in correct order, i.e. highest types first
+        std::stack<Type::Set> levels;
+        Type::Set frontier = d.get_types();
+        while (!frontier.empty()) {
+            Type::Set new_frontier;
+            for (const auto& t: frontier) {
+                for (const auto& p: t->get_parents()) {
+                    new_frontier.insert(p);
+                }
+            }
+            Type::Set l;
+            std::set_difference(frontier.begin(), frontier.end(),
+                                new_frontier.begin(), new_frontier.end(),
+                                std::inserter(l, l.begin()));
+            levels.push(l);
+            frontier = new_frontier;
         }
-        o << ")";
+        o << "(:types";
+        while (!levels.empty()) {
+            for (auto& t : levels.top()) {
+                if (t != Type::object() && t != Type::number()) {
+                    o << " " << *t;
+                }
+            }
+            levels.pop();
+        }
+        o << ")" << std::endl;
     }
     o << ")" << std::endl;
     return o;

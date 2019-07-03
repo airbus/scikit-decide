@@ -2,6 +2,7 @@
 #define AIRLAPS_PDDL_DOMAIN_HH
 
 #include <string>
+#include <memory>
 #include <unordered_set>
 
 #include "requirements.hh"
@@ -13,45 +14,52 @@ namespace airlaps {
         
         class Domain {
         public :
+            Domain();
+            
             void set_name(const std::string& name);
             const std::string& get_name() const;
             
             void set_requirements(const Requirements& requirements);
             const Requirements& get_requirements() const;
 
-            typedef std::unordered_set<Type, Type::Hash, Type::Equal> TypeSet;
             /**
              * Adds a type.
              * Throws an exception if the given type is already in the set of
              * types of this domain
              */
-            void add_type(const Type& type);
+            const Type::Ptr& add_type(const Type::Ptr& type);
             /**
              * Adds a type.
              * Throws an exception if the given type is already in the set of
              * types of this domain
              */
-            Type& add_type(const std::string& type);
+            const Type::Ptr& add_type(const std::string& type);
             /**
              * Removes a type.
              * Throws an exception if the given type is not in the set of
              * types of this domain
              */
-            void remove_type(const Type& type);
+            void remove_type(const Type::Ptr& type);
             /**
              * Removes a type.
              * Throws an exception if the given type is not in the set of
              * types of this domain
              */
             void remove_type(const std::string& type);
-            const TypeSet& get_types() const;
+            /**
+             * Gets a type.
+             * Throws an exception if the given type is not in the set of
+             * types of this domain
+             */
+            const Type::Ptr& get_type(const std::string& type) const;
+            const Type::Set& get_types() const;
 
             std::string print() const;
 
         private :
             std::string _name;
             Requirements _requirements;
-            TypeSet _types;
+            Type::Set _types;
         };
 
     } // namespace pddl

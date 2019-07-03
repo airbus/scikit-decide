@@ -1,4 +1,6 @@
 #include <exception>
+#include <list>
+
 #include "pegtl.hpp"
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
@@ -20,6 +22,7 @@ namespace airlaps {
                 std::string name; // current parsed name
                 Domain& domain; // PDDL domain
                 Requirements requirements; // current parsed requirements
+                std::list<Type::Ptr> type_list;
 
                 state(Domain& d) : domain(d) {}
             };
@@ -50,10 +53,10 @@ namespace airlaps {
 
             // parse domain name
 
-            struct domain_name : pegtl::seq<pegtl::one<'('>, ignored,
-                                            pegtl::string<'d', 'o', 'm', 'a', 'i', 'n'>, ignored,
-                                            name, ignored,
-                                            pegtl::one<')'>>{};
+            struct domain_name : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                                           pegtl::string<'d', 'o', 'm', 'a', 'i', 'n'>, ignored>,
+                                                pegtl::seq<name, ignored,
+                                                           pegtl::one<')'>>> {};
 
             template <> struct action<domain_name> {
                 static void apply0(state& s) {
@@ -274,10 +277,10 @@ namespace airlaps {
 
             // parse domain requirement definition
 
-            struct domain_require_def : pegtl::seq<pegtl::one<'('>, ignored,
-                                                   pegtl::string<':', 'r', 'e', 'q', 'u', 'i', 'r', 'e', 'm', 'e', 'n', 't', 's'>, ignored,
-                                                   pegtl::list<require_key, ignored>,
-                                                   pegtl::one<')'>> {};
+            struct domain_require_def : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                                                  pegtl::string<':', 'r', 'e', 'q', 'u', 'i', 'r', 'e', 'm', 'e', 'n', 't', 's'>, ignored>,
+                                                       pegtl::seq<pegtl::list<require_key, ignored>,
+                                                                  pegtl::one<')'>>> {};
             
             template <> struct action<domain_require_def> {
                 static void apply0(state& s) {
@@ -286,40 +289,54 @@ namespace airlaps {
             };
 
             // parse domain typed types
-
-            struct new_primitive_type : name {};
-
-            struct new_primitive_types : pegtl::list<new_primitive_type, ignored> {};
             
             struct primitive_type : name {};
+            template <> struct action<primitive_type> {
+                template <typename Input>
+                static void apply(const Input& in, state& s) {
+                    s.name = in.string();
+                    s.type_list.push_back(s.domain.add_type(s.name));
+                }
+            };
 
             struct primitive_types : pegtl::list<primitive_type, ignored> {};
 
-            struct either_type : pegtl::seq<pegtl::one<'('>, ignored,
-                                            pegtl::string<'e', 'i', 't', 'h', 'e', 'r'>, ignored,
-                                            primitive_types, ignored,
-                                            pegtl::one<')'>> {};
+            struct parent_type : name {};
+            template <> struct action<parent_type> {
+                template <typename Input>
+                static void apply(const Input& in, state& s) {
+                    s.name = in.string();
+                    for (const auto& t : s.type_list) {
+                        t->add_parent(s.domain.get_type(s.name));
+                    }
+                }
+            };
 
-            struct primitive_type_with_primitive_type : pegtl::seq<new_primitive_types, ignored,
-                                                                   pegtl::one<'-'>, ignored,
-                                                                   primitive_type> {};
-            
-            struct primitive_type_with_either_type : pegtl::seq<new_primitive_types, ignored,
-                                                                pegtl::one<'-'>, ignored,
-                                                                either_type> {};
+            struct either_primitive_types : pegtl::list<parent_type, ignored> {};
 
-            struct typed_type : pegtl::sor<primitive_type_with_either_type,
-                                           primitive_type_with_primitive_type,
-                                           primitive_types> {};
+            struct either_type : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                                           pegtl::string<'e', 'i', 't', 'h', 'e', 'r'>, ignored>,
+                                                pegtl::seq<either_primitive_types, ignored,
+                                                           pegtl::one<')'>>> {};
+
+            struct typed_type : pegtl::seq<primitive_types, ignored,
+                                           pegtl::opt<pegtl::if_must<pegtl::seq<pegtl::one<'-'>, ignored>,
+                                                                     pegtl::sor<either_type,
+                                                                                parent_type>>>> {};
+            template<> struct action<typed_type> {
+                static void apply0(state& s) {
+                    s.type_list.clear();
+                }
+            };
             
             struct typed_types : pegtl::list<typed_type, ignored> {};
 
             // parse domain type names
 
-            struct type_names : pegtl::seq<pegtl::one<'('>, ignored,
-                                           pegtl::string<':', 't', 'y', 'p', 'e', 's'>, ignored,
-                                           typed_types, ignored,
-                                           pegtl::one<')'>> {};
+            struct type_names : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                                          pegtl::string<':', 't', 'y', 'p', 'e', 's'>, ignored>,
+                                               pegtl::seq<typed_types, ignored,
+                                                          pegtl::one<')'>>> {};
 
             // parse domain constants
 
@@ -360,11 +377,11 @@ namespace airlaps {
 
             // parse domain
 
-            struct domain : pegtl::seq<pegtl::one<'('>, ignored,
-                                       pegtl::string<'d', 'e', 'f', 'i', 'n', 'e'>, ignored,
-                                       domain_name, ignored,
-                                       preamble, ignored,
-                                       pegtl::one<')'>>{};
+            struct domain : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                                      pegtl::string<'d', 'e', 'f', 'i', 'n', 'e'>, ignored,
+                                                      domain_name, ignored>,
+                                           pegtl::seq<preamble, ignored,
+                                                      pegtl::one<')'>>> {};
 
             struct problem : pegtl::any {};
 
@@ -405,10 +422,12 @@ namespace airlaps {
                 }
             } catch (const pegtl::parse_error& e) {
                 spdlog::error("Error when parsing " + parsed_files_msg + ": " + e.what());
-                throw std::runtime_error("Error when parsing " + parsed_files_msg + ": " + e.what());
+                throw std::runtime_error("AIRLAPS exception: error when parsing " + parsed_files_msg + ": " + e.what());
             } catch (const pegtl::input_error& e) {
                 spdlog::error("Error when reading " + parsed_files_msg + ": " + e.what());
-                throw std::runtime_error("Error when reasing " + parsed_files_msg + ": " + e.what());
+                throw std::runtime_error("AIRLAPS exception: error when reading " + parsed_files_msg + ": " + e.what());
+            } catch (const std::exception& e) {
+                throw;
             }
         }
 

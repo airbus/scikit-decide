@@ -27,9 +27,8 @@ if __name__ == '__main__':
             debug_logs = True if arg == 'yes' else False
     
     try:
-        mypddl = PDDL(domain, problem, debug_logs)
-        t = Type('t0')
-        mypddl.add_type('t1').add_parent(t)
-        print(str(mypddl.get_domain()))
+        mypddl = PDDL()
+        mypddl.load(domain, problem, debug_logs)
+        print(mypddl.get_domain())
     except RuntimeError as err:
         print(err)

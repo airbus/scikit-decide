@@ -16,7 +16,7 @@ namespace airlaps {
              * @param debug_logs Activates parsing traces
              * @return True in case of successful parsing
              */
-            PDDL(const std::string& domain_file, const std::string& problem_file = "", bool debug_logs = false);
+            void load(const std::string& domain_file, const std::string& problem_file = "", bool debug_logs = false);
             
             Domain& get_domain();
             
