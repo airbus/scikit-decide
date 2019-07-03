@@ -23,6 +23,8 @@ const std::string& Domain::get_name() const {
 }
 
 
+// REQUIREMENTS
+
 void Domain::set_requirements(const Requirements& requirements) {
     _requirements = requirements;
 }
@@ -32,6 +34,8 @@ const Requirements& Domain::get_requirements() const {
     return _requirements;
 }
 
+
+// TYPES
 
 const Type::Ptr& Domain::add_type(const Type::Ptr& t) {
     if (!_types.emplace(t).second) {
@@ -95,6 +99,70 @@ const Type::Set& Domain::get_types() const {
 }
 
 
+// CONSTANTS
+
+const Object::Ptr& Domain::add_constant(const Object::Ptr& o) {
+    if (!_constants.emplace(o).second) {
+        throw std::logic_error("AIRLAPS exception: object '" +
+                               o->get_name() +
+                               "' already in the set of constants of domain '" +
+                               this->get_name() +
+                               "'");
+    } else {
+        return o;
+    }
+}
+
+
+const Object::Ptr& Domain::add_constant(const std::string& o) {
+    std::pair<Object::Set::iterator, bool> i = _constants.emplace(std::make_shared<Object>(o));
+    if (!i.second) {
+        throw std::logic_error("AIRLAPS exception: object '" +
+                               o +
+                               "' already in the set of constants of domain '" +
+                               this->get_name() +
+                               "'");
+    } else {
+        return *i.first;
+    }
+}
+
+
+void Domain::remove_constant(const Object::Ptr& o) {
+    if (_constants.erase(o) == 0) {
+        throw std::logic_error("AIRLAPS exception: constant '" +
+                               o->get_name() +
+                               "' not in the set of constants of domain '" +
+                               this->get_name() +
+                               "'");
+    }
+}
+
+
+void Domain::remove_constant(const std::string& o) {
+    remove_constant(std::make_shared<Object>(o));
+}
+
+
+const Object::Ptr& Domain::get_constant(const std::string& o) const {
+    Object::Set::const_iterator i = _constants.find(std::make_shared<Object>(o));
+    if (i == _constants.end()) {
+        throw std::logic_error("AIRLAPS exception: object '" +
+                               o +
+                               "' not in the set of constants of domain '" +
+                               this->get_name() +
+                               "'");
+    } else {
+        return *i;
+    }
+}
+
+
+const Object::Set& Domain::get_constants() const {
+    return _constants;
+}
+
+
 std::string Domain::print() const {
     std::ostringstream o;
     o << *this;
@@ -103,8 +171,10 @@ std::string Domain::print() const {
 
 
 std::ostream& operator<<(std::ostream& o, const Domain& d) {
-    o << "(define (domain " << d.get_name() << ")" << std::endl <<
-         d.get_requirements() ;
+    o << "(define (domain " << d.get_name() << ")" << std::endl;
+
+    o << d.get_requirements() << std::endl ;
+
     if (!d.get_types().empty()) {
         // Extract the types in correct order, i.e. highest types first
         std::stack<Type::Set> levels;
@@ -134,6 +204,16 @@ std::ostream& operator<<(std::ostream& o, const Domain& d) {
         }
         o << ")" << std::endl;
     }
+
+    if (!d.get_constants().empty()) {
+        o << "(:constants";
+        for (const auto& c : d.get_constants()) {
+            o << " " << *c;
+        }
+        o << ")" << std::endl;
+    }
+
     o << ")" << std::endl;
+    
     return o;
 }

@@ -104,7 +104,7 @@ void init_pypddl(py::module& m) {
             .def("__str__", &airlaps::pddl::Requirements::print)
         ;
     
-    py::class_<airlaps::pddl::Type, airlaps::pddl::Type::Type::Ptr> py_type(m, "_PDDL_Type_");
+    py::class_<airlaps::pddl::Type, airlaps::pddl::Type::Ptr> py_type(m, "_PDDL_Type_");
         py_type
             .def(py::init<std::string>(), py::arg("name"))
             .def("get_name", &airlaps::pddl::Type::get_name,
@@ -116,5 +116,19 @@ void init_pypddl(py::module& m) {
             .def("get_parents", &airlaps::pddl::Type::get_parents,
                                 py::return_value_policy::reference_internal)
             .def("__str__", &airlaps::pddl::Type::print)
+        ;
+    
+    py::class_<airlaps::pddl::Object, airlaps::pddl::Object::Ptr> py_object(m, "_PDDL_Object_");
+        py_object
+            .def(py::init<std::string>(), py::arg("name"))
+            .def("get_name", &airlaps::pddl::Object::get_name,
+                             py::return_value_policy::reference_internal)
+            .def("add_type", &airlaps::pddl::Object::add_type, py::arg("type"))
+            .def("remove_type", &airlaps::pddl::Object::remove_type, py::arg("type"))
+            .def("get_type", &airlaps::pddl::Object::get_type, py::arg("type"),
+                               py::return_value_policy::reference_internal)
+            .def("get_types", &airlaps::pddl::Object::get_types,
+                                py::return_value_policy::reference_internal)
+            .def("__str__", &airlaps::pddl::Object::print)
         ;
 }

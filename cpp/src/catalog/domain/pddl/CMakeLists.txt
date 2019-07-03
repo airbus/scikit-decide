@@ -3,6 +3,7 @@ ADD_LIBRARY(airlaps_pddl OBJECT
                 domain.cc
                 requirements.cc
                 type.cc
+                object.cc
                 parser.cc)
 TARGET_INCLUDE_DIRECTORIES(airlaps_pddl PRIVATE ${INCLUDE_DIRS})
 

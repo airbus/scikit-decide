@@ -3,6 +3,8 @@
 
 (:types t0 - object t1 - t0 t2 - (either t0 t1))
 
+(:constants c0 - (either t0 t2) c1 - t1)
+
 (:predicates (running) (stopped) (engineBlown) (transmission_fine) (goal_reached) )
 
 (:functions (d) (v) (a) (up_limit) (down_limit) (running_time) )

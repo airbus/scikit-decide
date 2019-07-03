@@ -23,6 +23,7 @@ namespace airlaps {
                 Domain& domain; // PDDL domain
                 Requirements requirements; // current parsed requirements
                 std::list<Type::Ptr> type_list;
+                std::list<Object::Ptr> object_list;
 
                 state(Domain& d) : domain(d) {}
             };
@@ -288,7 +289,30 @@ namespace airlaps {
                 }
             };
 
-            // parse domain typed types
+            // parse typed lists
+
+            template <typename PrimitiveSymbol>
+            struct primitive_symbols : pegtl::list<PrimitiveSymbol, ignored> {};
+
+            template <typename TypeSymbol>
+            struct either_primitive_types : pegtl::list<TypeSymbol, ignored> {};
+
+            template <typename TypeSymbol>
+            struct either_type : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                                           pegtl::string<'e', 'i', 't', 'h', 'e', 'r'>, ignored>,
+                                                pegtl::seq<either_primitive_types<TypeSymbol>, ignored,
+                                                           pegtl::one<')'>>> {};
+
+            template <typename PrimitiveSymbol, typename TypeSymbol>
+            struct typed_list : pegtl::seq<primitive_symbols<PrimitiveSymbol>, ignored,
+                                           pegtl::opt<pegtl::if_must<pegtl::seq<pegtl::one<'-'>, ignored>,
+                                                                     pegtl::sor<either_type<TypeSymbol>,
+                                                                                TypeSymbol>>>> {};
+            
+            template <typename PrimitiveSymbol, typename TypeSymbol>
+            struct typed_symbols : pegtl::list<typed_list<PrimitiveSymbol, TypeSymbol>, ignored> {};
+
+            // parse domain types
             
             struct primitive_type : name {};
             template <> struct action<primitive_type> {
@@ -297,9 +321,7 @@ namespace airlaps {
                     s.name = in.string();
                     s.type_list.push_back(s.domain.add_type(s.name));
                 }
-            };
-
-            struct primitive_types : pegtl::list<primitive_type, ignored> {};
+            }; 
 
             struct parent_type : name {};
             template <> struct action<parent_type> {
@@ -311,36 +333,50 @@ namespace airlaps {
                     }
                 }
             };
-
-            struct either_primitive_types : pegtl::list<parent_type, ignored> {};
-
-            struct either_type : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
-                                                           pegtl::string<'e', 'i', 't', 'h', 'e', 'r'>, ignored>,
-                                                pegtl::seq<either_primitive_types, ignored,
-                                                           pegtl::one<')'>>> {};
-
-            struct typed_type : pegtl::seq<primitive_types, ignored,
-                                           pegtl::opt<pegtl::if_must<pegtl::seq<pegtl::one<'-'>, ignored>,
-                                                                     pegtl::sor<either_type,
-                                                                                parent_type>>>> {};
-            template<> struct action<typed_type> {
+            
+            template<> struct action<typed_list<primitive_type, parent_type>> {
                 static void apply0(state& s) {
                     s.type_list.clear();
                 }
             };
-            
-            struct typed_types : pegtl::list<typed_type, ignored> {};
-
-            // parse domain type names
 
             struct type_names : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
                                                           pegtl::string<':', 't', 'y', 'p', 'e', 's'>, ignored>,
-                                               pegtl::seq<typed_types, ignored,
+                                               pegtl::seq<typed_symbols<primitive_type, parent_type>, ignored,
                                                           pegtl::one<')'>>> {};
 
             // parse domain constants
 
-            struct domain_constants : pegtl::any {};
+            struct primitive_constant : name {};
+            template <> struct action<primitive_constant> {
+                template <typename Input>
+                static void apply(const Input& in, state& s) {
+                    s.name = in.string();
+                    s.object_list.push_back(s.domain.add_constant(s.name));
+                }
+            }; 
+
+            struct constant_type : name {};
+            template <> struct action<constant_type> {
+                template <typename Input>
+                static void apply(const Input& in, state& s) {
+                    s.name = in.string();
+                    for (const auto& o : s.object_list) {
+                        o->add_type(s.domain.get_type(s.name));
+                    }
+                }
+            };
+            
+            template<> struct action<typed_list<primitive_constant, constant_type>> {
+                static void apply0(state& s) {
+                    s.object_list.clear();
+                }
+            };
+
+            struct domain_constants : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                                                pegtl::string<':', 'c', 'o', 'n', 's', 't', 'a', 'n', 't', 's'>, ignored>,
+                                                     pegtl::seq<typed_symbols<primitive_constant, constant_type>, ignored,
+                                                                pegtl::one<')'>>> {};
 
             // parse predicates
 

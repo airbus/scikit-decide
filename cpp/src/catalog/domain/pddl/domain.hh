@@ -7,6 +7,7 @@
 
 #include "requirements.hh"
 #include "type.hh"
+#include "object.hh"
 
 namespace airlaps {
 
@@ -54,12 +55,45 @@ namespace airlaps {
             const Type::Ptr& get_type(const std::string& type) const;
             const Type::Set& get_types() const;
 
+            /**
+             * Adds a constant.
+             * Throws an exception if the given constant is already in the set of
+             * constants of this domain
+             */
+            const Object::Ptr& add_constant(const Object::Ptr& constant);
+            /**
+             * Adds a constant.
+             * Throws an exception if the given constant is already in the set of
+             * constants of this domain
+             */
+            const Object::Ptr& add_constant(const std::string& constant);
+            /**
+             * Removes a constant.
+             * Throws an exception if the given constant is not in the set of
+             * constants of this domain
+             */
+            void remove_constant(const Object::Ptr& constant);
+            /**
+             * Removes a constant.
+             * Throws an exception if the given constant is not in the set of
+             * constants of this domain
+             */
+            void remove_constant(const std::string& constant);
+            /**
+             * Gets a constant.
+             * Throws an exception if the given constant is not in the set of
+             * constants of this domain
+             */
+            const Object::Ptr& get_constant(const std::string& constant) const;
+            const Object::Set& get_constants() const;
+
             std::string print() const;
 
         private :
             std::string _name;
             Requirements _requirements;
             Type::Set _types;
+            Object::Set _constants;
         };
 
     } // namespace pddl
