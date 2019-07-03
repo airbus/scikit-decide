@@ -463,7 +463,8 @@ namespace airlaps {
                 spdlog::error("Error when reading " + parsed_files_msg + ": " + e.what());
                 throw std::runtime_error("AIRLAPS exception: error when reading " + parsed_files_msg + ": " + e.what());
             } catch (const std::exception& e) {
-                throw;
+                spdlog::error("Error when parsing " + parsed_files_msg + ": " + e.what());
+                throw std::runtime_error("AIRLAPS exception: error when parsing " + parsed_files_msg + ": " + e.what());
             }
         }
 

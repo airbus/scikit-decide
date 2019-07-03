@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "domain.hh"
+#include "symbol_container_helper.hh"
 
 using namespace airlaps::pddl;
 
@@ -38,59 +39,27 @@ const Requirements& Domain::get_requirements() const {
 // TYPES
 
 const Type::Ptr& Domain::add_type(const Type::Ptr& t) {
-    if (!_types.emplace(t).second) {
-        throw std::logic_error("AIRLAPS exception: type '" +
-                               t->get_name() +
-                               "' already in the set of types of domain '" +
-                               this->get_name() +
-                               "'");
-    } else {
-        return t;
-    }
+    return SymbolContainerHelper::add(this, "domain", _types, "types", t, "type");
 }
 
 
 const Type::Ptr& Domain::add_type(const std::string& t) {
-    std::pair<Type::Set::iterator, bool> i = _types.emplace(std::make_shared<Type>(t));
-    if (!i.second) {
-        throw std::logic_error("AIRLAPS exception: type '" +
-                               t +
-                               "' already in the set of types of domain '" +
-                               this->get_name() +
-                               "'");
-    } else {
-        return *i.first;
-    }
+    return SymbolContainerHelper::add(this, "domain", _types, "types", t, "type");
 }
 
 
 void Domain::remove_type(const Type::Ptr& t) {
-    if (_types.erase(t) == 0) {
-        throw std::logic_error("AIRLAPS exception: type '" +
-                               t->get_name() +
-                               "' not in the set of types of domain '" +
-                               this->get_name() +
-                               "'");
-    }
+    return SymbolContainerHelper::remove(this, "domain", _types, "types", t, "type");
 }
 
 
 void Domain::remove_type(const std::string& t) {
-    remove_type(std::make_shared<Type>(t));
+    return SymbolContainerHelper::remove(this, "domain", _types, "types", t, "type");
 }
 
 
 const Type::Ptr& Domain::get_type(const std::string& t) const {
-    Type::Set::const_iterator i = _types.find(std::make_shared<Type>(t));
-    if (i == _types.end()) {
-        throw std::logic_error("AIRLAPS exception: type '" +
-                               t +
-                               "' not in the set of types of domain '" +
-                               this->get_name() +
-                               "'");
-    } else {
-        return *i;
-    }
+    return SymbolContainerHelper::get(this, "domain", _types, "types", t, "type");
 }
 
 
@@ -102,59 +71,27 @@ const Type::Set& Domain::get_types() const {
 // CONSTANTS
 
 const Object::Ptr& Domain::add_constant(const Object::Ptr& o) {
-    if (!_constants.emplace(o).second) {
-        throw std::logic_error("AIRLAPS exception: object '" +
-                               o->get_name() +
-                               "' already in the set of constants of domain '" +
-                               this->get_name() +
-                               "'");
-    } else {
-        return o;
-    }
+    return SymbolContainerHelper::add(this, "domain", _constants, "constants", o, "object");
 }
 
 
 const Object::Ptr& Domain::add_constant(const std::string& o) {
-    std::pair<Object::Set::iterator, bool> i = _constants.emplace(std::make_shared<Object>(o));
-    if (!i.second) {
-        throw std::logic_error("AIRLAPS exception: object '" +
-                               o +
-                               "' already in the set of constants of domain '" +
-                               this->get_name() +
-                               "'");
-    } else {
-        return *i.first;
-    }
+    return SymbolContainerHelper::add(this, "domain", _constants, "constants", o, "object");
 }
 
 
 void Domain::remove_constant(const Object::Ptr& o) {
-    if (_constants.erase(o) == 0) {
-        throw std::logic_error("AIRLAPS exception: constant '" +
-                               o->get_name() +
-                               "' not in the set of constants of domain '" +
-                               this->get_name() +
-                               "'");
-    }
+    SymbolContainerHelper::remove(this, "domain", _constants, "constants", o, "object");
 }
 
 
 void Domain::remove_constant(const std::string& o) {
-    remove_constant(std::make_shared<Object>(o));
+    SymbolContainerHelper::remove(this, "domain", _constants, "constants", o, "object");
 }
 
 
 const Object::Ptr& Domain::get_constant(const std::string& o) const {
-    Object::Set::const_iterator i = _constants.find(std::make_shared<Object>(o));
-    if (i == _constants.end()) {
-        throw std::logic_error("AIRLAPS exception: object '" +
-                               o +
-                               "' not in the set of constants of domain '" +
-                               this->get_name() +
-                               "'");
-    } else {
-        return *i;
-    }
+    return SymbolContainerHelper::get(this, "domain", _constants, "constants", o, "object");
 }
 
 

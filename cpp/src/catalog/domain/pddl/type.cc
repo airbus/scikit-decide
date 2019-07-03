@@ -1,6 +1,8 @@
 #include <exception>
 #include <sstream>
+
 #include "type.hh"
+#include "symbol_container_helper.hh"
 
 using namespace airlaps::pddl;
 
@@ -32,38 +34,17 @@ const std::string& Type::get_name() const {
 
 
 void Type::add_parent(const Ptr& t) {
-    if (!_parents.insert(t).second) {
-        throw std::logic_error("AIRLAPS exception: type '" +
-                               t->get_name() +
-                               "' already in the set of parent types of type '" +
-                               this->get_name() +
-                               "'");
-    }
+    SymbolContainerHelper::add(this, "type", _parents, "parent types", t, "type");
 }
 
 
 void Type::remove_parent(const Ptr& t) {
-    if (_parents.erase(t) == 0) {
-        throw std::logic_error("AIRLAPS exception: type '" +
-                               t->get_name() +
-                               "' not in the set of parent types of type '" +
-                               this->get_name() +
-                               "'");
-    }
+    SymbolContainerHelper::remove(this, "type", _parents, "parent types", t, "type");
 }
 
 
 const Type::Ptr& Type::get_parent(const std::string& t) const {
-    Set::const_iterator i = _parents.find(std::make_shared<Type>(t));
-    if (i == _parents.end()) {
-        throw std::logic_error("AIRLAPS exception: type '" +
-                               t +
-                               "' not in the set of parent types of type '" +
-                               this->get_name() +
-                               "'");
-    } else {
-        return *i;
-    }
+    return SymbolContainerHelper::get(this, "type", _parents, "parent types", t, "type");
 }
 
 
