@@ -2,6 +2,8 @@
 #define AIRLAPS_PDDL_HH
 
 #include "domain.hh"
+#include "type.hh"
+#include "object.hh"
 
 namespace airlaps {
 

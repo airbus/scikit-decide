@@ -1,74 +1,36 @@
 #ifndef AIRLAPS_PDDL_OBJECT_HH
 #define AIRLAPS_PDDL_OBJECT_HH
 
-#include <string>
-#include <unordered_set>
-#include <memory>
-#include <ostream>
-
 #include "type.hh"
+#include "term.hh"
 
 namespace airlaps {
 
     namespace pddl {
 
-        class Object {
+        class Object : public Term, public TypeContainer<Object> {
         public :
-            typedef std::shared_ptr<Object> Ptr;
+            static constexpr char cls_name[] = "object";
 
-            struct Hash {
-                inline std::size_t operator()(const Ptr& o) const {
-                    return std::hash<std::string>()(o->get_name());
-                }
-            };
+            Object(const std::string& name)
+                : TypeContainer<Object>(name) {}
 
-            struct Equal {
-                inline bool operator()(const Ptr& o1, const Ptr& o2) const {
-                    return std::equal_to<std::string>()(o1->get_name(), o2->get_name());
-                }
-            };
+            Object(const Object& other)
+                : TypeContainer<Object>(other) {}
 
-            typedef std::unordered_set<Ptr, Hash, Equal> Set;
-            
-
-            Object(const std::string& name);
-            Object(const Object& other);
-            Object& operator=(const Object& other);
-
-            const std::string& get_name() const;
-
-            /**
-             * Adds a type.
-             * Throws an exception if the given type is already in the set of
-             * types of this object
-             */
-            void add_type(const Type::Ptr& type);
-            /**
-             * Removes a type.
-             * Throws an exception if the given type is not in the set of
-             * types of this object
-             */
-            void remove_type(const Type::Ptr& type);
-            /**
-             * Gets a type.
-             * Throws an exception if the given type is not in the set of
-             * types of this object
-             */
-            const Type::Ptr& get_type(const std::string& t) const;
-            const Type::Set& get_types() const;
-
-            std::string print() const;
-
-        private :
-            std::string _name;
-            Type::Set _types;
+            Object& operator=(const Object& other) {
+                dynamic_cast<TypeContainer<Object>&>(*this) = other;
+                return *this;
+            }
         };
 
     } // namespace pddl
 
 } // namespace airlaps
 
-// Type printing operator
-std::ostream& operator<<(std::ostream& o, const airlaps::pddl::Object& ob);
+// Object printing operator
+inline std::ostream& operator<<(std::ostream& o, const airlaps::pddl::Object& ob) {
+    return ob.print(o);
+}
 
 #endif // AIRLAPS_PDDL_OBJECT_HH

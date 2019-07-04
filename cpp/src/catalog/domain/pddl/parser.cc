@@ -8,6 +8,9 @@
 #include "parser.hh"
 #include "utils/pegtl_spdlog_tracer.hh"
 
+#include "type.hh"
+#include "object.hh"
+
 namespace pegtl = tao::TAO_PEGTL_NAMESPACE;  // NOLINT
 
 namespace airlaps {
@@ -22,8 +25,8 @@ namespace airlaps {
                 std::string name; // current parsed name
                 Domain& domain; // PDDL domain
                 Requirements requirements; // current parsed requirements
-                std::list<Type::Ptr> type_list;
-                std::list<Object::Ptr> object_list;
+                std::list<Domain::TypePtr> type_list;
+                std::list<Domain::ObjectPtr> object_list;
 
                 state(Domain& d) : domain(d) {}
             };
@@ -329,7 +332,7 @@ namespace airlaps {
                 static void apply(const Input& in, state& s) {
                     s.name = in.string();
                     for (const auto& t : s.type_list) {
-                        t->add_parent(s.domain.get_type(s.name));
+                        t->add_type(s.domain.get_type(s.name));
                     }
                 }
             };
@@ -352,7 +355,7 @@ namespace airlaps {
                 template <typename Input>
                 static void apply(const Input& in, state& s) {
                     s.name = in.string();
-                    s.object_list.push_back(s.domain.add_constant(s.name));
+                    s.object_list.push_back(s.domain.add_object(s.name));
                 }
             }; 
 
