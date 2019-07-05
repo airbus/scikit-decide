@@ -10,17 +10,18 @@ const Type::Ptr Type::_number = std::make_shared<Type>("number");
 
 
 Type::Type(const std::string& name)
-    : TypeContainer<Type>(name) {
+    : Identifier(name) {
 }
 
 
 Type::Type(const Type& other)
-    : TypeContainer<Type>(other) {
+    : Identifier(other), TypeContainer<Type>(other) {
 
 }
 
 
 Type& Type::operator=(const Type& other) {
+    dynamic_cast<Identifier&>(*this) = other;
     dynamic_cast<TypeContainer<Type>&>(*this) = other;
     return *this;
 }

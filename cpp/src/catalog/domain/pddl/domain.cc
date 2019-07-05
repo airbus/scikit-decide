@@ -16,12 +16,7 @@ Domain::Domain() {
 
 
 void Domain::set_name(const std::string& name) {
-    TypeContainer<Domain>::set_name(name);
-}
-
-
-const std::string& Domain::get_name() const {
-    return TypeContainer<Domain>::get_name();
+    Identifier::set_name(name);
 }
 
 

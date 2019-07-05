@@ -5,6 +5,7 @@
 #include <memory>
 #include <unordered_set>
 
+#include "identifier.hh"
 #include "requirements.hh"
 #include "type_container.hh"
 #include "object_container.hh"
@@ -13,15 +14,15 @@ namespace airlaps {
 
     namespace pddl {
         
-        class Domain : public TypeContainer<Domain>,
+        class Domain : public Identifier,
+                       public TypeContainer<Domain>,
                        public ObjectContainer<Domain> {
         public :
-            static constexpr char cls_name[] = "domain";
+            static constexpr char class_name[] = "domain";
             
             Domain();
             
             void set_name(const std::string& name);
-            const std::string& get_name() const;
             
             void set_requirements(const Requirements& requirements);
             const Requirements& get_requirements() const;
@@ -34,7 +35,6 @@ namespace airlaps {
             typedef ObjectContainer<Domain>::ObjectSet ObjectSet;
 
         private :
-            std::string _name;
             Requirements _requirements;
         };
 

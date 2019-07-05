@@ -1,5 +1,5 @@
-#ifndef AIRLAPS_PDDL_NAMED_CONTAINER_HH
-#define AIRLAPS_PDDL_NAMED_CONTAINER_HH
+#ifndef AIRLAPS_PDDL_SEQUENCE_CONTAINER_HH
+#define AIRLAPS_PDDL_SEQUENCE_CONTAINER_HH
 
 #include <vector>
 #include <memory>
@@ -12,46 +12,23 @@ namespace airlaps {
     namespace pddl {
 
         template <typename Derived, typename Symbol>
-        class OrderedContainer {
+        class SequenceContainer {
         public :
-            OrderedContainer(const OrderedContainer& other)
-            : _name(other._name), _container(other._container) {}
+            SequenceContainer(const SequenceContainer& other)
+            : _container(other._container) {}
 
-            OrderedContainer& operator=(const OrderedContainer& other) {
-                this->_name = other._name;
+            SequenceContainer& operator=(const SequenceContainer& other) {
                 this->_container = other._container;
                 return *this;
-            }
-
-            static std::string class_name() {
-                return Derived::cls_name;
-            }
-
-            const std::string& get_name() const {
-                return _name;
-            }
-
-            std::string print() const {
-                std::ostringstream o;
-                o << *this;
-                return o.str();
             }
         
         protected :
             typedef std::shared_ptr<Symbol> SymbolPtr;
             typedef std::vector<SymbolPtr> SymbolVector;
 
-            std::string _name;
-            SymbolSet _container;
+            SymbolVector _container;
 
-            OrderedContainer() {}
-
-            OrderedContainer(const std::string& name)
-            : _name(name) {}
-
-            void set_name(const std::string& name) {
-                _name = name;
-            }
+            SequenceContainer() {}
 
             /**
              * Appends a symbol to the container.
@@ -117,8 +94,8 @@ namespace airlaps {
             const SymbolPtr& at(const std::size_t index) const {
                 if (index >= _container.size()) {
                     throw std::out_of_range("AIRLAPS exception: index " + std::to_string(index) +
-                                            " exceeds the size of the vector of " + Symbol::class_name() + "s of " +
-                                            class_name() + " '" + _name + "'");
+                                            " exceeds the size of the vector of " + std::string(Symbol::class_name) + "s of " +
+                                            std::string(Derived::class_name) + " '" + static_cast<const Derived*>(this)-> + "'");
                 } else {
                     return _container[index];
                 }
@@ -133,4 +110,4 @@ namespace airlaps {
 
 } // namespace airlaps
 
-#endif // AIRLAPS_PDDL_NAMED_CONTAINER_HH
+#endif // AIRLAPS_PDDL_SEQUENCE_CONTAINER_HH

@@ -8,17 +8,20 @@ namespace airlaps {
 
     namespace pddl {
 
-        class Variable : public Term, public TypeContainer<Variable> {
+        class Variable : public Term,
+                         public Identifier,
+                         public TypeContainer<Variable> {
         public :
-            static constexpr char cls_name[] = "variable";
+            static constexpr char class_name[] = "variable";
 
             Variable(const std::string& name)
-                : TypeContainer<Variable>(name) {}
+                : Identifier(name) {}
 
             Variable(const Variable& other)
-                : TypeContainer<Variable>(other) {}
+                : Identifier(other), TypeContainer<Variable>(other) {}
 
             Variable& operator=(const Variable& other) {
+                dynamic_cast<Identifier&>(*this) = other;
                 dynamic_cast<TypeContainer<Variable>&>(*this) = other;
                 return *this;
             }

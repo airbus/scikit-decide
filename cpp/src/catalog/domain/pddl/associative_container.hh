@@ -1,5 +1,5 @@
-#ifndef AIRLAPS_PDDL_NAMED_CONTAINER_HH
-#define AIRLAPS_PDDL_NAMED_CONTAINER_HH
+#ifndef AIRLAPS_PDDL_ASSOCIATIVE_CONTAINER_HH
+#define AIRLAPS_PDDL_ASSOCIATIVE_CONTAINER_HH
 
 #include <unordered_set>
 #include <memory>
@@ -25,46 +25,23 @@ namespace airlaps {
         };
 
         template <typename Derived, typename Symbol>
-        class NamedContainer {
+        class AssociativeContainer {
         public :
-            NamedContainer(const NamedContainer& other)
-            : _name(other._name), _container(other._container) {}
+            AssociativeContainer(const AssociativeContainer& other)
+            : _container(other._container) {}
 
-            NamedContainer& operator=(const NamedContainer& other) {
-                this->_name = other._name;
+            AssociativeContainer& operator=(const AssociativeContainer& other) {
                 this->_container = other._container;
                 return *this;
-            }
-
-            static std::string class_name() {
-                return Derived::cls_name;
-            }
-
-            const std::string& get_name() const {
-                return _name;
-            }
-
-            std::string print() const {
-                std::ostringstream o;
-                o << *this;
-                return o.str();
             }
         
         protected :
             typedef std::shared_ptr<Symbol> SymbolPtr;
             typedef std::unordered_set<SymbolPtr, SymbolHash, SymbolEqual> SymbolSet;
 
-            std::string _name;
             SymbolSet _container;
 
-            NamedContainer() {}
-
-            NamedContainer(const std::string& name)
-            : _name(name) {}
-
-            void set_name(const std::string& name) {
-                _name = name;
-            }
+            AssociativeContainer() {}
 
             /**
              * Adds a symbol to the container.
@@ -73,10 +50,10 @@ namespace airlaps {
             const SymbolPtr& add(const SymbolPtr& symbol) {
                 std::pair<typename SymbolSet::const_iterator, bool> i = _container.emplace(symbol);
                 if (!i.second) {
-                    throw std::logic_error("AIRLAPS exception: " + Symbol::class_name() + " '" +
+                    throw std::logic_error("AIRLAPS exception: " + std::string(Symbol::class_name) + " '" +
                                            symbol->get_name() +
-                                           "' already in the set of " + Symbol::class_name() + "s of " +
-                                           class_name() + " '" + _name + "'");
+                                           "' already in the set of " + std::string(Symbol::class_name) + "s of " +
+                                           std::string(Derived::class_name) + " '" + static_cast<const Derived*>(this)->get_name() + "'");
                 } else {
                     return *i.first;
                 }
@@ -96,10 +73,10 @@ namespace airlaps {
              */
             void remove(const SymbolPtr& symbol) {
                 if (_container.erase(symbol) == 0) {
-                    throw std::logic_error("AIRLAPS exception: " + Symbol::class_name() + " '" +
+                    throw std::logic_error("AIRLAPS exception: " + std::string(Symbol::class_name) + " '" +
                                            symbol->get_name() +
-                                           "' not in the set of " + Symbol::class_name() + "s of " +
-                                           class_name() + " '" + _name + "'");
+                                           "' not in the set of " + std::string(Symbol::class_name) + "s of " +
+                                           std::string(Derived::class_name) + " '" + static_cast<const Derived*>(this)->get_name() + "'");
                 }
             }
 
@@ -118,10 +95,10 @@ namespace airlaps {
             const SymbolPtr& get(const SymbolPtr& symbol) const {
                 typename SymbolSet::const_iterator i = _container.find(symbol);
                 if (i == _container.end()) {
-                    throw std::logic_error("AIRLAPS exception: " + Symbol::class_name() + " '" +
+                    throw std::logic_error("AIRLAPS exception: " + std::string(Symbol::class_name) + " '" +
                                            symbol->get_name() +
-                                           "' not in the set of " + Symbol::class_name() + "s of " +
-                                           class_name() + " '" + _name + "'");
+                                           "' not in the set of " + std::string(Symbol::class_name) + "s of " +
+                                           std::string(Derived::class_name) + " '" + static_cast<const Derived*>(this)->get_name() + "'");
                 } else {
                     return *i;
                 }
@@ -144,4 +121,4 @@ namespace airlaps {
 
 } // namespace airlaps
 
-#endif // AIRLAPS_PDDL_NAMED_CONTAINER_HH
+#endif // AIRLAPS_PDDL_ASSOCIATIVE_CONTAINER_HH

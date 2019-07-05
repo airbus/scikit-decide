@@ -1,7 +1,7 @@
 #ifndef AIRLAPS_PDDL_TYPE_CONTAINER_HH
 #define AIRLAPS_PDDL_TYPE_CONTAINER_HH
 
-#include "named_container.hh"
+#include "associative_container.hh"
 
 namespace airlaps {
 
@@ -10,40 +10,40 @@ namespace airlaps {
         class Type;
 
         template <typename Derived>
-        class TypeContainer : public NamedContainer<Derived, Type> {
+        class TypeContainer : public AssociativeContainer<Derived, Type> {
         public :
-            typedef typename NamedContainer<Derived, Type>::SymbolPtr TypePtr;
-            typedef typename NamedContainer<Derived, Type>::SymbolSet TypeSet;
+            typedef typename AssociativeContainer<Derived, Type>::SymbolPtr TypePtr;
+            typedef typename AssociativeContainer<Derived, Type>::SymbolSet TypeSet;
 
             TypeContainer(const TypeContainer& other)
-                : NamedContainer<Derived, Type>(other) {}
+                : AssociativeContainer<Derived, Type>(other) {}
             
             TypeContainer& operator=(const TypeContainer& other) {
-                dynamic_cast<NamedContainer<Derived, Type>&>(*this) = other;
+                dynamic_cast<AssociativeContainer<Derived, Type>&>(*this) = other;
                 return *this;
             }
 
             template <typename T>
             inline const TypePtr& add_type(const T& type) {
-                return NamedContainer<Derived, Type>::add(type);
+                return AssociativeContainer<Derived, Type>::add(type);
             }
 
             template <typename T>
             inline void remove_type(const T& type) {
-                NamedContainer<Derived, Type>::remove(type);
+                AssociativeContainer<Derived, Type>::remove(type);
             }
 
             template <typename T>
             inline const TypePtr& get_type(const T& type) const {
-                return NamedContainer<Derived, Type>::get(type);
+                return AssociativeContainer<Derived, Type>::get(type);
             }
 
             inline const TypeSet& get_types() const {
-                return NamedContainer<Derived, Type>::get_container();
+                return AssociativeContainer<Derived, Type>::get_container();
             }
 
             std::ostream& print(std::ostream& o) const {
-                o << this->get_name();
+                o << static_cast<const Derived*>(this)->get_name();
                 if (!get_types().empty()) {
                     o << " - ";
                     if (get_types().size() > 1) {
@@ -67,9 +67,6 @@ namespace airlaps {
         
         protected :
             TypeContainer() {}
-
-            TypeContainer(const std::string& name)
-            : NamedContainer<Derived, Type>(name) {}
         };     
 
     } // namespace pddl

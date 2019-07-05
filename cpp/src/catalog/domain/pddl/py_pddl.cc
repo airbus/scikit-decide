@@ -10,11 +10,16 @@ namespace py = pybind11;
 using namespace airlaps::pddl;
 
 template <typename Instance>
+void inherit_identifier(Instance& instance) {
+    using Identifier = typename Instance::type;
+    instance.def("get_name", &Identifier::get_name,
+                 py::return_value_policy::reference_internal);
+}
+
+template <typename Instance>
 void inherit_type_container(Instance& instance) {
     using TypeContainer = typename Instance::type;
-    instance.def("get_name", &TypeContainer::get_name,
-                             py::return_value_policy::reference_internal)
-            .def("add_type", (const Domain::TypePtr& (TypeContainer::*)(const std::string&)) &TypeContainer::add_type,
+    instance.def("add_type", (const Domain::TypePtr& (TypeContainer::*)(const std::string&)) &TypeContainer::add_type,
                               py::arg("type"), py::return_value_policy::reference_internal)
             .def("add_type", (const Domain::TypePtr& (TypeContainer::*)(const Domain::TypePtr&)) &TypeContainer::add_type,
                               py::arg("type"), py::return_value_policy::reference_internal)
@@ -46,12 +51,11 @@ void init_pypddl(py::module& m) {
         ;
     
     py::class_<Domain> py_domain(m, "_PDDL_Domain_");
+    inherit_identifier(py_domain);
     inherit_type_container(py_domain);
         py_domain
             .def(py::init<>())
             .def("set_name", &Domain::set_name, py::arg("name"))
-            .def("get_name", &Domain::get_name,
-                             py::return_value_policy::reference_internal)
             .def("set_requirements", &Domain::set_requirements, py::arg("requirements"))
             .def("get_requirements", &Domain::get_requirements,
                                      py::return_value_policy::reference_internal)
@@ -111,18 +115,21 @@ void init_pypddl(py::module& m) {
         ;
     
     py::class_<Type, Type::Ptr> py_type(m, "_PDDL_Type_");
+    inherit_identifier(py_type);
     inherit_type_container(py_type);
         py_type
             .def(py::init<std::string>(), py::arg("name"))
         ;
     
     py::class_<Object, Domain::ObjectPtr> py_object(m, "_PDDL_Object_");
+    inherit_identifier(py_object);
     inherit_type_container(py_object);
         py_object
             .def(py::init<std::string>(), py::arg("name"))
         ;
     
     // py::class_<Variable, Domain::VariablePtr> py_variable(m, "_PDDL_Variable_");
+    // inherit_identifier(py_variable);
     // inherit_type_container(py_variable);
     //     py_variable
     //         .def(py::init<std::string>(), py::arg("name"))

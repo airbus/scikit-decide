@@ -3,18 +3,20 @@
 
 #include <ostream>
 
+#include "identifier.hh"
 #include "type_container.hh"
 
 namespace airlaps {
 
     namespace pddl {
 
-        class Type : public TypeContainer<Type> {
+        class Type : public Identifier,
+                     public TypeContainer<Type> {
         public :
-            static constexpr char cls_name[] = "type";
+            static constexpr char class_name[] = "type";
 
-            typedef NamedContainer<Type, Type>::SymbolPtr Ptr;
-            typedef NamedContainer<Type, Type>::SymbolSet Set;
+            typedef AssociativeContainer<Type, Type>::SymbolPtr Ptr;
+            typedef AssociativeContainer<Type, Type>::SymbolSet Set;
 
             Type(const std::string& name);
             Type(const Type& other);
