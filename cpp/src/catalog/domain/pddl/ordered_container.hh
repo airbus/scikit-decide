@@ -1,0 +1,136 @@
+#ifndef AIRLAPS_PDDL_NAMED_CONTAINER_HH
+#define AIRLAPS_PDDL_NAMED_CONTAINER_HH
+
+#include <vector>
+#include <memory>
+#include <string>
+#include <sstream>
+#include <algorithm>
+
+namespace airlaps {
+
+    namespace pddl {
+
+        template <typename Derived, typename Symbol>
+        class OrderedContainer {
+        public :
+            OrderedContainer(const OrderedContainer& other)
+            : _name(other._name), _container(other._container) {}
+
+            OrderedContainer& operator=(const OrderedContainer& other) {
+                this->_name = other._name;
+                this->_container = other._container;
+                return *this;
+            }
+
+            static std::string class_name() {
+                return Derived::cls_name;
+            }
+
+            const std::string& get_name() const {
+                return _name;
+            }
+
+            std::string print() const {
+                std::ostringstream o;
+                o << *this;
+                return o.str();
+            }
+        
+        protected :
+            typedef std::shared_ptr<Symbol> SymbolPtr;
+            typedef std::vector<SymbolPtr> SymbolVector;
+
+            std::string _name;
+            SymbolSet _container;
+
+            OrderedContainer() {}
+
+            OrderedContainer(const std::string& name)
+            : _name(name) {}
+
+            void set_name(const std::string& name) {
+                _name = name;
+            }
+
+            /**
+             * Appends a symbol to the container.
+             */
+            const SymbolPtr& append(const SymbolPtr& symbol) {
+                _container.push_back(symbol);
+                return _container.back();
+            }
+
+            /**
+             * Appends a symbol to the container.
+             */
+            const SymbolPtr& append(const std::string& symbol) {
+                return append(std::make_shared<Symbol>(symbol));
+            }
+
+            /**
+             * Removes all symbols matching the given one from the container.
+             */
+            void remove(const std::string& symbol) {
+                std::vector <typename SymbolVector::const_iterator> v;
+                for (typename SymbolVector::const_iterator i = _container.begin(), _container.end(), ++i) {
+                    if ((*i)->get_name() == symbol) {
+                        v.push_back(i);
+                    }
+                }
+                for (const auto& i : v) {
+                    _container.erase(i);
+                }
+            }
+
+            /**
+             * Removes all symbols matching the given one from the container.
+             */
+            void remove(const SymbolPtr& symbol) {
+                remove(symbol->get_name());
+            }
+
+            /**
+             * Gets all the symbols matching the given one from the container
+             */
+            SymbolVector get(const std::string& symbol) const {
+                SymbolVector v;
+                for (typename SymbolVector::const_iterator i = _container.begin(), _container.end(), ++i) {
+                    if ((*i)->get_name() == symbol) {
+                        v.push_back(*i);
+                    }
+                }
+                return v;
+            }
+
+            /**
+             * Gets all the symbols matching the given one from the container
+             */
+            SymbolVector get(const SymbolPtr& symbol) const {
+                return get(symbol->get_name());
+            }
+
+            /**
+             * Gets a symbol from the container at a given index
+             * Throws an exception if the given index exceeds the container size
+             */
+            const SymbolPtr& at(const std::size_t index) const {
+                if (index >= _container.size()) {
+                    throw std::out_of_range("AIRLAPS exception: index " + std::to_string(index) +
+                                            " exceeds the size of the vector of " + Symbol::class_name() + "s of " +
+                                            class_name() + " '" + _name + "'");
+                } else {
+                    return _container[index];
+                }
+            }
+
+            const SymbolSet& get_container() const {
+                return _container;
+            }
+        };
+
+    } // namespace pddl
+
+} // namespace airlaps
+
+#endif // AIRLAPS_PDDL_NAMED_CONTAINER_HH

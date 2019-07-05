@@ -122,7 +122,7 @@ void init_pypddl(py::module& m) {
             .def(py::init<std::string>(), py::arg("name"))
         ;
     
-    // py::class_<Object, Domain::VariablePtr> py_variable(m, "_PDDL_Variable_");
+    // py::class_<Variable, Domain::VariablePtr> py_variable(m, "_PDDL_Variable_");
     // inherit_type_container(py_variable);
     //     py_variable
     //         .def(py::init<std::string>(), py::arg("name"))
