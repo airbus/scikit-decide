@@ -26,6 +26,9 @@ namespace airlaps {
 
             ConstraintFormula() {}
 
+            ConstraintFormula(const Sort& sort)
+                : _sort(sort) {}
+
             ConstraintFormula(const Sort& sort,
                             const Formula::Ptr& requirement,
                             const Formula::Ptr& trigger,

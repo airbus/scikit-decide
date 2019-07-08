@@ -12,6 +12,8 @@
 #include "constraint_formula.hh"
 #include "preference.hh"
 #include "proposition_formula.hh"
+#include "quantified_formula.hh"
+#include "aggregated_formula.hh"
 
 namespace airlaps {
 

@@ -277,14 +277,7 @@ void init_pypddl(py::module& m) {
     
     py::class_<ConstraintFormula, ConstraintFormula::Ptr> py_constraint_formula(m, "_PDDL_ConstraintFormula_", py_formula);
         py_constraint_formula
-            .def(py::init<>())
-            .def(py::init<const ConstraintFormula::Sort&,
-                          const Formula::Ptr&,
-                          const Formula::Ptr&,
-                          double,
-                          double>(),
-                 py::arg("sort"), py::arg("requirement"), py::arg("trigger"), py::arg("deadline"), py::arg("from"))
-            .def("set_sort", &ConstraintFormula::set_sort, py::arg("sort"))
+            .def(py::init<const ConstraintFormula::Sort&>(), py::arg("sort"))
             .def("get_sort", &ConstraintFormula::get_sort)
             .def("set_requirement", &ConstraintFormula::set_requirement, py::arg("requirement"))
             .def("get_requirement", &ConstraintFormula::get_requirement)
@@ -301,8 +294,6 @@ void init_pypddl(py::module& m) {
     inherit_identifier(py_preference);
         py_preference
             .def(py::init<>())
-            .def(py::init<const Formula::Ptr&, const std::string&>(),
-                 py::arg("formula"), py::arg("name")="anonymous")
             .def("set_formula", &Preference::set_formula)
             .def("get_formula", &Preference::get_formula)
             .def("__str__", (std::string (Preference::*)() const) &Preference::print)
@@ -313,8 +304,36 @@ void init_pypddl(py::module& m) {
     inherit_term_container(py_proposition_formula);
         py_proposition_formula
             .def(py::init<>())
-            // .def(py::init<const std::string&, const py::list&>(),
-            //      py::arg("name"), py::arg("terms"))
             .def("__str__", (std::string (PropositionFormula::*)() const) &PropositionFormula::print)
+        ;
+    
+    py::enum_<QuantifiedFormula::Quantifier>(m, "_PDDL_QuantifiedFormulaQuantifier_", py::arithmetic())
+        .value("FORALL", QuantifiedFormula::Quantifier::E_FORALL)
+        .value("EXISTS", QuantifiedFormula::Quantifier::E_EXISTS)
+        .export_values();
+    
+    py::class_<QuantifiedFormula, QuantifiedFormula::Ptr> py_quantified_formula(m, "_PDDL_QuantifiedFormula_", py_formula);
+        py_quantified_formula
+            .def(py::init<const QuantifiedFormula::Quantifier&>(), py::arg("quantifier"))
+            .def("get_quantifier", &QuantifiedFormula::get_quantifier)
+            .def("set_formula", &QuantifiedFormula::set_formula, py::arg("formula"))
+            .def("get_formula", &QuantifiedFormula::get_formula)
+            .def("__str__", (std::string (QuantifiedFormula::*)() const) &QuantifiedFormula::print)
+        ;
+    
+    py::enum_<AggregatedFormula::Operator>(m, "_PDDL_AggregatedFormulaOperator_", py::arithmetic())
+        .value("AND", AggregatedFormula::Operator::E_AND)
+        .value("OR", AggregatedFormula::Operator::E_OR)
+        .export_values();
+    
+    py::class_<AggregatedFormula, AggregatedFormula::Ptr> py_aggregated_formula(m, "_PDDL_AggregatedFormula_", py_formula);
+        py_aggregated_formula
+            .def(py::init<const AggregatedFormula::Operator&>(), py::arg("operator"))
+            .def("get_operator", &AggregatedFormula::get_operator)
+            .def("append_formula", &AggregatedFormula::append_formula, py::arg("formula"))
+            .def("remove_formula", &AggregatedFormula::remove_formula)
+            .def("formula_at", &AggregatedFormula::formula_at, py::arg("formula"))
+            .def("get_formulas", &AggregatedFormula::get_formulas)
+            .def("__str__", (std::string (AggregatedFormula::*)() const) &AggregatedFormula::print)
         ;
 }
