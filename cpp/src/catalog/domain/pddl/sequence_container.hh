@@ -50,7 +50,7 @@ namespace airlaps {
              */
             void remove(const std::string& symbol) {
                 std::vector <typename SymbolVector::const_iterator> v;
-                for (typename SymbolVector::const_iterator i = _container.begin(), _container.end(), ++i) {
+                for (typename SymbolVector::const_iterator i = _container.begin(); i != _container.end(); ++i) {
                     if ((*i)->get_name() == symbol) {
                         v.push_back(i);
                     }
@@ -72,7 +72,7 @@ namespace airlaps {
              */
             SymbolVector get(const std::string& symbol) const {
                 SymbolVector v;
-                for (typename SymbolVector::const_iterator i = _container.begin(), _container.end(), ++i) {
+                for (typename SymbolVector::const_iterator i = _container.begin(); i != _container.end(); ++i) {
                     if ((*i)->get_name() == symbol) {
                         v.push_back(*i);
                     }
@@ -91,17 +91,17 @@ namespace airlaps {
              * Gets a symbol from the container at a given index
              * Throws an exception if the given index exceeds the container size
              */
-            const SymbolPtr& at(const std::size_t index) const {
+            const SymbolPtr& at(const std::size_t& index) const {
                 if (index >= _container.size()) {
                     throw std::out_of_range("AIRLAPS exception: index " + std::to_string(index) +
                                             " exceeds the size of the vector of " + std::string(Symbol::class_name) + "s of " +
-                                            std::string(Derived::class_name) + " '" + static_cast<const Derived*>(this)-> + "'");
+                                            std::string(Derived::class_name) + " '" + static_cast<const Derived*>(this)->get_name() + "'");
                 } else {
                     return _container[index];
                 }
             }
 
-            const SymbolSet& get_container() const {
+            const SymbolVector& get_container() const {
                 return _container;
             }
         };

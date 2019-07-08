@@ -4,6 +4,14 @@
 #include "domain.hh"
 #include "type.hh"
 #include "object.hh"
+#include "variable.hh"
+#include "term.hh"
+#include "predicate.hh"
+#include "function.hh"
+#include "action.hh"
+#include "constraint_formula.hh"
+#include "preference.hh"
+#include "proposition_formula.hh"
 
 namespace airlaps {
 

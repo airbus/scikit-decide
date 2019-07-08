@@ -25,6 +25,14 @@ namespace airlaps {
                 dynamic_cast<TypeContainer<Object>&>(*this) = other;
                 return *this;
             }
+
+            virtual const std::string& get_name() const {
+                return Identifier::get_name();
+            }
+
+            virtual std::ostream& print(std::ostream& o) const {
+                return TypeContainer<Object>::print(o);
+            }
         };
 
     } // namespace pddl

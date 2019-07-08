@@ -6,6 +6,9 @@
 #include "domain.hh"
 #include "type.hh"
 #include "object.hh"
+#include "variable.hh"
+#include "predicate.hh"
+#include "function.hh"
 
 using namespace airlaps::pddl;
 
@@ -78,6 +81,22 @@ std::ostream& operator<<(std::ostream& o, const Domain& d) {
         o << "(:constants";
         for (const auto& c : d.get_objects()) {
             o << " " << *c;
+        }
+        o << ")" << std::endl;
+    }
+
+    if (!d.get_predicates().empty()) {
+        o << "(:predicates";
+        for (const auto& p : d.get_predicates()) {
+            o << " " << *p;
+        }
+        o << ")" << std::endl;
+    }
+
+    if (!d.get_functions().empty()) {
+        o << "(:functions";
+        for (const auto& f : d.get_functions()) {
+            o << " " << *f;
         }
         o << ")" << std::endl;
     }

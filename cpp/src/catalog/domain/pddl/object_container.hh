@@ -5,7 +5,7 @@
 
 namespace airlaps {
 
-    namespace pddl{
+    namespace pddl {
 
         class Object;
 
@@ -44,13 +44,10 @@ namespace airlaps {
         
         protected :
             ObjectContainer() {}
-
-            ObjectContainer(const std::string& name)
-            : AssociativeContainer<Derived, Object>(name) {}
         };     
 
     } // namespace pddl
     
-} // namespace airlap 
+} // namespace airlaps
 
 #endif // AIRLAPS_PDDL_OBJECT_CONTAINER_HH

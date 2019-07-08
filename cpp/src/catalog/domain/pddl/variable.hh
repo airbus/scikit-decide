@@ -15,7 +15,7 @@ namespace airlaps {
             static constexpr char class_name[] = "variable";
 
             Variable(const std::string& name)
-                : Identifier(name) {}
+                : Identifier("?" + name) {}
 
             Variable(const Variable& other)
                 : Identifier(other), TypeContainer<Variable>(other) {}
@@ -24,6 +24,14 @@ namespace airlaps {
                 dynamic_cast<Identifier&>(*this) = other;
                 dynamic_cast<TypeContainer<Variable>&>(*this) = other;
                 return *this;
+            }
+
+            virtual const std::string& get_name() const {
+                return Identifier::get_name();
+            }
+
+            virtual std::ostream& print(std::ostream& o) const {
+                return TypeContainer<Variable>::print(o);
             }
         };
 

@@ -10,6 +10,9 @@
 
 #include "type.hh"
 #include "object.hh"
+#include "variable.hh"
+#include "predicate.hh"
+#include "function.hh"
 
 namespace pegtl = tao::TAO_PEGTL_NAMESPACE;  // NOLINT
 
@@ -27,6 +30,9 @@ namespace airlaps {
                 Requirements requirements; // current parsed requirements
                 std::list<Domain::TypePtr> type_list;
                 std::list<Domain::ObjectPtr> object_list;
+                std::list<Predicate::VariablePtr> variable_list; // get from Predicate but would be the same for fluents or actions
+                Domain::PredicatePtr predicate; // current parsed predicate
+                Domain::FunctionPtr function; // current parsed function
 
                 state(Domain& d) : domain(d) {}
             };
@@ -313,7 +319,7 @@ namespace airlaps {
                                                                                 TypeSymbol>>>> {};
             
             template <typename PrimitiveSymbol, typename TypeSymbol>
-            struct typed_symbols : pegtl::list<typed_list<PrimitiveSymbol, TypeSymbol>, ignored> {};
+            struct typed_symbols : pegtl::star<pegtl::seq<typed_list<PrimitiveSymbol, TypeSymbol>, ignored>> {};
 
             // parse domain types
             
@@ -324,7 +330,7 @@ namespace airlaps {
                     s.name = in.string();
                     s.type_list.push_back(s.domain.add_type(s.name));
                 }
-            }; 
+            };
 
             struct parent_type : name {};
             template <> struct action<parent_type> {
@@ -357,7 +363,7 @@ namespace airlaps {
                     s.name = in.string();
                     s.object_list.push_back(s.domain.add_object(s.name));
                 }
-            }; 
+            };
 
             struct constant_type : name {};
             template <> struct action<constant_type> {
@@ -381,13 +387,97 @@ namespace airlaps {
                                                      pegtl::seq<typed_symbols<primitive_constant, constant_type>, ignored,
                                                                 pegtl::one<')'>>> {};
 
+            // parse typed variable list
+
+            template <typename VariableSymbol>
+            struct variable_name : pegtl::seq<pegtl::one<'?'>, VariableSymbol> {};
+
+            struct variable_type : name {};
+            template <> struct action<variable_type> {
+                template <typename Input>
+                static void apply(const Input& in, state& s) {
+                    s.name = in.string();
+                    for (const auto& v : s.variable_list) {
+                        v->add_type(s.domain.get_type(s.name));
+                    }
+                }
+            };
+
+            template <typename VariableSymbol>
+            struct typed_var_list : typed_symbols<variable_name<VariableSymbol>, variable_type> {};
+            
+            // parse termed symbols, i.e. a symbol name followed by optionally typed terms
+            
+            template <typename Symbol, typename Term>
+            struct term_symbol : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                                         Symbol, ignored>,
+                                                pegtl::seq<typed_var_list<Term>, ignored,
+                                                           pegtl::one<')'>>> {};
+
+            template <typename Symbol, typename Term>
+            struct termed_symbols : pegtl::list<term_symbol<Symbol, Term>, ignored> {};
+            
             // parse predicates
 
-            struct predicates : pegtl::any {};
+            struct predicate_name : name {};
+            template <> struct action<predicate_name> {
+                template <typename Input>
+                static void apply(const Input& in, state& s) {
+                    s.name = in.string();
+                    s.predicate = s.domain.add_predicate(s.name);
+                }
+            };
 
-            // parse functionsdefinitions
+            struct predicate_variable : name {};
+            template <> struct action<predicate_variable> {
+                template <typename Input>
+                static void apply(const Input& in, state& s) {
+                    s.name = in.string();
+                    s.variable_list.push_back(s.predicate->append_variable(s.name));
+                }
+            };
 
-            struct functions_def : pegtl::any {};
+            template<> struct action<typed_list<predicate_variable, variable_type>> {
+                static void apply0(state& s) {
+                    s.variable_list.clear();
+                }
+            };
+
+            struct predicates : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                                          pegtl::string<':', 'p', 'r', 'e', 'd', 'i', 'c', 'a', 't', 'e', 's'>, ignored>,
+                                               pegtl::seq<termed_symbols<predicate_name, predicate_variable>, ignored,
+                                                          pegtl::one<')'>>> {};
+
+            // parse functions definitions
+
+            struct function_name : name {};
+            template <> struct action<function_name> {
+                template <typename Input>
+                static void apply(const Input& in, state& s) {
+                    s.name = in.string();
+                    s.function = s.domain.add_function(s.name);
+                }
+            };
+
+            struct function_variable : name {};
+            template <> struct action<function_variable> {
+                template <typename Input>
+                static void apply(const Input& in, state& s) {
+                    s.name = in.string();
+                    s.variable_list.push_back(s.function->append_variable(s.name));
+                }
+            };
+
+            template<> struct action<typed_list<function_variable, variable_type>> {
+                static void apply0(state& s) {
+                    s.variable_list.clear();
+                }
+            };
+
+            struct functions_def : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                                             pegtl::string<':', 'f', 'u', 'n', 'c', 't', 'i', 'o', 'n', 's'>, ignored>,
+                                                  pegtl::seq<termed_symbols<function_name, function_variable>, ignored,
+                                                             pegtl::one<')'>>> {};
 
             // parse constraints definitions
 

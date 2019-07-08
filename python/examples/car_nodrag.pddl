@@ -5,7 +5,7 @@
 
 (:constants c0 - (either t0 t2) c1 - t1)
 
-(:predicates (running) (stopped) (engineBlown) (transmission_fine) (goal_reached) )
+(:predicates (running ?g ?v - t0) (stopped) (engineBlown) (transmission_fine) (goal_reached) )
 
 (:functions (d) (v) (a) (up_limit) (down_limit) (running_time) )
 
