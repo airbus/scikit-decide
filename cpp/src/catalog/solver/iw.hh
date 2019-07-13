@@ -42,7 +42,7 @@ public :
           num_tracked_atoms_(0), time_budget_(time_budget),
           novelty_subtables_(novelty_subtables), random_actions_(random_actions),
           max_rep_(max_rep), nodes_threshold_(nodes_threshold), lookahead_caching_(lookahead_caching),
-          discount_(discount), debug_logs_(debug_logs){
+          discount_(discount), debug_logs_(debug_logs), execution_node_(nullptr) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {

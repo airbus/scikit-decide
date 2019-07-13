@@ -47,6 +47,7 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
                  planner: str = 'bfs',
                  state_to_feature_atoms_encoder: Optional[Callable[[T_state, Domain], np.array]] = None,
                  default_encoding_type: str = 'byte',
+                 default_encoding_space_relative_precision: float = 0.001,
                  frameskip: int = 15,
                  simulator_budget: int = 150000,
                  time_budget: int = math.inf,
@@ -63,6 +64,7 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
         self._planner = planner
         self._state_to_feature_atoms_encoder = state_to_feature_atoms_encoder
         self._default_encoding_type = default_encoding_type
+        self._default_encoding_space_relative_precision = default_encoding_space_relative_precision
         self._frameskip = frameskip
         self._simulator_budget = simulator_budget
         self._time_budget = time_budget
@@ -91,6 +93,7 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
                                          planner=self._planner,
                                          state_to_feature_atoms_encoder=(lambda o: self._state_to_feature_atoms_encoder(o, self._domain)) if self._state_to_feature_atoms_encoder is not None else (lambda o: np.array([], dtype=np.int64)),
                                          default_encoding_type=self._default_encoding_type,
+                                         default_encoding_space_relative_precision=self._default_encoding_space_relative_precision,
                                          frameskip=self._frameskip,
                                          simulator_budget=self._simulator_budget,
                                          time_budget=self._time_budget,
@@ -113,6 +116,7 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
                                          planner=self._planner,
                                          state_to_feature_atoms_encoder=lambda o: self._state_to_feature_atoms_encoder(o, self._domain),
                                          default_encoding_type=self._default_encoding_type,
+                                         default_encoding_space_relative_precision = self._default_encoding_space_relative_precision,
                                          frameskip=self._frameskip,
                                          simulator_budget=self._simulator_budget,
                                          time_budget=self._time_budget,

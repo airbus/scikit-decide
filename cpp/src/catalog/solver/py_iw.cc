@@ -171,15 +171,18 @@ public :
         py::buffer_info _buffer;
 
         FeatureVector() {
+            typename GilControl<Texecution>::Acquire acquire;
             _buffer = _array.request();
         }
 
-        FeatureVector(const py::array_t<int>& array)
-            : _array(array) {
+        FeatureVector(const py::array_t<int>& array) {
+            typename GilControl<Texecution>::Acquire acquire;
+            _array = array;
             _buffer = _array.request();
         }
 
         FeatureVector(py::ssize_t size, int value) {
+            typename GilControl<Texecution>::Acquire acquire;
             _array = py::array_t<int>(size);
             _buffer = _array.request();
             for (unsigned int i = 0 ; i < size ; i++) {
@@ -435,6 +438,7 @@ void init_pyiw(py::module& m) {
                           std::string,
                           const std::function<py::array_t<int> (const py::object&)>&,
                           std::string,
+                          double,
                           size_t,
                           int,
                           double,
@@ -450,6 +454,7 @@ void init_pyiw(py::module& m) {
                  py::arg("planner")="bfs",
                  py::arg("state_to_feature_atoms_encoder")=std::function<py::array_t<int> (const py::object&)>([](const py::object& s)-> py::array_t<int> {return py::array_t<int>();}),
                  py::arg("default_encoding_type")="byte",
+                 py::arg("default_encoding_space_relative_precision")=0.001,
                  py::arg("frameskip")=15,
                  py::arg("simulator_budget")=150000,
                  py::arg("time_budget")=std::numeric_limits<double>::infinity(),
@@ -473,6 +478,7 @@ void init_pyiw(py::module& m) {
                           std::string,
                           const std::function<py::array_t<int> (const py::object&)>&,
                           std::string,
+                          double,
                           size_t,
                           int,
                           double,
@@ -488,6 +494,7 @@ void init_pyiw(py::module& m) {
                  py::arg("planner")="bfs",
                  py::arg("state_to_feature_atoms_encoder")=std::function<py::array_t<int> (const py::object&)>([](const py::object& s)-> py::array_t<int> {return py::array_t<int>();}),
                  py::arg("default_encoding_type")="byte",
+                 py::arg("default_encoding_space_relative_precision")=0.001,
                  py::arg("frameskip")=15,
                  py::arg("simulator_budget")=150000,
                  py::arg("time_budget")=std::numeric_limits<double>::infinity(),
