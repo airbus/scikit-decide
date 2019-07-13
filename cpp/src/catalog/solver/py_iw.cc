@@ -166,6 +166,68 @@ public :
         }
     };
 
+    struct FeatureVector {
+        py::array_t<int> _array;
+        py::buffer_info _buffer;
+
+        FeatureVector() {
+            _buffer = _array.request();
+        }
+
+        FeatureVector(const py::array_t<int>& array)
+            : _array(array) {
+            _buffer = _array.request();
+        }
+
+        FeatureVector(py::ssize_t size, int value) {
+            _array = py::array_t<int>(size);
+            _buffer = _array.request();
+            for (unsigned int i = 0 ; i < size ; i++) {
+                ((int *) _buffer.ptr)[i] = value;
+            }
+        }
+
+        void clear() {
+            typename GilControl<Texecution>::Acquire acquire;
+            _array = py::array_t<int>();
+            _buffer = _array.request();
+        }
+
+        bool empty() const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return _array.size() == 0;
+        }
+
+        py::ssize_t size() const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return _array.size();
+        }
+
+        const int& operator[] (const std::size_t index) const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return ((int *) _buffer.ptr)[index];
+        }
+
+        int& operator[] (const std::size_t index) {
+            typename GilControl<Texecution>::Acquire acquire;
+            return ((int *) _buffer.ptr)[index];
+        }
+
+        struct Equal {
+            bool operator()(const FeatureVector& v1, const FeatureVector& v2) const {
+                typename GilControl<Texecution>::Acquire acquire;
+                try {
+                    if (!py::hasattr(v1._array, "__eq__")) {
+                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python feature vector for implementing __eq__()");
+                    }
+                    return v1._array.attr("__eq__")(v2._array).template cast<bool>();
+                } catch(const py::error_already_set& e) {
+                    throw std::runtime_error(e.what());
+                }
+            }
+        };
+    };
+
     PyIWDomain(const py::object& domain)
     : _domain(domain) {
         if (!py::hasattr(domain, "wrapped_get_applicable_actions")) {
@@ -253,11 +315,12 @@ public :
                size_t max_depth = 1500,
                bool break_ties_using_rewards = false,
                double discount = 1.0,
-               bool debug_logs = false) {
+               bool debug_logs = false)
+        : _state_to_feature_atoms(state_to_feature_atoms) {
         _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
 
         // Are we using the default state_to_feature_atoms?
-        std::function<std::vector<int> (const typename PyIWDomain<Texecution>::State&)> encoder;
+        std::function<typename PyIWDomain<Texecution>::FeatureVector (const typename PyIWDomain<Texecution>::State&)> encoder;
         try {
             if (state_to_feature_atoms(py::object()).size() == 0) {
                 if (default_encoding_type == "byte") {
@@ -283,16 +346,16 @@ public :
                     py::print("ERROR: unsupported feature atom vector encoding '" + default_encoding_type + "'");
                 }
                 _gym_space_relative_precision = default_encoding_space_relative_precision;
-                encoder = [this](const typename PyIWDomain<Texecution>::State& s) -> std::vector<int> {
+                encoder = [this](const typename PyIWDomain<Texecution>::State& s) -> typename PyIWDomain<Texecution>::FeatureVector {
                     typename GilControl<Texecution>::Acquire acquire;
-                    return _gym_observation_space->convert_element_to_feature_atoms(s._state);
+                    return typename PyIWDomain<Texecution>::FeatureVector(py::cast(_gym_observation_space->convert_element_to_feature_atoms(s._state)));
                 };
             }
         } catch (...) {
             // We are using an encoder provided by the user
-            encoder = [&state_to_feature_atoms](const typename PyIWDomain<Texecution>::State& s) -> std::vector<int> {
+            encoder = [this](const typename PyIWDomain<Texecution>::State& s) -> typename PyIWDomain<Texecution>::FeatureVector {
                 typename GilControl<Texecution>::Acquire acquire;
-                return py::cast<std::vector<int>>(state_to_feature_atoms(s._state));
+                return typename PyIWDomain<Texecution>::FeatureVector(_state_to_feature_atoms(s._state));
             };
         }
 
@@ -354,6 +417,8 @@ public :
 private :
     std::unique_ptr<PyIWDomain<Texecution>> _domain;
     std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, Texecution>> _solver;
+    
+    std::function<py::array_t<int> (const py::object&)> _state_to_feature_atoms;
     std::unique_ptr<airlaps::GymSpace> _gym_observation_space;
     std::unique_ptr<airlaps::GymSpace> _gym_action_space;
     double _gym_space_relative_precision;
@@ -383,8 +448,8 @@ void init_pyiw(py::module& m) {
                           bool>(),
                  py::arg("domain"),
                  py::arg("planner")="bfs",
-                 py::arg("state_to_feature_atoms_encoder")=[](const py::object& s)-> py::array_t<int> {return py::array_t<int>();},
-                 py::arg("default_encoding_type"),
+                 py::arg("state_to_feature_atoms_encoder")=std::function<py::array_t<int> (const py::object&)>([](const py::object& s)-> py::array_t<int> {return py::array_t<int>();}),
+                 py::arg("default_encoding_type")="byte",
                  py::arg("frameskip")=15,
                  py::arg("simulator_budget")=150000,
                  py::arg("time_budget")=std::numeric_limits<double>::infinity(),
@@ -421,8 +486,8 @@ void init_pyiw(py::module& m) {
                           bool>(),
                  py::arg("domain"),
                  py::arg("planner")="bfs",
-                 py::arg("state_to_feature_atoms_encoder")=[](const py::object& s)-> py::array_t<int> {return py::array_t<int>();},
-                 py::arg("deefault_encooding_type"),
+                 py::arg("state_to_feature_atoms_encoder")=std::function<py::array_t<int> (const py::object&)>([](const py::object& s)-> py::array_t<int> {return py::array_t<int>();}),
+                 py::arg("default_encoding_type")="byte",
                  py::arg("frameskip")=15,
                  py::arg("simulator_budget")=150000,
                  py::arg("time_budget")=std::numeric_limits<double>::infinity(),

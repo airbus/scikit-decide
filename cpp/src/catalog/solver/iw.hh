@@ -22,10 +22,11 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Event Action;
+    typedef typename Domain::FeatureVector FeatureVector;
     typedef Texecution_policy ExecutionPolicy;
 
     IWSolver(Domain& domain,
-             const std::function<std::vector<int>&& (const State&)>& state_to_feature_atoms,
+             const std::function<FeatureVector (const State&)>& state_to_feature_atoms,
              size_t frameskip = 15,
              int simulator_budget = 150000,
              double time_budget = std::numeric_limits<double>::infinity(),
@@ -36,7 +37,8 @@ public :
              int lookahead_caching = 2,
              double discount = 1.0,
              bool debug_logs = false)
-        : domain_(domain), frameskip_(frameskip), simulator_budget_(simulator_budget),
+        : domain_(domain), state_to_feature_atoms_(state_to_feature_atoms),
+          frameskip_(frameskip), simulator_budget_(simulator_budget),
           num_tracked_atoms_(0), time_budget_(time_budget),
           novelty_subtables_(novelty_subtables), random_actions_(random_actions),
           max_rep_(max_rep), nodes_threshold_(nodes_threshold), lookahead_caching_(lookahead_caching),
@@ -100,7 +102,7 @@ public :
                         + ", height=" + (root == nullptr ? "na" : std::to_string(root->height_)));
             
             // novelty table and other vars
-            std::unordered_map<int, std::vector<int> > novelty_table_map;
+            std::unordered_map<int, FeatureVector > novelty_table_map;
 
             // construct root node
             if( root == nullptr ) {
@@ -234,7 +236,7 @@ public :
 
 protected :
     Domain& domain_;
-    std::function<std::vector<int>&& (const State&)> state_to_feature_atoms_;
+    std::function<FeatureVector (const State&)> state_to_feature_atoms_;
     
     const size_t frameskip_;
     int random_seed_;
@@ -272,7 +274,7 @@ protected :
 
     virtual void do_solve(std::chrono::system_clock::time_point start_time,
                           Node* root,
-                          std::unordered_map<int, std::vector<int> > &novelty_table_map) =0;
+                          std::unordered_map<int, FeatureVector > &novelty_table_map) =0;
 
     Action random_zero_value_action(const Node *root, double discount) const {
         assert(root != 0);
@@ -330,7 +332,7 @@ protected :
         ++get_atoms_calls_;
         auto start_time = std::chrono::high_resolution_clock::now();
         node->feature_atoms_ = this->state_to_feature_atoms_(*(node->state_));
-        if( (node->parent_ != nullptr) && (node->parent_->feature_atoms_ == node->feature_atoms_) ) {
+        if( (node->parent_ != nullptr) && (typename FeatureVector::Equal()(node->parent_->feature_atoms_, node->feature_atoms_)) ) {
             node->frame_rep_ = node->parent_->frame_rep_ + this->frameskip_;
             assert((node->num_children_ == 0) && (node->first_child_ == nullptr));
         }
@@ -355,20 +357,20 @@ protected :
         return !use_novelty_subtables ? 0 : logscore(node->path_reward_);
     }
 
-    std::vector<int>& get_novelty_table(const Node *node, std::unordered_map<int, std::vector<int> > &novelty_table_map, bool use_novelty_subtables) const {
+    FeatureVector& get_novelty_table(const Node *node, std::unordered_map<int, FeatureVector > &novelty_table_map, bool use_novelty_subtables) const {
         int index = get_index_for_novelty_table(node, use_novelty_subtables);
-        std::unordered_map<int, std::vector<int> >::iterator it = novelty_table_map.find(index);
+        typename std::unordered_map<int, FeatureVector >::iterator it = novelty_table_map.find(index);
         if( it == novelty_table_map.end() ) {
-            novelty_table_map.insert(std::make_pair(index, std::vector<int>()));
-            std::vector<int> &novelty_table = novelty_table_map.at(index);
-            novelty_table = std::vector<int>(num_tracked_atoms_, std::numeric_limits<int>::max());
+            novelty_table_map.insert(std::make_pair(index, FeatureVector()));
+            FeatureVector &novelty_table = novelty_table_map.at(index);
+            novelty_table = FeatureVector(num_tracked_atoms_, std::numeric_limits<int>::max());
             return novelty_table;
         } else {
             return it->second;
         }
     }
 
-    size_t update_novelty_table(size_t depth, const std::vector<int> &feature_atoms, std::vector<int> &novelty_table) const {
+    size_t update_novelty_table(size_t depth, const FeatureVector &feature_atoms, FeatureVector &novelty_table) const {
         auto start_time = std::chrono::high_resolution_clock::now();
         size_t first_index = 0;
         size_t number_updated_entries = 0;
@@ -384,7 +386,7 @@ protected :
         return number_updated_entries;
     }
 
-    int get_novel_atom(size_t depth, const std::vector<int> &feature_atoms, const std::vector<int> &novelty_table) const {
+    int get_novel_atom(size_t depth, const FeatureVector &feature_atoms, const FeatureVector &novelty_table) const {
         auto start_time = std::chrono::high_resolution_clock::now();
         for( size_t k = 0; k < feature_atoms.size(); ++k ) {
             assert(feature_atoms[k] < int(novelty_table.size()));
@@ -407,7 +409,7 @@ protected :
         return feature_atoms[0];
     }
 
-    size_t num_entries(const std::vector<int> &novelty_table) const {
+    size_t num_entries(const FeatureVector &novelty_table) const {
         assert(novelty_table.size() == num_tracked_atoms_);
         size_t n = 0;
         for( size_t k = 0; k < novelty_table.size(); ++k )
@@ -450,7 +452,7 @@ protected :
         random_decision_ = false;
     }
 
-    virtual void print_stats(const Node &root, const std::unordered_map<int, std::vector<int> > &novelty_table_map) const =0;
+    virtual void print_stats(const Node &root, const std::unordered_map<int, FeatureVector > &novelty_table_map) const =0;
 
     class Node {
     public:
@@ -466,7 +468,7 @@ protected :
         double value_;                            // backed up value
 
         mutable std::unique_ptr<State> state_;         // observation for this node
-        mutable std::vector<int> feature_atoms_; // features made true by this node
+        mutable FeatureVector feature_atoms_; // features made true by this node
         mutable int num_novel_features_;         // number of features this node makes novel
         mutable int frame_rep_;                  // frame counter for number identical feature atoms through ancestors
 
@@ -759,10 +761,11 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Event Action;
+    typedef typename Domain::FeatureVector FeatureVector;
     typedef Texecution_policy ExecutionPolicy;
 
     BfsIW(Domain& domain,
-          const std::function<std::vector<int>&& (const State&)>& state_to_feature_atoms,
+          const std::function<FeatureVector (const State&)>& state_to_feature_atoms,
           size_t frameskip = 15,
           int simulator_budget = 150000,
           double time_budget = std::numeric_limits<double>::infinity(),
@@ -789,7 +792,7 @@ private :
 
     virtual void do_solve(std::chrono::system_clock::time_point start_time,
                           Node* root,
-                          std::unordered_map<int, std::vector<int> > &novelty_table_map) {
+                          std::unordered_map<int, FeatureVector > &novelty_table_map) {
         // priority queue
         NodeComparator cmp(break_ties_using_rewards_);
         std::priority_queue<Node*, std::vector<Node*>, NodeComparator> q(cmp);
@@ -811,7 +814,7 @@ private :
 
     void bfs(Node *root,
              std::priority_queue<Node*, std::vector<Node*>, NodeComparator>& q,
-             std::unordered_map<int, std::vector<int> > &novelty_table_map) {
+             std::unordered_map<int, FeatureVector > &novelty_table_map) {
         Node *node = q.top();
         q.pop();
 
@@ -844,7 +847,7 @@ private :
         // calculate novelty and prune
         if( node->frame_rep_ == 0 ) {
             // calculate novelty
-            std::vector<int> &novelty_table = this->get_novelty_table(node, novelty_table_map, this->novelty_subtables_);
+            FeatureVector &novelty_table = this->get_novelty_table(node, novelty_table_map, this->novelty_subtables_);
             int atom = this->get_novel_atom(node->depth_, node->feature_atoms_, novelty_table);
             assert((atom >= 0) && (atom < int(novelty_table.size())));
 
@@ -895,10 +898,10 @@ private :
         }
     }
 
-    virtual void print_stats(const Node &root, const std::unordered_map<int, std::vector<int> > &novelty_table_map) const {
+    virtual void print_stats(const Node &root, const std::unordered_map<int, FeatureVector > &novelty_table_map) const {
         std::string msg("decision-stats: #entries=[");
 
-        for( std::unordered_map<int, std::vector<int> >::const_iterator it = novelty_table_map.begin(); it != novelty_table_map.end(); ++it )
+        for( typename std::unordered_map<int, FeatureVector >::const_iterator it = novelty_table_map.begin(); it != novelty_table_map.end(); ++it )
             msg += std::to_string(it->first) + ":" + std::to_string(this->num_entries(it->second)) + "/" + std::to_string(it->second.size()) + ",";
 
         msg +=  std::string("]")
@@ -945,10 +948,11 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Event Action;
+    typedef typename Domain::FeatureVector FeatureVector;
     typedef Texecution_policy ExecutionPolicy;
 
     RolloutIW(Domain& domain,
-              const std::function<std::vector<int>&& (const State&)>& state_to_feature_atoms,
+              const std::function<FeatureVector (const State&)>& state_to_feature_atoms,
               size_t frameskip = 15,
               int simulator_budget = 150000,
               double time_budget = std::numeric_limits<double>::infinity(),
@@ -977,7 +981,7 @@ private :
 
     virtual void do_solve(std::chrono::system_clock::time_point start_time,
                           Node* root,
-                          std::unordered_map<int, std::vector<int> > &novelty_table_map) {
+                          std::unordered_map<int, FeatureVector > &novelty_table_map) {
         // construct/extend lookahead tree
         auto now_time = std::chrono::high_resolution_clock::now();
         double elapsed_time = double(std::chrono::duration_cast<std::chrono::microseconds>(now_time - start_time).count()) / double(1e6);
@@ -993,7 +997,7 @@ private :
         }
     }
 
-    void rollout(Node *root, std::unordered_map<int, std::vector<int> > &novelty_table_map) {
+    void rollout(Node *root, std::unordered_map<int, FeatureVector > &novelty_table_map) {
         ++num_rollouts_;
 
         // update root info
@@ -1046,7 +1050,7 @@ private :
             }
 
             // calculate novelty
-            std::vector<int> &novelty_table = this->get_novelty_table(node, novelty_table_map, this->novelty_subtables_);
+            FeatureVector &novelty_table = this->get_novelty_table(node, novelty_table_map, this->novelty_subtables_);
             int atom = this->get_novel_atom(node->depth_, node->feature_atoms_, novelty_table);
             assert((atom >= 0) && (atom < int(novelty_table.size())));
 
@@ -1163,10 +1167,10 @@ private :
         num_cases_[3] = 0;
     }
 
-    virtual void print_stats(const Node &root, const std::unordered_map<int, std::vector<int> > &novelty_table_map) const {
+    virtual void print_stats(const Node &root, const std::unordered_map<int, FeatureVector > &novelty_table_map) const {
         std::string msg = std::string("decision-stats: #rollouts=" + std::to_string(num_rollouts_) + " #entries=[");
 
-        for( std::unordered_map<int, std::vector<int> >::const_iterator it = novelty_table_map.begin(); it != novelty_table_map.end(); ++it )
+        for( typename std::unordered_map<int, FeatureVector >::const_iterator it = novelty_table_map.begin(); it != novelty_table_map.end(); ++it )
             msg += std::to_string(it->first) + ":" + std::to_string(this->num_entries(it->second)) + "/" + std::to_string(it->second.size()) + ",";
 
         msg +=  std::string("]")
