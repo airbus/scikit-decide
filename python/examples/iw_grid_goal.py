@@ -37,7 +37,7 @@ class GridGoalDomain(DeterministicPlanningDomain):
         self.n_rows = n_rows
         self.n_cols = n_cols
 
-    def get_next_state(self, memory: Memory[T_state], event: T_event) -> T_state:
+    def _get_next_state(self, memory: Memory[T_state], event: T_event) -> T_state:
         current_state = self.get_last_state(memory)
 
         if event == Actions.up and current_state.y > 0:
@@ -53,7 +53,7 @@ class GridGoalDomain(DeterministicPlanningDomain):
 
         return next_state
 
-    def get_transition_value(self, memory: Memory[T_state], event: T_event, next_state: T_state) -> TransitionValue[
+    def _get_transition_value(self, memory: Memory[T_state], event: T_event, next_state: T_state) -> TransitionValue[
         T_value]:
         current_state = self.get_last_state(memory)
         if next_state.x != current_state.x or next_state.y != current_state.y:

@@ -11,17 +11,17 @@ from __airlaps import _IWParSolver_ as iw_par_solver
 from __airlaps import _IWSeqSolver_ as iw_seq_solver
 
 iw_pool = None  # must be separated from the domain since it cannot be pickled
-iw_nsd_results = None  # must be separated from the domain since it cannot be pickled
+iw_ns_results = None  # must be separated from the domain since it cannot be pickled
 
 def IWDomain_parallel_get_applicable_actions(self, state):  # self is a domain
-    global iw_nsd_results
+    global iw_ns_results
     actions = self.get_applicable_actions(state)
-    iw_nsd_results = {a: None for a in actions.get_elements()}
+    iw_ns_results = {a: None for a in actions.get_elements()}
     return actions
 
 def IWDomain_sequential_get_applicable_actions(self, state):  # self is a domain
     actions = self.get_applicable_actions(state)
-    iw_nsd_results = {a: None for a in actions.get_elements()}
+    iw_ns_results = {a: None for a in actions.get_elements()}
     return actions
 
 def IWDomain_pickable_get_next_state(domain, state, action):
@@ -29,17 +29,17 @@ def IWDomain_pickable_get_next_state(domain, state, action):
 
 def IWDomain_parallel_compute_next_state(self, state, action):  # self is a domain
     global iw_pool
-    iw_nsd_results[action] = iw_pool.apply_async(IWDomain_pickable_get_next_state,
-                                                 (self, state, action))
+    iw_ns_results[action] = iw_pool.apply_async(IWDomain_pickable_get_next_state,
+                                                (self, state, action))
 
 def IWDomain_sequential_compute_next_state(self, state, action):  # self is a domain
-    iw_nsd_results[action] = self.get_next_state(state, action)
+    iw_ns_results[action] = self.get_next_state(state, action)
 
 def IWDomain_parallel_get_next_state(self, state, action):  # self is a domain
-    return iw_nsd_results[action].get()
+    return iw_ns_results[action].get()
 
 def IWDomain_sequential_get_next_state(self, state, action):  # self is a domain
-    return iw_nsd_results[action]
+    return iw_ns_results[action]
 
 class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver):
     

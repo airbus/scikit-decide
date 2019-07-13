@@ -107,11 +107,9 @@ public :
             // construct root node
             if( root == nullptr ) {
                 Node *root_parent = new Node(nullptr, Action(), -1);
-                root_parent->state_ = std::make_unique<State>();
                 root = new Node(root_parent, Action(), 0);
+                root->state_ = std::make_unique<State>(s);
             }
-            assert(root->parent_ != nullptr);
-            root->parent_->parent_ = nullptr;
 
             // if root has some children, make sure it has all children
             if( root->num_children_ > 0 ) {
@@ -302,27 +300,31 @@ protected :
 
     void update_info(Node *node) {
         assert(node->is_info_valid_ != 2);
-        assert(node->state_ == nullptr);
+        assert((node->state_ == nullptr && node->parent_->state_ != nullptr) || // non-initial state node
+               (node->state_ != nullptr && node->parent_->state_ == nullptr)); // initial state node
         assert(node->parent_ != nullptr);
-        assert((node->parent_->is_info_valid_ == 1) || (node->parent_->state_ != nullptr));
-        if( node->parent_->state_ == nullptr ) {
-            // do recursion on parent
-            update_info(node->parent_);
-        }
-        assert(node->parent_->state_ != nullptr);
-        double reward;
-        bool termination;
-        State state;
-        call_simulator(*(node->parent_->state_), node->action_, state, reward, termination);
-        assert(reward != std::numeric_limits<double>::infinity());
-        assert(reward != -std::numeric_limits<double>::infinity());
-        node->state_ = std::make_unique<State>(state);
-        if( node->is_info_valid_ == 0 ) {
-            node->reward_ = reward;
-            node->terminal_ = termination;
+        assert((node->parent_->is_info_valid_ == 1) || (node->parent_->state_ != nullptr) || (node->state_ != nullptr));
+        if (!(node->parent_->state_)) { // initial state node
+            assert(node->state_ != nullptr);
+            node->terminal_ = domain_.is_terminal(*(node->state_));
             get_atoms(node);
-            node->path_reward_ = node->parent_ == nullptr ? 0 : node->parent_->path_reward_;
-            node->path_reward_ += node->reward_;
+            node->path_reward_ = 0;
+            node->reward_ = 0;
+        } else {
+            double reward;
+            bool termination;
+            State state;
+            call_simulator(*(node->parent_->state_), node->action_, state, reward, termination);
+            assert(reward != std::numeric_limits<double>::infinity());
+            assert(reward != -std::numeric_limits<double>::infinity());
+            node->state_ = std::make_unique<State>(state);
+            if( node->is_info_valid_ == 0 ) {
+                node->reward_ = reward;
+                node->terminal_ = termination;
+                get_atoms(node);
+                node->path_reward_ = node->parent_ == nullptr ? 0 : node->parent_->path_reward_;
+                node->path_reward_ += node->reward_;
+            }
         }
         node->is_info_valid_ = 2;
     }
@@ -825,8 +827,6 @@ private :
         assert((node->num_children_ == 0) && (node->first_child_ == nullptr));
         assert(node->visited_ || (node->is_info_valid_ != 2));
         if( node->is_info_valid_ != 2 ) {
-            // restore saved observation point
-            assert(node->parent_->state_ != nullptr);
             this->update_info(node);
             assert((node->num_children_ == 0) && (node->first_child_ == nullptr));
             node->visited_ = true;

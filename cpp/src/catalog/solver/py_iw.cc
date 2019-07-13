@@ -219,14 +219,15 @@ public :
         struct Equal {
             bool operator()(const FeatureVector& v1, const FeatureVector& v2) const {
                 typename GilControl<Texecution>::Acquire acquire;
-                try {
-                    if (!py::hasattr(v1._array, "__eq__")) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python feature vector for implementing __eq__()");
-                    }
-                    return v1._array.attr("__eq__")(v2._array).template cast<bool>();
-                } catch(const py::error_already_set& e) {
-                    throw std::runtime_error(e.what());
+                if (v1._buffer.size != v2._buffer.size) {
+                    return false;
                 }
+                for (unsigned int i = 0 ; i < v1._buffer.size ; i++) {
+                    if (((int *) v1._buffer.ptr)[i] != ((int *) v2._buffer.ptr)[i]) {
+                        return false;
+                    }
+                }
+                return true;
             }
         };
     };
@@ -262,6 +263,7 @@ public :
     void compute_next_state(const State& s, const Event& e) {
         typename GilControl<Texecution>::Acquire acquire;
         try {
+            py::print("compute_next_state: " + s.print() + ", " + e.print());
             _domain.attr("wrapped_compute_next_state")(s._state, e._event);
         } catch(const py::error_already_set& e) {
             throw std::runtime_error(e.what());
@@ -271,6 +273,7 @@ public :
     py::object get_next_state(const State& s, const Event& e) {
         typename GilControl<Texecution>::Acquire acquire;
         try {
+            py::print("get_next_state: " + s.print() + ", " + e.print());
             return _domain.attr("wrapped_get_next_state")(s._state, e._event);
         } catch(const py::error_already_set& e) {
             throw std::runtime_error(e.what());
