@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import IntEnum
 from typing import NamedTuple, Iterable
 from math import sqrt
 import getopt, sys
@@ -16,7 +16,7 @@ class State(NamedTuple):
     t: int
 
 
-class Actions(Enum):
+class Actions(IntEnum):
     up_slow = 0
     up_fast = 1
     down_slow = 2

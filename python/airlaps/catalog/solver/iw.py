@@ -3,8 +3,8 @@ import multiprocessing
 import numpy as np
 import math
 
-from airlaps import Memory, T_state, T_event, Domain
-from airlaps.builders.domain import DeterministicTransitionDomain, ActionDomain, GoalDomain, \
+from airlaps import DeterministicPlanningDomain, Memory, T_state, T_event, Domain
+from airlaps.builders.domain import DeterministicTransitionDomain, ActionDomain, \
     DeterministicInitializedDomain, MarkovianDomain, PositiveCostDomain, FullyObservableDomain
 from airlaps.builders.solver import DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver
 from __airlaps import _IWParSolver_ as iw_par_solver
@@ -20,6 +20,7 @@ def IWDomain_parallel_get_applicable_actions(self, state):  # self is a domain
     return actions
 
 def IWDomain_sequential_get_applicable_actions(self, state):  # self is a domain
+    global iw_ns_results
     actions = self.get_applicable_actions(state)
     iw_ns_results = {a: None for a in actions.get_elements()}
     return actions
@@ -28,17 +29,20 @@ def IWDomain_pickable_get_next_state(domain, state, action):
     return domain.get_next_state(state, action)
 
 def IWDomain_parallel_compute_next_state(self, state, action):  # self is a domain
-    global iw_pool
+    global iw_pool, iw_ns_results
     iw_ns_results[action] = iw_pool.apply_async(IWDomain_pickable_get_next_state,
                                                 (self, state, action))
 
 def IWDomain_sequential_compute_next_state(self, state, action):  # self is a domain
+    global iw_ns_results
     iw_ns_results[action] = self.get_next_state(state, action)
 
 def IWDomain_parallel_get_next_state(self, state, action):  # self is a domain
+    global iw_ns_results
     return iw_ns_results[action].get()
 
 def IWDomain_sequential_get_next_state(self, state, action):  # self is a domain
+    global iw_ns_results
     return iw_ns_results[action]
 
 class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver):
@@ -46,6 +50,7 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
     def __init__(self,
                  planner: str = 'bfs',
                  state_to_feature_atoms_encoder: Optional[Callable[[T_state, Domain], np.array]] = None,
+                 num_tracked_atoms=0,
                  default_encoding_type: str = 'byte',
                  default_encoding_space_relative_precision: float = 0.001,
                  frameskip: int = 15,
@@ -63,6 +68,7 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
         self._solver = None
         self._planner = planner
         self._state_to_feature_atoms_encoder = state_to_feature_atoms_encoder
+        self._num_tracked_atoms = num_tracked_atoms
         self._default_encoding_type = default_encoding_type
         self._default_encoding_space_relative_precision = default_encoding_space_relative_precision
         self._frameskip = frameskip
@@ -81,7 +87,7 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
     def _reset(self) -> None:
         self._domain = self._new_domain()
         if self._parallel:
-            global aostar_pool
+            global iw_pool
             iw_pool = multiprocessing.Pool()
             setattr(self._domain.__class__, 'wrapped_get_applicable_actions',
                     IWDomain_parallel_get_applicable_actions)
@@ -92,6 +98,7 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
             self._solver = iw_par_solver(domain=self._domain,
                                          planner=self._planner,
                                          state_to_feature_atoms_encoder=(lambda o: self._state_to_feature_atoms_encoder(o, self._domain)) if self._state_to_feature_atoms_encoder is not None else (lambda o: np.array([], dtype=np.int64)),
+                                         num_tracked_atoms=self._num_tracked_atoms,
                                          default_encoding_type=self._default_encoding_type,
                                          default_encoding_space_relative_precision=self._default_encoding_space_relative_precision,
                                          frameskip=self._frameskip,
@@ -114,7 +121,8 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
                     IWDomain_sequential_get_next_state)
             self._solver = iw_seq_solver(domain=self._domain,
                                          planner=self._planner,
-                                         state_to_feature_atoms_encoder=lambda o: self._state_to_feature_atoms_encoder(o, self._domain),
+                                         state_to_feature_atoms_encoder=(lambda o: self._state_to_feature_atoms_encoder(o, self._domain)) if self._state_to_feature_atoms_encoder is not None else (lambda o: np.array([], dtype=np.int64)),
+                                         num_tracked_atoms=self._num_tracked_atoms,
                                          default_encoding_type=self._default_encoding_type,
                                          default_encoding_space_relative_precision = self._default_encoding_space_relative_precision,
                                          frameskip=self._frameskip,
@@ -130,7 +138,7 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
                                          debug_logs=self._debug_logs)
     
     def get_domain_requirements(self) -> Iterable[type]:
-        return [Domain, DeterministicTransitionDomain, ActionDomain, GoalDomain, DeterministicInitializedDomain,
+        return [Domain, DeterministicTransitionDomain, ActionDomain, DeterministicInitializedDomain,
                 MarkovianDomain, FullyObservableDomain, PositiveCostDomain]
     
     def _check_domain(self, domain: Domain) -> bool:

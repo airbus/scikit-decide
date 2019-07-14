@@ -27,6 +27,7 @@ public :
 
     IWSolver(Domain& domain,
              const std::function<FeatureVector (const State&)>& state_to_feature_atoms,
+             unsigned int num_tracked_atoms,
              size_t frameskip = 15,
              int simulator_budget = 150000,
              double time_budget = std::numeric_limits<double>::infinity(),
@@ -39,7 +40,7 @@ public :
              bool debug_logs = false)
         : domain_(domain), state_to_feature_atoms_(state_to_feature_atoms),
           frameskip_(frameskip), simulator_budget_(simulator_budget),
-          num_tracked_atoms_(0), time_budget_(time_budget),
+          num_tracked_atoms_(num_tracked_atoms), time_budget_(time_budget),
           novelty_subtables_(novelty_subtables), random_actions_(random_actions),
           max_rep_(max_rep), nodes_threshold_(nodes_threshold), lookahead_caching_(lookahead_caching),
           discount_(discount), debug_logs_(debug_logs), execution_node_(nullptr) {
@@ -85,10 +86,6 @@ public :
                 assert(execution_node_->state_ == nullptr);
                 assert(execution_node_->parent_ != nullptr);
                 assert(execution_node_->parent_->state_ != nullptr);
-            }
-
-            if (num_tracked_atoms_ == 0) {
-                num_tracked_atoms_ = state_to_feature_atoms_(s).size();
             }
 
             Node* root = execution_node_;
@@ -768,6 +765,7 @@ public :
 
     BfsIW(Domain& domain,
           const std::function<FeatureVector (const State&)>& state_to_feature_atoms,
+          unsigned int num_tracked_atoms,
           size_t frameskip = 15,
           int simulator_budget = 150000,
           double time_budget = std::numeric_limits<double>::infinity(),
@@ -778,10 +776,10 @@ public :
           bool break_ties_using_rewards = false,
           double discount = 1.0,
           bool debug_logs = false)
-        : IWSolver<Tdomain, Texecution_policy>(domain, state_to_feature_atoms, frameskip,
-                                               simulator_budget, time_budget, novelty_subtables,
-                                               random_actions, max_rep, nodes_threshold,
-                                               discount, debug_logs),
+        : IWSolver<Tdomain, Texecution_policy>(domain, state_to_feature_atoms, num_tracked_atoms,
+                                               frameskip, simulator_budget, time_budget,
+                                               novelty_subtables, random_actions, max_rep,
+                                               nodes_threshold, discount, debug_logs),
           break_ties_using_rewards_(break_ties_using_rewards) {
         
     }
@@ -953,6 +951,7 @@ public :
 
     RolloutIW(Domain& domain,
               const std::function<FeatureVector (const State&)>& state_to_feature_atoms,
+              unsigned int num_tracked_atoms,
               size_t frameskip = 15,
               int simulator_budget = 150000,
               double time_budget = std::numeric_limits<double>::infinity(),
@@ -963,10 +962,10 @@ public :
               size_t max_depth = 1500,
               double discount = 1.0,
               bool debug_logs = false)
-        : IWSolver<Tdomain, Texecution_policy>(domain, state_to_feature_atoms, frameskip,
-                                               simulator_budget, time_budget, novelty_subtables,
-                                               random_actions, max_rep, nodes_threshold,
-                                               discount, debug_logs),
+        : IWSolver<Tdomain, Texecution_policy>(domain, state_to_feature_atoms, num_tracked_atoms,
+                                               frameskip, simulator_budget, time_budget,
+                                               novelty_subtables, random_actions, max_rep,
+                                               nodes_threshold, discount, debug_logs),
           max_depth_(max_depth) {
         
     }

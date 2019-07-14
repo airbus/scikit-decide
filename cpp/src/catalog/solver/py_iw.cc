@@ -263,7 +263,6 @@ public :
     void compute_next_state(const State& s, const Event& e) {
         typename GilControl<Texecution>::Acquire acquire;
         try {
-            py::print("compute_next_state: " + s.print() + ", " + e.print());
             _domain.attr("wrapped_compute_next_state")(s._state, e._event);
         } catch(const py::error_already_set& e) {
             throw std::runtime_error(e.what());
@@ -273,7 +272,6 @@ public :
     py::object get_next_state(const State& s, const Event& e) {
         typename GilControl<Texecution>::Acquire acquire;
         try {
-            py::print("get_next_state: " + s.print() + ", " + e.print());
             return _domain.attr("wrapped_get_next_state")(s._state, e._event);
         } catch(const py::error_already_set& e) {
             throw std::runtime_error(e.what());
@@ -309,6 +307,7 @@ public :
     PyIWSolver(py::object& domain,
                const std::string& planner = "bfs",
                const std::function<py::array_t<int> (const py::object&)>& state_to_feature_atoms = [](const py::object& s)-> py::array_t<int> {return py::array_t<int>();},
+               unsigned int num_tracked_atoms = 0,
                const std::string& default_encoding_type = "byte",
                double default_encoding_space_relative_precision = 0.001,
                size_t frameskip = 15,
@@ -327,6 +326,7 @@ public :
 
         // Are we using the default state_to_feature_atoms?
         std::function<typename PyIWDomain<Texecution>::FeatureVector (const typename PyIWDomain<Texecution>::State&)> encoder;
+        unsigned int nb_tracked_atoms = num_tracked_atoms;
         try {
             if (state_to_feature_atoms(py::object()).size() == 0) {
                 if (default_encoding_type == "byte") {
@@ -338,7 +338,6 @@ public :
                                                 domain.attr("action_space"),
                                                 airlaps::GymSpace::ENCODING_BYTE_VECTOR,
                                                 default_encoding_space_relative_precision);
-                    
                 } else if (default_encoding_type == "variable") {
                     _gym_observation_space = airlaps::GymSpace::import_from_python(
                                                 domain.attr("observation_space"),
@@ -351,7 +350,7 @@ public :
                 } else {
                     py::print("ERROR: unsupported feature atom vector encoding '" + default_encoding_type + "'");
                 }
-                _gym_space_relative_precision = default_encoding_space_relative_precision;
+                nb_tracked_atoms = _gym_observation_space->get_number_of_tracked_atoms();
                 encoder = [this](const typename PyIWDomain<Texecution>::State& s) -> typename PyIWDomain<Texecution>::FeatureVector {
                     typename GilControl<Texecution>::Acquire acquire;
                     return typename PyIWDomain<Texecution>::FeatureVector(py::cast(_gym_observation_space->convert_element_to_feature_atoms(s._state)));
@@ -369,6 +368,7 @@ public :
             _solver = std::make_unique<airlaps::BfsIW<PyIWDomain<Texecution>, Texecution>>(
                         *_domain,
                         encoder,
+                        nb_tracked_atoms,
                         frameskip,
                         simulator_budget,
                         time_budget,
@@ -383,6 +383,7 @@ public :
             _solver = std::make_unique<airlaps::RolloutIW<PyIWDomain<Texecution>, Texecution>>(
                         *_domain,
                         encoder,
+                        nb_tracked_atoms,
                         frameskip,
                         simulator_budget,
                         time_budget,
@@ -427,7 +428,6 @@ private :
     std::function<py::array_t<int> (const py::object&)> _state_to_feature_atoms;
     std::unique_ptr<airlaps::GymSpace> _gym_observation_space;
     std::unique_ptr<airlaps::GymSpace> _gym_action_space;
-    double _gym_space_relative_precision;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -440,6 +440,7 @@ void init_pyiw(py::module& m) {
             .def(py::init<py::object&,
                           std::string,
                           const std::function<py::array_t<int> (const py::object&)>&,
+                          int,
                           std::string,
                           double,
                           size_t,
@@ -456,6 +457,7 @@ void init_pyiw(py::module& m) {
                  py::arg("domain"),
                  py::arg("planner")="bfs",
                  py::arg("state_to_feature_atoms_encoder")=std::function<py::array_t<int> (const py::object&)>([](const py::object& s)-> py::array_t<int> {return py::array_t<int>();}),
+                 py::arg("num_tracked_atoms")=0,
                  py::arg("default_encoding_type")="byte",
                  py::arg("default_encoding_space_relative_precision")=0.001,
                  py::arg("frameskip")=15,
@@ -480,6 +482,7 @@ void init_pyiw(py::module& m) {
             .def(py::init<py::object&,
                           std::string,
                           const std::function<py::array_t<int> (const py::object&)>&,
+                          int,
                           std::string,
                           double,
                           size_t,
@@ -496,6 +499,7 @@ void init_pyiw(py::module& m) {
                  py::arg("domain"),
                  py::arg("planner")="bfs",
                  py::arg("state_to_feature_atoms_encoder")=std::function<py::array_t<int> (const py::object&)>([](const py::object& s)-> py::array_t<int> {return py::array_t<int>();}),
+                 py::arg("num_tracked_atoms")=0,
                  py::arg("default_encoding_type")="byte",
                  py::arg("default_encoding_space_relative_precision")=0.001,
                  py::arg("frameskip")=15,
