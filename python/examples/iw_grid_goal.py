@@ -148,6 +148,6 @@ if __name__ == '__main__':
         print("Oops!", e)
     # Test solver solution on domain
     print('==================== TEST SOLVER ====================')
-    # rollout(GridGoalDomain(rows, columns), solver, max_steps=1000,
-    #         outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    rollout(GridGoalDomain(rows, columns), solver, max_steps=1000,
+            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
     

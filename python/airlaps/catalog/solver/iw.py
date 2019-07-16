@@ -60,9 +60,10 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
                  random_actions: bool = False,
                  max_rep: int = 30,
                  nodes_threshold: int = 50000,
+                 lookahead_caching: int = 2,
+                 discount: float = 1.,
                  max_depth: int = 1500,
                  break_ties_using_rewards: bool = False,
-                 discount: float = 1.,
                  parallel: bool = True,
                  debug_logs: bool = False) -> None:
         self._solver = None
@@ -78,9 +79,10 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
         self._random_actions = random_actions
         self._max_rep = max_rep
         self._nodes_threshold = nodes_threshold
+        self._lookahead_caching = lookahead_caching
+        self._discount = discount
         self._max_depth = max_depth
         self._break_ties_using_rewards = break_ties_using_rewards
-        self._discount = discount
         self._parallel = parallel
         self._debug_logs = debug_logs
 
@@ -108,9 +110,10 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
                                          random_actions=self._random_actions,
                                          max_rep=self._max_rep,
                                          nodes_threshold=self._nodes_threshold,
+                                         lookaheead_caching=self._lookahead_caching,
+                                         discount=self._discount,
                                          max_depth=self._max_depth,
                                          break_ties_using_rewards=self._break_ties_using_rewards,
-                                         discount=self._discount,
                                          debug_logs=self._debug_logs)
         else:
             setattr(self._domain.__class__, 'wrapped_get_applicable_actions',
@@ -132,9 +135,10 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
                                          random_actions=self._random_actions,
                                          max_rep=self._max_rep,
                                          nodes_threshold=self._nodes_threshold,
+                                         lookahead_caching=self._lookahead_caching,
+                                         discount=self._discount,
                                          max_depth=self._max_depth,
                                          break_ties_using_rewards=self._break_ties_using_rewards,
-                                         discount=self._discount,
                                          debug_logs=self._debug_logs)
     
     def get_domain_requirements(self) -> Iterable[type]:
@@ -145,7 +149,11 @@ class IW(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver)
         return True # TODO : check that there are no cycles in the MDP graph (should be probably done during the search if the state space is too large)
     
     def get_next_action(self, memory: Memory[T_state]) -> T_event:
-        return self._solver.get_next_action(self._domain.get_last_state(memory))
+        try :
+            return self._solver.get_next_action(self._domain.get_last_state(memory))
+        except:
+            self.solve(memory)
+            return self._solver.get_next_action(self._domain.get_last_state(memory))
     
     def solve(self, from_observation: Optional[Memory[T_state]] = None,
               on_update: Optional[Callable[..., bool]] = None, max_time: Optional[float] = None,

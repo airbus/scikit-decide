@@ -317,9 +317,10 @@ public :
                bool random_actions = false,
                size_t max_rep = 30,
                int nodes_threshold = 50000,
+               int lookahead_caching = 2,
+               double discount = 1.0,
                size_t max_depth = 1500,
                bool break_ties_using_rewards = false,
-               double discount = 1.0,
                bool debug_logs = false)
         : _state_to_feature_atoms(state_to_feature_atoms) {
         _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
@@ -376,8 +377,9 @@ public :
                         random_actions,
                         max_rep,
                         nodes_threshold,
-                        break_ties_using_rewards,
+                        lookahead_caching,
                         discount,
+                        break_ties_using_rewards,
                         debug_logs);
         } else if (planner == "rollout") {
             _solver = std::make_unique<airlaps::RolloutIW<PyIWDomain<Texecution>, Texecution>>(
@@ -391,8 +393,9 @@ public :
                         random_actions,
                         max_rep,
                         nodes_threshold,
-                        max_depth,
+                        lookahead_caching,
                         discount,
+                        max_depth,
                         debug_logs);
         } else {
             py::print("ERROR: unsupported IW planner '" + planner + "'");
@@ -450,9 +453,10 @@ void init_pyiw(py::module& m) {
                           bool,
                           size_t,
                           int,
+                          int,
+                          double,
                           size_t,
                           bool,
-                          double,
                           bool>(),
                  py::arg("domain"),
                  py::arg("planner")="bfs",
@@ -467,9 +471,10 @@ void init_pyiw(py::module& m) {
                  py::arg("random_actions")=false,
                  py::arg("max_rep")=30,
                  py::arg("nodes_threshold")=50000,
+                 py::arg("lookahead_caching")=2,
+                 py::arg("discount")=1.0,
                  py::arg("max_depth")=1500,
                  py::arg("break_ties_using_rewards")=false,
-                 py::arg("discount")=1.0,
                  py::arg("debug_logs")=false)
             .def("reset", &PyIWSolver<airlaps::SequentialExecution>::reset)
             .def("solve", &PyIWSolver<airlaps::SequentialExecution>::solve, py::arg("state"))
@@ -492,9 +497,10 @@ void init_pyiw(py::module& m) {
                           bool,
                           size_t,
                           int,
+                          int,
+                          double,
                           size_t,
                           bool,
-                          double,
                           bool>(),
                  py::arg("domain"),
                  py::arg("planner")="bfs",
@@ -509,9 +515,10 @@ void init_pyiw(py::module& m) {
                  py::arg("random_actions")=false,
                  py::arg("max_rep")=30,
                  py::arg("nodes_threshold")=50000,
+                 py::arg("lookahead_caching")=2,
+                 py::arg("discount")=1.0,
                  py::arg("max_depth")=1500,
                  py::arg("break_ties_using_rewards")=false,
-                 py::arg("discount")=1.0,
                  py::arg("debug_logs")=false)
             .def("reset", &PyIWSolver<airlaps::ParallelExecution>::reset)
             .def("solve", &PyIWSolver<airlaps::ParallelExecution>::solve, py::arg("state"))

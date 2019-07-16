@@ -64,7 +64,6 @@ public :
 
     // reset the solver
     void reset() {
-        num_tracked_atoms_ = 0;
         // properly clear episode_.node in case we come from a previous episode
         // that was not properly ended by calling episode_end()
         if( execution_node_ != nullptr ) {
@@ -88,7 +87,7 @@ public :
                 assert(execution_node_->parent_->state_ != nullptr);
             }
 
-            Node* root = execution_node_;
+            Node*& root = execution_node_;
             execution_branch_.clear();
             std::deque<Action>& branch = execution_branch_;
 
@@ -204,7 +203,6 @@ public :
                     remove_tree(execution_node_);
                     execution_node_ = nullptr;
                 } else {
-                    assert(execution_node_->parent_->state_ != nullptr);
                     execution_node_ = execution_node_->advance(action);
                 }
             }
@@ -216,17 +214,42 @@ public :
     }
 
     const Action& get_best_action(const State& s) const {
+        if (execution_node_ == nullptr) {
+            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print() + " (null execution node). ");
+        }
+        // If execution_node_ != null ptr it means we have optimised the problem
+        // from state s thus its parent node shouldn't be null (and should
+        // correspond to state s since execution_node_ transits to next node at
+        // the end of solve())
+        assert(execution_node_->parent_ != nullptr && execution_node_->parent_->state_.get() != nullptr);
+        if (!typename State::Equal()(*(execution_node_->parent_->state_), s)) {
+            throw std::runtime_error("AIRLAPS exception: state " + s.print() +
+                                     " different from current optimization state " +
+                                     execution_node_->parent_->state_->print() +
+                                     "You should probably (re)-solve the problem from state " + s.print() + ".");
+        }
         if (execution_branch_.empty()) {
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print() + " (empty branch)");
+            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print() + " (empty branch). ");
         }
         return execution_branch_.front();
     }
 
     const double& get_best_value(const State& s) const {
         if (execution_node_ == nullptr) {
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print() + " (null execution node)");
+            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print() + " (null execution node). ");
         }
-        return execution_node_->value_;
+        // If execution_node_ != null ptr it means we have optimised the problem
+        // from state s thus its parent node shouldn't be null (and should
+        // correspond to state s since execution_node_ transits to next node at
+        // the end of solve())
+        assert(execution_node_->parent_ != nullptr && execution_node_->parent_->state_.get() != nullptr);
+        if (!typename State::Equal()(*(execution_node_->parent_->state_), s)) {
+            throw std::runtime_error("AIRLAPS exception: state " + s.print() +
+                                     " different from current optimization state " +
+                                     execution_node_->parent_->state_->print() +
+                                     "You should probably (re)-solve the problem from state " + s.print() + ".");
+        }
+        return execution_node_->parent_->value_;
     }
 
 protected :
@@ -773,13 +796,14 @@ public :
           bool random_actions = false,
           size_t max_rep = 30,
           int nodes_threshold = 50000,
-          bool break_ties_using_rewards = false,
+          int lookahead_caching = 2,
           double discount = 1.0,
+          bool break_ties_using_rewards = false,
           bool debug_logs = false)
         : IWSolver<Tdomain, Texecution_policy>(domain, state_to_feature_atoms, num_tracked_atoms,
                                                frameskip, simulator_budget, time_budget,
                                                novelty_subtables, random_actions, max_rep,
-                                               nodes_threshold, discount, debug_logs),
+                                               nodes_threshold, lookahead_caching, discount, debug_logs),
           break_ties_using_rewards_(break_ties_using_rewards) {
         
     }
@@ -959,13 +983,14 @@ public :
               bool random_actions = false,
               size_t max_rep = 30,
               int nodes_threshold = 50000,
-              size_t max_depth = 1500,
+              int lookahead_caching = 2,
               double discount = 1.0,
+              size_t max_depth = 1500,
               bool debug_logs = false)
         : IWSolver<Tdomain, Texecution_policy>(domain, state_to_feature_atoms, num_tracked_atoms,
                                                frameskip, simulator_budget, time_budget,
                                                novelty_subtables, random_actions, max_rep,
-                                               nodes_threshold, discount, debug_logs),
+                                               nodes_threshold, lookahead_caching, discount, debug_logs),
           max_depth_(max_depth) {
         
     }
