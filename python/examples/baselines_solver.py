@@ -5,6 +5,7 @@ from stable_baselines.common.policies import MlpPolicy
 from airlaps import Memory
 from airlaps.wrappers.domain.gym import GymDomain
 from airlaps.wrappers.solver.baselines import BaselinesSolver
+from airlaps.utils import rollout
 
 ENV_NAME = 'CartPole-v1'
 
@@ -26,15 +27,11 @@ if baselines_solver.check_domain():
 
     # Test
     gym_domain = GymDomain(gym.make(ENV_NAME))
-    # TODO: update with rollout util
-    for i_episode in range(5):
-        observation = gym_domain.reset()
-        for t in range(1000):
-            gym_domain.render()
-            action = baselines_solver.sample_action(Memory([observation]))
-            outcome = gym_domain.step(action)
-            observation = outcome.observation
-            print(outcome)
-            if outcome.termination:
-                print(f'Episode finished after {t + 1} timesteps')
-                break
+
+    # Test solver solution on domain
+    print('######################### TEST {} SOLVER #########################'.format(baselines_solver))
+    rollout(GymDomain(gym.make(ENV_NAME)),
+            baselines_solver,
+            max_steps=1000,
+            verbose=True,
+            outcome_formatter=lambda o: f'Observation [{o.observation}] - transition value = {o.value}')
