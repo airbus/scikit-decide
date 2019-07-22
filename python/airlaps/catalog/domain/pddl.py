@@ -23,6 +23,7 @@ from __airlaps import _PDDL_GreaterFormula_ as GreaterFormula
 from __airlaps import _PDDL_GreaterEqFormula_ as GreaterEqFormula
 from __airlaps import _PDDL_LessFormula_ as LessFormula
 from __airlaps import _PDDL_LessEqFormula_ as LessEqFormula
+from __airlaps import _PDDL_Expression_ as Expression
 from __airlaps import _PDDL_AddExpression_ as AddExpression
 from __airlaps import _PDDL_SubExpression_ as SubExpression
 from __airlaps import _PDDL_MulExpression_ as MulExpression
@@ -30,6 +31,22 @@ from __airlaps import _PDDL_DivExpression_ as DivExpression
 from __airlaps import _PDDL_MinusExpression_ as MinusExpression
 from __airlaps import _PDDL_NumericalExpression_ as NumericalExpression
 from __airlaps import _PDDL_FunctionExpression_ as FunctionExpression
+from __airlaps import _PDDL_Effect_ as Effect
+from __airlaps import _PDDL_PredicateEffect_ as PredicateEffect
+from __airlaps import _PDDL_ConjunctionEffect_ as ConjunctionEffect
+from __airlaps import _PDDL_DisjunctionEffect_ as DisjunctionEffect
+from __airlaps import _PDDL_UniversalEffect_ as UniversalEffect
+from __airlaps import _PDDL_ExistentialEffect_ as ExistentialEffect
+from __airlaps import _PDDL_ConditionalEffect_ as ConditionalEffect
+from __airlaps import _PDDL_NegationEffect_ as NegationEffect
+from __airlaps import _PDDL_AtStartEffect_ as AtStartEffect
+from __airlaps import _PDDL_AtEndEffect_ as AtEndEffect
+from __airlaps import _PDDL_FunctionEffect_ as FunctionEffect
+from __airlaps import _PDDL_AssignEffect_ as AssignEffect
+from __airlaps import _PDDL_ScaleUpEffect_ as ScaleUpEffect
+from __airlaps import _PDDL_ScaleDownEffect_ as ScaleDownEffect
+from __airlaps import _PDDL_IncreaseEffect_ as IncreaseEffect
+from __airlaps import _PDDL_DecreaseEffect_ as DecreaseEffect
 
 # class PDDL:
 

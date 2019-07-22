@@ -174,6 +174,34 @@ void inherit_binary_expression(Instance& instance) {
             .def("__str__", (std::string (BinaryExpression::*)() const) &BinaryExpression::print);
 }
 
+template <typename Instance>
+void inherit_unary_effect(Instance& instance) {
+    using UnaryEffect = typename Instance::type;
+    instance.def("set_effect", (void (UnaryEffect::*)(const Effect::Ptr&)) &UnaryEffect::set_effect, py::arg("effect"))
+            .def("get_effect", (const Effect::Ptr& (UnaryEffect::*)()) &UnaryEffect::get_effect, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (UnaryEffect::*)() const) &UnaryEffect::print);
+}
+
+template <typename Instance>
+void inherit_binary_effect(Instance& instance) {
+    using BinaryEffect = typename Instance::type;
+    instance.def("set_left_effect", (void (BinaryEffect::*)(const Effect::Ptr&)) &BinaryEffect::set_left_effect, py::arg("effect"))
+            .def("get_left_effect", (const Effect::Ptr& (BinaryEffect::*)()) &BinaryEffect::get_left_effect, py::return_value_policy::reference_internal)
+            .def("set_right_effect", (void (BinaryEffect::*)(const Effect::Ptr&)) &BinaryEffect::set_right_effect, py::arg("effect"))
+            .def("get_right_effect", (const Effect::Ptr& (BinaryEffect::*)()) &BinaryEffect::get_right_effect, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (BinaryEffect::*)() const) &BinaryEffect::print);
+}
+
+template <typename Instance>
+void inherit_assignment_effect(Instance& instance) {
+    using AssignmentEffect = typename Instance::type;
+    instance.def("set_function", (void (AssignmentEffect::*)(const FunctionEffect::Ptr&)) &AssignmentEffect::set_function, py::arg("function"))
+            .def("get_function", (const FunctionEffect::Ptr& (AssignmentEffect::*)()) &AssignmentEffect::get_function, py::return_value_policy::reference_internal)
+            .def("set_expression", (void (AssignmentEffect::*)(const Expression::Ptr&)) &AssignmentEffect::set_expression, py::arg("expression"))
+            .def("get_expression", (const Expression::Ptr& (AssignmentEffect::*)()) &AssignmentEffect::get_expression, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (AssignmentEffect::*)() const) &AssignmentEffect::print);
+}
+
 void init_pypddl(py::module& m) {
     py::class_<PDDL> py_pddl(m, "_PDDL_");
         py_pddl
@@ -366,7 +394,7 @@ void init_pypddl(py::module& m) {
             .def(py::init<>())
             .def("append_formula", &ConjunctionFormula::append_formula, py::arg("formula"))
             .def("remove_formula", &ConjunctionFormula::remove_formula)
-            .def("formula_at", &ConjunctionFormula::formula_at, py::arg("formula"))
+            .def("formula_at", &ConjunctionFormula::formula_at, py::arg("index"))
             .def("get_formulas", &ConjunctionFormula::get_formulas)
             .def("__str__", (std::string (ConjunctionFormula::*)() const) &ConjunctionFormula::print)
         ;
@@ -376,7 +404,7 @@ void init_pypddl(py::module& m) {
             .def(py::init<>())
             .def("append_formula", &DisjunctionFormula::append_formula, py::arg("formula"))
             .def("remove_formula", &DisjunctionFormula::remove_formula)
-            .def("formula_at", &DisjunctionFormula::formula_at, py::arg("formula"))
+            .def("formula_at", &DisjunctionFormula::formula_at, py::arg("index"))
             .def("get_formulas", &DisjunctionFormula::get_formulas)
             .def("__str__", (std::string (DisjunctionFormula::*)() const) &DisjunctionFormula::print)
         ;
@@ -483,5 +511,117 @@ void init_pypddl(py::module& m) {
             .def("get_function", &FunctionExpression::get_function)
             .def("get_name", &FunctionExpression::get_name)
             .def("__str__", (std::string (FunctionExpression::*)() const) &FunctionExpression::print)
+        ;
+    
+    py::class_<Effect, Effect::Ptr> py_effect(m, "_PDDL_Effect_");
+
+    py::class_<PredicateEffect, PredicateEffect::Ptr> py_predicate_effect(m, "_PDDL_PredicateEffect_", py_effect);
+    inherit_term_container(py_predicate_effect);
+        py_predicate_effect
+            .def(py::init<>())
+            .def("set_predicate", &PredicateEffect::set_predicate, py::arg("predicate"))
+            .def("get_predicate", &PredicateEffect::get_predicate)
+            .def("get_name", &PredicateEffect::get_name)
+            .def("__str__", (std::string (PredicateEffect::*)() const) &PredicateEffect::print)
+        ;
+    
+    py::class_<ConjunctionEffect, ConjunctionEffect::Ptr> py_conjunction_effect(m, "_PDDL_ConjunctionEffect_", py_effect);
+        py_conjunction_effect
+            .def(py::init<>())
+            .def("append_effect", &ConjunctionEffect::append_effect, py::arg("effect"))
+            .def("remove_effect", &ConjunctionEffect::remove_effect)
+            .def("effect_at", &ConjunctionEffect::effect_at, py::arg("index"))
+            .def("get_effects", &ConjunctionEffect::get_effects)
+            .def("__str__", (std::string (ConjunctionEffect::*)() const) &ConjunctionEffect::print)
+        ;
+    
+    py::class_<DisjunctionEffect, DisjunctionEffect::Ptr> py_disjunction_effect(m, "_PDDL_DisjunctionEffect_", py_effect);
+        py_disjunction_effect
+            .def(py::init<>())
+            .def("append_effect", &DisjunctionEffect::append_effect, py::arg("effect"))
+            .def("remove_effect", &DisjunctionEffect::remove_effect)
+            .def("effect_at", &DisjunctionEffect::effect_at, py::arg("index"))
+            .def("get_effects", &DisjunctionEffect::get_effects)
+            .def("__str__", (std::string (DisjunctionEffect::*)() const) &DisjunctionEffect::print)
+        ;
+    
+    py::class_<UniversalEffect, UniversalEffect::Ptr> py_universal_effect(m, "_PDDL_UniversalEffect_", py_effect);
+        py_universal_effect
+            .def(py::init<>())
+            .def("set_effect", &UniversalEffect::set_effect, py::arg("effect"))
+            .def("get_effect", &UniversalEffect::get_effect)
+            .def("__str__", (std::string (UniversalEffect::*)() const) &UniversalEffect::print)
+        ;
+    
+    py::class_<ExistentialEffect, ExistentialEffect::Ptr> py_existential_effect(m, "_PDDL_ExistentialEffect_", py_effect);
+        py_existential_effect
+            .def(py::init<>())
+            .def("set_effect", &ExistentialEffect::set_effect, py::arg("effect"))
+            .def("get_effect", &ExistentialEffect::get_effect)
+            .def("__str__", (std::string (ExistentialEffect::*)() const) &ExistentialEffect::print)
+        ;
+    
+    py::class_<ConditionalEffect, ConditionalEffect::Ptr> py_conditional_effect(m, "_PDDL_ConditionalEffect_", py_effect);
+    inherit_binary_effect(py_conditional_effect);
+        py_conditional_effect
+            .def(py::init<>())
+        ;
+    
+    py::class_<NegationEffect, NegationEffect::Ptr> py_negation_effect(m, "_PDDL_NegationEffect_", py_effect);
+    inherit_unary_effect(py_negation_effect);
+        py_negation_effect
+            .def(py::init<>())
+        ;
+    
+    py::class_<AtStartEffect, AtStartEffect::Ptr> py_atstart_effect(m, "_PDDL_AtStartEffect_", py_effect);
+    inherit_unary_effect(py_atstart_effect);
+        py_atstart_effect
+            .def(py::init<>())
+        ;
+    
+    py::class_<AtEndEffect, AtEndEffect::Ptr> py_atend_effect(m, "_PDDL_AtEndEffect_", py_effect);
+    inherit_unary_effect(py_atend_effect);
+        py_atend_effect
+            .def(py::init<>())
+        ;
+    
+    py::class_<FunctionEffect, FunctionEffect::Ptr> py_function_effect(m, "_PDDL_FunctionEffect_", py_effect);
+    inherit_term_container(py_function_effect);
+        py_function_effect
+            .def(py::init<>())
+            .def("set_function", &FunctionEffect::set_function, py::arg("function"))
+            .def("get_function", &FunctionEffect::get_function)
+            .def("get_name", &FunctionEffect::get_name)
+            .def("__str__", (std::string (FunctionEffect::*)() const) &FunctionEffect::print)
+        ;
+    
+    py::class_<AssignEffect, AssignEffect::Ptr> py_assign_effect(m, "_PDDL_AssignEffect_", py_effect);
+    inherit_assignment_effect(py_assign_effect);
+        py_assign_effect
+            .def(py::init<>())
+        ;
+    
+    py::class_<ScaleUpEffect, ScaleUpEffect::Ptr> py_scaleup_effect(m, "_PDDL_ScaleUpEffect_", py_effect);
+    inherit_assignment_effect(py_scaleup_effect);
+        py_scaleup_effect
+            .def(py::init<>())
+        ;
+    
+    py::class_<ScaleDownEffect, ScaleDownEffect::Ptr> py_scaledown_effect(m, "_PDDL_ScaleDownEffect_", py_effect);
+    inherit_assignment_effect(py_scaledown_effect);
+        py_scaledown_effect
+            .def(py::init<>())
+        ;
+    
+    py::class_<IncreaseEffect, IncreaseEffect::Ptr> py_increase_effect(m, "_PDDL_IncreaseEffect_", py_effect);
+    inherit_assignment_effect(py_increase_effect);
+        py_increase_effect
+            .def(py::init<>())
+        ;
+    
+    py::class_<DecreaseEffect, DecreaseEffect::Ptr> py_decrease_effect(m, "_PDDL_DecreaseEffect_", py_effect);
+    inherit_assignment_effect(py_decrease_effect);
+        py_decrease_effect
+            .def(py::init<>())
         ;
 }

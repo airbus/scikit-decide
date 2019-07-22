@@ -22,6 +22,14 @@
 #include "minus_expression.hh"
 #include "numerical_expression.hh"
 #include "function_expression.hh"
+#include "predicate_effect.hh"
+#include "aggregation_effect.hh"
+#include "quantified_effect.hh"
+#include "conditional_effect.hh"
+#include "negation_effect.hh"
+#include "timed_effect.hh"
+#include "function_effect.hh"
+#include "assignment_effect.hh"
 
 namespace airlaps {
 

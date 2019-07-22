@@ -35,7 +35,7 @@ namespace airlaps {
             /**
              * Removes the formula at a given index.
              * Throws an exception if the given index exceeds the size of the
-             * conjunction formula
+             * aggregation formula
              */
             AggregationFormula& remove_formula(const std::size_t& index) {
                 if (index >= _formulas.size()) {
@@ -50,7 +50,7 @@ namespace airlaps {
             /**
              * Gets the formula at a given index.
              * Throws an exception if the given index exceeds the size of the
-             * conjunction formula
+             * aggregation formula
              */
             const Formula::Ptr& formula_at(const std::size_t& index) {
                 if (index >= _formulas.size()) {
