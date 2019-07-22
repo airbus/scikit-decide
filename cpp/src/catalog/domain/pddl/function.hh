@@ -13,6 +13,8 @@ namespace airlaps {
         public :
             static constexpr char class_name[] = "function";
 
+            typedef std::shared_ptr<Function> Ptr;
+
             Function(const std::string& name)
                 : Identifier(name) {}
 

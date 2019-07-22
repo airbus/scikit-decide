@@ -11,9 +11,17 @@
 #include "action.hh"
 #include "constraint_formula.hh"
 #include "preference.hh"
-#include "proposition_formula.hh"
+#include "predicate_formula.hh"
 #include "quantified_formula.hh"
-#include "aggregated_formula.hh"
+#include "aggregation_formula.hh"
+#include "imply_formula.hh"
+#include "negation_formula.hh"
+#include "timed_formula.hh"
+#include "comparison_formula.hh"
+#include "operation_expression.hh"
+#include "minus_expression.hh"
+#include "numerical_expression.hh"
+#include "function_expression.hh"
 
 namespace airlaps {
 

@@ -81,17 +81,17 @@ void inherit_variable_container(Instance& instance) {
 template <typename Instance>
 void inherit_term_container(Instance& instance) {
     using TermContainer = typename Instance::type;
-    instance.def("append_term", (const PropositionFormula::TermPtr& (TermContainer::*)(const PropositionFormula::TermPtr&)) &TermContainer::append_term,
+    instance.def("append_term", (const PredicateFormula::TermPtr& (TermContainer::*)(const PredicateFormula::TermPtr&)) &TermContainer::append_term,
                                      py::arg("term"), py::return_value_policy::reference_internal)
             .def("remove_term", (void (TermContainer::*)(const std::string&)) &TermContainer::remove_term,
                                      py::arg("term"))
-            .def("remove_term", (void (TermContainer::*)(const PropositionFormula::TermPtr&)) &TermContainer::remove_term,
+            .def("remove_term", (void (TermContainer::*)(const PredicateFormula::TermPtr&)) &TermContainer::remove_term,
                                      py::arg("term"))
-            .def("get_term", (PropositionFormula::TermVector (TermContainer::*)(const std::string&) const) &TermContainer::get_term,
+            .def("get_term", (PredicateFormula::TermVector (TermContainer::*)(const std::string&) const) &TermContainer::get_term,
                                   py::arg("term"), py::return_value_policy::reference_internal)
-            .def("get_term", (PropositionFormula::TermVector (TermContainer::*)(const PropositionFormula::TermPtr&) const) &TermContainer::get_term,
+            .def("get_term", (PredicateFormula::TermVector (TermContainer::*)(const PredicateFormula::TermPtr&) const) &TermContainer::get_term,
                                   py::arg("term"), py::return_value_policy::reference_internal)
-            .def("term_at", (const PropositionFormula::TermPtr& (TermContainer::*)(const std::size_t&) const) &TermContainer::term_at,
+            .def("term_at", (const PredicateFormula::TermPtr& (TermContainer::*)(const std::size_t&) const) &TermContainer::term_at,
                                  py::arg("index"), py::return_value_policy::reference_internal)
             .def("get_terms", &TermContainer::get_terms,
                                   py::return_value_policy::reference_internal)
@@ -136,6 +136,42 @@ void inherit_function_container(Instance& instance) {
             .def("get_functions", &FunctionContainer::get_functions,
                                   py::return_value_policy::reference_internal)
             .def("__str__", (std::string (FunctionContainer::*)() const) &FunctionContainer::print);
+}
+
+template <typename Instance>
+void inherit_unary_formula(Instance& instance) {
+    using UnaryFormula = typename Instance::type;
+    instance.def("set_formula", (void (UnaryFormula::*)(const Formula::Ptr&)) &UnaryFormula::set_formula, py::arg("formula"))
+            .def("get_formula", (const Formula::Ptr& (UnaryFormula::*)()) &UnaryFormula::get_formula, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (UnaryFormula::*)() const) &UnaryFormula::print);
+}
+
+template <typename Instance>
+void inherit_binary_formula(Instance& instance) {
+    using BinaryFormula = typename Instance::type;
+    instance.def("set_left_formula", (void (BinaryFormula::*)(const Formula::Ptr&)) &BinaryFormula::set_left_formula, py::arg("formula"))
+            .def("get_left_formula", (const Formula::Ptr& (BinaryFormula::*)()) &BinaryFormula::get_left_formula, py::return_value_policy::reference_internal)
+            .def("set_right_formula", (void (BinaryFormula::*)(const Formula::Ptr&)) &BinaryFormula::set_right_formula, py::arg("formula"))
+            .def("get_right_formula", (const Formula::Ptr& (BinaryFormula::*)()) &BinaryFormula::get_right_formula, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (BinaryFormula::*)() const) &BinaryFormula::print);
+}
+
+template <typename Instance>
+void inherit_unary_expression(Instance& instance) {
+    using UnaryExpression = typename Instance::type;
+    instance.def("set_expression", (void (UnaryExpression::*)(const Formula::Ptr&)) &UnaryExpression::set_expression, py::arg("expression"))
+            .def("get_expression", (const Formula::Ptr& (UnaryExpression::*)()) &UnaryExpression::get_expression, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (UnaryExpression::*)() const) &UnaryExpression::print);
+}
+
+template <typename Instance>
+void inherit_binary_expression(Instance& instance) {
+    using BinaryExpression = typename Instance::type;
+    instance.def("set_left_expression", (void (BinaryExpression::*)(const Expression::Ptr&)) &BinaryExpression::set_left_expression, py::arg("expression"))
+            .def("get_left_expression", (const Expression::Ptr& (BinaryExpression::*)()) &BinaryExpression::get_left_expression, py::return_value_policy::reference_internal)
+            .def("set_right_expression", (void (BinaryExpression::*)(const Expression::Ptr&)) &BinaryExpression::set_right_expression, py::arg("expression"))
+            .def("get_right_expression", (const Expression::Ptr& (BinaryExpression::*)()) &BinaryExpression::get_right_expression, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (BinaryExpression::*)() const) &BinaryExpression::print);
 }
 
 void init_pypddl(py::module& m) {
@@ -228,7 +264,7 @@ void init_pypddl(py::module& m) {
     
     // All term containers contain the same type of term smart pointers
     // so just get it from proposition formulas
-    py::class_<Term, PropositionFormula::TermPtr> py_term(m, "_PDDL_Term_");
+    py::class_<Term, PredicateFormula::TermPtr> py_term(m, "_PDDL_Term_");
     
     py::class_<Object, Domain::ObjectPtr> py_object(m, "_PDDL_Object_", py_term);
     inherit_identifier(py_object);
@@ -299,41 +335,153 @@ void init_pypddl(py::module& m) {
             .def("__str__", (std::string (Preference::*)() const) &Preference::print)
         ;
     
-    py::class_<PropositionFormula, PropositionFormula::Ptr> py_proposition_formula(m, "_PDDL_PropositionFormula_", py_formula);
-    inherit_identifier(py_proposition_formula);
-    inherit_term_container(py_proposition_formula);
-        py_proposition_formula
+    py::class_<PredicateFormula, PredicateFormula::Ptr> py_predicate_formula(m, "_PDDL_PredicateFormula_", py_formula);
+    inherit_term_container(py_predicate_formula);
+        py_predicate_formula
             .def(py::init<>())
-            .def("__str__", (std::string (PropositionFormula::*)() const) &PropositionFormula::print)
+            .def("set_predicate", &PredicateFormula::set_predicate, py::arg("predicate"))
+            .def("get_predicate", &PredicateFormula::get_predicate)
+            .def("get_name", &PredicateFormula::get_name)
+            .def("__str__", (std::string (PredicateFormula::*)() const) &PredicateFormula::print)
         ;
     
-    py::enum_<QuantifiedFormula::Quantifier>(m, "_PDDL_QuantifiedFormulaQuantifier_", py::arithmetic())
-        .value("FORALL", QuantifiedFormula::Quantifier::E_FORALL)
-        .value("EXISTS", QuantifiedFormula::Quantifier::E_EXISTS)
-        .export_values();
-    
-    py::class_<QuantifiedFormula, QuantifiedFormula::Ptr> py_quantified_formula(m, "_PDDL_QuantifiedFormula_", py_formula);
-        py_quantified_formula
-            .def(py::init<const QuantifiedFormula::Quantifier&>(), py::arg("quantifier"))
-            .def("get_quantifier", &QuantifiedFormula::get_quantifier)
-            .def("set_formula", &QuantifiedFormula::set_formula, py::arg("formula"))
-            .def("get_formula", &QuantifiedFormula::get_formula)
-            .def("__str__", (std::string (QuantifiedFormula::*)() const) &QuantifiedFormula::print)
+    py::class_<UniversalFormula, UniversalFormula::Ptr> py_universal_formula(m, "_PDDL_UniversalFormula_", py_formula);
+        py_universal_formula
+            .def(py::init<>())
+            .def("set_formula", &UniversalFormula::set_formula, py::arg("formula"))
+            .def("get_formula", &UniversalFormula::get_formula)
+            .def("__str__", (std::string (UniversalFormula::*)() const) &UniversalFormula::print)
         ;
     
-    py::enum_<AggregatedFormula::Operator>(m, "_PDDL_AggregatedFormulaOperator_", py::arithmetic())
-        .value("AND", AggregatedFormula::Operator::E_AND)
-        .value("OR", AggregatedFormula::Operator::E_OR)
-        .export_values();
+    py::class_<ExistentialFormula, ExistentialFormula::Ptr> py_existential_formula(m, "_PDDL_ExistentialFormula_", py_formula);
+        py_existential_formula
+            .def(py::init<>())
+            .def("set_formula", &ExistentialFormula::set_formula, py::arg("formula"))
+            .def("get_formula", &ExistentialFormula::get_formula)
+            .def("__str__", (std::string (ExistentialFormula::*)() const) &ExistentialFormula::print)
+        ;
     
-    py::class_<AggregatedFormula, AggregatedFormula::Ptr> py_aggregated_formula(m, "_PDDL_AggregatedFormula_", py_formula);
-        py_aggregated_formula
-            .def(py::init<const AggregatedFormula::Operator&>(), py::arg("operator"))
-            .def("get_operator", &AggregatedFormula::get_operator)
-            .def("append_formula", &AggregatedFormula::append_formula, py::arg("formula"))
-            .def("remove_formula", &AggregatedFormula::remove_formula)
-            .def("formula_at", &AggregatedFormula::formula_at, py::arg("formula"))
-            .def("get_formulas", &AggregatedFormula::get_formulas)
-            .def("__str__", (std::string (AggregatedFormula::*)() const) &AggregatedFormula::print)
+    py::class_<ConjunctionFormula, ConjunctionFormula::Ptr> py_conjunction_formula(m, "_PDDL_ConjunctionFormula_", py_formula);
+        py_conjunction_formula
+            .def(py::init<>())
+            .def("append_formula", &ConjunctionFormula::append_formula, py::arg("formula"))
+            .def("remove_formula", &ConjunctionFormula::remove_formula)
+            .def("formula_at", &ConjunctionFormula::formula_at, py::arg("formula"))
+            .def("get_formulas", &ConjunctionFormula::get_formulas)
+            .def("__str__", (std::string (ConjunctionFormula::*)() const) &ConjunctionFormula::print)
+        ;
+    
+    py::class_<DisjunctionFormula, DisjunctionFormula::Ptr> py_disjunction_formula(m, "_PDDL_DisjunctionFormula_", py_formula);
+        py_disjunction_formula
+            .def(py::init<>())
+            .def("append_formula", &DisjunctionFormula::append_formula, py::arg("formula"))
+            .def("remove_formula", &DisjunctionFormula::remove_formula)
+            .def("formula_at", &DisjunctionFormula::formula_at, py::arg("formula"))
+            .def("get_formulas", &DisjunctionFormula::get_formulas)
+            .def("__str__", (std::string (DisjunctionFormula::*)() const) &DisjunctionFormula::print)
+        ;
+    
+    py::class_<ImplyFormula, ImplyFormula::Ptr> py_imply_formula(m, "_PDDL_ImplyFormula_", py_formula);
+    inherit_binary_formula(py_imply_formula);
+        py_imply_formula
+            .def(py::init<>())
+        ;
+    
+    py::class_<NegationFormula, NegationFormula::Ptr> py_negation_formula(m, "_PDDL_NegationFormula_", py_formula);
+    inherit_unary_formula(py_negation_formula);
+        py_negation_formula
+            .def(py::init<>())
+        ;
+    
+    py::class_<AtStartFormula, AtStartFormula::Ptr> py_atstart_formula(m, "_PDDL_AtStartFormula_", py_formula);
+    inherit_unary_formula(py_atstart_formula);
+        py_atstart_formula
+            .def(py::init<>())
+        ;
+    
+    py::class_<AtEndFormula, AtEndFormula::Ptr> py_atend_formula(m, "_PDDL_AtEndFormula_", py_formula);
+    inherit_unary_formula(py_atend_formula);
+        py_atend_formula
+            .def(py::init<>())
+        ;
+    
+    py::class_<OverAllFormula, OverAllFormula::Ptr> py_overall_formula(m, "_PDDL_OverAllFormula_", py_formula);
+    inherit_unary_formula(py_overall_formula);
+        py_overall_formula
+            .def(py::init<>())
+        ;
+    
+    py::class_<GreaterFormula, GreaterFormula::Ptr> py_greater_formula(m, "_PDDL_GreaterFormula_", py_formula);
+    inherit_binary_expression(py_greater_formula);
+        py_greater_formula
+            .def(py::init<>())
+        ;
+    
+    py::class_<GreaterEqFormula, GreaterEqFormula::Ptr> py_greatereq_formula(m, "_PDDL_GreaterEqFormula_", py_formula);
+    inherit_binary_expression(py_greatereq_formula);
+        py_greatereq_formula
+            .def(py::init<>())
+        ;
+    
+    py::class_<LessEqFormula, LessEqFormula::Ptr> py_lesseq_formula(m, "_PDDL_LessEqFormula_", py_formula);
+    inherit_binary_expression(py_lesseq_formula);
+        py_lesseq_formula
+            .def(py::init<>())
+        ;
+    
+    py::class_<LessFormula, LessFormula::Ptr> py_less_formula(m, "_PDDL_LessFormula_", py_formula);
+    inherit_binary_expression(py_less_formula);
+        py_less_formula
+            .def(py::init<>())
+        ;
+    
+    py::class_<Expression, Expression::Ptr> py_expression(m, "_PDDL_Expression_");
+
+    py::class_<AddExpression, AddExpression::Ptr> py_add_expression(m, "_PDDL_AddExpression_", py_expression);
+    inherit_binary_expression(py_add_expression);
+        py_add_expression
+            .def(py::init<>())
+        ;
+    
+    py::class_<SubExpression, SubExpression::Ptr> py_sub_expression(m, "_PDDL_SubExpression_", py_expression);
+    inherit_binary_expression(py_sub_expression);
+        py_sub_expression
+            .def(py::init<>())
+        ;
+    
+    py::class_<MulExpression, MulExpression::Ptr> py_mul_expression(m, "_PDDL_MulExpression_", py_expression);
+    inherit_binary_expression(py_mul_expression);
+        py_mul_expression
+            .def(py::init<>())
+        ;
+    
+    py::class_<DivExpression, DivExpression::Ptr> py_div_expression(m, "_PDDL_DivExpression_", py_expression);
+    inherit_binary_expression(py_div_expression);
+        py_div_expression
+            .def(py::init<>())
+        ;
+    
+    py::class_<MinusExpression, MinusExpression::Ptr> py_minus_expression(m, "_PDDL_MinusExpression_", py_expression);
+    inherit_unary_expression(py_minus_expression);
+        py_minus_expression
+            .def(py::init<>())
+        ;
+    
+    py::class_<NumericalExpression, NumericalExpression::Ptr> py_numerical_expression(m, "_PDDL_NumericalExpression_", py_expression);
+        py_numerical_expression
+            .def(py::init<>())
+            .def("set_number", &NumericalExpression::set_number, py::arg("number"))
+            .def("get_number", &NumericalExpression::get_number)
+            .def("__str__", (std::string (NumericalExpression::*)() const) &NumericalExpression::print)
+        ;
+    
+    py::class_<FunctionExpression, FunctionExpression::Ptr> py_function_expression(m, "_PDDL_FunctionExpression_", py_expression);
+    inherit_term_container(py_function_expression);
+        py_function_expression
+            .def(py::init<>())
+            .def("set_function", &FunctionExpression::set_function, py::arg("function"))
+            .def("get_function", &FunctionExpression::get_function)
+            .def("get_name", &FunctionExpression::get_name)
+            .def("__str__", (std::string (FunctionExpression::*)() const) &FunctionExpression::print)
         ;
 }

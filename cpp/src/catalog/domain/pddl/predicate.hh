@@ -13,6 +13,8 @@ namespace airlaps {
         public :
             static constexpr char class_name[] = "predicate";
 
+            typedef std::shared_ptr<Predicate> Ptr;
+
             Predicate(const std::string& name)
                 : Identifier(name) {}
 
