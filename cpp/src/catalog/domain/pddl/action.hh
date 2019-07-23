@@ -68,6 +68,14 @@ namespace airlaps {
             }
 
             virtual ~DurativeAction() {}
+
+            void set_duration_constraint(const Formula::Ptr& duration_constraint) {
+                _duration_constraint = duration_constraint;
+            }
+
+            const Formula::Ptr& get_duration_constraint() const {
+                return _duration_constraint;
+            }
         
         private :
             Formula::Ptr _duration_constraint;

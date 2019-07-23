@@ -50,6 +50,7 @@ from __airlaps import _PDDL_ScaleDownEffect_ as ScaleDownEffect
 from __airlaps import _PDDL_IncreaseEffect_ as IncreaseEffect
 from __airlaps import _PDDL_DecreaseEffect_ as DecreaseEffect
 from __airlaps import _PDDL_Action_ as Action
+from __airlaps import _PDDL_DurativeAction_ as DurativeAction
 
 # class PDDL:
 

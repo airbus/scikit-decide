@@ -639,10 +639,17 @@ void init_pypddl(py::module& m) {
             .def(py::init<>())
         ;
     
-    py::class_<Action, Action::Ptr> py_action(m, "_PDDL_Action_", py_action);
+    py::class_<Action, Action::Ptr> py_action(m, "_PDDL_Action_");
     inherit_variable_container(py_action);
     inherit_binary_effect(py_action);
         py_action
             .def(py::init<std::string>(), py::arg("name"))
+        ;
+    
+    py::class_<DurativeAction, DurativeAction::Ptr> py_durative_action(m, "_PDDL_DurativeAction_", py_action);
+        py_durative_action
+            .def(py::init<std::string>(), py::arg("name"))
+            .def("set_duration_constraint", &DurativeAction::set_duration_constraint)
+            .def("get_duration_constraint", &DurativeAction::get_duration_constraint, py::return_value_policy::reference_internal)
         ;
 }
