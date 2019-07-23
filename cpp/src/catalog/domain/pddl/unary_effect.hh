@@ -40,7 +40,7 @@ namespace airlaps {
                 return o;
             }
 
-        private :
+        protected :
             Effect::Ptr _effect;
         };
 

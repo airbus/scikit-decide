@@ -19,6 +19,7 @@ from __airlaps import _PDDL_NegationFormula_ as NegationFormula
 from __airlaps import _PDDL_AtStartFormula_ as AtStartFormula
 from __airlaps import _PDDL_AtEndFormula_ as AtEndFormula
 from __airlaps import _PDDL_OverAllFormula_ as OverAllFormula
+from __airlaps import _PDDL_DurationFormula_ as DurationFormula
 from __airlaps import _PDDL_GreaterFormula_ as GreaterFormula
 from __airlaps import _PDDL_GreaterEqFormula_ as GreaterEqFormula
 from __airlaps import _PDDL_LessFormula_ as LessFormula
@@ -41,12 +42,14 @@ from __airlaps import _PDDL_ConditionalEffect_ as ConditionalEffect
 from __airlaps import _PDDL_NegationEffect_ as NegationEffect
 from __airlaps import _PDDL_AtStartEffect_ as AtStartEffect
 from __airlaps import _PDDL_AtEndEffect_ as AtEndEffect
+from __airlaps import _PDDL_DurationEffect_ as DurationEffect
 from __airlaps import _PDDL_FunctionEffect_ as FunctionEffect
 from __airlaps import _PDDL_AssignEffect_ as AssignEffect
 from __airlaps import _PDDL_ScaleUpEffect_ as ScaleUpEffect
 from __airlaps import _PDDL_ScaleDownEffect_ as ScaleDownEffect
 from __airlaps import _PDDL_IncreaseEffect_ as IncreaseEffect
 from __airlaps import _PDDL_DecreaseEffect_ as DecreaseEffect
+from __airlaps import _PDDL_Action_ as Action
 
 # class PDDL:
 

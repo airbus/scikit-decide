@@ -51,7 +51,7 @@ namespace airlaps {
                 return o;
             }
 
-        private :
+        protected :
             Expression::Ptr _left_expression;
             Expression::Ptr _right_expression;
         };

@@ -40,7 +40,7 @@ namespace airlaps {
                 return o;
             }
 
-        private :
+        protected :
             Formula::Ptr _formula;
         };
 

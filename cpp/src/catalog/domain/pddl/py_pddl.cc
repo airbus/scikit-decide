@@ -185,10 +185,10 @@ void inherit_unary_effect(Instance& instance) {
 template <typename Instance>
 void inherit_binary_effect(Instance& instance) {
     using BinaryEffect = typename Instance::type;
-    instance.def("set_left_effect", (void (BinaryEffect::*)(const Effect::Ptr&)) &BinaryEffect::set_left_effect, py::arg("effect"))
-            .def("get_left_effect", (const Effect::Ptr& (BinaryEffect::*)()) &BinaryEffect::get_left_effect, py::return_value_policy::reference_internal)
-            .def("set_right_effect", (void (BinaryEffect::*)(const Effect::Ptr&)) &BinaryEffect::set_right_effect, py::arg("effect"))
-            .def("get_right_effect", (const Effect::Ptr& (BinaryEffect::*)()) &BinaryEffect::get_right_effect, py::return_value_policy::reference_internal)
+    instance.def("set_condition", (void (BinaryEffect::*)(const Formula::Ptr&)) &BinaryEffect::set_condition, py::arg("condition"))
+            .def("get_condition", (const Formula::Ptr& (BinaryEffect::*)()) &BinaryEffect::get_condition, py::return_value_policy::reference_internal)
+            .def("set_effect", (void (BinaryEffect::*)(const Effect::Ptr&)) &BinaryEffect::set_effect, py::arg("effect"))
+            .def("get_effect", (const Effect::Ptr& (BinaryEffect::*)()) &BinaryEffect::get_effect, py::return_value_policy::reference_internal)
             .def("__str__", (std::string (BinaryEffect::*)() const) &BinaryEffect::print);
 }
 
@@ -439,6 +439,13 @@ void init_pypddl(py::module& m) {
             .def(py::init<>())
         ;
     
+    py::class_<DurationFormula, DurationFormula::Ptr> py_duration_formula(m, "_PDDL_DurationFormula_", py_formula);
+        py_duration_formula
+            .def(py::init<>())
+            .def("set_durative_action", &DurationFormula::set_durative_action, py::arg("durative_action"))
+            .def("get_durative_action", &DurationFormula::get_durative_action, py::return_value_policy::reference_internal)
+        ;
+    
     py::class_<GreaterFormula, GreaterFormula::Ptr> py_greater_formula(m, "_PDDL_GreaterFormula_", py_formula);
     inherit_binary_expression(py_greater_formula);
         py_greater_formula
@@ -585,6 +592,13 @@ void init_pypddl(py::module& m) {
             .def(py::init<>())
         ;
     
+    py::class_<DurationEffect, DurationEffect::Ptr> py_duration_effect(m, "_PDDL_DurationEffect_", py_effect);
+        py_duration_effect
+            .def(py::init<>())
+            .def("set_durative_action", &DurationEffect::set_durative_action, py::arg("durative_action"))
+            .def("get_durative_action", &DurationEffect::get_durative_action, py::return_value_policy::reference_internal)
+        ;
+    
     py::class_<FunctionEffect, FunctionEffect::Ptr> py_function_effect(m, "_PDDL_FunctionEffect_", py_effect);
     inherit_term_container(py_function_effect);
         py_function_effect
@@ -623,5 +637,12 @@ void init_pypddl(py::module& m) {
     inherit_assignment_effect(py_decrease_effect);
         py_decrease_effect
             .def(py::init<>())
+        ;
+    
+    py::class_<Action, Action::Ptr> py_action(m, "_PDDL_Action_", py_action);
+    inherit_variable_container(py_action);
+    inherit_binary_effect(py_action);
+        py_action
+            .def(py::init<std::string>(), py::arg("name"))
         ;
 }

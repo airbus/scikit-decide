@@ -1,59 +1,54 @@
 #ifndef AIRLAPS_PDDL_BINARY_EFFECT_HH
 #define AIRLAPS_PDDL_BINARY_EFFECT_HH
 
+#include "formula.hh"
 #include "effect.hh"
 
 namespace airlaps {
 
     namespace pddl {
 
-        template <typename Derived>
-        class BinaryEffect : public Effect {
+        class BinaryEffect { // does not inherit from Effect since Action is not an effect but needs BinaryEffect's methods
         public :
-            typedef std::shared_ptr<BinaryEffect<Derived>> Ptr;
+            typedef std::shared_ptr<BinaryEffect> Ptr;
 
             BinaryEffect() {}
 
-            BinaryEffect(const Effect::Ptr& left_effect,
-                         const Effect::Ptr& right_effect)
-                : _left_effect(left_effect), _right_effect(right_effect) {}
+            BinaryEffect(const Formula::Ptr& condition,
+                         const Effect::Ptr& effect)
+                : _condition(condition), _effect(effect) {}
             
-            BinaryEffect(const BinaryEffect<Derived>& other)
-                : _left_effect(other._left_effect),
-                  _right_effect(other._right_effect) {}
+            BinaryEffect(const BinaryEffect& other)
+                : _condition(other._condition),
+                  _effect(other._effect) {}
             
-            BinaryEffect<Derived>& operator= (const BinaryEffect<Derived>& other) {
-                this->_left_effect = other._left_effect;
-                this->_right_effect = other._right_effect;
+            BinaryEffect& operator= (const BinaryEffect& other) {
+                this->_condition = other._condition;
+                this->_effect = other._effect;
                 return *this;
             }
 
             virtual ~BinaryEffect() {}
 
-            void set_left_effect(const Effect::Ptr& effect) {
-                _left_effect = effect;
+            void set_condition(const Formula::Ptr& condition) {
+                _condition = condition;
             }
 
-            const Effect::Ptr& get_left_effect() const {
-                return _left_effect;
+            const Formula::Ptr& get_condition() const {
+                return _condition;
             }
 
-            void set_right_effect(const Effect::Ptr& effect) {
-                _right_effect = effect;
+            void set_effect(const Effect::Ptr& effect) {
+                _effect = effect;
             }
 
-            const Effect::Ptr& get_right_effect() const {
-                return _right_effect;
+            const Effect::Ptr& get_effect() const {
+                return _effect;
             }
 
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(" << Derived::class_name << " " << *_left_effect << " " << *_right_effect << ")";
-                return o;
-            }
-
-        private :
-            Effect::Ptr _left_effect;
-            Effect::Ptr _right_effect;
+        protected :
+            Formula::Ptr _condition;
+            Effect::Ptr _effect;
         };
 
     } // namespace pddl

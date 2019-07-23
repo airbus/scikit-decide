@@ -17,6 +17,7 @@
 #include "imply_formula.hh"
 #include "negation_formula.hh"
 #include "timed_formula.hh"
+#include "duration_formula.hh"
 #include "comparison_formula.hh"
 #include "operation_expression.hh"
 #include "minus_expression.hh"
@@ -28,6 +29,7 @@
 #include "conditional_effect.hh"
 #include "negation_effect.hh"
 #include "timed_effect.hh"
+#include "duration_effect.hh"
 #include "function_effect.hh"
 #include "assignment_effect.hh"
 

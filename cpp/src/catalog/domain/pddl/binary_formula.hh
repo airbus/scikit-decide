@@ -51,7 +51,7 @@ namespace airlaps {
                 return o;
             }
 
-        private :
+        protected :
             Formula::Ptr _left_formula;
             Formula::Ptr _right_formula;
         };
