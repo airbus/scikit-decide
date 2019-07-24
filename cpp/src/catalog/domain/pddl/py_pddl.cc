@@ -324,6 +324,13 @@ void init_pypddl(py::module& m) {
             .def(py::init<std::string>(), py::arg("name"))
         ;
     
+    py::class_<Class, Class::Ptr> py_class(m, "_PDDL_Class_");
+    inherit_identifier(py_class);
+    inherit_function_container(py_class);
+        py_class
+            .def(py::init<std::string>(), py::arg("name"))
+        ;
+    
     py::class_<Formula, Formula::Ptr> py_formula(m, "_PDDL_Formula_");
 
     py::enum_<ConstraintFormula::Sort>(m, "_PDDL_ConstraintFormulaSort_", py::arithmetic())
@@ -651,5 +658,19 @@ void init_pypddl(py::module& m) {
             .def(py::init<std::string>(), py::arg("name"))
             .def("set_duration_constraint", &DurativeAction::set_duration_constraint)
             .def("get_duration_constraint", &DurativeAction::get_duration_constraint, py::return_value_policy::reference_internal)
+        ;
+    
+    py::class_<Event, Event::Ptr> py_event(m, "_PDDL_Event_");
+    inherit_variable_container(py_event);
+    inherit_binary_effect(py_event);
+        py_event
+            .def(py::init<std::string>(), py::arg("name"))
+        ;
+    
+    py::class_<Process, Process::Ptr> py_process(m, "_PDDL_Process_");
+    inherit_variable_container(py_process);
+    inherit_binary_effect(py_process);
+        py_process
+            .def(py::init<std::string>(), py::arg("name"))
         ;
 }

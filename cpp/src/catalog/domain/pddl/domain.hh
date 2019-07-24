@@ -50,7 +50,7 @@ namespace airlaps {
 
 } // namespace airlaps
 
-// Requirements printing operator
+// Domain printing operator
 std::ostream& operator<<(std::ostream& o, const airlaps::pddl::Domain& d);
 
 #endif // AIRLAPS_PDDL_DOMAIN_HH

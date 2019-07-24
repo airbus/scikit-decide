@@ -7,6 +7,7 @@ from __airlaps import _PDDL_Variable_ as Variable
 from __airlaps import _PDDL_Object_ as Object
 from __airlaps import _PDDL_Predicate_ as Predicate
 from __airlaps import _PDDL_Function_ as Function
+from __airlaps import _PDDL_Class_ as Class
 from __airlaps import _PDDL_Formula_ as Formula
 from __airlaps import _PDDL_Preference_ as Preference
 from __airlaps import _PDDL_PredicateFormula_ as PredicateFormula
@@ -51,6 +52,8 @@ from __airlaps import _PDDL_IncreaseEffect_ as IncreaseEffect
 from __airlaps import _PDDL_DecreaseEffect_ as DecreaseEffect
 from __airlaps import _PDDL_Action_ as Action
 from __airlaps import _PDDL_DurativeAction_ as DurativeAction
+from __airlaps import _PDDL_Event_ as Event
+from __airlaps import _PDDL_Process_ as Process
 
 # class PDDL:
 
