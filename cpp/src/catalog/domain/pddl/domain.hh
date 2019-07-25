@@ -11,6 +11,8 @@
 #include "object_container.hh"
 #include "predicate_container.hh"
 #include "function_container.hh"
+#include "derived_predicate_container.hh"
+#include "class_container.hh"
 
 namespace airlaps {
 
@@ -20,7 +22,9 @@ namespace airlaps {
                        public TypeContainer<Domain>,
                        public ObjectContainer<Domain>,
                        public PredicateContainer<Domain>,
-                       public FunctionContainer<Domain> {
+                       public FunctionContainer<Domain>,
+                       public DerivedPredicateContainer<Domain>,
+                       public ClassContainer<Domain> {
         public :
             static constexpr char class_name[] = "domain";
             
@@ -39,8 +43,12 @@ namespace airlaps {
             typedef ObjectContainer<Domain>::ObjectSet ObjectSet;
             typedef PredicateContainer<Domain>::PredicatePtr PredicatePtr;
             typedef PredicateContainer<Domain>::PredicateSet PredicateSet;
+            typedef DerivedPredicateContainer<Domain>::DerivedPredicatePtr DerivedPredicatePtr;
+            typedef DerivedPredicateContainer<Domain>::DerivedPredicateSet DerivedPredicateSet;
             typedef FunctionContainer<Domain>::FunctionPtr FunctionPtr;
             typedef FunctionContainer<Domain>::FunctionSet FunctionSet;
+            typedef ClassContainer<Domain>::ClassPtr ClassPtr;
+            typedef ClassContainer<Domain>::ClassSet ClassSet;
 
         private :
             Requirements _requirements;

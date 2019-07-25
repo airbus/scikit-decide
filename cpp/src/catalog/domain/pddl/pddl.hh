@@ -8,6 +8,7 @@
 #include "term.hh"
 #include "predicate.hh"
 #include "function.hh"
+#include "derived_predicate.hh"
 #include "class.hh"
 #include "operator.hh"
 #include "constraint_formula.hh"

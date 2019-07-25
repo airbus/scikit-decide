@@ -113,9 +113,27 @@ void inherit_predicate_container(Instance& instance) {
                                   py::arg("predicate"), py::return_value_policy::reference_internal)
             .def("get_predicate", (const Domain::PredicatePtr& (PredicateContainer::*)(const Domain::PredicatePtr&) const) &PredicateContainer::get_predicate,
                                   py::arg("predicate"), py::return_value_policy::reference_internal)
-            .def("get_predicates", &PredicateContainer::get_predicates,
-                                  py::return_value_policy::reference_internal)
+            .def("get_predicates", &PredicateContainer::get_predicates, py::return_value_policy::reference_internal)
             .def("__str__", (std::string (PredicateContainer::*)() const) &PredicateContainer::print);
+}
+
+template <typename Instance>
+void inherit_derived_predicate_container(Instance& instance) {
+    using DerivedPredicateContainer = typename Instance::type;
+    instance.def("add_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainer::*)(const std::string&)) &DerivedPredicateContainer::add_derived_predicate,
+                                           py::arg("derived_predicate"), py::return_value_policy::reference_internal)
+            .def("add_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainer::*)(const Domain::DerivedPredicatePtr&)) &DerivedPredicateContainer::add_derived_predicate,
+                                           py::arg("derived_predicate"), py::return_value_policy::reference_internal)
+            .def("remove_derived_predicate", (void (DerivedPredicateContainer::*)(const std::string&)) &DerivedPredicateContainer::remove_derived_predicate,
+                                              py::arg("derived_predicate"))
+            .def("remove_derived_predicate", (void (DerivedPredicateContainer::*)(const Domain::DerivedPredicatePtr&)) &DerivedPredicateContainer::remove_derived_predicate,
+                                              py::arg("derived_predicate"))
+            .def("get_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainer::*)(const std::string&) const) &DerivedPredicateContainer::get_derived_predicate,
+                                           py::arg("derived_predicate"), py::return_value_policy::reference_internal)
+            .def("get_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainer::*)(const Domain::DerivedPredicatePtr&) const) &DerivedPredicateContainer::get_derived_predicate,
+                                           py::arg("derived_predicate"), py::return_value_policy::reference_internal)
+            .def("get_derived_predicates", &DerivedPredicateContainer::get_derived_predicates, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (DerivedPredicateContainer::*)() const) &DerivedPredicateContainer::print);
 }
 
 template <typename Instance>
@@ -133,9 +151,27 @@ void inherit_function_container(Instance& instance) {
                                   py::arg("function"), py::return_value_policy::reference_internal)
             .def("get_function", (const Domain::FunctionPtr& (FunctionContainer::*)(const Domain::FunctionPtr&) const) &FunctionContainer::get_function,
                                   py::arg("function"), py::return_value_policy::reference_internal)
-            .def("get_functions", &FunctionContainer::get_functions,
-                                  py::return_value_policy::reference_internal)
+            .def("get_functions", &FunctionContainer::get_functions, py::return_value_policy::reference_internal)
             .def("__str__", (std::string (FunctionContainer::*)() const) &FunctionContainer::print);
+}
+
+template <typename Instance>
+void inherit_class_container(Instance& instance) {
+    using ClassContainer = typename Instance::type;
+    instance.def("add_class", (const Domain::ClassPtr& (ClassContainer::*)(const std::string&)) &ClassContainer::add_class,
+                                     py::arg("class"), py::return_value_policy::reference_internal)
+            .def("add_class", (const Domain::ClassPtr& (ClassContainer::*)(const Domain::ClassPtr&)) &ClassContainer::add_class,
+                                     py::arg("class"), py::return_value_policy::reference_internal)
+            .def("remove_class", (void (ClassContainer::*)(const std::string&)) &ClassContainer::remove_class,
+                                     py::arg("class"))
+            .def("remove_class", (void (ClassContainer::*)(const Domain::ClassPtr&)) &ClassContainer::remove_class,
+                                     py::arg("class"))
+            .def("get_class", (const Domain::ClassPtr& (ClassContainer::*)(const std::string&) const) &ClassContainer::get_class,
+                                  py::arg("class"), py::return_value_policy::reference_internal)
+            .def("get_class", (const Domain::ClassPtr& (ClassContainer::*)(const Domain::ClassPtr&) const) &ClassContainer::get_class,
+                                  py::arg("class"), py::return_value_policy::reference_internal)
+            .def("get_classes", &ClassContainer::get_classes, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (ClassContainer::*)() const) &ClassContainer::print);
 }
 
 template <typename Instance>
@@ -221,7 +257,9 @@ void init_pypddl(py::module& m) {
     inherit_type_container(py_domain);
     inherit_object_container(py_domain);
     inherit_predicate_container(py_domain);
+    inherit_derived_predicate_container(py_domain);
     inherit_function_container(py_domain);
+    inherit_class_container(py_domain);
         py_domain
             .def(py::init<>())
             .def("set_name", &Domain::set_name, py::arg("name"))
@@ -322,6 +360,15 @@ void init_pypddl(py::module& m) {
     inherit_variable_container(py_function);
         py_function
             .def(py::init<std::string>(), py::arg("name"))
+        ;
+    
+    py::class_<DerivedPredicate, DerivedPredicate::Ptr> py_derived_predicate(m, "_PDDL_DerivedPredicate_");
+        py_derived_predicate
+            .def(py::init<>())
+            .def("set_predicate", &DerivedPredicate::set_predicate, py::arg("predicate"))
+            .def("get_predicate", &DerivedPredicate::get_predicate, py::return_value_policy::reference_internal)
+            .def("set_formula", &DerivedPredicate::set_formula, py::arg("formula"))
+            .def("get_formula", &DerivedPredicate::get_formula, py::return_value_policy::reference_internal)
         ;
     
     py::class_<Class, Class::Ptr> py_class(m, "_PDDL_Class_");
