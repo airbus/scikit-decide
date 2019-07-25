@@ -60,10 +60,10 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
 
-
+# TODO: import the following from python/setup.py
 setup(
     name='airlaps',
-    version='0.0.2',
+    version='0.1.0',
     package_dir = {'': 'python'},
     packages=[
         'airlaps',
@@ -76,22 +76,19 @@ setup(
         'airlaps.wrappers',
         'airlaps.wrappers.space',
         'airlaps.wrappers.domain',
-        'airlaps.wrappers.solver',
-        'airlaps.wrappers.distribution'
-        ],
+        'airlaps.wrappers.solver'
+    ],
     extras_require={
-            'wrappers': [
-                'scipy==1.1.0',
-                'gym==0.12.1',
-                'stable-baselines==2.5.0',
-                'tensorflow==1.12.0'
-            ],
+        'wrappers': [
+            'gym==0.13.0',
+            'stable-baselines==2.6.0',
+            'tensorflow==1.14.0'
+        ],
     },
     url='www.airbus.com',
-    license='NA',
-    author='airbus',
-    author_email='airlaps@airbus.com',
-    description='AIRLAPS is an AI toolbox for Reinforcement Learning, Automated Planning and Scheduling.',
+    license='MIT',
+    author='Airbus',
+    description='AIRLAPS is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.',
     ext_modules=[CMakeExtension(name='airlaps/airlaps', sourcedir='cpp')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,

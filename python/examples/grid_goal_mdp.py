@@ -1,4 +1,4 @@
-# TODO: Update this example according to latest changes
+# TODO: update to new API or remove (quite redundant with other examples)
 
 from enum import Enum
 

@@ -1,32 +1,49 @@
+from __future__ import annotations
+
 import functools
-from typing import Generic, List
+from typing import List
 
-from airlaps.core import T_state, T_event, Constraint
+from airlaps.core import D, Constraint
 
-__all__ = ['ConstrainedDomain']
+__all__ = ['Constrained']
 
 
-class ConstrainedDomain(Generic[T_state, T_event]):
+class Constrained:
     """A domain must inherit this class if it has constraints."""
 
-    @functools.lru_cache()
-    def get_constraints(self) -> List[Constraint[T_state, T_event]]:
+    def get_constraints(self) -> List[
+            Constraint[D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state]]:
         """Get the (cached) domain constraints.
 
-        By default, #ConstrainedDomain.get_constraints() internally calls #ConstrainedDomain._get_constraints_() the
-        first time and automatically caches its value to make future calls more efficient (since the list of constraints
-        is assumed to be constant).
+        By default, #Constrained.get_constraints() internally calls #Constrained._get_constraints_() the first time and
+        automatically caches its value to make future calls more efficient (since the list of constraints is assumed to
+        be constant).
+
+        # Returns
+        The list of constraints.
+        """
+        return self._get_constraints()
+
+    @functools.lru_cache()
+    def _get_constraints(self) -> List[
+            Constraint[D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state]]:
+        """Get the (cached) domain constraints.
+
+        By default, #Constrained._get_constraints() internally calls #Constrained._get_constraints_() the first time and
+        automatically caches its value to make future calls more efficient (since the list of constraints is assumed to
+        be constant).
 
         # Returns
         The list of constraints.
         """
         return self._get_constraints_()
 
-    def _get_constraints_(self) -> List[Constraint[T_state, T_event]]:
+    def _get_constraints_(self) -> List[
+            Constraint[D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state]]:
         """Get the domain constraints.
 
-        This is a helper function called by default from #ConstrainedDomain.get_constraints(), the difference being that
-        the result is not cached here.
+        This is a helper function called by default from #Constrained.get_constraints(), the difference being that the
+        result is not cached here.
 
         !!! tip
             The underscore at the end of this function's name is a convention to remind that its result should be

@@ -2,11 +2,11 @@
 
 ## Installation
 
-### 1. Make sure to have a Python 3.6 environment (at least 3.6.1)
+### 1. Make sure to have a Python 3.7+ environment
 
 The use of a virtual environment for AIRLAPS is recommended, e.g. by using [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install):
 
-    conda create --name airlaps python=3.6
+    conda create --name airlaps python=3.7
     conda activate airlaps
 
 ### 2. Install the AIRLAPS library

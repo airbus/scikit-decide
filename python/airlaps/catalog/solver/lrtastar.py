@@ -1,3 +1,5 @@
+# TODO: update to new API
+
 from typing import Optional, Callable, Any, Iterable
 
 from airlaps import Memory, T_observation, T_event, Domain
