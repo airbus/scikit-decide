@@ -1,37 +1,51 @@
+from __future__ import annotations
+
 import functools
-from typing import Generic
+from typing import Union, Optional
 
-from airlaps.core import T_state, T_observation, T_event, Space, Distribution, SingleValueDistribution
+from airlaps.core import D, Space, Distribution, SingleValueDistribution
 
-__all__ = ['PartiallyObservableDomain', 'TransformedObservableDomain', 'FullyObservableDomain']
+__all__ = ['PartiallyObservable', 'TransformedObservable', 'FullyObservable']
 
 
-class PartiallyObservableDomain(Generic[T_state, T_observation, T_event]):
+class PartiallyObservable:
     """A domain must inherit this class if it is partially observable.
 
     "Partially observable" means that the observation provided to the agent is computed from (but generally not equal
     to) the internal state of the domain. Additionally, according to literature, a partially observable domain must
-    provide the probability distribution of the observation given a state and event.
+    provide the probability distribution of the observation given a state and action.
     """
 
-    @functools.lru_cache()
-    def get_observation_space(self) -> Space[T_observation]:
+    def get_observation_space(self) -> D.T_agent[Space[D.T_observation]]:
         """Get the (cached) observation space (finite or infinite set).
 
-        By default, #PartiallyObservableDomain.get_observation_space() internally
-        calls #PartiallyObservableDomain._get_observation_space() the first time and automatically caches its value to
-        make future calls more efficient (since the observation space is assumed to be constant).
+        By default, #PartiallyObservable.get_observation_space() internally
+        calls #PartiallyObservable._get_observation_space_() the first time and automatically caches its value to make
+        future calls more efficient (since the observation space is assumed to be constant).
+
+        # Returns
+        The observation space.
+        """
+        return self._get_observation_space()
+
+    @functools.lru_cache()
+    def _get_observation_space(self) -> D.T_agent[Space[D.T_observation]]:
+        """Get the (cached) observation space (finite or infinite set).
+
+        By default, #PartiallyObservable._get_observation_space() internally
+        calls #PartiallyObservable._get_observation_space_() the first time and automatically caches its value to make
+        future calls more efficient (since the observation space is assumed to be constant).
 
         # Returns
         The observation space.
         """
         return self._get_observation_space_()
 
-    def _get_observation_space_(self) -> Space[T_observation]:
+    def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
         """Get the observation space (finite or infinite set).
 
-        This is a helper function called by default from #PartiallyObservableDomain.get_observation_space(), the
-        difference being that the result is not cached here.
+        This is a helper function called by default from #PartiallyObservable._get_observation_space(), the difference
+        being that the result is not cached here.
 
         !!! tip
             The underscore at the end of this function's name is a convention to remind that its result should be
@@ -42,13 +56,13 @@ class PartiallyObservableDomain(Generic[T_state, T_observation, T_event]):
         """
         raise NotImplementedError
 
-    def is_observation(self, observation: T_observation) -> bool:
+    def is_observation(self, observation: D.T_agent[D.T_observation]) -> bool:
         """Check that an observation indeed belongs to the domain observation space.
 
         !!! tip
             By default, this function is implemented using the #airlaps.core.Space.contains() function on the domain
-            observation space provided by #PartiallyObservableDomain.get_observation_space(), but it can be overwritten
-            for faster implementations.
+            observation space provided by #PartiallyObservable.get_observation_space(), but it can be overridden for
+            faster implementations.
 
         # Parameters
         observation: The observation to consider.
@@ -56,17 +70,56 @@ class PartiallyObservableDomain(Generic[T_state, T_observation, T_event]):
         # Returns
         True if the observation belongs to the domain observation space (False otherwise).
         """
-        return self.get_observation_space().contains(observation)
+        return self._is_observation(observation)
 
-    def get_observation_distribution(self, state: T_state, event: T_event) -> Distribution[T_observation]:
-        """Get the probability distribution of the observation given a state and event.
+    def _is_observation(self, observation: D.T_agent[D.T_observation]) -> bool:
+        """Check that an observation indeed belongs to the domain observation space.
 
-        In mathematical terms (discrete case), if the event is an action $a$, this function represents: $P(O|s, a)$,
+        !!! tip
+            By default, this function is implemented using the #airlaps.core.Space.contains() function on the domain
+            observation space provided by #PartiallyObservable._get_observation_space(), but it can be overridden for
+            faster implementations.
+
+        # Parameters
+        observation: The observation to consider.
+
+        # Returns
+        True if the observation belongs to the domain observation space (False otherwise).
+        """
+        observation_space = self._get_observation_space()
+        if self.T_agent == Union:
+            return observation_space.contains(observation)
+        else:  # StrDict
+            return all(observation_space[k].contains(v) for k, v in observation.items())
+
+    def get_observation_distribution(self, state: D.T_state,
+                                     action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> Distribution[
+            D.T_agent[D.T_observation]]:
+        """Get the probability distribution of the observation given a state and action.
+
+        In mathematical terms (discrete case), given an action $a$, this function represents: $P(O|s, a)$,
         where $O$ is the random variable of the observation.
 
         # Parameters
         state: The state to be observed.
-        event: The last applied event.
+        action: The last applied action (or None if the state is an initial state).
+
+        # Returns
+        The probability distribution of the observation.
+        """
+        return self._get_observation_distribution(state, action)
+
+    def _get_observation_distribution(self, state: D.T_state,
+                                      action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> Distribution[
+            D.T_agent[D.T_observation]]:
+        """Get the probability distribution of the observation given a state and action.
+
+        In mathematical terms (discrete case), given an action $a$, this function represents: $P(O|s, a)$,
+        where $O$ is the random variable of the observation.
+
+        # Parameters
+        state: The state to be observed.
+        action: The last applied action (or None if the state is an initial state).
 
         # Returns
         The probability distribution of the observation.
@@ -74,22 +127,38 @@ class PartiallyObservableDomain(Generic[T_state, T_observation, T_event]):
         raise NotImplementedError
 
 
-class TransformedObservableDomain(PartiallyObservableDomain[T_state, T_observation, T_event]):
+class TransformedObservable(PartiallyObservable):
     """A domain must inherit this class if it is transformed observable.
 
     "Transformed observable" means that the observation provided to the agent is deterministically computed from (but
     generally not equal to) the internal state of the domain.
     """
 
-    def get_observation_distribution(self, state: T_state, event: T_event) -> Distribution[T_observation]:
-        return SingleValueDistribution(self.get_observation(state, event))
+    def _get_observation_distribution(self, state: D.T_state,
+                                      action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> Distribution[
+            D.T_agent[D.T_observation]]:
+        return SingleValueDistribution(self._get_observation(state, action))
 
-    def get_observation(self, state: T_state, event: T_event) -> T_observation:
-        """Get the deterministic observation given a state and event.
+    def get_observation(self, state: D.T_state, action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> \
+            D.T_agent[D.T_observation]:
+        """Get the deterministic observation given a state and action.
 
         # Parameters
         state: The state to be observed.
-        event: The last applied event.
+        action: The last applied action (or None if the state is an initial state).
+
+        # Returns
+        The probability distribution of the observation.
+        """
+        return self._get_observation(state, action)
+
+    def _get_observation(self, state: D.T_state, action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> \
+            D.T_agent[D.T_observation]:
+        """Get the deterministic observation given a state and action.
+
+        # Parameters
+        state: The state to be observed.
+        action: The last applied action (or None if the state is an initial state).
 
         # Returns
         The probability distribution of the observation.
@@ -97,15 +166,16 @@ class TransformedObservableDomain(PartiallyObservableDomain[T_state, T_observati
         raise NotImplementedError
 
 
-class FullyObservableDomain(TransformedObservableDomain[T_state, T_state, T_event], Generic[T_state, T_event]):
+class FullyObservable(TransformedObservable):
     """A domain must inherit this class if it is fully observable.
 
     "Fully observable" means that the observation provided to the agent is equal to the internal state of the domain.
 
     !!! warning
-        In the case of fully observable domains, make sure that the observation type ~T_observation is equal to the
-        state type ~T_state.
+        In the case of fully observable domains, make sure that the observation type D.T_observation is equal to the
+        state type D.T_state.
     """
 
-    def get_observation(self, state: T_state, event: T_event) -> T_state:
+    def _get_observation(self, state: D.T_state, action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> \
+            D.T_agent[D.T_observation]:
         return state

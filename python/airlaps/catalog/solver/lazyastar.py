@@ -1,70 +1,56 @@
+from __future__ import annotations
+
 from heapq import heappush, heappop
 from itertools import count
-from typing import Optional, Callable, Any, Iterable
+from typing import Optional, Callable
 
-from airlaps import Memory, T_observation, T_event, Domain
-from airlaps.builders.domain import EnumerableTransitionDomain, ActionDomain, GoalDomain, \
-    DeterministicInitializedDomain, MarkovianDomain, PositiveCostDomain
-from airlaps.builders.solver import DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver
+from airlaps import Domain, Solver
+from airlaps.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, Goals, Markovian, \
+    FullyObservable, PositiveCosts
+from airlaps.builders.solver import DeterministicPolicies, Utilities
+
+__all__ = ['LazyAstar']
 
 
-class LazyAstar(DomainSolver, DeterministicPolicySolver, SolutionSolver, UtilitySolver):
+# TODO: remove Markovian req?
+class D(Domain, SingleAgent, Sequential, DeterministicTransitions, Actions, Goals, Markovian, FullyObservable,
+        PositiveCosts):
+    pass
 
-    def __init__(self, heuristic: Optional[Callable[[T_observation, Domain], float]] = None,
-                 weight: float = 1.) -> None:
+
+class LazyAstar(Solver, DeterministicPolicies, Utilities):
+    T_domain = D
+
+    def __init__(self, from_state: Optional[D.T_state] = None,
+                 heuristic: Optional[Callable[[D.T_state, Domain], float]] = None, weight: float = 1.,
+                 verbose: bool = False, render: bool = False) -> None:
+
+        self._from_state = from_state
         self._heuristic = (lambda _, __: 0.) if heuristic is None else heuristic
         self._weight = weight
-        self.values = {}
+        self._verbose = verbose
+        self._render = render
+        self._values = {}
         self._plan = []
 
-    def _reset(self) -> None:
-        self._domain = self._new_domain()
+    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+        self._domain = domain_factory()
 
         def extender(node, label, explored):
-            memory = Memory([node])
-            # memory = node  # works also but slightly less efficiently (since node is wrapped in new Memory every time)
-            neigh = [(self._domain.get_next_state(memory, a), a)
-                     for a in self._domain.get_applicable_actions(memory).get_elements()]
+            neigh = [(self._domain.get_next_state(node, a), a)
+                     for a in self._domain.get_applicable_actions(node).get_elements()]
             neigh_not_explored = [(n, a) for n, a in neigh if n not in explored]
-            cost_labels = [(n, self._domain.get_transition_value(memory, a, n).cost, {'action': a})
+            cost_labels = [(n, self._domain.get_transition_value(node, a, n).cost, {'action': a})
                            for n, a in neigh_not_explored]
             return cost_labels
 
-        self._extender = extender
-
-    def get_utility(self, memory: Memory[T_observation]) -> float:
-        state = memory[-1]
-        if state not in self.values:
-            return self._heuristic(state, self._domain)
-        return self.values[state]
-
-    def get_domain_requirements(self) -> Iterable[type]:
-        # TODO: relax constraint on "DeterministicInitializedDomain" (since the algo can have several sources) and
-        #  "MarkovianDomain" (useful for technical reasons: memory is not hashable whereas we assume here that current
-        #  state is)?
-        return [EnumerableTransitionDomain, ActionDomain, GoalDomain, DeterministicInitializedDomain, MarkovianDomain,
-                PositiveCostDomain]
-
-    def _check_domain(self, domain: Domain) -> bool:
-        return True  # TODO: check that the goal space is an EnumerableSpace (using "from inspect import signature")
-
-    def get_next_action(self, memory: Memory[T_observation]) -> T_event:
-        current_state = memory[-1]
-        return self._policy[current_state]
-
-    def is_policy_defined_for(self, memory: Memory[T_observation]) -> bool:
-        current_state = memory[-1]
-        return current_state in self._policy
-
-    def solve(self, from_observation: Optional[Memory[T_observation]] = None,
-              on_update: Optional[Callable[..., bool]] = None, max_time: Optional[float] = None,
-              **kwargs: Any) -> tuple:
-        assert from_observation is not None  # TODO: if None get internal domain memory?
-        verbose = kwargs.get('verbose', False)
-        render = kwargs.get('render', False)
         push = heappush
         pop = heappop
-        sources = [from_observation[-1]]
+        if self._from_state is None:
+            # get initial observation from domain (assuming DeterministicInitialized)
+            sources = [self._domain.get_initial_state()]
+        else:
+            sources = [self._from_state]
         # targets = list(self._domain.get_goals().get_elements())
 
         # The queue is the OPEN list.
@@ -75,8 +61,8 @@ class LazyAstar(DomainSolver, DeterministicPolicySolver, SolutionSolver, Utility
         # priority and is guaranteed unique for all nodes in the graph.
         c = count()
 
-        initial_label = {source: None for source in
-                         sources}  # TODO: check if necessary (a priori used to keep additional infos)
+        # TODO: check if necessary (a priori used to keep additional infos)
+        initial_label = {source: None for source in sources}
         # Maps enqueued nodes to distance of discovered paths and the
         # computed heuristics to target. We avoid computing the heuristics
         # more than once and inserting the node into the queue too many times.
@@ -92,9 +78,9 @@ class LazyAstar(DomainSolver, DeterministicPolicySolver, SolutionSolver, Utility
         while queue:
             # Pop the smallest item from queue, i.e. with smallest f-value
             estim_total, __, curnode, dist, parent, label = pop(queue)
-            if render:
+            if self._render:
                 self._domain.render(curnode)
-            if verbose:
+            if self._verbose:
                 print(curnode, f'- cumulated cost: {dist} - estimated total cost: {estim_total}')
             if self._domain.is_goal(curnode):
                 path = [(parent, label),
@@ -109,7 +95,7 @@ class LazyAstar(DomainSolver, DeterministicPolicySolver, SolutionSolver, Utility
             if curnode in explored:
                 continue
             explored[curnode] = (parent, label)
-            for neighbor, cost, lbl in self._extender(curnode, label, explored):
+            for neighbor, cost, lbl in extender(curnode, label, explored):
                 if neighbor in explored:
                     continue
                 ncost = dist + cost
@@ -129,9 +115,18 @@ class LazyAstar(DomainSolver, DeterministicPolicySolver, SolutionSolver, Utility
         self._policy = {}
         for node, label in path:
             self._policy[node] = label['action'] if label is not None else None
-            self.values[node] = estim_total - enqueued[node][0]
+            self._values[node] = estim_total - enqueued[node][0]
             if self._policy[node] is not None:
                 self._plan.append(self._policy[node])
-        return estim_total, path
+        # return estim_total, path  # TODO: find a way to expose these things through public API?
 
-        # return [], 0, 0, len(enqueued)
+    def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+        return self._policy[observation]
+
+    def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
+        return observation in self._policy
+
+    def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
+        if observation not in self._values:
+            return self._heuristic(observation, self._domain)
+        return self._values[observation]

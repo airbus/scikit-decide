@@ -1,23 +1,36 @@
-from typing import Any, Generic, Optional, Union
+from __future__ import annotations
 
-from airlaps.core import T_state, Memory
+from typing import Any, Optional
 
-__all__ = ['RenderableDomain']
+from airlaps.core import D
+
+__all__ = ['Renderable']
 
 
-class RenderableDomain(Generic[T_state]):
+class Renderable:
     """A domain must inherit this class if it can be rendered with any kind of visualization."""
 
-    def render(self, memory: Optional[Union[Memory[T_state], T_state]] = None, **kwargs: Any) -> Any:
+    def render(self, memory: Optional[D.T_memory[D.T_state]] = None, **kwargs: Any) -> Any:
         """Compute a visual render of the given memory (state or history), or the internal one if omitted.
 
-        By default, #RenderableDomain.render() provides some boilerplate code and internally
-        calls #RenderableDomain._render(). The boilerplate code automatically passes the #_memory attribute instead of
-        the memory parameter whenever the latter is None.
+        By default, #Renderable.render() provides some boilerplate code and internally calls #Renderable._render(). The
+        boilerplate code automatically passes the #_memory attribute instead of the memory parameter whenever the latter
+        is None.
 
-        !!! tip
-            If a state is passed as memory parameter, the boilerplate code will automatically wrap it in a Memory first
-            (initialized according to the domain's memory characteristic).
+        # Parameters
+        memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
+
+        # Returns
+        A render (e.g. image) or nothing (if the function handles the display directly).
+        """
+        return self._render(memory, **kwargs)
+
+    def _render(self, memory: Optional[D.T_memory[D.T_state]] = None, **kwargs: Any) -> Any:
+        """Compute a visual render of the given memory (state or history), or the internal one if omitted.
+
+        By default, #Renderable._render() provides some boilerplate code and internally
+        calls #Renderable._render_from(). The boilerplate code automatically passes the #_memory attribute instead of
+        the memory parameter whenever the latter is None.
 
         # Parameters
         memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
@@ -27,15 +40,13 @@ class RenderableDomain(Generic[T_state]):
         """
         if memory is None:
             memory = self._memory
-        elif type(memory) is not Memory:
-            memory = self._init_memory([memory])
-        return self._render(memory, **kwargs)
+        return self._render_from(memory, **kwargs)
 
-    def _render(self, memory: Memory[T_state], **kwargs: Any) -> Any:
+    def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
         """Compute a visual render of the given memory (state or history).
 
-        This is a helper function called by default from #RenderableDomain.render(), the difference being that the
-        memory parameter is mandatory and guaranteed to be of type Memory here.
+        This is a helper function called by default from #Renderable._render(), the difference being that the
+        memory parameter is mandatory here.
 
         # Parameters
         memory: The memory to consider.

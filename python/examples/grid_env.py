@@ -1,12 +1,11 @@
-# TODO: Update this example according to latest changes
+# TODO: check update to new API
 
 import random
 from enum import Enum
 
 from airlaps import RLDomain, TransitionOutcome, TransitionValue, nocopy
-from airlaps.builders.domain import FullyObservableDomain
-from airlaps.dataclasses import dataclass, \
-    replace  # TODO: replace 'airlaps.dataclasses' by 'dataclasses' once transitioned to Python 3.7
+from airlaps.builders.domain import FullyObservable
+from dataclasses import dataclass, replace
 
 
 # @nocopy avoids copy to optimize memory since State is recursively immutable
@@ -34,7 +33,7 @@ T_value = float  # Type of transition values (rewards or costs)
 T_info = None  # Type of additional information given as part of an environment outcome
 
 
-class GridEnvDomain(RLDomain, FullyObservableDomain):
+class GridEnvDomain(RLDomain, FullyObservable):
 
     def __init__(self, n_rows: int, n_cols: int) -> None:
         self.n_rows = n_rows

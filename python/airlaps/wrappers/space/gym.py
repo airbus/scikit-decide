@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import EnumMeta
 from typing import Union, Generic, Iterable, Sequence, Tuple, List, Dict
 
@@ -5,15 +7,13 @@ import gym
 import gym.spaces as gym_spaces
 import numpy as np
 
-from airlaps.core import T, EnumerableSpace, SamplableSpace, SerializableSpace
-from airlaps.dataclasses import \
-    asdict  # TODO: replace 'airlaps.dataclasses' by 'dataclasses' once transitioned to Python 3.7
+from airlaps import T, EnumerableSpace, SamplableSpace, SerializableSpace
+from dataclasses import asdict
 
 __all__ = ['GymSpace', 'MultiDiscreteSpace', 'EnumSpace', 'ListSpace', 'DataSpace']
 
 
-# TODO: update with latest Gym Env spec (with seed & close)
-class GymSpace(SamplableSpace[T], SerializableSpace[T], Generic[T]):
+class GymSpace(Generic[T], SamplableSpace[T], SerializableSpace[T]):
     """This class wraps an OpenAI Gym space (gym.spaces) as an AIRLAPS space.
 
     !!! warning
@@ -124,7 +124,7 @@ class DictSpace(GymSpace[T]):
         super().__init__(gym_space=gym_spaces.Dict(spaces, **spaces_kwargs))
 
 
-class EnumSpace(GymSpace[T], EnumerableSpace[T], Generic[T]):
+class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
     """This class creates an OpenAI Gym Discrete space (gym.spaces.Discrete) from an enumeration and wraps it as an
     AIRLAPS enumerable space.
 
@@ -173,7 +173,7 @@ class EnumSpace(GymSpace[T], EnumerableSpace[T], Generic[T]):
         return [self._list_enum[sample] for sample in sample_n]
 
 
-class ListSpace(GymSpace[T], EnumerableSpace[T], Generic[T]):
+class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
     """This class creates an OpenAI Gym Discrete space (gym.spaces.Discrete) from a list of elements and wraps it as an
     AIRLAPS enumerable space.
 

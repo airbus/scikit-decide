@@ -1,3 +1,5 @@
+# TODO: remove (not useful anymore with new API, since embedded in rollout util)
+
 from typing import Optional, Callable, Any, Iterable
 
 from airlaps import T_observation, T_event, Distribution, ImplicitDistribution, Memory, Domain
