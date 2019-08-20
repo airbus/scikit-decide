@@ -364,7 +364,7 @@ void init_pypddl(py::module& m) {
     
     py::class_<DerivedPredicate, DerivedPredicate::Ptr> py_derived_predicate(m, "_PDDL_DerivedPredicate_");
         py_derived_predicate
-            .def(py::init<>())
+            .def(py::init<std::string>(), py::arg("name"))
             .def("set_predicate", &DerivedPredicate::set_predicate, py::arg("predicate"))
             .def("get_predicate", &DerivedPredicate::get_predicate, py::return_value_policy::reference_internal)
             .def("set_formula", &DerivedPredicate::set_formula, py::arg("formula"))
@@ -380,33 +380,33 @@ void init_pypddl(py::module& m) {
     
     py::class_<Formula, Formula::Ptr> py_formula(m, "_PDDL_Formula_");
 
-    py::enum_<ConstraintFormula::Sort>(m, "_PDDL_ConstraintFormulaSort_", py::arithmetic())
-        .value("ATEND", ConstraintFormula::Sort::E_ATEND)
-        .value("ALWAYS", ConstraintFormula::Sort::E_ALWAYS)
-        .value("SOMETIME", ConstraintFormula::Sort::E_SOMETIME)
-        .value("WITHIN", ConstraintFormula::Sort::E_WITHIN)
-        .value("ATMOSTONCE", ConstraintFormula::Sort::E_ATMOSTONCE)
-        .value("SOMETIMEAFTER", ConstraintFormula::Sort::E_SOMETIMEAFTER)
-        .value("SOMETIMEBEFORE", ConstraintFormula::Sort::E_SOMETIMEBEFORE)
-        .value("ALWAYSWITHIN", ConstraintFormula::Sort::E_ALWAYSWITHIN)
-        .value("HOLDDURING", ConstraintFormula::Sort::E_HOLDDURING)
-        .value("HOLDAFTER", ConstraintFormula::Sort::E_HOLDAFTER)
-        .export_values();
+    // py::enum_<ConstraintFormula::Sort>(m, "_PDDL_ConstraintFormulaSort_", py::arithmetic())
+    //     .value("ATEND", ConstraintFormula::Sort::E_ATEND)
+    //     .value("ALWAYS", ConstraintFormula::Sort::E_ALWAYS)
+    //     .value("SOMETIME", ConstraintFormula::Sort::E_SOMETIME)
+    //     .value("WITHIN", ConstraintFormula::Sort::E_WITHIN)
+    //     .value("ATMOSTONCE", ConstraintFormula::Sort::E_ATMOSTONCE)
+    //     .value("SOMETIMEAFTER", ConstraintFormula::Sort::E_SOMETIMEAFTER)
+    //     .value("SOMETIMEBEFORE", ConstraintFormula::Sort::E_SOMETIMEBEFORE)
+    //     .value("ALWAYSWITHIN", ConstraintFormula::Sort::E_ALWAYSWITHIN)
+    //     .value("HOLDDURING", ConstraintFormula::Sort::E_HOLDDURING)
+    //     .value("HOLDAFTER", ConstraintFormula::Sort::E_HOLDAFTER)
+    //     .export_values();
     
-    py::class_<ConstraintFormula, ConstraintFormula::Ptr> py_constraint_formula(m, "_PDDL_ConstraintFormula_", py_formula);
-        py_constraint_formula
-            .def(py::init<const ConstraintFormula::Sort&>(), py::arg("sort"))
-            .def("get_sort", &ConstraintFormula::get_sort)
-            .def("set_requirement", &ConstraintFormula::set_requirement, py::arg("requirement"))
-            .def("get_requirement", &ConstraintFormula::get_requirement)
-            .def("set_trigger", &ConstraintFormula::set_trigger, py::arg("trigger"))
-            .def("get_trigger", &ConstraintFormula::get_trigger)
-            .def("set_from", &ConstraintFormula::set_from, py::arg("from"))
-            .def("get_from", &ConstraintFormula::get_from)
-            .def("set_deadline", &ConstraintFormula::set_deadline, py::arg("deadline"))
-            .def("get_deadline", &ConstraintFormula::get_deadline)
-            .def("__str__", (std::string (ConstraintFormula::*)() const) &ConstraintFormula::print)
-        ;
+    // py::class_<ConstraintFormula, ConstraintFormula::Ptr> py_constraint_formula(m, "_PDDL_ConstraintFormula_", py_formula);
+    //     py_constraint_formula
+    //         .def(py::init<const ConstraintFormula::Sort&>(), py::arg("sort"))
+    //         .def("get_sort", &ConstraintFormula::get_sort)
+    //         .def("set_requirement", &ConstraintFormula::set_requirement, py::arg("requirement"))
+    //         .def("get_requirement", &ConstraintFormula::get_requirement)
+    //         .def("set_trigger", &ConstraintFormula::set_trigger, py::arg("trigger"))
+    //         .def("get_trigger", &ConstraintFormula::get_trigger)
+    //         .def("set_from", &ConstraintFormula::set_from, py::arg("from"))
+    //         .def("get_from", &ConstraintFormula::get_from)
+    //         .def("set_deadline", &ConstraintFormula::set_deadline, py::arg("deadline"))
+    //         .def("get_deadline", &ConstraintFormula::get_deadline)
+    //         .def("__str__", (std::string (ConstraintFormula::*)() const) &ConstraintFormula::print)
+    //     ;
     
     py::class_<Preference, Preference::Ptr> py_preference(m, "_PDDL_Preference_", py_formula);
     inherit_identifier(py_preference);

@@ -14,8 +14,6 @@ namespace airlaps {
 
             typedef std::shared_ptr<DerivedPredicate> Ptr;
 
-            DerivedPredicate();
-
             DerivedPredicate(const std::string& name) {
                 _predicate = std::make_shared<Predicate>(name);
             }

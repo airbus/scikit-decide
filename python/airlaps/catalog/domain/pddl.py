@@ -16,7 +16,7 @@ from __airlaps import _PDDL_UniversalFormula_ as UniversalFormula
 from __airlaps import _PDDL_ExistentialFormula_ as ExistentialFormula
 from __airlaps import _PDDL_ConjunctionFormula_ as ConjunctionFormula
 from __airlaps import _PDDL_DisjunctionFormula_ as DisjunctionFormula
-from __airlaps import _PDDL_Implyformula_ as ImplyFormula
+from __airlaps import _PDDL_ImplyFormula_ as ImplyFormula
 from __airlaps import _PDDL_NegationFormula_ as NegationFormula
 from __airlaps import _PDDL_AtStartFormula_ as AtStartFormula
 from __airlaps import _PDDL_AtEndFormula_ as AtEndFormula
