@@ -4,14 +4,13 @@ from typing import NamedTuple, Optional
 from stable_baselines import PPO2
 from stable_baselines.common.policies import MlpPolicy
 
-from airlaps import DeterministicPlanningDomain, TransitionValue, Space
+from airlaps import hub, DeterministicPlanningDomain, TransitionValue, Space
 from airlaps.builders.domain import UnrestrictedActions
-# from airlaps.catalog.solver.greedy import Greedy
-# from airlaps.catalog.solver.iw import IW
-from airlaps.catalog.solver.lazyastar import LazyAstar
 from airlaps.utils import rollout
-from airlaps.wrappers.solver.baselines import BaselinesSolver
-from airlaps.wrappers.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
+
+ListSpace = hub.load('ListSpace', folder='hub/space/gym')
+EnumSpace = hub.load('EnumSpace', folder='hub/space/gym')
+MultiDiscreteSpace = hub.load('MultiDiscreteSpace', folder='hub/space/gym')
 
 
 class State(NamedTuple):
@@ -82,14 +81,34 @@ class MyDomain(D):
 
 if __name__ == '__main__':
 
-    solvers = [{'name': 'Random walk', 'type': None},
-               # {'name': 'Greedy', 'type': Greedy, 'config': {}},
-               {'name': 'Lazy A* (planning)', 'type': LazyAstar, 'config': {'verbose': True}},
-               {'name': 'PPO (deep reinforcement learning)', 'type': BaselinesSolver,
-                'config': {'algo_class': PPO2, 'baselines_policy': MlpPolicy,
-                           'learn_config': {'total_timesteps': 25000}, 'verbose': 1}}]
-               # {'name': 'IW', 'type': IW, 'config': {}}]
+    try_solvers = [
 
+        # Random walk
+        {'name': 'Random walk', 'type': None},
+
+        # Lazy A* (planning)
+        {'name': 'Lazy A* (planning)',
+         'type': {'entry': 'LazyAstar', 'folder': 'hub/solver/lazy_astar'},
+         'config': {'verbose': True}},
+
+        # PPO (deep reinforcement learning)
+        {'name': 'PPO (deep reinforcement learning)',
+         'type': {'entry': 'StableBaselines', 'folder': 'hub/solver/stable_baselines'},
+         'config': {'algo_class': PPO2, 'baselines_policy': MlpPolicy, 'learn_config': {'total_timesteps': 25000},
+                    'verbose': 1}}
+    ]
+
+    # Load solvers (if installed)
+    solvers = []
+    for s in try_solvers:
+        try:
+            if s['type'] is not None:
+                s['type'] = hub.load(**s['type'])
+            solvers.append(s)
+        except Exception:
+            print(rf'/!\ Could not load {s["name"]} from hub: check installation & missing dependencies')
+
+    # Run loop to ask user input
     domain = MyDomain()  # MyDomain(5,5)
     while True:
         # Ask user input to select solver

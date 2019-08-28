@@ -1,19 +1,17 @@
 import gym
-from stable_baselines import PPO2
-from stable_baselines.common.policies import MlpPolicy
 
 from airlaps import hub
 from airlaps.utils import rollout
 
 GymDomain = hub.load('GymDomain', folder='hub/domain/gym')
-BaselinesSolver = hub.load('StableBaselines', folder='hub/solver/stable_baselines')
+CGP = hub.load('CGP', folder='hub/solver/cgp')  # Cartesian Genetic Programming
 
 
-ENV_NAME = 'CartPole-v1'
+ENV_NAME = 'MountainCarContinuous-v0'
 
 domain_factory = lambda: GymDomain(gym.make(ENV_NAME))
 domain = domain_factory()
-if BaselinesSolver.check_domain(domain):
-    solver_factory = lambda: BaselinesSolver(PPO2, MlpPolicy, learn_config={'total_timesteps': 50000}, verbose=1)
+if CGP.check_domain(domain):
+    solver_factory = lambda: CGP('TEMP', n_it=25)
     solver = GymDomain.solve_with(solver_factory, domain_factory)
     rollout(domain, solver, num_episodes=5, max_steps=1000, max_framerate=30, outcome_formatter=None)
