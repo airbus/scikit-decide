@@ -1,0 +1,22 @@
+title: 'AIRLAPS'
+description: 'AIRLAPS: AI framework for Reinforcement Learning, Automated Planning and Scheduling'
+themeConfig:
+  nav:
+  - text: 'Home'
+    link: '/'
+  - text: 'Guide'
+    link: '/guide/'
+  - text: 'Reference'
+    link: '/reference/'
+  sidebar: 'auto'
+markdown:
+  toc:
+    includeLevel:
+      - 2
+plugins:
+  # mathjax:
+  #   target: 'chtml'
+  #   presets: '\\def\\lr#1#2#3{\\left#1#2\\right#3}'
+  mathjax:
+    target: 'svg'
+    macros: {'*': '\\times'}
