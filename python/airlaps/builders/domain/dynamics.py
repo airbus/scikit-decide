@@ -14,7 +14,7 @@ class Environment:
 
     Black-box environment examples include: the real world, compiled ATARI games, etc.
 
-    !!! note
+    !!! tip
         Environment domains are typically stateful: they must keep the current state or history in their memory to
         compute next steps (automatically done by default in the #_memory attribute).
     """
@@ -27,7 +27,7 @@ class Environment:
         returns a transition outcome). The boilerplate code automatically stores next state into the #_memory attribute
         and samples a corresponding observation.
 
-        !!! note
+        !!! tip
             Whenever an existing environment needs to be wrapped instead of implemented fully in AIRLAPS (e.g. compiled
             ATARI games), it is recommended to overwrite #Environment.step() to call the external environment and not
             use the #Environment._step() helper function.
@@ -52,7 +52,7 @@ class Environment:
         calls #Environment._state_step() (which returns a transition outcome). The boilerplate code automatically stores
         next state into the #_memory attribute and samples a corresponding observation.
 
-        !!! note
+        !!! tip
             Whenever an existing environment needs to be wrapped instead of implemented fully in AIRLAPS (e.g. compiled
             ATARI games), it is recommended to overwrite #Environment._step() to call the external environment and not
             use the #Environment._state_step() helper function.
@@ -99,7 +99,7 @@ class Simulation(Environment):
     Compared to pure environment domains, simulation ones have the additional ability to sample transitions from any
     given state.
 
-    !!! note
+    !!! tip
         Simulation domains are typically stateless: they do not need to store the current state or history in memory
         since it is usually passed as parameter of their functions. By default, they only become stateful whenever they
         are used as environments (e.g. via #Initializable.reset() and #Environment.step() functions).
@@ -159,7 +159,7 @@ class Simulation(Environment):
         (which returns a transition outcome). The boilerplate code automatically samples an observation corresponding to
         the sampled next state.
 
-        !!! note
+        !!! tip
             Whenever an existing simulator needs to be wrapped instead of implemented fully in AIRLAPS (e.g. a
             simulator), it is recommended to overwrite #Simulation.sample() to call the external simulator and not use
             the #Simulation._sample() helper function.
@@ -181,7 +181,7 @@ class Simulation(Environment):
         calls #Simulation._state_sample() (which returns a transition outcome). The boilerplate code automatically
         samples an observation corresponding to the sampled next state.
 
-        !!! note
+        !!! tip
             Whenever an existing simulator needs to be wrapped instead of implemented fully in AIRLAPS (e.g. a
             simulator), it is recommended to overwrite #Simulation._sample() to call the external simulator and not use
             the #Simulation._state_sample() helper function.
@@ -222,7 +222,7 @@ class UncertainTransitions(Simulation):
     Compared to pure simulation domains, uncertain transition ones provide in addition the full probability distribution
     of next states given a memory and action.
 
-    !!! note
+    !!! tip
         Uncertain transition domains are typically stateless: they do not need to store the current state or history in
         memory since it is usually passed as parameter of their functions. By default, they only become stateful
         whenever they are used as environments (e.g. via #Initializable.reset() and #Environment.step() functions).
@@ -382,7 +382,7 @@ class EnumerableTransitions(UncertainTransitions):
     Compared to pure uncertain transition domains, enumerable transition ones guarantee that all probability
     distributions of next state are discrete.
 
-    !!! note
+    !!! tip
         Enumerable transition domains are typically stateless: they do not need to store the current state or history in
         memory since it is usually passed as parameter of their functions. By default, they only become stateful
         whenever they are used as environments (e.g. via #Initializable.reset() and #Environment.step() functions).
@@ -392,7 +392,7 @@ class EnumerableTransitions(UncertainTransitions):
                                     action: D.T_agent[D.T_concurrency[D.T_event]]) -> DiscreteDistribution[D.T_state]:
         """Get the discrete probability distribution of next state given a memory and action.
 
-        !!! note
+        !!! tip
             In the Markovian case (memory only holds last state $s$), given an action $a$, this function can
             be mathematically represented by $P(S'|s, a)$, where $S'$ is the next state random variable.
 
@@ -409,7 +409,7 @@ class EnumerableTransitions(UncertainTransitions):
                                     action: D.T_agent[D.T_concurrency[D.T_event]]) -> DiscreteDistribution[D.T_state]:
         """Get the discrete probability distribution of next state given a memory and action.
 
-        !!! note
+        !!! tip
             In the Markovian case (memory only holds last state $s$), given an action $a$, this function can
             be mathematically represented by $P(S'|s, a)$, where $S'$ is the next state random variable.
 
@@ -429,7 +429,7 @@ class DeterministicTransitions(EnumerableTransitions):
     Compared to pure enumerable transition domains, deterministic transition ones guarantee that there is only one next
     state for a given source memory (state or history) and action.
 
-    !!! note
+    !!! tip
         Deterministic transition domains are typically stateless: they do not need to store the current state or history
         in memory since it is usually passed as parameter of their functions. By default, they only become stateful
         whenever they are used as environments (e.g. via #Initializable.reset() and #Environment.step() functions).

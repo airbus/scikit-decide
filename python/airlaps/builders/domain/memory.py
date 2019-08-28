@@ -32,7 +32,7 @@ class History:
     def _get_memory_maxlen(self) -> Optional[int]:
         """Get the memory max length (or None if unbounded).
 
-        !!! note
+        !!! tip
             This function returns always None by default because the memory length is unbounded at this level.
 
         # Returns
@@ -96,7 +96,7 @@ class Memoryless(Markovian):
 
     A dice roll simulator is an example of memoryless domain (next states are independent of previous ones).
 
-    !!! note
+    !!! tip
         Whenever an existing domain (environment, simulator...) needs to be wrapped instead of implemented fully in
         AIRLAPS (e.g. compiled ATARI games), Memoryless can be used because the domain memory (if any) would
         be handled externally.

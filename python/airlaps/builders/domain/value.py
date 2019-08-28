@@ -11,7 +11,7 @@ class Rewards:
     def check_value(self, value: TransitionValue[D.T_value]) -> bool:
         """Check that a transition value is compliant with its reward specification.
 
-        !!! note
+        !!! tip
             This function returns always True by default because any kind of reward should be accepted at this level.
 
         # Parameters
@@ -25,7 +25,7 @@ class Rewards:
     def _check_value(self, value: TransitionValue[D.T_value]) -> bool:
         """Check that a transition value is compliant with its reward specification.
 
-        !!! note
+        !!! tip
             This function returns always True by default because any kind of reward should be accepted at this level.
 
         # Parameters
@@ -46,7 +46,7 @@ class PositiveCosts(Rewards):
     def _check_value(self, value: TransitionValue[D.T_value]) -> bool:
         """Check that a transition value is compliant with its cost specification (must be positive).
 
-        !!! note
+        !!! tip
             This function calls #PositiveCost._is_positive() to determine if a value is positive (can be overridden for
             advanced value types).
 

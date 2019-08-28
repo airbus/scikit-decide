@@ -20,9 +20,8 @@ class Goals:
         !!! warning
             Goal states are assumed to be fully observable (i.e. observation = state) so that there is never uncertainty
             about whether the goal has been reached or not. This assumption guarantees that any policy that does not
-            reach the goal with certainty incurs in infinite expected cost.[^Geffner 2013]
-
-        [^Geffner 2013]: A Concise Introduction to Models and Methods for Automated Planning (Geffner, 2013)
+            reach the goal with certainty incurs in infinite expected cost. - *Geffner, 2013: A Concise Introduction to
+            Models and Methods for Automated Planning*
 
         # Returns
         The goals space.
@@ -39,9 +38,8 @@ class Goals:
         !!! warning
             Goal states are assumed to be fully observable (i.e. observation = state) so that there is never uncertainty
             about whether the goal has been reached or not. This assumption guarantees that any policy that does not
-            reach the goal with certainty incurs in infinite expected cost.[^Geffner 2013]
-
-        [^Geffner 2013]: A Concise Introduction to Models and Methods for Automated Planning (Geffner, 2013)
+            reach the goal with certainty incurs in infinite expected cost. - *Geffner, 2013: A Concise Introduction to
+            Models and Methods for Automated Planning*
 
         # Returns
         The goals space.

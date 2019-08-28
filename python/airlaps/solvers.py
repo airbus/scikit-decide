@@ -152,7 +152,7 @@ class Solver:
         # Parameters
         domain_factory: A callable with no argument returning the domain to solve (can be just a domain class).
 
-        !!! note
+        !!! tip
             The nature of the solutions produced here depends on other solver's characteristics like
             #policy and #assessibility.
         """
@@ -167,7 +167,7 @@ class Solver:
         # Parameters
         domain_factory: A callable with no argument returning the domain to solve (can be just a domain class).
 
-        !!! note
+        !!! tip
             The nature of the solutions produced here depends on other solver's characteristics like
             #policy and #assessibility.
         """
@@ -188,7 +188,7 @@ class Solver:
         # Parameters
         domain_factory: A callable with no argument returning the domain to solve (auto-cast to expected level).
 
-        !!! note
+        !!! tip
             The nature of the solutions produced here depends on other solver's characteristics like
             #policy and #assessibility.
         """

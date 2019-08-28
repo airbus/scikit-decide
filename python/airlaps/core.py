@@ -67,7 +67,7 @@ class ImplicitSpace(Space[T]):
     """A space formalized implicitly, i.e. by a black-box contains() function."""
 
     def __init__(self, contains_function: Callable[[T], bool]) -> None:
-        """Initialize ImplicitSpace
+        """Initialize ImplicitSpace.
 
         # Parameters
         contains_function: The contains() function to use.
@@ -193,7 +193,7 @@ class DiscreteDistribution(Distribution[T]):
     def __init__(self, values: List[Tuple[T, float]]) -> None:
         """Initialize DiscreteDistribution.
 
-        !!! note
+        !!! tip
             If the given probabilities do not sum to 1, they are implicitly normalized as such for sampling.
 
         # Parameters

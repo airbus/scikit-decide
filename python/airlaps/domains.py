@@ -29,7 +29,7 @@ class Domain(MultiAgent, Parallel, Environment, Events, History, PartiallyObserv
 
     Typical use:
     ```python
-    class MyDomain(Domain, ...)
+    class D(Domain, ...)
     ```
 
     with "..." replaced when needed by a number of classes from following domain characteristics (the ones in
@@ -103,13 +103,13 @@ class RLDomain(Domain, SingleAgent, Sequential, Environment, Actions, Initializa
 
     Typical use:
     ```python
-    class MyDomain(RLDomain)
+    class D(RLDomain)
     ```
 
     !!! tip
         It is also possible to refine any alternate base class, like for instance:
         ```python
-        class MyDomain(RLDomain, FullyObservable)
+        class D(RLDomain, FullyObservable)
         ```
     """
     pass
@@ -133,13 +133,13 @@ class MultiAgentRLDomain(Domain, MultiAgent, Sequential, Environment, Actions, I
 
     Typical use:
     ```python
-    class MyDomain(RLDomain)
+    class D(RLDomain)
     ```
 
     !!! tip
         It is also possible to refine any alternate base class, like for instance:
         ```python
-        class MyDomain(RLDomain, FullyObservable)
+        class D(RLDomain, FullyObservable)
         ```
     """
     pass
@@ -162,13 +162,13 @@ class StatelessSimulatorDomain(Domain, SingleAgent, Sequential, Simulation, Acti
 
     Typical use:
     ```python
-    class MyDomain(StatelessSimulatorDomain)
+    class D(StatelessSimulatorDomain)
     ```
 
     !!! tip
         It is also possible to refine any alternate base class, like for instance:
         ```python
-        class MyDomain(RLDomain, FullyObservable)
+        class D(RLDomain, FullyObservable)
         ```
     """
     pass
@@ -192,13 +192,13 @@ class MDPDomain(Domain, SingleAgent, Sequential, EnumerableTransitions, Actions,
 
     Typical use:
     ```python
-    class MyDomain(MDPDomain)
+    class D(MDPDomain)
     ```
 
     !!! tip
         It is also possible to refine any alternate base class, like for instance:
         ```python
-        class MyDomain(RLDomain, FullyObservable)
+        class D(RLDomain, FullyObservable)
         ```
     """
     pass
@@ -222,13 +222,13 @@ class POMDPDomain(Domain, SingleAgent, Sequential, EnumerableTransitions, Action
 
     Typical use:
     ```python
-    class MyDomain(POMDPDomain)
+    class D(POMDPDomain)
     ```
 
     !!! tip
         It is also possible to refine any alternate base class, like for instance:
         ```python
-        class MyDomain(RLDomain, FullyObservable)
+        class D(RLDomain, FullyObservable)
         ```
     """
     pass
@@ -253,13 +253,13 @@ class GoalMDPDomain(Domain, SingleAgent, Sequential, EnumerableTransitions, Acti
 
     Typical use:
     ```python
-    class MyDomain(GoalMDPDomain)
+    class D(GoalMDPDomain)
     ```
 
     !!! tip
         It is also possible to refine any alternate base class, like for instance:
         ```python
-        class MyDomain(RLDomain, FullyObservable)
+        class D(RLDomain, FullyObservable)
         ```
     """
     pass
@@ -284,13 +284,13 @@ class GoalPOMDPDomain(Domain, SingleAgent, Sequential, EnumerableTransitions, Ac
 
     Typical use:
     ```python
-    class MyDomain(GoalPOMDPDomain)
+    class D(GoalPOMDPDomain)
     ```
 
     !!! tip
         It is also possible to refine any alternate base class, like for instance:
         ```python
-        class MyDomain(RLDomain, FullyObservable)
+        class D(RLDomain, FullyObservable)
         ```
     """
     pass
@@ -315,13 +315,13 @@ class DeterministicPlanningDomain(Domain, SingleAgent, Sequential, Deterministic
 
     Typical use:
     ```python
-    class MyDomain(DeterministicPlanningDomain)
+    class D(DeterministicPlanningDomain)
     ```
 
     !!! tip
         It is also possible to refine any alternate base class, like for instance:
         ```python
-        class MyDomain(RLDomain, FullyObservable)
+        class D(RLDomain, FullyObservable)
         ```
     """
     pass
