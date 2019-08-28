@@ -48,7 +48,9 @@ Open your web browser to access the documentation (by default on http://localhos
 
 ## Examples
 
-Various examples can be found in the `/examples` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on AIRLAPS Hub, an extensible catalog of domains/solvers inspired by [PyTorch Hub](https://pytorch.org/hub). When loading a domain/solver from the hub via `airlaps.hub.load(...)`, the corresponding entry will be automatically downloaded from the relevant Github repository(by default `Airbus-AI-Research/AIRLAPS` but any other repo can be specified) and cached for next time.
+**Warning**: the examples whose filename starts with an underscore are currently being migrated to the new API and might not be working in the meantime (same goes for domains/solvers inside `airlaps/catalog` which are being migrated to AIRLAPS Hub).
+
+The examples can be found in the `/examples` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on AIRLAPS Hub, an extensible catalog of domains/solvers inspired by [PyTorch Hub](https://pytorch.org/hub). When loading a domain/solver from the hub via `airlaps.hub.load(...)`, the corresponding entry will be automatically downloaded from the relevant Github repository(by default `Airbus-AI-Research/AIRLAPS` but any other repo can be specified) and cached for next time.
 
 **Note**: Since AIRLAPS is not yet open sourced on Github, the auto-download from the hub will not work out of the box and thus requires these manual steps:
 
