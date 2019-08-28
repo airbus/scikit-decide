@@ -4,16 +4,35 @@ from __future__ import annotations
 import time
 from typing import Union, Optional, Type, Iterable, Tuple, List, Callable
 
-from airlaps import Domain, Solver, D, Space, EnvironmentOutcome, autocast_public
+from airlaps import hub, Domain, Solver, D, Space, EnvironmentOutcome, autocast_public
 from airlaps.builders.domain import Goals, Markovian, Renderable
 from airlaps.builders.solver import Policies
 
-__all__ = ['rollout']
+__all__ = ['match_solvers', 'rollout']
+
+
+# TODO: implement ranking heuristic
+def match_solvers(domain: Domain, candidates: Optional[Iterable[Type[Solver]]] = None, add_local_hub: bool = True,
+                  ranked: bool = False) -> Union[List[Type[Solver]], List[Tuple[Type[Solver], int]]]:
+
+    if candidates is None:
+        candidates = set()
+    else:
+        candidates = set(candidates)
+    if add_local_hub:
+        candidates |= set(hub.local_search(Solver))
+    matches = []
+    for solver_type in candidates:
+        if solver_type.check_domain(domain):
+            matches.append(solver_type)
+    return matches
+
 
 def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Optional[D.T_memory[D.T_state]] = None,
             from_action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None, num_episodes: int = 1,
             max_steps: Optional[int] = None, render: bool = True, max_framerate: Optional[float] = None,
             verbose: bool = True,
+            action_formatter: Optional[Callable[[D.T_event], str]] = lambda a: str(a),
             outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = lambda o: str(o)) -> None:
     """This method will run one or more episodes in a domain according to the policy of a solver.
 
@@ -27,6 +46,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
     render: Whether to render the episode(s) during rollout if the domain is renderable.
     max_framerate: The maximum number of steps/renders per second (if None, steps/renders are never slowed down).
     verbose: Whether to print information to the console during rollout.
+    action_formatter: The function transforming actions in the string to print (if None, no print).
     outcome_formatter: The function transforming EnvironmentOutcome objects in the string to print (if None, no print).
     """
     if solver is None:
@@ -52,7 +72,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                 pass
 
             def sample_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-                return {agent: {space.sample()} for agent, space in self._domain.get_applicable_actions().items()}
+                return {agent: [space.sample()] for agent, space in self._domain.get_applicable_actions().items()}
 
             def is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
                 return True
@@ -83,10 +103,12 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                 domain.render()
             # assert solver.is_policy_defined_for(observation)
             action = solver.sample_action(observation)
+            if action_formatter is not None:
+                print('Action:', action_formatter(action))
             outcome = domain.step(action)
             observation = outcome.observation
             if outcome_formatter is not None:
-                print(outcome_formatter(outcome))
+                print('Result:', outcome_formatter(outcome))
             if outcome.termination:
                 if verbose:
                     print(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
@@ -102,49 +124,47 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             print(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
                   f'in episode {i_episode + 1}.')
 
-
-
-# TODO: replace rollout_saver() by additional features on rollout()
-def rollout_saver(domain: Domain, solver: Solver, from_memory: Optional[Union[Memory[T_state], T_state]] = None,
-                  from_event: Optional[T_event] = None, num_episodes: int = 1, max_steps: Optional[int] = None,
-                  render: bool = True, verbose: bool = True,
-                  outcome_formatter: Callable[[EnvironmentOutcome], str] = lambda o: str(o)) -> Tuple[
-        float, List[TransitionValue], List[T_observation], List[T_event]]:
-    """This method will run one or more episodes in a domain according to the policy of a solver."""
-    for i_episode in range(num_episodes):
-        # Initialize episode
-        if from_memory is None:
-            observation = domain.reset()
-        else:
-            domain.set_memory(from_memory)
-            observation = domain.get_observation_distribution(from_memory[-1], from_event).sample()
-        if verbose:
-            print(f'Episode {i_episode + 1} started.')
-            print(observation)
-        # Run episode
-        step = 0
-        total_cost = 0.
-        cost = []
-        obs = [observation]
-        actions = []
-        while max_steps is None or step < max_steps:
-            if render and isinstance(domain, RenderableDomain):
-                domain.render()
-            action = solver.sample_action(Memory([observation]))
-            outcome = domain.step(action)
-            observation = outcome.observation
-            cost += [outcome.value]
-            total_cost += outcome.value.cost
-            obs += [observation]
-            actions += [action]
-            if verbose:
-                print(outcome_formatter(outcome))
-            if outcome.termination:
-                if verbose:
-                    print(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
-                break
-            step += 1
-        if verbose and isinstance(domain, GoalDomain):
-            print(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
-                  f'in episode {i_episode + 1}.')
-        return total_cost, cost, obs, actions
+# # TODO: replace rollout_saver() by additional features on rollout()
+# def rollout_saver(domain: Domain, solver: Solver, from_memory: Optional[Union[Memory[T_state], T_state]] = None,
+#                   from_event: Optional[T_event] = None, num_episodes: int = 1, max_steps: Optional[int] = None,
+#                   render: bool = True, verbose: bool = True,
+#                   outcome_formatter: Callable[[EnvironmentOutcome], str] = lambda o: str(o)) -> Tuple[
+#         float, List[TransitionValue], List[T_observation], List[T_event]]:
+#     """This method will run one or more episodes in a domain according to the policy of a solver."""
+#     for i_episode in range(num_episodes):
+#         # Initialize episode
+#         if from_memory is None:
+#             observation = domain.reset()
+#         else:
+#             domain.set_memory(from_memory)
+#             observation = domain.get_observation_distribution(from_memory[-1], from_event).sample()
+#         if verbose:
+#             print(f'Episode {i_episode + 1} started.')
+#             print(observation)
+#         # Run episode
+#         step = 0
+#         total_cost = 0.
+#         cost = []
+#         obs = [observation]
+#         actions = []
+#         while max_steps is None or step < max_steps:
+#             if render and isinstance(domain, Renderable):
+#                 domain.render()
+#             action = solver.sample_action(Memory([observation]))
+#             outcome = domain.step(action)
+#             observation = outcome.observation
+#             cost += [outcome.value]
+#             total_cost += outcome.value.cost
+#             obs += [observation]
+#             actions += [action]
+#             if verbose:
+#                 print(outcome_formatter(outcome))
+#             if outcome.termination:
+#                 if verbose:
+#                     print(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
+#                 break
+#             step += 1
+#         if verbose and isinstance(domain, Goals):
+#             print(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
+#                   f'in episode {i_episode + 1}.')
+#         return total_cost, cost, obs, actions
