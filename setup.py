@@ -63,7 +63,7 @@ class CMakeBuild(build_ext):
 # TODO: import the following from python/setup.py
 setup(
     name='airlaps',
-    version='0.1.0',
+    version='0.2.1',
     package_dir = {'': 'python'},
     packages=[
         'airlaps',
