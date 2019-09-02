@@ -127,19 +127,21 @@ class Solver:
         """
         return True
 
-    def reset(self) -> None:
-        """Reset whatever is needed on this solver before running a new episode.
+    def reset(self, domain_factory: Callable[[], Domain]) -> None:
+        """Reset whatever is needed on this solver before calling #Solver.solve() or #Solver.solve_from().
 
-        This function does nothing by default but can be overridden if needed (e.g. to reset the hidden state of a LSTM
-        policy network, which carries information about past observations seen in the previous episode).
+        This function only creates a new domain by default but can be overridden if needed (e.g. to reset
+        the hidden state of a LSTM policy network, which carries information about past observations seen
+        in the previous episode, or to reset previous search effort).
         """
         return self._reset()
 
-    def _reset(self) -> None:
-        """Reset whatever is needed on this solver before running a new episode.
+    def _reset(self, domain_factory: Callable[[], Domain]) -> None:
+        """Reset whatever is needed on this solver before #Solver.solve() or #Solver.solve_from().
 
-        This function does nothing by default but can be overridden if needed (e.g. to reset the hidden state of a LSTM
-        policy network, which carries information about past observations seen in the previous episode).
+        This function only creates a new domain by default but can be overridden if needed (e.g. to reset
+        the hidden state of a LSTM policy network, which carries information about past observations seen
+        in the previous episode, or to reset previous search effort).
         """
         pass
 
@@ -193,6 +195,36 @@ class Solver:
             #policy and #assessibility.
         """
         raise NotImplementedError
+    
+    def solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+        """Run the solving process from a given state.
+
+        !!! tip
+            Create the domain first by calling the @Solver.reset() method
+
+        # Parameters
+        memory: The source memory (state or history) of the transition.
+
+        !!! tip
+            The nature of the solutions produced here depends on other solver's characteristics like
+            #policy and #assessibility.
+        """
+        return self._solve_from(memory)
+
+    def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+         """Run the solving process from a given state.
+
+        !!! tip
+            Create the domain first by calling the @Solver.reset() method
+
+        # Parameters
+        memory: The source memory (state or history) of the transition.
+
+        !!! tip
+            The nature of the solutions produced here depends on other solver's characteristics like
+            #policy and #assessibility.
+        """
+        pass
 
 
 # ALTERNATE BASE CLASSES (for typical combinations)

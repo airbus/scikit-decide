@@ -184,7 +184,7 @@ public :
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
             spdlog::info("AO* finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
         } catch (const std::exception& e) {
-            spdlog::error("Failed solving from state " + s.print() + ". Reason: " + e.what());
+            spdlog::error("AO* failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
         }
     }

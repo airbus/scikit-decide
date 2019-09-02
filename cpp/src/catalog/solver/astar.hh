@@ -38,6 +38,12 @@ public :
               }
           }
     
+    // reset the solver (clears the search graph, thus preventing from reusing
+    // previous search results)
+    void reset() {
+        _graph.clear();
+    }
+    
     // solves from state s using heuristic function h
     void solve(const State& s) {
         try {
@@ -50,14 +56,14 @@ public :
                 return;
             }
             Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
-            root_node.best_value = _heuristic(root_node.state);
+            root_node.fscore = _heuristic(root_node.state);
 
             // Priority queue used to sort non-goal unsolved tip nodes by increasing cost-to-go values (so-called OPEN container)
             std::priority_queue<Node*, std::vector<Node*>, NodeCompare> open_queue;
             open_queue.push(&root_node);
 
             // Set of states for which the g-value is optimal (so-called CLOSED container)
-            typedef typename SetTypeDeducer<Node*, State>::Set closed_set;
+            std::unordered_set<Node*> closed_set;
 
             while (!open_queue.empty()) {
                 auto best_tip_node = open_queue.top();
@@ -72,15 +78,15 @@ public :
 
                 if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print());
 
-                if (_goal_checker(best_tip_node->state)) {
+                if (_goal_checker(best_tip_node->state) || best_tip_node->solved) {
                     if (_debug_logs) spdlog::debug("Closing a goal state: " + best_tip_node->state.print());
                     auto current_node = best_tip_node;
-                    current_node->fscore = 0;
+                    if (!(best_tip_node->solved)) { current_node->fscore = 0; } // goal state
 
                     while (current_node != &root_node) {
                         Node* parent_node = std::get<0>(current_node->best_parent);
-                        parent_node->best_action = std::get<1>(&(current_node->best_parent));
-                        parent_node->fscore = std::get<2>(current_node.best_parent) + current_node->fscore;
+                        parent_node->best_action = &std::get<1>(current_node->best_parent);
+                        parent_node->fscore = std::get<2>(current_node->best_parent) + current_node->fscore;
                         parent_node->solved = true;
                         current_node = parent_node;
                     }
@@ -101,7 +107,7 @@ public :
                     // Must be separated from next loop in case the domain is python so that it is in this case actually implemented as a pool of independent processes
                     _domain.compute_next_state(best_tip_node->state, a);
                 });
-                std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node](const auto& a){
+                std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &closed_set](const auto& a){
                     auto next_state = _domain.get_next_state(best_tip_node->state, a);
                     std::pair<typename Graph::iterator, bool> i;
                     _execution_policy.protect([this, &i, &next_state]{
@@ -111,7 +117,7 @@ public :
 
                     if (closed_set.find(&neighbor) != closed_set.end()) {
                         // Ignore the neighbor which is already evaluated
-                        continue;
+                        return;
                     }
 
                     double transition_cost = _domain.get_transition_value(best_tip_node->state, a, neighbor.state);
@@ -122,8 +128,8 @@ public :
                         neighbor.fscore = tentative_gscore + _heuristic(neighbor.state);
                         neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
                         _execution_policy.protect([&open_queue, &neighbor]{
-                            open_queue.push(neighbor);
-                        }
+                            open_queue.push(&neighbor);
+                        });
                     }
                 });
             }
@@ -132,6 +138,15 @@ public :
         } catch (const std::exception& e) {
             spdlog::error("A* failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
+        }
+    }
+
+    bool is_solution_defined_for(const State& s) const {
+        auto si = _graph.find(s);
+        if ((si == _graph.end()) || (si->best_action == nullptr) || (si->solved == false)) {
+            return false;
+        } else {
+            return true;
         }
     }
 
