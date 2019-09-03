@@ -1,2 +1,2 @@
 #include <catch.hpp>
-#include "catalog/solver/aostar.hh"
+#include "hub/solver/aostar.hh"

@@ -127,21 +127,19 @@ class Solver:
         """
         return True
 
-    def reset(self, domain_factory: Callable[[], Domain]) -> None:
-        """Reset whatever is needed on this solver before calling #Solver.solve() or #Solver.solve_from().
+    def reset(self) -> None:
+        """Reset whatever is needed on this solver before running a new episode.
 
-        This function only creates a new domain by default but can be overridden if needed (e.g. to reset
-        the hidden state of a LSTM policy network, which carries information about past observations seen
-        in the previous episode, or to reset previous search effort).
+        This function does nothing by default but can be overridden if needed (e.g. to reset the hidden state of a LSTM
+        policy network, which carries information about past observations seen in the previous episode).
         """
         return self._reset()
 
-    def _reset(self, domain_factory: Callable[[], Domain]) -> None:
-        """Reset whatever is needed on this solver before #Solver.solve() or #Solver.solve_from().
+    def _reset(self) -> None:
+        """Reset whatever is needed on this solver before running a new episode.
 
-        This function only creates a new domain by default but can be overridden if needed (e.g. to reset
-        the hidden state of a LSTM policy network, which carries information about past observations seen
-        in the previous episode, or to reset previous search effort).
+        This function does nothing by default but can be overridden if needed (e.g. to reset the hidden state of a LSTM
+        policy network, which carries information about past observations seen in the previous episode).
         """
         pass
 
@@ -212,7 +210,7 @@ class Solver:
         return self._solve_from(memory)
 
     def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-         """Run the solving process from a given state.
+        """Run the solving process from a given state.
 
         !!! tip
             Create the domain first by calling the @Solver.reset() method

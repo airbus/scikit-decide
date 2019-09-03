@@ -9,4 +9,4 @@ IF (NOT ONLY_PYTHON)
                             INTERFACE ${INTERFACES})
 ENDIF ()
 
-ADD_SUBDIRECTORY(catalog)
+ADD_SUBDIRECTORY(hub)

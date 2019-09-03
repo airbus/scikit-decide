@@ -155,6 +155,11 @@ if __name__ == '__main__':
         {'name': 'Lazy A* (planning)',
          'type': {'entry': 'LazyAstar', 'folder': 'hub/solver/lazy_astar'},
          'config': {'verbose': True}},
+        
+        # A* (planning)
+        {'name': 'A* (planning)',
+         'type': {'entry': 'Astar', 'folder': 'hub/solver/astar'},
+         'config': {}},
 
         # PPO (deep reinforcement learning)
         {'name': 'PPO (deep reinforcement learning)',
@@ -170,8 +175,9 @@ if __name__ == '__main__':
             if s['type'] is not None:
                 s['type'] = hub.load(**s['type'])
             solvers.append(s)
-        except Exception:
+        except Exception as e:
             print(rf'/!\ Could not load {s["name"]} from hub: check installation & missing dependencies')
+            print('\nOriginal exception was:', e)
 
     # Run loop to ask user input
     domain = Maze()

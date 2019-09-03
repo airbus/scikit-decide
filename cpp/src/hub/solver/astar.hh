@@ -38,9 +38,9 @@ public :
               }
           }
     
-    // reset the solver (clears the search graph, thus preventing from reusing
+    // clears the solver (clears the search graph, thus preventing from reusing
     // previous search results)
-    void reset() {
+    void clear() {
         _graph.clear();
     }
     

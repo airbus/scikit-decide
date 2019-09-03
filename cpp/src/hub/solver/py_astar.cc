@@ -140,11 +140,11 @@ public :
         if (!py::hasattr(domain, "wrapped_get_applicable_actions")) {
             throw std::invalid_argument("AIRLAPS exception: A* algorithm needs python domain for implementing wrapped_get_applicable_actions()");
         }
-        if (!py::hasattr(domain, "wrapped_compute_next_state_distribution")) {
-            throw std::invalid_argument("AIRLAPS exception: A* algorithm needs python domain for implementing wrapped_compute_next_state_distribution()");
+        if (!py::hasattr(domain, "wrapped_compute_next_state")) {
+            throw std::invalid_argument("AIRLAPS exception: A* algorithm needs python domain for implementing wrapped_compute_next_state()");
         }
-        if (!py::hasattr(domain, "wrapped_get_next_state_distribution")) {
-            throw std::invalid_argument("AIRLAPS exception: A* algorithm needs python domain for implementing wrapped_get_next_state_distribution()");
+        if (!py::hasattr(domain, "wrapped_get_next_state")) {
+            throw std::invalid_argument("AIRLAPS exception: A* algorithm needs python domain for implementing wrapped_get_next_state()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
             throw std::invalid_argument("AIRLAPS exception: A* algorithm needs python domain for implementing get_transition_value()");
@@ -221,8 +221,8 @@ public :
                                                                          py::module::import("sys").attr("stderr"));
     }
 
-    void reset() {
-        _solver->reset();
+    void clear() {
+        _solver->clear();
     }
 
     void solve(const py::object& s) {
@@ -266,7 +266,7 @@ void declare_astar_solver(py::module& m, const char* name) {
                  py::arg("goal_checker"),
                  py::arg("heuristic"),
                  py::arg("debug_logs")=false)
-            .def("reset", &PyAStarSolver<Texecution>::reset)
+            .def("clear", &PyAStarSolver<Texecution>::clear)
             .def("solve", &PyAStarSolver<Texecution>::solve, py::arg("state"))
             .def("is_solution_defined_for", &PyAStarSolver<Texecution>::is_solution_defined_for, py::arg("state"))
             .def("get_next_action", &PyAStarSolver<Texecution>::get_next_action, py::arg("state"))
