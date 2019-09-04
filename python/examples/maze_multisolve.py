@@ -159,7 +159,7 @@ if __name__ == '__main__':
         # A* (planning)
         {'name': 'A* (planning)',
          'type': {'entry': 'Astar', 'folder': 'hub/solver/astar'},
-         'config': {}},
+         'config': {'parallel': True, 'debug_logs': False}},
 
         # PPO (deep reinforcement learning)
         {'name': 'PPO (deep reinforcement learning)',

@@ -15,6 +15,7 @@ if airlaps_cpp_extension_lib_path not in sys.path:
     sys.path.append(airlaps_cpp_extension_lib_path)
 
 try:
+
     from __airlaps_hub_cpp import _AStarParSolver_ as astar_par_solver
     from __airlaps_hub_cpp import _AStarSeqSolver_ as astar_seq_solver
 
@@ -33,6 +34,7 @@ try:
         return actions
 
     def AStarDomain_sequential_get_applicable_actions(self, state):  # self is a domain
+        global astar_nsd_results
         actions = self.get_applicable_actions(state)
         astar_nsd_results = {a: None for a in actions.get_elements()}
         return actions
@@ -66,7 +68,7 @@ try:
             self._parallel = parallel
             self._debug_logs = debug_logs
 
-        def _init_solve(self, domain_factory: Callable[[], Domain]) -> Domain:
+        def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
             self._domain = domain_factory()
             if self._parallel:
                 global astar_pool
@@ -111,6 +113,7 @@ try:
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             return self._solver.get_utility(observation)
+
 except ImportError:
     sys.path = record_sys_path
     print('AIRLAPS C++ hub library not found. Please check it is installed in your AIRLAPS_HOME.')
