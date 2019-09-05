@@ -166,72 +166,6 @@ public :
         }
     };
 
-    struct FeatureVector {
-        py::array_t<int> _array;
-        py::buffer_info _buffer;
-
-        FeatureVector() {
-            typename GilControl<Texecution>::Acquire acquire;
-            _buffer = _array.request();
-        }
-
-        FeatureVector(const py::array_t<int>& array) {
-            typename GilControl<Texecution>::Acquire acquire;
-            _array = array;
-            _buffer = _array.request();
-        }
-
-        FeatureVector(py::ssize_t size, int value) {
-            typename GilControl<Texecution>::Acquire acquire;
-            _array = py::array_t<int>(size);
-            _buffer = _array.request();
-            for (unsigned int i = 0 ; i < size ; i++) {
-                ((int *) _buffer.ptr)[i] = value;
-            }
-        }
-
-        void clear() {
-            typename GilControl<Texecution>::Acquire acquire;
-            _array = py::array_t<int>();
-            _buffer = _array.request();
-        }
-
-        bool empty() const {
-            typename GilControl<Texecution>::Acquire acquire;
-            return _array.size() == 0;
-        }
-
-        py::ssize_t size() const {
-            typename GilControl<Texecution>::Acquire acquire;
-            return _array.size();
-        }
-
-        const int& operator[] (const std::size_t index) const {
-            typename GilControl<Texecution>::Acquire acquire;
-            return ((int *) _buffer.ptr)[index];
-        }
-
-        int& operator[] (const std::size_t index) {
-            typename GilControl<Texecution>::Acquire acquire;
-            return ((int *) _buffer.ptr)[index];
-        }
-
-        struct Equal {
-            bool operator()(const FeatureVector& v1, const FeatureVector& v2) const {
-                typename GilControl<Texecution>::Acquire acquire;
-                if (v1._buffer.size != v2._buffer.size) {
-                    return false;
-                }
-                for (unsigned int i = 0 ; i < v1._buffer.size ; i++) {
-                    if (((int *) v1._buffer.ptr)[i] != ((int *) v2._buffer.ptr)[i]) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        };
-    };
-
     PyIWDomain(const py::object& domain)
     : _domain(domain) {
         if (!py::hasattr(domain, "wrapped_get_applicable_actions")) {
@@ -287,15 +221,6 @@ public :
         }
     }
 
-    bool is_terminal(const State& s) {
-        typename GilControl<Texecution>::Acquire acquire;
-        try {
-            return py::cast<bool>(_domain.attr("is_terminal")(s._state));
-        } catch(const py::error_already_set& e) {
-            throw std::runtime_error(e.what());
-        }
-    }
-
 private :
     py::object _domain;
 };
@@ -305,115 +230,40 @@ template <typename Texecution>
 class PyIWSolver {
 public :
     PyIWSolver(py::object& domain,
-               const std::string& planner = "bfs",
-               const std::function<py::array_t<int> (const py::object&)>& state_to_feature_atoms = [](const py::object& s)-> py::array_t<int> {return py::array_t<int>();},
-               unsigned int num_tracked_atoms = 0,
-               const std::string& default_encoding_type = "byte",
-               double default_encoding_space_relative_precision = 0.001,
-               size_t frameskip = 15,
-               int simulator_budget = 150000,
-               double time_budget = std::numeric_limits<double>::infinity(),
-               bool novelty_subtables = false,
-               bool random_actions = false,
-               size_t max_rep = 30,
-               int nodes_threshold = 50000,
-               int lookahead_caching = 2,
-               double discount = 1.0,
-               size_t max_depth = 1500,
-               bool break_ties_using_rewards = false,
+               const std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)>& state_binarizer,
+               const std::function<bool (const py::object&)>& termination_checker,
                bool debug_logs = false)
-        : _state_to_feature_atoms(state_to_feature_atoms) {
+        : _state_binarizer(state_binarizer), _termination_checker(termination_checker) {
         _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
-
-        // Are we using the default state_to_feature_atoms?
-        std::function<typename PyIWDomain<Texecution>::FeatureVector (const typename PyIWDomain<Texecution>::State&)> encoder;
-        unsigned int nb_tracked_atoms = num_tracked_atoms;
-        try {
-            if (state_to_feature_atoms(py::object()).size() == 0) {
-                if (default_encoding_type == "byte") {
-                    _gym_observation_space = airlaps::GymSpace::import_from_python(
-                                                domain.attr("observation_space"),
-                                                airlaps::GymSpace::ENCODING_BYTE_VECTOR,
-                                                default_encoding_space_relative_precision);
-                    _gym_action_space = airlaps::GymSpace::import_from_python(
-                                                domain.attr("action_space"),
-                                                airlaps::GymSpace::ENCODING_BYTE_VECTOR,
-                                                default_encoding_space_relative_precision);
-                } else if (default_encoding_type == "variable") {
-                    _gym_observation_space = airlaps::GymSpace::import_from_python(
-                                                domain.attr("observation_space"),
-                                                airlaps::GymSpace::ENCODING_VARIABLE_VECTOR,
-                                                default_encoding_space_relative_precision);
-                    _gym_action_space = airlaps::GymSpace::import_from_python(
-                                                domain.attr("action_space"),
-                                                airlaps::GymSpace::ENCODING_VARIABLE_VECTOR,
-                                                default_encoding_space_relative_precision);
-                } else {
-                    py::print("ERROR: unsupported feature atom vector encoding '" + default_encoding_type + "'");
-                }
-                nb_tracked_atoms = _gym_observation_space->get_number_of_tracked_atoms();
-                encoder = [this](const typename PyIWDomain<Texecution>::State& s) -> typename PyIWDomain<Texecution>::FeatureVector {
-                    typename GilControl<Texecution>::Acquire acquire;
-                    return typename PyIWDomain<Texecution>::FeatureVector(py::cast(_gym_observation_space->convert_element_to_feature_atoms(s._state)));
-                };
-            }
-        } catch (...) {
-            // We are using an encoder provided by the user
-            encoder = [this](const typename PyIWDomain<Texecution>::State& s) -> typename PyIWDomain<Texecution>::FeatureVector {
-                typename GilControl<Texecution>::Acquire acquire;
-                return typename PyIWDomain<Texecution>::FeatureVector(_state_to_feature_atoms(s._state));
-            };
-        }
-
-        if (planner == "bfs") {
-            _solver = std::make_unique<airlaps::BfsIW<PyIWDomain<Texecution>, Texecution>>(
-                        *_domain,
-                        encoder,
-                        nb_tracked_atoms,
-                        frameskip,
-                        simulator_budget,
-                        time_budget,
-                        novelty_subtables,
-                        random_actions,
-                        max_rep,
-                        nodes_threshold,
-                        lookahead_caching,
-                        discount,
-                        break_ties_using_rewards,
-                        debug_logs);
-        } else if (planner == "rollout") {
-            _solver = std::make_unique<airlaps::RolloutIW<PyIWDomain<Texecution>, Texecution>>(
-                        *_domain,
-                        encoder,
-                        nb_tracked_atoms,
-                        frameskip,
-                        simulator_budget,
-                        time_budget,
-                        novelty_subtables,
-                        random_actions,
-                        max_rep,
-                        nodes_threshold,
-                        lookahead_caching,
-                        discount,
-                        max_depth,
-                        debug_logs);
-        } else {
-            py::print("ERROR: unsupported IW planner '" + planner + "'");
-        }
-        
+        _solver = std::make_unique<airlaps::IWSolver<PyIWDomain<Texecution>, Texecution>>(
+                                                                        *_domain,
+                                                                        [this](const typename PyIWDomain<Texecution>::State& s,
+                                                                               const std::function<void (const py::int_&, const py::bool_&)>& f)->void {
+                                                                            typename GilControl<Texecution>::Acquire acquire;
+                                                                            _state_binarizer(s._state, f);
+                                                                        },
+                                                                        [this](const typename PyIWDomain<Texecution>::State& s)->bool {
+                                                                            typename GilControl<Texecution>::Acquire acquire;
+                                                                            return _termination_checker(s._state);
+                                                                        },
+                                                                        debug_logs);
         _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                          py::module::import("sys").attr("stdout"));
         _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
                                                                          py::module::import("sys").attr("stderr"));
     }
 
-    void reset() {
-        _solver->reset();
+    void clear() {
+        _solver->clear();
     }
 
     void solve(const py::object& s) {
         typename GilControl<Texecution>::Release release;
         _solver->solve(s);
+    }
+
+    py::bool_ is_solution_defined_for(const py::object& s) {
+        return _solver->is_solution_defined_for(s);
     }
 
     py::object get_next_action(const py::object& s) {
@@ -428,101 +278,36 @@ private :
     std::unique_ptr<PyIWDomain<Texecution>> _domain;
     std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, Texecution>> _solver;
     
-    std::function<py::array_t<int> (const py::object&)> _state_to_feature_atoms;
-    std::unique_ptr<airlaps::GymSpace> _gym_observation_space;
-    std::unique_ptr<airlaps::GymSpace> _gym_action_space;
+    std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)> _state_binarizer;
+    std::function<bool (const py::object&)> _termination_checker;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
 };
 
 
+template <typename Texecution>
+void declare_iw_solver(py::module& m, const char* name) {
+    py::class_<PyIWSolver<Texecution>> py_iw_solver(m, name);
+        py_iw_solver
+            .def(py::init<py::object&,
+                          const std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)>&,
+                          const std::function<bool (const py::object&)>&,
+                          bool>(),
+                 py::arg("domain"),
+                 py::arg("state_binarizer"),
+                 py::arg("termination_checker"),
+                 py::arg("debug_logs")=false)
+            .def("clear", &PyIWSolver<Texecution>::clear)
+            .def("solve", &PyIWSolver<Texecution>::solve, py::arg("state"))
+            .def("is_solution_defined_for", &PyIWSolver<Texecution>::is_solution_defined_for, py::arg("state"))
+            .def("get_next_action", &PyIWSolver<Texecution>::get_next_action, py::arg("state"))
+            .def("get_utility", &PyIWSolver<Texecution>::get_utility, py::arg("state"))
+        ;
+}
+
+
 void init_pyiw(py::module& m) {
-    py::class_<PyIWSolver<airlaps::SequentialExecution>> py_iw_seq_solver(m, "_IWSeqSolver_");
-        py_iw_seq_solver
-            .def(py::init<py::object&,
-                          std::string,
-                          const std::function<py::array_t<int> (const py::object&)>&,
-                          int,
-                          std::string,
-                          double,
-                          size_t,
-                          int,
-                          double,
-                          bool,
-                          bool,
-                          size_t,
-                          int,
-                          int,
-                          double,
-                          size_t,
-                          bool,
-                          bool>(),
-                 py::arg("domain"),
-                 py::arg("planner")="bfs",
-                 py::arg("state_to_feature_atoms_encoder")=std::function<py::array_t<int> (const py::object&)>([](const py::object& s)-> py::array_t<int> {return py::array_t<int>();}),
-                 py::arg("num_tracked_atoms")=0,
-                 py::arg("default_encoding_type")="byte",
-                 py::arg("default_encoding_space_relative_precision")=0.001,
-                 py::arg("frameskip")=15,
-                 py::arg("simulator_budget")=150000,
-                 py::arg("time_budget")=std::numeric_limits<double>::infinity(),
-                 py::arg("novelty_subtables")=false,
-                 py::arg("random_actions")=false,
-                 py::arg("max_rep")=30,
-                 py::arg("nodes_threshold")=50000,
-                 py::arg("lookahead_caching")=2,
-                 py::arg("discount")=1.0,
-                 py::arg("max_depth")=1500,
-                 py::arg("break_ties_using_rewards")=false,
-                 py::arg("debug_logs")=false)
-            .def("reset", &PyIWSolver<airlaps::SequentialExecution>::reset)
-            .def("solve", &PyIWSolver<airlaps::SequentialExecution>::solve, py::arg("state"))
-            .def("get_next_action", &PyIWSolver<airlaps::SequentialExecution>::get_next_action, py::arg("state"))
-            .def("get_utility", &PyIWSolver<airlaps::SequentialExecution>::get_utility, py::arg("state"))
-        ;
-    
-    py::class_<PyIWSolver<airlaps::ParallelExecution>> py_iw_par_solver(m, "_IWParSolver_");
-        py_iw_par_solver
-            .def(py::init<py::object&,
-                          std::string,
-                          const std::function<py::array_t<int> (const py::object&)>&,
-                          int,
-                          std::string,
-                          double,
-                          size_t,
-                          int,
-                          double,
-                          bool,
-                          bool,
-                          size_t,
-                          int,
-                          int,
-                          double,
-                          size_t,
-                          bool,
-                          bool>(),
-                 py::arg("domain"),
-                 py::arg("planner")="bfs",
-                 py::arg("state_to_feature_atoms_encoder")=std::function<py::array_t<int> (const py::object&)>([](const py::object& s)-> py::array_t<int> {return py::array_t<int>();}),
-                 py::arg("num_tracked_atoms")=0,
-                 py::arg("default_encoding_type")="byte",
-                 py::arg("default_encoding_space_relative_precision")=0.001,
-                 py::arg("frameskip")=15,
-                 py::arg("simulator_budget")=150000,
-                 py::arg("time_budget")=std::numeric_limits<double>::infinity(),
-                 py::arg("novelty_subtables")=false,
-                 py::arg("random_actions")=false,
-                 py::arg("max_rep")=30,
-                 py::arg("nodes_threshold")=50000,
-                 py::arg("lookahead_caching")=2,
-                 py::arg("discount")=1.0,
-                 py::arg("max_depth")=1500,
-                 py::arg("break_ties_using_rewards")=false,
-                 py::arg("debug_logs")=false)
-            .def("reset", &PyIWSolver<airlaps::ParallelExecution>::reset)
-            .def("solve", &PyIWSolver<airlaps::ParallelExecution>::solve, py::arg("state"))
-            .def("get_next_action", &PyIWSolver<airlaps::ParallelExecution>::get_next_action, py::arg("state"))
-            .def("get_utility", &PyIWSolver<airlaps::ParallelExecution>::get_utility, py::arg("state"))
-        ;
+    declare_iw_solver<airlaps::SequentialExecution>(m, "_IWSeqSolver_");
+    declare_iw_solver<airlaps::ParallelExecution>(m, "_IWParSolver_");
 }

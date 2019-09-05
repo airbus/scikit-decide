@@ -198,9 +198,6 @@ public :
     PyAStarSolver(py::object& domain,
                   const std::function<bool (const py::object&)>& goal_checker,
                   const std::function<double (const py::object&)>& heuristic,
-                  double discount = 1.0,
-                  unsigned int max_tip_expansions = 1,
-                  bool detect_cycles = false,
                   bool debug_logs = false)
         : _goal_checker(goal_checker), _heuristic(heuristic) {
         _domain = std::make_unique<PyAStarDomain<Texecution>>(domain);
