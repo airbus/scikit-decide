@@ -215,7 +215,7 @@ public :
     double get_transition_value(const State& s, const Event& e, const State& sp) {
         typename GilControl<Texecution>::Acquire acquire;
         try {
-            return py::cast<double>(_domain.attr("get_transition_value")(s._state, e._event, sp._state).attr("reward"));
+            return py::cast<double>(_domain.attr("get_transition_value")(s._state, e._event, sp._state).attr("cost"));
         } catch(const py::error_already_set& e) {
             throw std::runtime_error(e.what());
         }

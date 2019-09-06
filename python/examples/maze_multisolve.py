@@ -161,6 +161,14 @@ if __name__ == '__main__':
          'type': {'entry': 'Astar', 'folder': 'hub/solver/astar'},
          'config': {'parallel': True, 'debug_logs': False}},
 
+         # IW (planning)
+        {'name': 'IW (planning)',
+         'type': {'entry': 'IW', 'folder': 'hub/solver/iw'},
+         'config': {'state_binarizer': lambda s, d, f: list(map(lambda e: f(e[0] + e[1] * d._num_cols, s.x == e[0] and s.y == e[1]),
+                                                                [(x, y) for x in range(d._num_cols) for y in range(d._num_rows)])),
+                    'termination_checker': lambda s, d: d.is_goal(s),
+                    'parallel': True, 'debug_logs': False}},
+
         # PPO (deep reinforcement learning)
         {'name': 'PPO (deep reinforcement learning)',
          'type': {'entry': 'StableBaselines', 'folder': 'hub/solver/stable_baselines'},

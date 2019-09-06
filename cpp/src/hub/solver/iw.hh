@@ -53,6 +53,7 @@ public :
             // Binarize state s to get number of bits
             unsigned int number_of_bits = 0;
             _state_binarizer(s, [&number_of_bits](const unsigned int& i, const bool& b){ number_of_bits++; });
+            if (_debug_logs) spdlog::debug("IW -  Number of state binarization bits: " + std::to_string(number_of_bits));
 
             for (unsigned int w = 1 ; w <= number_of_bits ; w++) {
                 std::pair<bool, bool> res = WidthSolver(_domain, w, _state_binarizer, _termination_checker, _graph, _debug_logs).solve(s);
@@ -214,18 +215,23 @@ private :
                             i = _graph.emplace(next_state);
                         });
                         Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
+                        if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print());
 
                         double transition_cost = _domain.get_transition_value(best_tip_node->state, a, neighbor.state);
                         double tentative_gscore = best_tip_node->gscore + transition_cost;
 
                         if ((i.second) || (tentative_gscore < neighbor.gscore)) {
+                            if (_debug_logs) spdlog::debug("New gscore: " + std::to_string(best_tip_node->gscore) + "+" +
+                                                           std::to_string(transition_cost) + "=" + std::to_string(tentative_gscore));
                             neighbor.gscore = tentative_gscore;
                             neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
                         }
 
                         if (novelty(true_bits, neighbor.state) > _width) {
+                            if (_debug_logs) spdlog::debug("Pruning state");
                             states_pruned = true;
                         } else {
+                            if (_debug_logs) spdlog::debug("Adding state to open queue");
                             _execution_policy.protect([&open_queue, &neighbor]{
                                 open_queue.push(&neighbor);
                             });
@@ -257,7 +263,8 @@ private :
                     nov += (int) true_bits.insert(i).second;
                 }
             });
-            return nov;
+            if (_debug_logs) spdlog::debug("Novelty: " + std::to_string(nov));
+            return (nov>0)?nov:std::numeric_limits<unsigned int>::max();
         }
     };
 };

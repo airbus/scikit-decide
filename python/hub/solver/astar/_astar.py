@@ -60,8 +60,8 @@ try:
         T_domain = D
         
         def __init__(self, heuristic: Optional[Callable[[D.T_state, Domain], float]] = None,
-                    parallel: bool = True,
-                    debug_logs: bool = False) -> None:
+                     parallel: bool = True,
+                     debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
             self._heuristic = heuristic
