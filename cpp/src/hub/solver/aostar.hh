@@ -42,9 +42,9 @@ public :
               }
           }
 
-    // reset the solver (clears the search graph, thus preventing from reusing
+    // clears the solver (clears the search graph, thus preventing from reusing
     // previous search results)
-    void reset() {
+    void clear() {
         _graph.clear();
     }
 
@@ -184,8 +184,17 @@ public :
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
             spdlog::info("AO* finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
         } catch (const std::exception& e) {
-            spdlog::error("Failed solving from state " + s.print() + ". Reason: " + e.what());
+            spdlog::error("AO* failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
+        }
+    }
+
+    bool is_solution_defined_for(const State& s) const {
+        auto si = _graph.find(s);
+        if ((si == _graph.end()) || (si->best_action == nullptr) || (si->solved == false)) {
+            return false;
+        } else {
+            return true;
         }
     }
 

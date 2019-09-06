@@ -155,6 +155,19 @@ if __name__ == '__main__':
         {'name': 'Lazy A* (planning)',
          'type': {'entry': 'LazyAstar', 'folder': 'hub/solver/lazy_astar'},
          'config': {'verbose': True}},
+        
+        # A* (planning)
+        {'name': 'A* (planning)',
+         'type': {'entry': 'Astar', 'folder': 'hub/solver/astar'},
+         'config': {'parallel': True, 'debug_logs': False}},
+
+         # IW (planning)
+        {'name': 'IW (planning)',
+         'type': {'entry': 'IW', 'folder': 'hub/solver/iw'},
+         'config': {'state_binarizer': lambda s, d, f: list(map(lambda e: f(e[0] + e[1] * d._num_cols, s.x == e[0] and s.y == e[1]),
+                                                                [(x, y) for x in range(d._num_cols) for y in range(d._num_rows)])),
+                    'termination_checker': lambda s, d: d.is_goal(s),
+                    'parallel': True, 'debug_logs': False}},
 
         # PPO (deep reinforcement learning)
         {'name': 'PPO (deep reinforcement learning)',
@@ -170,8 +183,9 @@ if __name__ == '__main__':
             if s['type'] is not None:
                 s['type'] = hub.load(**s['type'])
             solvers.append(s)
-        except Exception:
+        except Exception as e:
             print(rf'/!\ Could not load {s["name"]} from hub: check installation & missing dependencies')
+            print('\nOriginal exception was:', e)
 
     # Run loop to ask user input
     domain = Maze()

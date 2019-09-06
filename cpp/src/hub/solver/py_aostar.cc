@@ -295,13 +295,17 @@ public :
                                                                          py::module::import("sys").attr("stderr"));
     }
 
-    void reset() {
-        _solver->reset();
+    void clear() {
+        _solver->clear();
     }
 
     void solve(const py::object& s) {
         typename GilControl<Texecution>::Release release;
         _solver->solve(s);
+    }
+
+    py::bool_ is_solution_defined_for(const py::object& s) {
+        return _solver->is_solution_defined_for(s);
     }
 
     py::object get_next_action(const py::object& s) {
@@ -324,8 +328,9 @@ private :
 };
 
 
-void init_pyaostar(py::module& m) {
-    py::class_<PyAOStarSolver<airlaps::SequentialExecution>> py_aostar_seq_solver(m, "_AOStarSeqSolver_");
+template <typename Texecution>
+void declare_aostar_solver(py::module& m, const char* name) {
+    py::class_<PyAOStarSolver<Texecution>> py_aostar_seq_solver(m, name);
         py_aostar_seq_solver
             .def(py::init<py::object&,
                           const std::function<bool (const py::object&)>&,
@@ -341,31 +346,16 @@ void init_pyaostar(py::module& m) {
                  py::arg("max_tip_expansions")=1,
                  py::arg("detect_cycles")=false,
                  py::arg("debug_logs")=false)
-            .def("reset", &PyAOStarSolver<airlaps::SequentialExecution>::reset)
-            .def("solve", &PyAOStarSolver<airlaps::SequentialExecution>::solve, py::arg("state"))
-            .def("get_next_action", &PyAOStarSolver<airlaps::SequentialExecution>::get_next_action, py::arg("state"))
-            .def("get_utility", &PyAOStarSolver<airlaps::SequentialExecution>::get_utility, py::arg("state"))
+            .def("clear", &PyAOStarSolver<Texecution>::clear)
+            .def("solve", &PyAOStarSolver<Texecution>::solve, py::arg("state"))
+            .def("is_solution_defined_for", &PyAOStarSolver<Texecution>::is_solution_defined_for, py::arg("state"))
+            .def("get_next_action", &PyAOStarSolver<Texecution>::get_next_action, py::arg("state"))
+            .def("get_utility", &PyAOStarSolver<Texecution>::get_utility, py::arg("state"))
         ;
-    
-    py::class_<PyAOStarSolver<airlaps::ParallelExecution>> py_aostar_par_solver(m, "_AOStarParSolver_");
-        py_aostar_par_solver
-            .def(py::init<py::object&,
-                          const std::function<bool (const py::object&)>&,
-                          const std::function<double (const py::object&)>&,
-                          double,
-                          unsigned int,
-                          bool,
-                          bool>(),
-                 py::arg("domain"),
-                 py::arg("goal_checker"),
-                 py::arg("heuristic"),
-                 py::arg("discount")=1.0,
-                 py::arg("max_tip_expansions")=1,
-                 py::arg("detect_cycles")=false,
-                 py::arg("debug_logs")=false)
-            .def("reset", &PyAOStarSolver<airlaps::ParallelExecution>::reset)
-            .def("solve", &PyAOStarSolver<airlaps::ParallelExecution>::solve, py::arg("state"))
-            .def("get_next_action", &PyAOStarSolver<airlaps::ParallelExecution>::get_next_action, py::arg("state"))
-            .def("get_utility", &PyAOStarSolver<airlaps::ParallelExecution>::get_utility, py::arg("state"))
-        ;
+}
+
+
+void init_pyaostar(py::module& m) {
+    declare_aostar_solver<airlaps::SequentialExecution>(m, "_AOStarSeqSolver_");
+    declare_aostar_solver<airlaps::ParallelExecution>(m, "_AOStarParSolver_");
 }

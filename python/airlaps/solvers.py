@@ -193,6 +193,36 @@ class Solver:
             #policy and #assessibility.
         """
         raise NotImplementedError
+    
+    def solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+        """Run the solving process from a given state.
+
+        !!! tip
+            Create the domain first by calling the @Solver.reset() method
+
+        # Parameters
+        memory: The source memory (state or history) of the transition.
+
+        !!! tip
+            The nature of the solutions produced here depends on other solver's characteristics like
+            #policy and #assessibility.
+        """
+        return self._solve_from(memory)
+
+    def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+        """Run the solving process from a given state.
+
+        !!! tip
+            Create the domain first by calling the @Solver.reset() method
+
+        # Parameters
+        memory: The source memory (state or history) of the transition.
+
+        !!! tip
+            The nature of the solutions produced here depends on other solver's characteristics like
+            #policy and #assessibility.
+        """
+        pass
 
 
 # ALTERNATE BASE CLASSES (for typical combinations)

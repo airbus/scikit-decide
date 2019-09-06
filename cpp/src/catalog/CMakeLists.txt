@@ -1,2 +1,0 @@
-ADD_SUBDIRECTORY (domain)
-ADD_SUBDIRECTORY (solver)
