@@ -3,7 +3,7 @@
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
 
-#include "iw.hh"
+#include "bfws.hh"
 #include "core.hh"
 
 namespace py = pybind11;
@@ -24,7 +24,7 @@ struct GilControl<airlaps::ParallelExecution> {
 
 
 template <typename Texecution>
-class PyIWDomain {
+class PyBFWSDomain {
 public :
     struct State {
         py::object _state;
@@ -47,7 +47,7 @@ public :
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
                     if (!py::hasattr(s._state, "__hash__")) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python states for implementing __hash__()");
+                        throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python states for implementing __hash__()");
                     }
                     // python __hash__ can return negative integers but c++ expects positive integers only
                     return s._state.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
@@ -62,7 +62,7 @@ public :
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
                     if (!py::hasattr(s1._state, "__eq__")) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python states for implementing __eq__()");
+                        throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python states for implementing __eq__()");
                     }
                     return s1._state.attr("__eq__")(s2._state).template cast<bool>();
                 } catch(const py::error_already_set& e) {
@@ -96,7 +96,7 @@ public :
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
                     if (!py::hasattr(e._event, "__hash__")) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python events for implementing __hash__()");
+                        throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python events for implementing __hash__()");
                     }
                     // python __hash__ can return negative integers but c++ expects positive integers only
                     return e._event.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
@@ -111,7 +111,7 @@ public :
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
                     if (!py::hasattr(e1._event, "__eq__")) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python actions for implementing __eq__()");
+                        throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python actions for implementing __eq__()");
                     }
                     return e1._event.attr("__eq__")(e2._event).template cast<bool>();
                 } catch(const py::error_already_set& ex) {
@@ -128,7 +128,7 @@ public :
         : _applicable_actions(applicable_actions) {
             typename GilControl<Texecution>::Acquire acquire;
             if (!py::hasattr(_applicable_actions, "get_elements")) {
-                throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python applicable action object for implementing get_elements()");
+                throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python applicable action object for implementing get_elements()");
             }
         }
 
@@ -165,22 +165,22 @@ public :
         }
     };
 
-    PyIWDomain(const py::object& domain)
+    PyBFWSDomain(const py::object& domain)
     : _domain(domain) {
         if (!py::hasattr(domain, "wrapped_get_applicable_actions")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing wrapped_get_applicable_actions()");
+            throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python domain for implementing wrapped_get_applicable_actions()");
         }
         if (!py::hasattr(domain, "wrapped_compute_next_state")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing wrapped_compute_sample()");
+            throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python domain for implementing wrapped_compute_sample()");
         }
         if (!py::hasattr(domain, "wrapped_get_next_state")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing wrapped_get_sample()");
+            throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python domain for implementing wrapped_get_sample()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing get_transition_value()");
+            throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python domain for implementing get_transition_value()");
         }
         if (!py::hasattr(domain, "is_terminal")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing is_terminal()");
+            throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python domain for implementing is_terminal()");
         }
     }
 
@@ -226,22 +226,27 @@ private :
 
 
 template <typename Texecution>
-class PyIWSolver {
+class PyBFWSSolver {
 public :
-    PyIWSolver(py::object& domain,
-               const std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)>& state_binarizer,
-               const std::function<bool (const py::object&)>& termination_checker,
-               bool debug_logs = false)
-        : _state_binarizer(state_binarizer), _termination_checker(termination_checker) {
-          _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
-          _solver = std::make_unique<airlaps::IWSolver<PyIWDomain<Texecution>, Texecution>>(
+    PyBFWSSolver(py::object& domain,
+                 const std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)>& state_binarizer,
+                 const std::function<double (const py::object&)>& heuristic,
+                 const std::function<bool (const py::object&)>& termination_checker,
+                 bool debug_logs = false)
+        : _state_binarizer(state_binarizer), _heuristic(heuristic), _termination_checker(termination_checker) {
+          _domain = std::make_unique<PyBFWSDomain<Texecution>>(domain);
+          _solver = std::make_unique<airlaps::BFWSSolver<PyBFWSDomain<Texecution>, Texecution>>(
                                                                         *_domain,
-                                                                        [this](const typename PyIWDomain<Texecution>::State& s,
+                                                                        [this](const typename PyBFWSDomain<Texecution>::State& s,
                                                                                const std::function<void (const py::int_&, const py::bool_&)>& f)->void {
                                                                             typename GilControl<Texecution>::Acquire acquire;
                                                                             _state_binarizer(s._state, f);
                                                                         },
-                                                                        [this](const typename PyIWDomain<Texecution>::State& s)->bool {
+                                                                        [this](const typename PyBFWSDomain<Texecution>::State& s)->double {
+                                                                            typename GilControl<Texecution>::Acquire acquire;
+                                                                            return _heuristic(s._state);
+                                                                        },
+                                                                        [this](const typename PyBFWSDomain<Texecution>::State& s)->bool {
                                                                             typename GilControl<Texecution>::Acquire acquire;
                                                                             return _termination_checker(s._state);
                                                                         },
@@ -274,10 +279,11 @@ public :
     }
 
 private :
-    std::unique_ptr<PyIWDomain<Texecution>> _domain;
-    std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, Texecution>> _solver;
+    std::unique_ptr<PyBFWSDomain<Texecution>> _domain;
+    std::unique_ptr<airlaps::BFWSSolver<PyBFWSDomain<Texecution>, Texecution>> _solver;
     
     std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)> _state_binarizer;
+    std::function<double (const py::object&)> _heuristic;
     std::function<bool (const py::object&)> _termination_checker;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
@@ -286,27 +292,29 @@ private :
 
 
 template <typename Texecution>
-void declare_iw_solver(py::module& m, const char* name) {
-    py::class_<PyIWSolver<Texecution>> py_iw_solver(m, name);
-        py_iw_solver
+void declare_bfws_solver(py::module& m, const char* name) {
+    py::class_<PyBFWSSolver<Texecution>> py_bfws_solver(m, name);
+        py_bfws_solver
             .def(py::init<py::object&,
                           const std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)>&,
+                          const std::function<double (const py::object&)>&,
                           const std::function<bool (const py::object&)>&,
                           bool>(),
                  py::arg("domain"),
                  py::arg("state_binarizer"),
+                 py::arg("heuristic"),
                  py::arg("termination_checker"),
                  py::arg("debug_logs")=false)
-            .def("clear", &PyIWSolver<Texecution>::clear)
-            .def("solve", &PyIWSolver<Texecution>::solve, py::arg("state"))
-            .def("is_solution_defined_for", &PyIWSolver<Texecution>::is_solution_defined_for, py::arg("state"))
-            .def("get_next_action", &PyIWSolver<Texecution>::get_next_action, py::arg("state"))
-            .def("get_utility", &PyIWSolver<Texecution>::get_utility, py::arg("state"))
+            .def("clear", &PyBFWSSolver<Texecution>::clear)
+            .def("solve", &PyBFWSSolver<Texecution>::solve, py::arg("state"))
+            .def("is_solution_defined_for", &PyBFWSSolver<Texecution>::is_solution_defined_for, py::arg("state"))
+            .def("get_next_action", &PyBFWSSolver<Texecution>::get_next_action, py::arg("state"))
+            .def("get_utility", &PyBFWSSolver<Texecution>::get_utility, py::arg("state"))
         ;
 }
 
 
-void init_pyiw(py::module& m) {
-    declare_iw_solver<airlaps::SequentialExecution>(m, "_IWSeqSolver_");
-    declare_iw_solver<airlaps::ParallelExecution>(m, "_IWParSolver_");
+void init_pybfws(py::module& m) {
+    declare_bfws_solver<airlaps::SequentialExecution>(m, "_BFWSSeqSolver_");
+    declare_bfws_solver<airlaps::ParallelExecution>(m, "_BFWSParSolver_");
 }

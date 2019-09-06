@@ -1,6 +1,7 @@
 from copy import deepcopy
 from enum import Enum
 from typing import NamedTuple, Optional, Any
+from math import sqrt
 
 import matplotlib.pyplot as plt
 from stable_baselines import PPO2
@@ -154,18 +155,29 @@ if __name__ == '__main__':
         # Lazy A* (planning)
         {'name': 'Lazy A* (planning)',
          'type': {'entry': 'LazyAstar', 'folder': 'hub/solver/lazy_astar'},
-         'config': {'verbose': True}},
+         'config': {'heuristic': lambda s, d: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
+                    'verbose': True}},
         
         # A* (planning)
         {'name': 'A* (planning)',
          'type': {'entry': 'Astar', 'folder': 'hub/solver/astar'},
-         'config': {'parallel': True, 'debug_logs': False}},
+         'config': {'heuristic': lambda s, d: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
+                    'parallel': True, 'debug_logs': False}},
 
-         # IW (planning)
+        # IW (planning)
         {'name': 'IW (planning)',
          'type': {'entry': 'IW', 'folder': 'hub/solver/iw'},
          'config': {'state_binarizer': lambda s, d, f: list(map(lambda e: f(e[0] + e[1] * d._num_cols, s.x == e[0] and s.y == e[1]),
                                                                 [(x, y) for x in range(d._num_cols) for y in range(d._num_rows)])),
+                    'termination_checker': lambda s, d: d.is_goal(s),
+                    'parallel': True, 'debug_logs': False}},
+
+        # IW (planning)
+        {'name': 'BFWS (planning)',
+         'type': {'entry': 'BFWS', 'folder': 'hub/solver/bfws'},
+         'config': {'state_binarizer': lambda s, d, f: list(map(lambda e: f(e[0] + e[1] * d._num_cols, s.x == e[0] and s.y == e[1]),
+                                                                [(x, y) for x in range(d._num_cols) for y in range(d._num_rows)])),
+                    'heuristic': lambda s, d: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
                     'termination_checker': lambda s, d: d.is_goal(s),
                     'parallel': True, 'debug_logs': False}},
 

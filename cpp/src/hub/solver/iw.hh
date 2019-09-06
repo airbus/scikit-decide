@@ -171,6 +171,9 @@ private :
                 std::priority_queue<Node*, std::vector<Node*>, NodeCompare> open_queue;
                 open_queue.push(&root_node);
 
+                // Set of states that have already been explored
+                std::unordered_set<Node*> closed_set;
+
                 // Set of state bits that have been true at least once since the beginning of the search (stored by their index)
                 std::unordered_set<unsigned int> true_bits;
                 novelty(true_bits, s); // we don't use the novelty number here, it's just to initialize true_bits with the root node's bits
@@ -178,6 +181,13 @@ private :
                 while (!open_queue.empty()) {
                     auto best_tip_node = open_queue.top();
                     open_queue.pop();
+
+                    // Check that the best tip node has not already been closed before
+                    // (since this implementation's open_queue does not check for element uniqueness,
+                    // it can contain many copies of the same node pointer that could have been closed earlier)
+                    if (closed_set.find(best_tip_node) != closed_set.end()) { // this implementation's open_queue can contain several
+                        continue;
+                    }
 
                     if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print());
 
@@ -200,6 +210,8 @@ private :
                         return std::make_pair(true, states_pruned);
                     }
 
+                    closed_set.insert(best_tip_node);
+
                     // Expand best tip node
                     auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state)->get_elements();
                     std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node](const auto& a){
@@ -208,7 +220,7 @@ private :
                         // Must be separated from next loop in case the domain is python so that it is in this case actually implemented as a pool of independent processes
                         _domain.compute_next_state(best_tip_node->state, a);
                     });
-                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &true_bits, &states_pruned](const auto& a){
+                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &closed_set, &true_bits, &states_pruned](const auto& a){
                         auto next_state = _domain.get_next_state(best_tip_node->state, a);
                         std::pair<typename Graph::iterator, bool> i;
                         _execution_policy.protect([this, &i, &next_state]{
@@ -216,6 +228,11 @@ private :
                         });
                         Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                         if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print());
+
+                        if (closed_set.find(&neighbor) != closed_set.end()) {
+                            // Ignore the neighbor which is already evaluated
+                            return;
+                        }
 
                         double transition_cost = _domain.get_transition_value(best_tip_node->state, a, neighbor.state);
                         double tentative_gscore = best_tip_node->gscore + transition_cost;
@@ -227,15 +244,15 @@ private :
                             neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
                         }
 
-                        if (novelty(true_bits, neighbor.state) > _width) {
-                            if (_debug_logs) spdlog::debug("Pruning state");
-                            states_pruned = true;
-                        } else {
-                            if (_debug_logs) spdlog::debug("Adding state to open queue");
-                            _execution_policy.protect([&open_queue, &neighbor]{
+                        _execution_policy.protect([this, &true_bits, &open_queue, &neighbor, &states_pruned]{
+                            if (novelty(true_bits, neighbor.state) > _width) {
+                                if (_debug_logs) spdlog::debug("Pruning state");
+                                states_pruned = true;
+                            } else {
+                                if (_debug_logs) spdlog::debug("Adding state to open queue");
                                 open_queue.push(&neighbor);
-                            });
-                        }
+                            }
+                        });
                     });
                 }
 
