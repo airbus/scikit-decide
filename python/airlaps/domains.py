@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import NewType, Optional, Callable
 
-from airlaps.core import autocast_public
+from airlaps.core import autocast_all
 from airlaps.builders.domain.agent import MultiAgent, SingleAgent
 from airlaps.builders.domain.concurrency import Parallel, Sequential
 from airlaps.builders.domain.dynamics import Environment, Simulation, EnumerableTransitions, DeterministicTransitions
@@ -79,7 +79,7 @@ class Domain(MultiAgent, Parallel, Environment, Events, History, PartiallyObserv
             if domain_factory is None:
                 domain_factory = cls
             solver.solve(domain_factory)
-        autocast_public(solver, solver.T_domain, cls)
+        autocast_all(solver, solver.T_domain, cls)
         return solver
 
 

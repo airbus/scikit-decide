@@ -5,12 +5,12 @@ import inspect
 import random
 import re
 from dataclasses import dataclass, asdict, astuple, replace
-from typing import TypeVar, Generic, Union, Optional, Iterable, Sequence, List, Tuple, Set, Dict, Deque, Callable
+from typing import TypeVar, Generic, Union, Optional, Iterable, Sequence, List, Tuple, Dict, Deque, Callable
 
 __all__ = ['T', 'D', 'Space', 'ImplicitSpace', 'EnumerableSpace', 'EmptySpace', 'SamplableSpace', 'SerializableSpace',
            'Distribution', 'ImplicitDistribution', 'DiscreteDistribution', 'SingleValueDistribution', 'TransitionValue',
            'EnvironmentOutcome', 'TransitionOutcome', 'Memory', 'StrDict', 'Constraint', 'ImplicitConstraint',
-           'BoundConstraint', 'autocast_public', 'nocopy']
+           'BoundConstraint', 'autocast_all', 'autocastable', 'nocopy']
 
 T = TypeVar('T')  # Any type
 
@@ -595,12 +595,6 @@ def get_args_dict(func: Callable, args: Tuple, kwargs: Dict) -> Dict:
     return {**dict(zip(args_names, args)), **kwargs}
 
 
-def get_ancestor_func(obj: object, child_func: Callable) -> Callable:
-    name = child_func.__name__
-    mro = obj.__mro__ if inspect.isclass(obj) else obj.__class__.__mro__
-    return next(getattr(o, name) for o in reversed(mro) if hasattr(o, name))
-
-
 @functools.lru_cache(maxsize=1000)
 def cast_needed(src_hintree: Tree, dst_hintree: Tree) -> bool:
     # note: src_hintree and dst_hintree are assumed to have the same tree structure (which will be true by construction)
@@ -623,8 +617,8 @@ def cast(obj: object, src_hintree: Tree, dst_hintree: Tree):
         return obj
 
 
-def autocast(func: Callable, obj: object, src: object, dst: object, hint_obj: str = 'D') -> Callable:
-    hints = get_ancestor_func(obj, func).__annotations__
+def autocast(func: Callable, src: object, dst: object, hint_obj: str = 'D') -> Callable:
+    hints = func.__annotations__
     cast_args = []
     src_hintrees = {}
     dst_hintrees = {}
@@ -649,13 +643,19 @@ def autocast(func: Callable, obj: object, src: object, dst: object, hint_obj: st
     return wrapper_autocast if len(cast_args) > 0 else func
 
 
-def autocast_public(obj: object, src: object, dst: object):
+def autocast_all(obj: object, src: object, dst: object):
     for name, f in inspect.getmembers(obj, lambda x: inspect.isfunction(x) or inspect.ismethod(x)):
-        if not name.startswith('_'):
-            setattr(obj, name, autocast(f, obj, src, dst))
+        if getattr(f, '_autocastable', None):
+            setattr(obj, name, autocast(f, src, dst))
 
 
-# nocopy (class annotator)
+# autocastable (function decorator)
+def autocastable(func: Callable):
+    func._autocastable = True
+    return func
+
+
+# nocopy (class decorator)
 def nocopy(cls):
     cls.__copy__ = lambda self: self
     cls.__deepcopy__ = lambda self, memodict={}: self

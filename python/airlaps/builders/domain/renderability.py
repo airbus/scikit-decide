@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from airlaps.core import D
+from airlaps.core import D, autocastable
 
 __all__ = ['Renderable']
 
@@ -10,6 +10,7 @@ __all__ = ['Renderable']
 class Renderable:
     """A domain must inherit this class if it can be rendered with any kind of visualization."""
 
+    @autocastable
     def render(self, memory: Optional[D.T_memory[D.T_state]] = None, **kwargs: Any) -> Any:
         """Compute a visual render of the given memory (state or history), or the internal one if omitted.
 

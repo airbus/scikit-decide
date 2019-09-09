@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import List, Callable
 
-from airlaps.core import D, autocast_public
+from airlaps.core import D, autocast_all, autocastable
 from airlaps.domains import Domain
 from airlaps.builders.solver.policy import DeterministicPolicies
 
@@ -174,7 +174,7 @@ class Solver:
 
         def cast_domain_factory():
             domain = domain_factory()
-            autocast_public(domain, domain, self.T_domain)
+            autocast_all(domain, domain, self.T_domain)
             return domain
 
         return self._solve_domain(cast_domain_factory)
@@ -193,7 +193,8 @@ class Solver:
             #policy and #assessibility.
         """
         raise NotImplementedError
-    
+
+    @autocastable
     def solve_from(self, memory: D.T_memory[D.T_state]) -> None:
         """Run the solving process from a given state.
 

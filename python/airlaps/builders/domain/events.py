@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 from typing import Optional, Union
 
-from airlaps.core import D, Space, EmptySpace
+from airlaps.core import D, Space, EmptySpace, autocastable
 
 __all__ = ['Events', 'Actions', 'UnrestrictedActions']
 
@@ -11,6 +11,7 @@ __all__ = ['Events', 'Actions', 'UnrestrictedActions']
 class Events:
     """A domain must inherit this class if it handles events (controllable or not not by the agents)."""
 
+    @autocastable
     def get_enabled_events(self, memory: Optional[D.T_memory[D.T_state]] = None) -> Space[D.T_event]:
         """Get the space (finite or infinite set) of enabled uncontrollable events in the given memory (state or
         history), or in the internal one if omitted.
@@ -60,6 +61,7 @@ class Events:
         """
         raise NotImplementedError
 
+    @autocastable
     def is_enabled_event(self, event: D.T_event, memory: Optional[D.T_memory[D.T_state]] = None) -> bool:
         """Indicate whether an uncontrollable event is enabled in the given memory (state or history), or in the
         internal one if omitted.
@@ -113,6 +115,7 @@ class Events:
         """
         return self._get_enabled_events_from(memory).contains(event)
 
+    @autocastable
     def get_action_space(self) -> D.T_agent[Space[D.T_event]]:
         """Get the (cached) domain action space (finite or infinite set).
 
@@ -153,6 +156,7 @@ class Events:
         """
         raise NotImplementedError
 
+    @autocastable
     def is_action(self, event: D.T_event) -> bool:
         """Indicate whether an event is an action (i.e. a controllable event for the agents).
 
@@ -183,6 +187,7 @@ class Events:
         """
         return self._get_action_space().contains(event)
 
+    @autocastable
     def get_applicable_actions(self, memory: Optional[D.T_memory[D.T_state]] = None) -> D.T_agent[Space[D.T_event]]:
         """Get the space (finite or infinite set) of applicable actions in the given memory (state or history), or in
         the internal one if omitted.
@@ -231,6 +236,7 @@ class Events:
         """
         raise NotImplementedError
 
+    @autocastable
     def is_applicable_action(self, action: D.T_agent[D.T_event],
                              memory: Optional[D.T_memory[D.T_state]] = None) -> bool:
         """Indicate whether an action is applicable in the given memory (state or history), or in the internal one if

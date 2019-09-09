@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from airlaps.core import D, Distribution, SingleValueDistribution
+from airlaps.core import D, Distribution, SingleValueDistribution, autocastable
 
 __all__ = ['Policies', 'UncertainPolicies', 'DeterministicPolicies']
 
@@ -8,6 +8,7 @@ __all__ = ['Policies', 'UncertainPolicies', 'DeterministicPolicies']
 class Policies:
     """A solver must inherit this class if it computes a stochastic policy as part of the solving process."""
 
+    @autocastable
     def sample_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
         """Sample an action for the given observation (from the solver's current policy).
 
@@ -30,6 +31,7 @@ class Policies:
         """
         raise NotImplementedError
 
+    @autocastable
     def is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
         """Check whether the solver's current policy is defined for the given observation.
 
@@ -60,6 +62,7 @@ class UncertainPolicies(Policies):
     def _sample_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
         return self._get_next_action_distribution(observation).sample()
 
+    @autocastable
     def get_next_action_distribution(self, observation: D.T_agent[D.T_observation]) -> Distribution[
             D.T_agent[D.T_concurrency[D.T_event]]]:
         """Get the probabilistic distribution of next action for the given observation (from the solver's current
@@ -94,6 +97,7 @@ class DeterministicPolicies(UncertainPolicies):
             D.T_agent[D.T_concurrency[D.T_event]]]:
         return SingleValueDistribution(self._get_next_action(observation))
 
+    @autocastable
     def get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
         """Get the next deterministic action (from the solver's current policy).
 

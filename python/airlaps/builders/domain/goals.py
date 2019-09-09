@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 from typing import Union
 
-from airlaps.core import D, Space
+from airlaps.core import D, Space, autocastable
 
 __all__ = ['Goals']
 
@@ -11,6 +11,7 @@ __all__ = ['Goals']
 class Goals:
     """A domain must inherit this class if it has formalized goals."""
 
+    @autocastable
     def get_goals(self) -> D.T_agent[Space[D.T_observation]]:
         """Get the (cached) domain goals space (finite or infinite set).
 
@@ -61,6 +62,7 @@ class Goals:
         """
         raise NotImplementedError
 
+    @autocastable
     def is_goal(self, observation: D.T_agent[D.T_observation]) -> bool:
         """Indicate whether an observation belongs to the goals.
 

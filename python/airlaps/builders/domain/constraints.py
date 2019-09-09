@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 from typing import List
 
-from airlaps.core import D, Constraint
+from airlaps.core import D, Constraint, autocastable
 
 __all__ = ['Constrained']
 
@@ -11,6 +11,7 @@ __all__ = ['Constrained']
 class Constrained:
     """A domain must inherit this class if it has constraints."""
 
+    @autocastable
     def get_constraints(self) -> List[
             Constraint[D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state]]:
         """Get the (cached) domain constraints.

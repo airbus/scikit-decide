@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 from typing import Union, Optional
 
-from airlaps.core import D, Space, Distribution, SingleValueDistribution
+from airlaps.core import D, Space, Distribution, SingleValueDistribution, autocastable
 
 __all__ = ['PartiallyObservable', 'TransformedObservable', 'FullyObservable']
 
@@ -16,6 +16,7 @@ class PartiallyObservable:
     provide the probability distribution of the observation given a state and action.
     """
 
+    @autocastable
     def get_observation_space(self) -> D.T_agent[Space[D.T_observation]]:
         """Get the (cached) observation space (finite or infinite set).
 
@@ -56,6 +57,7 @@ class PartiallyObservable:
         """
         raise NotImplementedError
 
+    @autocastable
     def is_observation(self, observation: D.T_agent[D.T_observation]) -> bool:
         """Check that an observation indeed belongs to the domain observation space.
 
@@ -92,6 +94,7 @@ class PartiallyObservable:
         else:  # StrDict
             return all(observation_space[k].contains(v) for k, v in observation.items())
 
+    @autocastable
     def get_observation_distribution(self, state: D.T_state,
                                      action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> Distribution[
             D.T_agent[D.T_observation]]:
@@ -139,6 +142,7 @@ class TransformedObservable(PartiallyObservable):
             D.T_agent[D.T_observation]]:
         return SingleValueDistribution(self._get_observation(state, action))
 
+    @autocastable
     def get_observation(self, state: D.T_state, action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> \
             D.T_agent[D.T_observation]:
         """Get the deterministic observation given a state and action.
