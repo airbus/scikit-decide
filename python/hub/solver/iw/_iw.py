@@ -75,12 +75,14 @@ try:
         T_domain = D
 
         def __init__(self,
-                     state_binarizer: Callable[[D.T_state, Domain, Callable[[int, bool], None], None]],
+                     nb_of_binary_features: Callable[[Domain], int],
+                     state_binarizer: Callable[[D.T_state, Domain, Callable[[int], None], None]],
                      termination_checker: Callable[[D.T_state, Domain], bool],
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
+            self._nb_of_binary_features = nb_of_binary_features
             self._state_binarizer = state_binarizer
             self._termination_checker = termination_checker
             self._parallel = parallel
@@ -98,6 +100,7 @@ try:
                 setattr(self._domain.__class__, 'wrapped_get_next_state',
                         IWDomain_parallel_get_next_state)
                 self._solver = iw_par_solver(domain=self._domain,
+                                             nb_of_binary_features=self._nb_of_binary_features(self._domain),
                                              state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
                                              termination_checker=lambda o: self._termination_checker(o, self._domain),
                                              debug_logs=self._debug_logs)
@@ -109,6 +112,7 @@ try:
                 setattr(self._domain.__class__, 'wrapped_get_next_state',
                         IWDomain_sequential_get_next_state)
                 self._solver = iw_seq_solver(domain=self._domain,
+                                             nb_of_binary_features=self._nb_of_binary_features(self._domain),
                                              state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
                                              termination_checker=lambda o: self._termination_checker(o, self._domain),
                                              debug_logs=self._debug_logs)

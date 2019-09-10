@@ -229,15 +229,17 @@ template <typename Texecution>
 class PyIWSolver {
 public :
     PyIWSolver(py::object& domain,
-               const std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)>& state_binarizer,
+               const unsigned int& nb_of_binary_features,
+               const std::function<void (const py::object&, const std::function<void (const py::int_&)>&)>& state_binarizer,
                const std::function<bool (const py::object&)>& termination_checker,
                bool debug_logs = false)
         : _state_binarizer(state_binarizer), _termination_checker(termination_checker) {
           _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
           _solver = std::make_unique<airlaps::IWSolver<PyIWDomain<Texecution>, Texecution>>(
                                                                         *_domain,
+                                                                        nb_of_binary_features,
                                                                         [this](const typename PyIWDomain<Texecution>::State& s,
-                                                                               const std::function<void (const py::int_&, const py::bool_&)>& f)->void {
+                                                                               const std::function<void (const py::int_&)>& f)->void {
                                                                             typename GilControl<Texecution>::Acquire acquire;
                                                                             _state_binarizer(s._state, f);
                                                                         },
@@ -277,7 +279,7 @@ private :
     std::unique_ptr<PyIWDomain<Texecution>> _domain;
     std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, Texecution>> _solver;
     
-    std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)> _state_binarizer;
+    std::function<void (const py::object&, const std::function<void (const py::int_&)>&)> _state_binarizer;
     std::function<bool (const py::object&)> _termination_checker;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
@@ -290,10 +292,12 @@ void declare_iw_solver(py::module& m, const char* name) {
     py::class_<PyIWSolver<Texecution>> py_iw_solver(m, name);
         py_iw_solver
             .def(py::init<py::object&,
-                          const std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)>&,
+                          const unsigned int&,
+                          const std::function<void (const py::object&, const std::function<void (const py::int_&)>&)>&,
                           const std::function<bool (const py::object&)>&,
                           bool>(),
                  py::arg("domain"),
+                 py::arg("nb_of_binary_features"),
                  py::arg("state_binarizer"),
                  py::arg("termination_checker"),
                  py::arg("debug_logs")=false)
