@@ -229,7 +229,7 @@ template <typename Texecution>
 class PyBFWSSolver {
 public :
     PyBFWSSolver(py::object& domain,
-                 const std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)>& state_binarizer,
+                 const std::function<void (const py::object&, const std::function<void (const py::int_&)>&)>& state_binarizer,
                  const std::function<double (const py::object&)>& heuristic,
                  const std::function<bool (const py::object&)>& termination_checker,
                  bool debug_logs = false)
@@ -238,7 +238,7 @@ public :
           _solver = std::make_unique<airlaps::BFWSSolver<PyBFWSDomain<Texecution>, Texecution>>(
                                                                         *_domain,
                                                                         [this](const typename PyBFWSDomain<Texecution>::State& s,
-                                                                               const std::function<void (const py::int_&, const py::bool_&)>& f)->void {
+                                                                               const std::function<void (const py::int_&)>& f)->void {
                                                                             typename GilControl<Texecution>::Acquire acquire;
                                                                             _state_binarizer(s._state, f);
                                                                         },
@@ -282,7 +282,7 @@ private :
     std::unique_ptr<PyBFWSDomain<Texecution>> _domain;
     std::unique_ptr<airlaps::BFWSSolver<PyBFWSDomain<Texecution>, Texecution>> _solver;
     
-    std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)> _state_binarizer;
+    std::function<void (const py::object&, const std::function<void (const py::int_&)>&)> _state_binarizer;
     std::function<double (const py::object&)> _heuristic;
     std::function<bool (const py::object&)> _termination_checker;
 
@@ -296,7 +296,7 @@ void declare_bfws_solver(py::module& m, const char* name) {
     py::class_<PyBFWSSolver<Texecution>> py_bfws_solver(m, name);
         py_bfws_solver
             .def(py::init<py::object&,
-                          const std::function<void (const py::object&, const std::function<void (const py::int_&, const py::bool_&)>&)>&,
+                          const std::function<void (const py::object&, const std::function<void (const py::int_&)>&)>&,
                           const std::function<double (const py::object&)>&,
                           const std::function<bool (const py::object&)>&,
                           bool>(),

@@ -181,10 +181,17 @@ if __name__ == '__main__':
                     'parallel': True, 'debug_logs': False}},
 
         # BFWS (planning)
-        {'name': 'BFWS (planning)',
+        {'name': 'BFWS (planning) - (num_rows * num_cols) binary encoding (1 binary variable <=> 1 cell)',
          'type': {'entry': 'BFWS', 'folder': 'hub/solver/bfws'},
-         'config': {'state_binarizer': lambda s, d, f: list(map(lambda e: f(e[0] + e[1] * d._num_cols, s.x == e[0] and s.y == e[1]),
-                                                                [(x, y) for x in range(d._num_cols) for y in range(d._num_rows)])),
+         'config': {'state_binarizer': lambda s, d, f: f(s.x +  s.y * d._num_cols),
+                    'heuristic': lambda s, d: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
+                    'termination_checker': lambda s, d: d.is_goal(s),
+                    'parallel': True, 'debug_logs': False}},
+        
+        # BFWS (planning)
+        {'name': 'BFWS (planning)  - (num_rows + num_cols) binary encoding (1 binary variable <=> 1 dimension value)',
+         'type': {'entry': 'BFWS', 'folder': 'hub/solver/bfws'},
+         'config': {'state_binarizer': lambda s, d, f: [f(s.x), f(s.y + d._num_cols)],
                     'heuristic': lambda s, d: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
                     'termination_checker': lambda s, d: d.is_goal(s),
                     'parallel': True, 'debug_logs': False}},

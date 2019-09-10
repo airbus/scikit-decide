@@ -30,7 +30,7 @@ public :
     typedef Texecution_policy ExecutionPolicy;
 
     BFWSSolver(Domain& domain,
-               const std::function<void (const State&, const std::function<void (const unsigned int&, const bool&)>&)>& state_binarizer,
+               const std::function<void (const State&, const std::function<void (const unsigned int&)>&)>& state_binarizer,
                const std::function<double (const State&)>& heuristic,
                const std::function<bool (const State&)>& termination_checker,
                bool debug_logs = false)
@@ -188,21 +188,21 @@ public :
 
 private :
     Domain& _domain;
-    std::function<void (const State&, const std::function<void (const unsigned int&, const bool&)>&)> _state_binarizer;
+    std::function<void (const State&, const std::function<void (const unsigned int&)>&)> _state_binarizer;
     std::function<double (const State&)> _heuristic;
     std::function<bool (const State&)> _termination_checker;
     bool _debug_logs;
     ExecutionPolicy _execution_policy;
 
+    // we only compute novelty of 1 for complexity reasons and assign all other novelties to +infty
+    // see paper "Best-First Width Search: Exploration and Exploitation in Classical Planning" by Lipovetsky and Geffner
     unsigned int novelty(std::unordered_map<double, std::unordered_set<unsigned int>>& true_bits_map,
                          const double& heuristic_value, const State& state) const {
         auto r = true_bits_map.emplace(heuristic_value, std::unordered_set<unsigned int>());
         std::unordered_set<unsigned int>& true_bits = r.first->second;
         unsigned int nov = 0;
-        _state_binarizer(state, [&nov, &true_bits](const unsigned int& i, const bool& b){
-            if (b) {
-                nov += (int) true_bits.insert(i).second;
-            }
+        _state_binarizer(state, [&nov, &true_bits](const unsigned int& i){
+            nov += (int) true_bits.insert(i).second;
         });
         if (r.second) {
             nov = 0;

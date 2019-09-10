@@ -75,7 +75,7 @@ try:
         T_domain = D
 
         def __init__(self,
-                     state_binarizer: Callable[[D.T_state, Domain, Callable[[int, bool], None], None]],
+                     state_binarizer: Callable[[D.T_state, Domain, Callable[[int], None], None]],
                      heuristic: Callable[[D.T_state, Domain], float],
                      termination_checker: Callable[[D.T_state, Domain], bool],
                      parallel: bool = True,
