@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 from typing import Union, Optional, Type, Iterable, Tuple, List, Callable
 
-from airlaps import hub, Domain, Solver, D, Space, EnvironmentOutcome, autocast_public
+from airlaps import hub, Domain, Solver, D, Space, EnvironmentOutcome, autocast_all, autocastable
 from airlaps.builders.domain import Goals, Markovian, Renderable
 from airlaps.builders.solver import Policies
 
@@ -62,23 +62,27 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                     T_agent = domain.T_agent
                     T_event = domain.T_event
 
+                    @autocastable
                     def get_applicable_actions(self) -> D.T_agent[Space[D.T_event]]:
                         return domain.get_applicable_actions()
 
                 self._domain = CastDomain()
-                autocast_public(self._domain, self._domain, self)
+                autocast_all(self._domain, self._domain, self)
 
+            @autocastable
             def reset(self) -> None:
                 pass
 
+            @autocastable
             def sample_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
                 return {agent: [space.sample()] for agent, space in self._domain.get_applicable_actions().items()}
 
+            @autocastable
             def is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
                 return True
 
         solver = RandomWalk()
-        autocast_public(solver, solver.T_domain, domain)
+        autocast_all(solver, solver.T_domain, domain)
 
     has_render = isinstance(domain, Renderable)
     has_goal = isinstance(domain, Goals)

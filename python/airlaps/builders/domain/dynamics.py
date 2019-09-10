@@ -4,7 +4,7 @@ import functools
 from typing import Optional
 
 from airlaps.core import D, Distribution, DiscreteDistribution, SingleValueDistribution, TransitionValue, \
-    EnvironmentOutcome, TransitionOutcome
+    EnvironmentOutcome, TransitionOutcome, autocastable
 
 __all__ = ['Environment', 'Simulation', 'UncertainTransitions', 'EnumerableTransitions', 'DeterministicTransitions']
 
@@ -19,6 +19,7 @@ class Environment:
         compute next steps (automatically done by default in the #_memory attribute).
     """
 
+    @autocastable
     def step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> EnvironmentOutcome[
             D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         """Run one step of the environment's dynamics.
@@ -109,6 +110,7 @@ class Simulation(Environment):
             D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         return self._state_sample(self._memory, action)
 
+    @autocastable
     def set_memory(self, memory: D.T_memory[D.T_state]) -> None:
         """Set internal memory attribute #_memory to given one.
 
@@ -151,6 +153,7 @@ class Simulation(Environment):
         """
         self._memory = memory
 
+    @autocastable
     def sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
             EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         """Sample one transition of the simulator's dynamics.
@@ -237,6 +240,7 @@ class UncertainTransitions(Simulation):
         termination = self._is_terminal(next_state)
         return TransitionOutcome(next_state, value, termination, None)
 
+    @autocastable
     def get_next_state_distribution(self, memory: D.T_memory[D.T_state],
                                     action: D.T_agent[D.T_concurrency[D.T_event]]) -> Distribution[D.T_state]:
         """Get the probability distribution of next state given a memory and action.
@@ -263,6 +267,7 @@ class UncertainTransitions(Simulation):
         """
         raise NotImplementedError
 
+    @autocastable
     def get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
         """Get the value (reward or cost) of a transition.
@@ -307,6 +312,7 @@ class UncertainTransitions(Simulation):
         """
         raise NotImplementedError
 
+    @autocastable
     def is_transition_value_dependent_on_next_state(self) -> bool:
         """Indicate whether get_transition_value() requires the next_state parameter for its computation (cached).
 
@@ -348,6 +354,7 @@ class UncertainTransitions(Simulation):
         """
         return True
 
+    @autocastable
     def is_terminal(self, state: D.T_state) -> bool:
         """Indicate whether a state is terminal.
 
@@ -388,6 +395,7 @@ class EnumerableTransitions(UncertainTransitions):
         whenever they are used as environments (e.g. via #Initializable.reset() and #Environment.step() functions).
     """
 
+    @autocastable
     def get_next_state_distribution(self, memory: D.T_memory[D.T_state],
                                     action: D.T_agent[D.T_concurrency[D.T_event]]) -> DiscreteDistribution[D.T_state]:
         """Get the discrete probability distribution of next state given a memory and action.
@@ -440,6 +448,7 @@ class DeterministicTransitions(EnumerableTransitions):
             D.T_state]:
         return SingleValueDistribution(self._get_next_state(memory, action))
 
+    @autocastable
     def get_next_state(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
         """Get the next state given a memory and action.
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from airlaps.core import D, TransitionValue
+from airlaps.core import D, TransitionValue, autocastable
 
 __all__ = ['Rewards', 'PositiveCosts']
 
@@ -8,6 +8,7 @@ __all__ = ['Rewards', 'PositiveCosts']
 class Rewards:
     """A domain must inherit this class if it sends rewards (positive and/or negative)."""
 
+    @autocastable
     def check_value(self, value: TransitionValue[D.T_value]) -> bool:
         """Check that a transition value is compliant with its reward specification.
 

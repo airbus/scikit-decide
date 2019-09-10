@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from airlaps.core import D
+from airlaps.core import D, autocastable
 
 __all__ = ['Utilities', 'QValues']
 
@@ -8,6 +8,7 @@ __all__ = ['Utilities', 'QValues']
 class Utilities:
     """A solver must inherit this class if it can provide the utility function (i.e. value function)."""
 
+    @autocastable
     def get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
         """Get the estimated on-policy utility of the given observation.
 
@@ -48,6 +49,7 @@ class Utilities:
 class QValues(Utilities):
     """A solver must inherit this class if it can provide the Q function (i.e. action-value function)."""
 
+    @autocastable
     def get_q_value(self, observation: D.T_agent[D.T_observation],
                     action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_value:
         """Get the estimated on-policy Q value of the given observation and action.

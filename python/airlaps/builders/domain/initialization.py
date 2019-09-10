@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 
-from airlaps.core import D, Distribution, SingleValueDistribution
+from airlaps.core import D, Distribution, SingleValueDistribution, autocastable
 
 __all__ = ['Initializable', 'UncertainInitialized', 'DeterministicInitialized']
 
@@ -10,6 +10,7 @@ __all__ = ['Initializable', 'UncertainInitialized', 'DeterministicInitialized']
 class Initializable:
     """A domain must inherit this class if it can be initialized."""
 
+    @autocastable
     def reset(self) -> D.T_agent[D.T_observation]:
         """Reset the state of the environment and return an initial observation.
 
@@ -57,6 +58,7 @@ class UncertainInitialized(Initializable):
         initial_state = self._get_initial_state_distribution().sample()
         return initial_state
 
+    @autocastable
     def get_initial_state_distribution(self) -> Distribution[D.T_state]:
         """Get the (cached) probability distribution of initial states.
 
@@ -104,6 +106,7 @@ class DeterministicInitialized(UncertainInitialized):
     def _get_initial_state_distribution_(self) -> Distribution[D.T_state]:
         return SingleValueDistribution(self._get_initial_state())
 
+    @autocastable
     def get_initial_state(self) -> D.T_state:
         """Get the (cached) initial state.
 
