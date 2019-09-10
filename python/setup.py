@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='airlaps',
-    version='0.2.1',
+    version='0.2.2',
     packages=[
         'airlaps',
         'airlaps.builders',
