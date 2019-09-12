@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 from typing import Union, Optional, Type, Iterable, Tuple, List, Callable
 import json
-import os
+import logging
 
 from airlaps import hub, Domain, Solver, D, Space, EnvironmentOutcome, autocast_all, autocastable
 from airlaps.builders.domain import Goals, Markovian, Renderable, FullyObservable
@@ -51,7 +51,8 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
     verbose: Whether to print information to the console during rollout.
     action_formatter: The function transforming actions in the string to print (if None, no print).
     outcome_formatter: The function transforming EnvironmentOutcome objects in the string to print (if None, no print).
-    save_result: True to save state visited, actions applied and Transition Value.
+    save_result: True to save in json state visited, actions applied and Transition Value. \
+    Files are saved in the current directory
     """
     if solver is None:
         # Create solver-like random walker that works for any domain
@@ -141,12 +142,21 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             print(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
                   f'in episode {i_episode + 1}.')
         if save_result:
-            with open('actions.json', 'w') as f:
-                json.dump(actions, f, indent=3)
-            with open('transitions_cost.json', 'w') as f:
-                json.dump(transitions_cost, f, indent=2)
-            with open('states.json', 'w') as f:
-                json.dump(states, f, indent=3)
+            try:
+                with open('actions.json', 'w') as f:
+                    json.dump(actions, f, indent=3)
+            except:
+                logging.error("Action is not serializable")
+            try:
+                with open('transitions_cost.json', 'w') as f:
+                    json.dump(transitions_cost, f, indent=2)
+            except:
+                logging.error("Transition cost is not serializable")
+            try:
+                with open('states.json', 'w') as f:
+                    json.dump(states, f, indent=3)
+            except:
+                logging.error("State is not serializable")
 
 # # TODO: replace rollout_saver() by additional features on rollout()
 # def rollout_saver(domain: Domain, solver: Solver, from_memory: Optional[Union[Memory[T_state], T_state]] = None,
