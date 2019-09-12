@@ -1,16 +1,20 @@
 # TODO: support OpenAI GoalEnv
 from __future__ import annotations
 
+import struct
+import random
 from copy import deepcopy
 from typing import Any, Optional
 
 import gym
+import numpy as np
 
 from airlaps import hub, Domain, Space, TransitionValue, TransitionOutcome
 from airlaps.builders.domain import SingleAgent, Sequential, DeterministicTransitions, UnrestrictedActions, \
     Initializable, DeterministicInitialized, Markovian, Memoryless, FullyObservable, Renderable, Rewards, PositiveCosts
 
 GymSpace = hub.load('GymSpace', folder='hub/space/gym')
+ListSpace = hub.load('ListSpace', folder='hub/space/gym')
 
 
 class D(Domain, SingleAgent, Sequential, UnrestrictedActions, Initializable, Memoryless, FullyObservable, Renderable,
@@ -147,6 +151,164 @@ class DeterministicGymDomain(D):
 
 class CostDeterministicGymDomain(DeterministicGymDomain, PositiveCosts):
     pass
+
+
+class GymPlanningDomain(CostDeterministicGymDomain):
+    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
+        usable by a classical planner that requires enumerable applicable action sets
+
+    !!! warning
+        Using this class requires OpenAI Gym to be installed.
+    """
+
+    def __init__(self, gym_env: gym.Env,
+                       discretization_factor: int,
+                       branching_factor: int = None) -> None:
+        """Initialize WidthPlanningGymDomain.
+
+        # Parameters
+        gym_env: The deterministic Gym environment (gym.env) to wrap.
+        discretization_factor: Number of discretized action variable values per continuous action variable
+        branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
+        """
+        super().__init__(gym_env)
+        self._discretization_factor = discretization_factor
+        self._branching_factor = branching_factor
+
+    def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
+        applicable_actions = self._discretize_action_space(self.get_action_space()._gym_space)
+        if self._branching_factor is not None and len(applicable_actions.get_elements()) > self._branching_factor:
+            return ListSpace(random.sample(applicable_actions.get_elements(), self._branching_factor))
+        else:
+            return applicable_actions
+    
+    def _discretize_action_space(self, action_space: gym.spaces.Space) -> D.T_agent[Space[D.T_event]]:
+        if isinstance(action_space, gym.spaces.box.Box):
+            nb_elements = 1
+            for dim in action_space.shape:
+                nb_elements *= dim
+            return ListSpace([action_space.sample() for i in range(self._discretization_factor * nb_elements)])
+        elif isinstance(action_space, gym.spaces.discrete.Discrete):
+            return ListSpace([i for i in range(action_space.n)])
+        elif isinstance(action_space, gym.spaces.multi_discrete.MultiDiscrete):
+            generate = lambda d: ([[e] + g for e in range(action_space.nvec[d]) for g in generate(d+1)]
+                                  if d < len(action_space.nvec)-1 else
+                                  [[e] for e in range(action_space.nvec[d])])
+            return ListSpace(generate(0))
+        elif isinstance(action_space, gym.spaces.multi_binary.MultiBinary):
+            generate = lambda d: ([[e] + g for e in [True, False] for g in generate(d+1)]
+                                  if d < len(action_space.n)-1 else
+                                  [[e] for e in [True, False]])
+            return ListSpace(generate(0))
+        elif isinstance(action_space, gym.spaces.tuple.Tuple):
+            generate = lambda d: ([[e] + g for e in _discretize_action_space(action_space.spaces[d]).get_elements() for g in generate(d+1)]
+                                  if d < len(action_space.spaces)-1 else
+                                  [[e] for e in _discretize_action_space(action_space.spaces[d]).get_elements()])
+            return ListSpace(generate(0))
+        elif isinstance(action_space, gym.spaces.dict.Dict):
+            dkeys = action_space.spaces.keys()
+            generate = lambda d: ([[e] + g for e in _discretize_action_space(action_space.spaces[dkeys[d]]).get_elements() for g in generate(d+1)]
+                                  if d < len(dkeys)-1 else
+                                  [[e] for e in _discretize_action_space(action_space.spaces[dkeys[d]]).get_elements()])
+        else:
+            raise RuntimeError('Unknown Gym space element of type ' + str(type(action_space)))
+
+
+class GymWidthPlanningDomain(GymPlanningDomain):
+    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
+        usable by width-based planning algorithm (e.g. IW)
+
+    !!! warning
+        Using this class requires OpenAI Gym to be installed.
+    """
+
+    def __init__(self, gym_env: gym.Env,
+                       discretization_factor: int,
+                       branching_factor: int = None) -> None:
+        """Initialize WidthPlanningGymDomain.
+
+        # Parameters
+        gym_env: The deterministic Gym environment (gym.env) to wrap.
+        discretization_factor: Number of discretized action variable values per continuous action variable
+        branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
+        """
+        super().__init__(gym_env, discretization_factor, branching_factor)
+    
+    def nb_of_binary_features(self) -> int:
+        """Return the size of the bit vector encoding an observation
+        """
+        return self._binarize_gym_space_element(self._gym_env.observation_space,
+                                                self._gym_env.observation_space.sample(),
+                                                0,
+                                                lambda i: None)
+
+    def binarize(self, memory: D.T_memory[D.T_state], func: Callable[[int], None]) -> None:
+        """Transform state in a bit vector and call f on each true value of this vector
+
+        # Parameters
+        memory: The Gym state (in observation_space) to binarize
+        func: The function called on each true bit of the binarized state
+        """
+        self._binarize_gym_space_element(self._gym_env.observation_space, memory, 0, func)
+    
+    def _binarize_gym_space_element(self, space: gym.spaces.Space,
+                                          element: Any,
+                                          start: int,
+                                          func: Callable[[int], None]) -> int:
+        current_index = start
+        if isinstance(space, gym.spaces.box.Box):
+            # compute the size of the bit vector encoding the largest float
+            maxlen = len(bin(struct.unpack('!i', struct.pack('!f', float('inf')))[0])[2:])
+            for cell in np.nditer(element):
+                # convert float to string of 1s and 0s
+                float_bin = bin(struct.unpack('!i', struct.pack('!f', cell))[0])
+                # the sign of the float is encoded in the first bit in our translation
+                if float_bin[0] == '-':
+                    func(current_index)
+                    float_bin = float_bin[3:]
+                else:
+                    float_bin = float_bin[2:]
+                current_index += 1
+                # add 0s at the beginning of the string so that all elements are encoded with the same number of bits
+                # that depends on the size of the bit vector encoding the largest float
+                float_bin = ('0' * (maxlen - len(float_bin))) + float_bin
+                for b in float_bin:
+                    if b == '1':
+                        func(current_index)
+                    current_index += 1
+        elif isinstance(space, gym.spaces.discrete.Discrete):
+            # convert int to string of 1s and 0s
+            int_bin = bin(element)[2:]
+            # add 0s at the beginning of the string so that all elements are encoded with the same number of bits
+            # that depends on the discrete space's highest element which is space.n - 1
+            int_bin = ('0' * (len(bin(space.n - 1)[2:]) - len(int_bin))) + int_bin
+            for b in int_bin:
+                if b == '1':
+                    func(current_index)
+                current_index += 1
+        elif isinstance(space, gym.spaces.multi_discrete.MultiDiscrete):
+            # look at the previous test case for the logics of translating each element of the vector to a bit string
+            for i in range(len(space.nvec)):
+                int_bin = bin(element[i])[2:]
+                int_bin = ('0' * (len(bin(space.nvec[i] - 1)[2:]) - len(int_bin))) + int_bin
+                for b in int_bin:
+                    if b == '1':
+                        func(current_index)
+                    current_index += 1
+        elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
+            for b in element:
+                if b:
+                    func(current_index)
+                current_index += 1
+        elif isinstance(space, gym.spaces.tuple.Tuple):
+            for i in range(len(space.spaces)):
+                current_index = _binarize_gym_space_element(space.spaces[i], element[i], current_index, func)
+        elif isinstance(space, gym.spaces.dict.Dict):
+            for k, v in space.spaces:
+                current_index = _binarize_gym_space_element(v, element[k], current_index, func)
+        else:
+            raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
+        return current_index
 
 
 class AsGymEnv(gym.Env):
