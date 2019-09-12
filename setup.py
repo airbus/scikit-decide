@@ -36,7 +36,7 @@ class CMakeBuild(build_ext):
         cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
                       '-DPYTHON_EXECUTABLE=' + sys.executable,
                       '-DONLY_PYTHON=ON']
-        
+
         if os.path.isfile('airlaps_cmake_toolchain.txt'):
             cmake_args += ['-DCMAKE_TOOLCHAIN_FILE=' + os.path.abspath('airlaps_cmake_toolchain.txt')]
 
@@ -45,7 +45,7 @@ class CMakeBuild(build_ext):
 
         if platform.system() == "Windows":
             cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir)]
-            if sys.maxsize > 2**32:
+            if sys.maxsize > 2 ** 32:
                 cmake_args += ['-A', 'x64']
             build_args += ['--', '/m']
         else:
@@ -60,11 +60,21 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
 
+
+def find_version(*filepath):
+    # Extract version information from filepath
+    here = os.path.abspath(os.path.dirname(__file__))
+    with open(os.path.join(here, *filepath)) as fp:
+        version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", fp.read(), re.M)
+        if version_match:
+            return version_match.group(1)
+        raise RuntimeError("Unable to find version string.")
+
 # TODO: import the following from python/setup.py
 setup(
     name='airlaps',
-    version='0.1.0',
-    package_dir = {'': 'python'},
+    version=find_version("python", "setup.py"),
+    package_dir={'': 'python'},
     packages=[
         'airlaps',
         'airlaps.catalog',
