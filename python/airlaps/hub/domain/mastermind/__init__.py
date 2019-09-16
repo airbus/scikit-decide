@@ -1,0 +1,1 @@
+from .mastermind import MasterMind
