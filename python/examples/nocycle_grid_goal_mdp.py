@@ -3,12 +3,10 @@ from typing import NamedTuple, Optional, Iterable
 from math import sqrt
 import getopt, sys
 
-from airlaps import hub, GoalMDPDomain, TransitionValue, \
-     Space, EnumerableSpace, ImplicitSpace, DiscreteDistribution
+from airlaps import GoalMDPDomain, TransitionValue, Space, EnumerableSpace, ImplicitSpace, DiscreteDistribution
 from airlaps.builders.domain import Actions
-from airlaps.utils import rollout
-
-MultiDiscreteSpace = hub.load('MultiDiscreteSpace', folder='hub/space/gym')
+from airlaps.hub.space.gym import MultiDiscreteSpace
+from airlaps.utils import load_registered_solver, rollout
 
 
 class MyState(NamedTuple):
@@ -167,22 +165,15 @@ if __name__ == '__main__':
 
         # AO* (planning)
         {'name': 'AO* (planning)',
-         'type': {'entry': 'AOstar', 'folder': 'hub/solver/aostar'},
+         'entry': 'AOstar',
          'config': {'parallel': True, 'discount': 1.0, 'max_tip_expanions': 1,
-                     'detect_cycles': False, 'debug_logs': False,
-                     'heuristic': lambda s, d: sqrt((s.x-(rows-1))*(s.x-(rows-1))+(s.y-(columns-1))*(s.y-(columns-1)))}}
+                    'detect_cycles': False, 'debug_logs': False,
+                    'heuristic': lambda s, d: sqrt((s.x-(rows-1))*(s.x-(rows-1))+(s.y-(columns-1))*(s.y-(columns-1)))}}
     ]
 
-    # Load solvers (if installed)
-    solvers = []
-    for s in try_solvers:
-        try:
-            if s['type'] is not None:
-                s['type'] = hub.load(**s['type'])
-            solvers.append(s)
-        except Exception as e:
-            print(rf'/!\ Could not load {s["name"]} from hub: check installation & missing dependencies')
-            print('\nOriginal exception was:', e)
+    # Load solvers (filtering out badly installed ones)
+    solvers = map(lambda s: dict(s, entry=load_registered_solver(s['entry'])), try_solvers)
+    solvers = list(filter(lambda s: s['entry'] is not None, solvers))
     
     # Run loop to ask user input
     domain = MyDomain(rows, columns, budget)
@@ -194,14 +185,11 @@ if __name__ == '__main__':
             break
         else:
             selected_solver = solvers[choice - 1]
-            solver_type = selected_solver['type']
-            if solver_type is None:
-                solver = None
-            else:
-                # Check that the solver is compatible with the domain
-                assert solver_type.check_domain(domain)
-                # Solve with selected solver
-                solver = MyDomain.solve_with(lambda: solver_type(**selected_solver['config']))
+            solver_type = selected_solver['entry']
+            # Check that the solver is compatible with the domain
+            assert solver_type.check_domain(domain)
+            # Solve with selected solver
+            solver = MyDomain.solve_with(lambda: solver_type(**selected_solver['config']))
             # Test solver solution on domain
             print('==================== TEST SOLVER ====================')
             rollout(domain, solver, max_steps=1000, max_framerate=30,

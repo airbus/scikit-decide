@@ -1,9 +1,7 @@
 import gym
-from airlaps import hub
+
+from airlaps.hub.domain.gym import GymDomain
 from airlaps.utils import rollout
-
-GymDomain = hub.load('GymDomain', folder='hub/domain/gym')
-
 
 ENV_NAME = 'CartPole-v1'  # 'MsPacman-v4'
 
