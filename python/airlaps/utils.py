@@ -109,7 +109,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
         # Run episode
         step = 0
         if save_result_directory is not None:
-            states = dict()
+            observations = dict()
             transitions = dict()
             actions = dict()
         while max_steps is None or step < max_steps:
@@ -126,7 +126,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             observation = outcome.observation
             if save_result_directory is not None:
                 if isinstance(domain, FullyObservable):
-                    states[step] = observation
+                    observations[step] = observation
                     actions[step] = action
                     transitions[step] = {
                         "s": hash(previous_observation), 
@@ -166,10 +166,10 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             except TypeError:
                 logging.error("Transition is not serializable")
             try:
-                with open(os.path.join(directory, 'states.json'), 'w') as f:
-                    json.dump(states, f, indent=3)
+                with open(os.path.join(directory, 'observations.json'), 'w') as f:
+                    json.dump(observations, f, indent=3)
             except TypeError:
-                logging.error("State is not serializable")
+                logging.error("Observation is not serializable")
 
 # # TODO: replace rollout_saver() by additional features on rollout()
 # def rollout_saver(domain: Domain, solver: Solver, from_memory: Optional[Union[Memory[T_state], T_state]] = None,
