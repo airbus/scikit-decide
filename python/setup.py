@@ -13,6 +13,9 @@ setup(
         'airlaps.builders.domain',
         'airlaps.builders.solver'
     ],
+    install_requires=[
+       'simplejson>=3.16.0'
+    ],
     url='www.airbus.com',
     license='MIT',
     author='Airbus',
