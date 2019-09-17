@@ -157,7 +157,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             os.mkdir(directory)
             try:
                 with open(os.path.join(directory, 'actions.json'), 'w') as f:
-                    json.dump(actions, f, indent=3)
+                    json.dump(actions, f, indent=2)
             except TypeError:
                 logging.error("Action is not serializable")
             try:
@@ -167,7 +167,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                 logging.error("Transition is not serializable")
             try:
                 with open(os.path.join(directory, 'observations.json'), 'w') as f:
-                    json.dump(observations, f, indent=3)
+                    json.dump(observations, f, indent=2)
             except TypeError:
                 logging.error("Observation is not serializable")
 
