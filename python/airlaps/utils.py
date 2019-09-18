@@ -3,9 +3,14 @@ from __future__ import annotations
 
 import time
 from typing import Union, Optional, Type, Iterable, Tuple, List, Callable
+import simplejson as json
+import os
+import copy
+import logging
+import datetime
 
 from airlaps import hub, Domain, Solver, D, Space, EnvironmentOutcome, autocast_all, autocastable
-from airlaps.builders.domain import Goals, Markovian, Renderable
+from airlaps.builders.domain import Goals, Markovian, Renderable, FullyObservable
 from airlaps.builders.solver import Policies
 
 __all__ = ['match_solvers', 'rollout']
@@ -33,7 +38,8 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             max_steps: Optional[int] = None, render: bool = True, max_framerate: Optional[float] = None,
             verbose: bool = True,
             action_formatter: Optional[Callable[[D.T_event], str]] = lambda a: str(a),
-            outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = lambda o: str(o)) -> None:
+            outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = lambda o: str(o),
+            save_result_directory: str =None) -> None:
     """This method will run one or more episodes in a domain according to the policy of a solver.
 
     # Parameters
@@ -48,6 +54,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
     verbose: Whether to print information to the console during rollout.
     action_formatter: The function transforming actions in the string to print (if None, no print).
     outcome_formatter: The function transforming EnvironmentOutcome objects in the string to print (if None, no print).
+    save_result: Directory in which state visited, actions applied and Transition Value are saved to json. 
     """
     if solver is None:
         # Create solver-like random walker that works for any domain
@@ -101,16 +108,32 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             print(observation)
         # Run episode
         step = 0
+        if save_result_directory is not None:
+            observations = dict()
+            transitions = dict()
+            actions = dict()
         while max_steps is None or step < max_steps:
             old_time = time.perf_counter()
             if render and has_render:
                 domain.render()
             # assert solver.is_policy_defined_for(observation)
+            if save_result_directory is not None:
+                previous_observation = copy.deepcopy(observation)
             action = solver.sample_action(observation)
             if action_formatter is not None:
                 print('Action:', action_formatter(action))
             outcome = domain.step(action)
             observation = outcome.observation
+            if save_result_directory is not None:
+                if isinstance(domain, FullyObservable):
+                    observations[step] = observation
+                    actions[step] = action
+                    transitions[step] = {
+                        "s": hash(previous_observation), 
+                        "a": hash(action),
+                        "cost": outcome.value.cost, 
+                        "s'": hash(observation)
+                    }
             if outcome_formatter is not None:
                 print('Result:', outcome_formatter(outcome))
             if outcome.termination:
@@ -127,6 +150,26 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
         if verbose and has_goal:
             print(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
                   f'in episode {i_episode + 1}.')
+        if save_result_directory is not None:
+            now = datetime.datetime.now()
+            str_timestamp = now.strftime("%Y%m%dT%H%M%S")
+            directory = os.path.join(save_result_directory, str_timestamp)
+            os.mkdir(directory)
+            try:
+                with open(os.path.join(directory, 'actions.json'), 'w') as f:
+                    json.dump(actions, f, indent=2)
+            except TypeError:
+                logging.error("Action is not serializable")
+            try:
+                with open(os.path.join(directory, 'transitions.json'), 'w') as f:
+                    json.dump(transitions, f, indent=2)
+            except TypeError:
+                logging.error("Transition is not serializable")
+            try:
+                with open(os.path.join(directory, 'observations.json'), 'w') as f:
+                    json.dump(observations, f, indent=2)
+            except TypeError:
+                logging.error("Observation is not serializable")
 
 # # TODO: replace rollout_saver() by additional features on rollout()
 # def rollout_saver(domain: Domain, solver: Solver, from_memory: Optional[Union[Memory[T_state], T_state]] = None,
