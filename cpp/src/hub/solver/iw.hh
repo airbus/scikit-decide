@@ -17,28 +17,124 @@
 
 namespace airlaps {
 
+/** Use default hasher provided with domain's states */
+template <typename Tdomain>
+struct DomainStateHash {
+    typedef const typename Tdomain::State& Key;
+
+    DomainStateHash(const unsigned int& nb_of_binary_features,
+                    const std::function<void (const typename Tdomain::State&, const std::function<void (const unsigned int&)>&)>& state_binarizer)
+    : _nb_of_binary_features(nb_of_binary_features),
+      _state_binarizer(state_binarizer) {}
+
+    template <typename Tnode>
+    Key get_key(const Tnode& node) const {
+        return node.state;
+    }
+
+    template <typename Tnode>
+    const std::vector<unsigned int>& get_state_features(const Tnode& node) const {
+        node.state_features.clear();
+        _state_binarizer(node.state, [this, &node](const unsigned int& i){
+            if (i >= _nb_of_binary_features) {
+                throw std::out_of_range("AIRLAPS exception: feature index " + std::to_string(i) +
+                                        " exceeds the declared number of binary features (" +
+                                        std::to_string(_nb_of_binary_features) + ")");
+            }
+            node.state_features.push_back(i);
+        });
+        return node.state_features;
+    }
+
+    struct Hash {
+        std::size_t operator()(const Key& k) const {
+            return typename Tdomain::State::Hash()(k);
+        }
+    };
+
+    struct Equal {
+        bool operator()(const Key& k1, const Key& k2) const {
+            return typename Tdomain::State::Equal()(k1, k2);
+        }
+    };
+
+    unsigned int _nb_of_binary_features;
+    std::function<void (const typename Tdomain::State&, const std::function<void (const unsigned int&)>&)> _state_binarizer;
+};
+
+
+/** Use state binary feature vector to hash states */
+template <typename Tdomain>
+struct StateFeatureHash {
+    typedef std::vector<bool> Key;
+
+    StateFeatureHash(const unsigned int& nb_of_binary_features,
+                     const std::function<void (const typename Tdomain::State&, const std::function<void (const unsigned int&)>&)>& state_binarizer)
+    : _nb_of_binary_features(nb_of_binary_features),
+      _state_binarizer(state_binarizer) {}
+
+    template <typename Tnode>
+    Key get_key(const Tnode& node) const {
+        node.state_features.clear();
+        _state_binarizer(node.state, [this, &node](const unsigned int& i){
+            if (i >= _nb_of_binary_features) {
+                throw std::out_of_range("AIRLAPS exception: feature index " + std::to_string(i) +
+                                        " exceeds the declared number of binary features (" +
+                                        std::to_string(_nb_of_binary_features) + ")");
+            }
+            node.state_features.push_back(i);
+        });
+        Key bv(_nb_of_binary_features, false);
+        for (const auto& i : node.state_features) {
+            bv[i] = true;
+        }
+        return bv;
+    }
+
+    template <typename Tnode>
+    const std::vector<unsigned int>& get_state_features(const Tnode& node) const {
+        return node.state_features;
+    }
+
+    struct Hash {
+        std::size_t operator()(const Key& k) const {
+            return std::hash<std::vector<bool>>()(k);
+        }
+    };
+
+    struct Equal {
+        bool operator()(const Key& k1, const Key& k2) const {
+            return k1 == k2;
+        }
+    };
+
+    unsigned int _nb_of_binary_features;
+    std::function<void (const  typename Tdomain::State&, const std::function<void (const unsigned int&)>&)> _state_binarizer;
+};
+
+
 template <typename Tdomain,
+          template <typename T> class Thashing_policy = DomainStateHash,
           typename Texecution_policy = ParallelExecution>
 class IWSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Event Action;
+    typedef Thashing_policy<Domain> HashingPolicy;
     typedef Texecution_policy ExecutionPolicy;
 
     IWSolver(Domain& domain,
              const unsigned int& nb_of_binary_features,
              const std::function<void (const State&, const std::function<void (const unsigned int&)>&)>& state_binarizer,
-             const std::function<bool (const State&)>& termination_checker,
              bool debug_logs = false)
-    : _domain(domain), _nb_of_binary_features(nb_of_binary_features),
-      _state_binarizer(state_binarizer), _termination_checker(termination_checker),
-      _debug_logs(debug_logs) {
+    : _domain(domain), _debug_logs(debug_logs) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {
             spdlog::set_level(spdlog::level::info);
         }
+        _hashing_policy = std::make_unique<HashingPolicy>(nb_of_binary_features, state_binarizer);
     }
 
     // clears the solver (clears the search graph, thus preventing from reusing
@@ -53,9 +149,8 @@ public :
             spdlog::info("Running " + ExecutionPolicy::print() + " IW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
 
-            for (unsigned int w = 1 ; w <= _nb_of_binary_features ; w++) {
-                std::pair<bool, bool> res = WidthSolver(_domain, w, _nb_of_binary_features, _state_binarizer,
-                                                        _termination_checker, _graph, _debug_logs).solve(s);
+            for (unsigned int w = 1 ; w <= _hashing_policy->_nb_of_binary_features ; w++) {
+                std::pair<bool, bool> res = WidthSolver(_domain, w, _graph, _debug_logs, *_hashing_policy).solve(s);
                 if (res.first) { // solution found with width w
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
@@ -74,7 +169,7 @@ public :
     }
 
     bool is_solution_defined_for(const State& s) const {
-        auto si = _graph.find(s);
+        auto si = _graph.find(Node(s, *_hashing_policy));
         if ((si == _graph.end()) || (si->best_action == nullptr) || (si->solved == false)) {
             return false;
         } else {
@@ -83,16 +178,18 @@ public :
     }
 
     const Action& get_best_action(const State& s) const {
-        auto si = _graph.find(s);
+        auto si = _graph.find(Node(s, *_hashing_policy));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
+            spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
         }
         return *(si->best_action);
     }
 
     const double& get_best_value(const State& s) const {
-        auto si = _graph.find(s);
+        auto si = _graph.find(Node(s, *_hashing_policy));
         if (si == _graph.end()) {
+            spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
         }
         return si->fscore;
@@ -101,28 +198,31 @@ public :
 private :
 
     Domain& _domain;
-    unsigned int _nb_of_binary_features;
-    std::function<void (const State&, const std::function<void (const unsigned int&)>&)> _state_binarizer;
-    std::function<bool (const State&)> _termination_checker;
     bool _debug_logs;
+    std::unique_ptr<HashingPolicy> _hashing_policy;
 
     struct Node {
         State state;
+        mutable std::vector<unsigned int> state_features;
         std::tuple<Node*, Action, double> best_parent;
         double gscore;
         double fscore; // not in A*'s meaning but rather to store cost-to-go once a solution is found
         Action* best_action; // computed only when constructing the solution path backward from the goal state
         bool solved; // set to true if on the solution path constructed backward from the goal state
+        const HashingPolicy& hashing_policy;
 
-        Node(const State& s)
+        Node(const State& s, const HashingPolicy& hp)
             : state(s),
               gscore(std::numeric_limits<double>::infinity()),
               fscore(std::numeric_limits<double>::infinity()),
               best_action(nullptr),
-              solved(false) {}
+              solved(false),
+              hashing_policy(hp) {}
         
         struct Key {
-            const State& operator()(const Node& sn) const { return sn.state; }
+            typename HashingPolicy::Key operator()(const Node& n) const {
+                return n.hashing_policy.get_key(n);
+            }
         };
     };
 
@@ -132,7 +232,7 @@ private :
         }
     };
 
-    typedef typename SetTypeDeducer<Node, State>::Set Graph;
+    typedef typename SetTypeDeducer<Node, HashingPolicy>::Set Graph;
     Graph _graph;
 
     class WidthSolver { // known as IW(i), i.e. the fixed-width solver sequentially run by IW
@@ -140,18 +240,16 @@ private :
         typedef Tdomain Domain;
         typedef typename Domain::State State;
         typedef typename Domain::Event Action;
+        typedef Thashing_policy<Domain> HashingPolicy;
         typedef Texecution_policy ExecutionPolicy;
 
         WidthSolver(Domain& domain,
                     unsigned int width,
-                    unsigned int nb_of_binary_features,
-                    const std::function<void (const State&, const std::function<void (const unsigned int&)>&)> state_binarizer,
-                    const std::function<bool (const State&)>& termination_checker,
                     Graph& graph,
-                    bool debug_logs = false)
-            : _domain(domain), _width(width), _nb_of_binary_features(nb_of_binary_features),
-              _state_binarizer(state_binarizer), _termination_checker(termination_checker),
-              _graph(graph), _debug_logs(debug_logs) {}
+                    bool debug_logs,
+                    const HashingPolicy& hashing_policy)
+            : _domain(domain), _width(width), _graph(graph), _debug_logs(debug_logs),
+              _hashing_policy(hashing_policy) {}
         
         // solves from state s
         // returned pair p: p.first==true iff solvable, p.second==true iff states have been pruned
@@ -161,9 +259,11 @@ private :
                 auto start_time = std::chrono::high_resolution_clock::now();
 
                 // Create the root node containing the given state s
-                auto si = _graph.emplace(s);
-                if (si.first->solved || _termination_checker(s)) { // problem already solved from this state (was present in _graph and already solved)
+                auto si = _graph.emplace(Node(s, _hashing_policy));
+                if (si.first->solved || _domain.is_goal(s)) { // problem already solved from this state (was present in _graph and already solved)
                     return std::make_pair(true, false);
+                } else if (_domain.is_terminal(s)) { // dead-end state
+                    return std::make_pair(false, false);
                 }
                 Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
                 root_node.gscore = 0;
@@ -178,7 +278,7 @@ private :
 
                 // Vector of sets of combinations (tuples) of Boolean state features generated so far, for each w <= _width
                 std::vector<std::unordered_set<std::vector<bool>>> feature_combinations(_width);
-                novelty(feature_combinations, s); // initialize feature_combinations with the root node's bits
+                novelty(feature_combinations, root_node); // initialize feature_combinations with the root node's bits
 
                 while (!open_queue.empty()) {
                     auto best_tip_node = open_queue.top();
@@ -193,8 +293,8 @@ private :
 
                     if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print());
 
-                    if (_termination_checker(best_tip_node->state) || best_tip_node->solved) {
-                        if (_debug_logs) spdlog::debug("Found a terminal state: " + best_tip_node->state.print());
+                    if (_domain.is_goal(best_tip_node->state) || best_tip_node->solved) {
+                        if (_debug_logs) spdlog::debug("Found a goal state: " + best_tip_node->state.print());
                         auto current_node = best_tip_node;
                         if (!(best_tip_node->solved)) { current_node->fscore = 0; } // goal state
 
@@ -214,6 +314,11 @@ private :
 
                     closed_set.insert(best_tip_node);
 
+                    if (_domain.is_terminal(best_tip_node->state)) { // dead-end state
+                        if (_debug_logs) spdlog::debug("Found a dead-end state: " + best_tip_node->state.print());
+                        continue;
+                    }
+
                     // Expand best tip node
                     auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state)->get_elements();
                     std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node](const auto& a){
@@ -226,7 +331,7 @@ private :
                         auto next_state = _domain.get_next_state(best_tip_node->state, a);
                         std::pair<typename Graph::iterator, bool> i;
                         _execution_policy.protect([this, &i, &next_state]{
-                            i = _graph.emplace(next_state);
+                            i = _graph.emplace(Node(next_state, _hashing_policy));
                         });
                         Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                         if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print());
@@ -247,7 +352,7 @@ private :
                         }
 
                         _execution_policy.protect([this, &feature_combinations, &open_queue, &neighbor, &states_pruned]{
-                            if (novelty(feature_combinations, neighbor.state) > _width) {
+                            if (novelty(feature_combinations, neighbor) > _width) {
                                 if (_debug_logs) spdlog::debug("Pruning state");
                                 states_pruned = true;
                             } else {
@@ -269,33 +374,23 @@ private :
     private :
         Domain& _domain;
         unsigned int _width;
-        unsigned int _nb_of_binary_features;
-        std::function<void (const State&, const std::function<void (const unsigned int&)>&)> _state_binarizer;
-        std::function<bool (const State&)> _termination_checker;
         Graph& _graph;
         bool _debug_logs;
         ExecutionPolicy _execution_policy;
+        const HashingPolicy& _hashing_policy;
 
         unsigned int novelty(std::vector<std::unordered_set<std::vector<bool>>>& feature_combinations,
-                             const State& s) const {
+                             Node& n) const {
             // feature_combinations is a set of Boolean combinations of size _width
-            unsigned int nov = _nb_of_binary_features + 1;
-            std::vector<unsigned int> state_features;
-            _state_binarizer(s, [this, &state_features](const unsigned int& i){
-                if (i >= _nb_of_binary_features) {
-                    throw std::out_of_range("AIRLAPS exception: feature index " + std::to_string(i) +
-                                            " exceeds the declared number of binary features (" +
-                                            std::to_string(_nb_of_binary_features) + ")");
-                }
-                state_features.push_back(i);
-            });
+            unsigned int nov = _hashing_policy._nb_of_binary_features + 1;
+            const std::vector<unsigned int>& state_features = _hashing_policy.get_state_features(n);
 
             for (unsigned int k = 1 ; k <= std::min(_width, (unsigned int) state_features.size()) ; k++) {
                 // we must recompute combinations from previous width values just in case
                 // this state would be visited for the first time across width iterations
                 generate_combinations(k, state_features.size(),
                                       [this, &state_features, &feature_combinations, &k, &nov](const std::vector<unsigned int>& cv){
-                    std::vector<bool> bv(_nb_of_binary_features, false);
+                    std::vector<bool> bv(_hashing_policy._nb_of_binary_features, false);
                         for (const auto e : cv) {
                             bv[state_features[e]] = true;
                         }

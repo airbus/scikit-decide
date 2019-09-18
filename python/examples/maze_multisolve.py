@@ -169,7 +169,7 @@ if __name__ == '__main__':
          'type': {'entry': 'IW', 'folder': 'hub/solver/iw'},
          'config': {'nb_of_binary_features': lambda d: d._num_rows * d._num_cols,
                     'state_binarizer': lambda s, d, f: f(s.x +  s.y * d._num_cols),
-                    'termination_checker': lambda s, d: d.is_goal(s),
+                    'use_state_feature_hash': False,
                     'parallel': True, 'debug_logs': False}},
         
         # IW (planning)
@@ -177,7 +177,7 @@ if __name__ == '__main__':
          'type': {'entry': 'IW', 'folder': 'hub/solver/iw'},
          'config': {'nb_of_binary_features': lambda d: d._num_rows + d._num_cols,
                     'state_binarizer': lambda s, d, f: [f(s.x), f(s.y + d._num_cols)],
-                    'termination_checker': lambda s, d: d.is_goal(s),
+                    'use_state_feature_hash': False,
                     'parallel': True, 'debug_logs': False}},
 
         # BFWS (planning)

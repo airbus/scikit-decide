@@ -21,8 +21,7 @@ if airlaps_cpp_extension_lib_path not in sys.path:
 
 try:
 
-    from __airlaps_hub_cpp import _IWParSolver_ as iw_par_solver
-    from __airlaps_hub_cpp import _IWSeqSolver_ as iw_seq_solver
+    from __airlaps_hub_cpp import _IWSolver_ as iw_solver
 
     iw_pool = None  # must be separated from the domain since it cannot be pickled
     iw_ns_results = None  # must be separated from the domain since it cannot be pickled
@@ -77,14 +76,14 @@ try:
         def __init__(self,
                      nb_of_binary_features: Callable[[Domain], int],
                      state_binarizer: Callable[[D.T_state, Domain, Callable[[int], None], None]],
-                     termination_checker: Callable[[D.T_state, Domain], bool],
+                     use_state_feature_hash: bool = False,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
             self._nb_of_binary_features = nb_of_binary_features
             self._state_binarizer = state_binarizer
-            self._termination_checker = termination_checker
+            self._use_state_feature_hash = use_state_feature_hash
             self._parallel = parallel
             self._debug_logs = debug_logs
 
@@ -99,11 +98,6 @@ try:
                         IWDomain_parallel_compute_next_state)
                 setattr(self._domain.__class__, 'wrapped_get_next_state',
                         IWDomain_parallel_get_next_state)
-                self._solver = iw_par_solver(domain=self._domain,
-                                             nb_of_binary_features=self._nb_of_binary_features(self._domain),
-                                             state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
-                                             termination_checker=lambda o: self._termination_checker(o, self._domain),
-                                             debug_logs=self._debug_logs)
             else:
                 setattr(self._domain.__class__, 'wrapped_get_applicable_actions',
                         IWDomain_sequential_get_applicable_actions)
@@ -111,16 +105,16 @@ try:
                         IWDomain_sequential_compute_next_state)
                 setattr(self._domain.__class__, 'wrapped_get_next_state',
                         IWDomain_sequential_get_next_state)
-                self._solver = iw_seq_solver(domain=self._domain,
-                                             nb_of_binary_features=self._nb_of_binary_features(self._domain),
-                                             state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
-                                             termination_checker=lambda o: self._termination_checker(o, self._domain),
-                                             debug_logs=self._debug_logs)
+            self._solver = iw_solver(domain=self._domain,
+                                     nb_of_binary_features=self._nb_of_binary_features(self._domain),
+                                     state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
+                                     use_state_feature_hash=self._use_state_feature_hash,
+                                     parallel=self._parallel,
+                                     debug_logs=self._debug_logs)
             self._solver.clear()
 
         def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
             self._init_solve(domain_factory)
-            self._solve_from(self._domain.get_initial_state())
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             self._solver.solve(memory)
