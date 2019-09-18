@@ -1,31 +1,67 @@
 """This module contains utility functions."""
 from __future__ import annotations
 
+import re
 import time
-from typing import Union, Optional, Type, Iterable, Tuple, List, Callable
 import simplejson as json
 import os
 import copy
 import logging
 import datetime
+from typing import Any, Union, Optional, Type, Iterable, Tuple, List, Dict, Callable
 
-from airlaps import hub, Domain, Solver, D, Space, EnvironmentOutcome, autocast_all, autocastable
+from pkg_resources import iter_entry_points, EntryPoint, DistributionNotFound
+
+from airlaps import Domain, Solver, D, Space, EnvironmentOutcome, autocast_all, autocastable
 from airlaps.builders.domain import Goals, Markovian, Renderable, FullyObservable
 from airlaps.builders.solver import Policies
 
-__all__ = ['match_solvers', 'rollout']
+__all__ = ['get_registered_domains', 'get_registered_solvers', 'load_registered_domain', 'load_registered_solver',
+           'match_solvers', 'rollout']
+
+
+def _get_registered_entries(entry_type: str) -> List[str]:
+    return [e.name for e in iter_entry_points(entry_type)]
+
+
+def _load_registered_entry(entry_type: str, entry_name: str) -> Optional[Any]:
+    try:
+        for entry_point in iter_entry_points(entry_type):
+            if entry_point.name == entry_name:
+                return entry_point.load()
+        print(rf'/!\ {entry_name} could not be loaded because it is not registered in group "{entry_type}".')
+    except DistributionNotFound as e:
+        print(rf'/!\ {entry_name} could not be loaded because of missing dependency ({e}).')
+        extra_match = re.search(r'\bextra\s*==\s*"(?P<extra>[^"]+)"', str(e))
+        if extra_match:
+            extra = extra_match.group('extra')
+            print(f'    ==> Try following command in your Python environment: pip install airlaps[{extra}]')
+    except Exception as e:
+        print(rf'/!\ {entry_name} could not be loaded ({e}).')
+
+
+def get_registered_domains() -> List[str]:
+    return _get_registered_entries('airlaps.domains')
+
+
+def get_registered_solvers() -> List[str]:
+    return _get_registered_entries('airlaps.solvers')
+
+
+def load_registered_domain(name: str) -> Type[Domain]:
+    return _load_registered_entry('airlaps.domains', name)
+
+
+def load_registered_solver(name: str) -> Type[Solver]:
+    return _load_registered_entry('airlaps.solvers', name)
 
 
 # TODO: implement ranking heuristic
-def match_solvers(domain: Domain, candidates: Optional[Iterable[Type[Solver]]] = None, add_local_hub: bool = True,
-                  ranked: bool = False) -> Union[List[Type[Solver]], List[Tuple[Type[Solver], int]]]:
+def match_solvers(domain: Domain, candidates: Optional[Iterable[Type[Solver]]] = None, ranked: bool = False) -> Union[
+        List[Type[Solver]], List[Tuple[Type[Solver], int]]]:
 
     if candidates is None:
-        candidates = set()
-    else:
-        candidates = set(candidates)
-    if add_local_hub:
-        candidates |= set(hub.local_search(Solver))
+        candidates = get_registered_solvers().values()
     matches = []
     for solver_type in candidates:
         if solver_type.check_domain(domain):
