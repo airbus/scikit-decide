@@ -1,10 +1,8 @@
 import gym
 
-from airlaps import hub
+from airlaps.hub.domain.gym import GymDomain
+from airlaps.hub.solver.cgp import CGP  # Cartesian Genetic Programming
 from airlaps.utils import rollout
-
-GymDomain = hub.load('GymDomain', folder='hub/domain/gym')
-CGP = hub.load('CGP', folder='hub/solver/cgp')  # Cartesian Genetic Programming
 
 
 ENV_NAME = 'MountainCarContinuous-v0'

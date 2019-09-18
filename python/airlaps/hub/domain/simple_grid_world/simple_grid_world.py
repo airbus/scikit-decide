@@ -1,13 +1,9 @@
 from enum import Enum
 from typing import NamedTuple, Optional
 
-from stable_baselines import PPO2
-from stable_baselines.common.policies import MlpPolicy
-
 from airlaps import DeterministicPlanningDomain, TransitionValue, Space
 from airlaps.builders.domain import UnrestrictedActions
 from airlaps.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
-from airlaps.utils import load_registered_solver, rollout
 
 
 class State(NamedTuple):
@@ -30,7 +26,7 @@ class D(DeterministicPlanningDomain, UnrestrictedActions):
     T_info = None  # Type of additional information given as part of an environment outcome
 
 
-class MyDomain(D):
+class SimpleGridWorld(D):
 
     def __init__(self, num_cols=10, num_rows=10):
         self.num_cols = num_cols
@@ -74,49 +70,3 @@ class MyDomain(D):
 
     def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
         return MultiDiscreteSpace([self.num_cols, self.num_rows])
-
-
-if __name__ == '__main__':
-
-    try_solvers = [
-
-        # Lazy A* (classical planning)
-        {'name': 'Lazy A* (classical planning)',
-         'entry': 'LazyAstar',
-         'config': {'verbose': True}},
-
-        # PPO: Proximal Policy Optimization (deep reinforcement learning)
-        {'name': 'PPO: Proximal Policy Optimization (deep reinforcement learning)',
-         'entry': 'StableBaseline',
-         'config': {'algo_class': PPO2, 'baselines_policy': MlpPolicy, 'learn_config': {'total_timesteps': 25000},
-                    'verbose': 1}},
-    ]
-
-    # Load solvers (filtering out badly installed ones)
-    solvers = map(lambda s: dict(s, entry=load_registered_solver(s['entry'])), try_solvers)
-    solvers = list(filter(lambda s: s['entry'] is not None, solvers))
-    solvers.insert(0, {'name': 'Random Walk', 'entry': None})  # Add Random Walk as option
-
-    # Run loop to ask user input
-    domain = MyDomain()  # MyDomain(5,5)
-    while True:
-        # Ask user input to select solver
-        choice = int(input('\nChoose a solver:\n{solvers}\n'.format(
-            solvers='\n'.join(['0. Quit'] + [f'{i + 1}. {s["name"]}' for i, s in enumerate(solvers)]))))
-        if choice == 0:  # the user wants to quit
-            break
-        else:
-            selected_solver = solvers[choice - 1]
-            solver_type = selected_solver['entry']
-            # Check if Random Walk selected or other
-            if solver_type is None:
-                solver = None
-            else:
-                # Check that the solver is compatible with the domain
-                assert solver_type.check_domain(domain)
-                # Solve with selected solver
-                solver = MyDomain.solve_with(lambda: solver_type(**selected_solver['config']))  # ,lambda:MyDomain(5,5))
-            # Test solver solution on domain
-            print('==================== TEST SOLVER ====================')
-            rollout(domain, solver, max_steps=1000,
-                    outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

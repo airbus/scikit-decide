@@ -15,10 +15,25 @@ The use of a virtual environment for AIRLAPS is recommended, e.g. by using [cond
 
 ### 2. Install the AIRLAPS library
 
+#### a. Full installation (recommended)
+
+Make sure you are in the "AIRLAPS for Python" root directory and install with Pip:
+
+    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_AIRLAPS/python
+    pip install .[all]
+
+This will install the core library and additionally all dependencies required by domains/solvers in the hub (AIRLAPS catalog).
+
+Alternatively, if you wish to install only the ones required by domains (resp. solvers) from the hub, replace `[all]` in the last command by `[domains]` (resp. `[solvers]`).
+
+#### b. Minimal installation (not recommended)
+
 Make sure you are in the "AIRLAPS for Python" root directory and install with Pip:
 
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_AIRLAPS/python
     pip install .
+
+This will only install the core library, which is enough if you intend to create your own domain and solver.
 
 ## Documentation (work in progress)
 
@@ -48,18 +63,11 @@ Open your web browser to access the documentation (by default on http://localhos
 
 ## Examples
 
-**Warning**: the examples whose filename starts with an underscore are currently being migrated to the new API and might not be working in the meantime (same goes for domains/solvers inside `airlaps/catalog` which are being migrated to AIRLAPS Hub).
+**Warning**: the examples whose filename starts with an underscore are currently being migrated to the new API and might not be working in the meantime (same goes for domains/solvers inside `airlaps/hub`).
 
-The examples can be found in the `/examples` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on AIRLAPS Hub, an extensible catalog of domains/solvers inspired by [PyTorch Hub](https://pytorch.org/hub). When loading a domain/solver from the hub via `airlaps.hub.load(...)`, the corresponding entry will be automatically downloaded from the relevant Github repository(by default `Airbus-AI-Research/AIRLAPS` but any other repo can be specified) and cached for next time.
+The examples can be found in the `/examples` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on AIRLAPS Hub, an extensible catalog of domains/solvers.
 
-**Note**: Since AIRLAPS is not yet open sourced on Github, the auto-download from the hub will not work out of the box and thus requires these manual steps:
-
-- (Optional) Customize your AIRLAPS Hub cache directory:
-    - Set a `AIRLAPS_HOME` environment variable to the desired directory (on Mac, [EnvPane](https://github.com/hschmidt/EnvPane#installation) is handy to set environment variables); if not set, the default `AIRLAPS_HOME` is assumed to be `~/.cache`
-    - The AIRLAPS Hub cache directory is then `AIRLAPS_HOME/hub`
-- Copy `YOUR_LOCAL_PATH_TO_GIT_CLONED_AIRLAPS/python/hub` inside `AIRLAPS_HOME/hub` and rename it `Airbus-AI-Research__AIRLAPS__master` (so in the end your directory structure should be `AIRLAPS_HOME/hub/Airbus-AI-Research__AIRLAPS__master`)
-
-**Warning**: some content currently in the hub of this private repo (especially the MasterMind domain and the POMCP/CGP solvers) will require permission from their original authors before entering the public hub when open sourced.
+**Warning**: some content currently in the hub (especially the MasterMind domain and the POMCP/CGP solvers) will require permission from their original authors before entering the public hub when open sourced.
 
 ### Playground
 
@@ -93,9 +101,8 @@ These combinations are particularly efficient if you want to try them out:
 - Mountain Car continuous -> CGP: Cartesian Genetic Programming
 - ATARI Pacman -> Random walk
 
-**Warning**: some domains/solvers require extra dependencies/setup steps to work (as indicated by the warning message(s) printed when running this example). In the future, each AIRLAPS hub entry should have a dedicated `README.md` page to list them, but in the meantime please refer to this:
+**Warning**: some domains/solvers might require extra manual setup steps to work at 100%. In the future, each AIRLAPS hub entry should have a dedicated help page to list them, but in the meantime please refer to this:
 
-- [domain] All above -> [gym](http://gym.openai.com/docs/#installation) (+ [matplotlib](https://pypi.org/project/matplotlib) for Maze)
+- [domain] OpenAI Gym ones -> [gym](http://gym.openai.com/docs/#installation) for loading Gym environments not included by default
 - [solver] PPO: Proximal Policy Optimization -> see [Stable Baselines installation](https://stable-baselines.readthedocs.io/en/master/guide/install.html)
-- [solver] CGP: Cartesian Genetic Programming -> [gym](http://gym.openai.com/docs/#installation)
-- [solver] IW: Iterated Width search -> special C++ compilation (TBD)
+- [solver] IW: Iterated Width search (same for AOstar, Astar, BFWS) -> special C++ compilation (TBD)

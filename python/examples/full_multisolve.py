@@ -2,8 +2,7 @@ import gym
 from stable_baselines import PPO2
 from stable_baselines.common.policies import MlpPolicy
 
-from airlaps import hub
-from airlaps.utils import rollout, match_solvers
+from airlaps.utils import load_registered_domain, load_registered_solver, match_solvers, rollout
 
 
 if __name__ == '__main__':
@@ -12,38 +11,38 @@ if __name__ == '__main__':
 
         # Simple Grid World
         {'name': 'Simple Grid World',
-         'type': {'entry': 'SimpleGridWorld', 'folder': 'hub/domain/simple_grid_world'},
+         'entry': 'SimpleGridWorld',
          'config': {},
          'rollout': {'max_steps': 1000, 'outcome_formatter': lambda o: f'{o.observation} - cost: {o.value.cost:.2f}'}},
 
         # Maze
         {'name': 'Maze',
-         'type': {'entry': 'Maze', 'folder': 'hub/domain/maze'},
+         'entry': 'Maze',
          'config': {},
          'rollout': {'max_steps': 1000, 'max_framerate': 30,
                      'outcome_formatter': lambda o: f'{o.observation} - cost: {o.value.cost:.2f}'}},
 
         # Mastermind
         {'name': 'Mastermind',
-         'type': {'entry': 'MasterMind', 'folder': 'hub/domain/mastermind'},
+         'entry': 'MasterMind',
          'config': {'n_colours': 3, 'n_positions': 3},
          'rollout': {'max_steps': 1000, 'outcome_formatter': lambda o: f'{o.observation} - cost: {o.value.cost:.2f}'}},
 
         # Cart Pole (OpenAI Gym)
         {'name': 'Cart Pole (OpenAI Gym)',
-         'type': {'entry': 'GymDomain', 'folder': 'hub/domain/gym'},
+         'entry': 'GymDomain',
          'config': {'gym_env': gym.make('CartPole-v1')},
          'rollout': {'num_episodes': 3, 'max_steps': 1000, 'max_framerate': 30, 'outcome_formatter': None}},
 
         # Mountain Car continuous (OpenAI Gym)
         {'name': 'Mountain Car continuous (OpenAI Gym)',
-         'type': {'entry': 'GymDomain', 'folder': 'hub/domain/gym'},
+         'entry': 'GymDomain',
          'config': {'gym_env': gym.make('MountainCarContinuous-v0')},
          'rollout': {'num_episodes': 3, 'max_steps': 1000, 'max_framerate': 30, 'outcome_formatter': None}},
 
         # ATARI Pacman (OpenAI Gym)
         {'name': 'ATARI Pacman (OpenAI Gym)',
-         'type': {'entry': 'GymDomain', 'folder': 'hub/domain/gym'},
+         'entry': 'GymDomain',
          'config': {'gym_env': gym.make('MsPacman-v4')},
          'rollout': {'num_episodes': 3, 'max_steps': 1000, 'max_framerate': 30, 'outcome_formatter': None}}
 
@@ -51,85 +50,75 @@ if __name__ == '__main__':
 
     try_solvers = [
 
-        # Random walk
-        {'name': 'Random walk', 'type': None},
-
         # Simple greedy
-        {'name': 'Simple greedy', 'type': {'entry': 'SimpleGreedy', 'folder': 'hub/solver/simple_greedy'},
+        {'name': 'Simple greedy',
+         'entry': 'SimpleGreedy',
          'config': {}},
 
         # Lazy A* (classical planning)
-        {'name': 'Lazy A* (classical planning)', 'type': {'entry': 'LazyAstar', 'folder': 'hub/solver/lazy_astar'},
+        {'name': 'Lazy A* (classical planning)',
+         'entry': 'LazyAstar',
          'config': {'verbose': True}},
 
         # PPO: Proximal Policy Optimization (deep reinforcement learning)
         {'name': 'PPO: Proximal Policy Optimization (deep reinforcement learning)',
-         'type': {'entry': 'StableBaselines', 'folder': 'hub/solver/stable_baselines'},
+         'entry': 'StableBaseline',
          'config': {'algo_class': PPO2, 'baselines_policy': MlpPolicy, 'learn_config': {'total_timesteps': 25000},
                     'verbose': 1}},
 
         # POMCP: Partially Observable Monte-Carlo Planning (online planning for POMDP)
         {'name': 'POMCP: Partially Observable Monte-Carlo Planning (online planning for POMDP)',
-         'type': {'entry': 'POMCP', 'folder': 'hub/solver/pomcp'}, 'config': {}},
+         'entry': 'POMCP',
+         'config': {}},
 
         # CGP: Cartesian Genetic Programming (evolution strategy)
         {'name': 'CGP: Cartesian Genetic Programming (evolution strategy)',
-         'type': {'entry': 'CGP', 'folder': 'hub/solver/cgp'}, 'config': {'folder_name': 'TEMP', 'n_it': 25}},
+         'entry': 'CGP',
+         'config': {'folder_name': 'TEMP', 'n_it': 25}},
 
         # IW: Iterated Width search (width-based planning)
-        {'name': 'IW: Iterated Width search (width-based planning)', 'type': {'entry': 'IW', 'folder': 'hub/solver/iw'},
+        {'name': 'IW: Iterated Width search (width-based planning)',
+         'entry': 'IW',
          'config': {}}
     ]
 
-    # Load domains (if installed)
-    domains = []
-    for d in try_domains:
-        try:
-            if d['type'] is not None:
-                d['type'] = hub.load(**d['type'])
-            domains.append(d)
-        except Exception:
-            print(rf'/!\ Could not load {d["name"]} from hub: check installation & missing dependencies')
+    # Load domains (filtering out badly installed ones)
+    domains = map(lambda d: dict(d, entry=load_registered_domain(d['entry'])), try_domains)
+    domains = list(filter(lambda d: d['entry'] is not None, domains))
 
-    # Load solvers (if installed)
-    solvers = []
-    for s in try_solvers:
-        try:
-            if s['type'] is not None:
-                s['type'] = hub.load(**s['type'])
-            solvers.append(s)
-        except Exception:
-            print(rf'/!\ Could not load {s["name"]} from hub: check installation & missing dependencies')
+    # Load solvers (filtering out badly installed ones)
+    solvers = map(lambda s: dict(s, entry=load_registered_solver(s['entry'])), try_solvers)
+    solvers = list(filter(lambda s: s['entry'] is not None, solvers))
+    solvers.insert(0, {'name': 'Random Walk', 'entry': None})  # Add Random Walk as option
 
     # Run loop to ask user input
-    solver_candidates = [s['type'] for s in solvers if s['type'] is not None]
+    solver_candidates = [s['entry'] for s in solvers if s['entry'] is not None]
     while True:
         # Ask user input to select domain
         domain_choice = int(input('\nChoose a domain:\n{domains}\n'.format(
             domains='\n'.join([f'{i + 1}. {d["name"]}' for i, d in enumerate(domains)]))))
         selected_domain = domains[domain_choice - 1]
-        domain_type = selected_domain['type']
+        domain_type = selected_domain['entry']
         domain = domain_type(**selected_domain['config'])
 
         while True:
             # Match solvers compatible with selected domain
-            compatible = [None] + match_solvers(domain, candidates=solver_candidates, add_local_hub=False)
+            compatible = [None] + match_solvers(domain, candidates=solver_candidates)
 
             # Ask user input to select compatible solver
             solver_choice = int(input('\nChoose a compatible solver:\n{solvers}\n'.format(solvers='\n'.join(
                 ['0. [Change domain]'] + [f'{i + 1}. {s["name"]}' for i, s in enumerate(solvers) if
-                                          s['type'] in compatible]))))
+                                          s['entry'] in compatible]))))
 
             if solver_choice == 0:  # the user wants to change domain
                 break
             else:
                 selected_solver = solvers[solver_choice - 1]
-                solver_type = selected_solver['type']
+                solver_type = selected_solver['entry']
+                # Check if Random Walk selected or other
                 if solver_type is None:
                     solver = None
                 else:
-                    # Check that the solver is compatible with the domain
-                    assert solver_type.check_domain(domain)
                     # Solve with selected solver
                     solver = domain_type.solve_with(lambda: solver_type(**selected_solver['config']),
                                                     lambda: domain_type(**selected_domain['config']))
