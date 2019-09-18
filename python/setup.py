@@ -1,8 +1,12 @@
 from setuptools import setup
 
+
+__version__ = "0.2.2"
+
+
 setup(
     name='airlaps',
-    version='0.2.2',
+    version=__version__,
     packages=[
         'airlaps',
         'airlaps.builders',
