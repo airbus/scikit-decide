@@ -85,13 +85,17 @@ class DeterministicGymDomain(D):
         Using this class requires OpenAI Gym to be installed.
     """
 
-    def __init__(self, gym_env: gym.Env) -> None:
+    def __init__(self, gym_env: gym.Env,
+                       change_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None) -> None:
         """Initialize DeterministicGymDomain.
 
         # Parameters
         gym_env: The deterministic Gym environment (gym.env) to wrap.
+        change_state: Function to call to change the state of the gym environment.
+                      If None, default behavior is to deepcopy the environment when changing state
         """
         self._gym_env = gym_env
+        self._change_state = change_state
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = self._gym_env.reset()
@@ -99,8 +103,12 @@ class DeterministicGymDomain(D):
 
     def _get_next_state(self, memory: D.T_memory[D.T_state],
                         action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
-        env = memory.context[0]
-        env = deepcopy(env)
+        if self._change_state is None:
+            env = memory.context[0]
+            env = deepcopy(env)
+        else:
+            env = self._gym_env
+            self._change_state(env, memory)
         obs, reward, done, info = env.step(action)
         outcome = TransitionOutcome(state=obs, value=TransitionValue(reward=reward), termination=done, info=info)
         return DeterministicGymDomainExtendedState(state=outcome.state, context=[env, memory.state, action, outcome])
@@ -178,18 +186,21 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
     """
 
     def __init__(self, gym_env: gym.Env,
-                       discretization_factor: int,
+                       change_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
+                       discretization_factor: int = 10,
                        branching_factor: int = None,
                        max_depth: int = 50) -> None:
         """Initialize WidthPlanningGymDomain.
 
         # Parameters
         gym_env: The deterministic Gym environment (gym.env) to wrap.
+        change_state: Function to call to change the state of the gym environment.
+                      If None, default behavior is to deepcopy the environment when changing state
         discretization_factor: Number of discretized action variable values per continuous action variable
         branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
         max_depth: maximum depth of states to explore from the initial state
         """
-        super().__init__(gym_env)
+        super().__init__(gym_env, change_state)
         self._discretization_factor = discretization_factor
         self._branching_factor = branching_factor
         self._max_depth = max_depth
@@ -256,18 +267,21 @@ class GymWidthPlanningDomain(GymPlanningDomain):
     """
 
     def __init__(self, gym_env: gym.Env,
-                       discretization_factor: int,
+                       change_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
+                       discretization_factor: int = 10,
                        branching_factor: int = None,
                        max_depth: int = 50) -> None:
         """Initialize WidthPlanningGymDomain.
 
         # Parameters
         gym_env: The deterministic Gym environment (gym.env) to wrap.
+        change_state: Function to call to change the state of the gym environment.
+                      If None, default behavior is to deepcopy the environment when changing state
         discretization_factor: Number of discretized action variable values per continuous action variable
         branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
         max_depth: maximum depth of states to explore from the initial state
         """
-        super().__init__(gym_env, discretization_factor, branching_factor, max_depth)
+        super().__init__(gym_env, change_state, discretization_factor, branching_factor, max_depth)
     
     def nb_of_binary_features(self) -> int:
         """Return the size of the bit vector encoding an observation
