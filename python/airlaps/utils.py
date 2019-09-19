@@ -187,6 +187,11 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             print(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
                   f'in episode {i_episode + 1}.')
         if save_result_directory is not None:
+            if not os.path.exists(save_result_directory):
+                os.mkdir(save_result_directory)
+            elif not os.path.isdir(save_result_directory):
+                raise FileExistsError
+
             now = datetime.datetime.now()
             str_timestamp = now.strftime("%Y%m%dT%H%M%S")
             directory = os.path.join(save_result_directory, str_timestamp)
