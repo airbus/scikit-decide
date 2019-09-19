@@ -7,13 +7,10 @@ import matplotlib.pyplot as plt
 from stable_baselines import PPO2
 from stable_baselines.common.policies import MlpPolicy
 
-from airlaps import hub, DeterministicPlanningDomain, TransitionValue, Space
+from airlaps import DeterministicPlanningDomain, TransitionValue, Space
 from airlaps.builders.domain import UnrestrictedActions, Renderable
-from airlaps.utils import rollout
-
-ListSpace = hub.load('ListSpace', folder='hub/space/gym')
-EnumSpace = hub.load('EnumSpace', folder='hub/space/gym')
-MultiDiscreteSpace = hub.load('MultiDiscreteSpace', folder='hub/space/gym')
+from airlaps.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
+from airlaps.utils import load_registered_solver, rollout
 
 
 DEFAULT_MAZE = '''
@@ -149,24 +146,21 @@ if __name__ == '__main__':
 
     try_solvers = [
 
-        # Random walk
-        {'name': 'Random walk', 'type': None},
-
         # Lazy A* (planning)
         {'name': 'Lazy A* (planning)',
-         'type': {'entry': 'LazyAstar', 'folder': 'hub/solver/lazy_astar'},
+         'entry': 'LazyAstar',
          'config': {'heuristic': lambda s, d: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
                     'verbose': True}},
         
         # A* (planning)
         {'name': 'A* (planning)',
-         'type': {'entry': 'Astar', 'folder': 'hub/solver/astar'},
+         'entry': 'Astar',
          'config': {'heuristic': lambda s, d: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
                     'parallel': True, 'debug_logs': False}},
 
         # IW (planning)
         {'name': 'IW (planning) - (num_rows * num_cols) binary encoding (1 binary variable <=> 1 cell)',
-         'type': {'entry': 'IW', 'folder': 'hub/solver/iw'},
+         'entry': 'IW',
          'config': {'nb_of_binary_features': lambda d: d._num_rows * d._num_cols,
                     'state_binarizer': lambda s, d, f: f(s.x +  s.y * d._num_cols),
                     'use_state_feature_hash': False,
@@ -174,7 +168,7 @@ if __name__ == '__main__':
         
         # IW (planning)
         {'name': 'IW (planning) - (num_rows + num_cols) binary encoding (1 binary variable <=> 1 dimension value)',
-         'type': {'entry': 'IW', 'folder': 'hub/solver/iw'},
+         'entry': 'IW',
          'config': {'nb_of_binary_features': lambda d: d._num_rows + d._num_cols,
                     'state_binarizer': lambda s, d, f: [f(s.x), f(s.y + d._num_cols)],
                     'use_state_feature_hash': False,
@@ -182,7 +176,7 @@ if __name__ == '__main__':
 
         # BFWS (planning)
         {'name': 'BFWS (planning) - (num_rows * num_cols) binary encoding (1 binary variable <=> 1 cell)',
-         'type': {'entry': 'BFWS', 'folder': 'hub/solver/bfws'},
+         'entry': 'BFWS',
          'config': {'state_binarizer': lambda s, d, f: f(s.x +  s.y * d._num_cols),
                     'heuristic': lambda s, d: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
                     'termination_checker': lambda s, d: d.is_goal(s),
@@ -190,7 +184,7 @@ if __name__ == '__main__':
         
         # BFWS (planning)
         {'name': 'BFWS (planning)  - (num_rows + num_cols) binary encoding (1 binary variable <=> 1 dimension value)',
-         'type': {'entry': 'BFWS', 'folder': 'hub/solver/bfws'},
+         'entry': 'BFWS',
          'config': {'state_binarizer': lambda s, d, f: [f(s.x), f(s.y + d._num_cols)],
                     'heuristic': lambda s, d: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
                     'termination_checker': lambda s, d: d.is_goal(s),
@@ -198,21 +192,15 @@ if __name__ == '__main__':
 
         # PPO (deep reinforcement learning)
         {'name': 'PPO (deep reinforcement learning)',
-         'type': {'entry': 'StableBaselines', 'folder': 'hub/solver/stable_baselines'},
+         'entry': 'StableBaseline',
          'config': {'algo_class': PPO2, 'baselines_policy': MlpPolicy, 'learn_config': {'total_timesteps': 25000},
                     'verbose': 1}}
     ]
 
-    # Load solvers (if installed)
-    solvers = []
-    for s in try_solvers:
-        try:
-            if s['type'] is not None:
-                s['type'] = hub.load(**s['type'])
-            solvers.append(s)
-        except Exception as e:
-            print(rf'/!\ Could not load {s["name"]} from hub: check installation & missing dependencies')
-            print('\nOriginal exception was:', e)
+    # Load solvers (filtering out badly installed ones)
+    solvers = map(lambda s: dict(s, entry=load_registered_solver(s['entry'])), try_solvers)
+    solvers = list(filter(lambda s: s['entry'] is not None, solvers))
+    solvers.insert(0, {'name': 'Random Walk', 'entry': None})  # Add Random Walk as option
 
     # Run loop to ask user input
     domain = Maze()
@@ -224,14 +212,15 @@ if __name__ == '__main__':
             break
         else:
             selected_solver = solvers[choice - 1]
-            solver_type = selected_solver['type']
+            solver_type = selected_solver['entry']
+            # Check if Random Walk selected or other
             if solver_type is None:
                 solver = None
             else:
                 # Check that the solver is compatible with the domain
                 assert solver_type.check_domain(domain)
                 # Solve with selected solver
-                solver = Maze.solve_with(lambda: solver_type(**selected_solver['config']))
+                solver = Maze.solve_with(lambda: solver_type(**selected_solver['config']))  # ,lambda:MyDomain(5,5))
             # Test solver solution on domain
             print('==================== TEST SOLVER ====================')
             rollout(domain, solver, max_steps=1000, max_framerate=30,
