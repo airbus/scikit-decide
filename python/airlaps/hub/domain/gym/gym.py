@@ -413,7 +413,7 @@ class AsGymEnv(gym.Env):
         # Parameters
         action (object): An action provided by the environment.
 
-        # Returns:
+        # Returns
         A tuple with following elements:
 
         - observation (object): The agent's observation of the current environment.
@@ -431,7 +431,7 @@ class AsGymEnv(gym.Env):
     def reset(self):
         """Reset the state of the environment and returns an initial observation.
 
-        # returns
+        # Returns
         observation (object): The initial observation of the space.
         """
         return self._domain.reset()
