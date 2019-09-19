@@ -4,13 +4,15 @@ import random
 import struct
 from copy import deepcopy
 from typing import Any, Optional, Callable
+from collections import namedtuple  # TODO: replace with `from typing import NamedTuple`?
 
 import gym
 import numpy as np
 
-from airlaps import Domain, Space, TransitionValue, TransitionOutcome
+from airlaps import Domain, Space, TransitionValue, TransitionOutcome, ImplicitSpace
 from airlaps.builders.domain import SingleAgent, Sequential, DeterministicTransitions, UnrestrictedActions, \
-    Initializable, DeterministicInitialized, Markovian, Memoryless, FullyObservable, Renderable, Rewards, PositiveCosts
+    Initializable, DeterministicInitialized, Markovian, Memoryless, FullyObservable, Renderable, Rewards, \
+    PositiveCosts, Goals
 from airlaps.hub.space.gym import GymSpace, ListSpace
 
 
@@ -72,6 +74,8 @@ class D(Domain, SingleAgent, Sequential, DeterministicTransitions, UnrestrictedA
     pass
 
 
+DeterministicGymDomainExtendedState = namedtuple('DeterministicGymDomainExtendedState', ['state', 'context'])
+
 class DeterministicGymDomain(D):
     """This class wraps a deterministic OpenAI Gym environment (gym.env) as an AIRLAPS domain.
 
@@ -79,38 +83,44 @@ class DeterministicGymDomain(D):
         Using this class requires OpenAI Gym to be installed.
     """
 
-    def __init__(self, gym_env: gym.Env) -> None:
+    def __init__(self, gym_env: gym.Env,
+                       change_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None) -> None:
         """Initialize DeterministicGymDomain.
 
         # Parameters
         gym_env: The deterministic Gym environment (gym.env) to wrap.
+        change_state: Function to call to change the state of the gym environment.
+                      If None, default behavior is to deepcopy the environment when changing state
         """
         self._gym_env = gym_env
-        self._env_dict = {}
+        self._change_state = change_state
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = self._gym_env.reset()
-        self._env_dict[self._hash(initial_state)] = (self._gym_env, None, None, None)
-        return initial_state
+        return DeterministicGymDomainExtendedState(state=initial_state, context=[self._gym_env, None, None, None])
 
     def _get_next_state(self, memory: D.T_memory[D.T_state],
                         action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
-        env, _, _, _ = self._env_dict[self._hash(memory)]
-        env = deepcopy(env)
+        if self._change_state is None:
+            env = memory.context[0]
+            env = deepcopy(env)
+        else:
+            env = self._gym_env
+            self._change_state(env, memory)
         obs, reward, done, info = env.step(action)
         outcome = TransitionOutcome(state=obs, value=TransitionValue(reward=reward), termination=done, info=info)
-        self._env_dict[self._hash(outcome.state)] = (env, memory, action, outcome)
-        return outcome.state
+        return DeterministicGymDomainExtendedState(state=outcome.state, context=[env, memory.state, action, outcome])
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
                               next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
-        _, last_memory, last_action, outcome = self._env_dict[self._hash(next_state)]
-        assert self._hash(memory) == self._hash(last_memory) and self._hash(action) == self._hash(last_action)
+        last_memory, last_action, outcome = next_state.context[1:4]
+        assert (self._are_same(self._gym_env.observation_space, memory.state, last_memory) and
+                self._are_same(self._gym_env.action_space, action, last_action))
         return outcome.value
 
     def _is_terminal(self, state: D.T_state) -> bool:
-        _, _, _, outcome = self._env_dict[self._hash(state)]
-        return outcome.termination
+        outcome = state.context[3]
+        return outcome.termination if outcome is not None else False
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
         return GymSpace(self._gym_env.action_space)
@@ -126,14 +136,6 @@ class DeterministicGymDomain(D):
         self._gym_env.close()  # avoid deepcopy errors
         return render
 
-    def _hash(self, obj):
-        hash_fn = getattr(obj, '__hash__', None)
-        if hash_fn is None:
-            custom_hash = hash(str(obj))
-        else:
-            custom_hash = hash_fn()
-        return custom_hash
-
     def close(self):
         return self._gym_env.close()
 
@@ -145,12 +147,35 @@ class DeterministicGymDomain(D):
         """
         return self._gym_env
 
+    def _are_same(self, space: gym.spaces.Space, e1: Any, e2: Any):
+        assert e1.__class__ == e2.__class__
+        if isinstance(space, gym.spaces.box.Box):
+            return (e1 == e2).all()
+        elif isinstance(space, gym.spaces.discrete.Discrete):
+            return e1 == e2
+        elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
+            return (e1 == e2).all()
+        elif isinstance(space, gym.spaces.tuple.Tuple):
+            assert len(e1) == len(e2) == len(space)
+            for i in range(len(space)):
+                if not self._are_same(space[i], e1[i], e2[i]):
+                    return False
+            return True
+        elif isinstance(space, gym.spaces.dict.Dict):
+            assert e1.keys() == e2.keys() == space.keys()
+            for k in space.keys():
+                if not self._are_same(space[k], e1[k], e2[k]):
+                    return False
+            return True
+        else:
+            raise RuntimeError('Unknown Gym space of type ' + str(type(space)))
+
 
 class CostDeterministicGymDomain(DeterministicGymDomain, PositiveCosts):
     pass
 
 
-class GymPlanningDomain(CostDeterministicGymDomain):
+class GymPlanningDomain(CostDeterministicGymDomain, Goals):
     """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
         usable by a classical planner that requires enumerable applicable action sets
 
@@ -159,18 +184,35 @@ class GymPlanningDomain(CostDeterministicGymDomain):
     """
 
     def __init__(self, gym_env: gym.Env,
-                       discretization_factor: int,
-                       branching_factor: int = None) -> None:
+                       change_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
+                       discretization_factor: int = 10,
+                       branching_factor: int = None,
+                       max_depth: int = 50) -> None:
         """Initialize WidthPlanningGymDomain.
 
         # Parameters
         gym_env: The deterministic Gym environment (gym.env) to wrap.
+        change_state: Function to call to change the state of the gym environment.
+                      If None, default behavior is to deepcopy the environment when changing state
         discretization_factor: Number of discretized action variable values per continuous action variable
         branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
+        max_depth: maximum depth of states to explore from the initial state
         """
-        super().__init__(gym_env)
+        super().__init__(gym_env, change_state)
         self._discretization_factor = discretization_factor
         self._branching_factor = branching_factor
+        self._max_depth = max_depth
+
+    def _get_initial_state_(self) -> D.T_state:
+        initial_state = super()._get_initial_state_()
+        initial_state.context.append(0)
+        return initial_state
+
+    def _get_next_state(self, memory: D.T_memory[D.T_state],
+                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+        next_state = super()._get_next_state(memory, action)
+        next_state.context.append(memory.context[4] + 1)
+        return next_state
 
     def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
         applicable_actions = self._discretize_action_space(self.get_action_space()._gym_space)
@@ -210,6 +252,9 @@ class GymPlanningDomain(CostDeterministicGymDomain):
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(action_space)))
 
+    def _get_goals_(self):
+        return ImplicitSpace(lambda observation: observation.context[4] > self._max_depth)
+
 
 class GymWidthPlanningDomain(GymPlanningDomain):
     """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
@@ -220,16 +265,21 @@ class GymWidthPlanningDomain(GymPlanningDomain):
     """
 
     def __init__(self, gym_env: gym.Env,
-                       discretization_factor: int,
-                       branching_factor: int = None) -> None:
+                       change_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
+                       discretization_factor: int = 10,
+                       branching_factor: int = None,
+                       max_depth: int = 50) -> None:
         """Initialize WidthPlanningGymDomain.
 
         # Parameters
         gym_env: The deterministic Gym environment (gym.env) to wrap.
+        change_state: Function to call to change the state of the gym environment.
+                      If None, default behavior is to deepcopy the environment when changing state
         discretization_factor: Number of discretized action variable values per continuous action variable
         branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
+        max_depth: maximum depth of states to explore from the initial state
         """
-        super().__init__(gym_env, discretization_factor, branching_factor)
+        super().__init__(gym_env, change_state, discretization_factor, branching_factor, max_depth)
     
     def nb_of_binary_features(self) -> int:
         """Return the size of the bit vector encoding an observation
@@ -246,7 +296,7 @@ class GymWidthPlanningDomain(GymPlanningDomain):
         memory: The Gym state (in observation_space) to binarize
         func: The function called on each true bit of the binarized state
         """
-        self._binarize_gym_space_element(self._gym_env.observation_space, memory, 0, func)
+        self._binarize_gym_space_element(self._gym_env.observation_space, memory.state, 0, func)
     
     def _binarize_gym_space_element(self, space: gym.spaces.Space,
                                           element: Any,
