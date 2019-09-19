@@ -1,21 +1,16 @@
-from __future__ import annotations
-
-import math
 import multiprocessing
-from typing import Optional, Callable
-
-import numpy as np
+import os
+import sys
+from typing import Callable
 
 from airlaps import Domain, Solver
-from airlaps.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, Goals, \
+from airlaps import hub
+from airlaps.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from airlaps.builders.solver import DeterministicPolicies, Utilities
 
-import sys, os
-from airlaps import hub
-
 record_sys_path = sys.path
-airlaps_cpp_extension_lib_path = os.path.join(hub._get_airlaps_home(), 'lib')
+airlaps_cpp_extension_lib_path = os.path.join(hub.__path__[0], 'lib')
 if airlaps_cpp_extension_lib_path not in sys.path:
     sys.path.append(airlaps_cpp_extension_lib_path)
 
@@ -75,7 +70,7 @@ try:
 
         def __init__(self,
                      nb_of_binary_features: Callable[[Domain], int],
-                     state_binarizer: Callable[[D.T_state, Domain, Callable[[int], None], None]],
+                     state_binarizer: Callable[[D.T_state, Domain, Callable[[int], None], None]],  # TODO: correct hint
                      use_state_feature_hash: bool = False,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
