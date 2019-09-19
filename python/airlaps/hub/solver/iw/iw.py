@@ -70,7 +70,7 @@ try:
 
         def __init__(self,
                      nb_of_binary_features: Callable[[Domain], int],
-                     state_binarizer: Callable[[D.T_state, Domain, Callable[[int], None], None]],  # TODO: correct hint
+                     state_binarizer: Callable[[D.T_state, Domain, Callable[[int], None]], None],
                      use_state_feature_hash: bool = False,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:

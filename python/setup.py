@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-__version__ = '0.3.1'
+__version__ = '0.3.2'
 
 extras_require = {
     'domains': [
@@ -50,7 +50,7 @@ setup(
             'Astar = airlaps.hub.solver.astar:Astar',
             'BFWS = airlaps.hub.solver.bfws:BFWS',
             'CGP = airlaps.hub.solver.cgp:CGP [solvers]',
-            'IW = airlaps.hub.solver.iw:IW [solvers]',
+            'IW = airlaps.hub.solver.iw:IW',
             'LazyAstar = airlaps.hub.solver.lazy_astar:LazyAstar',
             'POMCP = airlaps.hub.solver.pomcp:POMCP',
             'SimpleGreedy = airlaps.hub.solver.simple_greedy:SimpleGreedy',
