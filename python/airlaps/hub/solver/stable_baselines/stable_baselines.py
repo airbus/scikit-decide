@@ -47,7 +47,7 @@ class StableBaseline(Solver, Policies, Restorable):
             env = Monitor(AsGymEnv(domain), filename=None, allow_early_resets=True)
             env = DummyVecEnv([lambda: env])  # the algorithms require a vectorized environment to run
             self._algo = self._algo_class(self._baselines_policy, env, **self._algo_kwargs)
-            self._wrap_action = lambda a: next(iter(domain.get_action_space().from_unwrapped([a])))
+            self._init_algo(domain)
         self._algo.learn(**self._learn_config)
 
     def _sample_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
@@ -60,5 +60,9 @@ class StableBaseline(Solver, Policies, Restorable):
     def _save(self, path: str) -> None:
         self._algo.save(path)
 
-    def _load(self, path: str):
+    def _load(self, path: str, domain_factory: Callable[[], D]):
         self._algo = self._algo_class.load(path)
+        self._init_algo(domain_factory())
+
+    def _init_algo(self, domain: D):
+        self._wrap_action = lambda a: next(iter(domain.get_action_space().from_unwrapped([a])))

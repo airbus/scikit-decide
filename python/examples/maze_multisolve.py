@@ -220,7 +220,7 @@ if __name__ == '__main__':
                 # Check that the solver is compatible with the domain
                 assert solver_type.check_domain(domain)
                 # Solve with selected solver
-                solver = Maze.solve_with(lambda: solver_type(**selected_solver['config']))  # ,lambda:MyDomain(5,5))
+                solver = Maze.solve_with(lambda: solver_type(**selected_solver['config']))
             # Test solver solution on domain
             print('==================== TEST SOLVER ====================')
             rollout(domain, solver, max_steps=1000, max_framerate=30,

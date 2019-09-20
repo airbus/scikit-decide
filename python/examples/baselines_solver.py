@@ -14,4 +14,9 @@ domain = domain_factory()
 if StableBaseline.check_domain(domain):
     solver_factory = lambda: StableBaseline(PPO2, MlpPolicy, learn_config={'total_timesteps': 50000}, verbose=1)
     solver = GymDomain.solve_with(solver_factory, domain_factory)
-    rollout(domain, solver, num_episodes=5, max_steps=1000, max_framerate=30, outcome_formatter=None)
+    solver.save('TEMP_Baselines')
+    rollout(domain, solver, num_episodes=1, max_steps=1000, max_framerate=30, outcome_formatter=None)
+
+    # Restore and re-run
+    solver = GymDomain.solve_with(solver_factory, domain_factory, load_path='TEMP_Baselines')
+    rollout(domain, solver, num_episodes=1, max_steps=1000, max_framerate=30, outcome_formatter=None)

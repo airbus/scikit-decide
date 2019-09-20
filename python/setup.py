@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-__version__ = '0.3.2'
+__version__ = '0.3.4'
 
 extras_require = {
     'domains': [
@@ -12,7 +12,8 @@ extras_require = {
         'gym>=0.13.0',
         'numpy>=1.16.4',
         'joblib>=0.13.2',
-        'stable-baselines~=2.6'
+        'stable-baselines~=2.6',
+        'ray[rllib,debug]~=0.7.3'
     ]
 }
 
@@ -43,6 +44,7 @@ setup(
             'GymWidthPlanningDomain = airlaps.hub.domain.gym:GymWidthPlanningDomain [domains]',
             'MasterMind = airlaps.hub.domain.mastermind:MasterMind [domains]',
             'Maze = airlaps.hub.domain.maze:Maze [domains]',
+            'RockPaperScissors = airlaps.hub.domain.rock_paper_scissors:RockPaperScissors [domains]',
             'SimpleGridWorld = airlaps.hub.domain.simple_grid_world:SimpleGridWorld [domains]'
         ],
         'airlaps.solvers': [
@@ -53,8 +55,9 @@ setup(
             'IW = airlaps.hub.solver.iw:IW',
             'LazyAstar = airlaps.hub.solver.lazy_astar:LazyAstar',
             'POMCP = airlaps.hub.solver.pomcp:POMCP',
+            'RayRLlib = airlaps.hub.solver.ray_rllib:RayRLlib [solvers]',
             'SimpleGreedy = airlaps.hub.solver.simple_greedy:SimpleGreedy',
-            'StableBaseline = airlaps.hub.solver.stable_baselines:StableBaseline [solvers]',
+            'StableBaseline = airlaps.hub.solver.stable_baselines:StableBaseline [solvers]'
         ]
     },
     extras_require=extras_require

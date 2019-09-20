@@ -105,5 +105,5 @@ class MasterMind(D):
 if __name__ == '__main__':
     from airlaps.utils import rollout
 
-    gym_domain = MasterMind(3, 3)
-    rollout(gym_domain, max_steps=1000, outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    domain = MasterMind(3, 3)
+    rollout(domain, max_steps=1000, outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

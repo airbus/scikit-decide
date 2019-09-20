@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from airlaps.core import autocastable
+from typing import Callable
+
+from airlaps.core import D, autocastable
 
 __all__ = ['Restorable']
 
@@ -27,18 +29,20 @@ class Restorable:
         raise NotImplementedError
 
     @autocastable
-    def load(self, path: str) -> None:
+    def load(self, path: str, domain_factory: Callable[[], D]) -> None:
         """Restore the solver state from given path.
 
         # Parameters
         path: The path where the solver state was saved.
+        domain_factory: A callable with no argument returning the domain to solve (useful in some implementations).
         """
-        return self._load(path)
+        return self._load(path, domain_factory)
 
-    def _load(self, path: str) -> None:
+    def _load(self, path: str, domain_factory: Callable[[], D]) -> None:
         """Restore the solver state from given path.
 
         # Parameters
         path: The path where the solver state was saved.
+        domain_factory: A callable with no argument returning the domain to solve (useful in some implementations).
         """
         raise NotImplementedError

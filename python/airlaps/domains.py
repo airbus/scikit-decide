@@ -72,12 +72,19 @@ class Domain(MultiAgent, Parallel, Environment, Events, History, PartiallyObserv
         # Returns
         The new solver (auto-cast to the level of the domain).
         """
+        if domain_factory is None:
+            domain_factory = cls
         solver = solver_factory()
         if load_path is not None:
-            solver.load(load_path)
+
+            # TODO: avoid repeating this code somehow (identical in solver.solve(...))? Is factory necessary (vs cls)?
+            def cast_domain_factory():
+                domain = domain_factory()
+                autocast_all(domain, domain, solver.T_domain)
+                return domain
+
+            solver.load(load_path, cast_domain_factory)
         else:
-            if domain_factory is None:
-                domain_factory = cls
             solver.solve(domain_factory)
         autocast_all(solver, solver.T_domain, cls)
         return solver
