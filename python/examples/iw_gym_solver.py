@@ -1,13 +1,11 @@
 import gym
 
-from airlaps import hub
+from airlaps.hub.domain.gym import GymWidthPlanningDomain
+from airlaps.hub.solver.iw import IW
 from airlaps.utils import rollout
 
-GymWidthPlanningDomain = hub.load('GymWidthPlanningDomain', folder='hub/domain/gym')
-IW = hub.load('IW', folder='hub/solver/iw')
-
 ENV_NAME = 'CartPole-v0'
-HORIZON = 20
+HORIZON = 10
 
 domain_factory = lambda: GymWidthPlanningDomain(gym_env=gym.make(ENV_NAME),
                                                 discretization_factor=10,
@@ -21,10 +19,3 @@ if IW.check_domain(domain):
                                 parallel=False, debug_logs=False)
     solver = GymWidthPlanningDomain.solve_with(solver_factory, domain_factory)
     rollout(domain, solver, num_episodes=5, max_steps=HORIZON, max_framerate=30, outcome_formatter=None)
-
-# s = domain.reset()
-# bv = []
-# domain.binarize(s, lambda i: bv.append(i))
-# print('nb of binary features: ', str(domain.nb_of_binary_features()))
-# print('Bit vector:', str(bv))
-# print('applicable actions:', str(domain.get_applicable_actions(s).get_elements()))

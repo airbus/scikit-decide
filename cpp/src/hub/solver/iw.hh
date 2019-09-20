@@ -334,7 +334,8 @@ private :
                             i = _graph.emplace(Node(next_state, _hashing_policy));
                         });
                         Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                        if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print());
+                        if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print() +
+                                                       " (among " + std::to_string(_graph.size()) + ")");
 
                         if (closed_set.find(&neighbor) != closed_set.end()) {
                             // Ignore the neighbor which is already evaluated
@@ -356,7 +357,7 @@ private :
                                 if (_debug_logs) spdlog::debug("Pruning state");
                                 states_pruned = true;
                             } else {
-                                if (_debug_logs) spdlog::debug("Adding state to open queue");
+                                if (_debug_logs) spdlog::debug("Adding state to open queue (among " + std::to_string(open_queue.size()) + ")");
                                 open_queue.push(&neighbor);
                             }
                         });
@@ -384,6 +385,14 @@ private :
             // feature_combinations is a set of Boolean combinations of size _width
             unsigned int nov = _hashing_policy._nb_of_binary_features + 1;
             const std::vector<unsigned int>& state_features = _hashing_policy.get_state_features(n);
+            if (_debug_logs) {
+                std::string vstr;
+                for (auto v : state_features) { vstr += " " + std::to_string(v); }
+                spdlog::debug(std::string("Features of state ") + n.state.print() + ": [" + vstr + " ]");
+                spdlog::debug(std::string("Compression: " +
+                    std::to_string((double) state_features.size() / (double) _hashing_policy._nb_of_binary_features  * 100.0)
+                    + "%"));
+            }
 
             for (unsigned int k = 1 ; k <= std::min(_width, (unsigned int) state_features.size()) ; k++) {
                 // we must recompute combinations from previous width values just in case

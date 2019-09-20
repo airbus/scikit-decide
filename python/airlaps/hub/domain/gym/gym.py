@@ -202,16 +202,21 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         self._discretization_factor = discretization_factor
         self._branching_factor = branching_factor
         self._max_depth = max_depth
+        self._current_depth = 0
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = super()._get_initial_state_()
         initial_state.context.append(0)
+        self._current_depth = 0
         return initial_state
 
     def _get_next_state(self, memory: D.T_memory[D.T_state],
                         action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
         next_state = super()._get_next_state(memory, action)
         next_state.context.append(memory.context[4] + 1)
+        if (memory.context[4] + 1 > self._current_depth):
+            self._current_depth = memory.context[4] + 1
+            print('Current depth:', str(self._current_depth), '/', str(self._max_depth))
         return next_state
 
     def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
@@ -253,7 +258,7 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
             raise RuntimeError('Unknown Gym space element of type ' + str(type(action_space)))
 
     def _get_goals_(self):
-        return ImplicitSpace(lambda observation: observation.context[4] > self._max_depth)
+        return ImplicitSpace(lambda observation: observation.context[4] >= self._max_depth)
 
 
 class GymWidthPlanningDomain(GymPlanningDomain):
