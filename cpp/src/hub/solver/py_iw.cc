@@ -262,116 +262,250 @@ private :
 
 
 template <typename Texecution>
-class HashableObject {
+class PyIWFeatureVector {
 public :
-    HashableObject() {}
 
-    HashableObject(const py::object& obj) : _obj(obj) {}
-
-    ~HashableObject() {
-        typename GilControl<Texecution>::Acquire acquire;
-        _obj = py::object();
-    }
-
-    std::size_t hash() const {
-        typename GilControl<Texecution>::Acquire acquire;
-        try {
-            if (!py::hasattr(_obj, "__hash__") || _obj.attr("__hash__").is_none()) {
-                throw std::invalid_argument("AIRLAPS exception: IW algorithm needs state feature items for implementing __hash__");
-            }
-            // python __hash__ can return negative integers but c++ expects positive integers only
-            return _obj.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
-        } catch(const py::error_already_set& ex) {
-            spdlog::error(std::string("AIRLAPS exception when hashing state feature items: ") + ex.what());
-            throw;
+    class value_type {
+    public :
+        value_type() {}
+        
+        value_type(const py::object& value) {
+            _value = std::make_unique<ObjectType>(value);
         }
-    }
 
-    bool operator == (const HashableObject& other) const {
-        typename GilControl<Texecution>::Acquire acquire;
-        try {
-            if (!py::hasattr(_obj, "__eq__") || _obj.attr("__eq__").is_none()) {
-                throw std::invalid_argument("AIRLAPS exception: IW algorithm needs state feature items for implementing __eq__");
-            }
-            return _obj.attr("__eq__")(other._obj).template cast<bool>();
-        } catch(const py::error_already_set& ex) {
-            spdlog::error(std::string("AIRLAPS exception when testing state feature items equality: ") + ex.what());
-            throw;
+        template <typename T,
+                  typename  = typename std::enable_if<std::is_fundamental<T>::value>::type>
+        value_type(const T& value) {
+            _value = std::make_unique<PrimitiveType<T>>(value);
         }
-    }
 
-private :
-    py::object _obj;
-};
+        value_type(const value_type& other) {
+            other._value->copy(_value);
+        }
 
+        value_type& operator= (const value_type& other) {
+            other._value->copy(_value);
+            return *this;
+        }
 
-template <typename Texecution, typename Tsequence>
-class PyIWSequenceFeatureVector {
-public :
-    typedef HashableObject<Texecution> value_type;
+        std::size_t hash() const {
+            return _value->hash();
+        }
 
-    PyIWSequenceFeatureVector() {}
+        bool operator== (const value_type& other) const {
+            return _value->equal(*(other._value));
+        }
 
-    PyIWSequenceFeatureVector(const py::object& vector)
-    : _vector(static_cast<const Tsequence&>(vector)) {}
+    private :
+        class BaseType {
+        public :
+            virtual void copy(std::unique_ptr<BaseType>& other) const =0;
+            virtual std::size_t hash() const =0;
+            virtual bool equal(const BaseType& other) const =0;
+        };
 
-    ~PyIWSequenceFeatureVector() {
-        typename GilControl<Texecution>::Acquire acquire;
-        _vector = Tsequence();
+        template <typename T>
+        class PrimitiveType : public BaseType {
+        public :
+            PrimitiveType(const T& value) : _value(value) {}
+
+            virtual void copy(std::unique_ptr<BaseType>& other) const {
+                other = std::make_unique<PrimitiveType<T>>(_value);
+            }
+
+            virtual std::size_t hash() const {
+                return boost::hash_value(_value);
+            }
+
+            virtual bool equal(const BaseType& other) const {
+                const PrimitiveType<T>* o = dynamic_cast<const PrimitiveType<T>*>(&other);
+                return ((o != nullptr) && (o->_value == _value));
+            }
+
+        private :
+            T _value;
+        };
+
+        class ObjectType : public BaseType {
+        public :
+            ObjectType(const py::object& value) : _value(value) {}
+
+            ~ObjectType() {
+                typename GilControl<Texecution>::Acquire acquire;
+                _value = py::object();
+            }
+
+            virtual void copy(std::unique_ptr<BaseType>& other) const {
+                other = std::make_unique<ObjectType>(_value);
+            }
+
+            virtual std::size_t hash() const {
+                typename GilControl<Texecution>::Acquire acquire;
+                try {
+                    if (!py::hasattr(_value, "__hash__") || _value.attr("__hash__").is_none()) {
+                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs state feature items for implementing __hash__");
+                    }
+                    // python __hash__ can return negative integers but c++ expects positive integers only
+                    return _value.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
+                } catch(const py::error_already_set& ex) {
+                    spdlog::error(std::string("AIRLAPS exception when hashing state feature items: ") + ex.what());
+                    throw;
+                }
+            }
+
+            virtual bool equal(const BaseType& other) const {
+                typename GilControl<Texecution>::Acquire acquire;
+                try {
+                    if (!py::hasattr(_value, "__eq__") || _value.attr("__eq__").is_none()) {
+                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs state feature items for implementing __eq__");
+                    }
+                    const ObjectType* o = dynamic_cast<const ObjectType*>(&other);
+                    return ((o != nullptr) && (_value.attr("__eq__")(o->_value).template cast<bool>()));
+                } catch(const py::error_already_set& ex) {
+                    spdlog::error(std::string("AIRLAPS exception when testing state feature items equality: ") + ex.what());
+                    throw;
+                }
+            }
+
+        private :
+            py::object _value;
+        };
+
+        std::unique_ptr<BaseType> _value;
+    };
+
+    PyIWFeatureVector() {}
+
+    PyIWFeatureVector(const py::object& vector) {
+        if (py::isinstance<py::list>(vector)) {
+            _implementation = std::make_unique<SequenceImplementation<py::list>>(vector);
+        } else if (py::isinstance<py::tuple>(vector)) {
+            _implementation = std::make_unique<SequenceImplementation<py::tuple>>(vector);
+        } else if (py::isinstance<py::array>(vector)) {
+            std::string dtype = py::str(vector.attr("dtype"));
+            if (dtype == "float_") {
+                _implementation = std::make_unique<NumpyImplementation<double>>(vector);
+            } else if (dtype == "float32") {
+                _implementation = std::make_unique<NumpyImplementation<float>>(vector);
+            } else if (dtype == "float64") {
+                _implementation = std::make_unique<NumpyImplementation<double>>(vector);
+            } else if (dtype == "bool_") {
+                _implementation = std::make_unique<NumpyImplementation<bool>>(vector);
+            } else if (dtype == "int_") {
+                _implementation = std::make_unique<NumpyImplementation<long int>>(vector);
+            } else if (dtype == "intc") {
+                _implementation = std::make_unique<NumpyImplementation<int>>(vector);
+            } else if (dtype == "intp") {
+                _implementation = std::make_unique<NumpyImplementation<std::size_t>>(vector);
+            } else if (dtype == "int8") {
+                _implementation = std::make_unique<NumpyImplementation<std::int8_t>>(vector);
+            } else if (dtype == "int16") {
+                _implementation = std::make_unique<NumpyImplementation<std::int16_t>>(vector);
+            } else if (dtype == "int32") {
+                _implementation = std::make_unique<NumpyImplementation<std::int32_t>>(vector);
+            } else if (dtype == "int64") {
+                _implementation = std::make_unique<NumpyImplementation<std::int64_t>>(vector);
+            } else if (dtype == "uint8") {
+                _implementation = std::make_unique<NumpyImplementation<std::uint8_t>>(vector);
+            } else if (dtype == "uint16") {
+                _implementation = std::make_unique<NumpyImplementation<std::uint16_t>>(vector);
+            } else if (dtype == "uint32") {
+                _implementation = std::make_unique<NumpyImplementation<std::uint32_t>>(vector);
+            } else if (dtype == "uint64") {
+                _implementation = std::make_unique<NumpyImplementation<std::uint64_t>>(vector);
+            } else {
+                spdlog::error("Unhandled array dtype '" + dtype + "' when parsing state features as numpy array");
+                throw std::invalid_argument("AIRLAPS exception: Unhandled array dtype '" + dtype +
+                                            "' when parsing state features as numpy array");
+            }
+        } else {
+            spdlog::error("Unhandled state feature type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
+                           " (expecting list, tuple or numpy array)");
+            throw std::invalid_argument("Unhandled state feature type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
+                                        " (expecting list, tuple or numpy array)");
+        }
     }
 
     std::size_t size() const {
-        typename GilControl<Texecution>::Acquire acquire;
-        return _vector.size();
+        return _implementation->size();
     }
 
     value_type operator[](std::size_t index) const {
-        typename GilControl<Texecution>::Acquire acquire;
-        return value_type(_vector[index]);
+        return _implementation->at(index);
     }
 
 private :
-    Tsequence _vector;
+
+    class BaseImplementation {
+    public :
+        virtual std::size_t size() const =0;
+        virtual value_type at(std::size_t index) const =0;
+    };
+
+    template <typename Tsequence>
+    class SequenceImplementation : public BaseImplementation {
+    public :
+        SequenceImplementation(const py::object& vector)
+        : _vector(static_cast<const Tsequence&>(vector)) {}
+
+        ~SequenceImplementation() {
+            typename GilControl<Texecution>::Acquire acquire;
+            _vector = Tsequence();
+        }
+
+        virtual std::size_t size() const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return _vector.size();
+        }
+
+        virtual value_type at(std::size_t index) const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return value_type(_vector[index]);
+        }
+
+    private :
+        Tsequence _vector;
+    };
+
+    template <typename T>
+    class NumpyImplementation : public BaseImplementation {
+    public :
+        NumpyImplementation(const py::object& vector)
+        : _vector(static_cast<const py::array_t<T>&>(vector)) {
+            _buffer = _vector.request();
+        }
+
+        ~NumpyImplementation() {
+            typename GilControl<Texecution>::Acquire acquire;
+            _vector = py::array_t<T>();
+        }
+
+        virtual std::size_t size() const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return _vector.size();
+        }
+
+        virtual value_type at(std::size_t index) const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return value_type(((T*) _buffer.ptr)[index]);
+        }
+    
+    private :
+        py::array_t<T> _vector;
+        py::buffer_info _buffer;
+    };
+
+    std::unique_ptr<BaseImplementation> _implementation;
 };
 
 
-template <typename Texecution>
-std::size_t hash_value(const HashableObject<Texecution>& o) {
+std::size_t hash_value(const PyIWFeatureVector<airlaps::SequentialExecution>::value_type& o) {
     return o.hash();
 }
 
-
-template <typename Texecution, typename T>
-class PyIWNumpyFeatureVector {
-public :
-    typedef T value_type;
-
-    PyIWNumpyFeatureVector() {}
-
-    PyIWNumpyFeatureVector(const py::object& vector)
-    : _vector(static_cast<const py::array_t<T>&>(vector)) {
-        _buffer = _vector.request();
-    }
-
-    ~PyIWNumpyFeatureVector() {
-        typename GilControl<Texecution>::Acquire acquire;
-        _vector = py::array_t<T>();
-    }
-
-    std::size_t size() const {
-        typename GilControl<Texecution>::Acquire acquire;
-        return _vector.size();
-    }
-
-    T operator[](std::size_t index) const {
-        typename GilControl<Texecution>::Acquire acquire;
-        return ((T*) _buffer.ptr)[index];
-    }
-
-private :
-    py::array_t<T> _vector;
-    py::buffer_info _buffer;
-};
+std::size_t hash_value(const PyIWFeatureVector<airlaps::ParallelExecution>::value_type& o) {
+    return o.hash();
+}
 
 
 class PyIWSolver {
@@ -384,15 +518,19 @@ public :
                bool debug_logs = false) {
         if (parallel) {
             if (use_state_feature_hash) {
-                create_implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash>(domain, state_features, debug_logs);
+                _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash>>(
+                    domain, state_features, debug_logs);
             } else {
-                create_implementation<airlaps::ParallelExecution, airlaps::DomainStateHash>(domain, state_features, debug_logs);
+                _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash>>(
+                    domain, state_features, debug_logs);
             }
         } else {
             if (use_state_feature_hash) {
-                create_implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash>(domain, state_features, debug_logs);
+                _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash>>(
+                    domain, state_features, debug_logs);
             } else {
-                create_implementation<airlaps::SequentialExecution, airlaps::DomainStateHash>(domain, state_features, debug_logs);
+                _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash>>(
+                    domain, state_features, debug_logs);
             }
         }
     }
@@ -419,104 +557,6 @@ public :
 
 private :
 
-    template <typename Texecution, template <typename...> class Thashing_policy>
-    void create_implementation(py::object& domain,
-                               const std::function<py::object (const py::object&)>& state_features,
-                               bool debug_logs = false) {
-        // Get state features of the first state to test the type of state features
-        // TODO: test that domain as "get_initial_state" method
-        py::object sf = state_features(domain.attr("get_initial_state")());
-        if (py::isinstance<py::list>(sf)) {
-            _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWSequenceFeatureVector<Texecution, py::list>>>(
-                domain, state_features, debug_logs
-            );
-        } else if (py::isinstance<py::tuple>(sf)) {
-            _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWSequenceFeatureVector<Texecution, py::tuple>>>(
-                domain, state_features, debug_logs
-            );
-        } else if (py::isinstance<py::array>(sf)) {
-            std::string dtype = py::str(sf.attr("dtype"));
-            if (dtype == "bool_") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, bool>>>(
-                    domain, state_features, debug_logs
-                );
-            } else if (dtype == "int_") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, long int>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "intc") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, int>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "intp") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, std::size_t>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "int8") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, std::int8_t>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "int16") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, std::int16_t>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "int32") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, std::int32_t>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "int64") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, std::int64_t>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "uint8") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, std::uint8_t>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "uint16") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, std::uint16_t>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "uint32") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, std::uint32_t>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "uint64") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, std::uint64_t>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "float_") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, double>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "float32") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, float>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else if (dtype == "float64") {
-                _implementation = std::make_unique<Implementation<Texecution, Thashing_policy, PyIWNumpyFeatureVector<Texecution, double>>>(
-                    domain, state_features, debug_logs
-                );
-            }
-            else {
-                spdlog::error("Unhandled array dtype '" + dtype + "' when parsing state features");
-                throw std::runtime_error("AIRLAPS exception: Unhandled array dtype '" + dtype + "' when parsing state features");
-            }
-        }
-    }
-
     class BaseImplementation {
     public :
         virtual void clear() =0;
@@ -526,7 +566,7 @@ private :
         virtual py::float_ get_utility(const py::object& s) =0;
     };
 
-    template <typename Texecution, template <typename...> class Thashing_policy, typename Tfeature_vector>
+    template <typename Texecution, template <typename...> class Thashing_policy>
     class Implementation : public BaseImplementation {
     public :
 
@@ -535,11 +575,11 @@ private :
                        bool debug_logs = false)
             : _state_features(state_features) {
             _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
-            _solver = std::make_unique<airlaps::IWSolver<PyIWDomain<Texecution>, Tfeature_vector, Thashing_policy, Texecution>>(
+            _solver = std::make_unique<airlaps::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>>(
                                                                             *_domain,
-                                                                            [this](const typename PyIWDomain<Texecution>::State& s)->std::unique_ptr<Tfeature_vector> {
+                                                                            [this](const typename PyIWDomain<Texecution>::State& s)->std::unique_ptr<PyIWFeatureVector<Texecution>> {
                                                                                 typename GilControl<Texecution>::Acquire acquire;
-                                                                                return std::make_unique<Tfeature_vector>(_state_features(s._state));
+                                                                                return std::make_unique<PyIWFeatureVector<Texecution>>(_state_features(s._state));
                                                                             },
                                                                             debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
@@ -579,7 +619,7 @@ private :
 
     private :
         std::unique_ptr<PyIWDomain<Texecution>> _domain;
-        std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, Tfeature_vector, Thashing_policy, Texecution>> _solver;
+        std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>> _solver;
         
         std::function<py::object (const py::object&)> _state_features;
 

@@ -5,7 +5,7 @@ from airlaps.hub.solver.iw import IW
 from airlaps.utils import rollout
 
 ENV_NAME = 'MountainCar-v0'
-HORIZON = 30
+HORIZON = 100
 
 domain_factory = lambda: GymWidthPlanningDomain(gym_env=gym.make(ENV_NAME),
                                                 discretization_factor=10,
@@ -13,7 +13,7 @@ domain_factory = lambda: GymWidthPlanningDomain(gym_env=gym.make(ENV_NAME),
 domain = domain_factory()
 
 if IW.check_domain(domain):
-    solver_factory = lambda: IW(state_features=lambda s, d: s.state.round(3),
+    solver_factory = lambda: IW(state_features=lambda s, d: s.state,
                                 use_state_feature_hash=True,
                                 parallel=False, debug_logs=False)
     solver = GymWidthPlanningDomain.solve_with(solver_factory, domain_factory)

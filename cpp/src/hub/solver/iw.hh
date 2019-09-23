@@ -88,7 +88,7 @@ struct StateFeatureHash {
 
 template <typename Tdomain,
           typename Tfeature_vector,
-          template <typename T1, typename T2> class Thashing_policy = DomainStateHash,
+          template <typename...> class Thashing_policy = DomainStateHash,
           typename Texecution_policy = ParallelExecution>
 class IWSolver {
 public :
