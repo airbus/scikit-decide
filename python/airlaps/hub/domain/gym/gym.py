@@ -114,8 +114,8 @@ class DeterministicGymDomain(D):
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
                               next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
         last_memory, last_action, outcome = next_state.context[1:4]
-        assert (self._are_same(self._gym_env.observation_space, memory.state, last_memory) and
-                self._are_same(self._gym_env.action_space, action, last_action))
+        # assert (self._are_same(self._gym_env.observation_space, memory.state, last_memory) and
+        #         self._are_same(self._gym_env.action_space, action, last_action))
         return outcome.value
 
     def _is_terminal(self, state: D.T_state) -> bool:

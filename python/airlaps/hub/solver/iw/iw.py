@@ -1,7 +1,7 @@
 import multiprocessing
 import os
 import sys
-from typing import Callable
+from typing import Callable, Any
 
 from airlaps import Domain, Solver
 from airlaps import hub
@@ -69,15 +69,13 @@ try:
         T_domain = D
 
         def __init__(self,
-                     nb_of_binary_features: Callable[[Domain], int],
-                     state_binarizer: Callable[[D.T_state, Domain, Callable[[int], None]], None],
+                     state_features: Callable[[D.T_state, Domain], Any],
                      use_state_feature_hash: bool = False,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
-            self._nb_of_binary_features = nb_of_binary_features
-            self._state_binarizer = state_binarizer
+            self._state_features = state_features
             self._use_state_feature_hash = use_state_feature_hash
             self._parallel = parallel
             self._debug_logs = debug_logs
@@ -101,8 +99,7 @@ try:
                 setattr(self._domain.__class__, 'wrapped_get_next_state',
                         IWDomain_sequential_get_next_state)
             self._solver = iw_solver(domain=self._domain,
-                                     nb_of_binary_features=self._nb_of_binary_features(self._domain),
-                                     state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
+                                     state_features=lambda o: self._state_features(o, self._domain),
                                      use_state_feature_hash=self._use_state_feature_hash,
                                      parallel=self._parallel,
                                      debug_logs=self._debug_logs)

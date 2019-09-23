@@ -9,6 +9,8 @@
 #include <list>
 #include <chrono>
 
+#include <boost/container_hash/hash.hpp>
+
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
@@ -18,32 +20,13 @@
 namespace airlaps {
 
 /** Use default hasher provided with domain's states */
-template <typename Tdomain>
+template <typename Tdomain, typename Tfeature_vector>
 struct DomainStateHash {
     typedef const typename Tdomain::State& Key;
 
-    DomainStateHash(const unsigned int& nb_of_binary_features,
-                    const std::function<void (const typename Tdomain::State&, const std::function<void (const unsigned int&)>&)>& state_binarizer)
-    : _nb_of_binary_features(nb_of_binary_features),
-      _state_binarizer(state_binarizer) {}
-
     template <typename Tnode>
-    Key get_key(const Tnode& node) const {
-        return node.state;
-    }
-
-    template <typename Tnode>
-    const std::vector<unsigned int>& get_state_features(const Tnode& node) const {
-        node.state_features.clear();
-        _state_binarizer(node.state, [this, &node](const unsigned int& i){
-            if (i >= _nb_of_binary_features) {
-                throw std::out_of_range("AIRLAPS exception: feature index " + std::to_string(i) +
-                                        " exceeds the declared number of binary features (" +
-                                        std::to_string(_nb_of_binary_features) + ")");
-            }
-            node.state_features.push_back(i);
-        });
-        return node.state_features;
+    static const Key& get_key(const Tnode& n) {
+        return n.state;
     }
 
     struct Hash {
@@ -64,47 +47,37 @@ struct DomainStateHash {
 
 
 /** Use state binary feature vector to hash states */
-template <typename Tdomain>
+template <typename Tdomain, typename Tfeature_vector>
 struct StateFeatureHash {
-    typedef std::vector<bool> Key;
-
-    StateFeatureHash(const unsigned int& nb_of_binary_features,
-                     const std::function<void (const typename Tdomain::State&, const std::function<void (const unsigned int&)>&)>& state_binarizer)
-    : _nb_of_binary_features(nb_of_binary_features),
-      _state_binarizer(state_binarizer) {}
+    typedef Tfeature_vector Key;
 
     template <typename Tnode>
-    Key get_key(const Tnode& node) const {
-        node.state_features.clear();
-        _state_binarizer(node.state, [this, &node](const unsigned int& i){
-            if (i >= _nb_of_binary_features) {
-                throw std::out_of_range("AIRLAPS exception: feature index " + std::to_string(i) +
-                                        " exceeds the declared number of binary features (" +
-                                        std::to_string(_nb_of_binary_features) + ")");
-            }
-            node.state_features.push_back(i);
-        });
-        Key bv(_nb_of_binary_features, false);
-        for (const auto& i : node.state_features) {
-            bv[i] = true;
-        }
-        return bv;
-    }
-
-    template <typename Tnode>
-    const std::vector<unsigned int>& get_state_features(const Tnode& node) const {
-        return node.state_features;
+    static const Key& get_key(const Tnode& n) {
+        return *n.features;
     }
 
     struct Hash {
         std::size_t operator()(const Key& k) const {
-            return std::hash<std::vector<bool>>()(k);
+            std::size_t seed = 0;
+            for (unsigned int i = 0 ; i < k.size() ; i++) {
+                boost::hash_combine(seed, k[i]);
+            }
+            return seed;
         }
     };
 
     struct Equal {
         bool operator()(const Key& k1, const Key& k2) const {
-            return k1 == k2;
+            std::size_t size = k1.size();
+            if (size != k2.size()) {
+                return false;
+            }
+            for (unsigned int i = 0 ; i < size ; i++) {
+                if (!(k1[i] == k2[i])) {
+                    return false;
+                }
+            }
+            return true;
         }
     };
 
@@ -114,27 +87,27 @@ struct StateFeatureHash {
 
 
 template <typename Tdomain,
-          template <typename T> class Thashing_policy = DomainStateHash,
+          typename Tfeature_vector,
+          template <typename T1, typename T2> class Thashing_policy = DomainStateHash,
           typename Texecution_policy = ParallelExecution>
 class IWSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Event Action;
-    typedef Thashing_policy<Domain> HashingPolicy;
+    typedef Tfeature_vector FeatureVector;
+    typedef Thashing_policy<Domain, FeatureVector> HashingPolicy;
     typedef Texecution_policy ExecutionPolicy;
 
     IWSolver(Domain& domain,
-             const unsigned int& nb_of_binary_features,
-             const std::function<void (const State&, const std::function<void (const unsigned int&)>&)>& state_binarizer,
+             const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
              bool debug_logs = false)
-    : _domain(domain), _debug_logs(debug_logs) {
+    : _domain(domain), _state_features(state_features), _debug_logs(debug_logs) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {
             spdlog::set_level(spdlog::level::info);
         }
-        _hashing_policy = std::make_unique<HashingPolicy>(nb_of_binary_features, state_binarizer);
     }
 
     // clears the solver (clears the search graph, thus preventing from reusing
@@ -149,8 +122,11 @@ public :
             spdlog::info("Running " + ExecutionPolicy::print() + " IW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
 
-            for (unsigned int w = 1 ; w <= _hashing_policy->_nb_of_binary_features ; w++) {
-                std::pair<bool, bool> res = WidthSolver(_domain, w, _graph, _debug_logs, *_hashing_policy).solve(s);
+            // TODO Get size of feature vector from initial state = s
+            unsigned int nb_of_binary_features = _state_features(s)->size();
+
+            for (unsigned int w = 1 ; w <= nb_of_binary_features ; w++) {
+                std::pair<bool, bool> res = WidthSolver(_domain, _state_features, w, _graph, _debug_logs).solve(s);
                 if (res.first) { // solution found with width w
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
@@ -169,7 +145,7 @@ public :
     }
 
     bool is_solution_defined_for(const State& s) const {
-        auto si = _graph.find(Node(s, *_hashing_policy));
+        auto si = _graph.find(Node(s, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr) || (si->solved == false)) {
             return false;
         } else {
@@ -178,7 +154,7 @@ public :
     }
 
     const Action& get_best_action(const State& s) const {
-        auto si = _graph.find(Node(s, *_hashing_policy));
+        auto si = _graph.find(Node(s, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
@@ -187,7 +163,7 @@ public :
     }
 
     const double& get_best_value(const State& s) const {
-        auto si = _graph.find(Node(s, *_hashing_policy));
+        auto si = _graph.find(Node(s, _state_features));
         if (si == _graph.end()) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
@@ -198,30 +174,30 @@ public :
 private :
 
     Domain& _domain;
+    std::function<std::unique_ptr<FeatureVector> (const State& s)> _state_features;
     bool _debug_logs;
-    std::unique_ptr<HashingPolicy> _hashing_policy;
 
     struct Node {
         State state;
-        mutable std::vector<unsigned int> state_features;
+        std::unique_ptr<FeatureVector> features;
         std::tuple<Node*, Action, double> best_parent;
         double gscore;
         double fscore; // not in A*'s meaning but rather to store cost-to-go once a solution is found
         Action* best_action; // computed only when constructing the solution path backward from the goal state
         bool solved; // set to true if on the solution path constructed backward from the goal state
-        const HashingPolicy& hashing_policy;
 
-        Node(const State& s, const HashingPolicy& hp)
+        Node(const State& s, const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features)
             : state(s),
               gscore(std::numeric_limits<double>::infinity()),
               fscore(std::numeric_limits<double>::infinity()),
               best_action(nullptr),
-              solved(false),
-              hashing_policy(hp) {}
+              solved(false) {
+            features = state_features(s);
+        }
         
         struct Key {
-            typename HashingPolicy::Key operator()(const Node& n) const {
-                return n.hashing_policy.get_key(n);
+            const typename HashingPolicy::Key& operator()(const Node& n) const {
+                return HashingPolicy::get_key(n);
             }
         };
     };
@@ -240,16 +216,17 @@ private :
         typedef Tdomain Domain;
         typedef typename Domain::State State;
         typedef typename Domain::Event Action;
-        typedef Thashing_policy<Domain> HashingPolicy;
+        typedef Tfeature_vector FeatureVector;
+        typedef Thashing_policy<Domain, FeatureVector> HashingPolicy;
         typedef Texecution_policy ExecutionPolicy;
 
         WidthSolver(Domain& domain,
+                    const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
                     unsigned int width,
                     Graph& graph,
-                    bool debug_logs,
-                    const HashingPolicy& hashing_policy)
-            : _domain(domain), _width(width), _graph(graph), _debug_logs(debug_logs),
-              _hashing_policy(hashing_policy) {}
+                    bool debug_logs)
+            : _domain(domain), _state_features(state_features),
+              _width(width), _graph(graph), _debug_logs(debug_logs) {}
         
         // solves from state s
         // returned pair p: p.first==true iff solvable, p.second==true iff states have been pruned
@@ -259,7 +236,7 @@ private :
                 auto start_time = std::chrono::high_resolution_clock::now();
 
                 // Create the root node containing the given state s
-                auto si = _graph.emplace(Node(s, _hashing_policy));
+                auto si = _graph.emplace(Node(s, _state_features));
                 if (si.first->solved || _domain.is_goal(s)) { // problem already solved from this state (was present in _graph and already solved)
                     return std::make_pair(true, false);
                 } else if (_domain.is_terminal(s)) { // dead-end state
@@ -276,9 +253,9 @@ private :
                 // Set of states that have already been explored
                 std::unordered_set<Node*> closed_set;
 
-                // Vector of sets of combinations (tuples) of Boolean state features generated so far, for each w <= _width
-                std::vector<std::unordered_set<std::vector<bool>>> feature_combinations(_width);
-                novelty(feature_combinations, root_node); // initialize feature_combinations with the root node's bits
+                // Vector of sets of state feature tuples generated so far, for each w <= _width
+                TupleVector feature_tuples(_width);
+                novelty(feature_tuples, root_node); // initialize feature_tuples with the root node's bits
 
                 while (!open_queue.empty()) {
                     auto best_tip_node = open_queue.top();
@@ -327,11 +304,11 @@ private :
                         // Must be separated from next loop in case the domain is python so that it is in this case actually implemented as a pool of independent processes
                         _domain.compute_next_state(best_tip_node->state, a);
                     });
-                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &closed_set, &feature_combinations, &states_pruned](const auto& a){
+                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &closed_set, &feature_tuples, &states_pruned](const auto& a){
                         auto next_state = _domain.get_next_state(best_tip_node->state, a);
                         std::pair<typename Graph::iterator, bool> i;
                         _execution_policy.protect([this, &i, &next_state]{
-                            i = _graph.emplace(Node(next_state, _hashing_policy));
+                            i = _graph.emplace(Node(next_state, _state_features));
                         });
                         Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                         if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print() +
@@ -352,8 +329,8 @@ private :
                             neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
                         }
 
-                        _execution_policy.protect([this, &feature_combinations, &open_queue, &neighbor, &states_pruned]{
-                            if (novelty(feature_combinations, neighbor) > _width) {
+                        _execution_policy.protect([this, &feature_tuples, &open_queue, &neighbor, &states_pruned]{
+                            if (novelty(feature_tuples, neighbor) > _width) {
                                 if (_debug_logs) spdlog::debug("Pruning state");
                                 states_pruned = true;
                             } else {
@@ -374,36 +351,29 @@ private :
 
     private :
         Domain& _domain;
+        const std::function<std::unique_ptr<FeatureVector> (const State& s)>& _state_features;
         unsigned int _width;
         Graph& _graph;
         bool _debug_logs;
         ExecutionPolicy _execution_policy;
-        const HashingPolicy& _hashing_policy;
 
-        unsigned int novelty(std::vector<std::unordered_set<std::vector<bool>>>& feature_combinations,
-                             Node& n) const {
-            // feature_combinations is a set of Boolean combinations of size _width
-            unsigned int nov = _hashing_policy._nb_of_binary_features + 1;
-            const std::vector<unsigned int>& state_features = _hashing_policy.get_state_features(n);
-            if (_debug_logs) {
-                std::string vstr;
-                for (auto v : state_features) { vstr += " " + std::to_string(v); }
-                spdlog::debug(std::string("Features of state ") + n.state.print() + ": [" + vstr + " ]");
-                spdlog::debug(std::string("Compression: " +
-                    std::to_string((double) state_features.size() / (double) _hashing_policy._nb_of_binary_features  * 100.0)
-                    + "%"));
-            }
+        typedef std::vector<std::pair<unsigned int, typename FeatureVector::value_type>> TupleType;
+        typedef std::vector<std::unordered_set<TupleType, boost::hash<TupleType>>> TupleVector;
+
+        unsigned int novelty(TupleVector& feature_tuples, Node& n) const {
+            // feature_tuples is a set of state variable combinations of size _width
+            unsigned int nov = n.features->size() + 1;
+            const FeatureVector& state_features = *n.features;
 
             for (unsigned int k = 1 ; k <= std::min(_width, (unsigned int) state_features.size()) ; k++) {
                 // we must recompute combinations from previous width values just in case
                 // this state would be visited for the first time across width iterations
-                generate_combinations(k, state_features.size(),
-                                      [this, &state_features, &feature_combinations, &k, &nov](const std::vector<unsigned int>& cv){
-                    std::vector<bool> bv(_hashing_policy._nb_of_binary_features, false);
-                        for (const auto e : cv) {
-                            bv[state_features[e]] = true;
-                        }
-                    if(feature_combinations[k-1].insert(bv).second) {
+                generate_tuples(k, state_features.size(),
+                                [this, &state_features, &feature_tuples, &k, &nov](TupleType& cv){
+                    for (auto& e : cv) {
+                        e.second = state_features[e.first];
+                    }
+                    if(feature_tuples[k-1].insert(cv).second) {
                         nov = std::min(nov, k);
                     }
                 });
@@ -413,23 +383,25 @@ private :
         }
 
         // Generates all combinations of size k from [0 ... (n-1)]
-        void generate_combinations(const unsigned int& k,
-                                   const unsigned int& n,
-                                   const std::function<void (const std::vector<unsigned int>&)>& f) const {
-            std::vector<unsigned int> cv(k); // one combination (the first one)
-            std::iota(cv.begin(), cv.end(), 0);
+        void generate_tuples(const unsigned int& k,
+                             const unsigned int& n,
+                             const std::function<void (TupleType&)>& f) const {
+            TupleType cv(k); // one combination (the first one)
+            for (unsigned int i = 0 ; i < k ; i++) {
+                cv[i].first = i;
+            }
             f(cv);
             bool more_combinations = true;
             while (more_combinations) {
                 more_combinations = false;
                 // find the rightmost element that has not yet reached its highest possible value
                 for (unsigned int i = k; i > 0; i--) {
-                    if (cv[i-1] < n - k + i - 1) {
+                    if (cv[i-1].first < n - k + i - 1) {
                         // once finding this element, we increment it by 1,
                         // and assign the lowest valid value to all subsequent elements
-                        cv[i-1]++;
+                        cv[i-1].first++;
                         for (unsigned int j = i; j < k; j++) {
-                            cv[j] = cv[j-1] + 1;
+                            cv[j].first = cv[j-1].first + 1;
                         }
                         f(cv);
                         more_combinations = true;

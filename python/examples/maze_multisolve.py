@@ -159,20 +159,11 @@ if __name__ == '__main__':
                     'parallel': True, 'debug_logs': False}},
 
         # IW (planning)
-        {'name': 'IW (planning) - (num_rows * num_cols) binary encoding (1 binary variable <=> 1 cell)',
+        {'name': 'IW (planning)',
          'entry': 'IW',
-         'config': {'nb_of_binary_features': lambda d: d._num_rows * d._num_cols,
-                    'state_binarizer': lambda s, d, f: f(s.x +  s.y * d._num_cols),
+         'config': {'state_features': lambda s, d: [s.x, s.y],
                     'use_state_feature_hash': False,
-                    'parallel': True, 'debug_logs': False}},
-        
-        # IW (planning)
-        {'name': 'IW (planning) - (num_rows + num_cols) binary encoding (1 binary variable <=> 1 dimension value)',
-         'entry': 'IW',
-         'config': {'nb_of_binary_features': lambda d: d._num_rows + d._num_cols,
-                    'state_binarizer': lambda s, d, f: [f(s.x), f(s.y + d._num_cols)],
-                    'use_state_feature_hash': False,
-                    'parallel': True, 'debug_logs': False}},
+                    'parallel': False, 'debug_logs': False}},
 
         # BFWS (planning)
         {'name': 'BFWS (planning) - (num_rows * num_cols) binary encoding (1 binary variable <=> 1 cell)',
