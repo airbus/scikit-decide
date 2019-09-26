@@ -8,6 +8,7 @@ from airlaps import hub
 from airlaps.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from airlaps.builders.solver import DeterministicPolicies, Utilities
+from airlaps.hub.space.gym import ListSpace
 
 record_sys_path = sys.path
 airlaps_cpp_extension_lib_path = os.path.join(hub.__path__[0], 'lib')
@@ -19,21 +20,21 @@ try:
     from __airlaps_hub_cpp import _IWSolver_ as iw_solver
 
     iw_pool = None  # must be separated from the domain since it cannot be pickled
-    iw_ns_results = None  # must be separated from the domain since it cannot be pickled
 
+    class IWActionProxy:
+        def __init__(self, a):
+            self.action = a
+            self.ns_result = None
+        
+        def __str__(self):
+            return self.action.__str__()
 
     def IWDomain_parallel_get_applicable_actions(self, state):  # self is a domain
-        global iw_ns_results
-        actions = self.get_applicable_actions(state)
-        iw_ns_results = {a: None for a in actions.get_elements()}
-        return actions
+        return ListSpace([IWActionProxy(a) for a in self.get_applicable_actions(state).get_elements()])
 
 
     def IWDomain_sequential_get_applicable_actions(self, state):  # self is a domain
-        global iw_ns_results
-        actions = self.get_applicable_actions(state)
-        iw_ns_results = {a: None for a in actions.get_elements()}
-        return actions
+        return ListSpace([IWActionProxy(a) for a in self.get_applicable_actions(state).get_elements()])
 
 
     def IWDomain_pickable_get_next_state(domain, state, action):
@@ -41,23 +42,20 @@ try:
 
 
     def IWDomain_parallel_compute_next_state(self, state, action):  # self is a domain
-        global iw_pool, iw_ns_results
-        iw_ns_results[action] = iw_pool.apply_async(IWDomain_pickable_get_next_state, (self, state, action))
+        global iw_pool
+        action.ns_result = iw_pool.apply_async(IWDomain_pickable_get_next_state, (self, state, action.action))
 
 
     def IWDomain_sequential_compute_next_state(self, state, action):  # self is a domain
-        global iw_ns_results
-        iw_ns_results[action] = self.get_next_state(state, action)
+        action.ns_result = self.get_next_state(state, action.action)
 
 
     def IWDomain_parallel_get_next_state(self, state, action):  # self is a domain
-        global iw_ns_results
-        return iw_ns_results[action].get()
+        return action.ns_result.get()
 
 
     def IWDomain_sequential_get_next_state(self, state, action):  # self is a domain
-        global iw_ns_results
-        return iw_ns_results[action]
+        return action.ns_result
 
 
     class D(Domain, SingleAgent, Sequential, DeterministicTransitions, Actions, DeterministicInitialized, Markovian,
@@ -117,7 +115,7 @@ try:
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
             if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
-            return self._solver.get_next_action(observation)
+            return self._solver.get_next_action(observation).action
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             return self._solver.get_utility(observation)

@@ -2,6 +2,7 @@
 
 import random
 import struct
+import bisect
 from copy import deepcopy
 from typing import Any, Optional, Callable
 from collections import namedtuple  # TODO: replace with `from typing import NamedTuple`?
@@ -74,7 +75,20 @@ class D(Domain, SingleAgent, Sequential, DeterministicTransitions, UnrestrictedA
     pass
 
 
-DeterministicGymDomainExtendedState = namedtuple('DeterministicGymDomainExtendedState', ['state', 'context'])
+class DeterministicGymDomainStateProxy :
+    def __init__(self, state, context):
+        self._state = state
+        self._context = context
+    
+    def __hash__(self):
+        return str(self._state).__hash__()
+    
+    def __eq__(self, other):
+        return str(self._state).__eq__(str(other))
+    
+    def __str__(self):
+        return self._state.__str__()
+
 
 class DeterministicGymDomain(D):
     """This class wraps a deterministic OpenAI Gym environment (gym.env) as an AIRLAPS domain.
@@ -97,29 +111,30 @@ class DeterministicGymDomain(D):
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = self._gym_env.reset()
-        return DeterministicGymDomainExtendedState(state=initial_state, context=[self._gym_env, None, None, None])
+        return DeterministicGymDomainStateProxy(state=initial_state, context=[self._gym_env, None, None, None])
 
     def _get_next_state(self, memory: D.T_memory[D.T_state],
                         action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
         if self._change_state is None:
-            env = memory.context[0]
+            env = memory._context[0]
             env = deepcopy(env)
+            self._gym_env = env
         else:
             env = self._gym_env
             self._change_state(env, memory)
         obs, reward, done, info = env.step(action)
         outcome = TransitionOutcome(state=obs, value=TransitionValue(reward=reward), termination=done, info=info)
-        return DeterministicGymDomainExtendedState(state=outcome.state, context=[env, memory.state, action, outcome])
+        return DeterministicGymDomainStateProxy(state=outcome.state, context=[env, memory._state, action, outcome])
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
                               next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
-        last_memory, last_action, outcome = next_state.context[1:4]
-        # assert (self._are_same(self._gym_env.observation_space, memory.state, last_memory) and
+        last_memory, last_action, outcome = next_state._context[1:4]
+        # assert (self._are_same(self._gym_env.observation_space, memory._state, last_memory) and
         #         self._are_same(self._gym_env.action_space, action, last_action))
         return outcome.value
 
     def _is_terminal(self, state: D.T_state) -> bool:
-        outcome = state.context[3]
+        outcome = state._context[3]
         return outcome.termination if outcome is not None else False
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
@@ -202,20 +217,28 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         self._discretization_factor = discretization_factor
         self._branching_factor = branching_factor
         self._max_depth = max_depth
+        self._initial_state = None
         self._current_depth = 0
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = super()._get_initial_state_()
-        initial_state.context.append(0)
+        initial_state._context.append(0)
+        self._initial_state = initial_state
         self._current_depth = 0
         return initial_state
 
     def _get_next_state(self, memory: D.T_memory[D.T_state],
                         action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+        if self._initial_state is None:  # the solver's domain does not use _get_initial_state() but gets its initial state from the rollout env shipped with the state context
+            self._initial_state = memory
+            self._current_depth = 0
         next_state = super()._get_next_state(memory, action)
-        next_state.context.append(memory.context[4] + 1)
-        if (memory.context[4] + 1 > self._current_depth):
-            self._current_depth = memory.context[4] + 1
+        next_state._context.append(memory._context[4] + 1)
+        if self._are_same(self._gym_env.observation_space, memory._state, self._initial_state._state):
+            print(str(memory))
+            self._current_depth = 0
+        if (memory._context[4] + 1 > self._current_depth):
+            self._current_depth = memory._context[4] + 1
             print('Current depth:', str(self._current_depth), '/', str(self._max_depth))
         return next_state
 
@@ -244,12 +267,12 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
                                   if d < len(action_space.n)-1 else
                                   [[e] for e in [True, False]])
             return ListSpace(generate(0))
-        elif isinstance(action_space, gym.spaces.tuple.Tuple):
+        elif isinstance(action_space, gym.spaces.tuple_space.Tuple):
             generate = lambda d: ([[e] + g for e in _discretize_action_space(action_space.spaces[d]).get_elements() for g in generate(d+1)]
                                   if d < len(action_space.spaces)-1 else
                                   [[e] for e in _discretize_action_space(action_space.spaces[d]).get_elements()])
             return ListSpace(generate(0))
-        elif isinstance(action_space, gym.spaces.dict.Dict):
+        elif isinstance(action_space, gym.spaces.dict_space.Dict):
             dkeys = action_space.spaces.keys()
             generate = lambda d: ([[e] + g for e in _discretize_action_space(action_space.spaces[dkeys[d]]).get_elements() for g in generate(d+1)]
                                   if d < len(dkeys)-1 else
@@ -258,7 +281,7 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
             raise RuntimeError('Unknown Gym space element of type ' + str(type(action_space)))
 
     def _get_goals_(self):
-        return ImplicitSpace(lambda observation: observation.context[4] >= self._max_depth)
+        return ImplicitSpace(lambda observation: (observation._context[4] >= self._max_depth) or (observation._context[3].termination if observation._context[3] is not None else False))
 
 
 class GymWidthPlanningDomain(GymPlanningDomain):
@@ -285,6 +308,76 @@ class GymWidthPlanningDomain(GymPlanningDomain):
         max_depth: maximum depth of states to explore from the initial state
         """
         super().__init__(gym_env, change_state, discretization_factor, branching_factor, max_depth)
+        self._feature_increments = []
+        self._init_continuous_state_variables = []
+
+    def _init_state_features(self, space, state):
+        if isinstance(space, gym.spaces.box.Box):
+            for cell in np.nditer(state):
+                self._init_continuous_state_variables.append(cell)
+                self._feature_increments.append([]) # positive increments list
+                self._feature_increments.append([]) # negative increments list
+        elif isinstance(space, gym.spaces.tuple_space.Tuple):
+            for s in space.spaces:
+                self._init_state_features(s)
+        elif isinstance(space, gym.spaces.dict_space.Dict):
+            for k, s in space.spaces:
+                self._init_state_features(s)
+        else:
+            raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
+
+    def state_features(self, state):
+        """Return a numpy vector of ints representing the current 'cumulated layer' of each state variable
+        """
+        if len(self._feature_increments) == 0:
+            self._init_state_features(self._gym_env.observation_space, state._state)
+        sf = self._state_features(self._gym_env.observation_space, state._state, 0)[1]
+        sf.append(state._context[4])
+        # print('features:', str(sf))
+        return sf
+    
+    def _state_features(self, space, element, start):
+        if isinstance(space, gym.spaces.box.Box):
+            features = []
+            index = start
+            update_index = set()
+            for cell in np.nditer(element):
+                if cell > self._init_continuous_state_variables[index]:
+                    i = bisect.bisect_left(self._feature_increments[2*index], cell - self._init_continuous_state_variables[index])
+                    features.append(i)
+                    if i >= len(self._feature_increments[2*index]):
+                        self._feature_increments[2*index].append(cell - self._init_continuous_state_variables[index])
+                        update_index.add(index)
+                else:
+                    i = bisect.bisect_left(self._feature_increments[2*index + 1], self._init_continuous_state_variables[index] - cell)
+                    features.append(-i)
+                    if i >= len(self._feature_increments[2*index + 1]):
+                        self._feature_increments[2*index + 1].append(self._init_continuous_state_variables[index] - cell)
+                        update_index.add(index)
+                index += 1
+            return index, features
+        elif isinstance(space, gym.spaces.discrete.Discrete):
+            return start, [element]
+        elif isinstance(space, gym.spaces.multi_discrete.MultiDiscrete):
+            return start, [e for e in element]
+        elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
+            return start, [e for e in element]
+        elif isinstance(space, gym.spaces.tuple_space.Tuple):
+            index = start
+            features = []
+            for i in range(len(space.spaces)):
+                index, l = self._state_features(space.spaces[i], element[i], index)
+                features += l
+            return index, features
+        elif isinstance(space, gym.spaces.dict_space.Dict):
+            index = start
+            features = []
+            for k in space.spaces.keys():
+                index, l = self._state_features(space.spaces[k], element[k], index)
+                features += l
+            return index, features
+        else:
+            raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
     
     def nb_of_binary_features(self) -> int:
         """Return the size of the bit vector encoding an observation
@@ -301,7 +394,7 @@ class GymWidthPlanningDomain(GymPlanningDomain):
         memory: The Gym state (in observation_space) to binarize
         func: The function called on each true bit of the binarized state
         """
-        self._binarize_gym_space_element(self._gym_env.observation_space, memory.state, 0, func)
+        self._binarize_gym_space_element(self._gym_env.observation_space, memory._state, 0, func)
     
     def _binarize_gym_space_element(self, space: gym.spaces.Space,
                                           element: Any,
@@ -352,10 +445,10 @@ class GymWidthPlanningDomain(GymPlanningDomain):
                 if b:
                     func(current_index)
                 current_index += 1
-        elif isinstance(space, gym.spaces.tuple.Tuple):
+        elif isinstance(space, gym.spaces.tuple_space.Tuple):
             for i in range(len(space.spaces)):
                 current_index = _binarize_gym_space_element(space.spaces[i], element[i], current_index, func)
-        elif isinstance(space, gym.spaces.dict.Dict):
+        elif isinstance(space, gym.spaces.dict_space.Dict):
             for k, v in space.spaces:
                 current_index = _binarize_gym_space_element(v, element[k], current_index, func)
         else:

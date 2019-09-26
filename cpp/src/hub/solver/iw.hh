@@ -121,8 +121,6 @@ public :
         try {
             spdlog::info("Running " + ExecutionPolicy::print() + " IW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
-
-            // TODO Get size of feature vector from initial state = s
             unsigned int nb_of_binary_features = _state_features(s)->size();
 
             for (unsigned int w = 1 ; w <= nb_of_binary_features ; w++) {
@@ -313,7 +311,7 @@ private :
                         Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                         if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print() +
                                                        " (among " + std::to_string(_graph.size()) + ")");
-
+                        
                         if (closed_set.find(&neighbor) != closed_set.end()) {
                             // Ignore the neighbor which is already evaluated
                             return;
