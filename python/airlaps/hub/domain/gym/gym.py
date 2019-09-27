@@ -200,6 +200,7 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
 
     def __init__(self, gym_env: gym.Env,
                        change_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
+                       termination_is_goal: bool = False,
                        discretization_factor: int = 10,
                        branching_factor: int = None,
                        max_depth: int = 50) -> None:
@@ -214,11 +215,15 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         max_depth: maximum depth of states to explore from the initial state
         """
         super().__init__(gym_env, change_state)
+        self._termination_is_goal = termination_is_goal
         self._discretization_factor = discretization_factor
         self._branching_factor = branching_factor
         self._max_depth = max_depth
         self._initial_state = None
         self._current_depth = 0
+        self._applicable_actions = self._discretize_action_space(self.get_action_space()._gym_space)
+        if self._branching_factor is not None and len(self._applicable_actions.get_elements()) > self._branching_factor:
+            self._applicable_actions = ListSpace(random.sample(self._applicable_actions.get_elements(), self._branching_factor))
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = super()._get_initial_state_()
@@ -235,7 +240,6 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         next_state = super()._get_next_state(memory, action)
         next_state._context.append(memory._context[4] + 1)
         if self._are_same(self._gym_env.observation_space, memory._state, self._initial_state._state):
-            print(str(memory))
             self._current_depth = 0
         if (memory._context[4] + 1 > self._current_depth):
             self._current_depth = memory._context[4] + 1
@@ -243,18 +247,22 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         return next_state
 
     def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
-        applicable_actions = self._discretize_action_space(self.get_action_space()._gym_space)
-        if self._branching_factor is not None and len(applicable_actions.get_elements()) > self._branching_factor:
-            return ListSpace(random.sample(applicable_actions.get_elements(), self._branching_factor))
-        else:
-            return applicable_actions
+        return self._applicable_actions
     
     def _discretize_action_space(self, action_space: gym.spaces.Space) -> D.T_agent[Space[D.T_event]]:
         if isinstance(action_space, gym.spaces.box.Box):
             nb_elements = 1
             for dim in action_space.shape:
                 nb_elements *= dim
-            return ListSpace([action_space.sample() for i in range(self._discretization_factor * nb_elements)])
+            actions = []
+            for l, h in np.nditer([action_space.low, action_space.high]):
+                if l == -float('inf') or h == float('inf'):
+                    actions.append([gym.spaces.box.Box(low=l, high=h).sample() for i in range(self._discretization_factor)])
+                else:
+                    actions.append([l + ((h-l)/(self._discretization_factor - 1))*i for i in range(self._discretization_factor)])
+            alist = []
+            self._generate_box_action_combinations(actions, action_space.shape, action_space.dtype, 0, [], alist)
+            return ListSpace(alist)
         elif isinstance(action_space, gym.spaces.discrete.Discrete):
             return ListSpace([i for i in range(action_space.n)])
         elif isinstance(action_space, gym.spaces.multi_discrete.MultiDiscrete):
@@ -279,9 +287,29 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
                                   [[e] for e in _discretize_action_space(action_space.spaces[dkeys[d]]).get_elements()])
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(action_space)))
+    
+    def _generate_box_action_combinations(self, actions, shape, dtype, index, alist, rlist):
+        if index < len(actions):
+            for a in actions[index]:
+                clist = list(alist)
+                clist.append(a)
+                self._generate_box_action_combinations(actions, shape, dtype, index+1, clist, rlist)
+        else:
+            ar = np.ndarray(shape=shape, dtype=dtype)
+            if len(shape) == 1:
+                ar[0] = alist[0]
+            else:
+                k = 0
+                for i, in np.nditer(ar, op_flags=['readwrite']):
+                    print(str(i))
+                    i = alist[k]
+                    k += 1
+            rlist += [ar]
 
     def _get_goals_(self):
-        return ImplicitSpace(lambda observation: (observation._context[4] >= self._max_depth) or (observation._context[3].termination if observation._context[3] is not None else False))
+        return ImplicitSpace(lambda observation: ((observation._context[4] >= self._max_depth) or
+                                                  (self._termination_is_goal and (observation._context[3].termination
+                                                                                  if observation._context[3] is not None else False))))
 
 
 class GymWidthPlanningDomain(GymPlanningDomain):
@@ -294,6 +322,7 @@ class GymWidthPlanningDomain(GymPlanningDomain):
 
     def __init__(self, gym_env: gym.Env,
                        change_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
+                       termination_is_goal: bool = False,
                        discretization_factor: int = 10,
                        branching_factor: int = None,
                        max_depth: int = 50) -> None:
@@ -307,7 +336,7 @@ class GymWidthPlanningDomain(GymPlanningDomain):
         branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
         max_depth: maximum depth of states to explore from the initial state
         """
-        super().__init__(gym_env, change_state, discretization_factor, branching_factor, max_depth)
+        super().__init__(gym_env, change_state, termination_is_goal, discretization_factor, branching_factor, max_depth)
         self._feature_increments = []
         self._init_continuous_state_variables = []
 
