@@ -69,12 +69,14 @@ try:
         def __init__(self,
                      state_features: Callable[[D.T_state, Domain], Any],
                      use_state_feature_hash: bool = False,
+                     node_ordering: Callable[[float, int, int, float, int, int], bool] = None,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
             self._state_features = state_features
             self._use_state_feature_hash = use_state_feature_hash
+            self._node_ordering = node_ordering
             self._parallel = parallel
             self._debug_logs = debug_logs
 
@@ -99,6 +101,7 @@ try:
             self._solver = iw_solver(domain=self._domain,
                                      state_features=lambda o: self._state_features(o, self._domain),
                                      use_state_feature_hash=self._use_state_feature_hash,
+                                     node_ordering=self._node_ordering,
                                      parallel=self._parallel,
                                      debug_logs=self._debug_logs)
             self._solver.clear()

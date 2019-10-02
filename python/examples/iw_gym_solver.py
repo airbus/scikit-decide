@@ -5,7 +5,7 @@ from airlaps.hub.domain.gym import GymWidthPlanningDomain
 from airlaps.hub.solver.iw import IW
 from airlaps.utils import rollout
 
-ENV_NAME = 'MountainCarContinuous-v0'
+ENV_NAME = 'MountainCar-v0'
 HORIZON = 200
 
 gym_env = gym.make(ENV_NAME)
@@ -20,6 +20,7 @@ domain = domain_factory()
 if IW.check_domain(domain):
     solver_factory = lambda: IW(state_features=lambda s, d: d.state_features(s),
                                 use_state_feature_hash=False,
+                                node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty > b_novelty,
                                 parallel=False, debug_logs=False)
     # solver_factory = lambda: IW(state_features=lambda s, d: s._state,
     #                             use_state_feature_hash=True,

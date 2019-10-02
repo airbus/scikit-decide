@@ -7,16 +7,17 @@ from airlaps.hub.solver.iw import IW
 from airlaps.utils import rollout
 
 ENV_NAME = 'GymJsbsim-HeadingControlTask-v0'
+# ENV_NAME = 'GymJsbsim-TaxiControlTask-v0'
 HORIZON = 200
 
 gym_env = gym.make(ENV_NAME)
 gym_env._max_episode_steps = HORIZON
 
 domain_factory = lambda: GymWidthPlanningDomain(gym_env=gym_env,
-                                                set_state=lambda e, s: e.sim.set_state(s),
-                                                get_state=lambda e: e.sim.get_state(),
+                                                set_state=lambda e, s: e.set_full_state(s),
+                                                get_state=lambda e: e.get_full_state(),
                                                 termination_is_goal=False,
-                                                discretization_factor=5,
+                                                discretization_factor=3,
                                                 max_depth=HORIZON)
 domain = domain_factory()
 

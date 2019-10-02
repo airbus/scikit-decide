@@ -514,23 +514,26 @@ public :
     PyIWSolver(py::object& domain,
                const std::function<py::object (const py::object&)>& state_features,
                bool use_state_feature_hash = false,
+               const std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                         const double&, const unsigned int&, const unsigned int&)>& node_ordering = nullptr,
                bool parallel = true,
                bool debug_logs = false) {
+
         if (parallel) {
             if (use_state_feature_hash) {
                 _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash>>(
-                    domain, state_features, debug_logs);
+                    domain, state_features, node_ordering, debug_logs);
             } else {
                 _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash>>(
-                    domain, state_features, debug_logs);
+                    domain, state_features, node_ordering, debug_logs);
             }
         } else {
             if (use_state_feature_hash) {
                 _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash>>(
-                    domain, state_features, debug_logs);
+                    domain, state_features, node_ordering, debug_logs);
             } else {
                 _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash>>(
-                    domain, state_features, debug_logs);
+                    domain, state_features, node_ordering, debug_logs);
             }
         }
     }
@@ -572,6 +575,8 @@ private :
 
         Implementation(py::object& domain,
                        const std::function<py::object (const py::object&)>& state_features,
+                       const std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                                 const double&, const unsigned int&, const unsigned int&)>& node_ordering = nullptr,
                        bool debug_logs = false)
             : _state_features(state_features) {
             _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
@@ -581,6 +586,7 @@ private :
                                                                                 typename GilControl<Texecution>::Acquire acquire;
                                                                                 return std::make_unique<PyIWFeatureVector<Texecution>>(_state_features(s._state));
                                                                             },
+                                                                            node_ordering,
                                                                             debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
@@ -637,12 +643,15 @@ void init_pyiw(py::module& m) {
             .def(py::init<py::object&,
                           const std::function<py::object (const py::object&)>&,
                           bool,
+                          const std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                                    const double&, const unsigned int&, const unsigned int&)>&,
                           bool,
                           bool>(),
                  py::arg("domain"),
                  py::arg("state_features"),
-                 py::arg("use_state_feature_hash"),
-                 py::arg("parallel"),
+                 py::arg("use_state_feature_hash")=false,
+                 py::arg("node_ordering")=nullptr,
+                 py::arg("parallel")=true,
                  py::arg("debug_logs")=false)
             .def("clear", &PyIWSolver::clear)
             .def("solve", &PyIWSolver::solve, py::arg("state"))

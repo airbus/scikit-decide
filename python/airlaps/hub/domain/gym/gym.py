@@ -124,11 +124,12 @@ class DeterministicGymDomain(D):
         env = memory._context[0]
         if self._set_state is None or self._get_state is None:
             env = deepcopy(env)
-        else:
+        elif memory._context[4] != self._get_state(env):
             self._set_state(env, memory._context[4])
         self._gym_env = env  # Just in case the simulation environment would be different from the planner's environment...
         obs, reward, done, info = env.step(action)
         outcome = TransitionOutcome(state=obs, value=TransitionValue(reward=reward), termination=done, info=info)
+        # print('Transition:', str(memory._state), ' -> ', str(action), ' -> ', str(outcome.state))
         return DeterministicGymDomainStateProxy(state=outcome.state,
                                                 context=[env, memory._state, action, outcome,
                                                          self._get_state(env) if (self._get_state is not None and self._set_state is not None) else None])
@@ -232,6 +233,7 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         self._max_depth = max_depth
         self._initial_state = None
         self._current_depth = 0
+        self._restarting_from_initial_state = False
         self._applicable_actions = self._discretize_action_space(self.get_action_space()._gym_space)
         if self._branching_factor is not None and len(self._applicable_actions.get_elements()) > self._branching_factor:
             self._applicable_actions = ListSpace(random.sample(self._applicable_actions.get_elements(), self._branching_factor))
@@ -249,6 +251,8 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
             self._initial_state = memory
         if self._are_same(self._gym_env.observation_space, memory._state, self._initial_state._state):
             self._restart_from_initial_state()
+        else:
+            self._restarting_from_initial_state = False
         next_state = super()._get_next_state(memory, action)
         next_state._context.append(memory._context[5] + 1)
         if (memory._context[5] + 1 > self._current_depth):
@@ -257,7 +261,12 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         return next_state
     
     def _restart_from_initial_state(self):
-        self._current_depth = 0
+        # following test is mandatory since we restart from the initial state
+        # when expanding each action of the initial state
+        # and we want to do it only once
+        if not self._restarting_from_initial_state:
+            self._current_depth = 0
+            self._restarting_from_initial_state = True
 
     def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
         return self._applicable_actions
@@ -358,8 +367,12 @@ class GymWidthPlanningDomain(GymPlanningDomain):
     
     def _restart_from_initial_state(self):
         super()._restart_from_initial_state()
-        for f in range(len(self._feature_increments)):
-            self._feature_increments[f] = []
+        # following test is mandatory since we restart from the initial state
+        # when expanding each action of the initial state
+        # and we want to do it only once
+        if not self._restarting_from_initial_state:
+            for f in range(len(self._feature_increments)):
+                self._feature_increments[f] = []
 
     def _init_state_features(self, space, state):
         if isinstance(space, gym.spaces.box.Box):
@@ -382,7 +395,7 @@ class GymWidthPlanningDomain(GymPlanningDomain):
         if len(self._feature_increments) == 0:
             self._init_state_features(self._gym_env.observation_space, state._state)
         sf = self._state_features(self._gym_env.observation_space, state._state, 0)[1]
-        sf.append(state._context[5])
+        # sf.append(state._context[5])
         return sf
     
     def _state_features(self, space, element, start):
