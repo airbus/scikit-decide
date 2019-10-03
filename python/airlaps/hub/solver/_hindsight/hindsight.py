@@ -1,4 +1,5 @@
 # TODO: update to new API
+from __future__ import annotations
 
 import collections
 from typing import Dict, Hashable, Union

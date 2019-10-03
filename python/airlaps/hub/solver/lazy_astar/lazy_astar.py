@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from heapq import heappush, heappop
 from itertools import count
 from typing import Optional, Callable
