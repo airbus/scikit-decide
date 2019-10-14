@@ -1,2 +1,2 @@
 from .gym import GymDomain, DeterministicGymDomain, CostDeterministicGymDomain, GymPlanningDomain, \
-    GymWidthPlanningDomain, AsGymEnv
+    GymWidthPlanningDomain, DeterministicGymDomainStateProxy, AsGymEnv

@@ -578,15 +578,36 @@ private :
                        const std::function<bool (const double&, const unsigned int&, const unsigned int&,
                                                  const double&, const unsigned int&, const unsigned int&)>& node_ordering = nullptr,
                        bool debug_logs = false)
-            : _state_features(state_features) {
+            : _state_features(state_features), _node_ordering(node_ordering) {
+            
+            std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                const double&, const unsigned int&, const unsigned int&)> pno = nullptr;
+            if (_node_ordering != nullptr) {
+                pno = [this](const double& a_gscore, const unsigned int& a_novelty, const unsigned int& a_depth,
+                             const double& b_gscore, const unsigned int& b_novelty, const unsigned int& b_depth) -> bool {
+                    try {
+                        typename GilControl<Texecution>::Acquire acquire;
+                        return _node_ordering(a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth);
+                    } catch (const py::error_already_set& e) {
+                        spdlog::error(std::string("AIRLAPS exception when calling custom node ordering: ") + e.what());
+                        throw;
+                    }
+                };
+            }
+
             _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
             _solver = std::make_unique<airlaps::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>>(
                                                                             *_domain,
                                                                             [this](const typename PyIWDomain<Texecution>::State& s)->std::unique_ptr<PyIWFeatureVector<Texecution>> {
-                                                                                typename GilControl<Texecution>::Acquire acquire;
-                                                                                return std::make_unique<PyIWFeatureVector<Texecution>>(_state_features(s._state));
+                                                                                try {
+                                                                                    typename GilControl<Texecution>::Acquire acquire;
+                                                                                    return std::make_unique<PyIWFeatureVector<Texecution>>(_state_features(s._state));
+                                                                                } catch (const py::error_already_set& e) {
+                                                                                    spdlog::error(std::string("AIRLAPS exception when calling state features: ") + e.what());
+                                                                                    throw;
+                                                                                }
                                                                             },
-                                                                            node_ordering,
+                                                                            pno,
                                                                             debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
@@ -628,6 +649,8 @@ private :
         std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>> _solver;
         
         std::function<py::object (const py::object&)> _state_features;
+        std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                            const double&, const unsigned int&, const unsigned int&)> _node_ordering;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;

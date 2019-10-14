@@ -279,7 +279,9 @@ private :
                     }
 
                     if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print() +
-                                                   ", gscore=" + std::to_string(best_tip_node->gscore));
+                                                   ", gscore=" + std::to_string(best_tip_node->gscore) +
+                                                   ", novelty=" + std::to_string(best_tip_node->novelty) +
+                                                   ", depth=" + std::to_string(best_tip_node->depth));
 
                     if (_domain.is_goal(best_tip_node->state) || best_tip_node->solved) {
                         if (_debug_logs) spdlog::debug("Found a goal state: " + best_tip_node->state.print());
