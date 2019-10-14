@@ -59,9 +59,9 @@ def load_registered_solver(name: str) -> Type[Solver]:
 # TODO: implement ranking heuristic
 def match_solvers(domain: Domain, candidates: Optional[Iterable[Type[Solver]]] = None, ranked: bool = False) -> Union[
         List[Type[Solver]], List[Tuple[Type[Solver], int]]]:
-
     if candidates is None:
-        candidates = get_registered_solvers().values()
+        candidates = [load_registered_solver(s) for s in get_registered_solvers()]
+        candidates = [c for c in candidates if c is not None]  # filter out None entries (failed loadings)
     matches = []
     for solver_type in candidates:
         if solver_type.check_domain(domain):

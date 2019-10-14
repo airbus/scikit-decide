@@ -1,4 +1,5 @@
 # TODO: support OpenAI GoalEnv
+from __future__ import annotations
 
 import random
 import struct
