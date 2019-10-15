@@ -40,9 +40,6 @@ struct DomainStateHash {
             return typename Tdomain::State::Equal()(k1, k2);
         }
     };
-
-    unsigned int _nb_of_binary_features;
-    std::function<void (const typename Tdomain::State&, const std::function<void (const unsigned int&)>&)> _state_binarizer;
 };
 
 
@@ -80,9 +77,6 @@ struct StateFeatureHash {
             return true;
         }
     };
-
-    unsigned int _nb_of_binary_features;
-    std::function<void (const  typename Tdomain::State&, const std::function<void (const unsigned int&)>&)> _state_binarizer;
 };
 
 
@@ -101,8 +95,18 @@ public :
 
     IWSolver(Domain& domain,
              const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
+             const std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                       const double&, const unsigned int&, const unsigned int&)>& node_ordering = nullptr,
              bool debug_logs = false)
     : _domain(domain), _state_features(state_features), _debug_logs(debug_logs) {
+        if (!node_ordering) {
+            _node_ordering = [](const double& a_gscore, const unsigned int& a_novelty, const unsigned int&  a_depth,
+                                const double& b_gscore, const unsigned int& b_novelty, const unsigned int& b_depth) -> bool {
+                                    return a_gscore > b_gscore;
+                                };
+        } else {
+            _node_ordering = node_ordering;
+        }
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {
@@ -121,12 +125,10 @@ public :
         try {
             spdlog::info("Running " + ExecutionPolicy::print() + " IW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
-
-            // TODO Get size of feature vector from initial state = s
             unsigned int nb_of_binary_features = _state_features(s)->size();
 
             for (unsigned int w = 1 ; w <= nb_of_binary_features ; w++) {
-                std::pair<bool, bool> res = WidthSolver(_domain, _state_features, w, _graph, _debug_logs).solve(s);
+                std::pair<bool, bool> res = WidthSolver(_domain, _state_features, _node_ordering, w, _graph, _debug_logs).solve(s);
                 if (res.first) { // solution found with width w
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
@@ -175,6 +177,8 @@ private :
 
     Domain& _domain;
     std::function<std::unique_ptr<FeatureVector> (const State& s)> _state_features;
+    std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                       const double&, const unsigned int&, const unsigned int&)> _node_ordering;
     bool _debug_logs;
 
     struct Node {
@@ -183,6 +187,8 @@ private :
         std::tuple<Node*, Action, double> best_parent;
         double gscore;
         double fscore; // not in A*'s meaning but rather to store cost-to-go once a solution is found
+        unsigned int novelty;
+        unsigned int depth;
         Action* best_action; // computed only when constructing the solution path backward from the goal state
         bool solved; // set to true if on the solution path constructed backward from the goal state
 
@@ -190,6 +196,8 @@ private :
             : state(s),
               gscore(std::numeric_limits<double>::infinity()),
               fscore(std::numeric_limits<double>::infinity()),
+              novelty(std::numeric_limits<unsigned int>::max()),
+              depth(std::numeric_limits<unsigned int>::max()),
               best_action(nullptr),
               solved(false) {
             features = state_features(s);
@@ -200,12 +208,6 @@ private :
                 return HashingPolicy::get_key(n);
             }
         };
-    };
-
-    struct NodeCompare {
-        bool operator()(Node*& a, Node*& b) const {
-            return (a->gscore) > (b->gscore); // smallest element appears at the top of the priority_queue => cost optimization
-        }
     };
 
     typedef typename SetTypeDeducer<Node, HashingPolicy>::Set Graph;
@@ -222,10 +224,12 @@ private :
 
         WidthSolver(Domain& domain,
                     const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
+                    const std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                              const double&, const unsigned int&, const unsigned int&)>& node_ordering,
                     unsigned int width,
                     Graph& graph,
                     bool debug_logs)
-            : _domain(domain), _state_features(state_features),
+            : _domain(domain), _state_features(state_features), _node_ordering(node_ordering),
               _width(width), _graph(graph), _debug_logs(debug_logs) {}
         
         // solves from state s
@@ -243,11 +247,17 @@ private :
                     return std::make_pair(false, false);
                 }
                 Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
+                root_node.depth = 0;
                 root_node.gscore = 0;
                 bool states_pruned = false;
 
+                auto node_ordering = [this](const auto& a, const auto& b) -> bool {
+                    return _node_ordering(a->gscore, a->novelty, a->depth,
+                                          b->gscore, b->novelty, b->depth);
+                };
+
                 // Priority queue used to sort non-goal unsolved tip nodes by increasing cost-to-go values (so-called OPEN container)
-                std::priority_queue<Node*, std::vector<Node*>, NodeCompare> open_queue;
+                std::priority_queue<Node*, std::vector<Node*>, decltype(node_ordering)> open_queue(node_ordering);
                 open_queue.push(&root_node);
 
                 // Set of states that have already been explored
@@ -268,7 +278,10 @@ private :
                         continue;
                     }
 
-                    if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print());
+                    if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print() +
+                                                   ", gscore=" + std::to_string(best_tip_node->gscore) +
+                                                   ", novelty=" + std::to_string(best_tip_node->novelty) +
+                                                   ", depth=" + std::to_string(best_tip_node->depth));
 
                     if (_domain.is_goal(best_tip_node->state) || best_tip_node->solved) {
                         if (_debug_logs) spdlog::debug("Found a goal state: " + best_tip_node->state.print());
@@ -314,19 +327,21 @@ private :
                         if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print() +
                                                        " (among " + std::to_string(_graph.size()) + ")");
 
-                        if (closed_set.find(&neighbor) != closed_set.end()) {
-                            // Ignore the neighbor which is already evaluated
-                            return;
-                        }
-
                         double transition_cost = _domain.get_transition_value(best_tip_node->state, a, neighbor.state);
                         double tentative_gscore = best_tip_node->gscore + transition_cost;
+                        unsigned int tentative_depth = best_tip_node->depth + 1;
 
                         if ((i.second) || (tentative_gscore < neighbor.gscore)) {
                             if (_debug_logs) spdlog::debug("New gscore: " + std::to_string(best_tip_node->gscore) + "+" +
                                                            std::to_string(transition_cost) + "=" + std::to_string(tentative_gscore));
                             neighbor.gscore = tentative_gscore;
                             neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
+                        }
+
+                        if ((i.second) || (tentative_depth < neighbor.depth)) {
+                            if (_debug_logs) spdlog::debug("New depth: " + std::to_string(best_tip_node->depth) + "+" +
+                                                           std::to_string(1) + "=" + std::to_string(tentative_depth));
+                            neighbor.depth = tentative_depth;
                         }
 
                         _execution_policy.protect([this, &feature_tuples, &open_queue, &neighbor, &states_pruned]{
@@ -352,6 +367,8 @@ private :
     private :
         Domain& _domain;
         const std::function<std::unique_ptr<FeatureVector> (const State& s)>& _state_features;
+        const std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                  const double&, const unsigned int&, const unsigned int&)>& _node_ordering;
         unsigned int _width;
         Graph& _graph;
         bool _debug_logs;
@@ -379,6 +396,7 @@ private :
                 });
             }
             if (_debug_logs) spdlog::debug("Novelty: " + std::to_string(nov));
+            n.novelty = nov;
             return nov;
         }
 

@@ -102,7 +102,7 @@ class RLDomain(Domain, SingleAgent, Sequential, Environment, Actions, Initializa
     - SingleAgent
     - Sequential
     - Environment
-    - Events
+    - Actions
     - Initializable
     - Markovian
     - TransformedObservable
@@ -132,7 +132,7 @@ class MultiAgentRLDomain(Domain, MultiAgent, Sequential, Environment, Actions, I
     - MultiAgent
     - Sequential
     - Environment
-    - Events
+    - Actions
     - Initializable
     - Markovian
     - TransformedObservable
@@ -162,7 +162,7 @@ class StatelessSimulatorDomain(Domain, SingleAgent, Sequential, Simulation, Acti
     - SingleAgent
     - Sequential
     - Simulation
-    - Events
+    - Actions
     - Markovian
     - TransformedObservable
     - Rewards

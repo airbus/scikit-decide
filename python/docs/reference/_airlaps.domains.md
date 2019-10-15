@@ -18,18 +18,18 @@ class D(Domain, ...)
 with "..." replaced when needed by a number of classes from following domain characteristics (the ones in
 parentheses are optional):
 
-- **agent**: MultiAgent -> SingleAgent
-- **concurrency**: Parallel -> Sequential
+- **agent**: MultiAgent -\> SingleAgent
+- **concurrency**: Parallel -\> Sequential
 - **(constraints)**: Constrained
-- **dynamics**: Environment -> Simulation -> UncertainTransitions -> EnumerableTransitions
-  -> DeterministicTransitions
-- **events**: Events -> Actions -> UnrestrictedActions
+- **dynamics**: Environment -\> Simulation -\> UncertainTransitions -\> EnumerableTransitions
+  -\> DeterministicTransitions
+- **events**: Events -\> Actions -\> UnrestrictedActions
 - **(goals)**: Goals
-- **(initialization)**: Initializable -> UncertainInitialized -> DeterministicInitialized
-- **memory**: History -> FiniteHistory -> Markovian -> Memoryless
-- **observability**: PartiallyObservable -> TransformedObservable -> FullyObservable
+- **(initialization)**: Initializable -\> UncertainInitialized -\> DeterministicInitialized
+- **memory**: History -\> FiniteHistory -\> Markovian -\> Memoryless
+- **observability**: PartiallyObservable -\> TransformedObservable -\> FullyObservable
 - **(renderability)**: Renderable
-- **value**: Rewards -> PositiveCosts
+- **value**: Rewards -\> PositiveCosts
 
 ### check\_value <Badge text="Rewards" type="warn"/>
 
@@ -586,7 +586,7 @@ This helper class can be used as an alternate base class for domains, inheriting
 - SingleAgent
 - Sequential
 - Environment
-- Events
+- Actions
 - Initializable
 - Markovian
 - TransformedObservable
@@ -1240,7 +1240,7 @@ This helper class can be used as an alternate base class for domains, inheriting
 - MultiAgent
 - Sequential
 - Environment
-- Events
+- Actions
 - Initializable
 - Markovian
 - TransformedObservable
@@ -1894,7 +1894,7 @@ This helper class can be used as an alternate base class for domains, inheriting
 - SingleAgent
 - Sequential
 - Simulation
-- Events
+- Actions
 - Markovian
 - TransformedObservable
 - Rewards

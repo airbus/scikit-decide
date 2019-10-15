@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import EnumMeta
 from typing import Union, Generic, Iterable, Sequence, Tuple, List, Dict
 

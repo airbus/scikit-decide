@@ -514,23 +514,26 @@ public :
     PyIWSolver(py::object& domain,
                const std::function<py::object (const py::object&)>& state_features,
                bool use_state_feature_hash = false,
+               const std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                         const double&, const unsigned int&, const unsigned int&)>& node_ordering = nullptr,
                bool parallel = true,
                bool debug_logs = false) {
+
         if (parallel) {
             if (use_state_feature_hash) {
                 _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash>>(
-                    domain, state_features, debug_logs);
+                    domain, state_features, node_ordering, debug_logs);
             } else {
                 _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash>>(
-                    domain, state_features, debug_logs);
+                    domain, state_features, node_ordering, debug_logs);
             }
         } else {
             if (use_state_feature_hash) {
                 _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash>>(
-                    domain, state_features, debug_logs);
+                    domain, state_features, node_ordering, debug_logs);
             } else {
                 _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash>>(
-                    domain, state_features, debug_logs);
+                    domain, state_features, node_ordering, debug_logs);
             }
         }
     }
@@ -572,15 +575,39 @@ private :
 
         Implementation(py::object& domain,
                        const std::function<py::object (const py::object&)>& state_features,
+                       const std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                                 const double&, const unsigned int&, const unsigned int&)>& node_ordering = nullptr,
                        bool debug_logs = false)
-            : _state_features(state_features) {
+            : _state_features(state_features), _node_ordering(node_ordering) {
+            
+            std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                const double&, const unsigned int&, const unsigned int&)> pno = nullptr;
+            if (_node_ordering != nullptr) {
+                pno = [this](const double& a_gscore, const unsigned int& a_novelty, const unsigned int& a_depth,
+                             const double& b_gscore, const unsigned int& b_novelty, const unsigned int& b_depth) -> bool {
+                    try {
+                        typename GilControl<Texecution>::Acquire acquire;
+                        return _node_ordering(a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth);
+                    } catch (const py::error_already_set& e) {
+                        spdlog::error(std::string("AIRLAPS exception when calling custom node ordering: ") + e.what());
+                        throw;
+                    }
+                };
+            }
+
             _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
             _solver = std::make_unique<airlaps::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>>(
                                                                             *_domain,
                                                                             [this](const typename PyIWDomain<Texecution>::State& s)->std::unique_ptr<PyIWFeatureVector<Texecution>> {
-                                                                                typename GilControl<Texecution>::Acquire acquire;
-                                                                                return std::make_unique<PyIWFeatureVector<Texecution>>(_state_features(s._state));
+                                                                                try {
+                                                                                    typename GilControl<Texecution>::Acquire acquire;
+                                                                                    return std::make_unique<PyIWFeatureVector<Texecution>>(_state_features(s._state));
+                                                                                } catch (const py::error_already_set& e) {
+                                                                                    spdlog::error(std::string("AIRLAPS exception when calling state features: ") + e.what());
+                                                                                    throw;
+                                                                                }
                                                                             },
+                                                                            pno,
                                                                             debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
@@ -622,6 +649,8 @@ private :
         std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>> _solver;
         
         std::function<py::object (const py::object&)> _state_features;
+        std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                            const double&, const unsigned int&, const unsigned int&)> _node_ordering;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -637,12 +666,15 @@ void init_pyiw(py::module& m) {
             .def(py::init<py::object&,
                           const std::function<py::object (const py::object&)>&,
                           bool,
+                          const std::function<bool (const double&, const unsigned int&, const unsigned int&,
+                                                    const double&, const unsigned int&, const unsigned int&)>&,
                           bool,
                           bool>(),
                  py::arg("domain"),
                  py::arg("state_features"),
-                 py::arg("use_state_feature_hash"),
-                 py::arg("parallel"),
+                 py::arg("use_state_feature_hash")=false,
+                 py::arg("node_ordering")=nullptr,
+                 py::arg("parallel")=true,
                  py::arg("debug_logs")=false)
             .def("clear", &PyIWSolver::clear)
             .def("solve", &PyIWSolver::solve, py::arg("state"))

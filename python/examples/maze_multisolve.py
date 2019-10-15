@@ -163,7 +163,7 @@ if __name__ == '__main__':
          'entry': 'IW',
          'config': {'state_features': lambda s, d: [s.x, s.y],
                     'use_state_feature_hash': False,
-                    'parallel': False, 'debug_logs': False}},
+                    'parallel': True, 'debug_logs': False}},
 
         # BFWS (planning)
         {'name': 'BFWS (planning) - (num_rows * num_cols) binary encoding (1 binary variable <=> 1 cell)',

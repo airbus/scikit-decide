@@ -1,12 +1,13 @@
 import importlib
 import inspect
 import json
-# from pathlib import Path
+import os
 import pkgutil
 import re
 import sys
 from collections import defaultdict
-from functools import lru_cache
+from functools import lru_cache, reduce
+from glob import glob
 from pprint import pprint  # TODO: remove
 
 # airlaps_dir = Path(__file__).parent.parent
@@ -25,8 +26,11 @@ def find_abs_modules(package):
         import_path = f'{package.__name__}.{modname}'
         if ispkg:
             spec = pkgutil._get_spec(importer, modname)
-            importlib._bootstrap._load(spec)
-            spec_list.append(spec)
+            try:
+                importlib._bootstrap._load(spec)
+                spec_list.append(spec)
+            except Exception as e:
+                print(f'Could not load package {modname}, so it will be ignored ({e}).')
         else:
             path_list.append(import_path)
     for spec in spec_list:
@@ -117,18 +121,31 @@ def write_signature(md, member):
         # sig = member['signature']
         # formatted_params = [f'{p["name"]}{": " + p["annotation"] if "annotation" in p else ""}{" = " + p["default"] if "default" in p else ""}' for p in sig['params']]
         # md += f'```python\n{member["name"]}({", ".join(formatted_params)})\n```\n\n'
-        escape_json_sig = json.dumps(member['signature']).replace('"', "'")
+        escape_json_sig = json.dumps(member['signature']).replace("'", r"\'").replace('"', "'")
         md += f'<airlaps-signature name= "{member["name"]}" :sig="{escape_json_sig}"></airlaps-signature>\n\n'
     return md
 
+
 def md_escape(md):
-    return re.sub(r'[_]', lambda m: f'\\{m.group()}', md)
+    return re.sub(r'[_<>]', lambda m: f'\\{m.group()}', md)
+
+
+def doc_escape(md):
+    return re.sub(r'[<>]', lambda m: f'\\{m.group()}', md)
 
 
 if __name__ == '__main__':
 
     # Get all AIRLAPS (sub)modules
-    modules = [importlib.import_module(m) for m in find_abs_modules(airlaps)]
+    modules = []
+    for m in find_abs_modules(airlaps):
+        try:
+            module = importlib.import_module(m)
+            modules.append(module)
+        except Exception as e:
+            print(f'Could not load module {m}, so it will be ignored ({e}).')
+    # modules = [importlib.import_module(m) for m in find_abs_modules(airlaps)]
+
     autodocs = []
     for module in modules:
         autodoc = {}
@@ -210,21 +227,12 @@ if __name__ == '__main__':
     # with open('.vuepress/public/autodoc.json', 'w') as f:
     #     json.dump({'autodocs': autodocs, 'refs': list(refs)}, f)  # TODO: keep refs? Add shortrefs?
 
-    # Generate Markdown files  # TODO: remove all previously generated files first (_*.md)
-    tree = lambda: defaultdict(tree)
-    ref_index = tree()
-    ref_titles = {}
-    ref_links = defaultdict(list)
-    for module in autodocs:
+    # Remove all previously auto-generated files
+    for oldpath in glob('reference/_*.md'):
+        os.remove(oldpath)
 
-        # Prepare link in Reference index
-        ref_key = ref_index
-        for i, pkg in enumerate(module['ref'].split('.')[:-1], 1):
-            pkg = 'Reference' if pkg == 'airlaps' else pkg
-            ref_key = ref_key[pkg]
-            title = ''.join(['#']*i) + ' ' + pkg
-            ref_titles[title] = id(ref_key)
-        ref_links[id(ref_key)].append(module['ref'])
+    # Generate Markdown files
+    for module in autodocs:
 
         # Initiate Markdown
         md = ''
@@ -250,7 +258,7 @@ if __name__ == '__main__':
 
             # Write member doc (if any)
             if 'doc' in member:
-                md += f'{member["doc"]}\n\n'
+                md += f'{doc_escape(member["doc"])}\n\n'
 
             # Write submembers (if any)
             if 'members' in member:
@@ -266,16 +274,27 @@ if __name__ == '__main__':
 
                         # Write submember doc (if any)
                         if 'doc' in submember:
-                            md += f'{submember["doc"]}\n\n'
+                            md += f'{doc_escape(submember["doc"])}\n\n'
 
         with open(f'reference/_{module["ref"]}.md', 'w') as f:
             f.write(md)
 
     # Write Reference index
+    REF_INDEX_MAXDEPTH = 5
+    ref_entries = sorted([tuple(m['ref'].split('.')) for m in autodocs], key=lambda x: (len(x), x))  # sorted entries
+    ref_entries = filter(lambda e: len(e) <= REF_INDEX_MAXDEPTH, ref_entries)  # filter out by max depth
+    ref_entries = [{'text': e[-1], 'link': '.'.join(e), 'section': e[:-1]} for e in ref_entries]  # organize entries
+
     reference = ''
-    for k, v in ref_titles.items():
-        reference += f'{k}\n\n'
-        for ref_link in sorted(ref_links[v]):
-            reference += f'[{ref_link.rsplit(".", 1)[-1]}](_{ref_link})\n\n'
+    sections = set()
+    for e in ref_entries:
+        for i in range(1, len(e['section']) + 1):
+            section = e['section'][:i]
+            if section not in sections:
+                title = 'Reference' if section[-1] == 'airlaps' else section[-1]
+                reference += f'{"".join(["#"]*i)} {title}\n\n'
+                sections.add(section)
+        reference += f'[{e["text"]}](_{e["link"]})\n\n'
+
     with open(f'reference/README.md', 'w') as f:
         f.write(reference)

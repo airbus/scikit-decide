@@ -1,6 +1,7 @@
 # Original code by Patrik Haslum, based on POMCP from:
 # Silver, D., & Veness, J. (2010). Monte-Carlo Planning in Large POMDPs.
 # In Advances in neural information processing systems (pp. 2164–2172).
+from __future__ import annotations
 
 import math
 import random

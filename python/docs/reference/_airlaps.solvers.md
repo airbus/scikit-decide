@@ -18,8 +18,8 @@ class MySolver(Solver, ...)
 with "..." replaced when needed by a number of classes from following domain characteristics (the ones in
 parentheses are optional):
 
-- **(assessability)**: Utilities -> QValues
-- **(policy)**: Policies -> UncertainPolicies -> DeterministicPolicies
+- **(assessability)**: Utilities -\> QValues
+- **(policy)**: Policies -\> UncertainPolicies -\> DeterministicPolicies
 - **(restorability)**: Restorable
 
 ### check\_domain <Badge text="Solver" type="tip"/>
@@ -70,6 +70,24 @@ boilerplate code transforms the domain factory to auto-cast the new domains to t
 
 #### Parameters
 - **domain_factory**: A callable with no argument returning the domain to solve (can be just a domain class).
+
+::: tip
+The nature of the solutions produced here depends on other solver's characteristics like
+`policy` and `assessibility`.
+:::
+
+### solve\_from <Badge text="Solver" type="tip"/>
+
+<airlaps-signature name= "solve_from" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}], 'return': 'None'}"></airlaps-signature>
+
+Run the solving process from a given state.
+
+::: tip
+Create the domain first by calling the @Solver.reset() method
+:::
+
+#### Parameters
+- **memory**: The source memory (state or history) of the transition.
 
 ::: tip
 The nature of the solutions produced here depends on other solver's characteristics like
@@ -157,6 +175,24 @@ here returns domains auto-cast to the level expected by the solver.
 
 #### Parameters
 - **domain_factory**: A callable with no argument returning the domain to solve (auto-cast to expected level).
+
+::: tip
+The nature of the solutions produced here depends on other solver's characteristics like
+`policy` and `assessibility`.
+:::
+
+### \_solve\_from <Badge text="Solver" type="tip"/>
+
+<airlaps-signature name= "_solve_from" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}], 'return': 'None'}"></airlaps-signature>
+
+Run the solving process from a given state.
+
+::: tip
+Create the domain first by calling the @Solver.reset() method
+:::
+
+#### Parameters
+- **memory**: The source memory (state or history) of the transition.
 
 ::: tip
 The nature of the solutions produced here depends on other solver's characteristics like
@@ -281,6 +317,24 @@ boilerplate code transforms the domain factory to auto-cast the new domains to t
 
 #### Parameters
 - **domain_factory**: A callable with no argument returning the domain to solve (can be just a domain class).
+
+::: tip
+The nature of the solutions produced here depends on other solver's characteristics like
+`policy` and `assessibility`.
+:::
+
+### solve\_from <Badge text="Solver" type="warn"/>
+
+<airlaps-signature name= "solve_from" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}], 'return': 'None'}"></airlaps-signature>
+
+Run the solving process from a given state.
+
+::: tip
+Create the domain first by calling the @Solver.reset() method
+:::
+
+#### Parameters
+- **memory**: The source memory (state or history) of the transition.
 
 ::: tip
 The nature of the solutions produced here depends on other solver's characteristics like
@@ -417,6 +471,24 @@ here returns domains auto-cast to the level expected by the solver.
 
 #### Parameters
 - **domain_factory**: A callable with no argument returning the domain to solve (auto-cast to expected level).
+
+::: tip
+The nature of the solutions produced here depends on other solver's characteristics like
+`policy` and `assessibility`.
+:::
+
+### \_solve\_from <Badge text="Solver" type="warn"/>
+
+<airlaps-signature name= "_solve_from" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}], 'return': 'None'}"></airlaps-signature>
+
+Run the solving process from a given state.
+
+::: tip
+Create the domain first by calling the @Solver.reset() method
+:::
+
+#### Parameters
+- **memory**: The source memory (state or history) of the transition.
 
 ::: tip
 The nature of the solutions produced here depends on other solver's characteristics like

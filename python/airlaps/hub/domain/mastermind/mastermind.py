@@ -1,4 +1,5 @@
 # Original code by Patrik Haslum
+from __future__ import annotations
 
 from typing import NamedTuple, Tuple, Optional
 
