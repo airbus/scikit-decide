@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Callable
+from collections.abc import Iterable
+
 
 import gym
 import numpy as np
@@ -19,6 +21,98 @@ class D(Domain, SingleAgent, Sequential, Environment, UnrestrictedActions, Initi
         Rewards):
     pass
 
+def change_interval (x, inmin, inmax, outmin, outmax):
+    # making sure x is in the interval
+    x = max(inmin, min(inmax, x))
+    # normalizing x between 0 and 1
+    x = (x - inmin) / (inmax - inmin)
+    # denormalizing between outmin and outmax
+    return x * (outmax - outmin) + outmin
+
+def change_float_to_int_interval (x, inmin, inmax, outdiscmin, outdiscmax):
+    x = change_interval(x, inmin, inmax, 0, 1)
+    if x==1:
+        return outdiscmax
+    else:
+        return int(x * (outdiscmax - outdiscmin + 1) + outdiscmin)
+
+def flatten(c):
+    """
+    Generator flattening the structure
+
+    >>> list(flatten([2, [2, "test", [4,5, [7], [2, [6, 2, 6, [6], 4]], 6]]]))
+    [2, 2, "test", 4, 5, 7, 2, 6, 2, 6, 6, 4, 6]
+    """
+    for x in c:
+        if isinstance(x, str) or not isinstance(x, Iterable):
+            yield x
+        else:
+            yield from flatten(x)
+
+def norm_and_flatten(vals, types):
+    """
+    Flatten and normalise according to AIGYM type (BOX, DISCRETE, TUPLE)
+    :param vals: a np array structure
+    :param types: the gym type corresponding to the vals arrays
+    :return: a flatten array with normalised vals
+    """
+    if not isinstance(types, Iterable) and \
+            not isinstance(types, gym.spaces.Tuple):
+        types = [types]
+    if not isinstance(vals, Iterable) and \
+            not isinstance(vals, gym.spaces.Tuple):
+        vals = [vals]
+
+    flat_vals = list(flatten(vals))
+    index = 0
+    for i in range(len(types)):
+        t = types[i]
+        if isinstance(t, gym.spaces.Box):
+            lows = list(flatten(t.low))
+            highs = list(flatten(t.high))
+            for j in range(len(lows)):
+                flat_vals[index] = change_interval(flat_vals[index], lows[j], highs[j], -1, 1)
+                index += 1
+        elif isinstance(t, gym.spaces.Discrete):
+            flat_vals[index] = change_interval(flat_vals[index], 0, t.n-1, -1, 1)
+            index += 1
+        else:
+            raise ValueError("Unsupported type ", str(t))
+    return flat_vals
+
+def denorm(vals, types):
+    """
+    Denormalize values according to AIGYM types (BOX, DISCRETE, TUPLE)
+    :param vals: an array of [-1,1] normalised values
+    :param types: the gym types corresponding to vals
+    :return: the same vals array with denormalised values
+    """
+    if not isinstance(types, Iterable) and \
+            not isinstance(types, gym.spaces.Tuple):
+        types = [types]
+    if not isinstance(vals, Iterable) and \
+            not isinstance(vals, gym.spaces.Tuple):
+        vals = [vals]
+    out = []
+    index = 0
+    for i in range(len(types)):
+        t = types[i]
+        if isinstance(t, gym.spaces.Box):
+            out_temp = []
+            for j in range(len(t.low)):
+                out_temp += [change_interval(vals[index], -1, 1, t.low[j], t.high[j])]
+                index += 1
+            out += [out_temp]
+        elif isinstance(t, gym.spaces.Discrete):
+            out += [change_float_to_int_interval(vals[index], -1, 1, 0, t.n-1)]
+            index += 1
+        else:
+            raise ValueError("Unsupported type ", str(t))
+    # burk
+    if len(types) == 1:
+        return out[0]
+    else:
+        return out
 
 class CGPWrapper(Solver, DeterministicPolicies, Restorable):
     T_domain = D
@@ -43,7 +137,9 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
 
     @classmethod
     def _check_domain_additional(cls, domain: D) -> bool:
-        # TODO: add space conditions (only Box or Tuple of one or more Box from gym spaces)?
+        """
+        CGP manage all kind of gym types, BOX, DISCRETE and TUPLE as well
+        """
         return isinstance(domain.get_action_space(), GymSpace) and isinstance(domain.get_observation_space(), GymSpace)
 
     def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
@@ -51,8 +147,13 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
 
         evaluator = AirlapsEvaluator(domain)
         if self._genome is None:
+            a = domain.get_action_space().sample()
+            if isinstance(a, Iterable) or isinstance(a, gym.spaces.Tuple):
+                num_outputs = len(a)
+            else:
+                num_outputs = 1
             cgpFather = CGP.random(len(domain.get_observation_space().sample()),
-                                   len(domain.get_action_space().sample()), self._col, self._row, self._library, 1.0)
+                                num_outputs, self._col, self._row, self._library, 1.0)
         else:
             cgpFather = CGP.load_from_file(self._genome, self._library)
 
@@ -68,12 +169,7 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
         self._evaluator = evaluator
 
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        # TODO: encapsulate in a evaluator function (to avoid redundancy)?
-        observation = np.array(list(flatten(observation)))
-        observation = 2.0 * (observation - self._evaluator.obs_mins) / (self._evaluator.obs_maxs - self._evaluator.obs_mins) - 1.0
-        action = self._es.father.run(observation)
-        action = (action + 1.0) * (self._evaluator.act_maxs - self._evaluator.act_mins) / 2 + self._evaluator.act_mins
-        return action
+        return denorm(self._es.father.run(norm_and_flatten(observation, self._domain.get_observation_space().unwrapped())), self._domain.get_action_space().unwrapped())
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
         return True
@@ -109,21 +205,6 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
                 ]
 
 
-def flatten(c):
-    """
-    Generator flattening the structure
-
-    >>> list(flatten([2, [2, "test", (4, 5, [7], [2, [6, 2, 6, [6], 4]], 6)]]))
-    [2, 2, "test", 4, 5, 7, 2, 6, 2, 6, 6, 4, 6]
-    """
-    from collections.abc import Iterable
-    for x in c:
-        if isinstance(x, str) or not isinstance(x, Iterable):
-            yield x
-        else:
-            yield from flatten(x)
-
-
 class AirlapsEvaluator(Evaluator):
 
     def __init__(self, domain, it_max=10000, ep_max=1):
@@ -132,18 +213,18 @@ class AirlapsEvaluator(Evaluator):
         self.ep_max = ep_max
         self.domain = domain
 
-        def get_mins_maxs(space):
-            if not isinstance(space, gym.spaces.Tuple):
-                space = tuple([space])
-            mins = []
-            maxs = []
-            for box in space:
-                mins += list(box.low)
-                maxs += list(box.high)
-            return np.array(mins), np.array(maxs)
+        # def get_mins_maxs(space):
+        #     if not isinstance(space, gym.spaces.Tuple):
+        #         space = tuple([space])
+        #     mins = []
+        #     maxs = []
+        #     for box in space:
+        #         mins += list(box.low)
+        #         maxs += list(box.high)
+        #     return np.array(mins), np.array(maxs)
 
-        self.obs_mins, self.obs_maxs = get_mins_maxs(domain.get_observation_space().unwrapped())
-        self.act_mins, self.act_maxs = get_mins_maxs(domain.get_action_space().unwrapped())
+        # self.obs_mins, self.obs_maxs = get_mins_maxs(domain.get_observation_space().unwrapped())
+        # #self.act_mins, self.act_maxs = 0,2#get_mins_maxs(domain.get_action_space().unwrapped())
 
     def evaluate(self, cgp, it, verbose=False):
         fitnesses = np.zeros(self.ep_max)
@@ -153,11 +234,9 @@ class AirlapsEvaluator(Evaluator):
             states = self.domain.reset()
             step = 0
             while not end and step < self.it_max:
-                states = np.array(list(flatten(states)))
-                # states = np.minimum(self.obs_maxs, np.maximum(self.obs_mins, states))
-                states = 2.0 * (states - self.obs_mins) / (self.obs_maxs - self.obs_mins) - 1.0
-                actions = cgp.run(states)
-                actions = (actions + 1.0)*(self.act_maxs - self.act_mins)/2 + self.act_mins
+                
+                actions = denorm(cgp.run(norm_and_flatten(states, self.domain.get_observation_space().unwrapped())), self.domain.get_action_space().unwrapped())
+
 
                 states, transition_value, end, _ = self.domain.step(actions).astuple()
                 reward = transition_value[0]  # TODO: correct Gym wrapper
