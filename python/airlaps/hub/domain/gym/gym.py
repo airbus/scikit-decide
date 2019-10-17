@@ -71,11 +71,6 @@ class GymDomain(D):
         return self._gym_env
 
 
-class D(Domain, SingleAgent, Sequential, DeterministicTransitions, UnrestrictedActions, DeterministicInitialized,
-        Markovian, FullyObservable, Renderable, Rewards):  # TODO: replace Rewards by PositiveCosts??
-    pass
-
-
 class DeterministicGymDomainStateProxy :
     def __init__(self, state, context):
         self._state = state
@@ -91,289 +86,23 @@ class DeterministicGymDomainStateProxy :
         return self._state.__str__()
 
 
-class DeterministicGymDomain(D):
-    """This class wraps a deterministic OpenAI Gym environment (gym.env) as an AIRLAPS domain.
+class GymWidthDomain:
+    """This class wraps an OpenAI Gym environment as a domain
+        usable by width-based solving algorithm (e.g. IW)
 
     !!! warning
         Using this class requires OpenAI Gym to be installed.
     """
 
-    def __init__(self, gym_env: gym.Env,
-                       set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
-                       get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None) -> None:
-        """Initialize DeterministicGymDomain.
-
-        # Parameters
-        gym_env: The deterministic Gym environment (gym.env) to wrap.
-        set_state: Function to call to set the state of the gym environment.
-                   If None, default behavior is to deepcopy the environment when changing state
-        get_state: Function to call to get the state of the gym environment.
-                   If None, default behavior is to deepcopy the environment when changing state
+    def __init__(self) -> None:
+        """Initialize GymWidthDomain.
         """
-        self._gym_env = gym_env
-        self._set_state = set_state
-        self._get_state = get_state
-
-    def _get_initial_state_(self) -> D.T_state:
-        initial_state = self._gym_env.reset()
-        return DeterministicGymDomainStateProxy(state=initial_state,
-                                                context=[self._gym_env, None, None, None,
-                                                         self._get_state(self._gym_env) if (self._get_state is not None and self._set_state is not None) else None])
-
-    def _get_next_state(self, memory: D.T_memory[D.T_state],
-                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
-        env = memory._context[0]
-        if self._set_state is None or self._get_state is None:
-            env = deepcopy(env)
-        elif memory._context[4] != self._get_state(env):
-            self._set_state(env, memory._context[4])
-        self._gym_env = env  # Just in case the simulation environment would be different from the planner's environment...
-        obs, reward, done, info = env.step(action)
-        outcome = TransitionOutcome(state=obs, value=TransitionValue(reward=reward), termination=done, info=info)
-        # print('Transition:', str(memory._state), ' -> ', str(action), ' -> ', str(outcome.state))
-        return DeterministicGymDomainStateProxy(state=outcome.state,
-                                                context=[env, memory._state, action, outcome,
-                                                         self._get_state(env) if (self._get_state is not None and self._set_state is not None) else None])
-
-    def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
-        last_memory, last_action, outcome = next_state._context[1:4]
-        # assert (self._are_same(self._gym_env.observation_space, memory._state, last_memory) and
-        #         self._are_same(self._gym_env.action_space, action, last_action))
-        return outcome.value
-
-    def _is_terminal(self, state: D.T_state) -> bool:
-        outcome = state._context[3]
-        return outcome.termination if outcome is not None else False
-
-    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
-        return GymSpace(self._gym_env.action_space)
-
-    def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
-        return GymSpace(self._gym_env.observation_space)
-
-    def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        if 'mode' in kwargs:
-            render =  self._gym_env.render(mode=kwargs['mode'])
-        else:
-            render =  self._gym_env.render()
-        if self._set_state is None or self._get_state is None:
-            self._gym_env.close()  # avoid deepcopy errors
-        return render
-
-    def close(self):
-        return self._gym_env.close()
-
-    def unwrapped(self):
-        """Unwrap the deterministic Gym environment (gym.env) and return it.
-
-        # Returns
-        The original Gym environment.
-        """
-        return self._gym_env
-
-    def _are_same(self, space: gym.spaces.Space, e1: Any, e2: Any):
-        assert e1.__class__ == e2.__class__
-        if isinstance(space, gym.spaces.box.Box):
-            return (e1 == e2).all()
-        elif isinstance(space, gym.spaces.discrete.Discrete):
-            return e1 == e2
-        elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
-            return (e1 == e2).all()
-        elif isinstance(space, gym.spaces.tuple.Tuple):
-            assert len(e1) == len(e2) == len(space)
-            for i in range(len(space)):
-                if not self._are_same(space[i], e1[i], e2[i]):
-                    return False
-            return True
-        elif isinstance(space, gym.spaces.dict.Dict):
-            assert e1.keys() == e2.keys() == space.keys()
-            for k in space.keys():
-                if not self._are_same(space[k], e1[k], e2[k]):
-                    return False
-            return True
-        else:
-            raise RuntimeError('Unknown Gym space of type ' + str(type(space)))
-
-
-class CostDeterministicGymDomain(DeterministicGymDomain, PositiveCosts):
-    pass
-
-
-class GymPlanningDomain(CostDeterministicGymDomain, Goals):
-    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
-        usable by a classical planner that requires enumerable applicable action sets
-
-    !!! warning
-        Using this class requires OpenAI Gym to be installed.
-    """
-
-    def __init__(self, gym_env: gym.Env,
-                       set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
-                       get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
-                       termination_is_goal: bool = False,
-                       discretization_factor: int = 10,
-                       branching_factor: int = None,
-                       max_depth: int = 50) -> None:
-        """Initialize WidthPlanningGymDomain.
-
-        # Parameters
-        gym_env: The deterministic Gym environment (gym.env) to wrap.
-        set_state: Function to call to set the state of the gym environment.
-                   If None, default behavior is to deepcopy the environment when changing state
-        get_state: Function to call to get the state of the gym environment.
-                   If None, default behavior is to deepcopy the environment when changing state
-        discretization_factor: Number of discretized action variable values per continuous action variable
-        branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
-        max_depth: maximum depth of states to explore from the initial state
-        """
-        super().__init__(gym_env, set_state, get_state)
-        self._termination_is_goal = termination_is_goal
-        self._discretization_factor = discretization_factor
-        self._branching_factor = branching_factor
-        self._max_depth = max_depth
-        self._initial_state = None
-        self._current_depth = 0
-        self._restarting_from_initial_state = False
-        self._applicable_actions = self._discretize_action_space(self.get_action_space()._gym_space)
-        if self._branching_factor is not None and len(self._applicable_actions.get_elements()) > self._branching_factor:
-            self._applicable_actions = ListSpace(random.sample(self._applicable_actions.get_elements(), self._branching_factor))
-
-    def _get_initial_state_(self) -> D.T_state:
-        initial_state = super()._get_initial_state_()
-        initial_state._context.append(0)
-        self._initial_state = initial_state
-        self._current_depth = 0
-        return initial_state
-
-    def _get_next_state(self, memory: D.T_memory[D.T_state],
-                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
-        if self._initial_state is None:  # the solver's domain does not use _get_initial_state() but gets its initial state from the rollout env shipped with the state context
-            self._initial_state = memory
-        if self._are_same(self._gym_env.observation_space, memory._state, self._initial_state._state):
-            self._restart_from_initial_state()
-        else:
-            self._restarting_from_initial_state = False
-        next_state = super()._get_next_state(memory, action)
-        next_state._context.append(memory._context[5] + 1)
-        if (memory._context[5] + 1 > self._current_depth):
-            self._current_depth = memory._context[5] + 1
-            print('Current depth:', str(self._current_depth), '/', str(self._max_depth))
-        return next_state
-    
-    def _restart_from_initial_state(self):
-        # following test is mandatory since we restart from the initial state
-        # when expanding each action of the initial state
-        # and we want to do it only once
-        if not self._restarting_from_initial_state:
-            self._current_depth = 0
-            self._restarting_from_initial_state = True
-
-    def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
-        return self._applicable_actions
-    
-    def _discretize_action_space(self, action_space: gym.spaces.Space) -> D.T_agent[Space[D.T_event]]:
-        if isinstance(action_space, gym.spaces.box.Box):
-            nb_elements = 1
-            for dim in action_space.shape:
-                nb_elements *= dim
-            actions = []
-            for l, h in np.nditer([action_space.low, action_space.high]):
-                if l == -float('inf') or h == float('inf'):
-                    actions.append([gym.spaces.box.Box(low=l, high=h).sample() for i in range(self._discretization_factor)])
-                else:
-                    actions.append([l + ((h-l)/(self._discretization_factor - 1))*i for i in range(self._discretization_factor)])
-            alist = []
-            self._generate_box_action_combinations(actions, action_space.shape, action_space.dtype, 0, [], alist)
-            return ListSpace(alist)
-        elif isinstance(action_space, gym.spaces.discrete.Discrete):
-            return ListSpace([i for i in range(action_space.n)])
-        elif isinstance(action_space, gym.spaces.multi_discrete.MultiDiscrete):
-            generate = lambda d: ([[e] + g for e in range(action_space.nvec[d]) for g in generate(d+1)]
-                                  if d < len(action_space.nvec)-1 else
-                                  [[e] for e in range(action_space.nvec[d])])
-            return ListSpace(generate(0))
-        elif isinstance(action_space, gym.spaces.multi_binary.MultiBinary):
-            generate = lambda d: ([[e] + g for e in [True, False] for g in generate(d+1)]
-                                  if d < len(action_space.n)-1 else
-                                  [[e] for e in [True, False]])
-            return ListSpace(generate(0))
-        elif isinstance(action_space, gym.spaces.tuple.Tuple):
-            generate = lambda d: ([[e] + g for e in self._discretize_action_space(action_space.spaces[d]).get_elements() for g in generate(d+1)]
-                                  if d < len(action_space.spaces)-1 else
-                                  [[e] for e in self._discretize_action_space(action_space.spaces[d]).get_elements()])
-            return ListSpace(generate(0))
-        elif isinstance(action_space, gym.spaces.dict.Dict):
-            dkeys = action_space.spaces.keys()
-            generate = lambda d: ([[e] + g for e in self._discretize_action_space(action_space.spaces[dkeys[d]]).get_elements() for g in generate(d+1)]
-                                  if d < len(dkeys)-1 else
-                                  [[e] for e in self._discretize_action_space(action_space.spaces[dkeys[d]]).get_elements()])
-        else:
-            raise RuntimeError('Unknown Gym space element of type ' + str(type(action_space)))
-    
-    def _generate_box_action_combinations(self, actions, shape, dtype, index, alist, rlist):
-        if index < len(actions):
-            for a in actions[index]:
-                clist = list(alist)
-                clist.append(a)
-                self._generate_box_action_combinations(actions, shape, dtype, index+1, clist, rlist)
-        else:
-            ar = np.ndarray(shape=shape, dtype=dtype)
-            if len(shape) == 1:
-                ar[0] = alist[0]
-            else:
-                k = 0
-                for i, in np.nditer(ar, op_flags=['readwrite']):
-                    print(str(i))
-                    i = alist[k]
-                    k += 1
-            rlist += [ar]
-
-    def _get_goals_(self):
-        return ImplicitSpace(lambda observation: ((observation._context[5] >= self._max_depth) or
-                                                  (self._termination_is_goal and (observation._context[3].termination
-                                                                                  if observation._context[3] is not None else False))))
-
-
-class GymWidthPlanningDomain(GymPlanningDomain):
-    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
-        usable by width-based planning algorithm (e.g. IW)
-
-    !!! warning
-        Using this class requires OpenAI Gym to be installed.
-    """
-
-    def __init__(self, gym_env: gym.Env,
-                       set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
-                       get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
-                       termination_is_goal: bool = False,
-                       discretization_factor: int = 10,
-                       branching_factor: int = None,
-                       max_depth: int = 50) -> None:
-        """Initialize WidthPlanningGymDomain.
-
-        # Parameters
-        gym_env: The deterministic Gym environment (gym.env) to wrap.
-        set_state: Function to call to set the state of the gym environment.
-                   If None, default behavior is to deepcopy the environment when changing state
-        get_state: Function to call to get the state of the gym environment.
-                   If None, default behavior is to deepcopy the environment when changing state
-        discretization_factor: Number of discretized action variable values per continuous action variable
-        branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
-        max_depth: maximum depth of states to explore from the initial state
-        """
-        super().__init__(gym_env, set_state, get_state, termination_is_goal, discretization_factor, branching_factor, max_depth)
         self._feature_increments = []
         self._init_continuous_state_variables = []
     
-    def _restart_from_initial_state(self):
-        super()._restart_from_initial_state()
-        # following test is mandatory since we restart from the initial state
-        # when expanding each action of the initial state
-        # and we want to do it only once
-        if not self._restarting_from_initial_state:
-            for f in range(len(self._feature_increments)):
-                self._feature_increments[f] = []
+    def _reset_features(self):
+        for f in range(len(self._feature_increments)):
+            self._feature_increments[f] = []
 
     def _init_state_features(self, space, state):
         if isinstance(space, gym.spaces.box.Box):
@@ -517,6 +246,289 @@ class GymWidthPlanningDomain(GymPlanningDomain):
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
         return current_index
+
+
+class GymDiscreteActionDomain(UnrestrictedActions):
+    """This class wraps an OpenAI Gym environment as a domain
+        usable by a solver that requires enumerable applicable action sets
+
+    !!! warning
+        Using this class requires OpenAI Gym to be installed.
+    """
+
+    def __init__(self, discretization_factor: int = 10,
+                       branching_factor: int = None) -> None:
+        """Initialize GymDiscreteActionDomain.
+
+        # Parameters
+        discretization_factor: Number of discretized action variable values per continuous action variable
+        branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
+        """
+        self._discretization_factor = discretization_factor
+        self._branching_factor = branching_factor
+        self._applicable_actions = self._discretize_action_space(self.get_action_space()._gym_space)
+        if self._branching_factor is not None and len(self._applicable_actions.get_elements()) > self._branching_factor:
+            self._applicable_actions = ListSpace(random.sample(self._applicable_actions.get_elements(), self._branching_factor))
+
+    def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
+        return self._applicable_actions
+    
+    def _discretize_action_space(self, action_space: gym.spaces.Space) -> D.T_agent[Space[D.T_event]]:
+        if isinstance(action_space, gym.spaces.box.Box):
+            nb_elements = 1
+            for dim in action_space.shape:
+                nb_elements *= dim
+            actions = []
+            for l, h in np.nditer([action_space.low, action_space.high]):
+                if l == -float('inf') or h == float('inf'):
+                    actions.append([gym.spaces.box.Box(low=l, high=h).sample() for i in range(self._discretization_factor)])
+                else:
+                    actions.append([l + ((h-l)/(self._discretization_factor - 1))*i for i in range(self._discretization_factor)])
+            alist = []
+            self._generate_box_action_combinations(actions, action_space.shape, action_space.dtype, 0, [], alist)
+            return ListSpace(alist)
+        elif isinstance(action_space, gym.spaces.discrete.Discrete):
+            return ListSpace([i for i in range(action_space.n)])
+        elif isinstance(action_space, gym.spaces.multi_discrete.MultiDiscrete):
+            generate = lambda d: ([[e] + g for e in range(action_space.nvec[d]) for g in generate(d+1)]
+                                  if d < len(action_space.nvec)-1 else
+                                  [[e] for e in range(action_space.nvec[d])])
+            return ListSpace(generate(0))
+        elif isinstance(action_space, gym.spaces.multi_binary.MultiBinary):
+            generate = lambda d: ([[e] + g for e in [True, False] for g in generate(d+1)]
+                                  if d < len(action_space.n)-1 else
+                                  [[e] for e in [True, False]])
+            return ListSpace(generate(0))
+        elif isinstance(action_space, gym.spaces.tuple.Tuple):
+            generate = lambda d: ([[e] + g for e in self._discretize_action_space(action_space.spaces[d]).get_elements() for g in generate(d+1)]
+                                  if d < len(action_space.spaces)-1 else
+                                  [[e] for e in self._discretize_action_space(action_space.spaces[d]).get_elements()])
+            return ListSpace(generate(0))
+        elif isinstance(action_space, gym.spaces.dict.Dict):
+            dkeys = action_space.spaces.keys()
+            generate = lambda d: ([[e] + g for e in self._discretize_action_space(action_space.spaces[dkeys[d]]).get_elements() for g in generate(d+1)]
+                                  if d < len(dkeys)-1 else
+                                  [[e] for e in self._discretize_action_space(action_space.spaces[dkeys[d]]).get_elements()])
+        else:
+            raise RuntimeError('Unknown Gym space element of type ' + str(type(action_space)))
+    
+    def _generate_box_action_combinations(self, actions, shape, dtype, index, alist, rlist):
+        if index < len(actions):
+            for a in actions[index]:
+                clist = list(alist)
+                clist.append(a)
+                self._generate_box_action_combinations(actions, shape, dtype, index+1, clist, rlist)
+        else:
+            ar = np.ndarray(shape=shape, dtype=dtype)
+            if len(shape) == 1:
+                ar[0] = alist[0]
+            else:
+                k = 0
+                for i, in np.nditer(ar, op_flags=['readwrite']):
+                    print(str(i))
+                    i = alist[k]
+                    k += 1
+            rlist += [ar]
+
+
+class D(Domain, SingleAgent, Sequential, DeterministicTransitions, UnrestrictedActions, DeterministicInitialized,
+        Markovian, FullyObservable, Renderable, Rewards):  # TODO: replace Rewards by PositiveCosts??
+    pass
+
+
+class DeterministicGymDomain(D):
+    """This class wraps a deterministic OpenAI Gym environment (gym.env) as an AIRLAPS domain.
+
+    !!! warning
+        Using this class requires OpenAI Gym to be installed.
+    """
+
+    def __init__(self, gym_env: gym.Env,
+                       set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
+                       get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None) -> None:
+        """Initialize DeterministicGymDomain.
+
+        # Parameters
+        gym_env: The deterministic Gym environment (gym.env) to wrap.
+        set_state: Function to call to set the state of the gym environment.
+                   If None, default behavior is to deepcopy the environment when changing state
+        get_state: Function to call to get the state of the gym environment.
+                   If None, default behavior is to deepcopy the environment when changing state
+        """
+        self._gym_env = gym_env
+        self._set_state = set_state
+        self._get_state = get_state
+        self._init_env = None
+    
+    # def _state_reset(self) -> D.T_state:  # used by rollout algorithms
+    #     if self._initial_state is None:
+    #         if self._set_state is not None and self._get_state is not None:
+    #             self._initial_state = DeterministicGymDomainStateProxy(state=super()._state_reset(),
+    #                                                                    context=[self._gym_env, None, None, None,
+    #                                                                    self._get_state(self._gym_env) if (self._get_state is not None and self._set_state is not None) else None])
+    #         else:
+    #             self._initial_state = DeterministicGymDomainStateProxy(state=super()._state_reset(),
+    #                                                                    context=[self._gym_env, None, None, None, None])
+    #             self._init_env = deepcopy(self._gym_env)
+    #     else:
+    #         if self._set_state is not None and self._get_state is not None:
+    #             self._set_state(self._gym_env, self._initial_state._context[4])
+    #         else:
+    #             self._gym_env = deepcopy(self._init_env)
+    #     return self._initial_state._state
+
+    def _get_initial_state_(self) -> D.T_state:
+        initial_state = self._gym_env.reset()
+        return DeterministicGymDomainStateProxy(state=initial_state,
+                                                context=[self._gym_env, None, None, None,
+                                                         self._get_state(self._gym_env) if (self._get_state is not None and self._set_state is not None) else None])
+
+    def _get_next_state(self, memory: D.T_memory[D.T_state],
+                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+        env = memory._context[0]
+        if self._set_state is None or self._get_state is None:
+            env = deepcopy(env)
+        elif memory._context[4] != self._get_state(env):
+            self._set_state(env, memory._context[4])
+        self._gym_env = env  # Just in case the simulation environment would be different from the planner's environment...
+        obs, reward, done, info = env.step(action)
+        outcome = TransitionOutcome(state=obs, value=TransitionValue(reward=reward), termination=done, info=info)
+        # print('Transition:', str(memory._state), ' -> ', str(action), ' -> ', str(outcome.state))
+        return DeterministicGymDomainStateProxy(state=outcome.state,
+                                                context=[env, memory._state, action, outcome,
+                                                         self._get_state(env) if (self._get_state is not None and self._set_state is not None) else None])
+
+    def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
+                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
+        last_memory, last_action, outcome = next_state._context[1:4]
+        # assert (self._are_same(self._gym_env.observation_space, memory._state, last_memory) and
+        #         self._are_same(self._gym_env.action_space, action, last_action))
+        return outcome.value
+
+    def _is_terminal(self, state: D.T_state) -> bool:
+        outcome = state._context[3]
+        return outcome.termination if outcome is not None else False
+    
+    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
+        return GymSpace(self._gym_env.action_space)
+
+    def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
+        return GymSpace(self._gym_env.observation_space)
+
+    def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
+        if 'mode' in kwargs:
+            render =  self._gym_env.render(mode=kwargs['mode'])
+        else:
+            render =  self._gym_env.render()
+        if self._set_state is None or self._get_state is None:
+            self._gym_env.close()  # avoid deepcopy errors
+        return render
+    
+    def close(self):
+        return self._gym_env.close()
+
+    def unwrapped(self):
+        """Unwrap the deterministic Gym environment (gym.env) and return it.
+
+        # Returns
+        The original Gym environment.
+        """
+        return self._gym_env
+
+    def _are_same(self, space: gym.spaces.Space, e1: Any, e2: Any):
+        assert e1.__class__ == e2.__class__
+        if isinstance(space, gym.spaces.box.Box):
+            return (e1 == e2).all()
+        elif isinstance(space, gym.spaces.discrete.Discrete):
+            return e1 == e2
+        elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
+            return (e1 == e2).all()
+        elif isinstance(space, gym.spaces.tuple.Tuple):
+            assert len(e1) == len(e2) == len(space)
+            for i in range(len(space)):
+                if not self._are_same(space[i], e1[i], e2[i]):
+                    return False
+            return True
+        elif isinstance(space, gym.spaces.dict.Dict):
+            assert e1.keys() == e2.keys() == space.keys()
+            for k in space.keys():
+                if not self._are_same(space[k], e1[k], e2[k]):
+                    return False
+            return True
+        else:
+            raise RuntimeError('Unknown Gym space of type ' + str(type(space)))
+
+
+class CostDeterministicGymDomain(DeterministicGymDomain, PositiveCosts):
+    pass
+
+
+class GymPlanningDomain(CostDeterministicGymDomain, Goals):
+    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
+        usable by a classical planner
+
+    !!! warning
+        Using this class requires OpenAI Gym to be installed.
+    """
+
+    def __init__(self, gym_env: gym.Env,
+                       set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
+                       get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
+                       termination_is_goal: bool = False,
+                       max_depth: int = 50) -> None:
+        """Initialize GymPlanningDomain.
+
+        # Parameters
+        gym_env: The deterministic Gym environment (gym.env) to wrap.
+        set_state: Function to call to set the state of the gym environment.
+                   If None, default behavior is to deepcopy the environment when changing state
+        get_state: Function to call to get the state of the gym environment.
+                   If None, default behavior is to deepcopy the environment when changing state
+        max_depth: maximum depth of states to explore from the initial state
+        """
+        super().__init__(gym_env, set_state, get_state)
+        self._termination_is_goal = termination_is_goal
+        self._max_depth = max_depth
+        self._initial_state = None
+        self._current_depth = 0
+        self._restarting_from_initial_state = False
+
+    def _get_initial_state_(self) -> D.T_state:
+        initial_state = super()._get_initial_state_()
+        initial_state._context.append(0)
+        self._initial_state = initial_state
+        self._current_depth = 0
+        return initial_state
+
+    def _get_next_state(self, memory: D.T_memory[D.T_state],
+                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+        if self._initial_state is None:  # the solver's domain does not use _get_initial_state() but gets its initial state from the rollout env shipped with the state context
+            self._initial_state = memory
+        if self._are_same(self._gym_env.observation_space, memory._state, self._initial_state._state):
+            self._restart_from_initial_state()
+        else:
+            self._restarting_from_initial_state = False
+        next_state = super()._get_next_state(memory, action)
+        next_state._context.append(memory._context[5] + 1)
+        if (memory._context[5] + 1 > self._current_depth):
+            self._current_depth = memory._context[5] + 1
+            print('Current depth:', str(self._current_depth), '/', str(self._max_depth))
+        return next_state
+    
+    def _restart_from_initial_state(self):
+        # following test is mandatory since we restart from the initial state
+        # when expanding each action of the initial state
+        # and we want to do it only once
+        if not self._restarting_from_initial_state:
+            self._current_depth = 0
+            if isinstance(self, GymDomain):
+                self._reset_features()
+            self._restarting_from_initial_state = True
+
+    def _get_goals_(self):
+        return ImplicitSpace(lambda observation: ((observation._context[5] >= self._max_depth) or
+                                                  (self._termination_is_goal and (observation._context[3].termination
+                                                                                  if observation._context[3] is not None else False))))
 
 
 class AsGymEnv(gym.Env):
