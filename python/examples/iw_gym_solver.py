@@ -33,7 +33,7 @@ class GymIWDomain(D):
                        discretization_factor: int = 10,
                        branching_factor: int = None,
                        max_depth: int = 50) -> None:
-        """Initialize GymPlanningDomain.
+        """Initialize GymIWDomain.
 
         # Parameters
         gym_env: The deterministic Gym environment (gym.env) to wrap.
@@ -70,14 +70,6 @@ if IW.check_domain(domain):
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_gscore > b_gscore,
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore > b_gscore else False if a_gscore < b_gscore else a_novelty > b_novelty,
                                 parallel=False, debug_logs=False)
-    
-    # solver_factory = lambda: RIW(state_features=lambda s, d: d.state_features(s),
-    #                              use_state_feature_hash=False,
-    #                              use_simulation_domain=False,
-    #                              time_budget=1000,
-    #                              rollout_budget=1000,
-    #                              parallel=False,
-    #                              debug_logs=True)
 
     # solver_factory = lambda: IW(state_features=lambda s, d: s._state,
     #                             use_state_feature_hash=True,

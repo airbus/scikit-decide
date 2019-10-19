@@ -7,7 +7,7 @@ from typing import Callable, Any
 
 from airlaps import Domain, Solver
 from airlaps import hub
-from airlaps.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, \
+from airlaps.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from airlaps.builders.solver import DeterministicPolicies, Utilities
 from airlaps.hub.space.gym import ListSpace
@@ -60,7 +60,7 @@ try:
     #     return action.ns_result
 
 
-    class D(Domain, SingleAgent, Sequential, DeterministicTransitions, Actions, DeterministicInitialized, Markovian,
+    class D(Domain, SingleAgent, Sequential, Environment, Actions, DeterministicInitialized, Markovian,
             FullyObservable, Rewards):  # TODO: check why DeterministicInitialized & PositiveCosts/Rewards?
         pass
 

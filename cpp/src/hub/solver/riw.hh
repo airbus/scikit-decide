@@ -174,16 +174,13 @@ public :
             unsigned int nb_of_binary_features = _state_features(s)->size();
 
             for (unsigned int w = 1 ; w <= nb_of_binary_features ; w++) {
-                std::pair<bool, bool> res = WidthSolver(_domain, _state_features,
-                                                        _time_budget, _rollout_budget,
-                                                        w, _graph, _rollout_policy, _debug_logs).solve(s, start_time, nb_rollouts);
-                if (res.first) { // solution found with width w
+                if(WidthSolver(_domain, _state_features,
+                               _time_budget, _rollout_budget,
+                               w, _graph, _rollout_policy, _debug_logs).solve(s, start_time, nb_rollouts)) {
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
                     spdlog::info("RIW finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
                     return;
-                } else if (!res.second) { // no states pruned => problem is unsolvable
-                    break;
                 }
             }
 
@@ -286,10 +283,10 @@ private :
               _debug_logs(debug_logs) {}
         
         // solves from state s
-        // returned pair p: p.first==true iff solvable, p.second==true iff states have been pruned
-        std::pair<bool, bool> solve(const State& s,
-                                    const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
-                                    unsigned int& nb_rollouts) {
+        // return true iff no state has been pruned or time or rollout budgets are consumed
+        bool solve(const State& s,
+                   const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
+                   unsigned int& nb_rollouts) {
             try {
                 spdlog::info("Running " + ExecutionPolicy::print() + " RIW(" + std::to_string(_width) + ") solver from state " + s.print());
                 auto local_start_time = std::chrono::high_resolution_clock::now();
@@ -359,14 +356,17 @@ private :
                     }
                 }
 
-                if (states_pruned) {
+                if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count() < _time_budget &&
+                    nb_rollouts < _rollout_budget &&
+                    states_pruned) {
                     spdlog::info("RIW(" + std::to_string(_width) + ") could not find a solution from state " + s.print());
+                    return false;
                 } else {
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - local_start_time).count();
                     spdlog::info("RIW(" + std::to_string(_width) + ") finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+                    return true;
                 }
-                return std::make_pair(false, states_pruned);
             } catch (const std::exception& e) {
                 spdlog::error("RIW(" + std::to_string(_width) + ") failed solving from state " + s.print() + ". Reason: " + e.what());
                 throw;
@@ -459,9 +459,9 @@ private :
                 node->terminal = outcome->terminal();
             } else {
                 new_node = false;
-                node = std::get<2>(node->children[action_number]);
                 // call the simulator to be coherent with the new current node /!\ Assumes deterministic environment!
                 _rollout_policy.advance(_domain, node->state, std::get<0>(node->children[action_number]), false);
+                node = std::get<2>(node->children[action_number]);
                 if (_debug_logs) spdlog::debug("Exploring known outcome: " + node->state.print());
             }
             return node->terminal;

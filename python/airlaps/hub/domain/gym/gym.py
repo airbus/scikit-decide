@@ -86,6 +86,101 @@ class DeterministicGymDomainStateProxy :
         return self._state.__str__()
 
 
+class D(Domain, SingleAgent, Sequential, UnrestrictedActions, DeterministicInitialized,
+        Memoryless, FullyObservable, Renderable, Rewards):
+    pass
+
+
+class DeterministicInitializedGymDomain(D):
+    """This class wraps an OpenAI Gym environment (gym.env) as an AIRLAPS domain
+       with a deterministic initial state (i.e. reset the domain to the initial
+       state returned by the first reset)
+
+    !!! warning
+        Using this class requires OpenAI Gym to be installed.
+    """
+
+    def __init__(self, gym_env: gym.Env,
+                       set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
+                       get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None) -> None:
+        """Initialize GymDomain.
+
+        # Parameters
+        gym_env: The Gym environment (gym.env) to wrap.
+        set_state: Function to call to set the state of the gym environment.
+                   If None, default behavior is to deepcopy the environment when changing state
+        get_state: Function to call to get the state of the gym environment.
+                   If None, default behavior is to deepcopy the environment when changing state
+        """
+        self._gym_env = gym_env
+        self._set_state = set_state
+        self._get_state = get_state
+        self._init_env = None
+        self._initial_state = None
+        self._initial_env_state = None
+    
+    def set_memory(self, state: D.T_state) -> None:
+        self._initial_state = state
+        self._memory = self._init_memory(self._initial_state)
+        if self._set_state is not None and self._get_state is not None:
+            self._initial_env_state = state._context
+            self._set_state(self._gym_env, self._initial_env_state)
+        else:
+            self._init_env = state._context
+            self._gym_env = deepcopy(self._init_env)
+    
+    def _get_initial_state_(self) -> D.T_state:
+        if self._initial_state is None:
+            self._initial_state = DeterministicGymDomainStateProxy(state=self._gym_env.reset(), context=None)
+            if self._set_state is not None and self._get_state is not None:
+                self._initial_env_state = self._get_state(self._gym_env)
+                self._initial_state._context = self._initial_env_state
+            else:
+                self._init_env = deepcopy(self._gym_env)
+                self._initial_state._context = self._init_env
+        else:
+            if self._set_state is not None and self._get_state is not None:
+                self._set_state(self._gym_env, self._initial_env_state)
+            else:
+                self._gym_env = deepcopy(self._init_env)
+        return self._initial_state
+    
+    def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
+            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+        obs, reward, done, info = self._gym_env.step(action)
+        if self._set_state is not None and self._get_state is not None:
+            state = DeterministicGymDomainStateProxy(state=obs, context=self._initial_env_state)
+        else:
+            state = DeterministicGymDomainStateProxy(state=obs, context=self._init_env)
+        return TransitionOutcome(state=state, value=TransitionValue(reward=reward), termination=done, info=info)
+    
+    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
+        return GymSpace(self._gym_env.action_space)
+
+    def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
+        return GymSpace(self._gym_env.observation_space)
+
+    def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
+        if 'mode' in kwargs:
+            render =  self._gym_env.render(mode=kwargs['mode'])
+        else:
+            render =  self._gym_env.render()
+        if self._set_state is None or self._get_state is None:
+            self._gym_env.close()  # avoid deepcopy errors
+        return render
+
+    def close(self):
+        return self._gym_env.close()
+
+    def unwrapped(self):
+        """Unwrap the Gym environment (gym.env) and return it.
+
+        # Returns
+        The original Gym environment.
+        """
+        return self._gym_env
+
+
 class GymWidthDomain:
     """This class wraps an OpenAI Gym environment as a domain
         usable by width-based solving algorithm (e.g. IW)
@@ -359,23 +454,6 @@ class DeterministicGymDomain(D):
         self._set_state = set_state
         self._get_state = get_state
         self._init_env = None
-    
-    # def _state_reset(self) -> D.T_state:  # used by rollout algorithms
-    #     if self._initial_state is None:
-    #         if self._set_state is not None and self._get_state is not None:
-    #             self._initial_state = DeterministicGymDomainStateProxy(state=super()._state_reset(),
-    #                                                                    context=[self._gym_env, None, None, None,
-    #                                                                    self._get_state(self._gym_env) if (self._get_state is not None and self._set_state is not None) else None])
-    #         else:
-    #             self._initial_state = DeterministicGymDomainStateProxy(state=super()._state_reset(),
-    #                                                                    context=[self._gym_env, None, None, None, None])
-    #             self._init_env = deepcopy(self._gym_env)
-    #     else:
-    #         if self._set_state is not None and self._get_state is not None:
-    #             self._set_state(self._gym_env, self._initial_state._context[4])
-    #         else:
-    #             self._gym_env = deepcopy(self._init_env)
-    #     return self._initial_state._state
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = self._gym_env.reset()
@@ -502,7 +580,7 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
 
     def _get_next_state(self, memory: D.T_memory[D.T_state],
                         action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
-        if self._initial_state is None:  # the solver's domain does not use _get_initial_state() but gets its initial state from the rollout env shipped with the state context
+        if self._initial_state is None:  # the solver's domain does not use _get_initial_state_() but gets its initial state from the rollout env shipped with the state context
             self._initial_state = memory
         if self._are_same(self._gym_env.observation_space, memory._state, self._initial_state._state):
             self._restart_from_initial_state()

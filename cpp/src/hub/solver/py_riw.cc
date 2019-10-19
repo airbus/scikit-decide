@@ -628,7 +628,7 @@ private :
             : _state_features(state_features) {
             
             _domain = std::make_unique<PyRIWDomain<Texecution>>(domain,
-                std::is_same<Trollout_policy<PyRIWDomain<Texecution>>, airlaps::EnvironmentRollout<PyRIWDomain<Texecution>>>::value);
+                std::is_same<Trollout_policy<PyRIWDomain<Texecution>>, airlaps::SimulationRollout<PyRIWDomain<Texecution>>>::value);
             _solver = std::make_unique<airlaps::RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>>(
                                                                             *_domain,
                                                                             [this](const typename PyRIWDomain<Texecution>::State& s)->std::unique_ptr<PyRIWFeatureVector<Texecution>> {
