@@ -2,7 +2,7 @@
 
 AIRLAPS is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.
 
-Open sourcing of the library is due in September 2019 on [Github](https://github.com).
+Open sourcing of the library is due in 2019 on [Github](https://github.com).
 
 ## Installation
 
