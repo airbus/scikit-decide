@@ -544,11 +544,13 @@ private :
             node.fscore = (_max_depth - node.depth) * _max_cost;
             std::unordered_set<Node*> frontier;
             frontier.insert(&node);
+            std::unordered_set<Node*> explored;
+            explored.insert(&node);
 
             while (!frontier.empty()) {
                 std::unordered_set<Node*> new_frontier;
-                std::for_each(frontier.begin(), frontier.end(), [&new_frontier, &frontier](Node* n){
-                    std::for_each(n->parents.begin(), n->parents.end(), [&new_frontier, &frontier](Node* p) {
+                std::for_each(frontier.begin(), frontier.end(), [&new_frontier, &explored](Node* n){
+                    std::for_each(n->parents.begin(), n->parents.end(), [&new_frontier, &explored](Node* p) {
                         p->solved = true;
                         p->fscore = std::numeric_limits<double>::infinity();
                         p->best_action = nullptr;
@@ -562,8 +564,9 @@ private :
                                 }
                             }
                         });
-                        if (frontier.find(p) == frontier.end()) {
+                        if (explored.find(p) == explored.end()) {
                             new_frontier.insert(p);
+                            explored.insert(p);
                         }
                     });
                 });
