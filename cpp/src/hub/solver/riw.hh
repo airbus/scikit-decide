@@ -156,7 +156,7 @@ public :
     : _domain(domain), _state_features(state_features),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _max_cost(max_cost), _exploration(exploration),
-      _debug_logs(debug_logs) {
+      _start_depth(0), _debug_logs(debug_logs) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {
@@ -168,6 +168,7 @@ public :
     // previous search results)
     void clear() {
         _graph.clear();
+        _start_depth = 0;
     }
 
     // solves from state s
@@ -178,11 +179,13 @@ public :
             unsigned int nb_rollouts = 0;
             unsigned int nb_of_binary_features = _state_features(s)->size();
 
+            TupleVector feature_tuples;
+
             for (unsigned int w = 1 ; w <= nb_of_binary_features ; w++) {
                 if(WidthSolver(_domain, _state_features,
                                _time_budget, _rollout_budget,
                                _max_depth, _max_cost, _exploration,
-                               w, _graph, _rollout_policy, _debug_logs).solve(s, start_time, nb_rollouts)) {
+                               w, _graph, _rollout_policy, _debug_logs).solve(s, start_time, _start_depth, nb_rollouts, feature_tuples)) {
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
                     spdlog::info("RIW finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
@@ -213,7 +216,7 @@ public :
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
         }
         _rollout_policy.advance(_domain, s, *(si->best_action), true);
-        _max_depth = (_max_depth == 0) ? (0) : (_max_depth - 1);
+        _start_depth += 1;
         return *(si->best_action);
     }
 
@@ -235,6 +238,7 @@ private :
     unsigned int _max_depth;
     double _max_cost;
     double _exploration;
+    unsigned int _start_depth;
     RolloutPolicy _rollout_policy;
     bool _debug_logs;
 
@@ -271,6 +275,9 @@ private :
     typedef typename SetTypeDeducer<Node, HashingPolicy>::Set Graph;
     Graph _graph;
 
+    typedef std::vector<std::pair<unsigned int, typename FeatureVector::value_type>> TupleType; // pair of var id and var value
+    typedef std::vector<std::unordered_map<TupleType, unsigned int, boost::hash<TupleType>>> TupleVector; // mapped to min reached depth
+
     class WidthSolver { // known as IW(i), i.e. the fixed-width solver sequentially run by IW
     public :
         typedef Tdomain Domain;
@@ -302,7 +309,9 @@ private :
         // return true iff no state has been pruned or time or rollout budgets are consumed
         bool solve(const State& s,
                    const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
-                   unsigned int& nb_rollouts) {
+                   unsigned int start_depth,
+                   unsigned int& nb_rollouts,
+                   TupleVector& feature_tuples) {
             try {
                 spdlog::info("Running " + ExecutionPolicy::print() + " RIW(" + std::to_string(_width) + ") solver from state " + s.print());
                 auto local_start_time = std::chrono::high_resolution_clock::now();
@@ -318,11 +327,13 @@ private :
                 // Create the root node containing the given state s
                 auto si = _graph.emplace(Node(s, _state_features));
                 Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
-                root_node.depth = 0;
+                root_node.depth = start_depth;
                 bool states_pruned = false;
 
                 // Vector of sets of state feature tuples generated so far, for each w <= _width
-                TupleVector feature_tuples(_width);
+                if (feature_tuples.size() < _width) {
+                    feature_tuples.push_back(typename TupleVector::value_type());
+                }
                 novelty(feature_tuples, root_node, true); // initialize feature_tuples with the root node's bits
 
                 // Start rollouts
@@ -436,9 +447,6 @@ private :
         RolloutPolicy& _rollout_policy;
         ExecutionPolicy _execution_policy;
         bool _debug_logs;
-
-        typedef std::vector<std::pair<unsigned int, typename FeatureVector::value_type>> TupleType; // pair of var id and var value
-        typedef std::vector<std::unordered_map<TupleType, unsigned int, boost::hash<TupleType>>> TupleVector; // mapped to min reached depth
 
         // Input: feature tuple vector, node for which to compute novelty depth, boolean indicating whether this node is new or not
         // Returns true if at least one tuple is new or is reached with lower depth
