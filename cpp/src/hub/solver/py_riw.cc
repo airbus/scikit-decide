@@ -541,6 +541,9 @@ public :
                 bool use_simulation_domain = false,
                 unsigned int time_budget = 3600000,
                 unsigned int rollout_budget = 100000,
+                unsigned int max_depth = 1000,
+                double max_cost = 10000,
+                double exploration = 0.25,
                 bool parallel = true,
                 bool debug_logs = false) {
 
@@ -548,36 +551,36 @@ public :
             if (use_state_feature_hash) {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
                 }
             } else {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
                 }
             }
         } else {
             if (use_state_feature_hash) {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
                 }
             } else {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
                 }
             }
         }
@@ -624,6 +627,9 @@ private :
                        const std::function<py::object (const py::object&)>& state_features,
                        unsigned int time_budget = 3600000,
                        unsigned int rollout_budget = 100000,
+                       unsigned int max_depth = 1000,
+                       double max_cost = 10000,
+                       double exploration = 0.25,
                        bool debug_logs = false)
             : _state_features(state_features) {
             
@@ -642,6 +648,9 @@ private :
                                                                             },
                                                                             time_budget,
                                                                             rollout_budget,
+                                                                            max_depth,
+                                                                            max_cost,
+                                                                            exploration,
                                                                             debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
@@ -701,6 +710,9 @@ void init_pyriw(py::module& m) {
                           bool,
                           unsigned int,
                           unsigned int,
+                          unsigned int,
+                          double,
+                          double,
                           bool,
                           bool>(),
                  py::arg("domain"),
@@ -709,6 +721,9 @@ void init_pyriw(py::module& m) {
                  py::arg("use_simulation_domain")=false,
                  py::arg("time_budget")=3600000,
                  py::arg("rollout_budget")=100000,
+                 py::arg("max_depth")=1000,
+                 py::arg("max_cost")=10000.0,
+                 py::arg("exploration")=0.25,
                  py::arg("parallel")=true,
                  py::arg("debug_logs")=false)
             .def("clear", &PyRIWSolver::clear)

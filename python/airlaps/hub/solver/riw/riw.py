@@ -74,6 +74,9 @@ try:
                      use_simulation_domain = False,
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
+                     max_depth: int = 1000,
+                     max_cost: float = 10000.0,
+                     exploration: float = 0.25,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             self._solver = None
@@ -83,6 +86,9 @@ try:
             self._use_simulation_domain = use_simulation_domain
             self._time_budget = time_budget
             self._rollout_budget = rollout_budget
+            self._max_depth = max_depth
+            self._max_cost = max_cost
+            self._exploration = exploration
             self._parallel = parallel
             self._debug_logs = debug_logs
 
@@ -110,6 +116,9 @@ try:
                                       use_simulation_domain=self._use_simulation_domain,
                                       time_budget=self._time_budget,
                                       rollout_budget=self._rollout_budget,
+                                      max_depth=self._max_depth,
+                                      max_cost=self._max_cost,
+                                      exploration=self._exploration,
                                       parallel=self._parallel,
                                       debug_logs=self._debug_logs)
             self._solver.clear()

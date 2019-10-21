@@ -6,7 +6,7 @@ from airlaps.hub.domain.gym import DeterministicInitializedGymDomain, GymWidthDo
 from airlaps.hub.solver.riw import RIW
 from airlaps.utils import rollout
 
-ENV_NAME = 'MountainCar-v0'
+ENV_NAME = 'CartPole-v0'
 HORIZON = 200
 
 gym_env = gym.make(ENV_NAME)
@@ -57,10 +57,13 @@ if RIW.check_domain(domain):
     solver_factory = lambda: RIW(state_features=lambda s, d: d.state_features(s),
                                  use_state_feature_hash=False,
                                  use_simulation_domain=False,
-                                 time_budget=1000,
+                                 time_budget=200,
                                  rollout_budget=1000,
+                                 max_depth=HORIZON-1,
+                                 max_cost=10,
+                                 exploration=0.25,
                                  parallel=False,
                                  debug_logs=False)
     solver = GymRIWDomain.solve_with(solver_factory, domain_factory)
     initial_state = solver._domain.reset()
-    rollout(domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON, max_framerate=30, outcome_formatter=None, action_formatter=None)
+    rollout(domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON-1, max_framerate=30, outcome_formatter=None, action_formatter=None)

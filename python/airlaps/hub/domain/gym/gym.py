@@ -129,7 +129,7 @@ class DeterministicInitializedGymDomain(D):
             self._init_env = state._context
             self._gym_env = deepcopy(self._init_env)
     
-    def _get_initial_state_(self) -> D.T_state:
+    def _state_reset(self) -> D.T_state:
         if self._initial_state is None:
             self._initial_state = DeterministicGymDomainStateProxy(state=self._gym_env.reset(), context=None)
             if self._set_state is not None and self._get_state is not None:

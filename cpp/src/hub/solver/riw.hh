@@ -148,9 +148,13 @@ public :
               const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
               unsigned int time_budget = 3600000,
               unsigned int rollout_budget = 100000,
+              unsigned int max_depth = 1000,
+              double max_cost = 10000,
+              double exploration = 0.25,
               bool debug_logs = false)
     : _domain(domain), _state_features(state_features),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
+      _max_depth(max_depth), _max_cost(max_cost), _exploration(exploration),
       _debug_logs(debug_logs) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
@@ -176,6 +180,7 @@ public :
             for (unsigned int w = 1 ; w <= nb_of_binary_features ; w++) {
                 if(WidthSolver(_domain, _state_features,
                                _time_budget, _rollout_budget,
+                               _max_depth, _max_cost, _exploration,
                                w, _graph, _rollout_policy, _debug_logs).solve(s, start_time, nb_rollouts)) {
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
@@ -225,6 +230,9 @@ private :
     std::function<std::unique_ptr<FeatureVector> (const State& s)> _state_features;
     unsigned int _time_budget;
     unsigned int _rollout_budget;
+    unsigned int _max_depth;
+    double _max_cost;
+    double _exploration;
     mutable RolloutPolicy _rollout_policy;
     bool _debug_logs;
 
@@ -235,6 +243,7 @@ private :
         std::list<Node*> parents;
         double fscore; // not in A*'s meaning but rather to store cost-to-go once a solution is found
         unsigned int depth;
+        unsigned int novelty;
         Action* best_action;
         bool terminal; // set to true if terminal state from the simulator's perspective
         bool solved; // set to true if on the solution path constructed backward from the goal state
@@ -243,6 +252,7 @@ private :
             : state(s),
               fscore(std::numeric_limits<double>::infinity()),
               depth(std::numeric_limits<unsigned int>::max()),
+              novelty(std::numeric_limits<unsigned int>::max()),
               best_action(nullptr),
               terminal(false),
               solved(false) {
@@ -273,12 +283,16 @@ private :
                     const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
                     unsigned int time_budget,
                     unsigned int rollout_budget,
+                    unsigned int max_depth,
+                    double max_cost,
+                    double exploration,
                     unsigned int width,
                     Graph& graph,
                     RolloutPolicy& rollout_policy,
                     bool debug_logs)
             : _domain(domain), _state_features(state_features),
               _time_budget(time_budget), _rollout_budget(rollout_budget),
+              _max_depth(max_depth), _max_cost(max_cost), _exploration(exploration),
               _width(width), _graph(graph), _rollout_policy(rollout_policy),
               _debug_logs(debug_logs) {}
         
@@ -317,12 +331,18 @@ private :
                     // Start new rollout
                     nb_rollouts += 1;
                     Node* current_node = &root_node;
-                    if (_debug_logs) spdlog::debug("New rollout from state: " + current_node->state.print());
+
+                    if (_debug_logs) spdlog::debug("New rollout from state: " + current_node->state.print() +
+                                                   ", depth=" + std::to_string(current_node->depth) +
+                                                   ", fscore=" + std::to_string(current_node->fscore));
                     _rollout_policy.init_rollout(_domain);
 
                     while (!(current_node->solved) &&
                            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count() < _time_budget) {
-                        if (_debug_logs) spdlog::debug("Current state: " + current_node->state.print());
+                        
+                        if (_debug_logs) spdlog::debug("Current state: " + current_node->state.print() +
+                                                       ", depth=" + std::to_string(current_node->depth) +
+                                                       ", fscore=" + std::to_string(current_node->fscore));
 
                         if (current_node->children.empty()) {
                             // Generate applicable actions
@@ -334,27 +354,46 @@ private :
                         
                         // Sample unsolved child
                         std::vector<unsigned int> unsolved_children;
+                        std::vector<double> probabilities;
                         for (unsigned int i = 0 ; i < current_node->children.size() ; i++) {
                             Node* n = std::get<2>(current_node->children[i]);
-                            if (!n || !(n->solved)) {
+                            if (!n) {
                                 unsolved_children.push_back(i);
+                                probabilities.push_back(_exploration);
+                            } else if (!n->solved) {
+                                unsolved_children.push_back(i);
+                                probabilities.push_back((1.0 - _exploration) / ((double) n->novelty));
                             }
                         }
-                        unsigned int pick = unsolved_children[std::uniform_int_distribution<>(0, unsolved_children.size()-1)(gen)];
+                        unsigned int pick = unsolved_children[std::discrete_distribution<>(probabilities.begin(), probabilities.end())(gen)];
                         bool new_node = false;
 
                         if (fill_child_node(current_node, pick, new_node)) { // terminal state
-                            if (_debug_logs) spdlog::debug("Found a terminal state: " + current_node->state.print());
+                            if (_debug_logs) spdlog::debug("Found a terminal state: " + current_node->state.print() +
+                                                           ", depth=" + std::to_string(current_node->depth) +
+                                                           ", fscore=" + std::to_string(current_node->fscore));
                             solve_node(*current_node);
                             break;
                         } else if (!novelty(feature_tuples, *current_node, new_node)) { // no new tuple or not reached with lower depth => terminal node
-                            if (_debug_logs) spdlog::debug("Pruning state: " + current_node->state.print());
+                            if (_debug_logs) spdlog::debug("Pruning state: " + current_node->state.print() +
+                                                           ", depth=" + std::to_string(current_node->depth) +
+                                                           ", fscore=" + std::to_string(current_node->fscore));
                             states_pruned = true;
+                            solve_node(*current_node);
+                            break;
+                        } else if (current_node->depth >= _max_depth) {
+                            if (_debug_logs) spdlog::debug("Max depth reached in state: " + current_node->state.print() +
+                                                           ", depth=" + std::to_string(current_node->depth) +
+                                                           ", fscore=" + std::to_string(current_node->fscore));
                             solve_node(*current_node);
                             break;
                         }
                     }
                 }
+
+                if (_debug_logs) spdlog::debug("time budget: " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) +
+                                               " ms, rollout budget: " + std::to_string(nb_rollouts) +
+                                               ", states pruned: " + std::to_string(states_pruned));
 
                 if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count() < _time_budget &&
                     nb_rollouts < _rollout_budget &&
@@ -378,6 +417,9 @@ private :
         const std::function<std::unique_ptr<FeatureVector> (const State& s)>& _state_features;
         unsigned int _time_budget;
         unsigned int _rollout_budget;
+        unsigned int _max_depth;
+        double _max_cost;
+        double _exploration;
         unsigned int _width;
         Graph& _graph;
         RolloutPolicy& _rollout_policy;
@@ -391,6 +433,7 @@ private :
         // Returns true if at least one tuple is new or is reached with lower depth
         bool novelty(TupleVector& feature_tuples, Node& n, bool nn) const {
             // feature_tuples is a set of state variable combinations of size _width
+            unsigned int nov = n.features->size() + 1;
             const FeatureVector& state_features = *n.features;
             bool novel_depth = false;
 
@@ -398,15 +441,20 @@ private :
                 // we must recompute combinations from previous width values just in case
                 // this state would be visited for the first time across width iterations
                 generate_tuples(k, state_features.size(),
-                                [this, &state_features, &feature_tuples, &k, &novel_depth, &n, &nn](TupleType& cv){
+                                [this, &state_features, &feature_tuples, &k, &novel_depth, &n, &nn, &nov](TupleType& cv){
                     for (auto& e : cv) {
                         e.second = state_features[e.first];
                     }
                     auto it = feature_tuples[k-1].insert(std::make_pair(cv, n.depth));
                     novel_depth = novel_depth || it.second || (nn && (it.first->second > n.depth)) || (!nn && (it.first->second == n.depth));
                     it.first->second = std::min(it.first->second, n.depth);
+                    if(it.second) {
+                        nov = std::min(nov, k);
+                    }
                 });
             }
+            n.novelty = nov;
+            if (_debug_logs) spdlog::debug("Novelty: " + std::to_string(nov));
             if (_debug_logs) spdlog::debug("Novelty depth check: " + std::to_string(novel_depth));
             return novel_depth;
         }
@@ -455,21 +503,25 @@ private :
                 std::get<2>(node->children[action_number])->parents.push_back(node);
                 std::get<2>(node->children[action_number])->depth = std::min(std::get<2>(node->children[action_number])->depth, node->depth + 1);
                 node = std::get<2>(node->children[action_number]);
-                if (_debug_logs) spdlog::debug("Exploring new outcome: " + node->state.print());
+                if (_debug_logs) spdlog::debug("Exploring new outcome: " + node->state.print() +
+                                               ", depth=" + std::to_string(node->depth) +
+                                               ", fscore=" + std::to_string(node->fscore));
                 node->terminal = outcome->terminal();
             } else {
                 new_node = false;
                 // call the simulator to be coherent with the new current node /!\ Assumes deterministic environment!
                 _rollout_policy.advance(_domain, node->state, std::get<0>(node->children[action_number]), false);
                 node = std::get<2>(node->children[action_number]);
-                if (_debug_logs) spdlog::debug("Exploring known outcome: " + node->state.print());
+                if (_debug_logs) spdlog::debug("Exploring known outcome: " + node->state.print() +
+                                               ", depth=" + std::to_string(node->depth) +
+                                               ", fscore=" + std::to_string(node->fscore));
             }
             return node->terminal;
         }
 
         void solve_node(Node& node) {
             node.solved = true;
-            node.fscore = 0.0;
+            node.fscore = (_max_depth - node.depth) * _max_cost;
             std::unordered_set<Node*> frontier;
             frontier.insert(&node);
 
