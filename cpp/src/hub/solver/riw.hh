@@ -547,8 +547,8 @@ private :
 
             while (!frontier.empty()) {
                 std::unordered_set<Node*> new_frontier;
-                std::for_each(frontier.begin(), frontier.end(), [&new_frontier](Node* n){
-                    std::for_each(n->parents.begin(), n->parents.end(), [&new_frontier](Node* p) {
+                std::for_each(frontier.begin(), frontier.end(), [&new_frontier, &frontier](Node* n){
+                    std::for_each(n->parents.begin(), n->parents.end(), [&new_frontier, &frontier](Node* p) {
                         p->solved = true;
                         p->fscore = std::numeric_limits<double>::infinity();
                         p->best_action = nullptr;
@@ -562,7 +562,9 @@ private :
                                 }
                             }
                         });
-                        new_frontier.insert(p);
+                        if (frontier.find(p) == frontier.end()) {
+                            new_frontier.insert(p);
+                        }
                     });
                 });
                 frontier = new_frontier;
