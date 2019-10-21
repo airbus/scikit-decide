@@ -29,7 +29,7 @@ class GymIWDomain(D):
     def __init__(self, gym_env: gym.Env,
                        set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
                        get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
-                       termination_is_goal: bool = False,
+                       termination_is_goal: bool = True,
                        discretization_factor: int = 10,
                        branching_factor: int = None,
                        max_depth: int = 50) -> None:
@@ -66,7 +66,7 @@ if IW.check_domain(domain):
                                 use_state_feature_hash=False,
                                 node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty > b_novelty,
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_depth < b_depth,
-                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_depth < b_depth,
+                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_depth > b_depth,
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_gscore > b_gscore,
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore > b_gscore else False if a_gscore < b_gscore else a_novelty > b_novelty,
                                 parallel=False, debug_logs=False)
