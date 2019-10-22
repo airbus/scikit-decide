@@ -13,7 +13,7 @@ from airlaps.builders.solver import DeterministicPolicies, Utilities
 from airlaps.hub.space.gym import ListSpace
 
 record_sys_path = sys.path
-airlaps_cpp_extension_lib_path = os.path.join(hub.__path__[0], 'lib')
+airlaps_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
 if airlaps_cpp_extension_lib_path not in sys.path:
     sys.path.append(airlaps_cpp_extension_lib_path)
 
