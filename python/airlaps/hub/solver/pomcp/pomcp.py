@@ -1,3 +1,11 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 # Original code by Patrik Haslum, based on POMCP from:
 # Silver, D., & Veness, J. (2010). Monte-Carlo Planning in Large POMDPs.
 # In Advances in neural information processing systems (pp. 2164–2172).

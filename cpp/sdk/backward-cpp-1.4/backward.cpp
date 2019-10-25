@@ -1,3 +1,7 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 // Pick your poison.
 //
 // On GNU/Linux, you have few choices to get the most out of your stack trace.

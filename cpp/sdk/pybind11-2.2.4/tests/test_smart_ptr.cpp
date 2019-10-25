@@ -1,3 +1,7 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 /*
     tests/test_smart_ptr.cpp -- binding classes with custom reference counting,
     implicit conversions between types

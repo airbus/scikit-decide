@@ -1,3 +1,7 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 #ifndef AIRLAPS_PDDL_EFFECT_HH
 #define AIRLAPS_PDDL_EFFECT_HH
 

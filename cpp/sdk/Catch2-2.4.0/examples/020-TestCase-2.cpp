@@ -1,3 +1,7 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 // 020-TestCase-2.cpp
 
 // main() provided by Catch in file 020-TestCase-1.cpp.
