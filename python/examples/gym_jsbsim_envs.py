@@ -4,6 +4,7 @@ import numpy as np
 
 from typing import Callable
 
+from airlaps import TransitionOutcome, TransitionValue
 from airlaps.hub.domain.gym import DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain
 from airlaps.hub.solver.iw import IW
 from airlaps.hub.solver.riw import RIW
@@ -53,12 +54,17 @@ class GymRIWDomain(D):
                                          discretization_factor=discretization_factor,
                                          branching_factor=branching_factor)
         GymWidthDomain.__init__(self)
+    
+    def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
+            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+        o = super()._state_step(action)
+        return TransitionOutcome(state=o.state, value=TransitionValue(reward=-o.value.reward), termination=o.termination, info=o.info)
 
 
 domain_factory = lambda: GymRIWDomain(gym_env=gym_env,
                                       set_state=lambda e, s: e.set_state(s),
                                       get_state=lambda e: e.get_state(),
-                                      discretization_factor=10)
+                                      discretization_factor=5)
 domain = domain_factory()
 
 def state_features(s, d):
@@ -73,7 +79,7 @@ if RIW.check_domain(domain):
     solver_factory = lambda: RIW(state_features=lambda s, d: state_features(s, d),
                                  use_state_feature_hash=False,
                                  use_simulation_domain=False,
-                                 time_budget=1000,
+                                 time_budget=5000,
                                  rollout_budget=1000,
                                  max_depth=HORIZON-1,
                                  max_cost=1,
