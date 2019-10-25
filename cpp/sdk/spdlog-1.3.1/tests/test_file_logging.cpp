@@ -1,3 +1,7 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 /*
  * This content is released under the MIT License as specified in https://raw.githubusercontent.com/gabime/spdlog/master/LICENSE
  */

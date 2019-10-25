@@ -1,3 +1,7 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 /*
  *  Created by Phil on 5/12/2012.
  *  Copyright 2012 Two Blue Cubes Ltd. All rights reserved.
