@@ -197,9 +197,14 @@ class GymWidthDomain:
         Using this class requires OpenAI Gym to be installed.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, continuous_feature_fidelity: int = 1) -> None:
         """Initialize GymWidthDomain.
+
+        # Parameters
+        continuous_feature_fidelity: Number of integers to represent a continuous feature
+                                     in the interval-based feature abstraction (higher is more precise)
         """
+        self._continuous_feature_fidelity = continuous_feature_fidelity
         self._feature_increments = []
         self._init_continuous_state_variables = []
     
@@ -211,8 +216,10 @@ class GymWidthDomain:
         if isinstance(space, gym.spaces.box.Box):
             for cell in np.nditer(state):
                 self._init_continuous_state_variables.append(cell)
-                self._feature_increments.append([]) # positive increments list
-                self._feature_increments.append([]) # negative increments list
+                # positive increments list for each fidelity level
+                self._feature_increments.append([[] for f in range(self._continuous_feature_fidelity)])
+                # negative increments list for each fidelity level
+                self._feature_increments.append([[] for f in range(self._continuous_feature_fidelity)])
         elif isinstance(space, gym.spaces.tuple.Tuple):
             for s in range(len(space.spaces)):
                 self._init_state_features(space.spaces[s], state[s])
@@ -235,20 +242,24 @@ class GymWidthDomain:
         if isinstance(space, gym.spaces.box.Box):
             features = []
             index = start
-            update_index = set()
             for cell in np.nditer(element):
+                ref_val = self._init_continuous_state_variables[index]
+                cf = []
                 if cell > self._init_continuous_state_variables[index]:
-                    i = bisect.bisect_left(self._feature_increments[2*index], cell - self._init_continuous_state_variables[index])
-                    features.append(i)
-                    if i >= len(self._feature_increments[2*index]):
-                        self._feature_increments[2*index].append(cell - self._init_continuous_state_variables[index])
-                        update_index.add(index)
+                    for f in range(self._continuous_feature_fidelity):
+                        i = bisect.bisect_left(self._feature_increments[2*index][f], cell - ref_val)
+                        cf.append(i)
+                        if i >= len(self._feature_increments[2*index][f]):
+                            self._feature_increments[2*index][f].append(cell - ref_val)
+                        ref_val = ref_val + self._feature_increments[2*index][f][i]
                 else:
-                    i = bisect.bisect_left(self._feature_increments[2*index + 1], self._init_continuous_state_variables[index] - cell)
-                    features.append(-i)
-                    if i >= len(self._feature_increments[2*index + 1]):
-                        self._feature_increments[2*index + 1].append(self._init_continuous_state_variables[index] - cell)
-                        update_index.add(index)
+                    for f in range(self._continuous_feature_fidelity):
+                        i = bisect.bisect_left(self._feature_increments[2*index + 1][f], ref_val - cell)
+                        cf.append(-i)
+                        if i >= len(self._feature_increments[2*index + 1][f]):
+                            self._feature_increments[2*index + 1][f].append(ref_val - cell)
+                        ref_val = ref_val - self._feature_increments[2*index + 1][f][i]
+                features.append(tuple(cf))
                 index += 1
             return index, features
         elif isinstance(space, gym.spaces.discrete.Discrete):
@@ -570,6 +581,7 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
                    If None, default behavior is to deepcopy the environment when changing state
         get_state: Function to call to get the state of the gym environment.
                    If None, default behavior is to deepcopy the environment when changing state
+        termination_is_goal: True if the termination condition is a goal (and not a dead-end)
         max_depth: maximum depth of states to explore from the initial state
         """
         super().__init__(gym_env, set_state, get_state)

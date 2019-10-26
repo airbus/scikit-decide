@@ -48,8 +48,10 @@ class GymRIWDomain(D):
     def __init__(self, gym_env: gym.Env,
                        set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
                        get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
+                       continuous_feature_fidelity: int = 1,
                        discretization_factor: int = 10,
-                       branching_factor: int = None) -> None:
+                       branching_factor: int = None,
+                       max_depth: int = None) -> None:
         """Initialize GymRIWDomain.
 
         # Parameters
@@ -58,6 +60,11 @@ class GymRIWDomain(D):
                    If None, default behavior is to deepcopy the environment when changing state
         get_state: Function to call to get the state of the gym environment.
                    If None, default behavior is to deepcopy the environment when changing state
+        continuous_feature_fidelity: Number of integers to represent a continuous feature
+                                     in the interval-based feature abstraction (higher is more precise)
+        discretization_factor: Number of discretized action variable values per continuous action variable
+        branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
+        max_depth: maximum depth of states to explore from the initial state
         """
         DeterministicInitializedGymDomain.__init__(self,
                                                    gym_env=gym_env,
@@ -66,7 +73,7 @@ class GymRIWDomain(D):
         GymDiscreteActionDomain.__init__(self,
                                          discretization_factor=discretization_factor,
                                          branching_factor=branching_factor)
-        GymWidthDomain.__init__(self)
+        GymWidthDomain.__init__(self, continuous_feature_fidelity=continuous_feature_fidelity)
         self._map = None
         self._current_point = None
     
@@ -103,6 +110,7 @@ class GymRIWDomain(D):
 domain_factory = lambda: GymRIWDomain(gym_env=gym_env,
                                       set_state=lambda e, s: e.set_state(s),
                                       get_state=lambda e: e.get_state(),
+                                      continuous_feature_fidelity=3,
                                       discretization_factor=5)
 domain = domain_factory()
 
@@ -118,7 +126,7 @@ if RIW.check_domain(domain):
     solver_factory = lambda: RIW(state_features=lambda s, d: state_features(s, d),
                                  use_state_feature_hash=False,
                                  use_simulation_domain=False,
-                                 time_budget=5000,
+                                 time_budget=2000,
                                  rollout_budget=1000,
                                  max_depth=HORIZON-1,
                                  max_cost=1,
@@ -127,4 +135,5 @@ if RIW.check_domain(domain):
                                  debug_logs=False)
     solver = GymRIWDomain.solve_with(solver_factory, domain_factory)
     initial_state = solver._domain.reset()
-    rollout(domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON, max_framerate=30, outcome_formatter=None, action_formatter=None)
+    rollout(domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON, max_framerate=30,
+            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

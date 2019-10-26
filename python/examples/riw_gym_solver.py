@@ -36,6 +36,7 @@ class GymRIWDomain(D):
     def __init__(self, gym_env: gym.Env,
                        set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
                        get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
+                       continuous_feature_fidelity: int = 1,
                        discretization_factor: int = 10,
                        branching_factor: int = None) -> None:
         """Initialize GymRIWDomain.
@@ -46,6 +47,11 @@ class GymRIWDomain(D):
                    If None, default behavior is to deepcopy the environment when changing state
         get_state: Function to call to get the state of the gym environment.
                    If None, default behavior is to deepcopy the environment when changing state
+        continuous_feature_fidelity: Number of integers to represent a continuous feature
+                                     in the interval-based feature abstraction (higher is more precise)
+        discretization_factor: Number of discretized action variable values per continuous action variable
+        branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
+        max_depth: maximum depth of states to explore from the initial state
         """
         DeterministicInitializedGymDomain.__init__(self,
                                                    gym_env=gym_env,
@@ -54,10 +60,11 @@ class GymRIWDomain(D):
         GymDiscreteActionDomain.__init__(self,
                                          discretization_factor=discretization_factor,
                                          branching_factor=branching_factor)
-        GymWidthDomain.__init__(self)
+        GymWidthDomain.__init__(self, continuous_feature_fidelity=continuous_feature_fidelity)
 
 
 domain_factory = lambda: GymRIWDomain(gym_env=gym_env,
+                                      continuous_feature_fidelity=2,
                                       discretization_factor=3)
 domain = domain_factory()
 

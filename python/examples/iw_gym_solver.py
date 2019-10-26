@@ -38,6 +38,7 @@ class GymIWDomain(D):
                        set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
                        get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
                        termination_is_goal: bool = True,
+                       continuous_feature_fidelity: int = 1,
                        discretization_factor: int = 10,
                        branching_factor: int = None,
                        max_depth: int = 50) -> None:
@@ -49,6 +50,11 @@ class GymIWDomain(D):
                    If None, default behavior is to deepcopy the environment when changing state
         get_state: Function to call to get the state of the gym environment.
                    If None, default behavior is to deepcopy the environment when changing state
+        termination_is_goal: True if the termination condition is a goal (and not a dead-end)
+        continuous_feature_fidelity: Number of integers to represent a continuous feature
+                                     in the interval-based feature abstraction (higher is more precise)
+        discretization_factor: Number of discretized action variable values per continuous action variable
+        branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
         max_depth: maximum depth of states to explore from the initial state
         """
         GymPlanningDomain.__init__(self,
@@ -60,11 +66,12 @@ class GymIWDomain(D):
         GymDiscreteActionDomain.__init__(self,
                                          discretization_factor=discretization_factor,
                                          branching_factor=branching_factor)
-        GymWidthDomain.__init__(self)
+        GymWidthDomain.__init__(self, continuous_feature_fidelity=continuous_feature_fidelity)
 
 
 domain_factory = lambda: GymIWDomain(gym_env=gym_env,
                                      termination_is_goal=True,
+                                     continuous_feature_fidelity=2,
                                      discretization_factor=3,
                                      max_depth=HORIZON)
 domain = domain_factory()
