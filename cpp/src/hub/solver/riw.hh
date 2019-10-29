@@ -395,6 +395,8 @@ private :
                                                            ", depth=" + std::to_string(current_node->depth) +
                                                            ", fscore=" + std::to_string(current_node->fscore));
                             states_pruned = true;
+                            // /!\ current_node can become solved with some unsolved children in case it was
+                            // already visited and novel but now some of its features are reached with lower depth
                             update_node(*current_node, true);
                             break;
                         } else if (current_node->depth >= _max_depth) {
@@ -524,17 +526,30 @@ private :
                 std::get<2>(node->children[action_number]) = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 std::get<1>(node->children[action_number]) = outcome->cost();
                 std::get<2>(node->children[action_number])->parents.push_back(node);
-                std::get<2>(node->children[action_number])->depth = node->depth + 1;
-                node = std::get<2>(node->children[action_number]);
-                if (_debug_logs) spdlog::debug("Exploring new outcome: " + node->state.print() +
-                                               ", depth=" + std::to_string(node->depth) +
-                                               ", fscore=" + std::to_string(node->fscore));
-                node->terminal = outcome->terminal();
-            } else {
+                if (new_node) {
+                    if (_debug_logs) spdlog::debug("Exploring new outcome: " + node->state.print() +
+                                                   ", depth=" + std::to_string(node->depth) +
+                                                   ", fscore=" + std::to_string(node->fscore));
+                    std::get<2>(node->children[action_number])->depth = node->depth + 1;
+                    node = std::get<2>(node->children[action_number]);
+                    node->terminal = outcome->terminal();
+                } else { // outcome already explored
+                    if (_debug_logs) spdlog::debug("Exploring known outcome: " + node->state.print() +
+                                                   ", depth=" + std::to_string(node->depth) +
+                                                   ", fscore=" + std::to_string(node->fscore));
+                    std::get<2>(node->children[action_number])->depth = std::min(
+                        std::get<2>(node->children[action_number])->depth, node->depth + 1);
+                    if (std::get<2>(node->children[action_number])->solved) { // solved child
+                        node = std::get<2>(node->children[action_number]);
+                        return true; // consider solved node as terminal to stop current rollout
+                    }
+                }
+            } else { // second visit, unsolved child
                 new_node = false;
                 // call the simulator to be coherent with the new current node /!\ Assumes deterministic environment!
                 _rollout_policy.advance(_domain, node->state, std::get<0>(node->children[action_number]), false);
-                std::get<2>(node->children[action_number])->depth = std::min(std::get<2>(node->children[action_number])->depth, node->depth + 1);
+                std::get<2>(node->children[action_number])->depth = std::min(
+                    std::get<2>(node->children[action_number])->depth, node->depth + 1);
                 node = std::get<2>(node->children[action_number]);
                 if (_debug_logs) spdlog::debug("Exploring known outcome: " + node->state.print() +
                                                ", depth=" + std::to_string(node->depth) +
@@ -550,15 +565,22 @@ private :
             frontier.insert(&node);
             std::unordered_set<Node*> explored;
             explored.insert(&node);
+            std::unordered_set<Node*> tips;
+            tips.insert(&node);
+            bool cycles = false;
 
             while (!frontier.empty()) {
                 std::unordered_set<Node*> new_frontier;
-                std::for_each(frontier.begin(), frontier.end(), [&new_frontier, &explored](Node* n){
-                    std::for_each(n->parents.begin(), n->parents.end(), [&new_frontier, &explored](Node* p) {
+                for (auto& n : frontier) {
+                    for (auto& p : n->parents) {
+                        cycles = cycles || (tips.find(p) != tips.end());
                         p->solved = true;
                         p->fscore = std::numeric_limits<double>::infinity();
                         p->best_action = nullptr;
-                        std::for_each(p->children.begin(), p->children.end(), [&p](auto& nn){
+                        for (auto& nn : p->children) {
+                            if (explored.find(std::get<2>(nn)) == explored.end()) {
+                                tips.insert(std::get<2>(nn));
+                            }
                             p->solved = p->solved && std::get<2>(nn) && std::get<2>(nn)->solved;
                             if (std::get<2>(nn)) {
                                 double tentative_fscore = std::get<1>(nn) + std::get<2>(nn)->fscore;
@@ -567,15 +589,16 @@ private :
                                     p->best_action = &std::get<0>(nn);
                                 }
                             }
-                        });
+                        }
                         if (explored.find(p) == explored.end()) {
                             new_frontier.insert(p);
                             explored.insert(p);
                         }
-                    });
-                });
+                    }
+                }
                 frontier = new_frontier;
             }
+            // assert(!cycles);
         }
     };
 };
