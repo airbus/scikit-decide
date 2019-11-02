@@ -563,24 +563,17 @@ private :
             node.fscore = (_max_depth - node.depth) * _max_cost;
             std::unordered_set<Node*> frontier;
             frontier.insert(&node);
-            std::unordered_set<Node*> explored;
-            explored.insert(&node);
-            std::unordered_set<Node*> tips;
-            tips.insert(&node);
-            bool cycles = false;
+            unsigned int depth = 0; // used to prevent infinite loop in case of cycles
 
-            while (!frontier.empty()) {
+            while (!frontier.empty() && depth <= _max_depth) {
+                depth += 1;
                 std::unordered_set<Node*> new_frontier;
                 for (auto& n : frontier) {
                     for (auto& p : n->parents) {
-                        cycles = cycles || (tips.find(p) != tips.end());
                         p->solved = true;
                         p->fscore = std::numeric_limits<double>::infinity();
                         p->best_action = nullptr;
                         for (auto& nn : p->children) {
-                            if (explored.find(std::get<2>(nn)) == explored.end()) {
-                                tips.insert(std::get<2>(nn));
-                            }
                             p->solved = p->solved && std::get<2>(nn) && std::get<2>(nn)->solved;
                             if (std::get<2>(nn)) {
                                 double tentative_fscore = std::get<1>(nn) + std::get<2>(nn)->fscore;
@@ -590,15 +583,11 @@ private :
                                 }
                             }
                         }
-                        if (explored.find(p) == explored.end()) {
-                            new_frontier.insert(p);
-                            explored.insert(p);
-                        }
+                        new_frontier.insert(p);
                     }
                 }
                 frontier = new_frontier;
             }
-            // assert(!cycles);
         }
     };
 };

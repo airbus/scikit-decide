@@ -251,14 +251,16 @@ class GymWidthDomain:
                         cf.append(i)
                         if i >= len(self._feature_increments[2*index][f]):
                             self._feature_increments[2*index][f].append(cell - ref_val)
-                        ref_val = ref_val + self._feature_increments[2*index][f][i]
+                        if i > 0:
+                            ref_val = ref_val + self._feature_increments[2*index][f][i-1]
                 else:
                     for f in range(self._continuous_feature_fidelity):
                         i = bisect.bisect_left(self._feature_increments[2*index + 1][f], ref_val - cell)
                         cf.append(-i)
                         if i >= len(self._feature_increments[2*index + 1][f]):
                             self._feature_increments[2*index + 1][f].append(ref_val - cell)
-                        ref_val = ref_val - self._feature_increments[2*index + 1][f][i]
+                        if i > 0:
+                            ref_val = ref_val - self._feature_increments[2*index + 1][f][i-1]
                 features.append(tuple(cf))
                 index += 1
             return index, features

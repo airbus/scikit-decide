@@ -14,12 +14,13 @@ from math import sqrt, exp, fabs
 from gym.envs.classic_control import rendering
 
 from airlaps import TransitionOutcome, TransitionValue
+from airlaps.builders.domain import Renderable
 from airlaps.hub.domain.gym import DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain
 from airlaps.hub.solver.iw import IW
 from airlaps.hub.solver.riw import RIW
 from airlaps.utils import rollout
 
-HORIZON = 200
+HORIZON = 500
 
 
 class FakeGymEnv:
@@ -84,11 +85,18 @@ class FakeGymEnv:
 
         if self.viewer is None:
             self.viewer = rendering.Viewer(screen_width, screen_height)
-            rendering.Line((0, screen_height/2), (screen_width, screen_height/2))
+            self.track = rendering.Line((0, screen_height/2), (screen_width, screen_height/2))
+            self.track.set_color(0, 0, 1)
+            self.viewer.add_geom(self.track)
+            self.traj = rendering.PolyLine([], False)
+            self.traj.set_color(1, 0, 0)
+            self.traj.set_linewidth(3)
+            self.viewer.add_geom(self.traj)
         
-        for i in range(len(self._path)-1):
-            rendering.Line((self._path[i][0], screen_height/2 + self._path[i][1]),
-                           (self._path[i+1][0], screen_height/2 + self._path[i+1][1]))
+        if len(self.traj.v) != len(self._path):
+            self.traj.v = []
+            for p in self._path:
+                self.traj.v.append((p[0]*100, screen_height/2 + p[1]*100))
         
         return self.viewer.render(return_rgb_array = mode=='rgb_array')
 
@@ -98,7 +106,7 @@ class FakeGymEnv:
             self.viewer = None
 
 
-class D(DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain):
+class D(DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain, Renderable):
     pass
 
 
@@ -167,7 +175,7 @@ if RIW.check_domain(domain):
     solver_factory = lambda: RIW(state_features=lambda s, d: state_features(s, d),
                                  use_state_feature_hash=False,
                                  use_simulation_domain=False,
-                                 time_budget=2000,
+                                 time_budget=200,
                                  rollout_budget=1000,
                                  max_depth=HORIZON-1,
                                  max_cost=1,
