@@ -18,7 +18,7 @@ namespace airlaps {
                                    public TermContainer<typename std::conditional<std::is_null_pointer<Derived>::value, FunctionExpression<>, Derived>::type> {
         public :
             static constexpr char class_name[] = "function expression";
-            typedef TermContainer<typename std::conditional<std::is_null_pointer<Derived>::value, FunctionExpression, Derived>::type> TermContainerType;
+            typedef TermContainer<typename std::conditional<std::is_null_pointer<Derived>::value, FunctionExpression<>, Derived>::type> TermContainerType;
 
             typedef std::shared_ptr<FunctionExpression> Ptr;
             typedef typename TermContainerType::TermPtr TermPtr;
