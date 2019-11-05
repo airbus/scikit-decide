@@ -13,28 +13,29 @@ namespace airlaps {
     namespace pddl {
 
         class FunctionEffect : public Effect,
-                               public FunctionExpression {
+                               public FunctionExpression<FunctionEffect> {
         public :
+            static constexpr char class_name[] = "function effect";
             typedef std::shared_ptr<FunctionEffect> Ptr;
 
             FunctionEffect() {}
 
             FunctionEffect(const Function::Ptr& function,
-                           const TermContainer<FunctionExpression>& terms)
-                : FunctionExpression(function, terms) {}
+                           const TermContainer<FunctionEffect>& terms)
+                : FunctionExpression<FunctionEffect>(function, terms) {}
             
             FunctionEffect(const FunctionEffect& other)
-                : FunctionExpression(other) {}
+                : FunctionExpression<FunctionEffect>(other) {}
             
             FunctionEffect& operator= (const FunctionEffect& other) {
-                dynamic_cast<FunctionExpression&>(*this) = other;
+                dynamic_cast<FunctionExpression<FunctionEffect>&>(*this) = other;
                 return *this;
             }
 
             virtual ~FunctionEffect() {}
 
             virtual std::ostream& print(std::ostream& o) const {
-                return FunctionExpression::print(o);
+                return FunctionExpression<FunctionEffect>::print(o);
             }
         };
 

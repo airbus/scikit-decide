@@ -15,231 +15,245 @@ using namespace airlaps::pddl;
 
 template <typename Instance>
 void inherit_identifier(Instance& instance) {
-    using Identifier = typename Instance::type;
-    instance.def("get_name", &Identifier::get_name,
+    using IdentifierType = typename Instance::type;
+    instance.def("get_name", &IdentifierType::get_name,
                  py::return_value_policy::reference_internal);
 }
 
 template <typename Instance>
 void inherit_type_container(Instance& instance) {
-    using TypeContainer = typename Instance::type;
-    instance.def("add_type", (const Domain::TypePtr& (TypeContainer::*)(const std::string&)) &TypeContainer::add_type,
+    using TypeContainerType = TypeContainer<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("add_type", (const Domain::TypePtr& (TypeContainerType::*)(const std::string&)) &TypeContainerType::add_type,
                               py::arg("type"), py::return_value_policy::reference_internal)
-            .def("add_type", (const Domain::TypePtr& (TypeContainer::*)(const Domain::TypePtr&)) &TypeContainer::add_type,
+            .def("add_type", (const Domain::TypePtr& (TypeContainerType::*)(const Domain::TypePtr&)) &TypeContainerType::add_type,
                               py::arg("type"), py::return_value_policy::reference_internal)
-            .def("remove_type", (void (TypeContainer::*)(const std::string&)) &TypeContainer::remove_type,
+            .def("remove_type", (void (TypeContainerType::*)(const std::string&)) &TypeContainerType::remove_type,
                               py::arg("type"))
-            .def("remove_type", (void (TypeContainer::*)(const Domain::TypePtr&)) &TypeContainer::remove_type,
+            .def("remove_type", (void (TypeContainerType::*)(const Domain::TypePtr&)) &TypeContainerType::remove_type,
                               py::arg("type"))
-            .def("get_type", (const Domain::TypePtr& (TypeContainer::*)(const std::string&) const) &TypeContainer::get_type,
+            .def("get_type", (const Domain::TypePtr& (TypeContainerType::*)(const std::string&) const) &TypeContainerType::get_type,
                               py::arg("type"), py::return_value_policy::reference_internal)
-            .def("get_type", (const Domain::TypePtr& (TypeContainer::*)(const Domain::TypePtr&) const) &TypeContainer::get_type,
+            .def("get_type", (const Domain::TypePtr& (TypeContainerType::*)(const Domain::TypePtr&) const) &TypeContainerType::get_type,
                               py::arg("type"), py::return_value_policy::reference_internal)
-            .def("get_types", &TypeContainer::get_types,
+            .def("get_types", &TypeContainerType::get_types,
                               py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (TypeContainer::*)() const) &TypeContainer::print);
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_object_container(Instance& instance) {
-    using ObjectContainer = typename Instance::type;
-    instance.def("add_object", (const Domain::ObjectPtr& (ObjectContainer::*)(const std::string&)) &ObjectContainer::add_object,
+    using ObjectContainerType = ObjectContainer<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("add_object", (const Domain::ObjectPtr& (ObjectContainerType::*)(const std::string&)) &ObjectContainerType::add_object,
                                      py::arg("object"), py::return_value_policy::reference_internal)
-            .def("add_object", (const Domain::ObjectPtr& (ObjectContainer::*)(const Domain::ObjectPtr&)) &ObjectContainer::add_object,
+            .def("add_object", (const Domain::ObjectPtr& (ObjectContainerType::*)(const Domain::ObjectPtr&)) &ObjectContainerType::add_object,
                                      py::arg("object"), py::return_value_policy::reference_internal)
-            .def("remove_object", (void (ObjectContainer::*)(const std::string&)) &ObjectContainer::remove_object,
+            .def("remove_object", (void (ObjectContainerType::*)(const std::string&)) &ObjectContainerType::remove_object,
                                      py::arg("object"))
-            .def("remove_object", (void (ObjectContainer::*)(const Domain::ObjectPtr&)) &ObjectContainer::remove_object,
+            .def("remove_object", (void (ObjectContainerType::*)(const Domain::ObjectPtr&)) &ObjectContainerType::remove_object,
                                      py::arg("object"))
-            .def("get_object", (const Domain::ObjectPtr& (ObjectContainer::*)(const std::string&) const) &ObjectContainer::get_object,
+            .def("get_object", (const Domain::ObjectPtr& (ObjectContainerType::*)(const std::string&) const) &ObjectContainerType::get_object,
                                   py::arg("object"), py::return_value_policy::reference_internal)
-            .def("get_object", (const Domain::ObjectPtr& (ObjectContainer::*)(const Domain::ObjectPtr&) const) &ObjectContainer::get_object,
+            .def("get_object", (const Domain::ObjectPtr& (ObjectContainerType::*)(const Domain::ObjectPtr&) const) &ObjectContainerType::get_object,
                                   py::arg("object"), py::return_value_policy::reference_internal)
-            .def("get_objects", &ObjectContainer::get_objects,
+            .def("get_objects", &ObjectContainerType::get_objects,
                                   py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (ObjectContainer::*)() const) &ObjectContainer::print);
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_variable_container(Instance& instance) {
-    using VariableContainer = typename Instance::type;
-    instance.def("append_variable", (const Predicate::VariablePtr& (VariableContainer::*)(const std::string&)) &VariableContainer::append_variable,
+    using VariableContainerType = VariableContainer<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("append_variable", (const Predicate::VariablePtr& (VariableContainerType::*)(const std::string&)) &VariableContainerType::append_variable,
                                      py::arg("variable"), py::return_value_policy::reference_internal)
-            .def("append_variable", (const Predicate::VariablePtr& (VariableContainer::*)(const Predicate::VariablePtr&)) &VariableContainer::append_variable,
+            .def("append_variable", (const Predicate::VariablePtr& (VariableContainerType::*)(const Predicate::VariablePtr&)) &VariableContainerType::append_variable,
                                      py::arg("variable"), py::return_value_policy::reference_internal)
-            .def("remove_variable", (void (VariableContainer::*)(const std::string&)) &VariableContainer::remove_variable,
+            .def("remove_variable", (void (VariableContainerType::*)(const std::string&)) &VariableContainerType::remove_variable,
                                      py::arg("variable"))
-            .def("remove_variable", (void (VariableContainer::*)(const Predicate::VariablePtr&)) &VariableContainer::remove_variable,
+            .def("remove_variable", (void (VariableContainerType::*)(const Predicate::VariablePtr&)) &VariableContainerType::remove_variable,
                                      py::arg("variable"))
-            .def("get_variable", (Predicate::VariableVector (VariableContainer::*)(const std::string&) const) &VariableContainer::get_variable,
+            .def("get_variable", (Predicate::VariableVector (VariableContainerType::*)(const std::string&) const) &VariableContainerType::get_variable,
                                   py::arg("variable"), py::return_value_policy::reference_internal)
-            .def("get_variable", (Predicate::VariableVector (VariableContainer::*)(const Predicate::VariablePtr&) const) &VariableContainer::get_variable,
+            .def("get_variable", (Predicate::VariableVector (VariableContainerType::*)(const Predicate::VariablePtr&) const) &VariableContainerType::get_variable,
                                   py::arg("variable"), py::return_value_policy::reference_internal)
-            .def("variable_at", (const Predicate::VariablePtr& (VariableContainer::*)(const std::size_t&) const) &VariableContainer::variable_at,
+            .def("variable_at", (const Predicate::VariablePtr& (VariableContainerType::*)(const std::size_t&) const) &VariableContainerType::variable_at,
                                  py::arg("index"), py::return_value_policy::reference_internal)
-            .def("get_variables", &VariableContainer::get_variables,
+            .def("get_variables", &VariableContainerType::get_variables,
                                   py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (VariableContainer::*)() const) &VariableContainer::print);
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_term_container(Instance& instance) {
-    using TermContainer = typename Instance::type;
-    instance.def("append_term", (const PredicateFormula::TermPtr& (TermContainer::*)(const PredicateFormula::TermPtr&)) &TermContainer::append_term,
+    using TermContainerType = TermContainer<typename Instance::type>;
+    instance.def("append_term", (const PredicateFormula::TermPtr& (TermContainerType::*)(const PredicateFormula::TermPtr&)) &TermContainerType::append_term,
                                      py::arg("term"), py::return_value_policy::reference_internal)
-            .def("remove_term", (void (TermContainer::*)(const std::string&)) &TermContainer::remove_term,
+            .def("remove_term", (void (TermContainerType::*)(const std::string&)) &TermContainerType::remove_term,
                                      py::arg("term"))
-            .def("remove_term", (void (TermContainer::*)(const PredicateFormula::TermPtr&)) &TermContainer::remove_term,
+            .def("remove_term", (void (TermContainerType::*)(const PredicateFormula::TermPtr&)) &TermContainerType::remove_term,
                                      py::arg("term"))
-            .def("get_term", (PredicateFormula::TermVector (TermContainer::*)(const std::string&) const) &TermContainer::get_term,
+            .def("get_term", (PredicateFormula::TermVector (TermContainerType::*)(const std::string&) const) &TermContainerType::get_term,
                                   py::arg("term"), py::return_value_policy::reference_internal)
-            .def("get_term", (PredicateFormula::TermVector (TermContainer::*)(const PredicateFormula::TermPtr&) const) &TermContainer::get_term,
+            .def("get_term", (PredicateFormula::TermVector (TermContainerType::*)(const PredicateFormula::TermPtr&) const) &TermContainerType::get_term,
                                   py::arg("term"), py::return_value_policy::reference_internal)
-            .def("term_at", (const PredicateFormula::TermPtr& (TermContainer::*)(const std::size_t&) const) &TermContainer::term_at,
+            .def("term_at", (const PredicateFormula::TermPtr& (TermContainerType::*)(const std::size_t&) const) &TermContainerType::term_at,
                                  py::arg("index"), py::return_value_policy::reference_internal)
-            .def("get_terms", &TermContainer::get_terms,
+            .def("get_terms", &TermContainerType::get_terms,
                                   py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (TermContainer::*)() const) &TermContainer::print);
+            .def("__str__", (std::string (TermContainerType::*)() const) &TermContainerType::print);
 }
 
 template <typename Instance>
 void inherit_predicate_container(Instance& instance) {
-    using PredicateContainer = typename Instance::type;
-    instance.def("add_predicate", (const Domain::PredicatePtr& (PredicateContainer::*)(const std::string&)) &PredicateContainer::add_predicate,
+    using PredicateContainerType = PredicateContainer<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("add_predicate", (const Domain::PredicatePtr& (PredicateContainerType::*)(const std::string&)) &PredicateContainerType::add_predicate,
                                      py::arg("predicate"), py::return_value_policy::reference_internal)
-            .def("add_predicate", (const Domain::PredicatePtr& (PredicateContainer::*)(const Domain::PredicatePtr&)) &PredicateContainer::add_predicate,
+            .def("add_predicate", (const Domain::PredicatePtr& (PredicateContainerType::*)(const Domain::PredicatePtr&)) &PredicateContainerType::add_predicate,
                                      py::arg("predicate"), py::return_value_policy::reference_internal)
-            .def("remove_predicate", (void (PredicateContainer::*)(const std::string&)) &PredicateContainer::remove_predicate,
+            .def("remove_predicate", (void (PredicateContainerType::*)(const std::string&)) &PredicateContainerType::remove_predicate,
                                      py::arg("predicate"))
-            .def("remove_predicate", (void (PredicateContainer::*)(const Domain::PredicatePtr&)) &PredicateContainer::remove_predicate,
+            .def("remove_predicate", (void (PredicateContainerType::*)(const Domain::PredicatePtr&)) &PredicateContainerType::remove_predicate,
                                      py::arg("predicate"))
-            .def("get_predicate", (const Domain::PredicatePtr& (PredicateContainer::*)(const std::string&) const) &PredicateContainer::get_predicate,
+            .def("get_predicate", (const Domain::PredicatePtr& (PredicateContainerType::*)(const std::string&) const) &PredicateContainerType::get_predicate,
                                   py::arg("predicate"), py::return_value_policy::reference_internal)
-            .def("get_predicate", (const Domain::PredicatePtr& (PredicateContainer::*)(const Domain::PredicatePtr&) const) &PredicateContainer::get_predicate,
+            .def("get_predicate", (const Domain::PredicatePtr& (PredicateContainerType::*)(const Domain::PredicatePtr&) const) &PredicateContainerType::get_predicate,
                                   py::arg("predicate"), py::return_value_policy::reference_internal)
-            .def("get_predicates", &PredicateContainer::get_predicates, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (PredicateContainer::*)() const) &PredicateContainer::print);
+            .def("get_predicates", &PredicateContainerType::get_predicates, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_derived_predicate_container(Instance& instance) {
-    using DerivedPredicateContainer = typename Instance::type;
-    instance.def("add_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainer::*)(const std::string&)) &DerivedPredicateContainer::add_derived_predicate,
+    using DerivedPredicateContainerType = DerivedPredicateContainer<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("add_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainerType::*)(const std::string&)) &DerivedPredicateContainerType::add_derived_predicate,
                                            py::arg("derived_predicate"), py::return_value_policy::reference_internal)
-            .def("add_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainer::*)(const Domain::DerivedPredicatePtr&)) &DerivedPredicateContainer::add_derived_predicate,
+            .def("add_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainerType::*)(const Domain::DerivedPredicatePtr&)) &DerivedPredicateContainerType::add_derived_predicate,
                                            py::arg("derived_predicate"), py::return_value_policy::reference_internal)
-            .def("remove_derived_predicate", (void (DerivedPredicateContainer::*)(const std::string&)) &DerivedPredicateContainer::remove_derived_predicate,
+            .def("remove_derived_predicate", (void (DerivedPredicateContainerType::*)(const std::string&)) &DerivedPredicateContainerType::remove_derived_predicate,
                                               py::arg("derived_predicate"))
-            .def("remove_derived_predicate", (void (DerivedPredicateContainer::*)(const Domain::DerivedPredicatePtr&)) &DerivedPredicateContainer::remove_derived_predicate,
+            .def("remove_derived_predicate", (void (DerivedPredicateContainerType::*)(const Domain::DerivedPredicatePtr&)) &DerivedPredicateContainerType::remove_derived_predicate,
                                               py::arg("derived_predicate"))
-            .def("get_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainer::*)(const std::string&) const) &DerivedPredicateContainer::get_derived_predicate,
+            .def("get_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainerType::*)(const std::string&) const) &DerivedPredicateContainerType::get_derived_predicate,
                                            py::arg("derived_predicate"), py::return_value_policy::reference_internal)
-            .def("get_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainer::*)(const Domain::DerivedPredicatePtr&) const) &DerivedPredicateContainer::get_derived_predicate,
+            .def("get_derived_predicate", (const Domain::DerivedPredicatePtr& (DerivedPredicateContainerType::*)(const Domain::DerivedPredicatePtr&) const) &DerivedPredicateContainerType::get_derived_predicate,
                                            py::arg("derived_predicate"), py::return_value_policy::reference_internal)
-            .def("get_derived_predicates", &DerivedPredicateContainer::get_derived_predicates, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (DerivedPredicateContainer::*)() const) &DerivedPredicateContainer::print);
+            .def("get_derived_predicates", &DerivedPredicateContainerType::get_derived_predicates, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_function_container(Instance& instance) {
-    using FunctionContainer = typename Instance::type;
-    instance.def("add_function", (const Domain::FunctionPtr& (FunctionContainer::*)(const std::string&)) &FunctionContainer::add_function,
+    using FunctionContainerType = FunctionContainer<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("add_function", (const Domain::FunctionPtr& (FunctionContainerType::*)(const std::string&)) &FunctionContainerType::add_function,
                                      py::arg("function"), py::return_value_policy::reference_internal)
-            .def("add_function", (const Domain::FunctionPtr& (FunctionContainer::*)(const Domain::FunctionPtr&)) &FunctionContainer::add_function,
+            .def("add_function", (const Domain::FunctionPtr& (FunctionContainerType::*)(const Domain::FunctionPtr&)) &FunctionContainerType::add_function,
                                      py::arg("function"), py::return_value_policy::reference_internal)
-            .def("remove_function", (void (FunctionContainer::*)(const std::string&)) &FunctionContainer::remove_function,
+            .def("remove_function", (void (FunctionContainerType::*)(const std::string&)) &FunctionContainerType::remove_function,
                                      py::arg("function"))
-            .def("remove_function", (void (FunctionContainer::*)(const Domain::FunctionPtr&)) &FunctionContainer::remove_function,
+            .def("remove_function", (void (FunctionContainerType::*)(const Domain::FunctionPtr&)) &FunctionContainerType::remove_function,
                                      py::arg("function"))
-            .def("get_function", (const Domain::FunctionPtr& (FunctionContainer::*)(const std::string&) const) &FunctionContainer::get_function,
+            .def("get_function", (const Domain::FunctionPtr& (FunctionContainerType::*)(const std::string&) const) &FunctionContainerType::get_function,
                                   py::arg("function"), py::return_value_policy::reference_internal)
-            .def("get_function", (const Domain::FunctionPtr& (FunctionContainer::*)(const Domain::FunctionPtr&) const) &FunctionContainer::get_function,
+            .def("get_function", (const Domain::FunctionPtr& (FunctionContainerType::*)(const Domain::FunctionPtr&) const) &FunctionContainerType::get_function,
                                   py::arg("function"), py::return_value_policy::reference_internal)
-            .def("get_functions", &FunctionContainer::get_functions, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (FunctionContainer::*)() const) &FunctionContainer::print);
+            .def("get_functions", &FunctionContainerType::get_functions, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_class_container(Instance& instance) {
-    using ClassContainer = typename Instance::type;
-    instance.def("add_class", (const Domain::ClassPtr& (ClassContainer::*)(const std::string&)) &ClassContainer::add_class,
+    using ClassContainerType = ClassContainer<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("add_class", (const Domain::ClassPtr& (ClassContainerType::*)(const std::string&)) &ClassContainerType::add_class,
                                      py::arg("class"), py::return_value_policy::reference_internal)
-            .def("add_class", (const Domain::ClassPtr& (ClassContainer::*)(const Domain::ClassPtr&)) &ClassContainer::add_class,
+            .def("add_class", (const Domain::ClassPtr& (ClassContainerType::*)(const Domain::ClassPtr&)) &ClassContainerType::add_class,
                                      py::arg("class"), py::return_value_policy::reference_internal)
-            .def("remove_class", (void (ClassContainer::*)(const std::string&)) &ClassContainer::remove_class,
+            .def("remove_class", (void (ClassContainerType::*)(const std::string&)) &ClassContainerType::remove_class,
                                      py::arg("class"))
-            .def("remove_class", (void (ClassContainer::*)(const Domain::ClassPtr&)) &ClassContainer::remove_class,
+            .def("remove_class", (void (ClassContainerType::*)(const Domain::ClassPtr&)) &ClassContainerType::remove_class,
                                      py::arg("class"))
-            .def("get_class", (const Domain::ClassPtr& (ClassContainer::*)(const std::string&) const) &ClassContainer::get_class,
+            .def("get_class", (const Domain::ClassPtr& (ClassContainerType::*)(const std::string&) const) &ClassContainerType::get_class,
                                   py::arg("class"), py::return_value_policy::reference_internal)
-            .def("get_class", (const Domain::ClassPtr& (ClassContainer::*)(const Domain::ClassPtr&) const) &ClassContainer::get_class,
+            .def("get_class", (const Domain::ClassPtr& (ClassContainerType::*)(const Domain::ClassPtr&) const) &ClassContainerType::get_class,
                                   py::arg("class"), py::return_value_policy::reference_internal)
-            .def("get_classes", &ClassContainer::get_classes, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (ClassContainer::*)() const) &ClassContainer::print);
+            .def("get_classes", &ClassContainerType::get_classes, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_unary_formula(Instance& instance) {
-    using UnaryFormula = typename Instance::type;
-    instance.def("set_formula", (void (UnaryFormula::*)(const Formula::Ptr&)) &UnaryFormula::set_formula, py::arg("formula"))
-            .def("get_formula", (const Formula::Ptr& (UnaryFormula::*)()) &UnaryFormula::get_formula, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (UnaryFormula::*)() const) &UnaryFormula::print);
+    using UnaryFormulaType = UnaryFormula<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("set_formula", (void (UnaryFormulaType::*)(const Formula::Ptr&)) &UnaryFormulaType::set_formula, py::arg("formula"))
+            .def("get_formula", (const Formula::Ptr& (UnaryFormulaType::*)()) &UnaryFormulaType::get_formula, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_binary_formula(Instance& instance) {
-    using BinaryFormula = typename Instance::type;
-    instance.def("set_left_formula", (void (BinaryFormula::*)(const Formula::Ptr&)) &BinaryFormula::set_left_formula, py::arg("formula"))
-            .def("get_left_formula", (const Formula::Ptr& (BinaryFormula::*)()) &BinaryFormula::get_left_formula, py::return_value_policy::reference_internal)
-            .def("set_right_formula", (void (BinaryFormula::*)(const Formula::Ptr&)) &BinaryFormula::set_right_formula, py::arg("formula"))
-            .def("get_right_formula", (const Formula::Ptr& (BinaryFormula::*)()) &BinaryFormula::get_right_formula, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (BinaryFormula::*)() const) &BinaryFormula::print);
+    using BinaryFormulaType = BinaryFormula<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("set_left_formula", (void (BinaryFormulaType::*)(const Formula::Ptr&)) &BinaryFormulaType::set_left_formula, py::arg("formula"))
+            .def("get_left_formula", (const Formula::Ptr& (BinaryFormulaType::*)()) &BinaryFormulaType::get_left_formula, py::return_value_policy::reference_internal)
+            .def("set_right_formula", (void (BinaryFormulaType::*)(const Formula::Ptr&)) &BinaryFormulaType::set_right_formula, py::arg("formula"))
+            .def("get_right_formula", (const Formula::Ptr& (BinaryFormulaType::*)()) &BinaryFormulaType::get_right_formula, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_unary_expression(Instance& instance) {
-    using UnaryExpression = typename Instance::type;
-    instance.def("set_expression", (void (UnaryExpression::*)(const Formula::Ptr&)) &UnaryExpression::set_expression, py::arg("expression"))
-            .def("get_expression", (const Formula::Ptr& (UnaryExpression::*)()) &UnaryExpression::get_expression, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (UnaryExpression::*)() const) &UnaryExpression::print);
+    using UnaryExpressionType = UnaryExpression<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("set_expression", (void (UnaryExpressionType::*)(const Formula::Ptr&)) &UnaryExpressionType::set_expression, py::arg("expression"))
+            .def("get_expression", (const Formula::Ptr& (UnaryExpressionType::*)()) &UnaryExpressionType::get_expression, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_binary_expression(Instance& instance) {
-    using BinaryExpression = typename Instance::type;
-    instance.def("set_left_expression", (void (BinaryExpression::*)(const Expression::Ptr&)) &BinaryExpression::set_left_expression, py::arg("expression"))
-            .def("get_left_expression", (const Expression::Ptr& (BinaryExpression::*)()) &BinaryExpression::get_left_expression, py::return_value_policy::reference_internal)
-            .def("set_right_expression", (void (BinaryExpression::*)(const Expression::Ptr&)) &BinaryExpression::set_right_expression, py::arg("expression"))
-            .def("get_right_expression", (const Expression::Ptr& (BinaryExpression::*)()) &BinaryExpression::get_right_expression, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (BinaryExpression::*)() const) &BinaryExpression::print);
+    using BinaryExpressionType = BinaryExpression<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("set_left_expression", (void (BinaryExpressionType::*)(const Expression::Ptr&)) &BinaryExpressionType::set_left_expression, py::arg("expression"))
+            .def("get_left_expression", (const Expression::Ptr& (BinaryExpressionType::*)()) &BinaryExpressionType::get_left_expression, py::return_value_policy::reference_internal)
+            .def("set_right_expression", (void (BinaryExpressionType::*)(const Expression::Ptr&)) &BinaryExpressionType::set_right_expression, py::arg("expression"))
+            .def("get_right_expression", (const Expression::Ptr& (BinaryExpressionType::*)()) &BinaryExpressionType::get_right_expression, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_unary_effect(Instance& instance) {
-    using UnaryEffect = typename Instance::type;
-    instance.def("set_effect", (void (UnaryEffect::*)(const Effect::Ptr&)) &UnaryEffect::set_effect, py::arg("effect"))
-            .def("get_effect", (const Effect::Ptr& (UnaryEffect::*)()) &UnaryEffect::get_effect, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (UnaryEffect::*)() const) &UnaryEffect::print);
+    using UnaryEffectType = UnaryEffect<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("set_effect", (void (UnaryEffectType::*)(const Effect::Ptr&)) &UnaryEffectType::set_effect, py::arg("effect"))
+            .def("get_effect", (const Effect::Ptr& (UnaryEffectType::*)()) &UnaryEffectType::get_effect, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_binary_effect(Instance& instance) {
-    using BinaryEffect = typename Instance::type;
-    instance.def("set_condition", (void (BinaryEffect::*)(const Formula::Ptr&)) &BinaryEffect::set_condition, py::arg("condition"))
-            .def("get_condition", (const Formula::Ptr& (BinaryEffect::*)()) &BinaryEffect::get_condition, py::return_value_policy::reference_internal)
-            .def("set_effect", (void (BinaryEffect::*)(const Effect::Ptr&)) &BinaryEffect::set_effect, py::arg("effect"))
-            .def("get_effect", (const Effect::Ptr& (BinaryEffect::*)()) &BinaryEffect::get_effect, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (BinaryEffect::*)() const) &BinaryEffect::print);
+    using BinaryEffectType = BinaryEffect;
+    using InstanceType = typename Instance::type;
+    instance.def("set_condition", (void (BinaryEffectType::*)(const Formula::Ptr&)) &BinaryEffectType::set_condition, py::arg("condition"))
+            .def("get_condition", (const Formula::Ptr& (BinaryEffectType::*)()) &BinaryEffectType::get_condition, py::return_value_policy::reference_internal)
+            .def("set_effect", (void (BinaryEffectType::*)(const Effect::Ptr&)) &BinaryEffectType::set_effect, py::arg("effect"))
+            .def("get_effect", (const Effect::Ptr& (BinaryEffectType::*)()) &BinaryEffectType::get_effect, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 template <typename Instance>
 void inherit_assignment_effect(Instance& instance) {
-    using AssignmentEffect = typename Instance::type;
-    instance.def("set_function", (void (AssignmentEffect::*)(const FunctionEffect::Ptr&)) &AssignmentEffect::set_function, py::arg("function"))
-            .def("get_function", (const FunctionEffect::Ptr& (AssignmentEffect::*)()) &AssignmentEffect::get_function, py::return_value_policy::reference_internal)
-            .def("set_expression", (void (AssignmentEffect::*)(const Expression::Ptr&)) &AssignmentEffect::set_expression, py::arg("expression"))
-            .def("get_expression", (const Expression::Ptr& (AssignmentEffect::*)()) &AssignmentEffect::get_expression, py::return_value_policy::reference_internal)
-            .def("__str__", (std::string (AssignmentEffect::*)() const) &AssignmentEffect::print);
+    using AssignmentEffectType = AssignmentEffect<typename Instance::type>;
+    using InstanceType = typename Instance::type;
+    instance.def("set_function", (void (AssignmentEffectType::*)(const FunctionEffect::Ptr&)) &AssignmentEffectType::set_function, py::arg("function"))
+            .def("get_function", (const FunctionEffect::Ptr& (AssignmentEffectType::*)()) &AssignmentEffectType::get_function, py::return_value_policy::reference_internal)
+            .def("set_expression", (void (AssignmentEffectType::*)(const Expression::Ptr&)) &AssignmentEffectType::set_expression, py::arg("expression"))
+            .def("get_expression", (const Expression::Ptr& (AssignmentEffectType::*)()) &AssignmentEffectType::get_expression, py::return_value_policy::reference_internal)
+            .def("__str__", (std::string (InstanceType::*)() const) &InstanceType::print);
 }
 
 void init_pypddl(py::module& m) {
@@ -568,14 +582,14 @@ void init_pypddl(py::module& m) {
             .def("__str__", (std::string (NumericalExpression::*)() const) &NumericalExpression::print)
         ;
     
-    py::class_<FunctionExpression, FunctionExpression::Ptr> py_function_expression(m, "_PDDL_FunctionExpression_", py_expression);
+    py::class_<FunctionExpression<>, FunctionExpression<>::Ptr> py_function_expression(m, "_PDDL_FunctionExpression_", py_expression);
     inherit_term_container(py_function_expression);
         py_function_expression
             .def(py::init<>())
-            .def("set_function", &FunctionExpression::set_function, py::arg("function"))
-            .def("get_function", &FunctionExpression::get_function)
-            .def("get_name", &FunctionExpression::get_name)
-            .def("__str__", (std::string (FunctionExpression::*)() const) &FunctionExpression::print)
+            .def("set_function", &FunctionExpression<>::set_function, py::arg("function"))
+            .def("get_function", &FunctionExpression<>::get_function)
+            .def("get_name", &FunctionExpression<>::get_name)
+            .def("__str__", (std::string (FunctionExpression<>::*)() const) &FunctionExpression<>::print)
         ;
     
     py::class_<Effect, Effect::Ptr> py_effect(m, "_PDDL_Effect_");

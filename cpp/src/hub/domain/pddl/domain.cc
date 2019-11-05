@@ -6,6 +6,7 @@
 #include <sstream>
 #include <stack>
 #include <algorithm>
+#include <iterator>
 
 #include "domain.hh"
 #include "type.hh"

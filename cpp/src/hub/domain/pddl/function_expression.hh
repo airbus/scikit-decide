@@ -13,26 +13,28 @@ namespace airlaps {
 
     namespace pddl {
 
+        template <typename Derived = nullptr_t>
         class FunctionExpression : public Expression,
-                                   public TermContainer<FunctionExpression> {
+                                   public TermContainer<typename std::conditional<std::is_null_pointer<Derived>::value, FunctionExpression<>, Derived>::type> {
         public :
             static constexpr char class_name[] = "function expression";
+            typedef TermContainer<typename std::conditional<std::is_null_pointer<Derived>::value, FunctionExpression, Derived>::type> TermContainerType;
 
             typedef std::shared_ptr<FunctionExpression> Ptr;
-            typedef TermContainer<FunctionExpression>::TermPtr TermPtr;
-            typedef TermContainer<FunctionExpression>::TermVector TermVector;
+            typedef typename TermContainerType::TermPtr TermPtr;
+            typedef typename TermContainerType::TermVector TermVector;
 
             FunctionExpression() {}
 
             FunctionExpression(const Function::Ptr& function,
-                               const TermContainer<FunctionExpression>& terms)
-                : TermContainer<FunctionExpression>(terms), _function(function) {}
+                               const TermContainerType& terms)
+                : TermContainerType(terms), _function(function) {}
             
             FunctionExpression(const FunctionExpression& other)
-                : TermContainer<FunctionExpression>(other), _function(other._function) {}
+                : TermContainerType(other), _function(other._function) {}
             
             FunctionExpression& operator= (const FunctionExpression& other) {
-                dynamic_cast<TermContainer<FunctionExpression>&>(*this) = other;
+                dynamic_cast<TermContainerType&>(*this) = other;
                 this->_function = other._function;
                 return *this;
             }
@@ -52,7 +54,7 @@ namespace airlaps {
             }
 
             virtual std::ostream& print(std::ostream& o) const {
-                return TermContainer<FunctionExpression>::print(o);
+                return TermContainerType::print(o);
             }
         
         private :
