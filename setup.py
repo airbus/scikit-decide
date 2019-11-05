@@ -15,6 +15,7 @@ import subprocess
 from setuptools import setup, find_packages, Extension
 from setuptools.command.install import install
 from setuptools.command.build_ext import build_ext
+from wheel.bdist_wheel import bdist_wheel
 from distutils.version import LooseVersion
 
 __version__ = '0.3.4'
@@ -22,6 +23,26 @@ __version__ = '0.3.4'
 
 cpp_extension = False
 cxx_compiler = None
+
+class BDistWheelCommand(bdist_wheel):
+    user_options = install.user_options + [
+        ('cpp-extension', None, 'Compile the C++ hub extension'),
+        ('cxx-compiler=', None, 'Path to the C++ compiler')
+    ]
+
+    def initialize_options(self):
+        bdist_wheel.initialize_options(self)
+        self.cpp_extension = False
+        self.cxx_compiler = None
+
+    def finalize_options(self):
+        global cpp_extension, cxx_compiler
+        bdist_wheel.finalize_options(self)
+        cpp_extension = cpp_extension or self.cpp_extension
+        cxx_compiler = self.cxx_compiler if self.cxx_compiler is not None else cxx_compiler
+
+    def run(self):
+        bdist_wheel.run(self)
 
 class InstallCommand(install):
     user_options = install.user_options + [
@@ -190,5 +211,5 @@ setup(
     },
     extras_require=extras_require,
     ext_modules=[CMakeExtension(name='airlaps/hub/', sourcedir='cpp')],
-    cmdclass=dict(build_ext=CMakeBuild, install=InstallCommand)
+    cmdclass=dict(build_ext=CMakeBuild, install=InstallCommand, bdist_wheel=BDistWheelCommand)
 )
