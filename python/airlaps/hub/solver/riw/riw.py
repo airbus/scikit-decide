@@ -80,6 +80,7 @@ try:
                      state_features: Callable[[D.T_state, Domain], Any],
                      use_state_feature_hash: bool = False,
                      use_simulation_domain = False,
+                     online_mode = True,
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
@@ -92,6 +93,7 @@ try:
             self._state_features = state_features
             self._use_state_feature_hash = use_state_feature_hash
             self._use_simulation_domain = use_simulation_domain
+            self._online_mode = online_mode
             self._time_budget = time_budget
             self._rollout_budget = rollout_budget
             self._max_depth = max_depth
@@ -141,7 +143,7 @@ try:
             return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            if not self._is_solution_defined_for(observation):
+            if not self._is_solution_defined_for(observation) or self._online_mode:
                 self._solve_from(observation)
             return self._solver.get_next_action(observation)
         
