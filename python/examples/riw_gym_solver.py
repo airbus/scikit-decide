@@ -17,9 +17,6 @@ from airlaps.utils import rollout
 ENV_NAME = 'CartPole-v0'
 HORIZON = 200
 
-gym_env = gym.make(ENV_NAME)
-gym_env._max_episode_steps = HORIZON
-
 
 class D(DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain):
     pass
@@ -38,7 +35,8 @@ class GymRIWDomain(D):
                        get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
                        continuous_feature_fidelity: int = 1,
                        discretization_factor: int = 10,
-                       branching_factor: int = None) -> None:
+                       branching_factor: int = None,
+                       max_depth: int = 50) -> None:
         """Initialize GymRIWDomain.
 
         # Parameters
@@ -61,11 +59,13 @@ class GymRIWDomain(D):
                                          discretization_factor=discretization_factor,
                                          branching_factor=branching_factor)
         GymWidthDomain.__init__(self, continuous_feature_fidelity=continuous_feature_fidelity)
+        gym_env._max_episode_steps = max_depth
 
 
-domain_factory = lambda: GymRIWDomain(gym_env=gym_env,
+domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
                                       continuous_feature_fidelity=2,
-                                      discretization_factor=3)
+                                      discretization_factor=3,
+                                      max_depth=HORIZON)
 domain = domain_factory()
 
 if RIW.check_domain(domain):

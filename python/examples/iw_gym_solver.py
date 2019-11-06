@@ -18,9 +18,6 @@ from airlaps.utils import rollout
 ENV_NAME = 'MountainCar-v0'
 HORIZON = 200
 
-gym_env = gym.make(ENV_NAME)
-gym_env._max_episode_steps = HORIZON
-
 
 class D(GymPlanningDomain, GymWidthDomain, GymDiscreteActionDomain):
     pass
@@ -67,9 +64,10 @@ class GymIWDomain(D):
                                          discretization_factor=discretization_factor,
                                          branching_factor=branching_factor)
         GymWidthDomain.__init__(self, continuous_feature_fidelity=continuous_feature_fidelity)
+        gym_env._max_episode_steps = max_depth
 
 
-domain_factory = lambda: GymIWDomain(gym_env=gym_env,
+domain_factory = lambda: GymIWDomain(gym_env=gym.make(ENV_NAME),
                                      termination_is_goal=True,
                                      continuous_feature_fidelity=2,
                                      discretization_factor=3,
