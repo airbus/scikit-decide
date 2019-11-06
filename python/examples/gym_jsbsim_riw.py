@@ -73,7 +73,7 @@ class GymRIWDomain(D):
         GymWidthDomain.__init__(self, continuous_feature_fidelity=continuous_feature_fidelity)
         gym_env._max_episode_steps = max_depth
         self._map = None
-        self._current_point = None
+        self._path = None
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
             D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
@@ -81,17 +81,12 @@ class GymRIWDomain(D):
         return TransitionOutcome(state=o.state, value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
     
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        # Get rid of the current state and just look at the gym env's current intneral state
+        # Get rid of the current state and just look at the gym env's current internal state
         lon = self._gym_env.sim.get_property_value(prp.position_long_gc_deg)
         lat = self._gym_env.sim.get_property_value(prp.position_lat_geod_deg)
-        alt = self._gym_env.sim.get_property_value(prp.position_h_sl_ft)
-        psi = self._gym_env.sim.get_property_value(prp.attitude_psi_rad)
-        theta = self._gym_env.sim.get_property_value(prp.attitude_theta_rad)
-        phi = self._gym_env.sim.get_property_value(prp.attitude_phi_rad)
         if (self._map is None):
             self._map = folium.Map(location=[lat, lon], zoom_start=18)
             self._map.get_root().header.add_child(folium.Element('<script type="text/javascript" src="http://livejs.com/live.js"></script>'))
-            self._current_point = (lat, lon)
             with open(PATH_FILE) as json_file:
                 data = json.load(json_file)
                 points = []
@@ -99,9 +94,11 @@ class GymRIWDomain(D):
                     folium.Marker((c[1], c[0]), popup=p).add_to(self._map)
                     points.append((c[1], c[0]))
                 folium.PolyLine(points, color='blue', weight=2.5, opacity=1).add_to(self._map)
+            self._path = folium.PolyLine([(lat, lon)], color='red', weight=2.5, opacity=1)
+            self._path.add_to(self._map)
         else:
-            folium.PolyLine([self._current_point, (lat, lon)], color='red', weight=2.5, opacity=1).add_to(self._map)
-            self._current_point = (lat, lon)
+            self._path.locations.append(folium.utilities.validate_location((lat, lon)))
+            self._map.location = folium.utilities.validate_location((lat, lon))
         self._map.save('gym_jsbsim_map.html')
 
 

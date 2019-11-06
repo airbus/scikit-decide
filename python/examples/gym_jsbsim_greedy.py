@@ -70,16 +70,15 @@ class GymGreedyDomain(D):
                                          branching_factor=branching_factor)
         gym_env._max_episode_steps = horizon
         self._map = None
-        self._current_point = None
+        self._path = None
     
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        # Get rid of the current state and just look at the gym env's current intneral state
+        # Get rid of the current state and just look at the gym env's current internal state
         lon = self._gym_env.sim.get_property_value(prp.position_long_gc_deg)
         lat = self._gym_env.sim.get_property_value(prp.position_lat_geod_deg)
         if (self._map is None):
             self._map = folium.Map(location=[lat, lon], zoom_start=18)
             self._map.get_root().header.add_child(folium.Element('<script type="text/javascript" src="http://livejs.com/live.js"></script>'))
-            self._current_point = (lat, lon)
             with open(PATH_FILE) as json_file:
                 data = json.load(json_file)
                 points = []
@@ -87,9 +86,11 @@ class GymGreedyDomain(D):
                     folium.Marker((c[1], c[0]), popup=p).add_to(self._map)
                     points.append((c[1], c[0]))
                 folium.PolyLine(points, color='blue', weight=2.5, opacity=1).add_to(self._map)
+            self._path = folium.PolyLine([(lat, lon)], color='red', weight=2.5, opacity=1)
+            self._path.add_to(self._map)
         else:
-            folium.PolyLine([self._current_point, (lat, lon)], color='red', weight=2.5, opacity=1).add_to(self._map)
-            self._current_point = (lat, lon)
+            self._path.locations.append(folium.utilities.validate_location((lat, lon)))
+            self._map.location = folium.utilities.validate_location((lat, lon))
         self._map.save('gym_jsbsim_map.html')
 
 
