@@ -143,7 +143,9 @@ try:
             return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            if not self._is_solution_defined_for(observation) or self._online_mode:
+            if self._online_mode:
+                self._solver.clear()
+            if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
             return self._solver.get_next_action(observation)
         

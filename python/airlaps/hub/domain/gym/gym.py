@@ -209,8 +209,7 @@ class GymWidthDomain:
         self._init_continuous_state_variables = []
     
     def _reset_features(self):
-        for f in range(len(self._feature_increments)):
-            self._feature_increments[f] = []
+        self._feature_increments = []
 
     def _init_state_features(self, space, state):
         if isinstance(space, gym.spaces.box.Box):

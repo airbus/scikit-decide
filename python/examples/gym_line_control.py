@@ -163,21 +163,14 @@ domain_factory = lambda: GymRIWDomain(gym_env=FakeGymEnv(),
                                       discretization_factor=5)
 domain = domain_factory()
 
-def state_features(s, d):
-    f = d.state_features(s)
-    # f.append(s._context[5])
-    # print('features:', str(f))
-    return f
-
-# TODO: understand why gscore ordering with negative costs (positive rewards) is much more efficient (than with negative rewards and gscore ordering?!?)
-
 if RIW.check_domain(domain):
-    solver_factory = lambda: RIW(state_features=lambda s, d: state_features(s, d),
+    solver_factory = lambda: RIW(state_features=lambda s, d: d.state_features(s),
                                  use_state_feature_hash=False,
                                  use_simulation_domain=False,
+                                 online_mode=True,
                                  time_budget=200,
                                  rollout_budget=1000,
-                                 max_depth=HORIZON-1,
+                                 max_depth=100,
                                  max_cost=1,
                                  exploration=0.25,
                                  parallel=False,
