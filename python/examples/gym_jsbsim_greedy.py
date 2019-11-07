@@ -10,8 +10,6 @@ import gym
 import gym_jsbsim
 import numpy as np
 import folium
-import os
-import json
 
 from typing import Callable, Any
 
@@ -23,12 +21,11 @@ from airlaps.hub.space.gym import GymSpace
 from airlaps.utils import rollout
 
 from gym_jsbsim.catalogs.catalog import Catalog as prp
+from gym_jsbsim.envs.taxi_utils2 import *
 
 # ENV_NAME = 'GymJsbsim-HeadingControlTask-v0'
 ENV_NAME = 'GymJsbsim-TaxiapControlTask-v0'
-HORIZON = 100
-
-PATH_FILE = os.path.join(os.path.join(os.path.dirname(gym_jsbsim.__file__), 'docs'), 'points.json')
+HORIZON = 1000
 
 
 class D(DeterministicGymDomain, GymDiscreteActionDomain):
@@ -79,13 +76,10 @@ class GymGreedyDomain(D):
         if (self._map is None):
             self._map = folium.Map(location=[lat, lon], zoom_start=18)
             self._map.get_root().header.add_child(folium.Element('<script type="text/javascript" src="http://livejs.com/live.js"></script>'))
-            with open(PATH_FILE) as json_file:
-                data = json.load(json_file)
-                points = []
-                for p, c in data.items():
-                    folium.Marker((c[1], c[0]), popup=p).add_to(self._map)
-                    points.append((c[1], c[0]))
-                folium.PolyLine(points, color='blue', weight=2.5, opacity=1).add_to(self._map)
+            taxiPath = taxi_path()
+            for p in taxiPath.centerlinepoints:
+                folium.Marker((p[1], p[0]), popup=p).add_to(self._map)
+            folium.PolyLine(taxiPath.centerlinepoints, color='blue', weight=2.5, opacity=1).add_to(self._map)
             self._path = folium.PolyLine([(lat, lon)], color='red', weight=2.5, opacity=1)
             self._path.add_to(self._map)
         else:
