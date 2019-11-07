@@ -77,7 +77,7 @@ try:
     from __airlaps_hub_cpp import _PDDL_Process_ as Process
 except ImportError:
     sys.path = record_sys_path
-    print('AIRLAPS C++ hub library not found. Please check it is installed in "airlaps/hub/lib".')
+    print('AIRLAPS C++ hub library not found. Please check it is installed in "airlaps/hub".')
     raise
 
 # class PDDL:

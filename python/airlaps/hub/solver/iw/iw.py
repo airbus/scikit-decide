@@ -135,5 +135,5 @@ try:
     
 except ImportError:
     sys.path = record_sys_path
-    print('AIRLAPS C++ hub library not found. Please check it is installed in "airlaps/hub/lib".')
+    print('AIRLAPS C++ hub library not found. Please check it is installed in "airlaps/hub".')
     raise
