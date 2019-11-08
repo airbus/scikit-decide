@@ -13,9 +13,7 @@ A solver must inherit this class if it can provide the utility function (i.e. va
 Get the estimated on-policy utility of the given observation.
 
 In mathematical terms, for a fully observable domain, this function estimates:
-$$
-V^\pi(s)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s]
-$$
+$$V^\pi(s)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s]$$
 where $\pi$ is the current policy, any $\tau=(s_0,a_0, s_1, a_1, ...)$ represents a trajectory sampled from
 the policy, $R(\tau)$ is the return (cumulative reward) and $s_0$ the initial state for the trajectories.
 
@@ -32,9 +30,7 @@ The estimated on-policy utility of the given observation.
 Get the estimated on-policy utility of the given observation.
 
 In mathematical terms, for a fully observable domain, this function estimates:
-$$
-V^\pi(s)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s]
-$$
+$$V^\pi(s)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s]$$
 where $\pi$ is the current policy, any $\tau=(s_0,a_0, s_1, a_1, ...)$ represents a trajectory sampled from
 the policy, $R(\tau)$ is the return (cumulative reward) and $s_0$ the initial state for the trajectories.
 
@@ -55,9 +51,7 @@ A solver must inherit this class if it can provide the Q function (i.e. action-v
 Get the estimated on-policy Q value of the given observation and action.
 
 In mathematical terms, for a fully observable domain, this function estimates:
-$$
-Q^\pi(s,a)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s,a_0=a]
-$$
+$$Q^\pi(s,a)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s,a_0=a]$$
 where $\pi$ is the current policy, any $\tau=(s_0,a_0, s_1, a_1, ...)$ represents a trajectory sampled from
 the policy, $R(\tau)$ is the return (cumulative reward) and $s_0$/$a_0$ the initial state/action for the
 trajectories.
@@ -76,9 +70,7 @@ The estimated on-policy Q value of the given observation and action.
 Get the estimated on-policy utility of the given observation.
 
 In mathematical terms, for a fully observable domain, this function estimates:
-$$
-V^\pi(s)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s]
-$$
+$$V^\pi(s)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s]$$
 where $\pi$ is the current policy, any $\tau=(s_0,a_0, s_1, a_1, ...)$ represents a trajectory sampled from
 the policy, $R(\tau)$ is the return (cumulative reward) and $s_0$ the initial state for the trajectories.
 
@@ -95,9 +87,7 @@ The estimated on-policy utility of the given observation.
 Get the estimated on-policy Q value of the given observation and action.
 
 In mathematical terms, for a fully observable domain, this function estimates:
-$$
-Q^\pi(s,a)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s,a_0=a]
-$$
+$$Q^\pi(s,a)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s,a_0=a]$$
 where $\pi$ is the current policy, any $\tau=(s_0,a_0, s_1, a_1, ...)$ represents a trajectory sampled from
 the policy, $R(\tau)$ is the return (cumulative reward) and $s_0$/$a_0$ the initial state/action for the
 trajectories.
@@ -116,9 +106,7 @@ The estimated on-policy Q value of the given observation and action.
 Get the estimated on-policy utility of the given observation.
 
 In mathematical terms, for a fully observable domain, this function estimates:
-$$
-V^\pi(s)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s]
-$$
+$$V^\pi(s)=\underset{\tau\sim\pi}{\mathbb{E}}[R(\tau)|s_0=s]$$
 where $\pi$ is the current policy, any $\tau=(s_0,a_0, s_1, a_1, ...)$ represents a trajectory sampled from
 the policy, $R(\tau)$ is the return (cumulative reward) and $s_0$ the initial state for the trajectories.
 
