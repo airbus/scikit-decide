@@ -178,6 +178,4 @@ These combinations are particularly efficient if you want to try them out:
 
 ## Code generators
 
-### For domain developers
-
-### For solver developers
+Go to [Code generators](codegen) for assistance when creating a new domain or solver.

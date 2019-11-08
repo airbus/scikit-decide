@@ -48,9 +48,11 @@ def find_abs_modules(package):
 
 @lru_cache(maxsize=1000)
 def get_ref(object):
-    name = getattr(object, '__qualname__', '__name__')
-    if name == '__name__':
-        name = object.__name__
+    name = getattr(object, '__qualname__', None)
+    if name is None:
+        name = getattr(object, '__name__', None)
+        if name is None:
+            name = object._name
     reflist = [name]
     if hasattr(object, '__module__'):
         reflist.insert(0, object.__module__)
@@ -113,10 +115,10 @@ def add_func_method_infos(func_method, autodoc):
 def add_basic_member_infos(member, autodoc):
     # if getattr(member, '__module__', '').startswith('airlaps.'):
     try:
+        autodoc['ref'] = get_ref(member)
         source, line = inspect.getsourcelines(member)
         autodoc['source'] = ''.join(source)  # TODO: keep?
         autodoc['line'] = line
-        autodoc['ref'] = get_ref(member)
         doc = inspect.getdoc(member)
         if doc is not None:
             autodoc['doc'] = format_doc(doc)
@@ -124,14 +126,8 @@ def add_basic_member_infos(member, autodoc):
         pass
 
 
-def write_signature(md, member):
-    if 'signature' in member:
-        # sig = member['signature']
-        # formatted_params = [f'{p["name"]}{": " + p["annotation"] if "annotation" in p else ""}{" = " + p["default"] if "default" in p else ""}' for p in sig['params']]
-        # md += f'```python\n{member["name"]}({", ".join(formatted_params)})\n```\n\n'
-        escape_json_sig = json.dumps(member['signature']).replace("'", r"\'").replace('"', "'")
-        md += f'<airlaps-signature name= "{member["name"]}" :sig="{escape_json_sig}"></airlaps-signature>\n\n'
-    return md
+def json_escape(obj):
+    return json.dumps(obj).replace("'", r"\'").replace('"', "'")
 
 
 def md_escape(md):
@@ -142,7 +138,21 @@ def doc_escape(md):
     return re.sub(r'[<>]', lambda m: f'\\{m.group()}', md)
 
 
+def write_signature(md, member):
+    if 'signature' in member:
+        # sig = member['signature']
+        # formatted_params = [f'{p["name"]}{": " + p["annotation"] if "annotation" in p else ""}{" = " + p["default"] if "default" in p else ""}' for p in sig['params']]
+        # md += f'```python\n{member["name"]}({", ".join(formatted_params)})\n```\n\n'
+        escape_json_sig = json_escape(member['signature'])
+        md += f'<airlaps-signature name= "{member["name"]}" :sig="{escape_json_sig}"></airlaps-signature>\n\n'
+    return md
+
+def is_implemented(func_code):
+    return not func_code.strip().endswith('raise NotImplementedError')
+
 if __name__ == '__main__':
+
+    # ========== GATHER AUTODOC INFOS ==========
 
     # Get all AIRLAPS (sub)modules
     modules = []
@@ -180,7 +190,7 @@ if __name__ == '__main__':
                 elif inspect.isclass(member):
                     autodoc_member['type'] = 'class'
                     autodoc_member['bases'] = list(map(get_ref, member.__bases__)) if member.__bases__ != (object,) else None
-                    autodoc_member['inheritance'] = list(map(get_ref, reversed(inspect.getmro(member)[:-1])))
+                    autodoc_member['inheritance'] = list(map(get_ref, inspect.getmro(member)[:-1]))
                     submembers = inspect.getmembers(member)
                     autodoc_submembers = []
                     for submember_name, submember in submembers:
@@ -202,14 +212,14 @@ if __name__ == '__main__':
                                     # else:
                                     #     break
 
-                            if inspect.isfunction(submember) or inspect.ismethod(submember):
+                            if inspect.isfunction(submember) or inspect.ismethod(submember) or submember_name == '__init__':
                                 add_func_method_infos(submember, autodoc_submember)
 
                             else:
                                 # Class variables (e.g. T_memory, T_agent...)
                                 autodoc_submember['type'] = 'variable'
 
-                            if 'doc' in autodoc_submember:
+                            if 'doc' in autodoc_submember or autodoc_submember.get('type') == 'variable':
                                 autodoc_submembers.append(autodoc_submember)
 
                         # elif submember_name == '__init__':
@@ -235,11 +245,13 @@ if __name__ == '__main__':
     # with open('.vuepress/public/autodoc.json', 'w') as f:
     #     json.dump({'autodocs': autodocs, 'refs': list(refs)}, f)  # TODO: keep refs? Add shortrefs?
 
+    # ========== GENERATE MARKDOWN FILES ==========
+
     # Remove all previously auto-generated files
-    for oldpath in glob('reference/_*.md'):
+    for oldpath in glob('guide/_*.md') + glob('reference/_*.md'):
         os.remove(oldpath)
 
-    # Generate Markdown files
+    # Generate Reference Markdown files (reference/_airlaps.*.md)
     for module in autodocs:
 
         # Initiate Markdown
@@ -287,7 +299,7 @@ if __name__ == '__main__':
         with open(f'reference/_{module["ref"]}.md', 'w') as f:
             f.write(md)
 
-    # Write Reference index
+    # Write Reference index (reference/README.md)
     REF_INDEX_MAXDEPTH = 5
     ref_entries = sorted([tuple(m['ref'].split('.')) for m in autodocs], key=lambda x: (len(x), x))  # sorted entries
     ref_entries = filter(lambda e: len(e) <= REF_INDEX_MAXDEPTH, ref_entries)  # filter out by max depth
@@ -306,3 +318,81 @@ if __name__ == '__main__':
 
     with open(f'reference/README.md', 'w') as f:
         f.write(reference)
+
+    # Write Domain Specification page (guide/_domainspec.md)
+    domainspec = ''
+    characteristics = [module for module in autodocs if module['ref'].startswith('airlaps.builders.domain.')]
+    default_characteristics = {c['ref'].split('.')[-1].capitalize(): '(none)' for c in characteristics}
+
+    prop_templates = []
+    for template in [member for module in autodocs if module['ref'] == 'airlaps.domains' for member in module['members']]:
+        if template['name'] == 'Domain':
+            mandatory_characteristics = [base.split('.')[-2].capitalize() for base in template['bases']]
+        prop_templates.append({'name': template['name'], 'characteristics': dict(default_characteristics, **{base.split('.')[-2].capitalize(): base.split('.')[-1] for base in template['bases']})})
+        domainspec += f'<template v-slot:{template["name"]}>\n\n'
+        if 'doc' in template:
+            domainspec += f'{doc_escape(template["doc"])}\n\n'
+        domainspec += '</template>\n\n'
+
+    prop_characteristics = []
+    for characteristic in characteristics:
+        characteristic_name = characteristic['ref'].split('.')[-1].capitalize()
+        prop_characteristics.append({'name': characteristic_name, 'levels': []})
+        if characteristic_name not in mandatory_characteristics:
+            prop_characteristics[-1]['levels'].append('(none)')
+        for level in characteristic['members']:
+            prop_characteristics[-1]['levels'].append(level['name'])
+            domainspec += f'<template v-slot:{level["name"]}>\n\n'
+            if 'doc' in level:
+                domainspec += f'{doc_escape(level["doc"])}\n\n'
+            domainspec += '</template>\n\n'
+
+    domainspec = '---\n' \
+                 'navbar: false\n' \
+                 'sidebar: false\n' \
+                 '---\n\n' \
+                 '<airlaps-domainspec>\n\n' + domainspec  # + f'<airlaps-domainspec :templates="{json_escape(prop_templates)}" :characteristics="{json_escape(prop_characteristics)}">\n\n' + domainspec
+    domainspec += '</airlaps-domainspec>\n\n'
+
+    with open(f'guide/_domainspec.md', 'w') as f:
+        f.write(domainspec)
+
+    # Write Json state (.vuepress/_state.json)
+    prop_methods = {}  # TODO: add Domain/Solver (base classes) methods & detect classmethods/staticmethods
+    prop_types = {}
+    for module in autodocs:
+        if module['ref'].startswith('airlaps.builders.'):
+            not_implemented = set()
+            for level in module.get('members', []):
+                level_name = level['name']
+                types_dict = {}
+                for member in level.get('members', []):
+                    member_name = member['name']
+                    if member['type'] == 'function':
+                        if is_implemented(member['source']):
+                            not_implemented.discard(member_name)
+                        else:
+                            not_implemented.add(member_name)
+                    elif member['type'] == 'variable':
+                        types_dict[member_name] = member['ref']
+                prop_methods[level_name] = list(not_implemented)
+                prop_types[level_name] = types_dict
+
+    main_template = prop_templates[0]
+    state = {
+        'selection': {
+            'template': main_template['name'],
+            'characteristics': main_template['characteristics'],
+            'showFinetunedOnly': True,
+            'simplifySignatures': True
+        },
+        'templates': prop_templates,
+        'characteristics': prop_characteristics,
+        'methods': prop_methods,
+        'types': prop_types,
+        'domain_signatures': {f['name']: f['signature'] for a in autodocs if a['ref'].startswith('airlaps.builders.domain.') for m in a.get('members', []) for f in m.get('members', []) if f['type'] == 'function'},
+        'solver_signatures': {f['name']: f['signature'] for a in autodocs if a['ref'].startswith('airlaps.builders.solver.') for m in a.get('members', []) for f in m.get('members', []) if f['type'] == 'function'}
+    }
+
+    with open('.vuepress/_state.json', 'w') as f:
+        json.dump(state, f)
