@@ -16,7 +16,7 @@ from typing import Callable, Any
 from airlaps import TransitionOutcome, TransitionValue, EnvironmentOutcome, Domain
 from airlaps.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
-from airlaps.hub.domain.gym import DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain, GymPlanningDomain
+from airlaps.hub.domain.gym import DeterministicGymDomain, GymWidthDomain, GymDiscreteActionDomain
 from airlaps.hub.solver.iw import IW
 from airlaps.hub.solver.riw import RIW
 from airlaps.utils import rollout
@@ -29,8 +29,7 @@ ENV_NAME = 'GymJsbsim-TaxiapControlTask-v0'
 HORIZON = 1000
 
 
-class D(DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain):
-# class D(GymPlanningDomain, GymWidthDomain, GymDiscreteActionDomain):
+class D(DeterministicGymDomain, GymWidthDomain, GymDiscreteActionDomain):
     pass
 
 
@@ -63,11 +62,10 @@ class GymRIWDomain(D):
         branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
         max_depth: maximum depth of states to explore from the initial state
         """
-        DeterministicInitializedGymDomain.__init__(self,
-        # GymPlanningDomain.__init__(self, termination_is_goal=False, max_depth=HORIZON,
-                                         gym_env=gym_env,
-                                         set_state=set_state,
-                                         get_state=get_state)
+        DeterministicGymDomain.__init__(self,
+                                        gym_env=gym_env,
+                                        set_state=set_state,
+                                        get_state=get_state)
         GymDiscreteActionDomain.__init__(self,
                                          discretization_factor=discretization_factor,
                                          branching_factor=branching_factor)
@@ -125,7 +123,6 @@ class GymRIW(RIW):
                  state_features: Callable[[D.T_state, Domain], Any],
                  use_state_feature_hash: bool = False,
                  use_simulation_domain = False,
-                 online_mode = True,
                  time_budget: int = 3600000,
                  rollout_budget: int = 100000,
                  max_depth: int = 1000,
@@ -136,7 +133,6 @@ class GymRIW(RIW):
         super().__init__(state_features=state_features,
                          use_state_feature_hash=use_state_feature_hash,
                          use_simulation_domain=use_simulation_domain,
-                         online_mode=online_mode,
                          time_budget=time_budget,
                          rollout_budget=rollout_budget,
                          max_depth=max_depth,
@@ -146,15 +142,14 @@ class GymRIW(RIW):
                          debug_logs=debug_logs)
     
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        if self._online_mode:
-            self._domain._reset_features()
+        self._domain._reset_features()
         return super()._get_next_action(observation)
 
 
 domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
                                       set_state=lambda e, s: e.set_state(s),
                                       get_state=lambda e: e.get_state(),
-                                      continuous_feature_fidelity=5,
+                                      continuous_feature_fidelity=3,
                                       discretization_factor=5,
                                       max_depth=HORIZON)
 domain = domain_factory()
@@ -163,11 +158,10 @@ domain.reset()
 if RIW.check_domain(domain):
     solver_factory = lambda: GymRIW(state_features=lambda s, d: d.state_features(s),
                                     use_state_feature_hash=False,
-                                    use_simulation_domain=False,
-                                    online_mode=True,
-                                    time_budget=200,
+                                    use_simulation_domain=True,
+                                    time_budget=10000,
                                     rollout_budget=1000,
-                                    max_depth=10,
+                                    max_depth=5,
                                     max_cost=1,
                                     exploration=0.25,
                                     parallel=False,

@@ -85,7 +85,7 @@ class GymGreedyDomain(D):
             f.write('<!DOCTYPE html>\n' +
                     '<HTML>\n' +
                     '<HEAD>\n' +
-                    '<META http-equiv="refresh" content="1">\n' +
+                    '<META http-equiv="refresh" content="5">\n' +
                     '</HEAD>\n' +
                     '<FRAMESET>\n' +
                     '<FRAME src="gym_jsbsim_map_update.html">\n' +
@@ -149,7 +149,7 @@ class GreedyPlanner(Solver, DeterministicPolicies, Utilities):
 domain_factory = lambda: GymGreedyDomain(gym_env=gym.make(ENV_NAME),
                                          set_state=lambda e, s: e.set_state(s),
                                          get_state=lambda e: e.get_state(),
-                                         discretization_factor=9,
+                                         discretization_factor=5,
                                          horizon=HORIZON)
 domain = domain_factory()
 domain.reset()

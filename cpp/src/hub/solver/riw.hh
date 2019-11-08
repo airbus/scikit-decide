@@ -160,7 +160,7 @@ public :
     : _domain(domain), _state_features(state_features),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _max_cost(max_cost), _exploration(exploration),
-      _start_depth(0), _debug_logs(debug_logs) {
+      _debug_logs(debug_logs) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {
@@ -172,7 +172,6 @@ public :
     // previous search results)
     void clear() {
         _graph.clear();
-        _start_depth = 0;
     }
 
     // solves from state s
@@ -189,7 +188,7 @@ public :
                 if(WidthSolver(_domain, _state_features,
                                _time_budget, _rollout_budget,
                                _max_depth, _max_cost, _exploration,
-                               w, _graph, _rollout_policy, _debug_logs).solve(s, start_time, _start_depth, nb_rollouts, feature_tuples)) {
+                               w, _graph, _rollout_policy, _debug_logs).solve(s, start_time, nb_rollouts, feature_tuples)) {
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
                     spdlog::info("RIW finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
@@ -205,7 +204,7 @@ public :
     }
 
     bool is_solution_defined_for(const State& s) const {
-        auto si = _graph.find(Node(s, _state_features));
+        auto si = _graph.find(Node(s));
         if ((si == _graph.end()) || (si->best_action == nullptr) || (si->solved == false)) {
             return false;
         } else {
@@ -213,19 +212,32 @@ public :
         }
     }
 
-    const Action& get_best_action(const State& s) {
-        auto si = _graph.find(Node(s, _state_features));
+    Action get_best_action(const State& s) {
+        auto si = _graph.find(Node(s));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
         }
         _rollout_policy.advance(_domain, s, *(si->best_action), true);
-        _start_depth += 1;
-        return *(si->best_action);
+        Action best_action = *(si->best_action);
+        std::unordered_set<Node*> root_subgraph;
+        compute_reachable_subgraph(const_cast<Node&>(*si), root_subgraph); // we won't change the real key (Node::state) so we are safe
+        Node* next_node = nullptr;
+        for (auto& child : si->children) {
+            if (&std::get<0>(child) == si->best_action) {
+                next_node = std::get<2>(child);
+                break;
+            }
+        }
+        assert(next_node != nullptr);
+        std::unordered_set<Node*> child_subgraph;
+        compute_reachable_subgraph(*next_node, child_subgraph);
+        update_graph(root_subgraph, child_subgraph);
+        return best_action;
     }
 
     const double& get_best_value(const State& s) const {
-        auto si = _graph.find(Node(s, _state_features));
+        auto si = _graph.find(Node(s));
         if (si == _graph.end()) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
@@ -242,7 +254,6 @@ private :
     unsigned int _max_depth;
     double _max_cost;
     double _exploration;
-    unsigned int _start_depth;
     RolloutPolicy _rollout_policy;
     bool _debug_logs;
 
@@ -250,7 +261,7 @@ private :
         State state;
         std::unique_ptr<FeatureVector> features;
         std::vector<std::tuple<Action, double, Node*>> children;
-        std::list<Node*> parents;
+        std::unordered_set<Node*> parents;
         double fscore; // not in A*'s meaning but rather to store cost-to-go once a solution is found
         unsigned int depth;
         unsigned int novelty;
@@ -268,6 +279,10 @@ private :
               solved(false) {
             features = state_features(s);
         }
+
+        // Following constructor used only to search for the same existing node in the graph since nodes
+        // are hashed by their states. Don't use this constructor for creating valid nodes!
+        Node(const State& s) : state(s) {}
         
         struct Key {
             const typename HashingPolicy::Key& operator()(const Node& n) const {
@@ -313,7 +328,6 @@ private :
         // return true iff no state has been pruned or time or rollout budgets are consumed
         bool solve(const State& s,
                    const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
-                   unsigned int start_depth,
                    unsigned int& nb_rollouts,
                    TupleVector& feature_tuples) {
             try {
@@ -331,7 +345,7 @@ private :
                 // Create the root node containing the given state s
                 auto si = _graph.emplace(Node(s, _state_features));
                 Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
-                root_node.depth = start_depth;
+                root_node.depth = 0;
                 bool states_pruned = false;
 
                 // Vector of sets of state feature tuples generated so far, for each w <= _width
@@ -524,7 +538,7 @@ private :
                 new_node = i.second;
                 std::get<2>(node->children[action_number]) = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 std::get<1>(node->children[action_number]) = outcome->cost();
-                std::get<2>(node->children[action_number])->parents.push_back(node);
+                std::get<2>(node->children[action_number])->parents.insert(node);
                 if (new_node) {
                     if (_debug_logs) spdlog::debug("Exploring new outcome: " + i.first->state.print() +
                                                    ", depth=" + std::to_string(i.first->depth) +
@@ -588,8 +602,59 @@ private :
                 frontier = new_frontier;
             }
         }
-    };
-};
+    }; // WidthSolver class
+
+    void compute_reachable_subgraph(Node& node, std::unordered_set<Node*>& subgraph) {
+        std::unordered_set<Node*> frontier;
+        frontier.insert(&node);
+        subgraph.insert(&node);
+        while(!frontier.empty()) {
+            std::unordered_set<Node*> new_frontier;
+            for (auto& n : frontier) {
+                if (n) {
+                    for (auto& child : n->children) {
+                        if (subgraph.find(std::get<2>(child)) == subgraph.end()) {
+                            new_frontier.insert(std::get<2>(child));
+                            subgraph.insert(std::get<2>(child));
+                        }
+                    }
+                }
+            }
+            frontier = new_frontier;
+        }
+    }
+
+    // Prune the nodes that are no more reachable from the root's chosen child and reduce the depth of the
+    // nodes reachable from the child node by 1
+    void update_graph(std::unordered_set<Node*>& root_subgraph, std::unordered_set<Node*>& child_subgraph) {
+        std::unordered_set<Node*> removed_subgraph;
+        // First pass: look for nodes in root_subgraph but not child_subgraph and remove
+        // those nodes from their children's parents
+        // Don't actually remove those nodes in the first pass otherwise some children to remove
+        // won't exist anymore when looking for their parents
+        for (auto& n : root_subgraph) {
+            if (n) {
+                if (child_subgraph.find(n) == child_subgraph.end()) {
+                    for (auto& child : n->children) {
+                        if (std::get<2>(child)) {
+                            std::get<2>(child)->parents.erase(n);
+                        }
+                    }
+                    removed_subgraph.insert(n);
+                } else {
+                    n->depth -= 1;
+                    if (n->solved) {
+                        n->fscore += _max_cost;
+                    }
+                }
+            }
+        }
+        // Second pass: actually remove nodes in root_subgraph but not in child_subgraph
+        for (auto& n : removed_subgraph) {
+            _graph.erase(Node(n->state));
+        }
+    }
+}; // RIWSolver class
 
 } // namespace airlaps
 

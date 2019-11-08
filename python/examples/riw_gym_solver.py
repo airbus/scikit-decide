@@ -10,7 +10,7 @@ import gym
 import numpy as np
 from typing import Callable
 
-from airlaps.hub.domain.gym import DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain
+from airlaps.hub.domain.gym import DeterministicGymDomain, GymWidthDomain, GymDiscreteActionDomain
 from airlaps.hub.solver.riw import RIW
 from airlaps.utils import rollout
 
@@ -18,7 +18,7 @@ ENV_NAME = 'CartPole-v0'
 HORIZON = 200
 
 
-class D(DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain):
+class D(DeterministicGymDomain, GymWidthDomain, GymDiscreteActionDomain):
     pass
 
 
@@ -51,10 +51,10 @@ class GymRIWDomain(D):
         branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
         max_depth: maximum depth of states to explore from the initial state
         """
-        DeterministicInitializedGymDomain.__init__(self,
-                                                   gym_env=gym_env,
-                                                   set_state=set_state,
-                                                   get_state=get_state)
+        DeterministicGymDomain.__init__(self,
+                                        gym_env=gym_env,
+                                        set_state=set_state,
+                                        get_state=get_state)
         GymDiscreteActionDomain.__init__(self,
                                          discretization_factor=discretization_factor,
                                          branching_factor=branching_factor)
@@ -63,7 +63,7 @@ class GymRIWDomain(D):
 
 
 domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
-                                      continuous_feature_fidelity=2,
+                                      continuous_feature_fidelity=3,
                                       discretization_factor=3,
                                       max_depth=HORIZON)
 domain = domain_factory()
@@ -74,7 +74,7 @@ if RIW.check_domain(domain):
                                  use_simulation_domain=False,
                                  time_budget=200,
                                  rollout_budget=1000,
-                                 max_depth=HORIZON-1,
+                                 max_depth=100,
                                  max_cost=10,
                                  exploration=0.25,
                                  parallel=False,
