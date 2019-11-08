@@ -522,21 +522,20 @@ private :
                 auto outcome = _rollout_policy.progress(_domain, node->state, std::get<0>(node->children[action_number]));
                 auto i = _graph.emplace(Node(outcome->state(), _state_features));
                 new_node = i.second;
-                if (_debug_logs && i.second) spdlog::debug("New state: " + i.first->state.print());
                 std::get<2>(node->children[action_number]) = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 std::get<1>(node->children[action_number]) = outcome->cost();
                 std::get<2>(node->children[action_number])->parents.push_back(node);
                 if (new_node) {
-                    if (_debug_logs) spdlog::debug("Exploring new outcome: " + node->state.print() +
-                                                   ", depth=" + std::to_string(node->depth) +
-                                                   ", fscore=" + std::to_string(node->fscore));
+                    if (_debug_logs) spdlog::debug("Exploring new outcome: " + i.first->state.print() +
+                                                   ", depth=" + std::to_string(i.first->depth) +
+                                                   ", fscore=" + std::to_string(i.first->fscore));
                     std::get<2>(node->children[action_number])->depth = node->depth + 1;
                     node = std::get<2>(node->children[action_number]);
                     node->terminal = outcome->terminal();
                 } else { // outcome already explored
-                    if (_debug_logs) spdlog::debug("Exploring known outcome: " + node->state.print() +
-                                                   ", depth=" + std::to_string(node->depth) +
-                                                   ", fscore=" + std::to_string(node->fscore));
+                    if (_debug_logs) spdlog::debug("Exploring known outcome: " + i.first->state.print() +
+                                                   ", depth=" + std::to_string(i.first->depth) +
+                                                   ", fscore=" + std::to_string(i.first->fscore));
                     std::get<2>(node->children[action_number])->depth = std::min(
                         std::get<2>(node->children[action_number])->depth, node->depth + 1);
                     if (std::get<2>(node->children[action_number])->solved) { // solved child
