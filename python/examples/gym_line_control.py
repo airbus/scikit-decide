@@ -170,7 +170,6 @@ if RIW.check_domain(domain):
                                  time_budget=200,
                                  rollout_budget=1000,
                                  max_depth=10,
-                                 max_cost=1,
                                  exploration=0.25,
                                  parallel=False,
                                  debug_logs=False)

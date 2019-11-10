@@ -284,6 +284,23 @@ public :
         }
     }
 
+    // Used only if the domain provides is_goal, which is not the case of simulation of environment
+    // domains that are mosts expected for RIW (but sometimes the domain can b a planning domain)
+    bool is_goal(const State& s) {
+        typename GilControl<Texecution>::Acquire acquire;
+        try {
+            if (py::hasattr(_domain, "is_goal")) {
+                return py::cast<bool>(_domain.attr("is_goal")(s._state));
+            } else {
+                return false;
+            }
+        } catch(const py::error_already_set& ex) {
+            spdlog::error(std::string("AIRLAPS exception when testing goal condition of state ") +
+                          s.print() + ": " + ex.what());
+            throw;
+        }
+    }
+
 private :
     py::object _domain;
 };
@@ -546,7 +563,6 @@ public :
                 unsigned int time_budget = 3600000,
                 unsigned int rollout_budget = 100000,
                 unsigned int max_depth = 1000,
-                double max_cost = 10000,
                 double exploration = 0.25,
                 bool parallel = true,
                 bool debug_logs = false) {
@@ -555,36 +571,36 @@ public :
             if (use_state_feature_hash) {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
                 }
             } else {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
                 }
             }
         } else {
             if (use_state_feature_hash) {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
                 }
             } else {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, max_cost, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
                 }
             }
         }
@@ -632,7 +648,6 @@ private :
                        unsigned int time_budget = 3600000,
                        unsigned int rollout_budget = 100000,
                        unsigned int max_depth = 1000,
-                       double max_cost = 10000,
                        double exploration = 0.25,
                        bool debug_logs = false)
             : _state_features(state_features) {
@@ -653,7 +668,6 @@ private :
                                                                             time_budget,
                                                                             rollout_budget,
                                                                             max_depth,
-                                                                            max_cost,
                                                                             exploration,
                                                                             debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
@@ -716,7 +730,6 @@ void init_pyriw(py::module& m) {
                           unsigned int,
                           unsigned int,
                           double,
-                          double,
                           bool,
                           bool>(),
                  py::arg("domain"),
@@ -726,7 +739,6 @@ void init_pyriw(py::module& m) {
                  py::arg("time_budget")=3600000,
                  py::arg("rollout_budget")=100000,
                  py::arg("max_depth")=1000,
-                 py::arg("max_cost")=10000.0,
                  py::arg("exploration")=0.25,
                  py::arg("parallel")=true,
                  py::arg("debug_logs")=false)

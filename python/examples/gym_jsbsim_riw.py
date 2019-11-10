@@ -126,7 +126,6 @@ class GymRIW(RIW):
                  time_budget: int = 3600000,
                  rollout_budget: int = 100000,
                  max_depth: int = 1000,
-                 max_cost: float = 10000.0,
                  exploration: float = 0.25,
                  parallel: bool = True,
                  debug_logs: bool = False) -> None:
@@ -136,7 +135,6 @@ class GymRIW(RIW):
                          time_budget=time_budget,
                          rollout_budget=rollout_budget,
                          max_depth=max_depth,
-                         max_cost=max_cost,
                          exploration=exploration,
                          parallel=parallel,
                          debug_logs=debug_logs)
@@ -159,10 +157,9 @@ if RIW.check_domain(domain):
     solver_factory = lambda: GymRIW(state_features=lambda s, d: d.state_features(s),
                                     use_state_feature_hash=False,
                                     use_simulation_domain=True,
-                                    time_budget=10000,
+                                    time_budget=1000,
                                     rollout_budget=1000,
-                                    max_depth=5,
-                                    max_cost=1,
+                                    max_depth=10,
                                     exploration=0.25,
                                     parallel=False,
                                     debug_logs=False)
