@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Policies
 
 A solver must inherit this class if it computes a stochastic policy as part of the solving process.

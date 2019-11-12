@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Constrained
 
 A domain must inherit this class if it has constraints.

@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Utilities
 
 A solver must inherit this class if it can provide the utility function (i.e. value function).

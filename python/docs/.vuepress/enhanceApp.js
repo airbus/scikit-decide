@@ -27,9 +27,10 @@ export default ({
             selectedTemplate[element] = state.templates[element][templateIndex]
           })
           return selectedTemplate
-          // Object.assign({}, ['domain', 'solver'].map(e => {[e]: state.templates[e].findIndex(t => t.name == state.selection[e].template)}))
-          // const templateIndex = state.templates.findIndex(template => template.name == state.selection.template)
-          // return state.templates[templateIndex]
+        },
+        domainTypes (state) {
+          const levels = Object.values(state.selection['domain'].characteristics).filter(c => c !== '(none)')
+          return Object.assign({}, ...levels.map(l => state.types['domain'][l]))
         }
       },
       mutations: {

@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## GymSpace
 
 This class wraps an OpenAI Gym space (gym.spaces) as an AIRLAPS space.

@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Parallel
 
 A domain must inherit this class if multiple events/actions can happen in parallel.

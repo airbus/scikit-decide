@@ -1,7 +1,7 @@
 <template>
   <pre>
-  <code class="language-python">{{name}}(
-  <template v-for="p, i in sig.params">  {{p.name}}<span v-if="p.annotation">: {{p.annotation}}</span><span v-if="p.default"> = {{p.default}}</span><span v-if="i < sig.params.length - 1">,</span><br></template>)<span v-if="sig.return"> -> {{sig.return}}</span></code>
+  <code class="language-python"><span class="token function">{{name}}</span>(
+  <template v-for="p, i in sig.params">  {{p.name}}<template v-if="p.annotation">: {{adaptAnnotation(p.annotation)}}</template><template v-if="p.default"> <span class="token operator">=</span> <span class="token boolean">{{p.default}}</span></template><template v-if="i < sig.params.length - 1">,</template><br></template>)<template v-if="sig.return"> <span class="token operator">-></span> {{adaptAnnotation(sig.return)}}</template></code>
   </pre>
   <!-- <router-link to="/guide">world</router-link> -->
 </template>
@@ -20,21 +20,47 @@ export default {
   //   }
   // },
   computed: {
-    formatted_sig () {
-      const formatted_params = this.sig.params.map(p => '    ' + p.name + (p.annotation ? ': ' + p.annotation : '') + (p.default ? ' = ' + p.default : '')) .join(',\n')
-      const return_annotation = (this.sig.return ? ' -> ' + this.sig.return : '')
-      return this.name + (formatted_params.length > 0 ? '(\n' + formatted_params + '\n  )' : '()') + return_annotation
+    selection () {
+      return this.$store.state.selection
+    },
+    domainTypes () {
+      return this.$store.getters.domainTypes
     }
   },
-//   methods: {
-//     showAlert (msg) {
-//       alert(msg)
-//     }
-//   },
-//   watch: {
-//     results (val) {
-//       this.$emit('update:selectedItemIndex', (this.autoSelectFirst ? 0 : -1))
-//     }
-//  }
+  methods: {
+    adaptAnnotation (annotation) {
+      if (this.selection['domain'].simplifySignatures) {
+        let simplifiedAnnotation = annotation.replace(/\bD\.(\w+)\b/g, (match, type) => (this.domainTypes[type] !== undefined ? this.domainTypes[type].split('.').reverse()[0] : match))
+        // Remove all unnecessary Union[...]
+        const search = 'Union['
+        let searchStart = 0
+        while (true) {
+          const start = simplifiedAnnotation.indexOf(search, searchStart)
+          if (start < 0) {
+            break
+          }
+          let bracketCounter = 0
+          for(let i = start + search.length; i < simplifiedAnnotation.length; i++) {
+            const char = simplifiedAnnotation.charAt(i)
+            if (char === ',' && bracketCounter === 0) {
+              searchStart = start + 1
+              break
+            } else if (char === '[') {
+              bracketCounter++
+            } else if (char === ']') {
+              if (bracketCounter === 0) {
+                simplifiedAnnotation = simplifiedAnnotation.slice(0, start) + simplifiedAnnotation.slice(start + search.length, i) + simplifiedAnnotation.slice(i + 1)
+                break
+              } else {
+                bracketCounter--
+              }
+            }
+          }
+        }
+        return simplifiedAnnotation
+      }
+      return annotation
+    }
+  }
 }
 </script>

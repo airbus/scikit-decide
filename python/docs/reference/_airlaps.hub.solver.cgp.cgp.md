@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## flatten
 
 <airlaps-signature name= "flatten" :sig="{'params': [{'name': 'c'}]}"></airlaps-signature>

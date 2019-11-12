@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## GymDomain
 
 This class wraps an OpenAI Gym environment (gym.env) as an AIRLAPS domain.

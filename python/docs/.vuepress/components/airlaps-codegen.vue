@@ -34,7 +34,7 @@
       right <span class="token operator">=</span> <span class="token number">3</span>
   
   </template>
-  <span class="token keyword">class</span> <span class="token class-name">D</span>({{ domain_inheritance }}):
+  <span class="token keyword">class</span> <span class="token class-name">D</span>({{ domainInheritance }}):
       <template v-if="isSolver">pass</template><template v-else>T_state <span class="token operator">=</span> State  <span class="token comment"># Type of states</span>
       T_observation <span class="token operator">=</span> T_state  <span class="token comment"># Type of observations</span>
       T_event <span class="token operator">=</span> Action  <span class="token comment"># Type of events</span>
@@ -42,7 +42,7 @@
       T_info <span class="token operator">=</span> <span class="token boolean">None</span>  <span class="token comment"># Type of additional information in environment outcome</span></template>
   
   
-  <span class="token keyword">class</span> <template v-if="isSolver"><span class="token class-name">MySolver</span>({{ solver_inheritance }}):
+  <span class="token keyword">class</span> <template v-if="isSolver"><span class="token class-name">MySolver</span>({{ solverInheritance }}):
       T_domain <span class="token operator">=</span> D</template><template v-else><span class="token class-name">MyDomain</span>(D):</template>
       <template v-for="(level, characteristic) in {...{'default': domainOrSolver}, ...selection[domainOrSolver].characteristics}" v-if="level != '(none)'"><template v-for="method in methods[domainOrSolver][level]">
       <span class="token keyword">def</span> <span class="token function">{{method}}</span>(<template v-for="p, i in signatures[method].params">{{p.name}}<template v-if="p.annotation">: {{adaptAnnotation(p.annotation)}}</template><template v-if="p.default"> <span class="token operator">=</span> <span class="token boolean">{{p.default}}</span></template><template v-if="i < signatures[method].params.length - 1">, </template></template>)<template v-if="signatures[method].return"> <span class="token operator">-></span> {{adaptAnnotation(signatures[method].return)}}</template>:
@@ -76,20 +76,19 @@ export default {
     selectedTemplate () {
       return this.$store.getters.selectedTemplate
     },
-    domain_inheritance () {
+    domainInheritance () {
       const inheritance = [this.selection['domain'].template, ...Object.entries(this.selection['domain'].characteristics).filter(c => this.isFinetuned(c[0], c[1], 'domain')).map(c => c[1])]
       return inheritance.join(', ')
     },
-    solver_inheritance () {
+    solverInheritance () {
       const inheritance = [this.selection['solver'].template, ...Object.entries(this.selection['solver'].characteristics).filter(c => this.isFinetuned(c[0], c[1], 'solver')).map(c => c[1])]
       return inheritance.join(', ')
     },
     methods () {
       return this.$store.state.methods
     },
-    domain_types () {
-      const levels = Object.values(this.selection['domain'].characteristics).filter(c => c !== '(none)')
-      return Object.assign({}, ...levels.map(l => this.$store.state.types['domain'][l]))
+    domainTypes () {
+      return this.$store.getters.domainTypes
     },
     signatures () {
       return this.$store.state.signatures[this.domainOrSolver]
@@ -101,7 +100,7 @@ export default {
     },
     adaptAnnotation (annotation) {
       if (this.selection['domain'].simplifySignatures) {
-        let simplifiedAnnotation = annotation.replace(/\bD\.(\w+)\b/g, (match, type) => (this.domain_types[type] !== undefined ? this.domain_types[type].split('.').reverse()[0] : match))
+        let simplifiedAnnotation = annotation.replace(/\bD\.(\w+)\b/g, (match, type) => (this.domainTypes[type] !== undefined ? this.domainTypes[type].split('.').reverse()[0] : match))
         // Remove all unnecessary Union[...]
         const search = 'Union['
         let searchStart = 0

@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Events
 
 A domain must inherit this class if it handles events (controllable or not not by the agents).

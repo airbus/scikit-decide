@@ -4,6 +4,10 @@ This module contains base classes for quickly building solvers.
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Solver
 
 This is the highest level solver class (inheriting top-level class for each mandatory solver characteristic).

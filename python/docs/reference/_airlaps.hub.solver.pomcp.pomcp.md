@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## get\_probability
 
 <airlaps-signature name= "get_probability" :sig="{'params': [{'name': 'distribution'}, {'name': 'element'}, {'name': 'n', 'default': '100'}]}"></airlaps-signature>

@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## StableBaseline
 
 This class wraps a stable OpenAI Baselines solver (stable_baselines) as an AIRLAPS solver.

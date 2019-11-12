@@ -240,6 +240,9 @@ if __name__ == '__main__':
         # Write Table Of Content
         md += '[[toc]]\n\n'
 
+        # Write domain spec summary
+        md += '::: tip\n<airlaps-summary></airlaps-summary>\n:::\n\n'
+
         # Write members
         for member in module['members']:
 

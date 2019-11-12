@@ -4,6 +4,10 @@ This module contains base classes for quickly building domains.
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Domain
 
 This is the highest level domain class (inheriting top-level class for each mandatory domain characteristic).
