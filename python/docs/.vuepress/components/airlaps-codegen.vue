@@ -9,13 +9,16 @@
     </el-button>
   </el-row>
 
+  <slot v-if="isSolver" name="SolverSummary"></slot>
+
   <pre>
   <code id="gencode" class="language-python"><template v-if="!isSolver"><span class="token keyword">from</span> enum <span class="token keyword">import</span> Enum</template>
   <span class="token keyword">from</span> typing <span class="token keyword">import</span> <span class="token operator">*</span>
   
   <span class="token keyword">from</span> airlaps <span class="token keyword">import</span> <span class="token operator">*</span>
-  <span class="token keyword">from</span> airlaps.builders.domain <span class="token keyword">import</span> <span class="token operator">*</span>
-  
+  <span class="token keyword">from</span> airlaps.builders.domain <span class="token keyword">import</span> <span class="token operator">*</span><template v-if="isSolver">
+  <span class="token keyword">from</span> airlaps.builders.solver <span class="token keyword">import</span> <span class="token operator">*</span></template>
+
   <template v-if="!isSolver">
   <span class="token comment"># Example of State type (adapt to your needs)</span>
   <span class="token keyword">class</span> <span class="token class-name">State</span>(NamedTuple):
@@ -39,9 +42,9 @@
       T_info <span class="token operator">=</span> <span class="token boolean">None</span>  <span class="token comment"># Type of additional information in environment outcome</span></template>
   
   
-  <span class="token keyword">class</span> <template v-if="isSolver">MySolver(Solver):
-      T_domain = D</template><template v-else><span class="token class-name">MyDomain</span>(D):</template>
-      <template v-for="(level, characteristic) in selection.characteristics" v-if="level != '(none)'"><template v-for="method in methods[level]">
+  <span class="token keyword">class</span> <template v-if="isSolver"><span class="token class-name">MySolver</span>({{ solver_inheritance }}):
+      T_domain <span class="token operator">=</span> D</template><template v-else><span class="token class-name">MyDomain</span>(D):</template>
+      <template v-for="(level, characteristic) in {...{'default': domainOrSolver}, ...selection[domainOrSolver].characteristics}" v-if="level != '(none)'"><template v-for="method in methods[domainOrSolver][level]">
       <span class="token keyword">def</span> <span class="token function">{{method}}</span>(<template v-for="p, i in signatures[method].params">{{p.name}}<template v-if="p.annotation">: {{adaptAnnotation(p.annotation)}}</template><template v-if="p.default"> <span class="token operator">=</span> <span class="token boolean">{{p.default}}</span></template><template v-if="i < signatures[method].params.length - 1">, </template></template>)<template v-if="signatures[method].return"> <span class="token operator">-></span> {{adaptAnnotation(signatures[method].return)}}</template>:
           <span class="token keyword">pass</span>
       </template></template>
@@ -64,6 +67,9 @@ export default {
     }
   },
   computed: {
+    domainOrSolver () {
+      return (this.isSolver ? 'solver' : 'domain')
+    },
     selection () {
       return this.$store.state.selection
     },
@@ -71,27 +77,31 @@ export default {
       return this.$store.getters.selectedTemplate
     },
     domain_inheritance () {
-      const inheritance = [this.selection.template, ...Object.entries(this.selection.characteristics).filter(c => this.isFinetuned(c[0], c[1])).map(c => c[1])]
+      const inheritance = [this.selection['domain'].template, ...Object.entries(this.selection['domain'].characteristics).filter(c => this.isFinetuned(c[0], c[1], 'domain')).map(c => c[1])]
+      return inheritance.join(', ')
+    },
+    solver_inheritance () {
+      const inheritance = [this.selection['solver'].template, ...Object.entries(this.selection['solver'].characteristics).filter(c => this.isFinetuned(c[0], c[1], 'solver')).map(c => c[1])]
       return inheritance.join(', ')
     },
     methods () {
       return this.$store.state.methods
     },
-    types () {
-      const levels = Object.values(this.selection.characteristics).filter(c => c !== '(none)')
-      return Object.assign({}, ...levels.map(l => this.$store.state.types[l]))
+    domain_types () {
+      const levels = Object.values(this.selection['domain'].characteristics).filter(c => c !== '(none)')
+      return Object.assign({}, ...levels.map(l => this.$store.state.types['domain'][l]))
     },
     signatures () {
-      return this.isSolver ? this.$store.state.solver_signatures : this.$store.state.domain_signatures
+      return this.$store.state.signatures[this.domainOrSolver]
     }
   },
   methods: {
-    isFinetuned (characteristic, level) {
-      return this.selectedTemplate.characteristics[characteristic] !== level
+    isFinetuned (characteristic, level, domainOrSolver) {
+      return this.selectedTemplate[domainOrSolver].characteristics[characteristic] !== level
     },
     adaptAnnotation (annotation) {
-      if (this.selection.simplifySignatures) {
-        let simplifiedAnnotation = annotation.replace(/\bD\.(\w+)\b/g, (match, type) => (this.types[type] !== undefined ? this.types[type].split('.').reverse()[0] : match))
+      if (this.selection['domain'].simplifySignatures) {
+        let simplifiedAnnotation = annotation.replace(/\bD\.(\w+)\b/g, (match, type) => (this.domain_types[type] !== undefined ? this.domain_types[type].split('.').reverse()[0] : match))
         // Remove all unnecessary Union[...]
         const search = 'Union['
         let searchStart = 0

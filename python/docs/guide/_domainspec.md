@@ -3,7 +3,7 @@ navbar: false
 sidebar: false
 ---
 
-<airlaps-domainspec>
+<airlaps-spec>
 
 <template v-slot:Domain>
 
@@ -516,5 +516,5 @@ Having only positive costs is a required assumption for certain solvers to work,
 
 </template>
 
-</airlaps-domainspec>
+</airlaps-spec>
 

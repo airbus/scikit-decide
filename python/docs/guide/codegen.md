@@ -1,7 +1,17 @@
 # Code generators
 
 ::: tip
-<airlaps-domain></airlaps-domain>
+<airlaps-summary></airlaps-summary>
 :::
 
-<airlaps-codegen></airlaps-codegen>
+<airlaps-codegen>
+
+<template v-slot:SolverSummary>
+
+::: warning
+<airlaps-summary isSolver></airlaps-summary>
+:::
+
+</template>
+
+</airlaps-codegen>
