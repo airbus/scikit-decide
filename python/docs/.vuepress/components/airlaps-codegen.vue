@@ -139,12 +139,7 @@ export default {
       textArea.select()
       document.execCommand('copy')
     }
-  },
-//   watch: {
-//     results (val) {
-//       this.$emit('update:selectedItemIndex', (this.autoSelectFirst ? 0 : -1))
-//     }
-//  }
+  }
 }
 </script>
 

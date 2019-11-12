@@ -39,7 +39,7 @@ Initialize ImplicitSpace.
 
 #### Example
 ```python
-my_space = ImplicitSpace(lambda x: 5 \< x['position'] \< 10)
+my_space = ImplicitSpace(lambda x: 10 > x['position'] > 5)
 ```
 
 ### contains <Badge text="Space" type="warn"/>

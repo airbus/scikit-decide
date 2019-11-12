@@ -3,7 +3,6 @@
   <code class="language-python"><span class="token function">{{name}}</span>(
   <template v-for="p, i in sig.params">  {{p.name}}<template v-if="p.annotation">: <span v-html="adaptAnnotationHtml(p.annotation)"></span></template><template v-if="p.default"> <span class="token operator">=</span> <span class="token boolean">{{p.default}}</span></template><template v-if="i < sig.params.length - 1">,</template><br></template>)<template v-if="sig.return"> <span class="token operator">-></span> <span v-html="adaptAnnotationHtml(sig.return)"></span></template></code>
   </pre>
-  <!-- <router-link to="/guide">world</router-link> -->
 </template>
 
 <script>
@@ -11,14 +10,12 @@ export default {
   props: {
     sig: {type: Object, default: () => ({params: []})},
     name: {type: String, default: ''}
-//     selectedItemIndex: {type: Number, default: -1},
-//     autoSelectFirst: {type: Boolean, default: false}
   },
-  // data () {
-  //   return {
-  //     sig: {"params": [{"name": "test", "default": true, "annotation": "bool"}, {"name": "test2", "annotation": "str"}]}
-  //   }
-  // },
+  data () {
+    return {
+      needsLinksUpdate: false
+    }
+  },
   computed: {
     selection () {
       return this.$store.state.selection
@@ -62,10 +59,28 @@ export default {
           }
         }
       }
-      // adaptedAnnotation = adaptedAnnotation.replace(/\w+/g, match => (this.objects[match] !== undefined ? ('<router-link to="' + this.objects[match] + '">' + match + '</router-link>') : match))
-      adaptedAnnotation = adaptedAnnotation.replace(/\w+/g, match => (this.objects[match] !== undefined ? ('<a href="' + this.objects[match] + '">' + match + '</a>') : match))
+      //adaptedAnnotation = adaptedAnnotation.replace(/\w+/g, match => (this.objects[match] !== undefined ? ('<router-link to="' + this.objects[match] + '">' + match + '</router-link>') : match))
+      //adaptedAnnotation = adaptedAnnotation.replace(/\w+/g, match => (this.objects[match] !== undefined ? ('<a href="' + this.objects[match] + '">' + match + '</a>') : match))
+      adaptedAnnotation = adaptedAnnotation.replace(/\w+/g, match => (this.objects[match] !== undefined ? ('<a class="linkto" data-link="' + this.objects[match] + '">' + match + '</a>') : match))
+      this.needsLinksUpdate = true
+      this.$nextTick(this.updateLinks)
       return adaptedAnnotation
+    },
+    updateLinks () {
+      if (this.needsLinksUpdate) {
+        const links = [...document.getElementsByClassName("linkto")]
+        links.forEach(link => link.addEventListener("click", () => this.$router.push(link.getAttribute("data-link"))))
+        this.needsLinksUpdate = false
+      }
     }
   }
 }
 </script>
+
+<style>
+
+.linkto {
+  cursor: pointer;
+}
+
+</style>
