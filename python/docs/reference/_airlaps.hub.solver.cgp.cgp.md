@@ -12,7 +12,7 @@
 
 Generator flattening the structure
 
-\>\>\> list(flatten([2, [2, "test", [4,5, [7], [2, [6, 2, 6, [6], 4]], 6]]]))
+>>> list(flatten([2, [2, "test", [4,5, [7], [2, [6, 2, 6, [6], 4]], 6]]]))
 [2, 2, "test", 4, 5, 7, 2, 6, 2, 6, 6, 4, 6]
 
 ## norm\_and\_flatten

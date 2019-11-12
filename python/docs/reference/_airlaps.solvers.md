@@ -22,8 +22,8 @@ class MySolver(Solver, ...)
 with "..." replaced when needed by a number of classes from following domain characteristics (the ones in
 parentheses are optional):
 
-- **(assessability)**: Utilities -\> QValues
-- **(policy)**: Policies -\> UncertainPolicies -\> DeterministicPolicies
+- **(assessability)**: Utilities -> QValues
+- **(policy)**: Policies -> UncertainPolicies -> DeterministicPolicies
 - **(restorability)**: Restorable
 
 ### check\_domain <Badge text="Solver" type="tip"/>

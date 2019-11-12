@@ -99,19 +99,20 @@ export default {
       return this.selectedTemplate[domainOrSolver].characteristics[characteristic] !== level
     },
     adaptAnnotation (annotation) {
+      let adaptedAnnotation = annotation
       if (this.selection['domain'].simplifySignatures) {
-        let simplifiedAnnotation = annotation.replace(/\bD\.(\w+)\b/g, (match, type) => (this.domainTypes[type] !== undefined ? this.domainTypes[type].split('.').reverse()[0] : match))
+        adaptedAnnotation = adaptedAnnotation.replace(/\bD\.(\w+)\b/g, (match, type) => (this.domainTypes[type] !== undefined ? this.domainTypes[type].split('.').reverse()[0] : match))
         // Remove all unnecessary Union[...]
         const search = 'Union['
         let searchStart = 0
         while (true) {
-          const start = simplifiedAnnotation.indexOf(search, searchStart)
+          const start = adaptedAnnotation.indexOf(search, searchStart)
           if (start < 0) {
             break
           }
           let bracketCounter = 0
-          for(let i = start + search.length; i < simplifiedAnnotation.length; i++) {
-            const char = simplifiedAnnotation.charAt(i)
+          for(let i = start + search.length; i < adaptedAnnotation.length; i++) {
+            const char = adaptedAnnotation.charAt(i)
             if (char === ',' && bracketCounter === 0) {
               searchStart = start + 1
               break
@@ -119,7 +120,7 @@ export default {
               bracketCounter++
             } else if (char === ']') {
               if (bracketCounter === 0) {
-                simplifiedAnnotation = simplifiedAnnotation.slice(0, start) + simplifiedAnnotation.slice(start + search.length, i) + simplifiedAnnotation.slice(i + 1)
+                adaptedAnnotation = adaptedAnnotation.slice(0, start) + adaptedAnnotation.slice(start + search.length, i) + adaptedAnnotation.slice(i + 1)
                 break
               } else {
                 bracketCounter--
@@ -127,9 +128,8 @@ export default {
             }
           }
         }
-        return simplifiedAnnotation
       }
-      return annotation
+      return adaptedAnnotation
     },
     copyCode () {
       const copyText = document.getElementById('gencode').textContent

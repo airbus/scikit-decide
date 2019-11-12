@@ -129,7 +129,7 @@ def md_escape(md):
 
 
 def doc_escape(md):
-    return re.sub(r'[<>]', lambda m: f'\\{m.group()}', md)
+    return re.sub(r'[<]', lambda m: f'\\{m.group()}', md)
 
 
 def write_signature(md, member):
@@ -138,8 +138,10 @@ def write_signature(md, member):
         md += f'<airlaps-signature name= "{member["name"]}" :sig="{escape_json_sig}"></airlaps-signature>\n\n'
     return md
 
+
 def is_implemented(func_code):
     return not func_code.strip().endswith('raise NotImplementedError')
+
 
 if __name__ == '__main__':
 
@@ -287,10 +289,13 @@ if __name__ == '__main__':
         for i in range(1, len(e['section']) + 1):
             section = e['section'][:i]
             if section not in sections:
-                title = 'Reference' if section[-1] == 'airlaps' else section[-1]
+                title = 'Reference'
+                if section[-1] != 'airlaps':
+                    title = section[-1]
+                    reference += '\n'
                 reference += f'{"".join(["#"]*i)} {title}\n\n'
                 sections.add(section)
-        reference += f'[{e["text"]}](_{e["link"]})\n\n'
+        reference += f'- <router-link to="_{e["link"]}">{e["text"]}</router-link>\n'
 
     with open(f'reference/README.md', 'w') as f:
         f.write(reference)
@@ -302,7 +307,8 @@ if __name__ == '__main__':
         'characteristics': {},
         'methods': {},
         'types': {},
-        'signatures': {}
+        'signatures': {},
+        'objects': {}
     }
     for element in ['domain', 'solver']:
         spec = ''
@@ -353,6 +359,7 @@ if __name__ == '__main__':
             f.write(spec)
 
     # Write Json state (.vuepress/_state.json)
+    state['objects'] = {member['name']: f'/reference/_airlaps.core.html#{member["name"].lower()}' for module in autodocs if module['ref'] == 'airlaps.core' for member in module['members']}
     for element in ['domain', 'solver']:
         tmp_methods = {}  # TODO: detect classmethods/staticmethods to add decorator in code generator (only necessary if there was any NotImplemented classmethod/staticmethod in base template or any characteristic level)
         tmp_types = {}

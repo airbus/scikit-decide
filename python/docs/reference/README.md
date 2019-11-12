@@ -1,100 +1,89 @@
 # Reference
 
-[core](_airlaps.core)
-
-[domains](_airlaps.domains)
-
-[solvers](_airlaps.solvers)
-
-[utils](_airlaps.utils)
+- <router-link to="_airlaps.core">core</router-link>
+- <router-link to="_airlaps.domains">domains</router-link>
+- <router-link to="_airlaps.solvers">solvers</router-link>
+- <router-link to="_airlaps.utils">utils</router-link>
 
 ## builders
 
+
 ### domain
 
-[agent](_airlaps.builders.domain.agent)
-
-[concurrency](_airlaps.builders.domain.concurrency)
-
-[constraints](_airlaps.builders.domain.constraints)
-
-[dynamics](_airlaps.builders.domain.dynamics)
-
-[events](_airlaps.builders.domain.events)
-
-[goals](_airlaps.builders.domain.goals)
-
-[initialization](_airlaps.builders.domain.initialization)
-
-[memory](_airlaps.builders.domain.memory)
-
-[observability](_airlaps.builders.domain.observability)
-
-[renderability](_airlaps.builders.domain.renderability)
-
-[value](_airlaps.builders.domain.value)
+- <router-link to="_airlaps.builders.domain.agent">agent</router-link>
+- <router-link to="_airlaps.builders.domain.concurrency">concurrency</router-link>
+- <router-link to="_airlaps.builders.domain.constraints">constraints</router-link>
+- <router-link to="_airlaps.builders.domain.dynamics">dynamics</router-link>
+- <router-link to="_airlaps.builders.domain.events">events</router-link>
+- <router-link to="_airlaps.builders.domain.goals">goals</router-link>
+- <router-link to="_airlaps.builders.domain.initialization">initialization</router-link>
+- <router-link to="_airlaps.builders.domain.memory">memory</router-link>
+- <router-link to="_airlaps.builders.domain.observability">observability</router-link>
+- <router-link to="_airlaps.builders.domain.renderability">renderability</router-link>
+- <router-link to="_airlaps.builders.domain.value">value</router-link>
 
 ### solver
 
-[assessability](_airlaps.builders.solver.assessability)
-
-[policy](_airlaps.builders.solver.policy)
-
-[restorability](_airlaps.builders.solver.restorability)
+- <router-link to="_airlaps.builders.solver.assessability">assessability</router-link>
+- <router-link to="_airlaps.builders.solver.policy">policy</router-link>
+- <router-link to="_airlaps.builders.solver.restorability">restorability</router-link>
 
 ## hub
 
+
 ### domain
+
 
 #### gym
 
-[gym](_airlaps.hub.domain.gym.gym)
+- <router-link to="_airlaps.hub.domain.gym.gym">gym</router-link>
 
 #### mastermind
 
-[mastermind](_airlaps.hub.domain.mastermind.mastermind)
+- <router-link to="_airlaps.hub.domain.mastermind.mastermind">mastermind</router-link>
 
 #### maze
 
-[maze](_airlaps.hub.domain.maze.maze)
+- <router-link to="_airlaps.hub.domain.maze.maze">maze</router-link>
 
 #### rock_paper_scissors
 
-[rock_paper_scissors](_airlaps.hub.domain.rock_paper_scissors.rock_paper_scissors)
+- <router-link to="_airlaps.hub.domain.rock_paper_scissors.rock_paper_scissors">rock_paper_scissors</router-link>
 
 #### simple_grid_world
 
-[simple_grid_world](_airlaps.hub.domain.simple_grid_world.simple_grid_world)
+- <router-link to="_airlaps.hub.domain.simple_grid_world.simple_grid_world">simple_grid_world</router-link>
 
 ### solver
 
+
 #### cgp
 
-[cgp](_airlaps.hub.solver.cgp.cgp)
+- <router-link to="_airlaps.hub.solver.cgp.cgp">cgp</router-link>
 
 #### lazy_astar
 
-[lazy_astar](_airlaps.hub.solver.lazy_astar.lazy_astar)
+- <router-link to="_airlaps.hub.solver.lazy_astar.lazy_astar">lazy_astar</router-link>
 
 #### pomcp
 
-[pomcp](_airlaps.hub.solver.pomcp.pomcp)
+- <router-link to="_airlaps.hub.solver.pomcp.pomcp">pomcp</router-link>
 
 #### ray_rllib
 
-[ray_rllib](_airlaps.hub.solver.ray_rllib.ray_rllib)
+- <router-link to="_airlaps.hub.solver.ray_rllib.ray_rllib">ray_rllib</router-link>
 
 #### simple_greedy
 
-[simple_greedy](_airlaps.hub.solver.simple_greedy.simple_greedy)
+- <router-link to="_airlaps.hub.solver.simple_greedy.simple_greedy">simple_greedy</router-link>
 
 #### stable_baselines
 
-[stable_baselines](_airlaps.hub.solver.stable_baselines.stable_baselines)
+- <router-link to="_airlaps.hub.solver.stable_baselines.stable_baselines">stable_baselines</router-link>
 
 ### space
 
+
 #### gym
 
-[gym](_airlaps.hub.space.gym.gym)
-
+- <router-link to="_airlaps.hub.space.gym.gym">gym</router-link>
