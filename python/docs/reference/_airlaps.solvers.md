@@ -4,6 +4,10 @@ This module contains base classes for quickly building solvers.
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Solver
 
 This is the highest level solver class (inheriting top-level class for each mandatory solver characteristic).
@@ -18,8 +22,8 @@ class MySolver(Solver, ...)
 with "..." replaced when needed by a number of classes from following domain characteristics (the ones in
 parentheses are optional):
 
-- **(assessability)**: Utilities -\> QValues
-- **(policy)**: Policies -\> UncertainPolicies -\> DeterministicPolicies
+- **(assessability)**: Utilities -> QValues
+- **(policy)**: Policies -> UncertainPolicies -> DeterministicPolicies
 - **(restorability)**: Restorable
 
 ### check\_domain <Badge text="Solver" type="tip"/>

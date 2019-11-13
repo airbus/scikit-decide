@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## RayRLlib
 
 This class wraps a Ray RLlib solver (ray[rllib]) as an AIRLAPS solver.

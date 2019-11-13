@@ -3,8 +3,8 @@
     <!-- Template -->
     <div style="margin-top: -3.6rem">
       <strong style="margin-right: 10px">Base template:</strong>
-      <el-radio-group :value="selection.template" fill="#F56C6C" size="small" style="margin-top: 5px; margin-bottom: 5px" @input="updateSelection({template: $event})">
-        <el-tooltip v-for="template in templates" :key="template.name" effect="light" placement="bottom" :open-delay="500">
+      <el-radio-group :value="selection[domainOrSolver].template" fill="#F56C6C" size="small" style="margin-top: 5px; margin-bottom: 5px" @input="updateSelection({template: $event}, domainOrSolver)">
+        <el-tooltip v-for="template in templates[domainOrSolver]" :key="template.name" effect="light" placement="bottom" :open-delay="500">
           <div class="tooltip" slot="content">
             <slot :name="template.name"></slot>
           </div>
@@ -16,10 +16,10 @@
     <el-divider>Finetune characteristics (optional):</el-divider>
 
     <!-- Characteristics -->
-    <div v-for="characteristic in characteristics" :key="characteristic.name" style="margin-top: 10px">
+    <div v-for="characteristic in characteristics[domainOrSolver]" :key="characteristic.name" style="margin-top: 10px">
       <span style="margin-right: 10px">{{characteristic.name}}:</span>
-      <el-radio-group :value="selection.characteristics[characteristic.name]" size="small" style="margin-top: 5px; margin-bottom: 5px" @input="updateSelection({characteristics: {...selection.characteristics, [characteristic.name]: $event}})">
-        <el-tooltip v-for="(level, index) in characteristic.levels" :key="level" :disabled="level.includes('(')" effect="light" placement="top" :open-delay="500">
+      <el-radio-group :value="selection[domainOrSolver].characteristics[characteristic.name]" size="small" style="margin-top: 5px; margin-bottom: 5px" @input="updateSelection({characteristics: {...selection[domainOrSolver].characteristics, [characteristic.name]: $event}}, domainOrSolver)">
+        <el-tooltip v-for="(level, index) in characteristic.levels" :key="level" :disabled="level === '(none)'" effect="light" placement="top" :open-delay="500">
           <div class="tooltip" slot="content">
             <slot :name="level"></slot>
           </div>
@@ -32,12 +32,9 @@
 
 <script>
 export default {
-  // props: {
-  //   // templates: {type: Array},
-  //   // characteristics: {type: Array}
-  //   // sig: {type: Object, default: () => ({params: []})},
-  //   // name: {type: String, default: ''}
-  // },
+  props: {
+    isSolver: {type: Boolean, default: false}
+  },
   // data () {
   //   return {
   //     // templates: [
@@ -68,6 +65,9 @@ export default {
     this.$store.commit('loadSelection')
   },
   computed: {
+    domainOrSolver () {
+      return (this.isSolver ? 'solver' : 'domain')
+    },
     templates () {
       return this.$store.state.templates
     },
@@ -82,16 +82,16 @@ export default {
     },
     templateLevelIndex () {
       const levelIndex = {}
-      this.characteristics.forEach(characteristic => {
-        const index = characteristic.levels.indexOf(this.selectedTemplate.characteristics[characteristic.name])
+      this.characteristics[this.domainOrSolver].forEach(characteristic => {
+        const index = characteristic.levels.indexOf(this.selectedTemplate[this.domainOrSolver].characteristics[characteristic.name])
         levelIndex[characteristic.name] = (index >= 0 ? index : 0)
       });
       return levelIndex
     }
   },
   methods: {
-    updateSelection (payload) {
-      this.$store.commit('updateSelection', payload)
+    updateSelection (selection, domainOrSolver) {
+      this.$store.commit('updateSelection', {selection, domainOrSolver})
     }
   //   formatDoc (doc) {
   //     let format_doc = doc || ''
@@ -107,8 +107,11 @@ export default {
   //   }
   },
   watch: {
-    'selection.template' (newVal) {
-      this.updateSelection({characteristics: {...this.selectedTemplate.characteristics}})
+    'selection.domain.template' (newVal) {
+      this.updateSelection({characteristics: {...this.selectedTemplate['domain'].characteristics}}, 'domain')
+    },
+    'selection.solver.template' (newVal) {
+      this.updateSelection({characteristics: {...this.selectedTemplate['solver'].characteristics}}, 'solver')
     }
     // 'selection.template': {
     //   immediate: false,

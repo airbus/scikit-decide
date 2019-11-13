@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## PartiallyObservable
 
 A domain must inherit this class if it is partially observable.

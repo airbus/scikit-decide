@@ -82,7 +82,7 @@ class ImplicitSpace(Space[T]):
 
         # Example
         ```python
-        my_space = ImplicitSpace(lambda x: 5 < x['position'] < 10)
+        my_space = ImplicitSpace(lambda x: 10 > x['position'] > 5)
         ```
         """
         self.contains_function = contains_function
@@ -386,6 +386,7 @@ class Memory(Deque[T]):
 
 # StrDict
 class StrDict(Generic[T], Dict[str, T]):
+    """A dictionary with String keys (e.g. agent names)."""
     pass
 
 
@@ -495,7 +496,7 @@ class BoundConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
 
         # Example
         ```python
-        constraint = BoundConstraint((lambda memory, action, next_state: next_state.x), '<', 5.)
+        constraint = BoundConstraint((lambda memory, action, next_state: next_state.x), '>', 5.)
         ```
         """
         self._evaluate_function = evaluate_function

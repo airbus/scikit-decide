@@ -4,6 +4,10 @@ This module contains utility functions.
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## rollout
 
 <airlaps-signature name= "rollout" :sig="{'params': [{'name': 'domain', 'annotation': 'Domain'}, {'name': 'solver', 'default': 'None', 'annotation': 'Optional[Solver]'}, {'name': 'from_memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}, {'name': 'from_action', 'default': 'None', 'annotation': 'Optional[D.T_agent[D.T_concurrency[D.T_event]]]'}, {'name': 'num_episodes', 'default': '1', 'annotation': 'int'}, {'name': 'max_steps', 'default': 'None', 'annotation': 'Optional[int]'}, {'name': 'render', 'default': 'True', 'annotation': 'bool'}, {'name': 'max_framerate', 'default': 'None', 'annotation': 'Optional[float]'}, {'name': 'verbose', 'default': 'True', 'annotation': 'bool'}, {'name': 'action_formatter', 'default': '<lambda function>', 'annotation': 'Optional[Callable[[D.T_event], str]]'}, {'name': 'outcome_formatter', 'default': '<lambda function>', 'annotation': 'Optional[Callable[[EnvironmentOutcome], str]]'}, {'name': 'save_result_directory', 'default': 'None', 'annotation': 'str'}], 'return': 'None'}"></airlaps-signature>

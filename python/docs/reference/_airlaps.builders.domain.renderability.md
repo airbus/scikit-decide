@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Renderable
 
 A domain must inherit this class if it can be rendered with any kind of visualization.

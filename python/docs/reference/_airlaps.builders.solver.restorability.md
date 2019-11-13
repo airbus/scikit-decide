@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Restorable
 
 A solver must inherit this class if its state can be saved and reloaded (to continue computation later on or

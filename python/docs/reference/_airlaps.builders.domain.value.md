@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Rewards
 
 A domain must inherit this class if it sends rewards (positive and/or negative).

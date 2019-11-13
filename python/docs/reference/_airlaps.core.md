@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Space
 
 A space representing a finite or infinite set.
@@ -35,7 +39,7 @@ Initialize ImplicitSpace.
 
 #### Example
 ```python
-my_space = ImplicitSpace(lambda x: 5 \< x['position'] \< 10)
+my_space = ImplicitSpace(lambda x: 10 > x['position'] > 5)
 ```
 
 ### contains <Badge text="Space" type="warn"/>
@@ -360,6 +364,10 @@ Return the fields of the instance as a new tuple of field values.
 
 Return a new object replacing specified fields with new values.
 
+## StrDict
+
+A dictionary with String keys (e.g. agent names).
+
 ## Constraint
 
 A constraint.
@@ -490,7 +498,7 @@ True if the constraint computation depends on next_state (False otherwise).
 A constraint characterized by an evaluation function, an inequality and a bound.
 
 #### Example
-A BoundConstraint with inequality '\>=' is checked if (and only if) its `BoundConstraint.evaluate()` function returns
+A BoundConstraint with inequality '>=' is checked if (and only if) its `BoundConstraint.evaluate()` function returns
 a float greater than or equal to its bound.
 
 ### Constructor <Badge text="BoundConstraint" type="tip"/>
@@ -501,13 +509,13 @@ Initialize BoundConstraint.
 
 #### Parameters
 - **evaluate_function**: The evaluate() function to use.
-- **inequality**: A string ('\<', '\<=', '\>' or '\>=') describing the constraint inequality.
+- **inequality**: A string ('\<', '\<=', '>' or '>=') describing the constraint inequality.
 - **bound**: The bound of the constraint.
 - **depends_on_next_state**: Whether the evaluate() function requires the next_state parameter for its computation.
 
 #### Example
 ```python
-constraint = BoundConstraint((lambda memory, action, next_state: next_state.x), '\<', 5.)
+constraint = BoundConstraint((lambda memory, action, next_state: next_state.x), '>', 5.)
 ```
 
 ### check <Badge text="Constraint" type="warn"/>
@@ -565,7 +573,7 @@ The constraint bound.
 
 <airlaps-signature name= "get_inequality" :sig="{'params': [{'name': 'self'}], 'return': 'str'}"></airlaps-signature>
 
-Get the string ('\<', '\<=', '\>' or '\>=') describing the constraint inequality.
+Get the string ('\<', '\<=', '>' or '>=') describing the constraint inequality.
 
 #### Returns
 The string describing the inequality.

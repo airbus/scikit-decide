@@ -178,4 +178,4 @@ These combinations are particularly efficient if you want to try them out:
 
 ## Code generators
 
-Go to [Code generators](codegen) for assistance when creating a new domain or solver.
+Go to <router-link to="codegen">Code generators</router-link> for assistance when creating a new domain or solver.

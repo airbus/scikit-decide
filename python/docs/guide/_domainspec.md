@@ -3,7 +3,7 @@ navbar: false
 sidebar: false
 ---
 
-<airlaps-domainspec>
+<airlaps-spec>
 
 <template v-slot:Domain>
 
@@ -19,18 +19,18 @@ class D(Domain, ...)
 with "..." replaced when needed by a number of classes from following domain characteristics (the ones in
 parentheses are optional):
 
-- **agent**: MultiAgent -\> SingleAgent
-- **concurrency**: Parallel -\> Sequential
+- **agent**: MultiAgent -> SingleAgent
+- **concurrency**: Parallel -> Sequential
 - **(constraints)**: Constrained
-- **dynamics**: Environment -\> Simulation -\> UncertainTransitions -\> EnumerableTransitions
-  -\> DeterministicTransitions
-- **events**: Events -\> Actions -\> UnrestrictedActions
+- **dynamics**: Environment -> Simulation -> UncertainTransitions -> EnumerableTransitions
+  -> DeterministicTransitions
+- **events**: Events -> Actions -> UnrestrictedActions
 - **(goals)**: Goals
-- **(initialization)**: Initializable -\> UncertainInitialized -\> DeterministicInitialized
-- **memory**: History -\> FiniteHistory -\> Markovian -\> Memoryless
-- **observability**: PartiallyObservable -\> TransformedObservable -\> FullyObservable
+- **(initialization)**: Initializable -> UncertainInitialized -> DeterministicInitialized
+- **memory**: History -> FiniteHistory -> Markovian -> Memoryless
+- **observability**: PartiallyObservable -> TransformedObservable -> FullyObservable
 - **(renderability)**: Renderable
-- **value**: Rewards -\> PositiveCosts
+- **value**: Rewards -> PositiveCosts
 
 </template>
 
@@ -516,5 +516,5 @@ Having only positive costs is a required assumption for certain solvers to work,
 
 </template>
 
-</airlaps-domainspec>
+</airlaps-spec>
 

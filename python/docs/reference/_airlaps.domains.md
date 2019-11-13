@@ -4,6 +4,10 @@ This module contains base classes for quickly building domains.
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Domain
 
 This is the highest level domain class (inheriting top-level class for each mandatory domain characteristic).
@@ -18,18 +22,18 @@ class D(Domain, ...)
 with "..." replaced when needed by a number of classes from following domain characteristics (the ones in
 parentheses are optional):
 
-- **agent**: MultiAgent -\> SingleAgent
-- **concurrency**: Parallel -\> Sequential
+- **agent**: MultiAgent -> SingleAgent
+- **concurrency**: Parallel -> Sequential
 - **(constraints)**: Constrained
-- **dynamics**: Environment -\> Simulation -\> UncertainTransitions -\> EnumerableTransitions
-  -\> DeterministicTransitions
-- **events**: Events -\> Actions -\> UnrestrictedActions
+- **dynamics**: Environment -> Simulation -> UncertainTransitions -> EnumerableTransitions
+  -> DeterministicTransitions
+- **events**: Events -> Actions -> UnrestrictedActions
 - **(goals)**: Goals
-- **(initialization)**: Initializable -\> UncertainInitialized -\> DeterministicInitialized
-- **memory**: History -\> FiniteHistory -\> Markovian -\> Memoryless
-- **observability**: PartiallyObservable -\> TransformedObservable -\> FullyObservable
+- **(initialization)**: Initializable -> UncertainInitialized -> DeterministicInitialized
+- **memory**: History -> FiniteHistory -> Markovian -> Memoryless
+- **observability**: PartiallyObservable -> TransformedObservable -> FullyObservable
 - **(renderability)**: Renderable
-- **value**: Rewards -\> PositiveCosts
+- **value**: Rewards -> PositiveCosts
 
 ### check\_value <Badge text="Rewards" type="warn"/>
 

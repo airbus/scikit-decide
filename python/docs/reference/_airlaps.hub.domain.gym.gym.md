@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## GymDomain
 
 This class wraps an OpenAI Gym environment (gym.env) as an AIRLAPS domain.
@@ -4189,7 +4193,7 @@ Note:
     there aren't accidental correlations between multiple generators.
 
 Returns:
-    list\<bigint\>: Returns the list of seeds used in this env's random
+    list\<bigint>: Returns the list of seeds used in this env's random
       number generators. The first value in the list should be the
       "main" seed, or the value which a reproducer should pass to
       'seed'. Often, the main seed equals the provided 'seed', but

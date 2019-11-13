@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## History
 
 A domain must inherit this class if its full state history must be stored to compute its dynamics (non-Markovian

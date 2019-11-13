@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## Environment
 
 A domain must inherit this class if agents interact with it like a black-box environment.

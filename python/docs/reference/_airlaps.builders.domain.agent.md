@@ -2,6 +2,10 @@
 
 [[toc]]
 
+::: tip
+<airlaps-summary></airlaps-summary>
+:::
+
 ## MultiAgent
 
 A domain must inherit this class if it is multi-agent (i.e hosting multiple independent agents).

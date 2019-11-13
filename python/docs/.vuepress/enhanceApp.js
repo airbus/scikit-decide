@@ -20,8 +20,17 @@ export default ({
       state: default_state,
       getters: {
         selectedTemplate (state) {
-          const templateIndex = state.templates.findIndex(template => template.name == state.selection.template)
-          return state.templates[templateIndex]
+          let selectedTemplate = {}
+          const elements = ['domain', 'solver']
+          elements.forEach(element => {
+            const templateIndex = state.templates[element].findIndex(t => t.name == state.selection[element].template)
+            selectedTemplate[element] = state.templates[element][templateIndex]
+          })
+          return selectedTemplate
+        },
+        domainTypes (state) {
+          const levels = Object.values(state.selection['domain'].characteristics).filter(c => c !== '(none)')
+          return Object.assign({}, ...levels.map(l => state.types['domain'][l]))
         }
       },
       mutations: {
@@ -33,8 +42,8 @@ export default ({
             state.selection = {...state.selection, ...storedSelection}
           }
         },
-        updateSelection (state, payload) {
-          state.selection = {...state.selection, ...payload}
+        updateSelection (state, {selection, domainOrSolver}) {
+          state.selection[domainOrSolver] = {...state.selection[domainOrSolver], ...selection}
           localStorage.setItem('selection', JSON.stringify(state.selection))
         }
       }
