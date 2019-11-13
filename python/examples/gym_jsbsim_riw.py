@@ -16,7 +16,8 @@ from typing import Callable, Any
 from airlaps import TransitionOutcome, TransitionValue, EnvironmentOutcome, Domain
 from airlaps.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
-from airlaps.hub.domain.gym import DeterministicGymDomain, GymWidthDomain, GymDiscreteActionDomain
+from airlaps.hub.domain.gym import DeterministicGymDomain, GymWidthDomain, \
+    GymDiscreteActionDomain, DeterministicGymDomainStateProxy
 from airlaps.hub.solver.iw import IW
 from airlaps.hub.solver.riw import RIW
 from airlaps.utils import rollout
@@ -71,18 +72,51 @@ class GymRIWDomain(D):
                                          branching_factor=branching_factor)
         GymWidthDomain.__init__(self, continuous_feature_fidelity=continuous_feature_fidelity)
         gym_env._max_episode_steps = max_depth
-        self._map = None
-        self._path = None
+    
+    def _get_initial_state_(self) -> D.T_state:
+        state_proxy = super()._get_initial_state_()
+        return DeterministicGymDomainStateProxy(state=self.normalize_and_round(state_proxy._state), context=state_proxy._context)
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
             D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         o = super()._state_step(action)
-        return TransitionOutcome(state=o.state, value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
+        return TransitionOutcome(state=DeterministicGymDomainStateProxy(state=self.normalize_and_round(o.state._state), context=o.state._context),
+                                 value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
 
     def _sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
         EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         o = super()._sample(memory, action)
-        return EnvironmentOutcome(observation=o.observation, value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
+        return EnvironmentOutcome(observation=DeterministicGymDomainStateProxy(state=self.normalize_and_round(o.observation._state), context=o.observation._context),
+                                  value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
+    
+    def normalize_and_round(self, state):
+        for s in state:
+            np.around(1/(1+np.exp(-s/100.0)), decimals=5, out=s)
+            # s = np.round(s, decimals=3, out=s)
+        return state
+
+
+class EvaluationDomain(DeterministicGymDomain):
+    def __init__(self, planning_domain: GymRIWDomain) -> None:
+        DeterministicGymDomain.__init__(self,
+                                        gym_env=planning_domain._gym_env,
+                                        set_state=planning_domain._set_state,
+                                        get_state=planning_domain._get_state)
+        self._current_state = None
+        self._map = None
+        self._path = None
+    
+    def _state_reset(self) -> D.T_state:
+        s = super()._state_reset()
+        self._current_state = self._gym_env.get_state()
+        return s
+    
+    def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
+            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+        self._gym_env.set_state(self._current_state)
+        o = super()._state_step(action)
+        self._current_state = self._gym_env.get_state()
+        return TransitionOutcome(state=o.state, value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
     
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
         # Get rid of the current state and just look at the gym env's current internal state
@@ -111,6 +145,10 @@ class GymRIWDomain(D):
             self._path.locations.append(folium.utilities.validate_location((lat, lon)))
             self._map.location = folium.utilities.validate_location((lat, lon))
         self._map.save('gym_jsbsim_map_update.html')
+    
+    def set_memory(self, memory: D.T_memory[D.T_state]) -> None:
+        self._current_state = memory._context[4]
+        self._gym_env.set_state(self._current_state)
 
 
 class D(Domain, SingleAgent, Sequential, Environment, Actions, DeterministicInitialized, Markovian,
@@ -141,7 +179,13 @@ class GymRIW(RIW):
     
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
         self._domain._reset_features()
-        return super()._get_next_action(observation)
+        return super()._get_next_action(DeterministicGymDomainStateProxy(state=self.normalize_and_round(observation._state), context=observation._context))
+    
+    def normalize_and_round(self, state):
+        for s in state:
+            np.around(1/(1+np.exp(-s/100.0)), decimals=5, out=s)
+            # s = np.round(s, decimals=3, out=s)
+        return state
 
 
 domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
@@ -150,20 +194,20 @@ domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
                                       continuous_feature_fidelity=3,
                                       discretization_factor=5,
                                       max_depth=HORIZON)
-domain = domain_factory()
-domain.reset()
 
-if RIW.check_domain(domain):
+if RIW.check_domain(domain_factory()):
     solver_factory = lambda: GymRIW(state_features=lambda s, d: d.state_features(s),
                                     use_state_feature_hash=False,
                                     use_simulation_domain=True,
                                     time_budget=1000,
                                     rollout_budget=1000,
-                                    max_depth=10,
+                                    max_depth=5,
                                     exploration=0.25,
                                     parallel=False,
                                     debug_logs=False)
     solver = GymRIWDomain.solve_with(solver_factory, domain_factory)
+    evaluation_domain = EvaluationDomain(solver._domain)
+    evaluation_domain.reset()
     initial_state = solver._domain.reset()
-    rollout(domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON, max_framerate=30,
+    rollout(evaluation_domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON, max_framerate=30,
             outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
