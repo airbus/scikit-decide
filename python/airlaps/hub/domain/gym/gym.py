@@ -13,7 +13,7 @@ import random
 import struct
 import bisect
 from copy import deepcopy
-from typing import Any, Optional, Callable
+from typing import Any, Optional, Callable, List
 from collections import namedtuple  # TODO: replace with `from typing import NamedTuple`?
 
 import gym
@@ -207,6 +207,7 @@ class GymWidthDomain:
         self._continuous_feature_fidelity = continuous_feature_fidelity
         self._feature_increments = []
         self._init_continuous_state_variables = []
+        self._elliptical_features = None
     
     def _reset_features(self):
         self._init_continuous_state_variables = []
@@ -296,7 +297,7 @@ class GymWidthDomain:
                                                 0,
                                                 lambda i: None)
 
-    def binary_features(self, memory: D.T_memory[D.T_state]) -> None:
+    def binary_features(self, memory: D.T_memory[D.T_state]):
         """Transform state in a bit vector and call f on each true value of this vector
 
         # Parameters
@@ -326,10 +327,8 @@ class GymWidthDomain:
                 # that depends on the size of the bit vector encoding the largest float
                 float_bin = ('0' * (maxlen - len(float_bin))) + float_bin
                 for b in float_bin:
-                    if b == '1':
-                        features.append(True)
-                    else:
-                        features.append(False)
+                    features.append(b == '1')
+            return features
         elif isinstance(space, gym.spaces.discrete.Discrete):
             features = []
             # convert int to string of 1s and 0s
@@ -338,10 +337,8 @@ class GymWidthDomain:
             # that depends on the discrete space's highest element which is space.n - 1
             int_bin = ('0' * (len(bin(space.n - 1)[2:]) - len(int_bin))) + int_bin
             for b in int_bin:
-                if b == '1':
-                    features.append(True)
-                else:
-                    features.append(False)
+                features.append(b == '1')
+            return features
         elif isinstance(space, gym.spaces.multi_discrete.MultiDiscrete):
             features = []
             # look at the previous test case for the logics of translating each element of the vector to a bit string
@@ -349,31 +346,99 @@ class GymWidthDomain:
                 int_bin = bin(element[i])[2:]
                 int_bin = ('0' * (len(bin(space.nvec[i] - 1)[2:]) - len(int_bin))) + int_bin
                 for b in int_bin:
-                    if b == '1':
-                        features.append(True)
-                    else:
-                        features.append(False)
+                    features.append(b == '1')
+            return features
         elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
             features = []
             for b in element:
-                if b:
-                    features.append(True)
-                else:
-                    features.append(False)
+                features.append(bool(b))
+            return features
         elif isinstance(space, gym.spaces.tuple.Tuple):
             features = []
             for i in range(len(space.spaces)):
                 l = self._binary_features(space.spaces[i], element[i])
                 features += l
+            return features
         elif isinstance(space, gym.spaces.dict.Dict):
             features = []
             for k, v in space.spaces:
                 l = self._binary_features(v, element[k])
                 features += l
+            return features
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
-        return features
+    
+    class EllipticalMapping2D:
 
+        def __init__(self, input, _x0, _xG, bands):
+            self.input = input
+            self.x0 = _x0
+            self.xG = _xG
+            self.projected_goal = np.array([self.xG[self.input[0]], self.xG[self.input[1]]])
+            self.bands = bands
+        
+        def evaluate(self, state):
+            projected_state = np.array([state[self.input[0]], state[self.input[1]]])
+            c = np.linalg.norm(projected_state - self.projected_goal)
+            for k, v in enumerate(self.bands):
+                if c > v:
+                    return len(self.bands) - k
+            return 0
+    
+    def init_elliptical_features(self, x0: D.T_memory[D.T_state],
+                                       xG: D.T_memory[D.T_state]):
+        v0 = np.array(self._get_variables(self._gym_env.observation_space, x0))
+        vG = np.array(self._get_variables(self._gym_env.observation_space, xG))
+        d = xG.shape[0] # column vector
+        self._elliptical_features = []
+        for i in range(d):
+            for j in range(i+1, d):
+                input = (i, j)
+                c = np.linalg.norm(np.array([v0[i], v0[j]]) - np.array([vG[i], vG[j]]))
+                bands = []
+                num_levels = 10.0 * max(np.log10(c), 1.0)
+                delta_c = c / float(num_levels)
+                c_k = c
+                while c_k > delta_c:
+                    bands += [c_k]
+                    c_k -= delta_c
+                if len(bands) == 0:
+                    bands += [c_k]
+                self._elliptical_features += [self.EllipticalMapping2D(input, v0, vG, bands)]
+    
+    def elliptical_features(self, state: D.T_memory[D.T_state]):
+        vS = np.array(self._get_variables(self._gym_env.observation_space, state._state))
+        f = [f.evaluate(vS) for f in self._elliptical_features]
+        print(str(f))
+        return f
+    
+    def _get_variables(self, space: gym.spaces.Space, element: Any) -> List:
+        if isinstance(space, gym.spaces.box.Box):
+            var = []
+            for cell in np.nditer(element):
+                var.append(cell)
+            return var
+        elif isinstance(space, gym.spaces.discrete.Discrete):
+            return [element]
+        elif isinstance(space, gym.spaces.multi_discrete.MultiDiscrete):
+            return [e for e in element]
+        elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
+            return [e for e in element]
+        elif isinstance(space, gym.spaces.tuple.Tuple):
+            var = []
+            for i in range(len(space.spaces)):
+                l = self._get_variables(space.spaces[i], element[i])
+                var += l
+            return var
+        elif isinstance(space, gym.spaces.dict.Dict):
+            var = []
+            for k in space.spaces.keys():
+                index, l = self._get_variables(space.spaces[k], element[k])
+                var += l
+            return var
+        else:
+            raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
+        
 
 class GymDiscreteActionDomain(UnrestrictedActions):
     """This class wraps an OpenAI Gym environment as a domain
