@@ -30,6 +30,15 @@ ENV_NAME = 'GymJsbsim-TaxiapControlTask-v0'
 HORIZON = 1000
 
 
+def normalize_and_round(state):
+    ns = np.array([s[0] for s in state])
+    ns = ns / np.linalg.norm(ns) if np.linalg.norm(ns) != 0 else ns
+    # scale = np.array([10.0, 0.1, 100.0, 100.0, 100.0, 100.0, 1.0, 1.0, 1.0, 1.0])
+    # ns = 1/(1+np.exp(-ns/scale))
+    np.around(ns, decimals=5, out=ns)
+    return ns
+
+
 class D(DeterministicGymDomain, GymWidthDomain, GymDiscreteActionDomain):
     pass
 
@@ -75,25 +84,19 @@ class GymRIWDomain(D):
     
     def _get_initial_state_(self) -> D.T_state:
         state_proxy = super()._get_initial_state_()
-        return DeterministicGymDomainStateProxy(state=self.normalize_and_round(state_proxy._state), context=state_proxy._context)
+        return DeterministicGymDomainStateProxy(state=normalize_and_round(state_proxy._state), context=state_proxy._context)
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
             D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         o = super()._state_step(action)
-        return TransitionOutcome(state=DeterministicGymDomainStateProxy(state=self.normalize_and_round(o.state._state), context=o.state._context),
+        return TransitionOutcome(state=DeterministicGymDomainStateProxy(state=normalize_and_round(o.state._state), context=o.state._context),
                                  value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
 
     def _sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
         EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         o = super()._sample(memory, action)
-        return EnvironmentOutcome(observation=DeterministicGymDomainStateProxy(state=self.normalize_and_round(o.observation._state), context=o.observation._context),
+        return EnvironmentOutcome(observation=DeterministicGymDomainStateProxy(state=normalize_and_round(o.observation._state), context=o.observation._context),
                                   value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
-    
-    def normalize_and_round(self, state):
-        for s in state:
-            np.around(1/(1+np.exp(-s/100.0)), decimals=5, out=s)
-            # s = np.round(s, decimals=3, out=s)
-        return state
 
 
 class EvaluationDomain(DeterministicGymDomain):
@@ -179,13 +182,7 @@ class GymRIW(RIW):
     
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
         self._domain._reset_features()
-        return super()._get_next_action(DeterministicGymDomainStateProxy(state=self.normalize_and_round(observation._state), context=observation._context))
-    
-    def normalize_and_round(self, state):
-        for s in state:
-            np.around(1/(1+np.exp(-s/100.0)), decimals=5, out=s)
-            # s = np.round(s, decimals=3, out=s)
-        return state
+        return super()._get_next_action(DeterministicGymDomainStateProxy(state=normalize_and_round(observation._state), context=observation._context))
 
 
 domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
@@ -201,13 +198,12 @@ if RIW.check_domain(domain_factory()):
                                     use_simulation_domain=True,
                                     time_budget=1000,
                                     rollout_budget=1000,
-                                    max_depth=5,
+                                    max_depth=10,
                                     exploration=0.25,
                                     parallel=False,
                                     debug_logs=False)
     solver = GymRIWDomain.solve_with(solver_factory, domain_factory)
     evaluation_domain = EvaluationDomain(solver._domain)
     evaluation_domain.reset()
-    initial_state = solver._domain.reset()
-    rollout(evaluation_domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON, max_framerate=30,
+    rollout(evaluation_domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
             outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

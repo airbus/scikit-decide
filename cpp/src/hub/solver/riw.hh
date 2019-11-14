@@ -159,6 +159,7 @@ public :
     : _domain(domain), _state_features(state_features),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _exploration(exploration),
+      _min_cost(std::numeric_limits<double>::max()), _max_cost(-std::numeric_limits<double>::max()),
       _debug_logs(debug_logs) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
@@ -171,6 +172,8 @@ public :
     // previous search results)
     void clear() {
         _graph.clear();
+        _min_cost = std::numeric_limits<double>::max();
+        _max_cost = -std::numeric_limits<double>::max();
     }
 
     // solves from state s
@@ -184,9 +187,10 @@ public :
             TupleVector feature_tuples;
 
             for (unsigned int w = 1 ; w <= nb_of_binary_features ; w++) {
-                if(WidthSolver(_domain, _state_features,
+                if(WidthSolver(*this, _domain, _state_features,
                                _time_budget, _rollout_budget,
                                _max_depth, _exploration,
+                               _min_cost, _max_cost,
                                w, _graph, _rollout_policy,
                                _debug_logs).solve(s, start_time, nb_rollouts, feature_tuples)) {
                     auto end_time = std::chrono::high_resolution_clock::now();
@@ -255,6 +259,8 @@ private :
     unsigned int _rollout_budget;
     unsigned int _max_depth;
     double _exploration;
+    double _min_cost;
+    double _max_cost;
     RolloutPolicy _rollout_policy;
     bool _debug_logs;
 
@@ -267,9 +273,8 @@ private :
         unsigned int depth;
         unsigned int novelty;
         Action* best_action;
-        bool terminal; // from this node: true if all reached states are terminal from the simulator's perspective
-        bool goal; // from this node: true if one reached state is terminal
-        bool pruned; // from this node: true if all reached states are pruned
+        bool terminal; // true if seen terminal from the simulator's perspective
+        bool goal; // true if goal
         bool solved; // from this node: true if all reached states are either max_depth, or terminal or goal
 
         Node(const State& s, const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features)
@@ -280,7 +285,6 @@ private :
               best_action(nullptr),
               terminal(false),
               goal(false),
-              pruned(false),
               solved(false) {
             features = state_features(s);
         }
@@ -312,19 +316,22 @@ private :
         typedef Trollout_policy<Domain> RolloutPolicy;
         typedef Texecution_policy ExecutionPolicy;
 
-        WidthSolver(Domain& domain,
+        WidthSolver(RIWSolver& parent_solver, Domain& domain,
                     const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
                     unsigned int time_budget,
                     unsigned int rollout_budget,
                     unsigned int max_depth,
                     double exploration,
+                    double& min_cost,
+                    double& max_cost,
                     unsigned int width,
                     Graph& graph,
                     RolloutPolicy& rollout_policy,
                     bool debug_logs)
-            : _domain(domain), _state_features(state_features),
+            : _parent_solver(parent_solver), _domain(domain), _state_features(state_features),
               _time_budget(time_budget), _rollout_budget(rollout_budget),
               _max_depth(max_depth), _exploration(exploration),
+              _min_cost(min_cost), _max_cost(max_cost),
               _width(width), _graph(graph), _rollout_policy(rollout_policy),
               _debug_logs(debug_logs) {}
         
@@ -342,10 +349,9 @@ private :
 
                 // Clear the solved bits
                 // /!\ 'solved' bit set to 1 in RIW even if no solution found with previous width so we need to clear all the bits
-                std::for_each(_graph.begin(), _graph.end(), [](const Node& n){
-                    const_cast<Node&>(n).solved = false; // we don't change the real key (Node::state) so we are safe
-                    const_cast<Node&>(n).pruned = false;
-                });
+                // std::for_each(_graph.begin(), _graph.end(), [](const Node& n){
+                //     const_cast<Node&>(n).solved = false; // we don't change the real key (Node::state) so we are safe
+                // });
 
                 // Create the root node containing the given state s
                 auto si = _graph.emplace(Node(s, _state_features));
@@ -421,7 +427,6 @@ private :
                                                            ", depth=" + std::to_string(current_node->depth) +
                                                            ", fscore=" + std::to_string(current_node->fscore));
                             states_pruned = true;
-                            current_node->pruned = true;
                             // /!\ current_node can become solved with some unsolved children in case it was
                             // already visited and novel but now some of its features are reached with lower depth
                             update_node(*current_node, true);
@@ -468,12 +473,15 @@ private :
         }
 
     private :
+        RIWSolver& _parent_solver;
         Domain& _domain;
         const std::function<std::unique_ptr<FeatureVector> (const State& s)>& _state_features;
         unsigned int _time_budget;
         unsigned int _rollout_budget;
         unsigned int _max_depth;
         double _exploration;
+        double& _min_cost;
+        double& _max_cost;
         unsigned int _width;
         Graph& _graph;
         RolloutPolicy& _rollout_policy;
@@ -551,6 +559,8 @@ private :
                 std::get<2>(node->children[action_number]) = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 std::get<1>(node->children[action_number]) = outcome->cost();
                 std::get<2>(node->children[action_number])->parents.insert(node);
+                _min_cost = std::min(_min_cost, outcome->cost());
+                _max_cost = std::max(_max_cost, outcome->cost());
                 if (new_node) {
                     if (_debug_logs) spdlog::debug("Exploring new outcome: " + i.first->state.print() +
                                                    ", depth=" + std::to_string(i.first->depth) +
@@ -588,53 +598,7 @@ private :
             node.fscore = 0;
             std::unordered_set<Node*> frontier;
             frontier.insert(&node);
-            unsigned int depth = 0; // used to prevent infinite loop in case of cycles
-
-            while (!frontier.empty() && depth <= _max_depth) {
-                depth += 1;
-                std::unordered_set<Node*> new_frontier;
-                for (auto& n : frontier) {
-                    for (auto& p : n->parents) {
-                        p->solved = true;
-                        p->terminal = true;
-                        p->pruned = true;
-                        p->goal = false;
-                        p->fscore = std::numeric_limits<double>::infinity();
-                        p->best_action = nullptr;
-                        for (auto& nn : p->children) {
-                            if (std::get<2>(nn)) {
-                                // if we can reach a goal, then we choose only among states reaching goals
-                                // otherwise only among nodes reaching non-pruned states
-                                // otherwise only among nodes reaching non-terminal states
-                                if((!(p->goal) && (std::get<2>(nn)->goal)) ||
-                                   (p->pruned && !std::get<2>(nn)->pruned && !std::get<2>(nn)->terminal)) {
-                                    // first goal encountered: it becomes the fscore reference
-                                    p->fscore = std::get<1>(nn) + std::get<2>(nn)->fscore;
-                                    p->best_action = &std::get<0>(nn);
-                                } else if ((p->goal && std::get<2>(nn)->goal) ||
-                                           (!(p->goal) && !(p->pruned) && !std::get<2>(nn)->pruned && !std::get<2>(nn)->terminal) ||
-                                           (!(p->goal) && (p->pruned) && !std::get<2>(nn)->terminal)) {
-                                    double tentative_fscore = std::get<1>(nn) + std::get<2>(nn)->fscore;
-                                    if (p->fscore > tentative_fscore) {
-                                        p->fscore = tentative_fscore;
-                                        p->best_action = &std::get<0>(nn);
-                                    }
-                                }
-                                p->solved = p->solved && std::get<2>(nn)->solved;
-                                p->terminal = p->terminal && std::get<2>(nn)->terminal;
-                                p->pruned = p->pruned && std::get<2>(nn)->pruned;
-                                p->goal = p->goal || std::get<2>(nn)->goal;
-                            } else {
-                                p->solved = false;
-                                p->terminal = false;
-                                p->pruned = false;
-                            }
-                        }
-                        new_frontier.insert(p);
-                    }
-                }
-                frontier = new_frontier;
-            }
+            _parent_solver.backup_values(frontier);
         }
     }; // WidthSolver class
 
@@ -666,6 +630,7 @@ private :
         // those nodes from their children's parents
         // Don't actually remove those nodes in the first pass otherwise some children to remove
         // won't exist anymore when looking for their parents
+        std::unordered_set<Node*> frontier;
         for (auto& n : root_subgraph) {
             if (n) {
                 if (child_subgraph.find(n) == child_subgraph.end()) {
@@ -677,12 +642,62 @@ private :
                     removed_subgraph.insert(n);
                 } else {
                     n->depth -= 1;
+                    if (n->solved) {
+                        frontier.insert(n);
+                        if (!(n->terminal)) {
+                            n->fscore = _max_cost;
+                        }
+                    }
                 }
             }
         }
         // Second pass: actually remove nodes in root_subgraph but not in child_subgraph
         for (auto& n : removed_subgraph) {
             _graph.erase(Node(n->state));
+        }
+        // Third pass: recompute fscores
+        backup_values(frontier);
+    }
+
+    // Backup values from tip solved nodes to their parents in graph
+    void backup_values(std::unordered_set<Node*>& frontier) {
+        unsigned int depth = 0; // used to prevent infinite loop in case of cycles
+        for (auto& n : frontier) {
+            if (n->terminal) {
+                if (n->goal) {
+                    // Applies a factor of 0.1 to min cost in order to favor goals
+                    n->fscore = (_max_depth - n->depth) * _min_cost * ((_min_cost > 0)?0.1:10.0);
+                } else {
+                    n->fscore = std::numeric_limits<double>::infinity();
+                }
+            } else {
+                // Applies a factor of 10 to max cost in order to favor non-pruned trajectories
+                n->fscore = (_max_depth - n->depth) * _max_cost * ((_max_cost > 0)?10.0:0.1);
+            }
+        }
+
+        while (!frontier.empty() && depth <= _max_depth) {
+            depth += 1;
+            std::unordered_set<Node*> new_frontier;
+            for (auto& n : frontier) {
+                for (auto& p : n->parents) {
+                    p->solved = true;
+                    p->fscore = std::numeric_limits<double>::infinity();
+                    p->best_action = nullptr;
+                    for (auto& nn : p->children) {
+                        p->solved = p->solved && std::get<2>(nn) && std::get<2>(nn)->solved;
+                        if (std::get<2>(nn)) {
+                            double tentative_fscore = std::get<1>(nn) + std::get<2>(nn)->fscore;
+                            if (p->fscore > tentative_fscore) {
+                                p->fscore = tentative_fscore;
+                                p->best_action = &std::get<0>(nn);
+                            }
+                        }
+                    }
+                    new_frontier.insert(p);
+                }
+            }
+            frontier = new_frontier;
         }
     }
 }; // RIWSolver class

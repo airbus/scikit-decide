@@ -139,7 +139,13 @@ try:
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
             self._solve_from(observation)
-            return self._solver.get_next_action(observation)
+            action = self._solver.get_next_action(observation)
+            if action is None:
+                print('\x1b[3;33;40m' + 'No best action found in observation ' +
+                      str(observation) + ', applying random action' + '\x1b[0m')
+                return self._domain.get_action_space().sample()
+            else:
+                return action
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             return self._solver.get_utility(observation)

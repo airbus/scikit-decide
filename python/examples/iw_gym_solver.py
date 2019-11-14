@@ -91,4 +91,5 @@ if IW.check_domain(domain):
     #                             parallel=False, debug_logs=False)
 
     solver = GymIWDomain.solve_with(solver_factory, domain_factory)
-    rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30, outcome_formatter=None, action_formatter=None)
+    rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
+            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
