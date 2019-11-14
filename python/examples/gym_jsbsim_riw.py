@@ -193,7 +193,7 @@ domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
                                       max_depth=HORIZON)
 
 if RIW.check_domain(domain_factory()):
-    solver_factory = lambda: GymRIW(state_features=lambda s, d: d.state_features(s),
+    solver_factory = lambda: GymRIW(state_features=lambda s, d: d.bee_features(s),
                                     use_state_feature_hash=False,
                                     use_simulation_domain=True,
                                     time_budget=1000,

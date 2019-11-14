@@ -212,7 +212,7 @@ class GymWidthDomain:
         self._init_continuous_state_variables = []
         self._feature_increments = []
 
-    def _init_state_features(self, space, state):
+    def _init_bee_features(self, space, state):
         if isinstance(space, gym.spaces.box.Box):
             for cell in np.nditer(state):
                 self._init_continuous_state_variables.append(cell)
@@ -222,23 +222,23 @@ class GymWidthDomain:
                 self._feature_increments.append([[] for f in range(self._continuous_feature_fidelity)])
         elif isinstance(space, gym.spaces.tuple.Tuple):
             for s in range(len(space.spaces)):
-                self._init_state_features(space.spaces[s], state[s])
+                self._init_bee_features(space.spaces[s], state[s])
         elif isinstance(space, gym.spaces.dict.Dict):
             for k, s in space.spaces:
-                self._init_state_features(s, state[k])
+                self._init_bee_features(s, state[k])
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
 
-    def state_features(self, state):
+    def bee_features(self, state):
         """Return a numpy vector of ints representing the current 'cumulated layer' of each state variable
         """
         if len(self._feature_increments) == 0:
-            self._init_state_features(self._gym_env.observation_space, state._state)
-        sf = self._state_features(self._gym_env.observation_space, state._state, 0)[1]
+            self._init_bee_features(self._gym_env.observation_space, state._state)
+        sf = self._bee_features(self._gym_env.observation_space, state._state, 0)[1]
         # sf.append(state._context[5])
         return sf
     
-    def _state_features(self, space, element, start):
+    def _bee_features(self, space, element, start):
         if isinstance(space, gym.spaces.box.Box):
             features = []
             index = start
@@ -275,14 +275,14 @@ class GymWidthDomain:
             index = start
             features = []
             for i in range(len(space.spaces)):
-                index, l = self._state_features(space.spaces[i], element[i], index)
+                index, l = self._bee_features(space.spaces[i], element[i], index)
                 features += l
             return index, features
         elif isinstance(space, gym.spaces.dict.Dict):
             index = start
             features = []
             for k in space.spaces.keys():
-                index, l = self._state_features(space.spaces[k], element[k], index)
+                index, l = self._bee_features(space.spaces[k], element[k], index)
                 features += l
             return index, features
         else:
@@ -291,12 +291,12 @@ class GymWidthDomain:
     def nb_of_binary_features(self) -> int:
         """Return the size of the bit vector encoding an observation
         """
-        return self._binarize_gym_space_element(self._gym_env.observation_space,
+        return self._binary_features(self._gym_env.observation_space,
                                                 self._gym_env.observation_space.sample(),
                                                 0,
                                                 lambda i: None)
 
-    def binarize(self, memory: D.T_memory[D.T_state]) -> None:
+    def binary_features(self, memory: D.T_memory[D.T_state]) -> None:
         """Transform state in a bit vector and call f on each true value of this vector
 
         # Parameters
@@ -304,9 +304,9 @@ class GymWidthDomain:
 
         Return a list of booleans representing the binary representation of each state variable
         """
-        return self._binarize_gym_space_element(self._gym_env.observation_space, memory._state)
+        return self._binary_features(self._gym_env.observation_space, memory._state)
     
-    def _binarize_gym_space_element(self, space: gym.spaces.Space,
+    def _binary_features(self, space: gym.spaces.Space,
                                           element: Any) -> int:
         if isinstance(space, gym.spaces.box.Box):
             features = []
@@ -363,12 +363,12 @@ class GymWidthDomain:
         elif isinstance(space, gym.spaces.tuple.Tuple):
             features = []
             for i in range(len(space.spaces)):
-                l = self._binarize_gym_space_element(space.spaces[i], element[i])
+                l = self._binary_features(space.spaces[i], element[i])
                 features += l
         elif isinstance(space, gym.spaces.dict.Dict):
             features = []
             for k, v in space.spaces:
-                l = self._binarize_gym_space_element(v, element[k])
+                l = self._binary_features(v, element[k])
                 features += l
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
