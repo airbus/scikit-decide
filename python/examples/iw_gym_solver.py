@@ -15,8 +15,8 @@ from airlaps.hub.solver.iw import IW
 # from airlaps.hub.solver.riw import RIW
 from airlaps.utils import rollout
 
-ENV_NAME = 'MountainCar-v0'
-HORIZON = 200
+ENV_NAME = 'Acrobot-v1'
+HORIZON = 300
 
 
 class D(GymPlanningDomain, GymWidthDomain, GymDiscreteActionDomain):

@@ -349,9 +349,9 @@ private :
 
                 // Clear the solved bits
                 // /!\ 'solved' bit set to 1 in RIW even if no solution found with previous width so we need to clear all the bits
-                // std::for_each(_graph.begin(), _graph.end(), [](const Node& n){
-                //     const_cast<Node&>(n).solved = false; // we don't change the real key (Node::state) so we are safe
-                // });
+                std::for_each(_graph.begin(), _graph.end(), [](const Node& n){
+                    const_cast<Node&>(n).solved = false; // we don't change the real key (Node::state) so we are safe
+                });
 
                 // Create the root node containing the given state s
                 auto si = _graph.emplace(Node(s, _state_features));
@@ -642,12 +642,12 @@ private :
                     removed_subgraph.insert(n);
                 } else {
                     n->depth -= 1;
-                    if (n->solved) {
+                    // if (n->solved) {
                         frontier.insert(n);
                         if (!(n->terminal)) {
                             n->fscore = _max_cost;
                         }
-                    }
+                    // }
                 }
             }
         }

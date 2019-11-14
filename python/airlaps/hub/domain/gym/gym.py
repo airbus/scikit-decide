@@ -261,7 +261,8 @@ class GymWidthDomain:
                             self._feature_increments[2*index + 1][f].append(ref_val - cell)
                         if i > 0:
                             ref_val = ref_val - self._feature_increments[2*index + 1][f][i-1]
-                features.append(tuple(cf))
+                # features.append(tuple(cf))
+                features += cf
                 index += 1
             return index, features
         elif isinstance(space, gym.spaces.discrete.Discrete):
@@ -295,21 +296,20 @@ class GymWidthDomain:
                                                 0,
                                                 lambda i: None)
 
-    def binarize(self, memory: D.T_memory[D.T_state], func: Callable[[int], None]) -> None:
+    def binarize(self, memory: D.T_memory[D.T_state]) -> None:
         """Transform state in a bit vector and call f on each true value of this vector
 
         # Parameters
         memory: The Gym state (in observation_space) to binarize
-        func: The function called on each true bit of the binarized state
+
+        Return a list of booleans representing the binary representation of each state variable
         """
-        self._binarize_gym_space_element(self._gym_env.observation_space, memory._state, 0, func)
+        return self._binarize_gym_space_element(self._gym_env.observation_space, memory._state)
     
     def _binarize_gym_space_element(self, space: gym.spaces.Space,
-                                          element: Any,
-                                          start: int,
-                                          func: Callable[[int], None]) -> int:
-        current_index = start
+                                          element: Any) -> int:
         if isinstance(space, gym.spaces.box.Box):
+            features = []
             # compute the size of the bit vector encoding the largest float
             maxlen = len(bin(struct.unpack('!i', struct.pack('!f', float('inf')))[0])[2:])
             for cell in np.nditer(element):
@@ -317,19 +317,21 @@ class GymWidthDomain:
                 float_bin = bin(struct.unpack('!i', struct.pack('!f', cell))[0])
                 # the sign of the float is encoded in the first bit in our translation
                 if float_bin[0] == '-':
-                    func(current_index)
+                    features.append(True)
                     float_bin = float_bin[3:]
                 else:
+                    features.append(False)
                     float_bin = float_bin[2:]
-                current_index += 1
                 # add 0s at the beginning of the string so that all elements are encoded with the same number of bits
                 # that depends on the size of the bit vector encoding the largest float
                 float_bin = ('0' * (maxlen - len(float_bin))) + float_bin
                 for b in float_bin:
                     if b == '1':
-                        func(current_index)
-                    current_index += 1
+                        features.append(True)
+                    else:
+                        features.append(False)
         elif isinstance(space, gym.spaces.discrete.Discrete):
+            features = []
             # convert int to string of 1s and 0s
             int_bin = bin(element)[2:]
             # add 0s at the beginning of the string so that all elements are encoded with the same number of bits
@@ -337,31 +339,40 @@ class GymWidthDomain:
             int_bin = ('0' * (len(bin(space.n - 1)[2:]) - len(int_bin))) + int_bin
             for b in int_bin:
                 if b == '1':
-                    func(current_index)
-                current_index += 1
+                    features.append(True)
+                else:
+                    features.append(False)
         elif isinstance(space, gym.spaces.multi_discrete.MultiDiscrete):
+            features = []
             # look at the previous test case for the logics of translating each element of the vector to a bit string
             for i in range(len(space.nvec)):
                 int_bin = bin(element[i])[2:]
                 int_bin = ('0' * (len(bin(space.nvec[i] - 1)[2:]) - len(int_bin))) + int_bin
                 for b in int_bin:
                     if b == '1':
-                        func(current_index)
-                    current_index += 1
+                        features.append(True)
+                    else:
+                        features.append(False)
         elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
+            features = []
             for b in element:
                 if b:
-                    func(current_index)
-                current_index += 1
+                    features.append(True)
+                else:
+                    features.append(False)
         elif isinstance(space, gym.spaces.tuple.Tuple):
+            features = []
             for i in range(len(space.spaces)):
-                current_index = _binarize_gym_space_element(space.spaces[i], element[i], current_index, func)
+                l = self._binarize_gym_space_element(space.spaces[i], element[i])
+                features += l
         elif isinstance(space, gym.spaces.dict.Dict):
+            features = []
             for k, v in space.spaces:
-                current_index = _binarize_gym_space_element(v, element[k], current_index, func)
+                l = self._binarize_gym_space_element(v, element[k])
+                features += l
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
-        return current_index
+        return features
 
 
 class GymDiscreteActionDomain(UnrestrictedActions):
