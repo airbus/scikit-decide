@@ -643,11 +643,9 @@ private :
                 } else {
                     n->depth -= 1;
                     // if (n->solved) {
+                    if (n->children.empty()) {
                         frontier.insert(n);
-                        if (!(n->terminal)) {
-                            n->fscore = _max_cost;
-                        }
-                    // }
+                    }
                 }
             }
         }
