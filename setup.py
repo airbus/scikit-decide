@@ -28,7 +28,7 @@ cmake_options = None
 class BDistWheelCommand(bdist_wheel):
     user_options = install.user_options + [
         ('cpp-extension', None, 'Compile the C++ hub extension'),
-        ('cxx-compiler=', None, 'Path to the C++ compiler')
+        ('cxx-compiler=', None, 'Path to the C++ compiler'),
         ('cmake-options=', None, 'Options to pass to cmake')
     ]
 
@@ -51,7 +51,7 @@ class BDistWheelCommand(bdist_wheel):
 class InstallCommand(install):
     user_options = install.user_options + [
         ('cpp-extension', None, 'Compile the C++ hub extension'),
-        ('cxx-compiler=', None, 'Path to the C++ compiler')
+        ('cxx-compiler=', None, 'Path to the C++ compiler'),
         ('cmake-options=', None, 'Options to pass to cmake')
     ]
 
@@ -82,7 +82,7 @@ class CMakeBuild(build_ext):
 
     user_options = build_ext.user_options + [
         ('cpp-extension', None, 'Compile the C++ hub extension'),
-        ('cxx-compiler=', None, 'Path to the C++ compiler')
+        ('cxx-compiler=', None, 'Path to the C++ compiler'),
         ('cmake-options=', None, 'Options to pass to cmake')
     ]
 
