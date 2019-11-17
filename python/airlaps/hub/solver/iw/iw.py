@@ -136,6 +136,12 @@ try:
         
         def _reset(self) -> None:
             self._solver.clear()
+        
+        def get_nb_of_explored_states() -> int:
+            return self._solver.get_nb_of_explored_states()
+        
+        def get_nb_of_pruned_states() -> int:
+            return self._solver.get_nb_of_pruned_states()
     
 except ImportError:
     sys.path = record_sys_path

@@ -177,6 +177,20 @@ public :
         return si->fscore;
     }
 
+    unsigned int get_nb_of_explored_states() const {
+        return _graph.size();
+    }
+
+    unsigned int get_nb_of_pruned_states() const {
+        unsigned int cnt = 0;
+        for (const auto&  n : _graph)  {
+            if (n.pruned) {
+                cnt++;
+            }
+        }
+        return cnt;
+    }
+
 private :
 
     Domain& _domain;
@@ -194,6 +208,7 @@ private :
         unsigned int novelty;
         unsigned int depth;
         Action* best_action; // computed only when constructing the solution path backward from the goal state
+        bool pruned; // true if pruned by the novelty test (used only to report nb of pruned states)
         bool solved; // set to true if on the solution path constructed backward from the goal state
 
         Node(const State& s, const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features)
@@ -203,6 +218,7 @@ private :
               novelty(std::numeric_limits<unsigned int>::max()),
               depth(std::numeric_limits<unsigned int>::max()),
               best_action(nullptr),
+              pruned(false),
               solved(false) {
             features = state_features(s);
         }
@@ -291,6 +307,7 @@ private :
                         if (_debug_logs) spdlog::debug("Found a goal state: " + best_tip_node->state.print());
                         auto current_node = best_tip_node;
                         if (!(best_tip_node->solved)) { current_node->fscore = 0; } // goal state
+                        best_tip_node->solved = true;
 
                         while (current_node != &root_node) {
                             Node* parent_node = std::get<0>(current_node->best_parent);
@@ -352,6 +369,7 @@ private :
                             if (novelty(feature_tuples, neighbor) > _width) {
                                 if (_debug_logs) spdlog::debug("Pruning state");
                                 states_pruned = true;
+                                neighbor.pruned = true;
                             } else {
                                 if (_debug_logs) spdlog::debug("Adding state to open queue (among " + std::to_string(open_queue.size()) + ")");
                                 open_queue.push(&neighbor);

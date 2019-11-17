@@ -210,7 +210,7 @@ public :
     }
 
     bool is_solution_defined_for(const State& s) const {
-        auto si = _graph.find(Node(s));
+        auto si = _graph.find(Node(s, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr) || (si->solved == false)) {
             return false;
         } else {
@@ -219,7 +219,7 @@ public :
     }
 
     Action get_best_action(const State& s) {
-        auto si = _graph.find(Node(s));
+        auto si = _graph.find(Node(s, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
@@ -243,12 +243,26 @@ public :
     }
 
     const double& get_best_value(const State& s) const {
-        auto si = _graph.find(Node(s));
+        auto si = _graph.find(Node(s, _state_features));
         if (si == _graph.end()) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
         }
         return si->fscore;
+    }
+
+    unsigned int get_nb_of_explored_states() const {
+        return _graph.size();
+    }
+
+    unsigned int get_nb_of_pruned_states() const {
+        unsigned int cnt = 0;
+        for (const auto&  n : _graph)  {
+            if (!n.terminal && n.children.empty()) {
+                cnt++;
+            }
+        }
+        return cnt;
     }
 
 private :
@@ -288,10 +302,6 @@ private :
               solved(false) {
             features = state_features(s);
         }
-
-        // Following constructor used only to search for the same existing node in the graph since nodes
-        // are hashed by their states. Don't use this constructor for creating valid nodes!
-        Node(const State& s) : state(s) {}
         
         struct Key {
             const typename HashingPolicy::Key& operator()(const Node& n) const {
@@ -651,7 +661,7 @@ private :
         }
         // Second pass: actually remove nodes in root_subgraph but not in child_subgraph
         for (auto& n : removed_subgraph) {
-            _graph.erase(Node(n->state));
+            _graph.erase(Node(n->state, _state_features));
         }
         // Third pass: recompute fscores
         backup_values(frontier);

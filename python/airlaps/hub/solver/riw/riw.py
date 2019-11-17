@@ -147,8 +147,17 @@ try:
             else:
                 return action
         
+        def _reset(self) -> None:
+            self._solver.clear()
+        
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             return self._solver.get_utility(observation)
+        
+        def get_nb_of_explored_states() -> int:
+            return self._solver.get_nb_of_explored_states()
+        
+        def get_nb_of_pruned_states() -> int:
+            return self._solver.get_nb_of_pruned_states()
     
 except ImportError:
     sys.path = record_sys_path

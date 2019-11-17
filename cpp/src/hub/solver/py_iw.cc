@@ -562,6 +562,14 @@ public :
         return _implementation->get_utility(s);
     }
 
+    py::int_ get_nb_of_explored_states() {
+        return _implementation->get_nb_of_explored_states();
+    }
+
+    py::int_ get_nb_of_pruned_states() {
+        return _implementation->get_nb_of_pruned_states();
+    }
+
 private :
 
     class BaseImplementation {
@@ -571,6 +579,8 @@ private :
         virtual py::bool_ is_solution_defined_for(const py::object& s) =0;
         virtual py::object get_next_action(const py::object& s) =0;
         virtual py::float_ get_utility(const py::object& s) =0;
+        virtual py::int_ get_nb_of_explored_states() =0;
+        virtual py::int_ get_nb_of_pruned_states() =0;
     };
 
     template <typename Texecution, template <typename...> class Thashing_policy>
@@ -648,6 +658,14 @@ private :
             }
         }
 
+        virtual py::int_ get_nb_of_explored_states() {
+            return _solver->get_nb_of_explored_states();
+        }
+
+        virtual py::int_ get_nb_of_pruned_states() {
+            return _solver->get_nb_of_pruned_states();
+        }
+
     private :
         std::unique_ptr<PyIWDomain<Texecution>> _domain;
         std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>> _solver;
@@ -685,5 +703,7 @@ void init_pyiw(py::module& m) {
             .def("is_solution_defined_for", &PyIWSolver::is_solution_defined_for, py::arg("state"))
             .def("get_next_action", &PyIWSolver::get_next_action, py::arg("state"))
             .def("get_utility", &PyIWSolver::get_utility, py::arg("state"))
+            .def("get_nb_of_explored_states", &PyIWSolver::get_nb_of_explored_states)
+            .def("get_nb_of_pruned_states", &PyIWSolver::get_nb_of_pruned_states)
         ;
 }
