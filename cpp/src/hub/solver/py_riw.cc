@@ -634,6 +634,10 @@ public :
         return _implementation->get_nb_of_pruned_states();
     }
 
+    py::int_ get_nb_rollouts() {
+        return _implementation->get_nb_rollouts();
+    }
+
 private :
 
     class BaseImplementation {
@@ -645,6 +649,7 @@ private :
         virtual py::float_ get_utility(const py::object& s) =0;
         virtual py::int_ get_nb_of_explored_states() =0;
         virtual py::int_ get_nb_of_pruned_states() =0;
+        virtual py::int_ get_nb_rollouts() =0;
     };
 
     template <typename Texecution,
@@ -723,6 +728,10 @@ private :
             return _solver->get_nb_of_pruned_states();
         }
 
+        virtual py::int_ get_nb_rollouts() {
+            return _solver->get_nb_rollouts();
+        }
+
     private :
         std::unique_ptr<PyRIWDomain<Texecution>> _domain;
         std::unique_ptr<airlaps::RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>> _solver;
@@ -767,5 +776,6 @@ void init_pyriw(py::module& m) {
             .def("get_utility", &PyRIWSolver::get_utility, py::arg("state"))
             .def("get_nb_of_explored_states", &PyRIWSolver::get_nb_of_explored_states)
             .def("get_nb_of_pruned_states", &PyRIWSolver::get_nb_of_pruned_states)
+            .def("get_nb_rollouts", &PyRIWSolver::get_nb_rollouts)
         ;
 }

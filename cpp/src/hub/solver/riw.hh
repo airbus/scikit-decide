@@ -160,7 +160,7 @@ public :
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _exploration(exploration),
       _min_cost(std::numeric_limits<double>::max()), _max_cost(-std::numeric_limits<double>::max()),
-      _debug_logs(debug_logs) {
+      _nb_rollouts(0), _debug_logs(debug_logs) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {
@@ -181,7 +181,7 @@ public :
         try {
             spdlog::info("Running " + ExecutionPolicy::print() + " RIW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
-            unsigned int nb_rollouts = 0;
+            _nb_rollouts = 0;
             unsigned int nb_of_binary_features = _state_features(s)->size();
 
             TupleVector feature_tuples;
@@ -192,12 +192,12 @@ public :
                                _max_depth, _exploration,
                                _min_cost, _max_cost,
                                w, _graph, _rollout_policy,
-                               _debug_logs).solve(s, start_time, nb_rollouts, feature_tuples)) {
+                               _debug_logs).solve(s, start_time, _nb_rollouts, feature_tuples)) {
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
                     spdlog::info("RIW finished to solve from state " + s.print() +
                                  " in " + std::to_string((double) duration / (double) 1e9) + " seconds with " +
-                                 std::to_string(nb_rollouts) + " rollouts.");
+                                 std::to_string(_nb_rollouts) + " rollouts.");
                     return;
                 }
             }
@@ -265,6 +265,10 @@ public :
         return cnt;
     }
 
+    unsigned int get_nb_rollouts() const {
+        return _nb_rollouts;
+    }
+
 private :
 
     Domain& _domain;
@@ -275,6 +279,7 @@ private :
     double _exploration;
     double _min_cost;
     double _max_cost;
+    unsigned int _nb_rollouts;
     RolloutPolicy _rollout_policy;
     bool _debug_logs;
 

@@ -158,6 +158,9 @@ try:
         
         def get_nb_of_pruned_states(self) -> int:
             return self._solver.get_nb_of_pruned_states()
+        
+        def get_nb_rollouts(self) -> int:
+            return self._solver.get_nb_rollouts()
     
 except ImportError:
     sys.path = record_sys_path
