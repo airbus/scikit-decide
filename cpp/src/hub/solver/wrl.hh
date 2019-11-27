@@ -115,7 +115,7 @@ public :
 
     class WRLDomainFilter {
     public :
-        typedef typename Domain::EnvironmentOutcome EnvironmentOutcome;
+        typedef typename Domain::TransitionOutcome TransitionOutcome;
         typedef WRLSolver<Tdomain, Tunderlying_solver, Tfeature_vector, Thashing_policy> Solver;
 
         WRLDomainFilter(std::unique_ptr<Domain> domain,
@@ -135,8 +135,8 @@ public :
         
         virtual void clear() =0;
         virtual std::unique_ptr<State> reset() =0;
-        virtual std::unique_ptr<EnvironmentOutcome> step(const Action& action) =0;
-        virtual std::unique_ptr<EnvironmentOutcome> sample(const State& state, const Action& action) =0;
+        virtual std::unique_ptr<TransitionOutcome> step(const Action& action) =0;
+        virtual std::unique_ptr<TransitionOutcome> sample(const State& state, const Action& action) =0;
             
     protected :
         std::unique_ptr<Domain> _domain;
@@ -252,23 +252,23 @@ public :
             return s;
         }
 
-        virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> step(const Action& action) {
+        virtual std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> step(const Action& action) {
             // Get original sample
-            std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = this->_domain->step(action);
+            std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> o = this->_domain->step(action);
             this->_current_depth++;
             return make_transition(action, o);
         }
 
-        virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> sample(const State& state, const Action& action) {
+        virtual std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> sample(const State& state, const Action& action) {
             // Get original sample
-            std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = this->_domain->sample(state, action);
-            using EO = typename WRLDomainFilter::EnvironmentOutcome;
-            this->_current_depth = EO::get_depth(o->info());
+            std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> o = this->_domain->sample(state, action);
+            using TO = typename WRLDomainFilter::TransitionOutcome;
+            this->_current_depth = TO::get_depth(o->info());
             return make_transition(action, o);
         }
 
-        std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> make_transition(const Action& action,
-                                                                                      std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome>& outcome) {
+        std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> make_transition(const Action& action,
+                                                                                      std::unique_ptr<typename WRLDomainFilter::TransitionOutcome>& outcome) {
             // Compute outcome's novelty
             std::unique_ptr<FeatureVector> features = this->_state_features(outcome->state());
             unsigned int nov = this->novelty(this->_feature_tuples, *features);
@@ -349,8 +349,8 @@ public :
             return s;
         }
 
-        virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> step(const Action& action) {
-            std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = make_transition(
+        virtual std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> step(const Action& action) {
+            std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> o = make_transition(
                 this->_current_state, action,
                 [this, &action](){
                     return this->_domain->step(action);
@@ -359,21 +359,20 @@ public :
             return o;
         }
 
-        virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> sample(const State& state, const Action& action) {
+        virtual std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> sample(const State& state, const Action& action) {
              this->_current_state = state;
-            std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = make_transition(
+            std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> o = make_transition(
                 state, action,
                 [this, &state, &action](){
-                    std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> eo = this->_domain->sample(state, action);
-                    return eo;
+                    return this->_domain->sample(state, action);
                 });
             this->_current_state = o->state();
             return o;
         }
     
-        std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> make_transition(
+        std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> make_transition(
             const State& state, const Action& action,
-            const std::function<std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> ()>& transition) {
+            const std::function<std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> ()>& transition) {
             // Get the node containing the given state s
             auto si = this->_graph.emplace(Node(state, this->_state_features));
             Node& node = const_cast<Node&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
@@ -383,7 +382,7 @@ public :
 
             if (si.second || si.first->children.find(action) == si.first->children.end()) { // state is not yet visited or not with same action
                 // Get original sample
-                std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = transition();
+                std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> o = transition();
                 
                 // Get the node containing the next state
                 auto ni = this->_graph.emplace(Node(o->state(), this->_state_features));
@@ -402,7 +401,7 @@ public :
             }
 
             std::bernoulli_distribution d(1.0 - std::exp((1.0 - (next_node->novelty)) / this->_current_temperature));
-            std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> outcome = std::make_unique<typename WRLDomainFilter::EnvironmentOutcome>(*node.children[action].second);
+            std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> outcome = std::make_unique<typename WRLDomainFilter::TransitionOutcome>(*node.children[action].second);
 
             if ((!node.pruned) && (node.nb_visits >= this->_width_increase_resilience)) {
                 node.pruned = true;
@@ -428,7 +427,7 @@ public :
             bool pruned; // true if pruned by the novelty test
             unsigned int nb_visits; // number of times the node is visited for current width
 
-            typedef typename MapTypeDeducer<Action, std::pair<Node*, std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome>>>::Map Children;
+            typedef typename MapTypeDeducer<Action, std::pair<Node*, std::unique_ptr<typename WRLDomainFilter::TransitionOutcome>>>::Map Children;
             Children children;
 
             Node(const State& s, const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features)

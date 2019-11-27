@@ -96,13 +96,13 @@ public :
         };
     };
 
-    struct EnvironmentOutcome {
+    struct TransitionOutcome {
         py::object _outcome;
 
-        EnvironmentOutcome(const py::object& outcome)
+        TransitionOutcome(const py::object& outcome)
         : _outcome(outcome) {
-            if (!py::hasattr(_outcome, "observation")) {
-                throw std::invalid_argument("AIRLAPS exception: WRL algorithm needs python environment outcome object for providing 'observation'");
+            if (!py::hasattr(_outcome, "state")) {
+                throw std::invalid_argument("AIRLAPS exception: WRL algorithm needs python environment outcome object for providing 'state'");
             }
             if (!py::hasattr(_outcome, "value")) {
                 throw std::invalid_argument("AIRLAPS exception: WRL algorithm needs python transition outcome object for providing 'value'");
@@ -112,29 +112,29 @@ public :
             }
         }
 
-        EnvironmentOutcome(const EnvironmentOutcome& other) {
+        TransitionOutcome(const TransitionOutcome& other) {
             _outcome = py::module::import("copy").attr("deepcopy")(other._outcome);
         }
 
-        EnvironmentOutcome& operator= (const EnvironmentOutcome& other) {
+        TransitionOutcome& operator= (const TransitionOutcome& other) {
             this->_outcome = py::module::import("copy").attr("deepcopy")(other._outcome);
             return *this;
         }
 
         py::object state() {
             try {
-                return _outcome.attr("observation");
+                return _outcome.attr("state");
             } catch(const py::error_already_set& e) {
-                spdlog::error(std::string("AIRLAPS exception when getting outcome's observation: ") + e.what());
+                spdlog::error(std::string("AIRLAPS exception when getting outcome's state: ") + e.what());
                 throw;
             }
         }
 
         void state(const py::object& s) {
             try {
-                _outcome.attr("observation") = s;
+                _outcome.attr("state") = s;
             } catch(const py::error_already_set& e) {
-                spdlog::error(std::string("AIRLAPS exception when setting outcome's observation: ") + e.what());
+                spdlog::error(std::string("AIRLAPS exception when setting outcome's state: ") + e.what());
                 throw;
             }
         }
@@ -221,9 +221,9 @@ public :
         }
     }
 
-    std::unique_ptr<EnvironmentOutcome> step(const Event& e) {
+    std::unique_ptr<TransitionOutcome> step(const Event& e) {
         try {
-            return std::make_unique<EnvironmentOutcome>(_domain.attr("step")(e._event));
+            return std::make_unique<TransitionOutcome>(_domain.attr("step")(e._event));
         } catch(const py::error_already_set& ex) {
             spdlog::error(std::string("AIRLAPS exception when stepping with action ") +
                           e.print() + ": " + ex.what());
@@ -231,9 +231,9 @@ public :
         }
     }
 
-    std::unique_ptr<EnvironmentOutcome> sample(const State& s, const Event& e) {
+    std::unique_ptr<TransitionOutcome> sample(const State& s, const Event& e) {
         try {
-            return std::make_unique<EnvironmentOutcome>(_domain.attr("sample")(s._state, e._event));
+            return std::make_unique<TransitionOutcome>(_domain.attr("sample")(s._state, e._event));
         } catch(const py::error_already_set& ex) {
             spdlog::error(std::string("AIRLAPS exception when sampling from state ") + s.print() +
                           " with action " + e.print() + ": " + ex.what());
