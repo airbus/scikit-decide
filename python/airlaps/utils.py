@@ -151,12 +151,16 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             print(f'Episode {i_episode + 1} started with following observation:')
             print(observation)
         # Run episode
-        step = 0
+        step = 1
+
         if save_result_directory is not None:
             observations = dict()
             transitions = dict()
             actions = dict()
-        while max_steps is None or step < max_steps:
+            # save the initial observation
+            observations[0] = observation
+
+        while max_steps is None or step <= max_steps:
             old_time = time.perf_counter()
             if render and has_render:
                 domain.render()
