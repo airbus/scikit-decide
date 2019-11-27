@@ -148,8 +148,8 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             last_state = from_memory[-1] if has_memory else from_memory
             observation = domain.get_observation_distribution(last_state, from_action).sample()
         if verbose:
-            print(f'Episode {i_episode + 1} started with following observation:')
-            print(observation)
+            logging.info(f'Episode {i_episode + 1} started with following observation:')
+            logging.info(observation)
         # Run episode
         step = 1
 
@@ -169,7 +169,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                 previous_observation = copy.deepcopy(observation)
             action = solver.sample_action(observation)
             if action_formatter is not None:
-                print('Action:', action_formatter(action))
+                logging.debug('Action:', action_formatter(action))
             outcome = domain.step(action)
             observation = outcome.observation
             if save_result_directory is not None:
@@ -183,10 +183,10 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                         "s'": hash(observation)
                     }
             if outcome_formatter is not None:
-                print('Result:', outcome_formatter(outcome))
+                logging.info('Result:', outcome_formatter(outcome))
             if outcome.termination:
                 if verbose:
-                    print(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
+                    logging.info(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
                 break
             if max_framerate is not None:
                 wait = 1/max_framerate - (time.perf_counter() - old_time)
@@ -196,7 +196,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
         if render and has_render:
             domain.render()
         if verbose and has_goal:
-            print(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
+            logging.info(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
                   f'in episode {i_episode + 1}.')
         if save_result_directory is not None:
             if not os.path.exists(save_result_directory):
@@ -224,47 +224,4 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             except TypeError:
                 logging.error("Observation is not serializable")
 
-# # TODO: replace rollout_saver() by additional features on rollout()
-# def rollout_saver(domain: Domain, solver: Solver, from_memory: Optional[Union[Memory[T_state], T_state]] = None,
-#                   from_event: Optional[T_event] = None, num_episodes: int = 1, max_steps: Optional[int] = None,
-#                   render: bool = True, verbose: bool = True,
-#                   outcome_formatter: Callable[[EnvironmentOutcome], str] = lambda o: str(o)) -> Tuple[
-#         float, List[TransitionValue], List[T_observation], List[T_event]]:
-#     """This method will run one or more episodes in a domain according to the policy of a solver."""
-#     for i_episode in range(num_episodes):
-#         # Initialize episode
-#         if from_memory is None:
-#             observation = domain.reset()
-#         else:
-#             domain.set_memory(from_memory)
-#             observation = domain.get_observation_distribution(from_memory[-1], from_event).sample()
-#         if verbose:
-#             print(f'Episode {i_episode + 1} started.')
-#             print(observation)
-#         # Run episode
-#         step = 0
-#         total_cost = 0.
-#         cost = []
-#         obs = [observation]
-#         actions = []
-#         while max_steps is None or step < max_steps:
-#             if render and isinstance(domain, Renderable):
-#                 domain.render()
-#             action = solver.sample_action(Memory([observation]))
-#             outcome = domain.step(action)
-#             observation = outcome.observation
-#             cost += [outcome.value]
-#             total_cost += outcome.value.cost
-#             obs += [observation]
-#             actions += [action]
-#             if verbose:
-#                 print(outcome_formatter(outcome))
-#             if outcome.termination:
-#                 if verbose:
-#                     print(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
-#                 break
-#             step += 1
-#         if verbose and isinstance(domain, Goals):
-#             print(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
-#                   f'in episode {i_episode + 1}.')
-#         return total_cost, cost, obs, actions
+            return directory
