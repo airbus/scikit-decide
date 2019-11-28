@@ -14,40 +14,40 @@ namespace py = pybind11;
 
 class PyWRLDomain {
 public :
-    struct State {
-        py::object _state;
+    struct Observation {
+        py::object _observation;
 
-        State() {}
-        State(const py::object& s) : _state(s) {}
+        Observation() {}
+        Observation(const py::object& s) : _observation(s) {}
 
         std::string print() const {
-            return py::str(_state);
+            return py::str(_observation);
         }
 
         struct Hash {
-            std::size_t operator()(const State& s) const {
+            std::size_t operator()(const Observation& s) const {
                 try {
-                    if (!py::hasattr(s._state, "__hash__") || s._state.attr("__hash__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python states for implementing __hash__");
+                    if (!py::hasattr(s._observation, "__hash__") || s._observation.attr("__hash__").is_none()) {
+                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python observations for implementing __hash__");
                     }
                     // python __hash__ can return negative integers but c++ expects positive integers only
-                    return s._state.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
+                    return s._observation.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
                 } catch(const py::error_already_set& e) {
-                    spdlog::error(std::string("AIRLAPS exception when hashing states: ") + e.what());
+                    spdlog::error(std::string("AIRLAPS exception when hashing observations: ") + e.what());
                     throw;
                 }
             }
         };
 
         struct Equal {
-            bool operator()(const State& s1, const State& s2) const {
+            bool operator()(const Observation& s1, const Observation& s2) const {
                 try {
-                    if (!py::hasattr(s1._state, "__eq__") || s1._state.attr("__eq__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python states for implementing __eq__");
+                    if (!py::hasattr(s1._observation, "__eq__") || s1._observation.attr("__eq__").is_none()) {
+                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python observations for implementing __eq__");
                     }
-                    return s1._state.attr("__eq__")(s2._state).template cast<bool>();
+                    return s1._observation.attr("__eq__")(s2._observation).template cast<bool>();
                 } catch(const py::error_already_set& e) {
-                    spdlog::error(std::string("AIRLAPS exception when testing states equality: ") + e.what());
+                    spdlog::error(std::string("AIRLAPS exception when testing observations equality: ") + e.what());
                     throw;
                 }
             }
@@ -70,7 +70,7 @@ public :
             std::size_t operator()(const Event& e) const {
                 try {
                     if (!py::hasattr(e._event, "__hash__") || e._event.attr("__hash__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python events for implementing __hash__");
+                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python events for implementing __hash__");
                     }
                     // python __hash__ can return negative integers but c++ expects positive integers only
                     return e._event.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
@@ -85,7 +85,7 @@ public :
             bool operator()(const Event& e1, const Event& e2) const {
                 try {
                     if (!py::hasattr(e1._event, "__eq__") || e1._event.attr("__eq__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python actions for implementing __eq__");
+                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python actions for implementing __eq__");
                     }
                     return e1._event.attr("__eq__")(e2._event).template cast<bool>();
                 } catch(const py::error_already_set& ex) {
@@ -96,45 +96,45 @@ public :
         };
     };
 
-    struct TransitionOutcome {
+    struct EnvironmentOutcome {
         py::object _outcome;
 
-        TransitionOutcome(const py::object& outcome)
+        EnvironmentOutcome(const py::object& outcome)
         : _outcome(outcome) {
-            if (!py::hasattr(_outcome, "state")) {
-                throw std::invalid_argument("AIRLAPS exception: WRL algorithm needs python environment outcome object for providing 'state'");
+            if (!py::hasattr(_outcome, "observation")) {
+                throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python environment outcome object for providing 'observation'");
             }
             if (!py::hasattr(_outcome, "value")) {
-                throw std::invalid_argument("AIRLAPS exception: WRL algorithm needs python transition outcome object for providing 'value'");
+                throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python transition outcome object for providing 'value'");
             }
             if (!py::hasattr(_outcome, "termination")) {
-                throw std::invalid_argument("AIRLAPS exception: WRL algorithm needs python transition outcome object for providing 'termination'");
+                throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python transition outcome object for providing 'termination'");
             }
         }
 
-        TransitionOutcome(const TransitionOutcome& other) {
+        EnvironmentOutcome(const EnvironmentOutcome& other) {
             _outcome = py::module::import("copy").attr("deepcopy")(other._outcome);
         }
 
-        TransitionOutcome& operator= (const TransitionOutcome& other) {
+        EnvironmentOutcome& operator= (const EnvironmentOutcome& other) {
             this->_outcome = py::module::import("copy").attr("deepcopy")(other._outcome);
             return *this;
         }
 
-        py::object state() {
+        py::object observation() {
             try {
-                return _outcome.attr("state");
+                return _outcome.attr("observation");
             } catch(const py::error_already_set& e) {
-                spdlog::error(std::string("AIRLAPS exception when getting outcome's state: ") + e.what());
+                spdlog::error(std::string("AIRLAPS exception when getting outcome's observation: ") + e.what());
                 throw;
             }
         }
 
-        void state(const py::object& s) {
+        void observation(const py::object& s) {
             try {
-                _outcome.attr("state") = s;
+                _outcome.attr("observation") = s;
             } catch(const py::error_already_set& e) {
-                spdlog::error(std::string("AIRLAPS exception when setting outcome's state: ") + e.what());
+                spdlog::error(std::string("AIRLAPS exception when setting outcome's observation: ") + e.what());
                 throw;
             }
         }
@@ -161,7 +161,7 @@ public :
             try {
                 return py::cast<bool>(_outcome.attr("termination"));
             } catch(const py::error_already_set& e) {
-                spdlog::error(std::string("AIRLAPS exception when getting outcome's state: ") + e.what());
+                spdlog::error(std::string("AIRLAPS exception when getting outcome's observation: ") + e.what());
                 throw;
             }
         }
@@ -170,7 +170,7 @@ public :
             try {
                 _outcome.attr("termination") = py::bool_(t);
             } catch(const py::error_already_set& e) {
-                spdlog::error(std::string("AIRLAPS exception when setting outcome's state: ") + e.what());
+                spdlog::error(std::string("AIRLAPS exception when setting outcome's observation: ") + e.what());
                 throw;
             }
         }
@@ -205,25 +205,25 @@ public :
     PyWRLDomain(const py::object& domain)
     : _domain(domain) {
         if (!py::hasattr(domain, "reset")) {
-            throw std::invalid_argument("AIRLAPS exception: WRL algorithm needs python domain for implementing reset()");
+            throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python domain for implementing reset()");
         }
         if (!py::hasattr(domain, "step") && !py::hasattr(domain, "sample")) {
-            throw std::invalid_argument("AIRLAPS exception: WRL algorithm needs python domain for implementing step() or sample()");
+            throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python domain for implementing step() or sample()");
         }
     }
 
-    std::unique_ptr<State> reset() {
+    std::unique_ptr<Observation> reset() {
         try {
-            return std::make_unique<State>(_domain.attr("reset")());
+            return std::make_unique<Observation>(_domain.attr("reset")());
         } catch(const py::error_already_set& ex) {
             spdlog::error(std::string("AIRLAPS exception when resetting the domain: ") + ex.what());
             throw;
         }
     }
 
-    std::unique_ptr<TransitionOutcome> step(const Event& e) {
+    std::unique_ptr<EnvironmentOutcome> step(const Event& e) {
         try {
-            return std::make_unique<TransitionOutcome>(_domain.attr("step")(e._event));
+            return std::make_unique<EnvironmentOutcome>(_domain.attr("step")(e._event));
         } catch(const py::error_already_set& ex) {
             spdlog::error(std::string("AIRLAPS exception when stepping with action ") +
                           e.print() + ": " + ex.what());
@@ -231,11 +231,11 @@ public :
         }
     }
 
-    std::unique_ptr<TransitionOutcome> sample(const State& s, const Event& e) {
+    std::unique_ptr<EnvironmentOutcome> sample(const Observation& s, const Event& e) {
         try {
-            return std::make_unique<TransitionOutcome>(_domain.attr("sample")(s._state, e._event));
+            return std::make_unique<EnvironmentOutcome>(_domain.attr("sample")(s._observation, e._event));
         } catch(const py::error_already_set& ex) {
-            spdlog::error(std::string("AIRLAPS exception when sampling from state ") + s.print() +
+            spdlog::error(std::string("AIRLAPS exception when sampling from observation ") + s.print() +
                           " with action " + e.print() + ": " + ex.what());
             throw;
         }
@@ -325,12 +325,12 @@ public :
             virtual std::size_t hash() const {
                 try {
                     if (!py::hasattr(_value, "__hash__") || _value.attr("__hash__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs state feature items for implementing __hash__");
+                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs observation feature items for implementing __hash__");
                     }
                     // python __hash__ can return negative integers but c++ expects positive integers only
                     return _value.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
                 } catch(const py::error_already_set& ex) {
-                    spdlog::error(std::string("AIRLAPS exception when hashing state feature items: ") + ex.what());
+                    spdlog::error(std::string("AIRLAPS exception when hashing observation feature items: ") + ex.what());
                     throw;
                 }
             }
@@ -338,12 +338,12 @@ public :
             virtual bool equal(const BaseType& other) const {
                 try {
                     if (!py::hasattr(_value, "__eq__") || _value.attr("__eq__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: IW algorithm needs state feature items for implementing __eq__");
+                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs observation feature items for implementing __eq__");
                     }
                     const ObjectType* o = dynamic_cast<const ObjectType*>(&other);
                     return ((o != nullptr) && (_value.attr("__eq__")(o->_value).template cast<bool>()));
                 } catch(const py::error_already_set& ex) {
-                    spdlog::error(std::string("AIRLAPS exception when testing state feature items equality: ") + ex.what());
+                    spdlog::error(std::string("AIRLAPS exception when testing observation feature items equality: ") + ex.what());
                     throw;
                 }
             }
@@ -395,14 +395,14 @@ public :
             } else if (dtype == "uint64") {
                 _implementation = std::make_unique<NumpyImplementation<std::uint64_t>>(vector);
             } else {
-                spdlog::error("Unhandled array dtype '" + dtype + "' when parsing state features as numpy array");
+                spdlog::error("Unhandled array dtype '" + dtype + "' when parsing observation features as numpy array");
                 throw std::invalid_argument("AIRLAPS exception: Unhandled array dtype '" + dtype +
-                                            "' when parsing state features as numpy array");
+                                            "' when parsing observation features as numpy array");
             }
         } else {
-            spdlog::error("Unhandled state feature type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
+            spdlog::error("Unhandled observation feature type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
                            " (expecting list, tuple or numpy array)");
-            throw std::invalid_argument("Unhandled state feature type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
+            throw std::invalid_argument("Unhandled observation feature type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
                                         " (expecting list, tuple or numpy array)");
         }
     }
@@ -478,39 +478,39 @@ class PyWRLDomainFilter {
 public :
 
     PyWRLDomainFilter(py::object& domain,
-                      const std::function<py::object (const py::object&)>& state_features,
+                      const std::function<py::object (const py::object&)>& observation_features,
                       double initial_pruning_probability = 0.999,
                       double temperature_increase_rate = 0.01,
                       unsigned int width_increase_resilience = 10,
                       unsigned int max_depth = 1000,
-                      bool use_state_feature_hash = false,
+                      bool use_observation_feature_hash = false,
                       bool cache_transitions = false,
                       bool debug_logs = false) {
-        if (use_state_feature_hash) {
-            _implementation = std::make_unique<Implementation<airlaps::StateFeatureHash>>(
-                domain, state_features, initial_pruning_probability, temperature_increase_rate,
+        if (use_observation_feature_hash) {
+            _implementation = std::make_unique<Implementation<airlaps::ObservationFeatureHash>>(
+                domain, observation_features, initial_pruning_probability, temperature_increase_rate,
                 width_increase_resilience, max_depth, cache_transitions, debug_logs);
         } else {
-            _implementation = std::make_unique<Implementation<airlaps::DomainStateHash>>(
-                domain, state_features, initial_pruning_probability, temperature_increase_rate,
+            _implementation = std::make_unique<Implementation<airlaps::DomainObservationHash>>(
+                domain, observation_features, initial_pruning_probability, temperature_increase_rate,
                 width_increase_resilience, max_depth, cache_transitions, debug_logs);
         }
     }
 
     template <typename TWRLSolverDomainFilterPtr,
               std::enable_if_t<std::is_same<typename TWRLSolverDomainFilterPtr::element_type::Solver::HashingPolicy,
-                                            airlaps::DomainStateHash<typename TWRLSolverDomainFilterPtr::element_type::Solver::Domain,
+                                            airlaps::DomainObservationHash<typename TWRLSolverDomainFilterPtr::element_type::Solver::Domain,
                                                                      typename TWRLSolverDomainFilterPtr::element_type::Solver::FeatureVector>>::value, int> = 0>
     PyWRLDomainFilter(TWRLSolverDomainFilterPtr domain_filter) {
-        _implementation = std::make_unique<Implementation<airlaps::DomainStateHash>>(std::move(domain_filter));
+        _implementation = std::make_unique<Implementation<airlaps::DomainObservationHash>>(std::move(domain_filter));
     }
 
     template <typename TWRLSolverDomainFilterPtr,
               std::enable_if_t<std::is_same<typename TWRLSolverDomainFilterPtr::element_type::Solver::HashingPolicy,
-                                            airlaps::StateFeatureHash<typename TWRLSolverDomainFilterPtr::element_type::Solver::Domain,
+                                            airlaps::ObservationFeatureHash<typename TWRLSolverDomainFilterPtr::element_type::Solver::Domain,
                                                                       typename TWRLSolverDomainFilterPtr::element_type::Solver::FeatureVector>>::value, int> = 0>
     PyWRLDomainFilter(TWRLSolverDomainFilterPtr domain_filter) {
-        _implementation = std::make_unique<Implementation<airlaps::StateFeatureHash>>(std::move(domain_filter));
+        _implementation = std::make_unique<Implementation<airlaps::ObservationFeatureHash>>(std::move(domain_filter));
     }
 
     py::object reset() {
@@ -521,8 +521,8 @@ public :
         return _implementation->step(action);
     }
 
-    py::object sample(const py::object& state, const py::object& action) {
-        return _implementation->sample(state, action);
+    py::object sample(const py::object& observation, const py::object& action) {
+        return _implementation->sample(observation, action);
     }
 
 private :
@@ -531,32 +531,32 @@ private :
     public :
         virtual py::object reset() =0;
         virtual py::object step(const py::object& action) =0;
-        virtual py::object sample(const py::object& state, const py::object& action) =0;
+        virtual py::object sample(const py::object& observation, const py::object& action) =0;
     };
 
     template <template <typename...> class Thashing_policy>
     class Implementation : public BaseImplementation {
     public :
         Implementation(py::object& domain,
-                       const std::function<py::object (const py::object&)>& state_features,
+                       const std::function<py::object (const py::object&)>& observation_features,
                        double initial_pruning_probability = 0.999,
                        double temperature_increase_rate = 0.01,
                        unsigned int width_increase_resilience = 10,
                        unsigned int max_depth = 1000,
                        bool cache_transitions = false,
                        bool debug_logs = false)
-            : _state_features(state_features) {
+            : _observation_features(observation_features) {
             
             std::unique_ptr<PyWRLDomain> wrl_domain = std::make_unique<PyWRLDomain>(domain);
 
             if (cache_transitions) {
-                _domain_filter = std::make_unique<typename _WRLSolver::WRLUncachedDomainFilter>(
+                _domain_filter = std::make_unique<typename _WRLSolver::WRLCachedDomainFilter>(
                     std::move(wrl_domain),
-                    [this](const typename PyWRLDomain::State& s)->std::unique_ptr<PyWRLFeatureVector> {
+                    [this](const typename PyWRLDomain::Observation& s)->std::unique_ptr<PyWRLFeatureVector> {
                         try {
-                            return std::make_unique<PyWRLFeatureVector>(_state_features(s._state));
+                            return std::make_unique<PyWRLFeatureVector>(_observation_features(s._observation));
                         } catch (const py::error_already_set& e) {
-                            spdlog::error(std::string("AIRLAPS exception when calling state features: ") + e.what());
+                            spdlog::error(std::string("AIRLAPS exception when calling observation features: ") + e.what());
                             throw;
                         }
                     },
@@ -564,13 +564,13 @@ private :
                     width_increase_resilience, max_depth, debug_logs
                 );
             } else {
-                _domain_filter = std::make_unique<typename _WRLSolver::WRLCachedDomainFilter>(
+                _domain_filter = std::make_unique<typename _WRLSolver::WRLUncachedDomainFilter>(
                     std::move(wrl_domain),
-                    [this](const typename PyWRLDomain::State& s)->std::unique_ptr<PyWRLFeatureVector> {
+                    [this](const typename PyWRLDomain::Observation& s)->std::unique_ptr<PyWRLFeatureVector> {
                         try {
-                            return std::make_unique<PyWRLFeatureVector>(_state_features(s._state));
+                            return std::make_unique<PyWRLFeatureVector>(_observation_features(s._observation));
                         } catch (const py::error_already_set& e) {
-                            spdlog::error(std::string("AIRLAPS exception when calling state features: ") + e.what());
+                            spdlog::error(std::string("AIRLAPS exception when calling observation features: ") + e.what());
                             throw;
                         }
                     },
@@ -597,22 +597,22 @@ private :
         }
 
         virtual py::object reset() {
-            return _domain_filter->reset()->_state;
+            return _domain_filter->reset()->_observation;
         }
 
         virtual py::object step(const py::object& action) {
             return _domain_filter->step(action)->_outcome;
         }
 
-        virtual py::object sample(const py::object& state, const py::object& action) {
-            return _domain_filter->sample(state, action)->_outcome;
+        virtual py::object sample(const py::object& observation, const py::object& action) {
+            return _domain_filter->sample(observation, action)->_outcome;
         }
     
     private :
         typedef airlaps::WRLSolver<PyWRLDomain, PyWRLUnderlyingSolver, PyWRLFeatureVector, Thashing_policy> _WRLSolver;
         std::unique_ptr<typename _WRLSolver::WRLDomainFilter> _domain_filter;
 
-        std::function<py::object (const py::object&)> _state_features;
+        std::function<py::object (const py::object&)> _observation_features;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -661,23 +661,23 @@ class PyWRLSolver {
 public :
 
     PyWRLSolver(py::object& solver,
-                const std::function<py::object (const py::object&)>& state_features,
+                const std::function<py::object (const py::object&)>& observation_features,
                 double initial_pruning_probability = 0.999,
                 double temperature_increase_rate = 0.01,
                 unsigned int width_increase_resilience = 10,
                 unsigned int max_depth = 1000,
-                bool use_state_feature_hash = false,
+                bool use_observation_feature_hash = false,
                 bool cache_transitions = false,
                 bool debug_logs = false) {
         
-        if (use_state_feature_hash) {
-            _implementation = std::make_unique<Implementation<airlaps::StateFeatureHash>>(
-                solver, state_features, initial_pruning_probability, temperature_increase_rate,
+        if (use_observation_feature_hash) {
+            _implementation = std::make_unique<Implementation<airlaps::ObservationFeatureHash>>(
+                solver, observation_features, initial_pruning_probability, temperature_increase_rate,
                 width_increase_resilience, max_depth, cache_transitions, debug_logs
             );
         } else {
-            _implementation = std::make_unique<Implementation<airlaps::DomainStateHash>>(
-                solver, state_features, initial_pruning_probability, temperature_increase_rate,
+            _implementation = std::make_unique<Implementation<airlaps::DomainObservationHash>>(
+                solver, observation_features, initial_pruning_probability, temperature_increase_rate,
                 width_increase_resilience, max_depth, cache_transitions, debug_logs
             );
         }
@@ -704,24 +704,24 @@ private :
     public :
 
         Implementation(py::object& solver,
-                       const std::function<py::object (const py::object&)>& state_features,
+                       const std::function<py::object (const py::object&)>& observation_features,
                        double initial_pruning_probability = 0.999,
                        double temperature_increase_rate = 0.1,
                        unsigned int width_increase_resilience = 10,
                        unsigned int max_depth = 1000,
                        bool cache_transitions = false,
                        bool debug_logs = false)
-            : _state_features(state_features) {
+            : _observation_features(observation_features) {
 
             _underlying_solver = std::make_unique<PyWRLUnderlyingSolver>(solver);
             
             _solver = std::make_unique<airlaps::WRLSolver<PyWRLDomain, PyWRLUnderlyingSolver, PyWRLFeatureVector, Thashing_policy>>(
                 *_underlying_solver,
-                [this](const typename PyWRLDomain::State& s)->std::unique_ptr<PyWRLFeatureVector> {
+                [this](const typename PyWRLDomain::Observation& s)->std::unique_ptr<PyWRLFeatureVector> {
                     try {
-                        return std::make_unique<PyWRLFeatureVector>(_state_features(s._state));
+                        return std::make_unique<PyWRLFeatureVector>(_observation_features(s._observation));
                     } catch (const py::error_already_set& e) {
-                        spdlog::error(std::string("AIRLAPS exception when calling state features: ") + e.what());
+                        spdlog::error(std::string("AIRLAPS exception when calling observation features: ") + e.what());
                         throw;
                     }
                 },
@@ -753,7 +753,7 @@ private :
         std::unique_ptr<_WRLSolver> _solver;
         std::unique_ptr<PyWRLUnderlyingSolver> _underlying_solver;
         
-        std::function<py::object (const py::object&)> _state_features;
+        std::function<py::object (const py::object&)> _observation_features;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -776,17 +776,17 @@ void init_pywrl(py::module& m) {
                           bool,
                           bool>(),
                  py::arg("domain"),
-                 py::arg("state_features"),
+                 py::arg("observation_features"),
                  py::arg("initial_pruning_probability")=0.999,
                  py::arg("temperature_increase_rate")=0.01,
                  py::arg("width_increase_resilience")=10,
                  py::arg("max_depth")=1000,
-                 py::arg("use_state_feature_hash")=false,
+                 py::arg("use_observation_feature_hash")=false,
                  py::arg("cache_transitions")=false,
                  py::arg("debug_logs")=false)
             .def("reset", &PyWRLDomainFilter::reset)
             .def("step", &PyWRLDomainFilter::step, py::arg("action"))
-            .def("sample", &PyWRLDomainFilter::sample, py::arg("state"), py::arg("action"))
+            .def("sample", &PyWRLDomainFilter::sample, py::arg("observation"), py::arg("action"))
         ;
     
     py::class_<PyWRLSolver> py_wrl_solver(m, "_WRLSolver_");
@@ -801,12 +801,12 @@ void init_pywrl(py::module& m) {
                           bool,
                           bool>(),
                  py::arg("solver"),
-                 py::arg("state_features"),
+                 py::arg("observation_features"),
                  py::arg("initial_pruning_probability")=0.999,
                  py::arg("temperature_increase_rate")=0.01,
                  py::arg("width_increase_resilience")=10,
                  py::arg("max_depth")=1000,
-                 py::arg("use_state_feature_hash")=false,
+                 py::arg("use_observation_feature_hash")=false,
                  py::arg("cache_transitions")=false,
                  py::arg("debug_logs")=false)
             .def("reset", &PyWRLSolver::reset)

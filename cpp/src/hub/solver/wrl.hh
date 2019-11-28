@@ -15,46 +15,46 @@
 
 namespace airlaps {
 
-/** Use default hasher provided with domain's states */
+/** Use default hasher provided with domain's observations */
 template <typename Tdomain, typename Tfeature_vector>
-struct DomainStateHash {
-    typedef const typename Tdomain::State& Key;
+struct DomainObservationHash {
+    typedef const typename Tdomain::Observation& Key;
 
     template <typename Tnode>
     static const Key& get_key(const Tnode& n) {
-        return n.state;
+        return n.observation;
     }
 
-    template <typename Tstate, typename Tfeature_functor>
-    static std::unique_ptr<Tfeature_vector> node_create(Tstate& s, const Tfeature_functor& state_features) {
+    template <typename Tobservation, typename Tfeature_functor>
+    static std::unique_ptr<Tfeature_vector> node_create(Tobservation& s, const Tfeature_functor& observation_features) {
         return std::unique_ptr<Tfeature_vector>();
     }
 
     template <typename Tnode, typename Tfeature_functor>
-    static const Tfeature_vector& get_features(Tnode& n, const Tfeature_functor& state_features) {
+    static const Tfeature_vector& get_features(Tnode& n, const Tfeature_functor& observation_features) {
         if (!n.features) {
-            n.features = state_features(n.state);
+            n.features = observation_features(n.observation);
         }
         return *n.features;
     }
 
     struct Hash {
         std::size_t operator()(const Key& k) const {
-            return typename Tdomain::State::Hash()(k);
+            return typename Tdomain::Observation::Hash()(k);
         }
     };
 
     struct Equal {
         bool operator()(const Key& k1, const Key& k2) const {
-            return typename Tdomain::State::Equal()(k1, k2);
+            return typename Tdomain::Observation::Equal()(k1, k2);
         }
     };
 };
 
 
-/** Use state binary feature vector to hash states */
+/** Use observation binary feature vector to hash observations */
 template <typename Tdomain, typename Tfeature_vector>
-struct StateFeatureHash {
+struct ObservationFeatureHash {
     typedef Tfeature_vector Key;
 
     template <typename Tnode>
@@ -62,13 +62,13 @@ struct StateFeatureHash {
         return *n.features;
     }
 
-    template <typename Tstate, typename Tfeature_functor>
-    static std::unique_ptr<Tfeature_vector> node_create(Tstate& s, const Tfeature_functor& state_features) {
-        return state_features(s);
+    template <typename Tobservation, typename Tfeature_functor>
+    static std::unique_ptr<Tfeature_vector> node_create(Tobservation& s, const Tfeature_functor& observation_features) {
+        return observation_features(s);
     }
 
     template <typename Tnode, typename Tfeature_functor>
-    static const Tfeature_vector& get_features(Tnode& n, const Tfeature_functor& state_features) {
+    static const Tfeature_vector& get_features(Tnode& n, const Tfeature_functor& observation_features) {
         return *n.features;
     }
 
@@ -102,11 +102,11 @@ struct StateFeatureHash {
 template <typename Tdomain,
           typename Tunderlying_solver,
           typename Tfeature_vector,
-          template <typename...> class Thashing_policy = DomainStateHash>
+          template <typename...> class Thashing_policy = DomainObservationHash>
 class WRLSolver {
 public :
     typedef Tdomain Domain;
-    typedef typename Domain::State State;
+    typedef typename Domain::Observation Observation;
     typedef typename Domain::Event Action;
     typedef Tunderlying_solver UnderlyingSolver;
     typedef Tfeature_vector FeatureVector;
@@ -115,32 +115,38 @@ public :
 
     class WRLDomainFilter {
     public :
-        typedef typename Domain::TransitionOutcome TransitionOutcome;
+        typedef typename Domain::EnvironmentOutcome EnvironmentOutcome;
         typedef WRLSolver<Tdomain, Tunderlying_solver, Tfeature_vector, Thashing_policy> Solver;
 
         WRLDomainFilter(std::unique_ptr<Domain> domain,
-                        const std::function<std::unique_ptr<FeatureVector> (const State&)>& state_features,
+                        const std::function<std::unique_ptr<FeatureVector> (const Observation&)>& observation_features,
                         double initial_pruning_probability = 0.999,
                         double temperature_increase_rate = 0.01,
                         unsigned int width_increase_resilience = 10,
                         unsigned int max_depth = 1000,
                         bool debug_logs = false)
-            : _domain(std::move(domain)), _state_features(state_features),
+            : _domain(std::move(domain)), _observation_features(observation_features),
               _initial_pruning_probability(initial_pruning_probability),
               _temperature_increase_rate(temperature_increase_rate),
               _width_increase_resilience(width_increase_resilience),
               _max_depth(max_depth), _current_temperature(1.0),
               _min_reward(std::numeric_limits<double>::max()), _current_depth(0),
-              _debug_logs(debug_logs) {}
+              _debug_logs(debug_logs) {
+                    if (debug_logs) {
+                        spdlog::set_level(spdlog::level::debug);
+                    } else {
+                        spdlog::set_level(spdlog::level::info);
+                    }
+              }
         
         virtual void clear() =0;
-        virtual std::unique_ptr<State> reset() =0;
-        virtual std::unique_ptr<TransitionOutcome> step(const Action& action) =0;
-        virtual std::unique_ptr<TransitionOutcome> sample(const State& state, const Action& action) =0;
+        virtual std::unique_ptr<Observation> reset() =0;
+        virtual std::unique_ptr<EnvironmentOutcome> step(const Action& action) =0;
+        virtual std::unique_ptr<EnvironmentOutcome> sample(const Observation& observation, const Action& action) =0;
             
     protected :
         std::unique_ptr<Domain> _domain;
-        const std::function<std::unique_ptr<FeatureVector> (const State&)>& _state_features;
+        std::function<std::unique_ptr<FeatureVector> (const Observation&)> _observation_features;
         unsigned int _current_width;
         double _initial_pruning_probability;
         double _temperature_increase_rate;
@@ -157,16 +163,16 @@ public :
         typedef std::vector<std::unordered_set<TupleType, boost::hash<TupleType>>> TupleVector;
         TupleVector _feature_tuples;
 
-        unsigned int novelty(TupleVector& feature_tuples, const FeatureVector& state_features) const {
-            unsigned int nov = state_features.size() + 1;
+        unsigned int novelty(TupleVector& feature_tuples, const FeatureVector& observation_features) const {
+            unsigned int nov = observation_features.size() + 1;
 
-            for (unsigned int k = 1 ; k <= std::min(_current_width, (unsigned int) state_features.size()) ; k++) {
+            for (unsigned int k = 1 ; k <= std::min(_current_width, (unsigned int) observation_features.size()) ; k++) {
                 // we must recompute combinations from previous width values just in case
-                // this state would be visited for the first time across width iterations
-                generate_tuples(k, state_features.size(),
-                                [this, &state_features, &feature_tuples, &k, &nov](TupleType& cv){
+                // this observation would be visited for the first time across width iterations
+                generate_tuples(k, observation_features.size(),
+                                [this, &observation_features, &feature_tuples, &k, &nov](TupleType& cv){
                     for (auto& e : cv) {
-                        e.second = state_features[e.first];
+                        e.second = observation_features[e.first];
                     }
                     if(feature_tuples[k-1].insert(cv).second) {
                         nov = std::min(nov, k);
@@ -210,13 +216,13 @@ public :
     class WRLUncachedDomainFilter : public WRLDomainFilter {
     public :
         WRLUncachedDomainFilter(std::unique_ptr<Domain> domain,
-                                const std::function<std::unique_ptr<FeatureVector> (const State&)>& state_features,
+                                const std::function<std::unique_ptr<FeatureVector> (const Observation&)>& observation_features,
                                 double initial_pruning_probability = 0.999,
                                 double temperature_increase_rate = 0.01,
                                 unsigned int width_increase_resilience = 1000,
                                 unsigned int max_depth = 1000,
                                 bool debug_logs = false)
-            : WRLDomainFilter(std::move(domain), state_features, initial_pruning_probability,
+            : WRLDomainFilter(std::move(domain), observation_features, initial_pruning_probability,
                               temperature_increase_rate, width_increase_resilience,
                               max_depth, debug_logs),
               _nb_pruned_expansions(0) {}
@@ -229,59 +235,84 @@ public :
             this->_gen = std::mt19937(this->_rd());
         }
 
-        virtual std::unique_ptr<State> reset() {
-            // Get original reset
-            std::unique_ptr<State> s = this->_domain->reset();
-            this->_current_depth = 0;
-            std::unique_ptr<FeatureVector> features = this->_state_features(*s);
+        virtual std::unique_ptr<Observation> reset() {
+            try {
+                if (this->_debug_logs) { spdlog::debug("Resetting the uncached width-based domain proxy"); }
+                // Get original reset
+                std::unique_ptr<Observation> s = this->_domain->reset();
+                this->_current_depth = 0;
+                std::unique_ptr<FeatureVector> features = this->_observation_features(*s);
 
-            if (this->_feature_tuples.empty()) { // first call
-                this->clear();
-                this->_current_temperature = - (features->size()) / std::log(1.0 - this->_initial_pruning_probability);
-            } else {
-                this->_current_temperature *= (1.0 + this->_temperature_increase_rate);
+                if (this->_feature_tuples.empty()) { // first call
+                    this->clear();
+                    this->_current_temperature = - (features->size()) / std::log(1.0 - this->_initial_pruning_probability);
+                    if (this->_debug_logs) { spdlog::debug("Initializing the uncached width-based proxy domain (temperature=" +
+                                                           std::to_string(this->_current_temperature) + ")"); }
+                } else {
+                    this->_current_temperature *= (1.0 + this->_temperature_increase_rate);
+                    if (this->_debug_logs) { spdlog::debug("Resetting the uncached width-based proxy domain (temperature=" +
+                                                           std::to_string(this->_current_temperature) + ")"); }
+                }
+
+                if (this->_nb_pruned_expansions >= this->_width_increase_resilience) {
+                    this->_current_width = std::min(this->_current_width + 1, (unsigned int) features->size());
+                    this->_feature_tuples = typename WRLDomainFilter::TupleVector(this->_current_width);
+                    if (this->_debug_logs) { spdlog::debug("Increase the width to " +
+                                                           std::to_string(this->_current_width)); }
+                }
+
+                this->novelty(this->_feature_tuples, *features); // force computation of novelty and update of the feature tuples table
+
+                return s;
+            } catch (const std::exception& e) {
+                spdlog::error("The uncached width-based proxy domain reset failed. Reason: " + std::string(e.what()));
+                throw;
             }
-
-            if (this->_nb_pruned_expansions >= this->_width_increase_resilience) {
-                this->_current_width = std::min(this->_current_width + 1, (unsigned int) features->size());
-                this->_feature_tuples = typename WRLDomainFilter::TupleVector(this->_current_width);
-            }
-
-            this->novelty(this->_feature_tuples, *features); // force computation of novelty and update of the feature tuples table
-
-            return s;
         }
 
-        virtual std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> step(const Action& action) {
+        virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> step(const Action& action) {
             // Get original sample
-            std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> o = this->_domain->step(action);
+            std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = this->_domain->step(action);
             this->_current_depth++;
             return make_transition(action, o);
         }
 
-        virtual std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> sample(const State& state, const Action& action) {
+        virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> sample(const Observation& observation, const Action& action) {
             // Get original sample
-            std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> o = this->_domain->sample(state, action);
-            using TO = typename WRLDomainFilter::TransitionOutcome;
-            this->_current_depth = TO::get_depth(o->info());
+            std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = this->_domain->sample(observation, action);
+            using EO = typename WRLDomainFilter::EnvironmentOutcome;
+            this->_current_depth = EO::get_depth(o->info());
             return make_transition(action, o);
         }
 
-        std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> make_transition(const Action& action,
-                                                                                      std::unique_ptr<typename WRLDomainFilter::TransitionOutcome>& outcome) {
-            // Compute outcome's novelty
-            std::unique_ptr<FeatureVector> features = this->_state_features(outcome->state());
-            unsigned int nov = this->novelty(this->_feature_tuples, *features);
-            this->_nb_pruned_expansions = int(nov == features->size() + 1);
+        std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> make_transition(const Action& action,
+                                                                                      std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome>& outcome) {
+            try {
+                // Compute outcome's novelty
+                std::unique_ptr<FeatureVector> features = this->_observation_features(outcome->observation());
+                unsigned int nov = this->novelty(this->_feature_tuples, *features);
+                this->_nb_pruned_expansions = int(nov == features->size() + 1);
 
-            std::bernoulli_distribution d(1.0 - std::exp((1.0 - nov) / this->_current_temperature));
+                std::bernoulli_distribution d(1.0 - std::exp((1.0 - nov) / this->_current_temperature));
+                this->_min_reward = std::min(this->_min_reward, outcome->reward());
 
-            if (d(this->_gen)) { //prune next state
-                outcome->reward(nov * (this->_max_depth - this->_current_depth) * this->_min_reward); // make attractiveness decreases with higher novelties
-                outcome->termination(true); // make pruned state terminal
+                if (d(this->_gen)) { //prune next observation
+                    outcome->reward(nov * (this->_max_depth - this->_current_depth) * this->_min_reward); // make attractiveness decreases with higher novelties
+                    outcome->termination(true); // make pruned observation terminal
+                    if (this->_debug_logs) { spdlog::debug("Pruning observation " + Observation(outcome->observation()).print() +
+                                                           " after applying action " + action.print() +
+                                                           " (reward: " + std::to_string(outcome->reward()) +
+                                                           "; probability: " + std::to_string(d.p()) + ")"); }
+                } else if (this->_debug_logs) { spdlog::debug("Keeping observation " + Observation(outcome->observation()).print() +
+                                                              " after applying action " + action.print() +
+                                                              " (min_reward: " + std::to_string(this->_min_reward) +
+                                                              "; probability: " + std::to_string(1.0 - d.p()) + ")"); }
+
+                return std::move(outcome);
+            } catch (const std::exception& e) {
+                spdlog::error("The uncached width-based proxy domain transition failed. Reason: " + std::string(e.what()));
+                throw;
             }
-
-            return std::move(outcome);
         }
 
     private :
@@ -291,13 +322,13 @@ public :
     class WRLCachedDomainFilter : public WRLDomainFilter {
     public :
         WRLCachedDomainFilter(std::unique_ptr<Domain> domain,
-                              const std::function<std::unique_ptr<FeatureVector> (const State&)>& state_features,
+                              const std::function<std::unique_ptr<FeatureVector> (const Observation&)>& observation_features,
                               double initial_pruning_probability = 0.999,
                               double temperature_increase_rate = 0.01,
                               unsigned int width_increase_resilience = 10,
                               unsigned int max_depth = 1000,
                               bool debug_logs = false)
-            : WRLDomainFilter(std::move(domain), state_features, initial_pruning_probability,
+            : WRLDomainFilter(std::move(domain), observation_features, initial_pruning_probability,
                               temperature_increase_rate, width_increase_resilience,
                               max_depth, debug_logs) {}
         
@@ -305,138 +336,161 @@ public :
             this->_graph.clear();
             this->_feature_tuples = typename WRLDomainFilter::TupleVector(1);
             this->_current_width = 1;
-            this->_current_state = State();
+            this->_current_observation = Observation();
             this->_min_reward = std::numeric_limits<double>::max();
             this->_gen = std::mt19937(this->_rd());
         }
 
-        virtual std::unique_ptr<State> reset() {
-            // Get original reset
-            std::unique_ptr<State> s = this->_domain->reset();
-            this->_current_state = *s;
-            this->_current_depth = 0;
+        virtual std::unique_ptr<Observation> reset() {
+            try {
+                // Get original reset
+                std::unique_ptr<Observation> s = this->_domain->reset();
+                this->_current_observation = *s;
+                this->_current_depth = 0;
 
-            // Get the node containing the initial state
-            auto si = this->_graph.emplace(Node(*s, this->_state_features));
-            Node& node = const_cast<Node&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
-            node.depth = 0;
+                // Get the node containing the initial observation
+                auto si = this->_graph.emplace(Node(*s, this->_observation_features));
+                Node& node = const_cast<Node&>(*(si.first)); // we won't change the real key (ObservationNode::observation) so we are safe
+                node.depth = 0;
 
-            if (si.second) { // first call
-                if (!(this->_feature_tuples.empty())) {
-                    spdlog::warn("You SHOULD NOT use WRL in caching mode with non-deterministic initial state!");
+                if (si.second) { // first call
+                    if (!(this->_feature_tuples.empty())) {
+                        spdlog::warn("You SHOULD NOT use the width-based proxy domain in caching mode with non-deterministic initial observation!");
+                    } else {
+                        this->clear();
+                    }
+                    const FeatureVector& features = HashingPolicy::get_features(node, this->_observation_features);
+                    node.novelty = this->novelty(this->_feature_tuples, features);
+                    this->_current_temperature = - (features.size()) / std::log(1.0 - this->_initial_pruning_probability);
+                    if (this->_debug_logs) { spdlog::debug("Initializing the cached width-based proxy domain (temperature=" +
+                                                           std::to_string(this->_current_temperature) + ")"); }
                 } else {
-                    this->clear();
+                    this->_current_temperature *= (1.0 + this->_temperature_increase_rate);
+                    if (this->_debug_logs) { spdlog::debug("Resetting the cached width-based proxy domain (temperature=" +
+                                                           std::to_string(this->_current_temperature) + ")"); }
                 }
-                const FeatureVector& features = HashingPolicy::get_features(node, this->_state_features);
-                node.novelty = this->novelty(this->_feature_tuples, features);
-                this->_current_temperature = - (features.size()) / std::log(1.0 - this->_initial_pruning_probability);
-            } else {
-                this->_current_temperature *= (1.0 + this->_temperature_increase_rate);
-            }
 
-            if (node.pruned) { // need for increasing width
-                const FeatureVector& features = HashingPolicy::get_features(node, this->_state_features);
-                this->_current_width = std::min(this->_current_width + 1, (unsigned int) features.size());
-                this->_feature_tuples = typename WRLDomainFilter::TupleVector(this->_current_width);
-                for (auto& n : _graph) {
-                    const_cast<Node&>(n).nb_visits = 0; // we don't change the real key (Node::state) so we are safe
-                    const_cast<Node&>(n).pruned = false; // we don't change the real key (Node::state) so we are safe
-                    const_cast<Node&>(n).novelty = std::numeric_limits<unsigned int>::max(); // we don't change the real key (Node::state) so we are safe
+                if (node.pruned) { // need for increasing width
+                    const FeatureVector& features = HashingPolicy::get_features(node, this->_observation_features);
+                    this->_current_width = std::min(this->_current_width + 1, (unsigned int) features.size());
+                    this->_feature_tuples = typename WRLDomainFilter::TupleVector(this->_current_width);
+                    for (auto& n : _graph) {
+                        const_cast<Node&>(n).nb_visits = 0; // we don't change the real key (Node::observation) so we are safe
+                        const_cast<Node&>(n).pruned = false; // we don't change the real key (Node::observation) so we are safe
+                        const_cast<Node&>(n).novelty = std::numeric_limits<unsigned int>::max(); // we don't change the real key (Node::observation) so we are safe
+                    }
+                    node.novelty = this->novelty(this->_feature_tuples, features);
+                    if (this->_debug_logs) { spdlog::debug("Increase the width to " +
+                                                           std::to_string(this->_current_width)); }
                 }
-                node.novelty = this->novelty(this->_feature_tuples, features);
-            }
 
-            return s;
+                return s;
+            } catch (const std::exception& e) {
+                spdlog::error("The cached width-based proxy domain reset failed. Reason: " + std::string(e.what()));
+                throw;
+            }
         }
 
-        virtual std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> step(const Action& action) {
-            std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> o = make_transition(
-                this->_current_state, action,
+        virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> step(const Action& action) {
+            std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = make_transition(
+                this->_current_observation, action,
                 [this, &action](){
                     return this->_domain->step(action);
                 });
-            this->_current_state = o->state();
+            this->_current_observation = o->observation();
             return o;
         }
 
-        virtual std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> sample(const State& state, const Action& action) {
-             this->_current_state = state;
-            std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> o = make_transition(
-                state, action,
-                [this, &state, &action](){
-                    return this->_domain->sample(state, action);
+        virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> sample(const Observation& observation, const Action& action) {
+             this->_current_observation = observation;
+            std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = make_transition(
+                observation, action,
+                [this, &observation, &action](){
+                    return this->_domain->sample(observation, action);
                 });
-            this->_current_state = o->state();
+            this->_current_observation = o->observation();
             return o;
         }
     
-        std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> make_transition(
-            const State& state, const Action& action,
-            const std::function<std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> ()>& transition) {
-            // Get the node containing the given state s
-            auto si = this->_graph.emplace(Node(state, this->_state_features));
-            Node& node = const_cast<Node&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
-            node.nb_visits += 1;
-            this->_current_depth = node.depth;
-            Node* next_node = nullptr;
+        std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> make_transition(
+            const Observation& observation, const Action& action,
+            const std::function<std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> ()>& transition) {
+            try {
+                // Get the node containing the given observation s
+                auto si = this->_graph.emplace(Node(observation, this->_observation_features));
+                Node& node = const_cast<Node&>(*(si.first)); // we won't change the real key (ObservationNode::observation) so we are safe
+                node.nb_visits += 1;
+                this->_current_depth = node.depth;
+                Node* next_node = nullptr;
 
-            if (si.second || si.first->children.find(action) == si.first->children.end()) { // state is not yet visited or not with same action
-                // Get original sample
-                std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> o = transition();
-                
-                // Get the node containing the next state
-                auto ni = this->_graph.emplace(Node(o->state(), this->_state_features));
-                next_node = &const_cast<Node&>(*ni.first); // we won't change the real key (StateNode::state) so we are safe
-                node.children[action] = std::make_pair(next_node, std::move(o));
-                this->_min_reward = std::min(this->_min_reward, o->reward());
-                next_node->depth = std::min(next_node->depth, this->_current_depth + 1);
-            } else {
-                next_node = std::get<0>(node.children[action]);
-            }
-
-            if (next_node->novelty == std::numeric_limits<unsigned int>::max()) { // next state is not yet visited or previous width increment
-                // Compute outcome's novelty
-                next_node->novelty = this->novelty(this->_feature_tuples, HashingPolicy::get_features(*next_node, this->_state_features));
-                next_node->pruned = (next_node->novelty == next_node->features->size() + 1);
-            }
-
-            std::bernoulli_distribution d(1.0 - std::exp((1.0 - (next_node->novelty)) / this->_current_temperature));
-            std::unique_ptr<typename WRLDomainFilter::TransitionOutcome> outcome = std::make_unique<typename WRLDomainFilter::TransitionOutcome>(*node.children[action].second);
-
-            if ((!node.pruned) && (node.nb_visits >= this->_width_increase_resilience)) {
-                node.pruned = true;
-                for (auto& child : node.children) {
-                    node.pruned = node.pruned && std::get<0>(child.second)->pruned;
+                if (si.second || si.first->children.find(action) == si.first->children.end()) { // observation is not yet visited or not with same action
+                    // Get original sample
+                    std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = transition();
+                    
+                    // Get the node containing the next observation
+                    auto ni = this->_graph.emplace(Node(o->observation(), this->_observation_features));
+                    next_node = &const_cast<Node&>(*ni.first); // we won't change the real key (ObservationNode::observation) so we are safe
+                    node.children[action] = std::make_pair(next_node, std::move(o));
+                    this->_min_reward = std::min(this->_min_reward, o->reward());
+                    next_node->depth = std::min(next_node->depth, this->_current_depth + 1);
+                } else {
+                    next_node = std::get<0>(node.children[action]);
                 }
-            }
 
-            if (d(this->_gen)) { // prune next state
-                outcome->reward((next_node->novelty) * (this->_max_depth - (next_node->depth)) * this->_min_reward); // make attractiveness decreases with higher novelties
-                outcome->termination(true); // make pruned state terminal
-            }
+                if (next_node->novelty == std::numeric_limits<unsigned int>::max()) { // next observation is not yet visited or previous width increment
+                    // Compute outcome's novelty
+                    next_node->novelty = this->novelty(this->_feature_tuples, HashingPolicy::get_features(*next_node, this->_observation_features));
+                    next_node->pruned = (next_node->novelty == next_node->features->size() + 1);
+                }
 
-            return outcome;
+                std::bernoulli_distribution d(1.0 - std::exp((1.0 - (next_node->novelty)) / this->_current_temperature));
+                std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> outcome = std::make_unique<typename WRLDomainFilter::EnvironmentOutcome>(*node.children[action].second);
+
+                if ((!node.pruned) && (node.nb_visits >= this->_width_increase_resilience)) {
+                    node.pruned = true;
+                    for (auto& child : node.children) {
+                        node.pruned = node.pruned && std::get<0>(child.second)->pruned;
+                    }
+                }
+
+                if (d(this->_gen)) { // prune next observation
+                    outcome->reward((next_node->novelty) * (this->_max_depth - (next_node->depth)) * this->_min_reward); // make attractiveness decreases with higher novelties
+                    outcome->termination(true); // make pruned observation terminal
+                    if (this->_debug_logs) { spdlog::debug("Pruning observation " + Observation(outcome->observation()).print() +
+                                                           " after applying action " + action.print() +
+                                                           " (reward: " + std::to_string(outcome->reward()) +
+                                                           "; probability: " + std::to_string(d.p()) + ")"); }
+                } else if (this->_debug_logs) { spdlog::debug("Keeping observation " + Observation(outcome->observation()).print() +
+                                                              " after applying action " + action.print() +
+                                                              " (min_reward: " + std::to_string(this->_min_reward) +
+                                                              "; probability: " + std::to_string(1.0 - d.p()) + ")"); }
+
+                return outcome;
+            } catch (const std::exception& e) {
+                spdlog::error("The cached width-based proxy domain transition failed. Reason: " + std::string(e.what()));
+                throw;
+            }
         }
 
     private :
         struct Node {
-            State state;
+            Observation observation;
             std::unique_ptr<FeatureVector> features;
             unsigned int novelty;
             unsigned int depth;
             bool pruned; // true if pruned by the novelty test
             unsigned int nb_visits; // number of times the node is visited for current width
 
-            typedef typename MapTypeDeducer<Action, std::pair<Node*, std::unique_ptr<typename WRLDomainFilter::TransitionOutcome>>>::Map Children;
+            typedef typename MapTypeDeducer<Action, std::pair<Node*, std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome>>>::Map Children;
             Children children;
 
-            Node(const State& s, const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features)
-                : state(s),
+            Node(const Observation& s, const std::function<std::unique_ptr<FeatureVector> (const Observation& s)>& observation_features)
+                : observation(s),
                   novelty(std::numeric_limits<unsigned int>::max()),
                   depth(std::numeric_limits<unsigned int>::max()),
                   pruned(false),
                   nb_visits(0) {
-                features = HashingPolicy::node_create(s, state_features);
+                features = HashingPolicy::node_create(s, observation_features);
             }
             
             struct Key {
@@ -448,18 +502,18 @@ public :
 
         typedef typename SetTypeDeducer<Node, HashingPolicy>::Set Graph;
         Graph _graph;
-        State _current_state;
+        Observation _current_observation;
     };
 
     WRLSolver(UnderlyingSolver& solver,
-              const std::function<std::unique_ptr<FeatureVector> (const State&)>& state_features,
+              const std::function<std::unique_ptr<FeatureVector> (const Observation&)>& observation_features,
               double initial_pruning_probability = 0.999,
               double temperature_increase_rate = 0.01,
               unsigned int width_increase_resilience = 10,
               unsigned int max_depth = 1000,
               bool cache_transitions = false,
               bool debug_logs = false)
-        : _solver(solver), _state_features(state_features),
+        : _solver(solver), _observation_features(observation_features),
           _initial_pruning_probability(initial_pruning_probability),
           _temperature_increase_rate(temperature_increase_rate),
           _width_increase_resilience(width_increase_resilience),
@@ -479,30 +533,40 @@ public :
 
     // solves using a given domain factory
     void solve(const std::function<std::unique_ptr<Domain> ()>& domain_factory) {
-        _solver.solve(
-            [this, &domain_factory]() -> std::unique_ptr<WRLDomainFilter> {
-                if (_cache_transitions) {
-                    return std::make_unique<WRLCachedDomainFilter>(
-                        domain_factory(),
-                        _state_features, _initial_pruning_probability, _temperature_increase_rate,
-                        _width_increase_resilience, _max_depth, _debug_logs
-                    );
-                } else {
-                    return std::make_unique<WRLUncachedDomainFilter>(
-                        domain_factory(),
-                        _state_features, _initial_pruning_probability, _temperature_increase_rate,
-                        _width_increase_resilience, _max_depth, _debug_logs
-                    );
+        try {
+            spdlog::info("Starting WRL solver");
+            auto start_time = std::chrono::high_resolution_clock::now();
+            _solver.solve(
+                [this, &domain_factory]() -> std::unique_ptr<WRLDomainFilter> {
+                    if (_cache_transitions) {
+                        return std::make_unique<WRLCachedDomainFilter>(
+                            domain_factory(),
+                            _observation_features, _initial_pruning_probability, _temperature_increase_rate,
+                            _width_increase_resilience, _max_depth, _debug_logs
+                        );
+                    } else {
+                        return std::make_unique<WRLUncachedDomainFilter>(
+                            domain_factory(),
+                            _observation_features, _initial_pruning_probability, _temperature_increase_rate,
+                            _width_increase_resilience, _max_depth, _debug_logs
+                        );
+                    }
                 }
-            }
-        );
+            );
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+            spdlog::info("WRL finished to solve in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+        } catch (const std::exception& e) {
+            spdlog::error("WRL failed. Reason: " + std::string(e.what()));
+            throw;
+        }
     }
     
 private :
     UnderlyingSolver& _solver;
     bool _cache_transitions;
     std::unique_ptr<WRLDomainFilter> _filtered_domain;
-    std::function<std::unique_ptr<FeatureVector> (const State&)> _state_features;
+    std::function<std::unique_ptr<FeatureVector> (const Observation&)> _observation_features;
     unsigned int _current_width;
     double _initial_pruning_probability;
     double _temperature_increase_rate;
