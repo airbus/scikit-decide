@@ -17,7 +17,7 @@ from airlaps import TransitionOutcome, TransitionValue, EnvironmentOutcome, Doma
 from airlaps.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from airlaps.hub.domain.gym import GymPlanningDomain, GymWidthDomain, \
-    GymDiscreteActionDomain, DeterministicGymDomainStateProxy
+    GymDiscreteActionDomain, GymDomainStateProxy
 from airlaps.hub.solver.iw import IW
 from airlaps.utils import rollout
 
@@ -85,24 +85,24 @@ class GymIWDomain(D):
     
     def _get_initial_state_(self) -> D.T_state:
         state_proxy = super()._get_initial_state_()
-        return DeterministicGymDomainStateProxy(state=normalize_and_round(state_proxy._state), context=state_proxy._context)
+        return GymDomainStateProxy(state=normalize_and_round(state_proxy._state), context=state_proxy._context)
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
             D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         o = super()._state_step(action)
-        return TransitionOutcome(state=DeterministicGymDomainStateProxy(state=normalize_and_round(o.state._state), context=o.state._context),
+        return TransitionOutcome(state=GymDomainStateProxy(state=normalize_and_round(o.state._state), context=o.state._context),
                                  value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
 
     def _sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
         EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         o = super()._sample(memory, action)
-        return EnvironmentOutcome(observation=DeterministicGymDomainStateProxy(state=normalize_and_round(o.observation._state), context=o.observation._context),
+        return EnvironmentOutcome(observation=GymDomainStateProxy(state=normalize_and_round(o.observation._state), context=o.observation._context),
                                   value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
     
     def _get_next_state(self, memory: D.T_memory[D.T_state],
                               action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
         o = super()._get_next_state(memory, action)
-        return DeterministicGymDomainStateProxy(state=normalize_and_round(o._state), context=o._context)
+        return GymDomainStateProxy(state=normalize_and_round(o._state), context=o._context)
     
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
                               next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
@@ -186,7 +186,7 @@ class GymIW(IW):
                          debug_logs=debug_logs)
     
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        state = DeterministicGymDomainStateProxy(state=normalize_and_round(observation._state), context=observation._context)
+        state = GymDomainStateProxy(state=normalize_and_round(observation._state), context=observation._context)
         action = super()._get_next_action(state)
         if action is None:
             state._context[5] = 0

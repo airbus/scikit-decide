@@ -79,8 +79,8 @@ class GymDomain(D):
         return self._gym_env
 
 
-class DeterministicGymDomainStateProxy :
-    def __init__(self, state, context):
+class GymDomainStateProxy :
+    def __init__(self, state, context=None):
         self._state = state
         self._context = context
     
@@ -92,6 +92,46 @@ class DeterministicGymDomainStateProxy :
     
     def __str__(self):
         return self._state.__str__()
+
+
+class GymDomainActionProxy :
+    def __init__(self, action):
+        self._action = action
+    
+    def __hash__(self):
+        return str(self._action).__hash__()
+    
+    def __eq__(self, other):
+        return str(self._action).__eq__(str(other))
+    
+    def __str__(self):
+        return self._action.__str__()
+
+
+class GymDomainHashable(GymDomain):
+    """This class wraps an OpenAI Gym environment (gym.env) as an AIRLAPS domain
+       using hashable states and actions.
+
+    !!! warning
+        Using this class requires OpenAI Gym to be installed.
+    """
+
+    def __init__(self, gym_env: gym.Env) -> None:
+        """Initialize GymDomain.
+
+        # Parameters
+        gym_env: The Gym environment (gym.env) to wrap.
+        """
+        super().__init__(gym_env)
+
+    def _state_reset(self) -> D.T_state:
+        return GymDomainStateProxy(super()._state_reset())
+
+    def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
+            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+        outcome = super()._state_step(action)
+        outcome.state = GymDomainStateProxy(outcome.state)
+        return outcome
 
 
 class D(Domain, SingleAgent, Sequential, UnrestrictedActions, DeterministicInitialized,
@@ -139,7 +179,7 @@ class DeterministicInitializedGymDomain(D):
     
     def _state_reset(self) -> D.T_state:
         if self._initial_state is None:
-            self._initial_state = DeterministicGymDomainStateProxy(state=self._gym_env.reset(), context=None)
+            self._initial_state = GymDomainStateProxy(state=self._gym_env.reset(), context=None)
             if self._set_state is not None and self._get_state is not None:
                 self._initial_env_state = self._get_state(self._gym_env)
                 self._initial_state._context = self._initial_env_state
@@ -157,9 +197,9 @@ class DeterministicInitializedGymDomain(D):
             D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         obs, reward, done, info = self._gym_env.step(action)
         if self._set_state is not None and self._get_state is not None:
-            state = DeterministicGymDomainStateProxy(state=obs, context=self._initial_env_state)
+            state = GymDomainStateProxy(state=obs, context=self._initial_env_state)
         else:
-            state = DeterministicGymDomainStateProxy(state=obs, context=self._init_env)
+            state = GymDomainStateProxy(state=obs, context=self._init_env)
         return TransitionOutcome(state=state, value=TransitionValue(reward=reward), termination=done, info=info)
     
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
@@ -233,9 +273,10 @@ class GymWidthDomain:
     def bee_features(self, state):
         """Return a numpy vector of ints representing the current 'cumulated layer' of each state variable
         """
+        state = state._state if isinstance(state, GymDomainStateProxy) else state
         if len(self._feature_increments) == 0:
-            self._init_bee_features(self._gym_env.observation_space, state._state)
-        sf = self._bee_features(self._gym_env.observation_space, state._state, 0)[1]
+            self._init_bee_features(self._gym_env.observation_space, state)
+        sf = self._bee_features(self._gym_env.observation_space, state, 0)[1]
         # sf.append(state._context[5])
         return sf
     
@@ -305,7 +346,8 @@ class GymWidthDomain:
 
         Return a list of booleans representing the binary representation of each state variable
         """
-        return self._binary_features(self._gym_env.observation_space, memory._state)
+        memory = memory._state if isinstance(memory, GymDomainStateProxy) else memory
+        return self._binary_features(self._gym_env.observation_space, memory)
     
     def _binary_features(self, space: gym.spaces.Space,
                                           element: Any) -> int:
@@ -407,10 +449,9 @@ class GymWidthDomain:
                 self._elliptical_features += [self.EllipticalMapping2D(input, v0, vG, bands)]
     
     def elliptical_features(self, state: D.T_memory[D.T_state]):
-        vS = np.array(self._get_variables(self._gym_env.observation_space, state._state))
-        f = [f.evaluate(vS) for f in self._elliptical_features]
-        print(str(f))
-        return f
+        state = state._state if isinstance(state, GymDomainStateProxy) else state
+        vS = np.array(self._get_variables(self._gym_env.observation_space, state))
+        return [f.evaluate(vS) for f in self._elliptical_features]
     
     def _get_variables(self, space: gym.spaces.Space, element: Any) -> List:
         if isinstance(space, gym.spaces.box.Box):
@@ -554,7 +595,7 @@ class DeterministicGymDomain(D):
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = self._gym_env.reset()
-        return DeterministicGymDomainStateProxy(state=initial_state,
+        return GymDomainStateProxy(state=initial_state,
                                                 context=[self._gym_env, None, None, None,
                                                          self._get_state(self._gym_env) if (self._get_state is not None and self._set_state is not None) else None])
 
@@ -569,7 +610,7 @@ class DeterministicGymDomain(D):
         obs, reward, done, info = env.step(action)
         outcome = TransitionOutcome(state=obs, value=TransitionValue(reward=reward), termination=done, info=info)
         # print('Transition:', str(memory._state), ' -> ', str(action), ' -> ', str(outcome.state))
-        return DeterministicGymDomainStateProxy(state=outcome.state,
+        return GymDomainStateProxy(state=outcome.state,
                                                 context=[env, memory._state, action, outcome,
                                                          self._get_state(env) if (self._get_state is not None and self._set_state is not None) else None])
 

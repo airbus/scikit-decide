@@ -245,18 +245,19 @@ public :
 
                 if (this->_feature_tuples.empty()) { // first call
                     this->clear();
-                    this->_current_temperature = - (features->size()) / std::log(1.0 - this->_initial_pruning_probability);
-                    if (this->_debug_logs) { spdlog::debug("Initializing the uncached width-based proxy domain (temperature=" +
+                    this->_current_temperature = - ((double) features->size()) / std::log(1.0 - this->_initial_pruning_probability);
+                    if (this->_debug_logs) { spdlog::debug("Initializing the uncached width-based proxy domain (temperature: " +
                                                            std::to_string(this->_current_temperature) + ")"); }
                 } else {
                     this->_current_temperature *= (1.0 + this->_temperature_increase_rate);
-                    if (this->_debug_logs) { spdlog::debug("Resetting the uncached width-based proxy domain (temperature=" +
+                    if (this->_debug_logs) { spdlog::debug("Resetting the uncached width-based proxy domain (temperature: " +
                                                            std::to_string(this->_current_temperature) + ")"); }
                 }
 
                 if (this->_nb_pruned_expansions >= this->_width_increase_resilience) {
                     this->_current_width = std::min(this->_current_width + 1, (unsigned int) features->size());
                     this->_feature_tuples = typename WRLDomainFilter::TupleVector(this->_current_width);
+                    this->_nb_pruned_expansions = 0;
                     if (this->_debug_logs) { spdlog::debug("Increase the width to " +
                                                            std::to_string(this->_current_width)); }
                 }
@@ -271,6 +272,7 @@ public :
         }
 
         virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> step(const Action& action) {
+            if (this->_debug_logs) { spdlog::debug("Stepping with action " + action.print()); }
             // Get original sample
             std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = this->_domain->step(action);
             this->_current_depth++;
@@ -278,6 +280,7 @@ public :
         }
 
         virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> sample(const Observation& observation, const Action& action) {
+            if (this->_debug_logs) { spdlog::debug("Sampling with observation " + observation.print() + " and action " + action.print()); }
             // Get original sample
             std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = this->_domain->sample(observation, action);
             using EO = typename WRLDomainFilter::EnvironmentOutcome;
@@ -291,20 +294,18 @@ public :
                 // Compute outcome's novelty
                 std::unique_ptr<FeatureVector> features = this->_observation_features(outcome->observation());
                 unsigned int nov = this->novelty(this->_feature_tuples, *features);
-                this->_nb_pruned_expansions = int(nov == features->size() + 1);
+                this->_nb_pruned_expansions += int(nov == (features->size() + 1));
 
-                std::bernoulli_distribution d(1.0 - std::exp((1.0 - nov) / this->_current_temperature));
+                std::bernoulli_distribution d(1.0 - (std::exp((1.0 - nov) / this->_current_temperature)));
                 this->_min_reward = std::min(this->_min_reward, outcome->reward());
 
                 if (d(this->_gen)) { //prune next observation
                     outcome->reward(nov * (this->_max_depth - this->_current_depth) * this->_min_reward); // make attractiveness decreases with higher novelties
                     outcome->termination(true); // make pruned observation terminal
                     if (this->_debug_logs) { spdlog::debug("Pruning observation " + Observation(outcome->observation()).print() +
-                                                           " after applying action " + action.print() +
                                                            " (reward: " + std::to_string(outcome->reward()) +
                                                            "; probability: " + std::to_string(d.p()) + ")"); }
                 } else if (this->_debug_logs) { spdlog::debug("Keeping observation " + Observation(outcome->observation()).print() +
-                                                              " after applying action " + action.print() +
                                                               " (min_reward: " + std::to_string(this->_min_reward) +
                                                               "; probability: " + std::to_string(1.0 - d.p()) + ")"); }
 
@@ -336,7 +337,6 @@ public :
             this->_graph.clear();
             this->_feature_tuples = typename WRLDomainFilter::TupleVector(1);
             this->_current_width = 1;
-            this->_current_observation = Observation();
             this->_min_reward = std::numeric_limits<double>::max();
             this->_gen = std::mt19937(this->_rd());
         }
@@ -361,12 +361,12 @@ public :
                     }
                     const FeatureVector& features = HashingPolicy::get_features(node, this->_observation_features);
                     node.novelty = this->novelty(this->_feature_tuples, features);
-                    this->_current_temperature = - (features.size()) / std::log(1.0 - this->_initial_pruning_probability);
-                    if (this->_debug_logs) { spdlog::debug("Initializing the cached width-based proxy domain (temperature=" +
+                    this->_current_temperature = - ((double) features.size()) / std::log(1.0 - this->_initial_pruning_probability);
+                    if (this->_debug_logs) { spdlog::debug("Initializing the cached width-based proxy domain (temperature: " +
                                                            std::to_string(this->_current_temperature) + ")"); }
                 } else {
                     this->_current_temperature *= (1.0 + this->_temperature_increase_rate);
-                    if (this->_debug_logs) { spdlog::debug("Resetting the cached width-based proxy domain (temperature=" +
+                    if (this->_debug_logs) { spdlog::debug("Resetting the cached width-based proxy domain (temperature: " +
                                                            std::to_string(this->_current_temperature) + ")"); }
                 }
 
@@ -392,17 +392,24 @@ public :
         }
 
         virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> step(const Action& action) {
+            if (this->_debug_logs) { spdlog::debug("Stepping with action " + action.print()); }
+            bool step_called = false;
             std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = make_transition(
                 this->_current_observation, action,
-                [this, &action](){
+                [this, &action, &step_called](){
+                    step_called = true;
                     return this->_domain->step(action);
                 });
             this->_current_observation = o->observation();
+            if (!step_called) {
+                this->_domain->step(action); // we need to step so we are ready for the potential next step
+            }
             return o;
         }
 
         virtual std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> sample(const Observation& observation, const Action& action) {
-             this->_current_observation = observation;
+            if (this->_debug_logs) { spdlog::debug("Sampling with observation " + observation.print() + " and action " + action.print()); }
+            this->_current_observation = observation;
             std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = make_transition(
                 observation, action,
                 [this, &observation, &action](){
@@ -424,6 +431,8 @@ public :
                 Node* next_node = nullptr;
 
                 if (si.second || si.first->children.find(action) == si.first->children.end()) { // observation is not yet visited or not with same action
+                    if (this->_debug_logs) { spdlog::debug("Visiting new transition (calling the simulator)"); }
+
                     // Get original sample
                     std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> o = transition();
                     
@@ -434,6 +443,7 @@ public :
                     this->_min_reward = std::min(this->_min_reward, o->reward());
                     next_node->depth = std::min(next_node->depth, this->_current_depth + 1);
                 } else {
+                    if (this->_debug_logs) { spdlog::debug("Visiting known transition (using the cache)"); }
                     next_node = std::get<0>(node.children[action]);
                 }
 
@@ -443,7 +453,7 @@ public :
                     next_node->pruned = (next_node->novelty == next_node->features->size() + 1);
                 }
 
-                std::bernoulli_distribution d(1.0 - std::exp((1.0 - (next_node->novelty)) / this->_current_temperature));
+                std::bernoulli_distribution d(1.0 - (std::exp((1.0 - (next_node->novelty)) / this->_current_temperature)));
                 std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome> outcome = std::make_unique<typename WRLDomainFilter::EnvironmentOutcome>(*node.children[action].second);
 
                 if ((!node.pruned) && (node.nb_visits >= this->_width_increase_resilience)) {
@@ -457,11 +467,9 @@ public :
                     outcome->reward((next_node->novelty) * (this->_max_depth - (next_node->depth)) * this->_min_reward); // make attractiveness decreases with higher novelties
                     outcome->termination(true); // make pruned observation terminal
                     if (this->_debug_logs) { spdlog::debug("Pruning observation " + Observation(outcome->observation()).print() +
-                                                           " after applying action " + action.print() +
                                                            " (reward: " + std::to_string(outcome->reward()) +
                                                            "; probability: " + std::to_string(d.p()) + ")"); }
                 } else if (this->_debug_logs) { spdlog::debug("Keeping observation " + Observation(outcome->observation()).print() +
-                                                              " after applying action " + action.print() +
                                                               " (min_reward: " + std::to_string(this->_min_reward) +
                                                               "; probability: " + std::to_string(1.0 - d.p()) + ")"); }
 
@@ -534,7 +542,7 @@ public :
     // solves using a given domain factory
     void solve(const std::function<std::unique_ptr<Domain> ()>& domain_factory) {
         try {
-            spdlog::info("Starting WRL solver");
+            spdlog::info("Starting the width-based proxy domain solver");
             auto start_time = std::chrono::high_resolution_clock::now();
             _solver.solve(
                 [this, &domain_factory]() -> std::unique_ptr<WRLDomainFilter> {
@@ -555,9 +563,9 @@ public :
             );
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-            spdlog::info("WRL finished to solve in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+            spdlog::info("The width-based proxy domain solver finished to solve in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
         } catch (const std::exception& e) {
-            spdlog::error("WRL failed. Reason: " + std::string(e.what()));
+            spdlog::error("The width-based proxy domain solver failed. Reason: " + std::string(e.what()));
             throw;
         }
     }

@@ -6,11 +6,18 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
+import sys
 from typing import Callable, Any
 
 from airlaps import Solver
-from airlaps.core import TransitionOutcome, TransitionValue
-from airlaps.builders.domain import Simulation, Environment, Initializable
+from airlaps import hub
+
+from airlaps import Domain, RLDomain, StatelessSimulatorDomain, \
+                    Space, EnvironmentOutcome, TransitionValue
+from airlaps.builders.domain import Simulation, Environment, \
+                                    Initializable, Rewards, Memoryless, \
+                                    FullyObservable, Sequential, SingleAgent
 from airlaps.builders.solver import Policies
 
 record_sys_path = sys.path
@@ -23,8 +30,9 @@ try:
     from __airlaps_hub_cpp import _WRLDomainFilter_ as wrl_domain_filter
     from __airlaps_hub_cpp import _WRLSolver_ as wrl_solver
 
-    class D(Environment, Initializable, Rewards):
+    class D(RLDomain, FullyObservable):
         pass
+
 
     class WidthEnvironmentDomain(D):
         T_domain = D
@@ -38,8 +46,9 @@ try:
                            use_state_feature_hash: bool = False,
                            cache_transitions: bool = False,
                            debug_logs: bool = False) -> None:
+            self._original_domain = domain
             self._domain = wrl_domain_filter(domain,
-                                             state_features,
+                                             lambda o: state_features(o, domain),
                                              initial_pruning_probability,
                                              temperature_increase_rate,
                                              width_increase_resilience,
@@ -48,15 +57,24 @@ try:
                                              cache_transitions,
                                              debug_logs)
         
-        def _state_reset(self) -> D.T_state:
+        def get_original_domain(self):
+            return self._original_domain
+        
+        def get_action_space(self) -> D.T_agent[Space[D.T_event]]:
+            return self._original_domain.get_action_space()
+        
+        def get_observation_space(self) -> D.T_agent[Space[D.T_observation]]:
+            return self._original_domain.get_observation_space()
+        
+        def reset(self) -> D.T_agent[D.T_observation]:
             return self._domain.reset()
         
-        def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-                D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+        def step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> EnvironmentOutcome[
+                    D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
             return self._domain.step(action)
     
 
-    class D(Simulation, Initializable, Rewards):
+    class D(StatelessSimulatorDomain, FullyObservable):
         pass
 
     class WidthSimulationDomain(D):
@@ -71,8 +89,9 @@ try:
                            use_state_feature_hash: bool = False,
                            cache_transitions: bool = False,
                            debug_logs: bool = False) -> None:
+            self._original_domain = domain
             self._domain = wrl_domain_filter(domain,
-                                             state_features,
+                                             lambda o: state_features(o, domain),
                                              initial_pruning_probability,
                                              temperature_increase_rate,
                                              width_increase_resilience,
@@ -81,11 +100,20 @@ try:
                                              cache_transitions,
                                              debug_logs)
         
-        def _state_reset(self) -> D.T_state:
+        def get_original_domain(self):
+            return self._original_domain
+        
+        def get_action_space(self) -> D.T_agent[Space[D.T_event]]:
+            return self._original_domain.get_action_space()
+        
+        def get_observation_space(self) -> D.T_agent[Space[D.T_observation]]:
+            return self._original_domain.get_observation_space()
+        
+        def reset(self) -> D.T_agent[D.T_observation]:
             return self._domain.reset()
         
-        def _state_sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
-                TransitionOutcome[D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+        def sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
+                    EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
             return self._domain.sample(state, action)
     
 
@@ -105,7 +133,7 @@ try:
                            cache_transitions: bool = False,
                            debug_logs: bool = False) -> None:
             self._solver = wrl_solver(solver,
-                                      state_features,
+                                      lambda o: state_features(o, domain),
                                       initial_pruning_probability,
                                       temperature_increase_rate,
                                       width_increase_resilience,
@@ -114,10 +142,10 @@ try:
                                       cache_transitions,
                                       debug_logs)
         
-        def _reset(self) -> None:
+        def reset(self) -> None:
             self._solver.reset()
         
-        def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+        def solve_domain(self, domain_factory: Callable[[], D]) -> None:
             self._solver.solve(domain_factory)
 
 except ImportError:
