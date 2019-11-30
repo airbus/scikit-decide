@@ -159,29 +159,7 @@ public :
         std::mt19937 _gen;
         bool _debug_logs;
 
-        typedef std::vector<std::pair<unsigned int, typename FeatureVector::value_type>> TupleType;
-        typedef std::vector<std::unordered_set<TupleType, boost::hash<TupleType>>> TupleVector;
-        TupleVector _feature_tuples;
-
-        unsigned int novelty(TupleVector& feature_tuples, const FeatureVector& observation_features) const {
-            unsigned int nov = observation_features.size() + 1;
-
-            for (unsigned int k = 1 ; k <= std::min(_current_width, (unsigned int) observation_features.size()) ; k++) {
-                // we must recompute combinations from previous width values just in case
-                // this observation would be visited for the first time across width iterations
-                generate_tuples(k, observation_features.size(),
-                                [this, &observation_features, &feature_tuples, &k, &nov](TupleType& cv){
-                    for (auto& e : cv) {
-                        e.second = observation_features[e.first];
-                    }
-                    if(feature_tuples[k-1].insert(cv).second) {
-                        nov = std::min(nov, k);
-                    }
-                });
-            }
-            if (_debug_logs) spdlog::debug("Novelty: " + std::to_string(nov));
-            return nov;
-        }
+        typedef std::vector<std::pair<unsigned int, typename FeatureVector::value_type>> TupleType; // pair of var id and var value
 
         // Generates all combinations of size k from [0 ... (n-1)]
         void generate_tuples(const unsigned int& k,
@@ -228,7 +206,7 @@ public :
               _nb_pruned_expansions(0) {}
         
         virtual void clear() {
-            this->_feature_tuples = typename WRLDomainFilter::TupleVector(1);
+            this->_feature_tuples = TupleVector(1);
             this->_current_width = 1;
             this->_nb_pruned_expansions = 0;
             this->_min_reward = std::numeric_limits<double>::max();
@@ -256,7 +234,7 @@ public :
 
                 if (this->_nb_pruned_expansions >= this->_width_increase_resilience) {
                     this->_current_width = std::min(this->_current_width + 1, (unsigned int) features->size());
-                    this->_feature_tuples = typename WRLDomainFilter::TupleVector(this->_current_width);
+                    this->_feature_tuples = TupleVector(this->_current_width);
                     this->_nb_pruned_expansions = 0;
                     if (this->_debug_logs) { spdlog::debug("Increase the width to " +
                                                            std::to_string(this->_current_width)); }
@@ -318,6 +296,33 @@ public :
 
     private :
         unsigned int _nb_pruned_expansions; // number of pruned expansions in a row
+
+        typedef typename WRLDomainFilter::TupleType TupleType;
+        typedef std::vector<std::unordered_map<TupleType, unsigned int, boost::hash<TupleType>>> TupleVector; // mapped to min reached depth
+        TupleVector _feature_tuples;
+
+        unsigned int novelty(TupleVector& feature_tuples, const FeatureVector& observation_features) const {
+            // feature_tuples is a set of state variable combinations of size _width
+            unsigned int nov = observation_features.size() + 1;
+
+            for (unsigned int k = 1 ; k <= std::min(this->_current_width, (unsigned int) observation_features.size()) ; k++) {
+                // we must recompute combinations from previous width values just in case
+                // this state would be visited for the first time across width iterations
+                this->generate_tuples(k, observation_features.size(),
+                                      [this, &observation_features, &feature_tuples, &k, &nov](TupleType& cv){
+                    for (auto& e : cv) {
+                        e.second = observation_features[e.first];
+                    }
+                    auto it = feature_tuples[k-1].insert(std::make_pair(cv, this->_current_depth));
+                    if(it.second || (this->_current_depth <= it.first->second)) {
+                        nov = std::min(nov, k);
+                    }
+                    it.first->second = std::min(it.first->second, this->_current_depth);
+                });
+            }
+            if (this->_debug_logs) spdlog::debug("Novelty: " + std::to_string(nov));
+            return nov;
+        }
     };
 
     class WRLCachedDomainFilter : public WRLDomainFilter {
@@ -335,7 +340,7 @@ public :
         
         virtual void clear() {
             this->_graph.clear();
-            this->_feature_tuples = typename WRLDomainFilter::TupleVector(1);
+            this->_feature_tuples = TupleVector(1);
             this->_current_width = 1;
             this->_min_reward = std::numeric_limits<double>::max();
             this->_gen = std::mt19937(this->_rd());
@@ -373,7 +378,7 @@ public :
                 if (node.pruned) { // need for increasing width
                     const FeatureVector& features = HashingPolicy::get_features(node, this->_observation_features);
                     this->_current_width = std::min(this->_current_width + 1, (unsigned int) features.size());
-                    this->_feature_tuples = typename WRLDomainFilter::TupleVector(this->_current_width);
+                    this->_feature_tuples = TupleVector(this->_current_width);
                     for (auto& n : _graph) {
                         const_cast<Node&>(n).nb_visits = 0; // we don't change the real key (Node::observation) so we are safe
                         const_cast<Node&>(n).pruned = false; // we don't change the real key (Node::observation) so we are safe
@@ -439,8 +444,8 @@ public :
                     // Get the node containing the next observation
                     auto ni = this->_graph.emplace(Node(o->observation(), this->_observation_features));
                     next_node = &const_cast<Node&>(*ni.first); // we won't change the real key (ObservationNode::observation) so we are safe
-                    node.children[action] = std::make_pair(next_node, std::move(o));
                     this->_min_reward = std::min(this->_min_reward, o->reward());
+                    node.children[action] = std::make_pair(next_node, std::move(o));
                     next_node->depth = std::min(next_node->depth, this->_current_depth + 1);
                 } else {
                     if (this->_debug_logs) { spdlog::debug("Visiting known transition (using the cache)"); }
@@ -507,6 +512,30 @@ public :
                 }
             };
         };
+
+        typedef typename WRLDomainFilter::TupleType TupleType;
+        typedef std::vector<std::unordered_set<TupleType, boost::hash<TupleType>>> TupleVector;
+        TupleVector _feature_tuples;
+
+        unsigned int novelty(TupleVector& feature_tuples, const FeatureVector& observation_features) const {
+            unsigned int nov = observation_features.size() + 1;
+
+            for (unsigned int k = 1 ; k <= std::min(this->_current_width, (unsigned int) observation_features.size()) ; k++) {
+                // we must recompute combinations from previous width values just in case
+                // this observation would be visited for the first time across width iterations
+                this->generate_tuples(k, observation_features.size(),
+                                      [this, &observation_features, &feature_tuples, &k, &nov](TupleType& cv){
+                    for (auto& e : cv) {
+                        e.second = observation_features[e.first];
+                    }
+                    if(feature_tuples[k-1].insert(cv).second) {
+                        nov = std::min(nov, k);
+                    }
+                });
+            }
+            if (this->_debug_logs) spdlog::debug("Novelty: " + std::to_string(nov));
+            return nov;
+        }
 
         typedef typename SetTypeDeducer<Node, HashingPolicy>::Set Graph;
         Graph _graph;

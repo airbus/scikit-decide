@@ -9,6 +9,7 @@
 
 #include "wrl.hh"
 #include "core.hh"
+#include "utils/python_hash_eq.hh"
 
 namespace py = pybind11;
 
@@ -27,11 +28,7 @@ public :
         struct Hash {
             std::size_t operator()(const Observation& s) const {
                 try {
-                    if (!py::hasattr(s._observation, "__hash__") || s._observation.attr("__hash__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python observations for implementing __hash__");
-                    }
-                    // python __hash__ can return negative integers but c++ expects positive integers only
-                    return s._observation.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
+                    return airlaps::python_hash(s._observation);
                 } catch(const py::error_already_set& e) {
                     spdlog::error(std::string("AIRLAPS exception when hashing observations: ") + e.what());
                     throw;
@@ -42,10 +39,7 @@ public :
         struct Equal {
             bool operator()(const Observation& s1, const Observation& s2) const {
                 try {
-                    if (!py::hasattr(s1._observation, "__eq__") || s1._observation.attr("__eq__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python observations for implementing __eq__");
-                    }
-                    return s1._observation.attr("__eq__")(s2._observation).template cast<bool>();
+                    return airlaps::python_equal(s1._observation, s2._observation);
                 } catch(const py::error_already_set& e) {
                     spdlog::error(std::string("AIRLAPS exception when testing observations equality: ") + e.what());
                     throw;
@@ -69,11 +63,7 @@ public :
         struct Hash {
             std::size_t operator()(const Event& e) const {
                 try {
-                    if (!py::hasattr(e._event, "__hash__") || e._event.attr("__hash__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python events for implementing __hash__");
-                    }
-                    // python __hash__ can return negative integers but c++ expects positive integers only
-                    return e._event.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
+                    return airlaps::python_hash(e._event);
                 } catch(const py::error_already_set& ex) {
                     spdlog::error(std::string("AIRLAPS exception when hashing actions: ") + ex.what());
                     throw;
@@ -84,10 +74,7 @@ public :
         struct Equal {
             bool operator()(const Event& e1, const Event& e2) const {
                 try {
-                    if (!py::hasattr(e1._event, "__eq__") || e1._event.attr("__eq__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python actions for implementing __eq__");
-                    }
-                    return e1._event.attr("__eq__")(e2._event).template cast<bool>();
+                    return airlaps::python_equal(e1._event, e2._event);
                 } catch(const py::error_already_set& ex) {
                     spdlog::error(std::string("AIRLAPS exception when testing actions equality: ") + ex.what());
                     throw;
