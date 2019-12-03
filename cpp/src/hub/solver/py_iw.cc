@@ -54,7 +54,7 @@ public :
                         throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python states for implementing __hash__");
                     }
                     // python __hash__ can return negative integers but c++ expects positive integers only
-                    return s._state.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
+                    return s._state.attr("__hash__")().template cast<long long>() + std::numeric_limits<long long>::max();
                 } catch(const py::error_already_set& e) {
                     spdlog::error(std::string("AIRLAPS exception when hashing states: ") + e.what());
                     throw;
@@ -105,7 +105,7 @@ public :
                         throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python events for implementing __hash__");
                     }
                     // python __hash__ can return negative integers but c++ expects positive integers only
-                    return e._event.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
+                    return e._event.attr("__hash__")().template cast<long long>() + std::numeric_limits<long long>::max();
                 } catch(const py::error_already_set& ex) {
                     spdlog::error(std::string("AIRLAPS exception when hashing actions: ") + ex.what());
                     throw;
@@ -350,7 +350,7 @@ public :
                         throw std::invalid_argument("AIRLAPS exception: IW algorithm needs state feature items for implementing __hash__");
                     }
                     // python __hash__ can return negative integers but c++ expects positive integers only
-                    return _value.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
+                    return _value.attr("__hash__")().template cast<long long>() + std::numeric_limits<long long>::max();
                 } catch(const py::error_already_set& ex) {
                     spdlog::error(std::string("AIRLAPS exception when hashing state feature items: ") + ex.what());
                     throw;

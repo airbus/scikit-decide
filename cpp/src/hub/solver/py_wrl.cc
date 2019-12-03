@@ -184,7 +184,7 @@ public :
             if (py::hasattr(info, "depth")) {
                 return py::cast<std::size_t>(info.attr("depth")());
             } else {
-                return 0.0;
+                return 0;
             }
         }
     };
@@ -311,11 +311,7 @@ public :
 
             virtual std::size_t hash() const {
                 try {
-                    if (!py::hasattr(_value, "__hash__") || _value.attr("__hash__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs observation feature items for implementing __hash__");
-                    }
-                    // python __hash__ can return negative integers but c++ expects positive integers only
-                    return _value.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
+                    return airlaps::python_hash(_value);
                 } catch(const py::error_already_set& ex) {
                     spdlog::error(std::string("AIRLAPS exception when hashing observation feature items: ") + ex.what());
                     throw;
@@ -328,7 +324,7 @@ public :
                         throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs observation feature items for implementing __eq__");
                     }
                     const ObjectType* o = dynamic_cast<const ObjectType*>(&other);
-                    return ((o != nullptr) && (_value.attr("__eq__")(o->_value).template cast<bool>()));
+                    return  ((o != nullptr) && airlaps::python_equal(_value, o->_value));
                 } catch(const py::error_already_set& ex) {
                     spdlog::error(std::string("AIRLAPS exception when testing observation feature items equality: ") + ex.what());
                     throw;

@@ -53,7 +53,7 @@ public :
                         throw std::invalid_argument("AIRLAPS exception: A* algorithm needs python states for implementing __hash__()");
                     }
                     // python __hash__ can return negative integers but c++ expects positive integers only
-                    return s._state.attr("__hash__")().template cast<long>() + std::numeric_limits<long>::max();
+                    return s._state.attr("__hash__")().template cast<long long>() + std::numeric_limits<long long>::max();
                 } catch(const py::error_already_set& e) {
                     throw std::runtime_error(e.what());
                 }
