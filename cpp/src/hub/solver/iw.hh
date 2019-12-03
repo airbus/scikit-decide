@@ -60,7 +60,7 @@ struct StateFeatureHash {
     struct Hash {
         std::size_t operator()(const Key& k) const {
             std::size_t seed = 0;
-            for (unsigned int i = 0 ; i < k.size() ; i++) {
+            for (std::size_t i = 0 ; i < k.size() ; i++) {
                 boost::hash_combine(seed, k[i]);
             }
             return seed;
@@ -73,7 +73,7 @@ struct StateFeatureHash {
             if (size != k2.size()) {
                 return false;
             }
-            for (unsigned int i = 0 ; i < size ; i++) {
+            for (std::size_t i = 0 ; i < size ; i++) {
                 if (!(k1[i] == k2[i])) {
                     return false;
                 }
@@ -99,13 +99,13 @@ public :
 
     IWSolver(Domain& domain,
              const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
-             const std::function<bool (const double&, const unsigned int&, const unsigned int&,
-                                       const double&, const unsigned int&, const unsigned int&)>& node_ordering = nullptr,
+             const std::function<bool (const double&, const std::size_t&, const std::size_t&,
+                                       const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
              bool debug_logs = false)
     : _domain(domain), _state_features(state_features), _debug_logs(debug_logs) {
         if (!node_ordering) {
-            _node_ordering = [](const double& a_gscore, const unsigned int& a_novelty, const unsigned int&  a_depth,
-                                const double& b_gscore, const unsigned int& b_novelty, const unsigned int& b_depth) -> bool {
+            _node_ordering = [](const double& a_gscore, const std::size_t& a_novelty, const std::size_t&  a_depth,
+                                const double& b_gscore, const std::size_t& b_novelty, const std::size_t& b_depth) -> bool {
                                     return a_gscore > b_gscore;
                                 };
         } else {
@@ -129,9 +129,9 @@ public :
         try {
             spdlog::info("Running " + ExecutionPolicy::print() + " IW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
-            unsigned int nb_of_binary_features = _state_features(s)->size();
+            std::size_t nb_of_binary_features = _state_features(s)->size();
 
-            for (unsigned int w = 1 ; w <= nb_of_binary_features ; w++) {
+            for (std::size_t w = 1 ; w <= nb_of_binary_features ; w++) {
                 std::pair<bool, bool> res = WidthSolver(_domain, _state_features, _node_ordering, w, _graph, _debug_logs).solve(s);
                 if (res.first) { // solution found with width w
                     auto end_time = std::chrono::high_resolution_clock::now();
@@ -177,12 +177,12 @@ public :
         return si->fscore;
     }
 
-    unsigned int get_nb_of_explored_states() const {
+    std::size_t get_nb_of_explored_states() const {
         return _graph.size();
     }
 
-    unsigned int get_nb_of_pruned_states() const {
-        unsigned int cnt = 0;
+    std::size_t get_nb_of_pruned_states() const {
+        std::size_t cnt = 0;
         for (const auto&  n : _graph)  {
             if (n.pruned) {
                 cnt++;
@@ -195,8 +195,8 @@ private :
 
     Domain& _domain;
     std::function<std::unique_ptr<FeatureVector> (const State& s)> _state_features;
-    std::function<bool (const double&, const unsigned int&, const unsigned int&,
-                                       const double&, const unsigned int&, const unsigned int&)> _node_ordering;
+    std::function<bool (const double&, const std::size_t&, const std::size_t&,
+                                       const double&, const std::size_t&, const std::size_t&)> _node_ordering;
     bool _debug_logs;
 
     struct Node {
@@ -205,8 +205,8 @@ private :
         std::tuple<Node*, Action, double> best_parent;
         double gscore;
         double fscore; // not in A*'s meaning but rather to store cost-to-go once a solution is found
-        unsigned int novelty;
-        unsigned int depth;
+        std::size_t novelty;
+        std::size_t depth;
         Action* best_action; // computed only when constructing the solution path backward from the goal state
         bool pruned; // true if pruned by the novelty test (used only to report nb of pruned states)
         bool solved; // set to true if on the solution path constructed backward from the goal state
@@ -215,8 +215,8 @@ private :
             : state(s),
               gscore(std::numeric_limits<double>::infinity()),
               fscore(std::numeric_limits<double>::infinity()),
-              novelty(std::numeric_limits<unsigned int>::max()),
-              depth(std::numeric_limits<unsigned int>::max()),
+              novelty(std::numeric_limits<std::size_t>::max()),
+              depth(std::numeric_limits<std::size_t>::max()),
               best_action(nullptr),
               pruned(false),
               solved(false) {
@@ -244,9 +244,9 @@ private :
 
         WidthSolver(Domain& domain,
                     const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
-                    const std::function<bool (const double&, const unsigned int&, const unsigned int&,
-                                              const double&, const unsigned int&, const unsigned int&)>& node_ordering,
-                    unsigned int width,
+                    const std::function<bool (const double&, const std::size_t&, const std::size_t&,
+                                              const double&, const std::size_t&, const std::size_t&)>& node_ordering,
+                    std::size_t width,
                     Graph& graph,
                     bool debug_logs)
             : _domain(domain), _state_features(state_features), _node_ordering(node_ordering),
@@ -350,7 +350,7 @@ private :
 
                         double transition_cost = _domain.get_transition_value(best_tip_node->state, a, neighbor.state);
                         double tentative_gscore = best_tip_node->gscore + transition_cost;
-                        unsigned int tentative_depth = best_tip_node->depth + 1;
+                        std::size_t tentative_depth = best_tip_node->depth + 1;
 
                         if ((i.second) || (tentative_gscore < neighbor.gscore)) {
                             if (_debug_logs) spdlog::debug("New gscore: " + std::to_string(best_tip_node->gscore) + "+" +
@@ -389,22 +389,22 @@ private :
     private :
         Domain& _domain;
         const std::function<std::unique_ptr<FeatureVector> (const State& s)>& _state_features;
-        const std::function<bool (const double&, const unsigned int&, const unsigned int&,
-                                  const double&, const unsigned int&, const unsigned int&)>& _node_ordering;
-        unsigned int _width;
+        const std::function<bool (const double&, const std::size_t&, const std::size_t&,
+                                  const double&, const std::size_t&, const std::size_t&)>& _node_ordering;
+        std::size_t _width;
         Graph& _graph;
         bool _debug_logs;
         ExecutionPolicy _execution_policy;
 
-        typedef std::vector<std::pair<unsigned int, typename FeatureVector::value_type>> TupleType;
+        typedef std::vector<std::pair<std::size_t, typename FeatureVector::value_type>> TupleType;
         typedef std::vector<std::unordered_set<TupleType, boost::hash<TupleType>>> TupleVector;
 
-        unsigned int novelty(TupleVector& feature_tuples, Node& n) const {
+        std::size_t novelty(TupleVector& feature_tuples, Node& n) const {
             // feature_tuples is a set of state variable combinations of size _width
-            unsigned int nov = n.features->size() + 1;
+            std::size_t nov = n.features->size() + 1;
             const FeatureVector& state_features = *n.features;
 
-            for (unsigned int k = 1 ; k <= std::min(_width, (unsigned int) state_features.size()) ; k++) {
+            for (std::size_t k = 1 ; k <= std::min(_width, (std::size_t) state_features.size()) ; k++) {
                 // we must recompute combinations from previous width values just in case
                 // this state would be visited for the first time across width iterations
                 generate_tuples(k, state_features.size(),
@@ -423,11 +423,11 @@ private :
         }
 
         // Generates all combinations of size k from [0 ... (n-1)]
-        void generate_tuples(const unsigned int& k,
-                             const unsigned int& n,
+        void generate_tuples(const std::size_t& k,
+                             const std::size_t& n,
                              const std::function<void (TupleType&)>& f) const {
             TupleType cv(k); // one combination (the first one)
-            for (unsigned int i = 0 ; i < k ; i++) {
+            for (std::size_t i = 0 ; i < k ; i++) {
                 cv[i].first = i;
             }
             f(cv);
@@ -435,12 +435,12 @@ private :
             while (more_combinations) {
                 more_combinations = false;
                 // find the rightmost element that has not yet reached its highest possible value
-                for (unsigned int i = k; i > 0; i--) {
+                for (std::size_t i = k; i > 0; i--) {
                     if (cv[i-1].first < n - k + i - 1) {
                         // once finding this element, we increment it by 1,
                         // and assign the lowest valid value to all subsequent elements
                         cv[i-1].first++;
-                        for (unsigned int j = i; j < k; j++) {
+                        for (std::size_t j = i; j < k; j++) {
                             cv[j].first = cv[j-1].first + 1;
                         }
                         f(cv);

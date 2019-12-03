@@ -16,8 +16,8 @@ template <typename Texecution> struct GilControl;
 
 template <>
 struct GilControl<airlaps::SequentialExecution> {
-    struct Acquire {};
-    struct Release {};
+    struct Acquire { Acquire() {} };
+    struct Release { Release() {} };
 };
 
 template <>
@@ -518,8 +518,8 @@ public :
     PyIWSolver(py::object& domain,
                const std::function<py::object (const py::object&)>& state_features,
                bool use_state_feature_hash = false,
-               const std::function<bool (const double&, const unsigned int&, const unsigned int&,
-                                         const double&, const unsigned int&, const unsigned int&)>& node_ordering = nullptr,
+               const std::function<bool (const double&, const std::size_t&, const std::size_t&,
+                                         const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
                bool parallel = true,
                bool debug_logs = false) {
 
@@ -589,16 +589,16 @@ private :
 
         Implementation(py::object& domain,
                        const std::function<py::object (const py::object&)>& state_features,
-                       const std::function<bool (const double&, const unsigned int&, const unsigned int&,
-                                                 const double&, const unsigned int&, const unsigned int&)>& node_ordering = nullptr,
+                       const std::function<bool (const double&, const std::size_t&, const std::size_t&,
+                                                 const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
                        bool debug_logs = false)
             : _state_features(state_features), _node_ordering(node_ordering) {
             
-            std::function<bool (const double&, const unsigned int&, const unsigned int&,
-                                const double&, const unsigned int&, const unsigned int&)> pno = nullptr;
+            std::function<bool (const double&, const std::size_t&, const std::size_t&,
+                                const double&, const std::size_t&, const std::size_t&)> pno = nullptr;
             if (_node_ordering != nullptr) {
-                pno = [this](const double& a_gscore, const unsigned int& a_novelty, const unsigned int& a_depth,
-                             const double& b_gscore, const unsigned int& b_novelty, const unsigned int& b_depth) -> bool {
+                pno = [this](const double& a_gscore, const std::size_t& a_novelty, const std::size_t& a_depth,
+                             const double& b_gscore, const std::size_t& b_novelty, const std::size_t& b_depth) -> bool {
                     try {
                         typename GilControl<Texecution>::Acquire acquire;
                         return _node_ordering(a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth);
@@ -671,8 +671,8 @@ private :
         std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>> _solver;
         
         std::function<py::object (const py::object&)> _state_features;
-        std::function<bool (const double&, const unsigned int&, const unsigned int&,
-                            const double&, const unsigned int&, const unsigned int&)> _node_ordering;
+        std::function<bool (const double&, const std::size_t&, const std::size_t&,
+                            const double&, const std::size_t&, const std::size_t&)> _node_ordering;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -688,8 +688,8 @@ void init_pyiw(py::module& m) {
             .def(py::init<py::object&,
                           const std::function<py::object (const py::object&)>&,
                           bool,
-                          const std::function<bool (const double&, const unsigned int&, const unsigned int&,
-                                                    const double&, const unsigned int&, const unsigned int&)>&,
+                          const std::function<bool (const double&, const std::size_t&, const std::size_t&,
+                                                    const double&, const std::size_t&, const std::size_t&)>&,
                           bool,
                           bool>(),
                  py::arg("domain"),

@@ -16,8 +16,8 @@ template <typename Texecution> struct GilControl;
 
 template <>
 struct GilControl<airlaps::SequentialExecution> {
-    struct Acquire {};
-    struct Release {};
+    struct Acquire { Acquire() {} };
+    struct Release { Release() {} };
 };
 
 template <>
@@ -333,9 +333,9 @@ private :
 class PyMCTSSolver {
 public :
     PyMCTSSolver(py::object& domain,
-                 unsigned long time_budget = 3600000,
-                 unsigned long rollout_budget = 100000,
-                 unsigned long max_depth = 1000,
+                 std::size_t time_budget = 3600000,
+                 std::size_t rollout_budget = 100000,
+                 std::size_t max_depth = 1000,
                  double discount = 1.0,
                  bool uct_mode = true,
                  double ucb_constant = 1.0 / std::sqrt(2.0),
@@ -410,9 +410,9 @@ private :
     class Implementation : public BaseImplementation {
     public :
         Implementation(py::object& domain,
-                       unsigned long time_budget = 3600000,
-                       unsigned long rollout_budget = 100000,
-                       unsigned long max_depth = 1000,
+                       std::size_t time_budget = 3600000,
+                       std::size_t rollout_budget = 100000,
+                       std::size_t max_depth = 1000,
                        double discount = 1.0,
                        bool debug_logs = false) {
 
@@ -482,9 +482,9 @@ void init_pymcts(py::module& m) {
     py::class_<PyMCTSSolver> py_mcts_solver(m, "_MCTSSolver_");
         py_mcts_solver
             .def(py::init<py::object&,
-                          unsigned long,
-                          unsigned long,
-                          unsigned long,
+                          std::size_t,
+                          std::size_t,
+                          std::size_t,
                           double,
                           bool,
                           double,

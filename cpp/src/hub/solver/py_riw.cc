@@ -16,8 +16,8 @@ template <typename Texecution> struct GilControl;
 
 template <>
 struct GilControl<airlaps::SequentialExecution> {
-    struct Acquire {};
-    struct Release {};
+    struct Acquire { Acquire() {} };
+    struct Release { Release() {} };
 };
 
 template <>

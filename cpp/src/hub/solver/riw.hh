@@ -62,7 +62,7 @@ struct StateFeatureHash {
     struct Hash {
         std::size_t operator()(const Key& k) const {
             std::size_t seed = 0;
-            for (unsigned int i = 0 ; i < k.size() ; i++) {
+            for (std::size_t i = 0 ; i < k.size() ; i++) {
                 boost::hash_combine(seed, k[i]);
             }
             return seed;
@@ -75,7 +75,7 @@ struct StateFeatureHash {
             if (size != k2.size()) {
                 return false;
             }
-            for (unsigned int i = 0 ; i < size ; i++) {
+            for (std::size_t i = 0 ; i < size ; i++) {
                 if (!(k1[i] == k2[i])) {
                     return false;
                 }
@@ -151,9 +151,9 @@ public :
 
     RIWSolver(Domain& domain,
               const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
-              unsigned int time_budget = 3600000,
-              unsigned int rollout_budget = 100000,
-              unsigned int max_depth = 1000,
+              std::size_t time_budget = 3600000,
+              std::size_t rollout_budget = 100000,
+              std::size_t max_depth = 1000,
               double exploration = 0.25,
               bool debug_logs = false)
     : _domain(domain), _state_features(state_features),
@@ -182,11 +182,11 @@ public :
             spdlog::info("Running " + ExecutionPolicy::print() + " RIW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             _nb_rollouts = 0;
-            unsigned int nb_of_binary_features = _state_features(s)->size();
+            std::size_t nb_of_binary_features = _state_features(s)->size();
 
             TupleVector feature_tuples;
 
-            for (unsigned int w = 1 ; w <= nb_of_binary_features ; w++) {
+            for (std::size_t w = 1 ; w <= nb_of_binary_features ; w++) {
                 if(WidthSolver(*this, _domain, _state_features,
                                _time_budget, _rollout_budget,
                                _max_depth, _exploration,
@@ -251,12 +251,12 @@ public :
         return si->fscore;
     }
 
-    unsigned int get_nb_of_explored_states() const {
+    std::size_t get_nb_of_explored_states() const {
         return _graph.size();
     }
 
-    unsigned int get_nb_of_pruned_states() const {
-        unsigned int cnt = 0;
+    std::size_t get_nb_of_pruned_states() const {
+        std::size_t cnt = 0;
         for (const auto&  n : _graph)  {
             if (!n.terminal && n.children.empty()) {
                 cnt++;
@@ -265,7 +265,7 @@ public :
         return cnt;
     }
 
-    unsigned int get_nb_rollouts() const {
+    std::size_t get_nb_rollouts() const {
         return _nb_rollouts;
     }
 
@@ -273,13 +273,13 @@ private :
 
     Domain& _domain;
     std::function<std::unique_ptr<FeatureVector> (const State& s)> _state_features;
-    unsigned int _time_budget;
-    unsigned int _rollout_budget;
-    unsigned int _max_depth;
+    std::size_t _time_budget;
+    std::size_t _rollout_budget;
+    std::size_t _max_depth;
     double _exploration;
     double _min_cost;
     double _max_cost;
-    unsigned int _nb_rollouts;
+    std::size_t _nb_rollouts;
     RolloutPolicy _rollout_policy;
     bool _debug_logs;
 
@@ -289,8 +289,8 @@ private :
         std::vector<std::tuple<Action, double, Node*>> children;
         std::unordered_set<Node*> parents;
         double fscore; // not in A*'s meaning but rather to store cost-to-go once a solution is found
-        unsigned int depth;
-        unsigned int novelty;
+        std::size_t depth;
+        std::size_t novelty;
         Action* best_action;
         bool terminal; // true if seen terminal from the simulator's perspective
         bool goal; // true if goal
@@ -299,8 +299,8 @@ private :
         Node(const State& s, const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features)
             : state(s),
               fscore(std::numeric_limits<double>::infinity()),
-              depth(std::numeric_limits<unsigned int>::max()),
-              novelty(std::numeric_limits<unsigned int>::max()),
+              depth(std::numeric_limits<std::size_t>::max()),
+              novelty(std::numeric_limits<std::size_t>::max()),
               best_action(nullptr),
               terminal(false),
               goal(false),
@@ -318,8 +318,8 @@ private :
     typedef typename SetTypeDeducer<Node, HashingPolicy>::Set Graph;
     Graph _graph;
 
-    typedef std::vector<std::pair<unsigned int, typename FeatureVector::value_type>> TupleType; // pair of var id and var value
-    typedef std::vector<std::unordered_map<TupleType, unsigned int, boost::hash<TupleType>>> TupleVector; // mapped to min reached depth
+    typedef std::vector<std::pair<std::size_t, typename FeatureVector::value_type>> TupleType; // pair of var id and var value
+    typedef std::vector<std::unordered_map<TupleType, std::size_t, boost::hash<TupleType>>> TupleVector; // mapped to min reached depth
 
     class WidthSolver { // known as IW(i), i.e. the fixed-width solver sequentially run by IW
     public :
@@ -333,13 +333,13 @@ private :
 
         WidthSolver(RIWSolver& parent_solver, Domain& domain,
                     const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
-                    unsigned int time_budget,
-                    unsigned int rollout_budget,
-                    unsigned int max_depth,
+                    std::size_t time_budget,
+                    std::size_t rollout_budget,
+                    std::size_t max_depth,
                     double exploration,
                     double& min_cost,
                     double& max_cost,
-                    unsigned int width,
+                    std::size_t width,
                     Graph& graph,
                     RolloutPolicy& rollout_policy,
                     bool debug_logs)
@@ -354,7 +354,7 @@ private :
         // return true iff no state has been pruned or time or rollout budgets are consumed
         bool solve(const State& s,
                    const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
-                   unsigned int& nb_rollouts,
+                   std::size_t& nb_rollouts,
                    TupleVector& feature_tuples) {
             try {
                 spdlog::info("Running " + ExecutionPolicy::print() + " RIW(" + std::to_string(_width) + ") solver from state " + s.print());
@@ -382,7 +382,7 @@ private :
 
                 // Start rollouts
                 while (!root_node.solved &&
-                       std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count() < _time_budget &&
+                       static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) < _time_budget &&
                        nb_rollouts < _rollout_budget) {
 
                     // Start new rollout
@@ -409,9 +409,9 @@ private :
                         }
                         
                         // Sample unsolved child
-                        std::vector<unsigned int> unsolved_children;
+                        std::vector<std::size_t> unsolved_children;
                         std::vector<double> probabilities;
-                        for (unsigned int i = 0 ; i < current_node->children.size() ; i++) {
+                        for (std::size_t i = 0 ; i < current_node->children.size() ; i++) {
                             Node* n = std::get<2>(current_node->children[i]);
                             if (!n) {
                                 unsolved_children.push_back(i);
@@ -421,7 +421,7 @@ private :
                                 probabilities.push_back((1.0 - _exploration) / ((double) n->novelty));
                             }
                         }
-                        unsigned int pick = unsolved_children[std::discrete_distribution<>(probabilities.begin(), probabilities.end())(gen)];
+                        std::size_t pick = unsolved_children[std::discrete_distribution<>(probabilities.begin(), probabilities.end())(gen)];
                         bool new_node = false;
 
                         if (fill_child_node(current_node, pick, new_node)) { // terminal state
@@ -452,7 +452,7 @@ private :
                                                            ", fscore=" + std::to_string(current_node->fscore));
                             update_node(*current_node, true);
                             break;
-                        } else if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count() >= _time_budget) {
+                        } else if (static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) >= _time_budget) {
                             if (_debug_logs) spdlog::debug("Time budget consumed in state: " + current_node->state.print() +
                                                            ", depth=" + std::to_string(current_node->depth) +
                                                            ", fscore=" + std::to_string(current_node->fscore));
@@ -470,7 +470,7 @@ private :
                                                " ms, rollout budget: " + std::to_string(nb_rollouts) +
                                                ", states pruned: " + std::to_string(states_pruned));
 
-                if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count() < _time_budget &&
+                if (static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) < _time_budget &&
                     nb_rollouts < _rollout_budget &&
                     states_pruned) {
                     spdlog::info("RIW(" + std::to_string(_width) + ") could not find a solution from state " + s.print());
@@ -491,13 +491,13 @@ private :
         RIWSolver& _parent_solver;
         Domain& _domain;
         const std::function<std::unique_ptr<FeatureVector> (const State& s)>& _state_features;
-        unsigned int _time_budget;
-        unsigned int _rollout_budget;
-        unsigned int _max_depth;
+        std::size_t _time_budget;
+        std::size_t _rollout_budget;
+        std::size_t _max_depth;
         double _exploration;
         double& _min_cost;
         double& _max_cost;
-        unsigned int _width;
+        std::size_t _width;
         Graph& _graph;
         RolloutPolicy& _rollout_policy;
         ExecutionPolicy _execution_policy;
@@ -507,11 +507,11 @@ private :
         // Returns true if at least one tuple is new or is reached with lower depth
         bool novelty(TupleVector& feature_tuples, Node& n, bool nn) const {
             // feature_tuples is a set of state variable combinations of size _width
-            unsigned int nov = n.features->size() + 1;
+            std::size_t nov = n.features->size() + 1;
             const FeatureVector& state_features = *n.features;
             bool novel_depth = false;
 
-            for (unsigned int k = 1 ; k <= std::min(_width, (unsigned int) state_features.size()) ; k++) {
+            for (std::size_t k = 1 ; k <= std::min(_width, (std::size_t) state_features.size()) ; k++) {
                 // we must recompute combinations from previous width values just in case
                 // this state would be visited for the first time across width iterations
                 generate_tuples(k, state_features.size(),
@@ -534,11 +534,11 @@ private :
         }
 
         // Generates all combinations of size k from [0 ... (n-1)]
-        void generate_tuples(const unsigned int& k,
-                             const unsigned int& n,
+        void generate_tuples(const std::size_t& k,
+                             const std::size_t& n,
                              const std::function<void (TupleType&)>& f) const {
             TupleType cv(k); // one combination (the first one)
-            for (unsigned int i = 0 ; i < k ; i++) {
+            for (std::size_t i = 0 ; i < k ; i++) {
                 cv[i].first = i;
             }
             f(cv);
@@ -546,12 +546,12 @@ private :
             while (more_combinations) {
                 more_combinations = false;
                 // find the rightmost element that has not yet reached its highest possible value
-                for (unsigned int i = k; i > 0; i--) {
+                for (std::size_t i = k; i > 0; i--) {
                     if (cv[i-1].first < n - k + i - 1) {
                         // once finding this element, we increment it by 1,
                         // and assign the lowest valid value to all subsequent elements
                         cv[i-1].first++;
-                        for (unsigned int j = i; j < k; j++) {
+                        for (std::size_t j = i; j < k; j++) {
                             cv[j].first = cv[j-1].first + 1;
                         }
                         f(cv);
@@ -564,7 +564,7 @@ private :
 
         // Get the state reachable by calling the simulator from given node by applying given action number
         // Sets given node to the next one and returns whether the next one is terminal or not
-        bool fill_child_node(Node*& node, unsigned int action_number, bool& new_node) {
+        bool fill_child_node(Node*& node, std::size_t action_number, bool& new_node) {
             if (_debug_logs) spdlog::debug("Applying action: " + std::get<0>(node->children[action_number]).print());
             if (!std::get<2>(node->children[action_number])) { // first visit
                 // Sampled child has not been visited so far, so generate it
@@ -674,7 +674,7 @@ private :
 
     // Backup values from tip solved nodes to their parents in graph
     void backup_values(std::unordered_set<Node*>& frontier) {
-        unsigned int depth = 0; // used to prevent infinite loop in case of cycles
+        std::size_t depth = 0; // used to prevent infinite loop in case of cycles
         for (auto& n : frontier) {
             if (n->terminal) {
                 if (n->goal) {

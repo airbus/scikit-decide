@@ -180,9 +180,9 @@ public :
             }
         }
 
-        static unsigned int get_depth(const py::object& info) {
+        static std::size_t get_depth(const py::object& info) {
             if (py::hasattr(info, "depth")) {
-                return py::cast<unsigned int>(info.attr("depth")());
+                return py::cast<std::size_t>(info.attr("depth")());
             } else {
                 return 0.0;
             }
@@ -468,8 +468,8 @@ public :
                       const std::function<py::object (const py::object&)>& observation_features,
                       double initial_pruning_probability = 0.999,
                       double temperature_increase_rate = 0.01,
-                      unsigned int width_increase_resilience = 10,
-                      unsigned int max_depth = 1000,
+                      std::size_t width_increase_resilience = 10,
+                      std::size_t max_depth = 1000,
                       bool use_observation_feature_hash = false,
                       bool cache_transitions = false,
                       bool debug_logs = false) {
@@ -528,8 +528,8 @@ private :
                        const std::function<py::object (const py::object&)>& observation_features,
                        double initial_pruning_probability = 0.999,
                        double temperature_increase_rate = 0.01,
-                       unsigned int width_increase_resilience = 10,
-                       unsigned int max_depth = 1000,
+                       std::size_t width_increase_resilience = 10,
+                       std::size_t max_depth = 1000,
                        bool cache_transitions = false,
                        bool debug_logs = false)
             : _observation_features(observation_features) {
@@ -651,8 +651,8 @@ public :
                 const std::function<py::object (const py::object&)>& observation_features,
                 double initial_pruning_probability = 0.999,
                 double temperature_increase_rate = 0.01,
-                unsigned int width_increase_resilience = 10,
-                unsigned int max_depth = 1000,
+                std::size_t width_increase_resilience = 10,
+                std::size_t max_depth = 1000,
                 bool use_observation_feature_hash = false,
                 bool cache_transitions = false,
                 bool debug_logs = false) {
@@ -694,8 +694,8 @@ private :
                        const std::function<py::object (const py::object&)>& observation_features,
                        double initial_pruning_probability = 0.999,
                        double temperature_increase_rate = 0.1,
-                       unsigned int width_increase_resilience = 10,
-                       unsigned int max_depth = 1000,
+                       std::size_t width_increase_resilience = 10,
+                       std::size_t max_depth = 1000,
                        bool cache_transitions = false,
                        bool debug_logs = false)
             : _observation_features(observation_features) {
@@ -757,8 +757,8 @@ void init_pywrl(py::module& m) {
                           const std::function<py::object (const py::object&)>&,
                           double,
                           double,
-                          unsigned int,
-                          unsigned int,
+                          std::size_t,
+                          std::size_t,
                           bool,
                           bool,
                           bool>(),
@@ -782,8 +782,8 @@ void init_pywrl(py::module& m) {
                           const std::function<py::object (const py::object&)>&,
                           double,
                           double,
-                          unsigned int,
-                          unsigned int,
+                          std::size_t,
+                          std::size_t,
                           bool,
                           bool,
                           bool>(),

@@ -33,7 +33,7 @@ public :
                  const std::function<bool (const State&)>& goal_checker,
                  const std::function<double (const State&)>& heuristic,
                  double discount = 1.0,
-                 unsigned int max_tip_expansions = 1,
+                 std::size_t max_tip_expansions = 1,
                  bool detect_cycles = false,
                  bool debug_logs = false)
         : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
@@ -71,9 +71,9 @@ public :
                     spdlog::debug("Current number of tip nodes: " + std::to_string(q.size()));
                     spdlog::debug("Current number of explored nodes: " + std::to_string(_graph.size()));
                 }
-                unsigned int nb_expansions = std::min((unsigned int) q.size(), _max_tip_expansions);
+                std::size_t nb_expansions = std::min(q.size(), _max_tip_expansions);
                 std::unordered_set<StateNode*> frontier;
-                for (unsigned int cnt = 0 ; cnt < nb_expansions ; cnt++) {
+                for (std::size_t cnt = 0 ; cnt < nb_expansions ; cnt++) {
                     // Select best tip node of best partial graph
                     StateNode* best_tip_node = q.top();
                     q.pop();
@@ -223,7 +223,7 @@ private :
     std::function<bool (const State&)> _goal_checker;
     std::function<double (const State&)> _heuristic;
     double _discount;
-    unsigned int _max_tip_expansions;
+    std::size_t _max_tip_expansions;
     bool _detect_cycles;
     bool _debug_logs;
     ExecutionPolicy _execution_policy;

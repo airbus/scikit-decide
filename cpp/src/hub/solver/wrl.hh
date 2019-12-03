@@ -75,7 +75,7 @@ struct ObservationFeatureHash {
     struct Hash {
         std::size_t operator()(const Key& k) const {
             std::size_t seed = 0;
-            for (unsigned int i = 0 ; i < k.size() ; i++) {
+            for (std::size_t i = 0 ; i < k.size() ; i++) {
                 boost::hash_combine(seed, k[i]);
             }
             return seed;
@@ -88,7 +88,7 @@ struct ObservationFeatureHash {
             if (size != k2.size()) {
                 return false;
             }
-            for (unsigned int i = 0 ; i < size ; i++) {
+            for (std::size_t i = 0 ; i < size ; i++) {
                 if (!(k1[i] == k2[i])) {
                     return false;
                 }
@@ -122,8 +122,8 @@ public :
                         const std::function<std::unique_ptr<FeatureVector> (const Observation&)>& observation_features,
                         double initial_pruning_probability = 0.999,
                         double temperature_increase_rate = 0.01,
-                        unsigned int width_increase_resilience = 10,
-                        unsigned int max_depth = 1000,
+                        std::size_t width_increase_resilience = 10,
+                        std::size_t max_depth = 1000,
                         bool debug_logs = false)
             : _domain(std::move(domain)), _observation_features(observation_features),
               _initial_pruning_probability(initial_pruning_probability),
@@ -147,26 +147,26 @@ public :
     protected :
         std::unique_ptr<Domain> _domain;
         std::function<std::unique_ptr<FeatureVector> (const Observation&)> _observation_features;
-        unsigned int _current_width;
+        std::size_t _current_width;
         double _initial_pruning_probability;
         double _temperature_increase_rate;
-        unsigned int _width_increase_resilience;
-        unsigned int _max_depth;
+        std::size_t _width_increase_resilience;
+        std::size_t _max_depth;
         double _current_temperature;
         double _min_reward;
-        unsigned int _current_depth;
+        std::size_t _current_depth;
         std::random_device _rd;
         std::mt19937 _gen;
         bool _debug_logs;
 
-        typedef std::vector<std::pair<unsigned int, typename FeatureVector::value_type>> TupleType; // pair of var id and var value
+        typedef std::vector<std::pair<std::size_t, typename FeatureVector::value_type>> TupleType; // pair of var id and var value
 
         // Generates all combinations of size k from [0 ... (n-1)]
-        void generate_tuples(const unsigned int& k,
-                             const unsigned int& n,
+        void generate_tuples(const std::size_t& k,
+                             const std::size_t& n,
                              const std::function<void (TupleType&)>& f) const {
             TupleType cv(k); // one combination (the first one)
-            for (unsigned int i = 0 ; i < k ; i++) {
+            for (std::size_t i = 0 ; i < k ; i++) {
                 cv[i].first = i;
             }
             f(cv);
@@ -174,12 +174,12 @@ public :
             while (more_combinations) {
                 more_combinations = false;
                 // find the rightmost element that has not yet reached its highest possible value
-                for (unsigned int i = k; i > 0; i--) {
+                for (std::size_t i = k; i > 0; i--) {
                     if (cv[i-1].first < n - k + i - 1) {
                         // once finding this element, we increment it by 1,
                         // and assign the lowest valid value to all subsequent elements
                         cv[i-1].first++;
-                        for (unsigned int j = i; j < k; j++) {
+                        for (std::size_t j = i; j < k; j++) {
                             cv[j].first = cv[j-1].first + 1;
                         }
                         f(cv);
@@ -197,8 +197,8 @@ public :
                                 const std::function<std::unique_ptr<FeatureVector> (const Observation&)>& observation_features,
                                 double initial_pruning_probability = 0.999,
                                 double temperature_increase_rate = 0.01,
-                                unsigned int width_increase_resilience = 1000,
-                                unsigned int max_depth = 1000,
+                                std::size_t width_increase_resilience = 1000,
+                                std::size_t max_depth = 1000,
                                 bool debug_logs = false)
             : WRLDomainFilter(std::move(domain), observation_features, initial_pruning_probability,
                               temperature_increase_rate, width_increase_resilience,
@@ -233,7 +233,7 @@ public :
                 }
 
                 if (this->_nb_pruned_expansions >= this->_width_increase_resilience) {
-                    this->_current_width = std::min(this->_current_width + 1, (unsigned int) features->size());
+                    this->_current_width = std::min(this->_current_width + 1, (std::size_t) features->size());
                     this->_feature_tuples = TupleVector(this->_current_width);
                     this->_nb_pruned_expansions = 0;
                     if (this->_debug_logs) { spdlog::debug("Increase the width to " +
@@ -271,7 +271,7 @@ public :
             try {
                 // Compute outcome's novelty
                 std::unique_ptr<FeatureVector> features = this->_observation_features(outcome->observation());
-                unsigned int nov = this->novelty(this->_feature_tuples, *features);
+                std::size_t nov = this->novelty(this->_feature_tuples, *features);
                 this->_nb_pruned_expansions += int(nov == (features->size() + 1));
 
                 std::bernoulli_distribution d(1.0 - (std::exp((1.0 - nov) / this->_current_temperature)));
@@ -295,17 +295,17 @@ public :
         }
 
     private :
-        unsigned int _nb_pruned_expansions; // number of pruned expansions in a row
+        std::size_t _nb_pruned_expansions; // number of pruned expansions in a row
 
         typedef typename WRLDomainFilter::TupleType TupleType;
-        typedef std::vector<std::unordered_map<TupleType, unsigned int, boost::hash<TupleType>>> TupleVector; // mapped to min reached depth
+        typedef std::vector<std::unordered_map<TupleType, std::size_t, boost::hash<TupleType>>> TupleVector; // mapped to min reached depth
         TupleVector _feature_tuples;
 
-        unsigned int novelty(TupleVector& feature_tuples, const FeatureVector& observation_features) const {
+        std::size_t novelty(TupleVector& feature_tuples, const FeatureVector& observation_features) const {
             // feature_tuples is a set of state variable combinations of size _width
-            unsigned int nov = observation_features.size() + 1;
+            std::size_t nov = observation_features.size() + 1;
 
-            for (unsigned int k = 1 ; k <= std::min(this->_current_width, (unsigned int) observation_features.size()) ; k++) {
+            for (std::size_t k = 1 ; k <= std::min(this->_current_width, (std::size_t) observation_features.size()) ; k++) {
                 // we must recompute combinations from previous width values just in case
                 // this state would be visited for the first time across width iterations
                 this->generate_tuples(k, observation_features.size(),
@@ -331,8 +331,8 @@ public :
                               const std::function<std::unique_ptr<FeatureVector> (const Observation&)>& observation_features,
                               double initial_pruning_probability = 0.999,
                               double temperature_increase_rate = 0.01,
-                              unsigned int width_increase_resilience = 10,
-                              unsigned int max_depth = 1000,
+                              std::size_t width_increase_resilience = 10,
+                              std::size_t max_depth = 1000,
                               bool debug_logs = false)
             : WRLDomainFilter(std::move(domain), observation_features, initial_pruning_probability,
                               temperature_increase_rate, width_increase_resilience,
@@ -377,12 +377,12 @@ public :
 
                 if (node.pruned) { // need for increasing width
                     const FeatureVector& features = HashingPolicy::get_features(node, this->_observation_features);
-                    this->_current_width = std::min(this->_current_width + 1, (unsigned int) features.size());
+                    this->_current_width = std::min(this->_current_width + 1, (std::size_t) features.size());
                     this->_feature_tuples = TupleVector(this->_current_width);
                     for (auto& n : _graph) {
                         const_cast<Node&>(n).nb_visits = 0; // we don't change the real key (Node::observation) so we are safe
                         const_cast<Node&>(n).pruned = false; // we don't change the real key (Node::observation) so we are safe
-                        const_cast<Node&>(n).novelty = std::numeric_limits<unsigned int>::max(); // we don't change the real key (Node::observation) so we are safe
+                        const_cast<Node&>(n).novelty = std::numeric_limits<std::size_t>::max(); // we don't change the real key (Node::observation) so we are safe
                     }
                     node.novelty = this->novelty(this->_feature_tuples, features);
                     if (this->_debug_logs) { spdlog::debug("Increase the width to " +
@@ -452,7 +452,7 @@ public :
                     next_node = std::get<0>(node.children[action]);
                 }
 
-                if (next_node->novelty == std::numeric_limits<unsigned int>::max()) { // next observation is not yet visited or previous width increment
+                if (next_node->novelty == std::numeric_limits<std::size_t>::max()) { // next observation is not yet visited or previous width increment
                     // Compute outcome's novelty
                     next_node->novelty = this->novelty(this->_feature_tuples, HashingPolicy::get_features(*next_node, this->_observation_features));
                     next_node->pruned = (next_node->novelty == next_node->features->size() + 1);
@@ -489,18 +489,18 @@ public :
         struct Node {
             Observation observation;
             std::unique_ptr<FeatureVector> features;
-            unsigned int novelty;
-            unsigned int depth;
+            std::size_t novelty;
+            std::size_t depth;
             bool pruned; // true if pruned by the novelty test
-            unsigned int nb_visits; // number of times the node is visited for current width
+            std::size_t nb_visits; // number of times the node is visited for current width
 
             typedef typename MapTypeDeducer<Action, std::pair<Node*, std::unique_ptr<typename WRLDomainFilter::EnvironmentOutcome>>>::Map Children;
             Children children;
 
             Node(const Observation& s, const std::function<std::unique_ptr<FeatureVector> (const Observation& s)>& observation_features)
                 : observation(s),
-                  novelty(std::numeric_limits<unsigned int>::max()),
-                  depth(std::numeric_limits<unsigned int>::max()),
+                  novelty(std::numeric_limits<std::size_t>::max()),
+                  depth(std::numeric_limits<std::size_t>::max()),
                   pruned(false),
                   nb_visits(0) {
                 features = HashingPolicy::node_create(s, observation_features);
@@ -517,10 +517,10 @@ public :
         typedef std::vector<std::unordered_set<TupleType, boost::hash<TupleType>>> TupleVector;
         TupleVector _feature_tuples;
 
-        unsigned int novelty(TupleVector& feature_tuples, const FeatureVector& observation_features) const {
-            unsigned int nov = observation_features.size() + 1;
+        std::size_t novelty(TupleVector& feature_tuples, const FeatureVector& observation_features) const {
+            std::size_t nov = observation_features.size() + 1;
 
-            for (unsigned int k = 1 ; k <= std::min(this->_current_width, (unsigned int) observation_features.size()) ; k++) {
+            for (std::size_t k = 1 ; k <= std::min(this->_current_width, (std::size_t) observation_features.size()) ; k++) {
                 // we must recompute combinations from previous width values just in case
                 // this observation would be visited for the first time across width iterations
                 this->generate_tuples(k, observation_features.size(),
@@ -546,8 +546,8 @@ public :
               const std::function<std::unique_ptr<FeatureVector> (const Observation&)>& observation_features,
               double initial_pruning_probability = 0.999,
               double temperature_increase_rate = 0.01,
-              unsigned int width_increase_resilience = 10,
-              unsigned int max_depth = 1000,
+              std::size_t width_increase_resilience = 10,
+              std::size_t max_depth = 1000,
               bool cache_transitions = false,
               bool debug_logs = false)
         : _solver(solver), _observation_features(observation_features),
@@ -604,11 +604,11 @@ private :
     bool _cache_transitions;
     std::unique_ptr<WRLDomainFilter> _filtered_domain;
     std::function<std::unique_ptr<FeatureVector> (const Observation&)> _observation_features;
-    unsigned int _current_width;
+    std::size_t _current_width;
     double _initial_pruning_probability;
     double _temperature_increase_rate;
-    unsigned int _width_increase_resilience;
-    unsigned int _max_depth;
+    std::size_t _width_increase_resilience;
+    std::size_t _max_depth;
     bool _debug_logs;
 };
 

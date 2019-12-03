@@ -37,7 +37,7 @@ public :
                                             const Texpander& expander,
                                             const TactionSelector& action_selector,
                                             typename Tsolver::StateNode& n,
-                                            unsigned long& d) const {
+                                            std::size_t& d) const {
         typename Tsolver::StateNode* current_node = &n;
         while(!(current_node->terminal) && d < solver.max_depth()) {
             typename Tsolver::StateNode* next_node = expander(solver, *current_node);
@@ -176,9 +176,9 @@ private :
 class RandomDefaultPolicy {
 public :
     template <typename Tsolver>
-    void operator()(Tsolver& solver, typename Tsolver::StateNode& n, unsigned long d) const {
+    void operator()(Tsolver& solver, typename Tsolver::StateNode& n, std::size_t d) const {
         typename Tsolver::Domain::State current_state = n.state;
-        unsigned long current_depth = d;
+        std::size_t current_depth = d;
         double reward = 0.0;
         while(!solver.domain().is_terminal(current_state) && current_depth < solver.max_depth()) {
             typename std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> o = solver.domain().sample(
@@ -199,7 +199,7 @@ public :
 struct EnumerationBackup {
     template <typename Tsolver>
     void operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
-        unsigned long depth = 0; // used to prevent infinite loop in case of cycles
+        std::size_t depth = 0; // used to prevent infinite loop in case of cycles
         std::unordered_set<typename Tsolver::StateNode*> frontier;
         frontier.insert(&n);
         while (!frontier.empty() && depth <= solver.max_depth()) {
@@ -252,7 +252,7 @@ public :
         bool terminal;
         std::list<std::unique_ptr<ActionNode>> actions;
         double value;
-        unsigned long visits_count;
+        std::size_t visits_count;
         std::list<ActionNode*> parents;
 
         StateNode(const State& s)
@@ -266,10 +266,10 @@ public :
     struct ActionNode {
         Action action;
         std::unordered_multimap<StateNode*, double> outcomes; // next state nodes owned by _graph
-        std::unordered_map<unsigned int, typename std::unordered_multimap<StateNode*, double>::iterator> dist_to_outcome;
+        std::unordered_map<std::size_t, typename std::unordered_multimap<StateNode*, double>::iterator> dist_to_outcome;
         std::discrete_distribution<> dist;
         double value;
-        unsigned long visits_count;
+        std::size_t visits_count;
         StateNode* parent;
 
         ActionNode(const Action& a)
@@ -279,9 +279,9 @@ public :
     typedef typename SetTypeDeducer<StateNode, State>::Set Graph;
 
     MCTSSolver(Domain& domain,
-               unsigned long time_budget = 3600000,
-               unsigned long rollout_budget = 100000,
-               unsigned long max_depth = 1000,
+               std::size_t time_budget = 3600000,
+               std::size_t rollout_budget = 100000,
+               std::size_t max_depth = 1000,
                double discount = 1.0,
                bool debug_logs = false,
                const TreePolicy& tree_policy = TreePolicy(),
@@ -319,10 +319,10 @@ public :
             auto si = _graph.emplace(s);
             StateNode& root_node = const_cast<StateNode&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
 
-            while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count() < _time_budget &&
+            while (static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) < _time_budget &&
                        _nb_rollouts < _rollout_budget) {
                 
-                unsigned long depth = 0;
+                std::size_t depth = 0;
                 StateNode* sn = _tree_policy(*this, _expander, _action_selector, root_node, depth);
                 _default_policy(*this, *sn, depth);
                 _back_propagator(*this, *sn);
@@ -377,21 +377,21 @@ public :
         }
     }
 
-    unsigned long nb_of_explored_states() const {
+    std::size_t nb_of_explored_states() const {
         return _graph.size();
     }
 
-    unsigned long nb_rollouts() const {
+    std::size_t nb_rollouts() const {
         return _nb_rollouts;
     }
 
     Domain& domain() { return _domain; }
 
-    unsigned long time_budget() const { return _time_budget; }
+    std::size_t time_budget() const { return _time_budget; }
 
-    unsigned long rollout_budget() const { return _rollout_budget; }
+    std::size_t rollout_budget() const { return _rollout_budget; }
 
-    unsigned long max_depth() const { return _max_depth; }
+    std::size_t max_depth() const { return _max_depth; }
 
     double discount() const { return _discount; }
 
@@ -412,11 +412,11 @@ public :
 private :
 
     Domain& _domain;
-    unsigned long _time_budget;
-    unsigned long _rollout_budget;
-    unsigned long _max_depth;
+    std::size_t _time_budget;
+    std::size_t _rollout_budget;
+    std::size_t _max_depth;
     double _discount;
-    unsigned long _nb_rollouts;
+    std::size_t _nb_rollouts;
     bool _debug_logs;
     const TreePolicy& _tree_policy;
     const Expander& _expander;
