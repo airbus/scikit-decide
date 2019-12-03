@@ -83,7 +83,6 @@ try:
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
-                     max_cost: float = 10000.0,
                      exploration: float = 0.25,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
@@ -95,7 +94,6 @@ try:
             self._time_budget = time_budget
             self._rollout_budget = rollout_budget
             self._max_depth = max_depth
-            self._max_cost = max_cost
             self._exploration = exploration
             self._parallel = parallel
             self._debug_logs = debug_logs
@@ -125,7 +123,6 @@ try:
                                       time_budget=self._time_budget,
                                       rollout_budget=self._rollout_budget,
                                       max_depth=self._max_depth,
-                                      max_cost=self._max_cost,
                                       exploration=self._exploration,
                                       parallel=self._parallel,
                                       debug_logs=self._debug_logs)
@@ -142,10 +139,28 @@ try:
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
             self._solve_from(observation)
-            return self._solver.get_next_action(observation)
+            action = self._solver.get_next_action(observation)
+            if action is None:
+                print('\x1b[3;33;40m' + 'No best action found in observation ' +
+                      str(observation) + ', applying random action' + '\x1b[0m')
+                return self._domain.get_action_space().sample()
+            else:
+                return action
+        
+        def _reset(self) -> None:
+            self._solver.clear()
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             return self._solver.get_utility(observation)
+        
+        def get_nb_of_explored_states(self) -> int:
+            return self._solver.get_nb_of_explored_states()
+        
+        def get_nb_of_pruned_states(self) -> int:
+            return self._solver.get_nb_of_pruned_states()
+        
+        def get_nb_rollouts(self) -> int:
+            return self._solver.get_nb_rollouts()
     
 except ImportError:
     sys.path = record_sys_path

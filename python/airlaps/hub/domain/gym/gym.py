@@ -13,7 +13,7 @@ import random
 import struct
 import bisect
 from copy import deepcopy
-from typing import Any, Optional, Callable
+from typing import Any, Optional, Callable, List
 from collections import namedtuple  # TODO: replace with `from typing import NamedTuple`?
 
 import gym
@@ -79,8 +79,8 @@ class GymDomain(D):
         return self._gym_env
 
 
-class DeterministicGymDomainStateProxy :
-    def __init__(self, state, context):
+class GymDomainStateProxy :
+    def __init__(self, state, context=None):
         self._state = state
         self._context = context
     
@@ -92,6 +92,46 @@ class DeterministicGymDomainStateProxy :
     
     def __str__(self):
         return self._state.__str__()
+
+
+class GymDomainActionProxy :
+    def __init__(self, action):
+        self._action = action
+    
+    def __hash__(self):
+        return str(self._action).__hash__()
+    
+    def __eq__(self, other):
+        return str(self._action).__eq__(str(other))
+    
+    def __str__(self):
+        return self._action.__str__()
+
+
+class GymDomainHashable(GymDomain):
+    """This class wraps an OpenAI Gym environment (gym.env) as an AIRLAPS domain
+       using hashable states and actions.
+
+    !!! warning
+        Using this class requires OpenAI Gym to be installed.
+    """
+
+    def __init__(self, gym_env: gym.Env) -> None:
+        """Initialize GymDomain.
+
+        # Parameters
+        gym_env: The Gym environment (gym.env) to wrap.
+        """
+        super().__init__(gym_env)
+
+    def _state_reset(self) -> D.T_state:
+        return GymDomainStateProxy(super()._state_reset())
+
+    def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
+            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+        outcome = super()._state_step(action)
+        outcome.state = GymDomainStateProxy(outcome.state)
+        return outcome
 
 
 class D(Domain, SingleAgent, Sequential, UnrestrictedActions, DeterministicInitialized,
@@ -139,7 +179,7 @@ class DeterministicInitializedGymDomain(D):
     
     def _state_reset(self) -> D.T_state:
         if self._initial_state is None:
-            self._initial_state = DeterministicGymDomainStateProxy(state=self._gym_env.reset(), context=None)
+            self._initial_state = GymDomainStateProxy(state=self._gym_env.reset(), context=None)
             if self._set_state is not None and self._get_state is not None:
                 self._initial_env_state = self._get_state(self._gym_env)
                 self._initial_state._context = self._initial_env_state
@@ -157,9 +197,9 @@ class DeterministicInitializedGymDomain(D):
             D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         obs, reward, done, info = self._gym_env.step(action)
         if self._set_state is not None and self._get_state is not None:
-            state = DeterministicGymDomainStateProxy(state=obs, context=self._initial_env_state)
+            state = GymDomainStateProxy(state=obs, context=self._initial_env_state)
         else:
-            state = DeterministicGymDomainStateProxy(state=obs, context=self._init_env)
+            state = GymDomainStateProxy(state=obs, context=self._init_env)
         return TransitionOutcome(state=state, value=TransitionValue(reward=reward), termination=done, info=info)
     
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
@@ -207,12 +247,13 @@ class GymWidthDomain:
         self._continuous_feature_fidelity = continuous_feature_fidelity
         self._feature_increments = []
         self._init_continuous_state_variables = []
+        self._elliptical_features = None
     
     def _reset_features(self):
         self._init_continuous_state_variables = []
         self._feature_increments = []
 
-    def _init_state_features(self, space, state):
+    def _init_bee_features(self, space, state):
         if isinstance(space, gym.spaces.box.Box):
             for cell in np.nditer(state):
                 self._init_continuous_state_variables.append(cell)
@@ -222,23 +263,24 @@ class GymWidthDomain:
                 self._feature_increments.append([[] for f in range(self._continuous_feature_fidelity)])
         elif isinstance(space, gym.spaces.tuple.Tuple):
             for s in range(len(space.spaces)):
-                self._init_state_features(space.spaces[s], state[s])
+                self._init_bee_features(space.spaces[s], state[s])
         elif isinstance(space, gym.spaces.dict.Dict):
             for k, s in space.spaces:
-                self._init_state_features(s, state[k])
+                self._init_bee_features(s, state[k])
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
 
-    def state_features(self, state):
+    def bee_features(self, state):
         """Return a numpy vector of ints representing the current 'cumulated layer' of each state variable
         """
+        state = state._state if isinstance(state, GymDomainStateProxy) else state
         if len(self._feature_increments) == 0:
-            self._init_state_features(self._gym_env.observation_space, state._state)
-        sf = self._state_features(self._gym_env.observation_space, state._state, 0)[1]
+            self._init_bee_features(self._gym_env.observation_space, state)
+        sf = self._bee_features(self._gym_env.observation_space, state, 0)[1]
         # sf.append(state._context[5])
         return sf
     
-    def _state_features(self, space, element, start):
+    def _bee_features(self, space, element, start):
         if isinstance(space, gym.spaces.box.Box):
             features = []
             index = start
@@ -261,7 +303,8 @@ class GymWidthDomain:
                             self._feature_increments[2*index + 1][f].append(ref_val - cell)
                         if i > 0:
                             ref_val = ref_val - self._feature_increments[2*index + 1][f][i-1]
-                features.append(tuple(cf))
+                # features.append(tuple(cf))
+                features += cf
                 index += 1
             return index, features
         elif isinstance(space, gym.spaces.discrete.Discrete):
@@ -274,14 +317,14 @@ class GymWidthDomain:
             index = start
             features = []
             for i in range(len(space.spaces)):
-                index, l = self._state_features(space.spaces[i], element[i], index)
+                index, l = self._bee_features(space.spaces[i], element[i], index)
                 features += l
             return index, features
         elif isinstance(space, gym.spaces.dict.Dict):
             index = start
             features = []
             for k in space.spaces.keys():
-                index, l = self._state_features(space.spaces[k], element[k], index)
+                index, l = self._bee_features(space.spaces[k], element[k], index)
                 features += l
             return index, features
         else:
@@ -290,26 +333,26 @@ class GymWidthDomain:
     def nb_of_binary_features(self) -> int:
         """Return the size of the bit vector encoding an observation
         """
-        return self._binarize_gym_space_element(self._gym_env.observation_space,
+        return self._binary_features(self._gym_env.observation_space,
                                                 self._gym_env.observation_space.sample(),
                                                 0,
                                                 lambda i: None)
 
-    def binarize(self, memory: D.T_memory[D.T_state], func: Callable[[int], None]) -> None:
+    def binary_features(self, memory: D.T_memory[D.T_state]):
         """Transform state in a bit vector and call f on each true value of this vector
 
         # Parameters
         memory: The Gym state (in observation_space) to binarize
-        func: The function called on each true bit of the binarized state
+
+        Return a list of booleans representing the binary representation of each state variable
         """
-        self._binarize_gym_space_element(self._gym_env.observation_space, memory._state, 0, func)
+        memory = memory._state if isinstance(memory, GymDomainStateProxy) else memory
+        return self._binary_features(self._gym_env.observation_space, memory)
     
-    def _binarize_gym_space_element(self, space: gym.spaces.Space,
-                                          element: Any,
-                                          start: int,
-                                          func: Callable[[int], None]) -> int:
-        current_index = start
+    def _binary_features(self, space: gym.spaces.Space,
+                                          element: Any) -> int:
         if isinstance(space, gym.spaces.box.Box):
+            features = []
             # compute the size of the bit vector encoding the largest float
             maxlen = len(bin(struct.unpack('!i', struct.pack('!f', float('inf')))[0])[2:])
             for cell in np.nditer(element):
@@ -317,52 +360,126 @@ class GymWidthDomain:
                 float_bin = bin(struct.unpack('!i', struct.pack('!f', cell))[0])
                 # the sign of the float is encoded in the first bit in our translation
                 if float_bin[0] == '-':
-                    func(current_index)
+                    features.append(True)
                     float_bin = float_bin[3:]
                 else:
+                    features.append(False)
                     float_bin = float_bin[2:]
-                current_index += 1
                 # add 0s at the beginning of the string so that all elements are encoded with the same number of bits
                 # that depends on the size of the bit vector encoding the largest float
                 float_bin = ('0' * (maxlen - len(float_bin))) + float_bin
                 for b in float_bin:
-                    if b == '1':
-                        func(current_index)
-                    current_index += 1
+                    features.append(b == '1')
+            return features
         elif isinstance(space, gym.spaces.discrete.Discrete):
+            features = []
             # convert int to string of 1s and 0s
             int_bin = bin(element)[2:]
             # add 0s at the beginning of the string so that all elements are encoded with the same number of bits
             # that depends on the discrete space's highest element which is space.n - 1
             int_bin = ('0' * (len(bin(space.n - 1)[2:]) - len(int_bin))) + int_bin
             for b in int_bin:
-                if b == '1':
-                    func(current_index)
-                current_index += 1
+                features.append(b == '1')
+            return features
         elif isinstance(space, gym.spaces.multi_discrete.MultiDiscrete):
+            features = []
             # look at the previous test case for the logics of translating each element of the vector to a bit string
             for i in range(len(space.nvec)):
                 int_bin = bin(element[i])[2:]
                 int_bin = ('0' * (len(bin(space.nvec[i] - 1)[2:]) - len(int_bin))) + int_bin
                 for b in int_bin:
-                    if b == '1':
-                        func(current_index)
-                    current_index += 1
+                    features.append(b == '1')
+            return features
         elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
+            features = []
             for b in element:
-                if b:
-                    func(current_index)
-                current_index += 1
+                features.append(bool(b))
+            return features
         elif isinstance(space, gym.spaces.tuple.Tuple):
+            features = []
             for i in range(len(space.spaces)):
-                current_index = _binarize_gym_space_element(space.spaces[i], element[i], current_index, func)
+                l = self._binary_features(space.spaces[i], element[i])
+                features += l
+            return features
         elif isinstance(space, gym.spaces.dict.Dict):
+            features = []
             for k, v in space.spaces:
-                current_index = _binarize_gym_space_element(v, element[k], current_index, func)
+                l = self._binary_features(v, element[k])
+                features += l
+            return features
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
-        return current_index
+    
+    class EllipticalMapping2D:
 
+        def __init__(self, input, _x0, _xG, bands):
+            self.input = input
+            self.x0 = _x0
+            self.xG = _xG
+            self.projected_goal = np.array([self.xG[self.input[0]], self.xG[self.input[1]]])
+            self.bands = bands
+        
+        def evaluate(self, state):
+            projected_state = np.array([state[self.input[0]], state[self.input[1]]])
+            c = np.linalg.norm(projected_state - self.projected_goal)
+            for k, v in enumerate(self.bands):
+                if c > v:
+                    return len(self.bands) - k
+            return 0
+    
+    def init_elliptical_features(self, x0: D.T_memory[D.T_state],
+                                       xG: D.T_memory[D.T_state]):
+        v0 = np.array(self._get_variables(self._gym_env.observation_space, x0))
+        vG = np.array(self._get_variables(self._gym_env.observation_space, xG))
+        d = xG.shape[0] # column vector
+        self._elliptical_features = []
+        for i in range(d):
+            for j in range(i+1, d):
+                input = (i, j)
+                c = np.linalg.norm(np.array([v0[i], v0[j]]) - np.array([vG[i], vG[j]]))
+                bands = []
+                num_levels = 10.0 * max(np.log10(c), 1.0)
+                delta_c = c / float(num_levels)
+                c_k = c
+                while c_k > delta_c:
+                    bands += [c_k]
+                    c_k -= delta_c
+                if len(bands) == 0:
+                    bands += [c_k]
+                self._elliptical_features += [self.EllipticalMapping2D(input, v0, vG, bands)]
+    
+    def elliptical_features(self, state: D.T_memory[D.T_state]):
+        state = state._state if isinstance(state, GymDomainStateProxy) else state
+        vS = np.array(self._get_variables(self._gym_env.observation_space, state))
+        return [f.evaluate(vS) for f in self._elliptical_features]
+    
+    def _get_variables(self, space: gym.spaces.Space, element: Any) -> List:
+        if isinstance(space, gym.spaces.box.Box):
+            var = []
+            for cell in np.nditer(element):
+                var.append(cell)
+            return var
+        elif isinstance(space, gym.spaces.discrete.Discrete):
+            return [element]
+        elif isinstance(space, gym.spaces.multi_discrete.MultiDiscrete):
+            return [e for e in element]
+        elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
+            return [e for e in element]
+        elif isinstance(space, gym.spaces.tuple.Tuple):
+            var = []
+            for i in range(len(space.spaces)):
+                l = self._get_variables(space.spaces[i], element[i])
+                var += l
+            return var
+        elif isinstance(space, gym.spaces.dict.Dict):
+            var = []
+            for k in space.spaces.keys():
+                index, l = self._get_variables(space.spaces[k], element[k])
+                var += l
+            return var
+        else:
+            raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
+        
 
 class GymDiscreteActionDomain(UnrestrictedActions):
     """This class wraps an OpenAI Gym environment as a domain
@@ -478,7 +595,7 @@ class DeterministicGymDomain(D):
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = self._gym_env.reset()
-        return DeterministicGymDomainStateProxy(state=initial_state,
+        return GymDomainStateProxy(state=initial_state,
                                                 context=[self._gym_env, None, None, None,
                                                          self._get_state(self._gym_env) if (self._get_state is not None and self._set_state is not None) else None])
 
@@ -493,7 +610,7 @@ class DeterministicGymDomain(D):
         obs, reward, done, info = env.step(action)
         outcome = TransitionOutcome(state=obs, value=TransitionValue(reward=reward), termination=done, info=info)
         # print('Transition:', str(memory._state), ' -> ', str(action), ' -> ', str(outcome.state))
-        return DeterministicGymDomainStateProxy(state=outcome.state,
+        return GymDomainStateProxy(state=outcome.state,
                                                 context=[env, memory._state, action, outcome,
                                                          self._get_state(env) if (self._get_state is not None and self._set_state is not None) else None])
 

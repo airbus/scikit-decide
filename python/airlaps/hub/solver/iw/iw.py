@@ -128,10 +128,20 @@ try:
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
             if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
-            return self._solver.get_next_action(observation).action
+            action_proxy = self._solver.get_next_action(observation)
+            return action_proxy.action if action_proxy is not None else None
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             return self._solver.get_utility(observation)
+        
+        def _reset(self) -> None:
+            self._solver.clear()
+        
+        def get_nb_of_explored_states(self) -> int:
+            return self._solver.get_nb_of_explored_states()
+        
+        def get_nb_of_pruned_states(self) -> int:
+            return self._solver.get_nb_of_pruned_states()
     
 except ImportError:
     sys.path = record_sys_path

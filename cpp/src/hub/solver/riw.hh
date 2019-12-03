@@ -154,13 +154,13 @@ public :
               unsigned int time_budget = 3600000,
               unsigned int rollout_budget = 100000,
               unsigned int max_depth = 1000,
-              double max_cost = 10000,
               double exploration = 0.25,
               bool debug_logs = false)
     : _domain(domain), _state_features(state_features),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
-      _max_depth(max_depth), _max_cost(max_cost), _exploration(exploration),
-      _debug_logs(debug_logs) {
+      _max_depth(max_depth), _exploration(exploration),
+      _min_cost(std::numeric_limits<double>::max()), _max_cost(-std::numeric_limits<double>::max()),
+      _nb_rollouts(0), _debug_logs(debug_logs) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {
@@ -172,6 +172,8 @@ public :
     // previous search results)
     void clear() {
         _graph.clear();
+        _min_cost = std::numeric_limits<double>::max();
+        _max_cost = -std::numeric_limits<double>::max();
     }
 
     // solves from state s
@@ -179,19 +181,23 @@ public :
         try {
             spdlog::info("Running " + ExecutionPolicy::print() + " RIW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
-            unsigned int nb_rollouts = 0;
+            _nb_rollouts = 0;
             unsigned int nb_of_binary_features = _state_features(s)->size();
 
             TupleVector feature_tuples;
 
             for (unsigned int w = 1 ; w <= nb_of_binary_features ; w++) {
-                if(WidthSolver(_domain, _state_features,
+                if(WidthSolver(*this, _domain, _state_features,
                                _time_budget, _rollout_budget,
-                               _max_depth, _max_cost, _exploration,
-                               w, _graph, _rollout_policy, _debug_logs).solve(s, start_time, nb_rollouts, feature_tuples)) {
+                               _max_depth, _exploration,
+                               _min_cost, _max_cost,
+                               w, _graph, _rollout_policy,
+                               _debug_logs).solve(s, start_time, _nb_rollouts, feature_tuples)) {
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-                    spdlog::info("RIW finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+                    spdlog::info("RIW finished to solve from state " + s.print() +
+                                 " in " + std::to_string((double) duration / (double) 1e9) + " seconds with " +
+                                 std::to_string(_nb_rollouts) + " rollouts.");
                     return;
                 }
             }
@@ -204,7 +210,7 @@ public :
     }
 
     bool is_solution_defined_for(const State& s) const {
-        auto si = _graph.find(Node(s));
+        auto si = _graph.find(Node(s, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr) || (si->solved == false)) {
             return false;
         } else {
@@ -213,7 +219,7 @@ public :
     }
 
     Action get_best_action(const State& s) {
-        auto si = _graph.find(Node(s));
+        auto si = _graph.find(Node(s, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
@@ -237,12 +243,30 @@ public :
     }
 
     const double& get_best_value(const State& s) const {
-        auto si = _graph.find(Node(s));
+        auto si = _graph.find(Node(s, _state_features));
         if (si == _graph.end()) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
         }
         return si->fscore;
+    }
+
+    unsigned int get_nb_of_explored_states() const {
+        return _graph.size();
+    }
+
+    unsigned int get_nb_of_pruned_states() const {
+        unsigned int cnt = 0;
+        for (const auto&  n : _graph)  {
+            if (!n.terminal && n.children.empty()) {
+                cnt++;
+            }
+        }
+        return cnt;
+    }
+
+    unsigned int get_nb_rollouts() const {
+        return _nb_rollouts;
     }
 
 private :
@@ -252,8 +276,10 @@ private :
     unsigned int _time_budget;
     unsigned int _rollout_budget;
     unsigned int _max_depth;
-    double _max_cost;
     double _exploration;
+    double _min_cost;
+    double _max_cost;
+    unsigned int _nb_rollouts;
     RolloutPolicy _rollout_policy;
     bool _debug_logs;
 
@@ -266,8 +292,9 @@ private :
         unsigned int depth;
         unsigned int novelty;
         Action* best_action;
-        bool terminal; // set to true if terminal state from the simulator's perspective
-        bool solved; // set to true if on the solution path constructed backward from the goal state
+        bool terminal; // true if seen terminal from the simulator's perspective
+        bool goal; // true if goal
+        bool solved; // from this node: true if all reached states are either max_depth, or terminal or goal
 
         Node(const State& s, const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features)
             : state(s),
@@ -276,13 +303,10 @@ private :
               novelty(std::numeric_limits<unsigned int>::max()),
               best_action(nullptr),
               terminal(false),
+              goal(false),
               solved(false) {
             features = state_features(s);
         }
-
-        // Following constructor used only to search for the same existing node in the graph since nodes
-        // are hashed by their states. Don't use this constructor for creating valid nodes!
-        Node(const State& s) : state(s) {}
         
         struct Key {
             const typename HashingPolicy::Key& operator()(const Node& n) const {
@@ -307,20 +331,22 @@ private :
         typedef Trollout_policy<Domain> RolloutPolicy;
         typedef Texecution_policy ExecutionPolicy;
 
-        WidthSolver(Domain& domain,
+        WidthSolver(RIWSolver& parent_solver, Domain& domain,
                     const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
                     unsigned int time_budget,
                     unsigned int rollout_budget,
                     unsigned int max_depth,
-                    double max_cost,
                     double exploration,
+                    double& min_cost,
+                    double& max_cost,
                     unsigned int width,
                     Graph& graph,
                     RolloutPolicy& rollout_policy,
                     bool debug_logs)
-            : _domain(domain), _state_features(state_features),
+            : _parent_solver(parent_solver), _domain(domain), _state_features(state_features),
               _time_budget(time_budget), _rollout_budget(rollout_budget),
-              _max_depth(max_depth), _max_cost(max_cost), _exploration(exploration),
+              _max_depth(max_depth), _exploration(exploration),
+              _min_cost(min_cost), _max_cost(max_cost),
               _width(width), _graph(graph), _rollout_policy(rollout_policy),
               _debug_logs(debug_logs) {}
         
@@ -399,9 +425,16 @@ private :
                         bool new_node = false;
 
                         if (fill_child_node(current_node, pick, new_node)) { // terminal state
-                            if (_debug_logs) spdlog::debug("Found a terminal state: " + current_node->state.print() +
-                                                           ", depth=" + std::to_string(current_node->depth) +
-                                                           ", fscore=" + std::to_string(current_node->fscore));
+                            if (_domain.is_goal(current_node->state)) { // goal state
+                                current_node->goal = true;
+                                if (_debug_logs) spdlog::debug("Found a goal state: " + current_node->state.print() +
+                                                            ", depth=" + std::to_string(current_node->depth) +
+                                                            ", fscore=" + std::to_string(current_node->fscore));
+                            } else { // dead-end state
+                                if (_debug_logs) spdlog::debug("Found a dead-end state: " + current_node->state.print() +
+                                                            ", depth=" + std::to_string(current_node->depth) +
+                                                            ", fscore=" + std::to_string(current_node->fscore));
+                            }
                             update_node(*current_node, true);
                             break;
                         } else if (!novelty(feature_tuples, *current_node, new_node)) { // no new tuple or not reached with lower depth => terminal node
@@ -455,13 +488,15 @@ private :
         }
 
     private :
+        RIWSolver& _parent_solver;
         Domain& _domain;
         const std::function<std::unique_ptr<FeatureVector> (const State& s)>& _state_features;
         unsigned int _time_budget;
         unsigned int _rollout_budget;
         unsigned int _max_depth;
-        double _max_cost;
         double _exploration;
+        double& _min_cost;
+        double& _max_cost;
         unsigned int _width;
         Graph& _graph;
         RolloutPolicy& _rollout_policy;
@@ -539,6 +574,8 @@ private :
                 std::get<2>(node->children[action_number]) = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 std::get<1>(node->children[action_number]) = outcome->cost();
                 std::get<2>(node->children[action_number])->parents.insert(node);
+                _min_cost = std::min(_min_cost, outcome->cost());
+                _max_cost = std::max(_max_cost, outcome->cost());
                 if (new_node) {
                     if (_debug_logs) spdlog::debug("Exploring new outcome: " + i.first->state.print() +
                                                    ", depth=" + std::to_string(i.first->depth) +
@@ -573,34 +610,10 @@ private :
 
         void update_node(Node& node, bool solved) {
             node.solved = solved;
-            node.fscore = (_max_depth - node.depth) * _max_cost;
+            node.fscore = 0;
             std::unordered_set<Node*> frontier;
             frontier.insert(&node);
-            unsigned int depth = 0; // used to prevent infinite loop in case of cycles
-
-            while (!frontier.empty() && depth <= _max_depth) {
-                depth += 1;
-                std::unordered_set<Node*> new_frontier;
-                for (auto& n : frontier) {
-                    for (auto& p : n->parents) {
-                        p->solved = true;
-                        p->fscore = std::numeric_limits<double>::infinity();
-                        p->best_action = nullptr;
-                        for (auto& nn : p->children) {
-                            p->solved = p->solved && std::get<2>(nn) && std::get<2>(nn)->solved;
-                            if (std::get<2>(nn)) {
-                                double tentative_fscore = std::get<1>(nn) + std::get<2>(nn)->fscore;
-                                if (p->fscore > tentative_fscore) {
-                                    p->fscore = tentative_fscore;
-                                    p->best_action = &std::get<0>(nn);
-                                }
-                            }
-                        }
-                        new_frontier.insert(p);
-                    }
-                }
-                frontier = new_frontier;
-            }
+            _parent_solver.backup_values(frontier);
         }
     }; // WidthSolver class
 
@@ -632,6 +645,7 @@ private :
         // those nodes from their children's parents
         // Don't actually remove those nodes in the first pass otherwise some children to remove
         // won't exist anymore when looking for their parents
+        std::unordered_set<Node*> frontier;
         for (auto& n : root_subgraph) {
             if (n) {
                 if (child_subgraph.find(n) == child_subgraph.end()) {
@@ -643,15 +657,60 @@ private :
                     removed_subgraph.insert(n);
                 } else {
                     n->depth -= 1;
-                    if (n->solved) {
-                        n->fscore += _max_cost;
+                    // if (n->solved) {
+                    if (n->children.empty()) {
+                        frontier.insert(n);
                     }
                 }
             }
         }
         // Second pass: actually remove nodes in root_subgraph but not in child_subgraph
         for (auto& n : removed_subgraph) {
-            _graph.erase(Node(n->state));
+            _graph.erase(Node(n->state, _state_features));
+        }
+        // Third pass: recompute fscores
+        backup_values(frontier);
+    }
+
+    // Backup values from tip solved nodes to their parents in graph
+    void backup_values(std::unordered_set<Node*>& frontier) {
+        unsigned int depth = 0; // used to prevent infinite loop in case of cycles
+        for (auto& n : frontier) {
+            if (n->terminal) {
+                if (n->goal) {
+                    // Applies a factor of 0.1 to min cost in order to favor goals
+                    n->fscore = (_max_depth - n->depth) * _min_cost * ((_min_cost > 0)?0.1:10.0);
+                } else {
+                    n->fscore = std::numeric_limits<double>::infinity();
+                }
+            } else {
+                // Applies a factor of 10 to max cost in order to favor non-pruned trajectories
+                n->fscore = (_max_depth - n->depth) * _max_cost * ((_max_cost > 0)?10.0:0.1);
+            }
+        }
+
+        while (!frontier.empty() && depth <= _max_depth) {
+            depth += 1;
+            std::unordered_set<Node*> new_frontier;
+            for (auto& n : frontier) {
+                for (auto& p : n->parents) {
+                    p->solved = true;
+                    p->fscore = std::numeric_limits<double>::infinity();
+                    p->best_action = nullptr;
+                    for (auto& nn : p->children) {
+                        p->solved = p->solved && std::get<2>(nn) && std::get<2>(nn)->solved;
+                        if (std::get<2>(nn)) {
+                            double tentative_fscore = std::get<1>(nn) + std::get<2>(nn)->fscore;
+                            if (p->fscore > tentative_fscore) {
+                                p->fscore = tentative_fscore;
+                                p->best_action = &std::get<0>(nn);
+                            }
+                        }
+                    }
+                    new_frontier.insert(p);
+                }
+            }
+            frontier = new_frontier;
         }
     }
 }; // RIWSolver class

@@ -23,23 +23,27 @@ __version__ = '0.3.4'
 
 cpp_extension = False
 cxx_compiler = None
+cmake_options = None
 
 class BDistWheelCommand(bdist_wheel):
     user_options = install.user_options + [
         ('cpp-extension', None, 'Compile the C++ hub extension'),
-        ('cxx-compiler=', None, 'Path to the C++ compiler')
+        ('cxx-compiler=', None, 'Path to the C++ compiler'),
+        ('cmake-options=', None, 'Options to pass to cmake')
     ]
 
     def initialize_options(self):
         bdist_wheel.initialize_options(self)
         self.cpp_extension = False
         self.cxx_compiler = None
+        self.cmake_options = None
 
     def finalize_options(self):
-        global cpp_extension, cxx_compiler
+        global cpp_extension, cxx_compiler, cmake_options
         bdist_wheel.finalize_options(self)
         cpp_extension = cpp_extension or self.cpp_extension
         cxx_compiler = self.cxx_compiler if self.cxx_compiler is not None else cxx_compiler
+        cmake_options = self.cmake_options if self.cmake_options is not None else cmake_options
 
     def run(self):
         bdist_wheel.run(self)
@@ -47,19 +51,22 @@ class BDistWheelCommand(bdist_wheel):
 class InstallCommand(install):
     user_options = install.user_options + [
         ('cpp-extension', None, 'Compile the C++ hub extension'),
-        ('cxx-compiler=', None, 'Path to the C++ compiler')
+        ('cxx-compiler=', None, 'Path to the C++ compiler'),
+        ('cmake-options=', None, 'Options to pass to cmake')
     ]
 
     def initialize_options(self):
         install.initialize_options(self)
         self.cpp_extension = False
         self.cxx_compiler = None
+        self.cmake_options = None
 
     def finalize_options(self):
-        global cpp_extension, cxx_compiler
+        global cpp_extension, cxx_compiler, cmake_options
         install.finalize_options(self)
         cpp_extension = cpp_extension or self.cpp_extension
         cxx_compiler = self.cxx_compiler if self.cxx_compiler is not None else cxx_compiler
+        cmake_options = self.cmake_options if self.cmake_options is not None else cmake_options
 
     def run(self):
         install.run(self)
@@ -75,19 +82,22 @@ class CMakeBuild(build_ext):
 
     user_options = build_ext.user_options + [
         ('cpp-extension', None, 'Compile the C++ hub extension'),
-        ('cxx-compiler=', None, 'Path to the C++ compiler')
+        ('cxx-compiler=', None, 'Path to the C++ compiler'),
+        ('cmake-options=', None, 'Options to pass to cmake')
     ]
 
     def initialize_options(self):
         build_ext.initialize_options(self)
         self.cpp_extension = False
         self.cxx_compiler = None
+        self.cmake_options = None
     
     def finalize_options(self):
-        global cpp_extension, cxx_compiler
+        global cpp_extension, cxx_compiler, cmake_options
         build_ext.finalize_options(self)
         cpp_extension = cpp_extension or self.cpp_extension
         cxx_compiler = self.cxx_compiler if self.cxx_compiler is not None else cxx_compiler
+        cmake_options = self.cmake_options if self.cmake_options is not None else cmake_options
 
     def run(self):
         global cpp_extension
@@ -108,7 +118,7 @@ class CMakeBuild(build_ext):
                 self.build_extension(ext)
 
     def build_extension(self, ext):
-        global cxx_compiler
+        global cxx_compiler, cmake_options
 
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
@@ -117,6 +127,9 @@ class CMakeBuild(build_ext):
         
         if cxx_compiler is not None:
             cmake_args += ['-DCMAKE_CXX_COMPILER=' + cxx_compiler]
+        
+        if cmake_options is not None:
+            cmake_args += [cmake_options]
 
         cfg = 'Debug' if self.debug else 'Release'
         build_args = ['--config', cfg]

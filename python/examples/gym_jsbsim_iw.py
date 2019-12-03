@@ -11,15 +11,14 @@ import gym_jsbsim
 import numpy as np
 import folium
 
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 
 from airlaps import TransitionOutcome, TransitionValue, EnvironmentOutcome, Domain
 from airlaps.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
-from airlaps.hub.domain.gym import DeterministicGymDomain, GymWidthDomain, \
-    GymDiscreteActionDomain, DeterministicGymDomainStateProxy
+from airlaps.hub.domain.gym import GymPlanningDomain, GymWidthDomain, \
+    GymDiscreteActionDomain, GymDomainStateProxy
 from airlaps.hub.solver.iw import IW
-from airlaps.hub.solver.riw import RIW
 from airlaps.utils import rollout
 
 from gym_jsbsim.catalogs.catalog import Catalog as prp
@@ -27,7 +26,7 @@ from gym_jsbsim.envs.taxi_utils2 import *
 
 # ENV_NAME = 'GymJsbsim-HeadingControlTask-v0'
 ENV_NAME = 'GymJsbsim-TaxiapControlTask-v0'
-HORIZON = 1000
+HORIZON = 5000
 
 
 def normalize_and_round(state):
@@ -35,15 +34,15 @@ def normalize_and_round(state):
     ns = ns / np.linalg.norm(ns) if np.linalg.norm(ns) != 0 else ns
     # scale = np.array([10.0, 0.1, 100.0, 100.0, 100.0, 100.0, 1.0, 1.0, 1.0, 1.0])
     # ns = 1/(1+np.exp(-ns/scale))
-    np.around(ns, decimals=5, out=ns)
+    np.around(ns, decimals=4, out=ns)
     return ns
 
 
-class D(DeterministicGymDomain, GymWidthDomain, GymDiscreteActionDomain):
+class D(GymPlanningDomain, GymWidthDomain, GymDiscreteActionDomain):
     pass
 
 
-class GymRIWDomain(D):
+class GymIWDomain(D):
     """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
         usable by a width-based planner
 
@@ -72,10 +71,12 @@ class GymRIWDomain(D):
         branching_factor: if not None, sample branching_factor actions from the resulting list of discretized actions
         max_depth: maximum depth of states to explore from the initial state
         """
-        DeterministicGymDomain.__init__(self,
-                                        gym_env=gym_env,
-                                        set_state=set_state,
-                                        get_state=get_state)
+        GymPlanningDomain.__init__(self,
+                                   gym_env=gym_env,
+                                   set_state=set_state,
+                                   get_state=get_state,
+                                   termination_is_goal=False,
+                                   max_depth=max_depth)
         GymDiscreteActionDomain.__init__(self,
                                          discretization_factor=discretization_factor,
                                          branching_factor=branching_factor)
@@ -84,27 +85,39 @@ class GymRIWDomain(D):
     
     def _get_initial_state_(self) -> D.T_state:
         state_proxy = super()._get_initial_state_()
-        return DeterministicGymDomainStateProxy(state=normalize_and_round(state_proxy._state), context=state_proxy._context)
+        return GymDomainStateProxy(state=normalize_and_round(state_proxy._state), context=state_proxy._context)
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
             D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         o = super()._state_step(action)
-        return TransitionOutcome(state=DeterministicGymDomainStateProxy(state=normalize_and_round(o.state._state), context=o.state._context),
+        return TransitionOutcome(state=GymDomainStateProxy(state=normalize_and_round(o.state._state), context=o.state._context),
                                  value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
 
     def _sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
         EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         o = super()._sample(memory, action)
-        return EnvironmentOutcome(observation=DeterministicGymDomainStateProxy(state=normalize_and_round(o.observation._state), context=o.observation._context),
+        return EnvironmentOutcome(observation=GymDomainStateProxy(state=normalize_and_round(o.observation._state), context=o.observation._context),
                                   value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
+    
+    def _get_next_state(self, memory: D.T_memory[D.T_state],
+                              action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+        o = super()._get_next_state(memory, action)
+        return GymDomainStateProxy(state=normalize_and_round(o._state), context=o._context)
+    
+    def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
+                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
+        v = super()._get_transition_value(memory, action, next_state)
+        return TransitionValue(reward=v.reward - 1)
 
 
-class EvaluationDomain(DeterministicGymDomain):
-    def __init__(self, planning_domain: GymRIWDomain) -> None:
-        DeterministicGymDomain.__init__(self,
-                                        gym_env=planning_domain._gym_env,
-                                        set_state=planning_domain._set_state,
-                                        get_state=planning_domain._get_state)
+class EvaluationDomain(GymPlanningDomain):
+    def __init__(self, planning_domain: GymIWDomain) -> None:
+        GymPlanningDomain.__init__(self,
+                                   gym_env=planning_domain._gym_env,
+                                   set_state=planning_domain._set_state,
+                                   get_state=planning_domain._get_state,
+                                   termination_is_goal=False,
+                                   max_depth=HORIZON)
         self._current_state = None
         self._map = None
         self._path = None
@@ -159,50 +172,47 @@ class D(Domain, SingleAgent, Sequential, Environment, Actions, DeterministicInit
         pass
 
 
-class GymRIW(RIW):
+class GymIW(IW):
     def __init__(self,
                  state_features: Callable[[D.T_state, Domain], Any],
                  use_state_feature_hash: bool = False,
-                 use_simulation_domain = False,
-                 time_budget: int = 3600000,
-                 rollout_budget: int = 100000,
-                 max_depth: int = 1000,
-                 exploration: float = 0.25,
+                 node_ordering: Callable[[float, int, int, float, int, int], bool] = None,
                  parallel: bool = True,
                  debug_logs: bool = False) -> None:
         super().__init__(state_features=state_features,
                          use_state_feature_hash=use_state_feature_hash,
-                         use_simulation_domain=use_simulation_domain,
-                         time_budget=time_budget,
-                         rollout_budget=rollout_budget,
-                         max_depth=max_depth,
-                         exploration=exploration,
+                         node_ordering=node_ordering,
                          parallel=parallel,
                          debug_logs=debug_logs)
     
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        self._domain._reset_features()
-        return super()._get_next_action(DeterministicGymDomainStateProxy(state=normalize_and_round(observation._state), context=observation._context))
+        state = GymDomainStateProxy(state=normalize_and_round(observation._state), context=observation._context)
+        action = super()._get_next_action(state)
+        if action is None:
+            state._context[5] = 0
+            self.reset()
+            self._domain._reset_features()
+            self._domain._current_depth = 0
+            return super()._get_next_action(state)
+        else:
+            return action
 
 
-domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
+domain_factory = lambda: GymIWDomain(gym_env=gym.make(ENV_NAME),
                                       set_state=lambda e, s: e.set_state(s),
                                       get_state=lambda e: e.get_state(),
                                       continuous_feature_fidelity=3,
                                       discretization_factor=5,
-                                      max_depth=HORIZON)
+                                      max_depth=50)
 
-if RIW.check_domain(domain_factory()):
-    solver_factory = lambda: GymRIW(state_features=lambda s, d: d.bee_features(s),
-                                    use_state_feature_hash=False,
-                                    use_simulation_domain=True,
-                                    time_budget=1000,
-                                    rollout_budget=1000,
-                                    max_depth=10,
-                                    exploration=0.25,
-                                    parallel=False,
-                                    debug_logs=False)
-    solver = GymRIWDomain.solve_with(solver_factory, domain_factory)
+if IW.check_domain(domain_factory()):
+    solver_factory = lambda: GymIW(state_features=lambda s, d: d.bee_features(s),
+                                   use_state_feature_hash=False,
+                                #    node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_gscore < b_gscore,
+                                #    node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore < b_gscore else False if a_gscore > b_gscore else a_novelty > b_novelty,
+                                   parallel=False,
+                                   debug_logs=False)
+    solver = GymIWDomain.solve_with(solver_factory, domain_factory)
     evaluation_domain = EvaluationDomain(solver._domain)
     evaluation_domain.reset()
     rollout(evaluation_domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
