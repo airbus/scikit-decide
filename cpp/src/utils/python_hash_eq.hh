@@ -6,18 +6,23 @@
 #define AIRLAPS_PYTHON_HASH_EQ_HH
 
 #include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 namespace py = pybind11;
 
 namespace airlaps {
 
-std::size_t python_hash(const py::object& o) {
+inline std::size_t python_hash(const py::object& o) {
     try {
-        std::size_t python_sys_maxsize = py::module("sys").attr("maxsize").template cast<std::size_t>();
+        std::size_t python_sys_maxsize = py::module::import("sys").attr("maxsize").template cast<std::size_t>();
         std::function<std::size_t (const py::object&)> compute_hash = [&python_sys_maxsize](const py::object& ho) {
             // python __hash__ can return negative integers but c++ expects positive integers only
             // return  (ho.attr("__hash__")().template cast<std::size_t>()) % ((python_sys_maxsize + 1) * 2);
-            return  (ho.attr("__hash__")().template cast<std::size_t>()) + python_sys_maxsize;
+            std::size_t res = (ho.attr("__hash__")().template cast<long long>()) + python_sys_maxsize;
+            return res;
         };
         if (!py::hasattr(o, "__hash__") || o.attr("__hash__").is_none()) {
             // Try to hash using __repr__
@@ -44,13 +49,15 @@ std::size_t python_hash(const py::object& o) {
 }
 
 
-std::size_t python_equal(const py::object& o1, const py::object& o2) {
+inline bool python_equal(const py::object& o1, const py::object& o2) {
     try {
         std::function<bool (const py::object&, const py::object&)> compute_equal = [](const py::object& eo1, const py::object& eo2) {
             return eo1.attr("__eq__")(eo2).template cast<bool>();
         };
-        if (!py::hasattr(o1, "__eq__") || o1.attr("__eq__").is_none() ||
-            !py::hasattr(o2, "__eq__") || o2.attr("__eq__").is_none()) {
+        if (py::isinstance<py::array>(o1) && py::isinstance<py::array>(o2)) {
+            return py::module::import("numpy").attr("array_equal")(o1, o2).template cast<bool>();
+        } else if (!py::hasattr(o1, "__eq__") || o1.attr("__eq__").is_none() ||
+                   !py::hasattr(o2, "__eq__") || o2.attr("__eq__").is_none()) {
             // Try to equalize using __repr__
             py::object r1 = o1.attr("__repr__")();
             py::object r2 = o2.attr("__repr__")();
