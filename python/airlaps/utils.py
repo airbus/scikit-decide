@@ -83,7 +83,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             verbose: bool = True,
             action_formatter: Optional[Callable[[D.T_event], str]] = lambda a: str(a),
             outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = lambda o: str(o),
-            save_result_directory: str =None) -> None:
+            save_result_directory: str =None) -> str:
     """This method will run one or more episodes in a domain according to the policy of a solver.
 
     # Parameters

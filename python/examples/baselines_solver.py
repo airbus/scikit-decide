@@ -6,6 +6,14 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""Example 2: Solve a Gym environment with Reinforcement Learning"""
+
+# %%
+'''
+Import modules.
+'''
+
+# %%
 import gym
 from stable_baselines import PPO2
 from stable_baselines.common.policies import MlpPolicy
@@ -14,7 +22,13 @@ from airlaps.hub.domain.gym import GymDomain
 from airlaps.hub.solver.stable_baselines import StableBaseline
 from airlaps.utils import rollout
 
+# %%
+'''
+Select a [Gym environment](https://gym.openai.com/envs) and solve it with a [Stable Baselines](https://stable-baselines.readthedocs.io/en/master/index.html) solver wrapped in AIRLAPS.
+The solution is then saved (for later reuse) and assessed in rollout.
+'''
 
+# %%
 ENV_NAME = 'CartPole-v1'
 
 domain_factory = lambda: GymDomain(gym.make(ENV_NAME))
@@ -25,6 +39,11 @@ if StableBaseline.check_domain(domain):
     solver.save('TEMP_Baselines')
     rollout(domain, solver, num_episodes=1, max_steps=1000, max_framerate=30, outcome_formatter=None)
 
-    # Restore and re-run
-    solver = GymDomain.solve_with(solver_factory, domain_factory, load_path='TEMP_Baselines')
-    rollout(domain, solver, num_episodes=1, max_steps=1000, max_framerate=30, outcome_formatter=None)
+# %%
+'''
+Restore saved solution and re-run rollout.
+'''
+
+# %%
+solver = GymDomain.solve_with(solver_factory, domain_factory, load_path='TEMP_Baselines')
+rollout(domain, solver, num_episodes=1, max_steps=1000, max_framerate=30, outcome_formatter=None)

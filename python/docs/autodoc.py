@@ -6,6 +6,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import ast
 import importlib
 import inspect
 import json
@@ -19,6 +20,53 @@ from glob import glob
 import airlaps
 
 refs = set()
+header_comment = '# %%\n'
+
+
+# https://github.com/kiwi0fruit/ipynb-py-convert/blob/master/ipynb_py_convert/__main__.py
+def py2nb(py_str):
+    cells = []
+    chunks = py_str.split(f'\n\n{header_comment}')[1:]
+
+    for chunk in chunks:
+        cell_type = 'code'
+        chunk = chunk.strip()
+        if chunk.startswith("'''"):
+            chunk = chunk.strip("'\n")
+            cell_type = 'markdown'
+
+        cell = {
+            'cell_type': cell_type,
+            'metadata': {},
+            'source': chunk.splitlines(True),
+        }
+
+        if cell_type == 'code':
+            cell.update({'outputs': [], 'execution_count': None})
+
+        cells.append(cell)
+
+    notebook = {
+        'cells': cells,
+        'metadata': {
+            'anaconda-cloud': {},
+            'kernelspec': {
+                'display_name': 'Python 3',
+                'language': 'python',
+                'name': 'python3'},
+            'language_info': {
+                'codemirror_mode': {'name': 'ipython', 'version': 3},
+                'file_extension': '.py',
+                'mimetype': 'text/x-python',
+                'name': 'python',
+                'nbconvert_exporter': 'python',
+                'pygments_lexer': 'ipython3',
+                'version': '3.6.1'}},
+        'nbformat': 4,
+        'nbformat_minor': 1
+    }
+
+    return notebook
 
 
 # https://stackoverflow.com/questions/48879353/how-do-you-recursively-get-all-submodules-in-a-python-package
@@ -39,6 +87,16 @@ def find_abs_modules(package):
     for spec in spec_list:
         del sys.modules[spec.name]
     return path_list
+
+
+def py_parse(filepath):  # avoid using ast package just for extracting file doc string?
+    with open(filepath) as fd:
+        file_contents = fd.read()
+    module = ast.parse(file_contents)
+    docstring = ast.get_docstring(module)
+    docstring = '' if docstring is None else docstring.strip()
+    name = os.path.splitext(os.path.basename(filepath))[0]
+    return docstring, name, file_contents
 
 
 @lru_cache(maxsize=1000)
@@ -223,7 +281,7 @@ if __name__ == '__main__':
     # ========== GENERATE MARKDOWN FILES ==========
 
     # Remove all previously auto-generated files
-    for oldpath in glob('guide/_*.md') + glob('reference/_*.md'):
+    for oldpath in glob('reference/_*.md') + glob('guide/_*.md') + glob('.vuepress/public/notebooks/*.ipynb'):
         os.remove(oldpath)
 
     # Generate Reference Markdown files (reference/_airlaps.*.md)
@@ -398,3 +456,35 @@ if __name__ == '__main__':
 
     with open('.vuepress/_state.json', 'w') as f:
         json.dump(state, f)
+
+    # Convert selected examples to notebooks & write Examples page (guide/_examples.md)
+    examples = '# Examples\n\n'
+
+    selected_examples = []
+    for example in glob('../examples/*.py'):
+        docstr, name, code = py_parse(example)
+        if docstr.startswith('Example '):
+            selected_examples.append((docstr, name, code))
+
+    sorted_examples = sorted(selected_examples)
+    for docstr, name, code in sorted_examples:
+        examples += f'## {docstr[docstr.index(":")+1:]}\n\n'
+        examples += f'<el-link type="primary" icon="el-icon-bottom" :underline="false" style="margin: 10px" href="/notebooks/{name}.ipynb">Download Notebook</el-link>\n'
+        # TODO: replace with correct link address in line below once deployed on Github pages
+        examples += f'<el-link type="warning" icon="el-icon-cloudy" :underline="false" style="margin: 10px" href="https://colab.research.google.com/github/airbus-ai-research/airlaps/gh-pages/notebooks/{name}.ipynb">Run in Google Colab</el-link>\n\n'
+        # examples += f'<airlaps-notebook file="/notebooks/{name}.ipynb"></airlaps-notebook>\n\n'
+        notebook = py2nb(code)
+
+        for cell in notebook.get('cells', []):
+            cell_type = cell['cell_type']
+            cell_source = ''.join(cell['source'])
+            if cell_type == 'markdown':
+                examples += f'{cell_source}\n\n'
+            elif cell_type == 'code':
+                examples += f'``` py\n{cell_source}\n```\n\n'
+
+        with open(f'.vuepress/public/notebooks/{name}.ipynb', 'w') as f:
+            json.dump(notebook, f, indent=2)
+
+    with open('guide/_examples.md', 'w') as f:
+        f.write(examples)

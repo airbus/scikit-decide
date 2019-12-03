@@ -22,6 +22,37 @@ AIRLAPS supports formalizing the problem one characteristic at a time without th
 AIRLAPS provides a meaningful API to interact with domains at the expected level of information, as well as a catalog of domains/solvers to test/benchmark new algorithms.
 :::
 
+## Installation
+
+### 1. Make sure to have a Python 3.7+ environment
+
+The use of a virtual environment for AIRLAPS is recommended, e.g. by using [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install):
+
+    conda create --name airlaps python=3.7
+    conda activate airlaps
+
+### 2. Install the AIRLAPS library
+
+#### a. Full installation (recommended)
+
+Make sure you are in the "AIRLAPS for Python" root directory and install with Pip:
+
+    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_AIRLAPS/python
+    pip install .[all]
+
+This will install the core library and additionally all dependencies required by domains/solvers in the hub (AIRLAPS catalog).
+
+Alternatively, if you wish to install only the ones required by domains (resp. solvers) from the hub, replace `[all]` in the last command by `[domains]` (resp. `[solvers]`).
+
+#### b. Minimal installation (not recommended)
+
+Make sure you are in the "AIRLAPS for Python" root directory and install with Pip:
+
+    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_AIRLAPS/python
+    pip install .
+
+This will only install the core library, which is enough if you intend to create your own domain and solver.
+
 ## Getting started
 
 Domain characteristics are one of the key concepts in AIRLAPS: they are combined on the one hand to define domains, on the other hand to specify the envelope of domains a solver can tackle.
@@ -40,9 +71,9 @@ Defining a domain to solve is a matter of:
 When starting a new domain or solver, it is highly recommended to check the [code generators](#code-generators) for assistance and auto-generation of the skeleton to fill.
 :::
 
-Check [Quick start](#quick-start) to see how to find compatible solvers and compute a solution, once a domain is defined. When ready to dive in, check [Installation](#installation) steps.
+Check [How to](#how-to) to see how to find compatible solvers and compute a solution, once a domain is defined.
 
-## Quick start
+## How to
 
 ::: warning
 Exact prints and outputs may vary depending on which domains/solvers are registered on your system.
@@ -99,42 +130,13 @@ In the example of the Maze solved with Lazy A*, the goal (in green) should be re
 
 ![Maze](/maze.png)
 
-## Installation
-
-### 1. Make sure to have a Python 3.7+ environment
-
-The use of a virtual environment for AIRLAPS is recommended, e.g. by using [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install):
-
-    conda create --name airlaps python=3.7
-    conda activate airlaps
-
-### 2. Install the AIRLAPS library
-
-#### a. Full installation (recommended)
-
-Make sure you are in the "AIRLAPS for Python" root directory and install with Pip:
-
-    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_AIRLAPS/python
-    pip install .[all]
-
-This will install the core library and additionally all dependencies required by domains/solvers in the hub (AIRLAPS catalog).
-
-Alternatively, if you wish to install only the ones required by domains (resp. solvers) from the hub, replace `[all]` in the last command by `[domains]` (resp. `[solvers]`).
-
-#### b. Minimal installation (not recommended)
-
-Make sure you are in the "AIRLAPS for Python" root directory and install with Pip:
-
-    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_AIRLAPS/python
-    pip install .
-
-This will only install the core library, which is enough if you intend to create your own domain and solver.
-
 ## Examples
 
-**Warning**: the examples whose filename starts with an underscore are currently being migrated to the new API and might not be working in the meantime (same goes for domains/solvers inside `airlaps/hub`).
+**Go to <router-link to="_examples">Examples</router-link> for a curated list of Python notebooks (recommended to start).**
 
-The examples can be found in the `/examples` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on AIRLAPS Hub, an extensible catalog of domains/solvers.
+More examples can be found in the `/examples` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on AIRLAPS Hub, an extensible catalog of domains/solvers.
+
+**Warning**: the examples whose filename starts with an underscore are currently being migrated to the new API and might not be working in the meantime (same goes for domains/solvers inside `airlaps/hub`).
 
 **Warning**: some content currently in the hub (especially the MasterMind domain and the POMCP/CGP solvers) will require permission from their original authors before entering the public hub when open sourced.
 
@@ -178,4 +180,11 @@ These combinations are particularly efficient if you want to try them out:
 
 ## Code generators
 
-Go to <router-link to="codegen">Code generators</router-link> for assistance when creating a new domain or solver.
+**Go to <router-link to="codegen">Code generators</router-link> for assistance when creating a new domain or solver.**
+
+## Roadmap
+
+Following features will be added to AIRLAPS soon:
+
+- Scheduling API
+- PDDL parser
