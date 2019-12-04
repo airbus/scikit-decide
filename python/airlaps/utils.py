@@ -27,6 +27,8 @@ from airlaps.builders.solver import Policies
 __all__ = ['get_registered_domains', 'get_registered_solvers', 'load_registered_domain', 'load_registered_solver',
            'match_solvers', 'rollout']
 
+logger = logging.getLogger('airlaps.utils')
+
 
 def _get_registered_entries(entry_type: str) -> List[str]:
     return [e.name for e in iter_entry_points(entry_type)]
@@ -37,15 +39,15 @@ def _load_registered_entry(entry_type: str, entry_name: str) -> Optional[Any]:
         for entry_point in iter_entry_points(entry_type):
             if entry_point.name == entry_name:
                 return entry_point.load()
-        print(rf'/!\ {entry_name} could not be loaded because it is not registered in group "{entry_type}".')
+        logger.error(rf'/!\ {entry_name} could not be loaded because it is not registered in group "{entry_type}".')
     except DistributionNotFound as e:
-        print(rf'/!\ {entry_name} could not be loaded because of missing dependency ({e}).')
+        logger.error(rf'/!\ {entry_name} could not be loaded because of missing dependency ({e}).')
         extra_match = re.search(r'\bextra\s*==\s*"(?P<extra>[^"]+)"', str(e))
         if extra_match:
             extra = extra_match.group('extra')
-            print(f'    ==> Try following command in your Python environment: pip install airlaps[{extra}]')
+            logger.error(f'    ==> Try following command in your Python environment: pip install airlaps[{extra}]')
     except Exception as e:
-        print(rf'/!\ {entry_name} could not be loaded ({e}).')
+        logger.error(rf'/!\ {entry_name} could not be loaded ({e}).')
 
 
 def get_registered_domains() -> List[str]:
@@ -66,7 +68,7 @@ def load_registered_solver(name: str) -> Type[Solver]:
 
 # TODO: implement ranking heuristic
 def match_solvers(domain: Domain, candidates: Optional[Iterable[Type[Solver]]] = None, ranked: bool = False) -> Union[
-        List[Type[Solver]], List[Tuple[Type[Solver], int]]]:
+    List[Type[Solver]], List[Tuple[Type[Solver], int]]]:
     if candidates is None:
         candidates = [load_registered_solver(s) for s in get_registered_solvers()]
         candidates = [c for c in candidates if c is not None]  # filter out None entries (failed loadings)
@@ -83,7 +85,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             verbose: bool = True,
             action_formatter: Optional[Callable[[D.T_event], str]] = lambda a: str(a),
             outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = lambda o: str(o),
-            save_result_directory: str =None) -> str:
+            save_result_directory: str = None) -> str:
     """This method will run one or more episodes in a domain according to the policy of a solver.
 
     # Parameters
@@ -108,7 +110,6 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             T_event = Domain.T_event
 
             def __init__(self):
-
                 class CastDomain:  # trick to autocast domain's get_applicable_actions() without mutating domain
                     T_agent = domain.T_agent
                     T_event = domain.T_event
@@ -148,8 +149,8 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             last_state = from_memory[-1] if has_memory else from_memory
             observation = domain.get_observation_distribution(last_state, from_action).sample()
         if verbose:
-            logging.info(f'Episode {i_episode + 1} started with following observation:')
-            logging.info(observation)
+            logger.info(f'Episode {i_episode + 1} started with following observation:')
+            logger.info(observation)
         # Run episode
         step = 1
 
@@ -169,7 +170,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                 previous_observation = copy.deepcopy(observation)
             action = solver.sample_action(observation)
             if action_formatter is not None:
-                logging.debug('Action:', action_formatter(action))
+                logger.debug('Action:', action_formatter(action))
             outcome = domain.step(action)
             observation = outcome.observation
             if save_result_directory is not None:
@@ -177,27 +178,27 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                     observations[step] = observation
                     actions[step] = action
                     transitions[step] = {
-                        "s": hash(previous_observation), 
+                        "s": hash(previous_observation),
                         "a": hash(action),
-                        "cost": outcome.value.cost, 
+                        "cost": outcome.value.cost,
                         "s'": hash(observation)
                     }
             if outcome_formatter is not None:
-                logging.info('Result:', outcome_formatter(outcome))
+                logger.info('Result:', outcome_formatter(outcome))
             if outcome.termination:
                 if verbose:
-                    logging.info(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
+                    logger.info(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
                 break
             if max_framerate is not None:
-                wait = 1/max_framerate - (time.perf_counter() - old_time)
+                wait = 1 / max_framerate - (time.perf_counter() - old_time)
                 if wait > 0:
                     time.sleep(wait)
             step += 1
         if render and has_render:
             domain.render()
         if verbose and has_goal:
-            logging.info(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
-                  f'in episode {i_episode + 1}.')
+            logger.info(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
+                        f'in episode {i_episode + 1}.')
         if save_result_directory is not None:
             if not os.path.exists(save_result_directory):
                 os.mkdir(save_result_directory)
@@ -212,16 +213,16 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                 with open(os.path.join(directory, 'actions.json'), 'w') as f:
                     json.dump(actions, f, indent=2)
             except TypeError:
-                logging.error("Action is not serializable")
+                logger.error("Action is not serializable")
             try:
                 with open(os.path.join(directory, 'transitions.json'), 'w') as f:
                     json.dump(transitions, f, indent=2)
             except TypeError:
-                logging.error("Transition is not serializable")
+                logger.error("Transition is not serializable")
             try:
                 with open(os.path.join(directory, 'observations.json'), 'w') as f:
                     json.dump(observations, f, indent=2)
             except TypeError:
-                logging.error("Observation is not serializable")
+                logger.error("Observation is not serializable")
 
             return directory
