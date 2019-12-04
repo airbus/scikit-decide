@@ -348,7 +348,7 @@ private :
                         if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print() +
                                                        " (among " + std::to_string(_graph.size()) + ")");
 
-                        double transition_cost = _domain.get_transition_value(best_tip_node->state, a, neighbor.state);
+                        double transition_cost = _domain.get_transition_cost(best_tip_node->state, a, neighbor.state);
                         double tentative_gscore = best_tip_node->gscore + transition_cost;
                         std::size_t tentative_depth = best_tip_node->depth + 1;
 

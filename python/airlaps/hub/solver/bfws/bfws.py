@@ -26,49 +26,49 @@ if airlaps_cpp_extension_lib_path not in sys.path:
 
 try:
 
-    from __airlaps_hub_cpp import _BFWSParSolver_ as bfws_par_solver
-    from __airlaps_hub_cpp import _BFWSSeqSolver_ as bfws_seq_solver
-
-    bfws_pool = None  # must be separated from the domain since it cannot be pickled
-    bfws_ns_results = None  # must be separated from the domain since it cannot be pickled
-
-
-    def BFWSDomain_parallel_get_applicable_actions(self, state):  # self is a domain
-        global bfws_ns_results
-        actions = self.get_applicable_actions(state)
-        bfws_ns_results = {a: None for a in actions.get_elements()}
-        return actions
-
-
-    def BFWSDomain_sequential_get_applicable_actions(self, state):  # self is a domain
-        global bfws_ns_results
-        actions = self.get_applicable_actions(state)
-        bfws_ns_results = {a: None for a in actions.get_elements()}
-        return actions
-
+    from __airlaps_hub_cpp import _BFWSSolver_ as bfws_solver
 
     def BFWSDomain_pickable_get_next_state(domain, state, action):
         return domain.get_next_state(state, action)
+    
+    class BFWSProxyDomain:
+        def __init__(self, domain):
+            self._domain = domain
+            self.bfws_nsd_results = {}
+        
+        def get_initial_state(self):
+            return self._domain.get_initial_state()
 
+        def get_applicable_actions(self, state):
+            actions = self._domain.get_applicable_actions(state)
+            self.bfws_nsd_results = {a: None for a in actions.get_elements()}
+            return actions
+        
+        def get_transition_value(self, memory, action, next_state):
+            return self._domain.get_transition_value(memory, action, next_state)
+        
+        def is_goal(self, state):
+            return self._domain.is_goal(state)
+    
+    class BFWSParallelDomain(BFWSProxyDomain):
+        def __init__(self, domain):
+            super().__init__(domain)
+            self.bfws_pool = multiprocessing.Pool()
 
-    def BFWSDomain_parallel_compute_next_state(self, state, action):  # self is a domain
-        global bfws_pool, bfws_ns_results
-        bfws_ns_results[action] = bfws_pool.apply_async(BFWSDomain_pickable_get_next_state, (self, state, action))
+        def compute_next_state(self, state, action):  # self is a domain
+            self.bfws_nsd_results[action] = self.bfws_pool.apply_async(
+                                                    BFWSDomain_pickable_get_next_state,
+                                                    (self._domain, state, action))
+        
+        def get_next_state(self, state, action):  # self is a domain
+            return self.bfws_nsd_results[action].get()
+    
+    class BFWSSequentialDomain(BFWSProxyDomain):
+        def compute_next_state(self, state, action):  # self is a domain
+            self.bfws_nsd_results[action] = self._domain.get_next_state(state, action)
 
-
-    def BFWSDomain_sequential_compute_next_state(self, state, action):  # self is a domain
-        global bfws_ns_results
-        bfws_ns_results[action] = self.get_next_state(state, action)
-
-
-    def BFWSDomain_parallel_get_next_state(self, state, action):  # self is a domain
-        global bfws_ns_results
-        return bfws_ns_results[action].get()
-
-
-    def BFWSDomain_sequential_get_next_state(self, state, action):  # self is a domain
-        global bfws_ns_results
-        return bfws_ns_results[action]
+        def get_next_state(self, state, action):  # self is a domain
+            return self.bfws_nsd_results[action]
 
 
     class D(Domain, SingleAgent, Sequential, DeterministicTransitions, Actions, DeterministicInitialized, Markovian,
@@ -94,33 +94,16 @@ try:
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            self._domain = domain_factory()
             if self._parallel:
-                global bfws_pool
-                bfws_pool = multiprocessing.Pool()
-                setattr(self._domain.__class__, 'wrapped_get_applicable_actions',
-                        BFWSDomain_parallel_get_applicable_actions)
-                setattr(self._domain.__class__, 'wrapped_compute_next_state',
-                        BFWSDomain_parallel_compute_next_state)
-                setattr(self._domain.__class__, 'wrapped_get_next_state',
-                        BFWSDomain_parallel_get_next_state)
-                self._solver = bfws_par_solver(domain=self._domain,
-                                               state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
-                                               heuristic=lambda o: self._heuristic(o, self._domain),
-                                               termination_checker=lambda o: self._termination_checker(o, self._domain),
-                                               debug_logs=self._debug_logs)
+                self._domain = BFWSParallelDomain(domain_factory())
             else:
-                setattr(self._domain.__class__, 'wrapped_get_applicable_actions',
-                        BFWSDomain_sequential_get_applicable_actions)
-                setattr(self._domain.__class__, 'wrapped_compute_next_state',
-                        BFWSDomain_sequential_compute_next_state)
-                setattr(self._domain.__class__, 'wrapped_get_next_state',
-                        BFWSDomain_sequential_get_next_state)
-                self._solver = bfws_seq_solver(domain=self._domain,
-                                               state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
-                                               heuristic=lambda o: self._heuristic(o, self._domain),
-                                               termination_checker=lambda o: self._termination_checker(o, self._domain),
-                                               debug_logs=self._debug_logs)
+                self._domain = BFWSSequentialDomain(domain_factory())
+            self._solver = bfws_solver(domain=self._domain,
+                                       state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
+                                       heuristic=lambda o: self._heuristic(o, self._domain),
+                                       termination_checker=lambda o: self._termination_checker(o, self._domain),
+                                       parallel=self._parallel,
+                                       debug_logs=self._debug_logs)
             self._solver.clear()
 
         def _solve_domain(self, domain_factory: Callable[[], D]) -> None:

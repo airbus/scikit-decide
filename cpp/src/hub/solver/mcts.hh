@@ -120,7 +120,7 @@ public :
                     auto i = solver.graph().emplace(oe.state());
                     typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                     auto ii = action.outcomes.insert(std::make_pair(&next_node,
-                                                                    solver.domain().get_transition_value(n.state, action.action, next_node.state)));
+                                                                    solver.domain().get_transition_reward(n.state, action.action, next_node.state)));
                     action.dist_to_outcome.insert(std::make_pair(weights.size(), ii));
                     next_node.parents.push_back(&action);
                     if (solver.debug_logs()) spdlog::debug("Current next state expansion: " + next_node.state.print());

@@ -104,7 +104,7 @@ public :
                                 i = _graph.emplace(oe.state());
                             });
                             StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                            an.outcomes.push_back(std::make_tuple(oe.probability(), _domain.get_transition_value(best_tip_node->state, a, next_node.state), &next_node));
+                            an.outcomes.push_back(std::make_tuple(oe.probability(), _domain.get_transition_cost(best_tip_node->state, a, next_node.state), &next_node));
                             _execution_policy.protect([&next_node, &an]{
                                 next_node.parents.push_back(&an);
                             });

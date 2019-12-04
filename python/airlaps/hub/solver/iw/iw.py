@@ -29,8 +29,6 @@ try:
 
     from __airlaps_hub_cpp import _IWSolver_ as iw_solver
 
-    iw_pool = None  # must be separated from the domain since it cannot be pickled
-
     class IWActionProxy:
         def __init__(self, a):
             self.action = a
@@ -39,33 +37,48 @@ try:
         def __str__(self):
             return self.action.__str__()
 
-    def IWDomain_parallel_get_applicable_actions(self, state):  # self is a domain
-        return ListSpace([IWActionProxy(a) for a in self.get_applicable_actions(state).get_elements()])
-
-
-    def IWDomain_sequential_get_applicable_actions(self, state):  # self is a domain
-        return ListSpace([IWActionProxy(a) for a in self.get_applicable_actions(state).get_elements()])
-
-
     def IWDomain_pickable_get_next_state(domain, state, action):
         return domain.get_next_state(state, action)
+    
 
+    class IWProxyDomain:
+        def __init__(self, domain):
+            self._domain = domain
+        
+        def get_initial_state(self):
+            return self._domain.get_initial_state()
 
-    def IWDomain_parallel_compute_next_state(self, state, action):  # self is a domain
-        global iw_pool
-        action.ns_result = iw_pool.apply_async(IWDomain_pickable_get_next_state, (self, state, action.action))
+        def get_applicable_actions(self, state):
+            return ListSpace([IWActionProxy(a) for a in self._domain.get_applicable_actions(state).get_elements()])
+        
+        def get_transition_value(self, memory, action, next_state):
+            return self._domain.get_transition_value(memory, action, next_state)
+        
+        def is_goal(self, state):
+            return self._domain.is_goal(state)
+        
+        def is_terminal(self, state):
+            return self._domain.is_terminal(state)
+    
+    class IWParallelDomain(IWProxyDomain):
+        def __init__(self, domain):
+            super().__init__(domain)
+            self.iw_pool = multiprocessing.Pool()
 
+        def compute_next_state(self, state, action):  # self is a domain
+            action.ns_result = self.iw_pool.apply_async(
+                                    IWDomain_pickable_get_next_state,
+                                    (self._domain, state, action.action))
+        
+        def get_next_state(self, state, action):  # self is a domain
+            return action.ns_result.get()
+    
+    class IWSequentialDomain(IWProxyDomain):
+        def compute_next_state(self, state, action):  # self is a domain
+            action.ns_result = self._domain.get_next_state(state, action.action)
 
-    def IWDomain_sequential_compute_next_state(self, state, action):  # self is a domain
-        action.ns_result = self.get_next_state(state, action.action)
-
-
-    def IWDomain_parallel_get_next_state(self, state, action):  # self is a domain
-        return action.ns_result.get()
-
-
-    def IWDomain_sequential_get_next_state(self, state, action):  # self is a domain
-        return action.ns_result
+        def get_next_state(self, state, action):  # self is a domain
+            return action.ns_result
 
 
     class D(Domain, SingleAgent, Sequential, DeterministicTransitions, Actions, DeterministicInitialized, Markovian,
@@ -91,25 +104,12 @@ try:
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            self._domain = domain_factory()
             if self._parallel:
-                global iw_pool
-                iw_pool = multiprocessing.Pool()
-                setattr(self._domain.__class__, 'wrapped_get_applicable_actions',
-                        IWDomain_parallel_get_applicable_actions)
-                setattr(self._domain.__class__, 'wrapped_compute_next_state',
-                        IWDomain_parallel_compute_next_state)
-                setattr(self._domain.__class__, 'wrapped_get_next_state',
-                        IWDomain_parallel_get_next_state)
+                self._domain = IWParallelDomain(domain_factory())
             else:
-                setattr(self._domain.__class__, 'wrapped_get_applicable_actions',
-                        IWDomain_sequential_get_applicable_actions)
-                setattr(self._domain.__class__, 'wrapped_compute_next_state',
-                        IWDomain_sequential_compute_next_state)
-                setattr(self._domain.__class__, 'wrapped_get_next_state',
-                        IWDomain_sequential_get_next_state)
+                self._domain = IWSequentialDomain(domain_factory())
             self._solver = iw_solver(domain=self._domain,
-                                     state_features=lambda o: self._state_features(o, self._domain),
+                                     state_features=lambda o: self._state_features(o, self._domain._domain),
                                      use_state_feature_hash=self._use_state_feature_hash,
                                      node_ordering=self._node_ordering,
                                      parallel=self._parallel,

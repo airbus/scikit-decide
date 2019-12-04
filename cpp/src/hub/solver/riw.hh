@@ -425,7 +425,7 @@ private :
                         bool new_node = false;
 
                         if (fill_child_node(current_node, pick, new_node)) { // terminal state
-                            if (_domain.is_goal(current_node->state)) { // goal state
+                            if (_domain.is_optional_goal(current_node->state)) { // goal state
                                 current_node->goal = true;
                                 if (_debug_logs) spdlog::debug("Found a goal state: " + current_node->state.print() +
                                                             ", depth=" + std::to_string(current_node->depth) +

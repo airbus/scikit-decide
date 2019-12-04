@@ -33,6 +33,10 @@ class GymWRLDomain(D):
                        continuous_feature_fidelity: int = 1):
         GymDomain.__init__(self, gym_env=gym_env)
         GymWidthDomain.__init__(self, continuous_feature_fidelity=continuous_feature_fidelity)
+    
+    def _state_reset(self) -> D.T_state:
+        GymWidthDomain._reset_features(self)
+        return GymDomain._state_reset(self)
 
 
 proxy_domain_factory = lambda: WidthEnvironmentDomain(domain=GymWRLDomain(gym.make(ENV_NAME)),
@@ -42,7 +46,7 @@ proxy_domain_factory = lambda: WidthEnvironmentDomain(domain=GymWRLDomain(gym.ma
                                                       width_increase_resilience=10,
                                                       max_depth=HORIZON,
                                                       use_state_feature_hash=False,
-                                                      cache_transitions=True,
+                                                      cache_transitions=False,
                                                       debug_logs=False)
 proxy_domain = proxy_domain_factory()
 

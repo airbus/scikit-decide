@@ -124,7 +124,7 @@ public :
                         return;
                     }
 
-                    double transition_cost = _domain.get_transition_value(best_tip_node->state, a, neighbor.state);
+                    double transition_cost = _domain.get_transition_cost(best_tip_node->state, a, neighbor.state);
                     double tentative_gscore = best_tip_node->gscore + transition_cost;
 
                     if ((i.second) || (tentative_gscore < neighbor.gscore)) {

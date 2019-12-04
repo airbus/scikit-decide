@@ -6,261 +6,22 @@
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
 
-#include "utils/python_hash_eq.hh"
 #include "mcts.hh"
 #include "core.hh"
 
+#include "utils/python_gil_control.hh"
+#include "utils/python_hash_eq.hh"
+#include "utils/python_domain_adapter.hh"
+
 namespace py = pybind11;
-
-template <typename Texecution> struct GilControl;
-
-template <>
-struct GilControl<airlaps::SequentialExecution> {
-    struct Acquire { Acquire() {} };
-    struct Release { Release() {} };
-};
-
-template <>
-struct GilControl<airlaps::ParallelExecution> {
-    typedef py::gil_scoped_acquire Acquire;
-    typedef py::gil_scoped_release Release;
-};
 
 
 template <typename Texecution>
-class PyMCTSDomain {
+class PyMCTSDomain : public airlaps::PythonDomainAdapter<Texecution> {
 public :
-    struct State {
-        py::object _state;
-
-        State() {}
-        State(const py::object& s) : _state(s) {}
-
-        ~State() {
-            typename GilControl<Texecution>::Acquire acquire;
-            _state = py::object();
-        }
-
-        std::string print() const {
-            typename GilControl<Texecution>::Acquire acquire;
-            return py::str(_state);
-        }
-
-        struct Hash {
-            std::size_t operator()(const State& s) const {
-                typename GilControl<Texecution>::Acquire acquire;
-                try {
-                    return airlaps::python_hash(s._state);
-                } catch(const py::error_already_set& e) {
-                    throw std::runtime_error(e.what());
-                }
-            }
-        };
-
-        struct Equal {
-            bool operator()(const State& s1, const State& s2) const {
-                typename GilControl<Texecution>::Acquire acquire;
-                try {
-                    return airlaps::python_equal(s1._state, s2._state);
-                } catch(const py::error_already_set& e) {
-                    throw std::runtime_error(e.what());
-                }
-            }
-        };
-    };
-
-    struct Event {
-        py::object _event;
-
-        Event() {}
-        Event(const py::object& e) : _event(e) {}
-        Event(const py::handle& e) : _event(py::reinterpret_borrow<py::object>(e)) {}
-
-        ~Event() {
-            typename GilControl<Texecution>::Acquire acquire;
-            _event = py::object();
-        }
-        
-        const py::object& get() const { return _event; }
-
-        std::string print() const {
-            typename GilControl<Texecution>::Acquire acquire;
-            return py::str(_event);
-        }
-    };
-
-    struct ApplicableActionSpace { // don't inherit from airlaps::EnumerableSpace since otherwise we would need to copy the applicable action python object into a c++ iterable object
-        py::object _applicable_actions;
-
-        ApplicableActionSpace(const py::object& applicable_actions)
-        : _applicable_actions(applicable_actions) {
-            typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(_applicable_actions, "get_elements")) {
-                throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python applicable action object for implementing get_elements()");
-            }
-            if (!py::hasattr(_applicable_actions, "sample")) {
-                throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python applicable action object for implementing sample()");
-            }
-        }
-
-        ~ApplicableActionSpace() {
-            typename GilControl<Texecution>::Acquire acquire;
-            _applicable_actions = py::object();
-        }
-
-        struct ApplicableActionSpaceElements {
-            py::object _elements;
-            
-            ApplicableActionSpaceElements(const py::object& elements)
-            : _elements(elements) {}
-
-            ~ApplicableActionSpaceElements() {
-                typename GilControl<Texecution>::Acquire acquire;
-                _elements = py::object();
-            }
-
-            py::iterator begin() const {
-                typename GilControl<Texecution>::Acquire acquire;
-                return _elements.begin();
-            }
-
-            py::iterator end() const {
-                typename GilControl<Texecution>::Acquire acquire;
-                return _elements.end();
-            }
-        };
-
-        ApplicableActionSpaceElements get_elements() const {
-            typename GilControl<Texecution>::Acquire acquire;
-            return ApplicableActionSpaceElements(_applicable_actions.attr("get_elements")());
-        }
-
-        std::unique_ptr<Event> sample() const {
-            typename GilControl<Texecution>::Acquire acquire;
-            return std::make_unique<Event>(_applicable_actions.attr("sample")());
-        }
-    };
-
-    struct NextStateDistribution {
-        py::object _next_state_distribution;
-
-        NextStateDistribution(const py::object& next_state_distribution)
-        : _next_state_distribution(next_state_distribution) {
-            typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(_next_state_distribution, "get_values")) {
-                throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python next state distribution object for implementing get_values()");
-            }
-        }
-
-        ~NextStateDistribution() {
-            typename GilControl<Texecution>::Acquire acquire;
-            _next_state_distribution = py::object();
-        }
-
-        struct NextStateDistributionValues {
-            py::object _values;
-
-            NextStateDistributionValues(const py::object& values)
-            : _values(values) {}
-
-            ~NextStateDistributionValues() {
-                typename GilControl<Texecution>::Acquire acquire;
-                _values = py::object();
-            }
-
-            py::iterator begin() const {
-                typename GilControl<Texecution>::Acquire acquire;
-                return _values.begin();
-            }
-
-            py::iterator end() const {
-                typename GilControl<Texecution>::Acquire acquire;
-                return _values.end();
-            }
-        };
-
-        NextStateDistributionValues get_values() const {
-            typename GilControl<Texecution>::Acquire acquire;
-            try {
-                return NextStateDistributionValues(_next_state_distribution.attr("get_values")());
-            } catch(const py::error_already_set& e) {
-                throw std::runtime_error(e.what());
-            }
-        }
-    };
-
-    struct OutcomeExtractor {
-        py::object _state;
-        double _probability;
-
-        OutcomeExtractor(const py::handle& o) {
-            typename GilControl<Texecution>::Acquire acquire;
-            if (!py::isinstance<py::tuple>(o)) {
-                throw std::invalid_argument("AIRLAPS exception: python next state distribution returned value should be an iterable over tuple objects");
-            }
-            py::tuple t = o.cast<py::tuple>();
-            _state = t[0];
-            _probability = t[1].cast<double>();
-        }
-
-        ~OutcomeExtractor() {
-            typename GilControl<Texecution>::Acquire acquire;
-            _state = py::object();
-        }
-
-        const py::object& state() const { return _state; }
-        const double& probability() const { return _probability; }
-    };
-
-    struct TransitionOutcome {
-        py::object _outcome;
-        py::object _state;
-
-        TransitionOutcome(const py::object& outcome)
-        : _outcome(outcome) {
-            typename GilControl<Texecution>::Acquire acquire;
-            if (py::hasattr(_outcome, "state")) {
-                _state = _outcome.attr("state");
-            } else if (py::hasattr(_outcome, "observation")) {
-                _state = _outcome.attr("observation");
-            } else {
-                throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python transition outcome object for providing 'state' or 'observation'");
-            }
-            if (!py::hasattr(_outcome, "value")) {
-                throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python transition outcome object for providing 'value'");
-            }
-            if (!py::hasattr(_outcome, "termination")) {
-                throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python transition outcome object for providing 'termination'");
-            }
-        }
-
-        py::object state() {
-            return _state;
-        }
-
-        double reward() {
-            try {
-                typename GilControl<Texecution>::Acquire acquire;
-                return py::cast<double>(_outcome.attr("value").attr("reward"));
-            } catch(const py::error_already_set& e) {
-                spdlog::error(std::string("AIRLAPS exception when getting outcome's reward: ") + e.what());
-                throw;
-            }
-        }
-
-        bool terminal() {
-            try {
-                typename GilControl<Texecution>::Acquire acquire;
-                return py::cast<bool>(_outcome.attr("termination"));
-            } catch(const py::error_already_set& e) {
-                spdlog::error(std::string("AIRLAPS exception when getting outcome's state: ") + e.what());
-                throw;
-            }
-        }
-    };
 
     PyMCTSDomain(const py::object& domain)
-    : _domain(domain) {
+    : airlaps::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
         }
@@ -278,55 +39,6 @@ public :
         }
     }
 
-    std::unique_ptr<ApplicableActionSpace> get_applicable_actions(const State& s) {
-        typename GilControl<Texecution>::Acquire acquire;
-        try {
-            return std::make_unique<ApplicableActionSpace>(_domain.attr("get_applicable_actions")(s._state));
-        } catch(const py::error_already_set& e) {
-            throw std::runtime_error(e.what());
-        }
-    }
-
-    std::unique_ptr<NextStateDistribution> get_next_state_distribution(const State& s, const Event& a) {
-        typename GilControl<Texecution>::Acquire acquire;
-        try {
-            return std::make_unique<NextStateDistribution>(_domain.attr("get_next_state_distribution")(s._state, a._event));
-        } catch(const py::error_already_set& e) {
-            throw std::runtime_error(e.what());
-        }
-    }
-
-    std::unique_ptr<TransitionOutcome> sample(const State& s, const Event& e) {
-        typename GilControl<Texecution>::Acquire acquire;
-        try {
-            return std::make_unique<TransitionOutcome>(_domain.attr("sample")(s._state, e._event));
-        } catch(const py::error_already_set& ex) {
-            spdlog::error(std::string("AIRLAPS exception when sampling from state ") + s.print() +
-                          " with action " + e.print() + ": " + ex.what());
-            throw;
-        }
-    }
-
-    double get_transition_value(const State& s, const Event& a, const State& sp) {
-        typename GilControl<Texecution>::Acquire acquire;
-        try {
-            return py::cast<double>(_domain.attr("get_transition_value")(s._state, a._event, sp._state).attr("reward"));
-        } catch(const py::error_already_set& e) {
-            throw std::runtime_error(e.what());
-        }
-    }
-
-    bool is_terminal(const State& s) {
-        typename GilControl<Texecution>::Acquire acquire;
-        try {
-            return py::cast<bool>(_domain.attr("is_terminal")(s._state));
-        } catch(const py::error_already_set& e) {
-            throw std::runtime_error(e.what());
-        }
-    }
-
-private :
-    py::object _domain;
 };
 
 
@@ -435,7 +147,7 @@ private :
         }
 
         virtual void solve(const py::object& s) {
-            typename GilControl<Texecution>::Release release;
+            typename airlaps::GilControl<Texecution>::Release release;
             _solver->solve(s);
         }
 

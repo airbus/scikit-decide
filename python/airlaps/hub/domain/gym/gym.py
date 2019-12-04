@@ -94,15 +94,15 @@ class GymDomainStateProxy :
         return self._state.__str__()
 
 
-class GymDomainActionProxy :
-    def __hash__(self):
-        return str(self).__hash__()
+# class GymDomainActionProxy :
+#     def __hash__(self):
+#         return str(self).__hash__()
     
-    def __eq__(self, other):
-        return str(self).__eq__(str(other))
+#     def __eq__(self, other):
+#         return str(self).__eq__(str(other))
     
-    # def __str__(self):
-    #     return self.__str__()
+#     def __str__(self):
+#         return self.__str__()
 
 
 class GymDomainHashable(GymDomain):
