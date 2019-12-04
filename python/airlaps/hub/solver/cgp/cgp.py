@@ -64,6 +64,7 @@ def norm_and_flatten(vals, types):
     :param types: the gym type corresponding to the vals arrays
     :return: a flatten array with normalised vals
     """
+
     if not isinstance(types, Iterable) and \
             not isinstance(types, gym.spaces.Tuple):
         types = [types]
@@ -86,7 +87,39 @@ def norm_and_flatten(vals, types):
             index += 1
         else:
             raise ValueError("Unsupported type ", str(t))
+    
     return flat_vals
+
+def norm(vals, types):
+    """
+    Normalise according to AIGYM type (BOX, DISCRETE, TUPLE)
+    :param vals: a np array structure
+    :param types: the gym type corresponding to the vals arrays
+    :return: array with normalised vals
+    """
+
+    temp_vals = list(vals)
+    temp_types = types
+    if not isinstance(types, gym.spaces.Tuple):
+        temp_types = [types]
+        temp_vals = [temp_vals]
+
+    for i in range(len(temp_types)):
+        t = temp_types[i]
+        if isinstance(t, gym.spaces.Box):
+            lows = list(flatten(t.low))
+            highs = list(flatten(t.high))
+            for j in range(len(lows)):
+                temp_vals[i][j] = change_interval(temp_vals[i][j], lows[j], highs[j], -1, 1)
+        elif isinstance(t, gym.spaces.Discrete):
+            temp_vals[i] = change_interval(temp_vals[i], 0, t.n-1, -1, 1)
+        else:
+            raise ValueError("Unsupported type ", str(t))
+
+    if not isinstance(types, gym.spaces.Tuple):
+        temp_vals = temp_vals[0]
+
+    return temp_vals
 
 def denorm(vals, types):
     """
@@ -110,14 +143,14 @@ def denorm(vals, types):
             for j in range(len(t.low)):
                 out_temp += [change_interval(vals[index], -1, 1, t.low[j], t.high[j])]
                 index += 1
-            out += [out_temp]
+            out += out_temp
         elif isinstance(t, gym.spaces.Discrete):
             out += [change_float_to_int_interval(vals[index], -1, 1, 0, t.n-1)]
             index += 1
         else:
             raise ValueError("Unsupported type ", str(t))
     # burk
-    if len(types) == 1:
+    if len(types) == 1 and not isinstance(types[0], gym.spaces.Box):
         return out[0]
     else:
         return out
@@ -177,6 +210,9 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
         self._evaluator = evaluator
 
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+
+        #return denorm(self._es.father.run(norm(observation, self._domain.get_observation_space().unwrapped())), self._domain.get_action_space().unwrapped())
+        # previous return, with flattened values
         return denorm(self._es.father.run(norm_and_flatten(observation, self._domain.get_observation_space().unwrapped())), self._domain.get_action_space().unwrapped())
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
@@ -242,9 +278,10 @@ class AirlapsEvaluator(Evaluator):
             states = self.domain.reset()
             step = 0
             while not end and step < self.it_max:
-                
-                actions = denorm(cgp.run(norm_and_flatten(states, self.domain.get_observation_space().unwrapped())), self.domain.get_action_space().unwrapped())
 
+                # previously, the action was calculated with flattened values but is not needed
+                actions = denorm(cgp.run(norm_and_flatten(states, self.domain.get_observation_space().unwrapped())), self.domain.get_action_space().unwrapped())
+                #actions = denorm(cgp.run(norm(states, self.domain.get_observation_space().unwrapped())), self.domain.get_action_space().unwrapped())
 
                 states, transition_value, end, _ = self.domain.step(actions).astuple()
                 reward = transition_value[0]  # TODO: correct Gym wrapper
