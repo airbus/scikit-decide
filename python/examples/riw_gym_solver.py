@@ -63,10 +63,11 @@ class GymRIWDomain(D):
 
 
 domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
-                                      continuous_feature_fidelity=3,
+                                      continuous_feature_fidelity=1,
                                       discretization_factor=3,
                                       max_depth=HORIZON)
 domain = domain_factory()
+domain.reset()
 
 if RIW.check_domain(domain):
     solver_factory = lambda: RIW(state_features=lambda s, d: d.bee_features(s),
@@ -74,8 +75,8 @@ if RIW.check_domain(domain):
                                  use_simulation_domain=True,
                                  time_budget=200,
                                  rollout_budget=1000,
-                                 max_depth=100,
-                                 exploration=0.25,
+                                 max_depth=200,
+                                 exploration=0.025,
                                  parallel=False,
                                  debug_logs=False)
     solver = GymRIWDomain.solve_with(solver_factory, domain_factory)

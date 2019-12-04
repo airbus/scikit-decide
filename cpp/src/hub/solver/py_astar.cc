@@ -8,6 +8,7 @@
 
 #include "astar.hh"
 #include "core.hh"
+#include "utils/python_hash_eq.hh"
 
 namespace py = pybind11;
 
@@ -49,11 +50,7 @@ public :
             std::size_t operator()(const State& s) const {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    if (!py::hasattr(s._state, "__hash__")) {
-                        throw std::invalid_argument("AIRLAPS exception: A* algorithm needs python states for implementing __hash__()");
-                    }
-                    // python __hash__ can return negative integers but c++ expects positive integers only
-                    return s._state.attr("__hash__")().template cast<long long>() + std::numeric_limits<long long>::max();
+                    return airlaps::python_hash(s._state);
                 } catch(const py::error_already_set& e) {
                     throw std::runtime_error(e.what());
                 }
@@ -64,10 +61,7 @@ public :
             bool operator()(const State& s1, const State& s2) const {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    if (!py::hasattr(s1._state, "__eq__")) {
-                        throw std::invalid_argument("AIRLAPS exception: A* algorithm needs python states for implementing __eq__()");
-                    }
-                    return s1._state.attr("__eq__")(s2._state).template cast<bool>();
+                    return airlaps::python_equal(s1._state, s2._state);
                 } catch(const py::error_already_set& e) {
                     throw std::runtime_error(e.what());
                 }

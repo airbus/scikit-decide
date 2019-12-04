@@ -550,12 +550,12 @@ public :
               std::size_t max_depth = 1000,
               bool cache_transitions = false,
               bool debug_logs = false)
-        : _solver(solver), _observation_features(observation_features),
+        : _solver(solver), _cache_transitions(cache_transitions),
+          _observation_features(observation_features),
           _initial_pruning_probability(initial_pruning_probability),
           _temperature_increase_rate(temperature_increase_rate),
           _width_increase_resilience(width_increase_resilience),
-          _max_depth(max_depth), _cache_transitions(cache_transitions),
-          _debug_logs(debug_logs) {
+          _max_depth(max_depth), _debug_logs(debug_logs) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {

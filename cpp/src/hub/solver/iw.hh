@@ -404,7 +404,7 @@ private :
             std::size_t nov = n.features->size() + 1;
             const FeatureVector& state_features = *n.features;
 
-            for (std::size_t k = 1 ; k <= std::min(_width, (std::size_t) state_features.size()) ; k++) {
+            for (std::size_t k = 1 ; k <= std::min(_width, state_features.size()) ; k++) {
                 // we must recompute combinations from previous width values just in case
                 // this state would be visited for the first time across width iterations
                 generate_tuples(k, state_features.size(),

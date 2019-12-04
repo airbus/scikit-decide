@@ -9,6 +9,7 @@
 
 #include "bfws.hh"
 #include "core.hh"
+#include "utils/python_hash_eq.hh"
 
 namespace py = pybind11;
 
@@ -50,11 +51,7 @@ public :
             std::size_t operator()(const State& s) const {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    if (!py::hasattr(s._state, "__hash__")) {
-                        throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python states for implementing __hash__()");
-                    }
-                    // python __hash__ can return negative integers but c++ expects positive integers only
-                    return s._state.attr("__hash__")().template cast<long long>() + std::numeric_limits<long long>::max();
+                    return airlaps::python_hash(s._state);
                 } catch(const py::error_already_set& e) {
                     throw std::runtime_error(e.what());
                 }
@@ -65,10 +62,7 @@ public :
             bool operator()(const State& s1, const State& s2) const {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    if (!py::hasattr(s1._state, "__eq__")) {
-                        throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python states for implementing __eq__()");
-                    }
-                    return s1._state.attr("__eq__")(s2._state).template cast<bool>();
+                    return airlaps::python_equal(s1._state, s2._state);
                 } catch(const py::error_already_set& e) {
                     throw std::runtime_error(e.what());
                 }
@@ -94,35 +88,6 @@ public :
             typename GilControl<Texecution>::Acquire acquire;
             return py::str(_event);
         }
-
-        struct Hash {
-            std::size_t operator()(const Event& e) const {
-                typename GilControl<Texecution>::Acquire acquire;
-                try {
-                    if (!py::hasattr(e._event, "__hash__")) {
-                        throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python events for implementing __hash__()");
-                    }
-                    // python __hash__ can return negative integers but c++ expects positive integers only
-                    return e._event.attr("__hash__")().template cast<long long>() + std::numeric_limits<long long>::max();
-                } catch(const py::error_already_set& ex) {
-                    throw std::runtime_error(ex.what());
-                }
-            }
-        };
-
-        struct Equal {
-            bool operator()(const Event& e1, const Event& e2) const {
-                typename GilControl<Texecution>::Acquire acquire;
-                try {
-                    if (!py::hasattr(e1._event, "__eq__")) {
-                        throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python actions for implementing __eq__()");
-                    }
-                    return e1._event.attr("__eq__")(e2._event).template cast<bool>();
-                } catch(const py::error_already_set& ex) {
-                    throw std::runtime_error(ex.what());
-                }
-            }
-        };
     };
 
     struct ApplicableActionSpace { // don't inherit from airlaps::EnumerableSpace since otherwise we would need to copy the applicable action python object into a c++ iterable object

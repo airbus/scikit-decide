@@ -9,6 +9,7 @@
 
 #include "riw.hh"
 #include "core.hh"
+#include "utils/python_hash_eq.hh"
 
 namespace py = pybind11;
 
@@ -50,11 +51,7 @@ public :
             std::size_t operator()(const State& s) const {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    if (!py::hasattr(s._state, "__hash__") || s._state.attr("__hash__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python states for implementing __hash__");
-                    }
-                    // python __hash__ can return negative integers but c++ expects positive integers only
-                    return s._state.attr("__hash__")().template cast<long long>() + std::numeric_limits<long long>::max();
+                    return airlaps::python_hash(s._state);
                 } catch(const py::error_already_set& e) {
                     spdlog::error(std::string("AIRLAPS exception when hashing states: ") + e.what());
                     throw;
@@ -66,10 +63,7 @@ public :
             bool operator()(const State& s1, const State& s2) const {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    if (!py::hasattr(s1._state, "__eq__") || s1._state.attr("__eq__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python states for implementing __eq__");
-                    }
-                    return s1._state.attr("__eq__")(s2._state).template cast<bool>();
+                    return airlaps::python_equal(s1._state, s2._state);
                 } catch(const py::error_already_set& e) {
                     spdlog::error(std::string("AIRLAPS exception when testing states equality: ") + e.what());
                     throw;
@@ -96,37 +90,6 @@ public :
             typename GilControl<Texecution>::Acquire acquire;
             return py::str(_event);
         }
-
-        struct Hash {
-            std::size_t operator()(const Event& e) const {
-                typename GilControl<Texecution>::Acquire acquire;
-                try {
-                    if (!py::hasattr(e._event, "__hash__") || e._event.attr("__hash__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python events for implementing __hash__");
-                    }
-                    // python __hash__ can return negative integers but c++ expects positive integers only
-                    return e._event.attr("__hash__")().template cast<long long>() + std::numeric_limits<long long>::max();
-                } catch(const py::error_already_set& ex) {
-                    spdlog::error(std::string("AIRLAPS exception when hashing actions: ") + ex.what());
-                    throw;
-                }
-            }
-        };
-
-        struct Equal {
-            bool operator()(const Event& e1, const Event& e2) const {
-                typename GilControl<Texecution>::Acquire acquire;
-                try {
-                    if (!py::hasattr(e1._event, "__eq__") || e1._event.attr("__eq__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python actions for implementing __eq__");
-                    }
-                    return e1._event.attr("__eq__")(e2._event).template cast<bool>();
-                } catch(const py::error_already_set& ex) {
-                    spdlog::error(std::string("AIRLAPS exception when testing actions equality: ") + ex.what());
-                    throw;
-                }
-            }
-        };
     };
 
     struct ApplicableActionSpace { // don't inherit from airlaps::EnumerableSpace since otherwise we would need to copy the applicable action python object into a c++ iterable object
@@ -387,11 +350,7 @@ public :
             virtual std::size_t hash() const {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    if (!py::hasattr(_value, "__hash__") || _value.attr("__hash__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs state feature items for implementing __hash__");
-                    }
-                    // python __hash__ can return negative integers but c++ expects positive integers only
-                    return _value.attr("__hash__")().template cast<long long>() + std::numeric_limits<long long>::max();
+                    return airlaps::python_hash(_value);
                 } catch(const py::error_already_set& ex) {
                     spdlog::error(std::string("AIRLAPS exception when hashing state feature items: ") + ex.what());
                     throw;
@@ -401,11 +360,8 @@ public :
             virtual bool equal(const BaseType& other) const {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    if (!py::hasattr(_value, "__eq__") || _value.attr("__eq__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs state feature items for implementing __eq__");
-                    }
                     const ObjectType* o = dynamic_cast<const ObjectType*>(&other);
-                    return ((o != nullptr) && (_value.attr("__eq__")(o->_value).template cast<bool>()));
+                    return  ((o != nullptr) && airlaps::python_equal(_value, o->_value));
                 } catch(const py::error_already_set& ex) {
                     spdlog::error(std::string("AIRLAPS exception when testing state feature items equality: ") + ex.what());
                     throw;

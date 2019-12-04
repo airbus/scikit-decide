@@ -320,9 +320,6 @@ public :
 
             virtual bool equal(const BaseType& other) const {
                 try {
-                    if (!py::hasattr(_value, "__eq__") || _value.attr("__eq__").is_none()) {
-                        throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs observation feature items for implementing __eq__");
-                    }
                     const ObjectType* o = dynamic_cast<const ObjectType*>(&other);
                     return  ((o != nullptr) && airlaps::python_equal(_value, o->_value));
                 } catch(const py::error_already_set& ex) {

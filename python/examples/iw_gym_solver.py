@@ -15,8 +15,21 @@ from airlaps.hub.solver.iw import IW
 # from airlaps.hub.solver.riw import RIW
 from airlaps.utils import rollout
 
-ENV_NAME = 'Acrobot-v1'
-HORIZON = 300
+ENV_NAME = 'MountainCar-v0'
+HORIZON = 500
+
+def simple_rollout(domain, solver, max_steps):
+    state = domain.reset()
+    value = 0
+    steps = 0
+    while True:
+        outcome = domain.step(solver.get_next_action(state))
+        state = outcome.observation
+        value += outcome.value.reward
+        steps += 1
+        if outcome.termination or steps >= max_steps:
+            break
+    return value, steps
 
 
 class D(GymPlanningDomain, GymWidthDomain, GymDiscreteActionDomain):
@@ -36,7 +49,7 @@ class GymIWDomain(D):
                        get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
                        termination_is_goal: bool = True,
                        continuous_feature_fidelity: int = 1,
-                       discretization_factor: int = 10,
+                       discretization_factor: int = 3,
                        branching_factor: int = None,
                        max_depth: int = 50) -> None:
         """Initialize GymIWDomain.
@@ -69,7 +82,7 @@ class GymIWDomain(D):
 
 domain_factory = lambda: GymIWDomain(gym_env=gym.make(ENV_NAME),
                                      termination_is_goal=True,
-                                     continuous_feature_fidelity=2,
+                                     continuous_feature_fidelity=3,
                                      discretization_factor=3,
                                      max_depth=HORIZON)
 domain = domain_factory()
@@ -78,9 +91,15 @@ if IW.check_domain(domain):
     solver_factory = lambda: IW(state_features=lambda s, d: d.bee_features(s),
                                 use_state_feature_hash=False,
                                 node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty > b_novelty,
-                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_depth < b_depth,
+
+                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_depth < b_depth else False if a_depth > b_depth else a_gscore > b_gscore,
+
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_depth > b_depth,
+
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_gscore > b_gscore,
+                                
+                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore > b_gscore else False if a_gscore < b_gscore else a_depth < b_depth,
+
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore > b_gscore else False if a_gscore < b_gscore else a_novelty > b_novelty,
                                 parallel=False, debug_logs=False)
 
@@ -91,5 +110,13 @@ if IW.check_domain(domain):
     #                             parallel=False, debug_logs=False)
 
     solver = GymIWDomain.solve_with(solver_factory, domain_factory)
+    ### Next lines for elliptical features
+    # x0 = np.array([-0.5, 0.07])
+    # xG = np.array([0.5, 0.0])
+    # solver._domain.init_elliptical_features(x0, xG)
+    ###
     rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
             outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    # value, steps = simple_rollout(domain_factory(), solver, HORIZON)
+    # print('value:', value)
+    # print('steps:', steps)

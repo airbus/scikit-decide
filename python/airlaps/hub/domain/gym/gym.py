@@ -95,17 +95,14 @@ class GymDomainStateProxy :
 
 
 class GymDomainActionProxy :
-    def __init__(self, action):
-        self._action = action
-    
     def __hash__(self):
-        return str(self._action).__hash__()
+        return str(self).__hash__()
     
     def __eq__(self, other):
-        return str(self._action).__eq__(str(other))
+        return str(self).__eq__(str(other))
     
-    def __str__(self):
-        return self._action.__str__()
+    # def __str__(self):
+    #     return self.__str__()
 
 
 class GymDomainHashable(GymDomain):
@@ -276,9 +273,7 @@ class GymWidthDomain:
         state = state._state if isinstance(state, GymDomainStateProxy) else state
         if len(self._feature_increments) == 0:
             self._init_bee_features(self._gym_env.observation_space, state)
-        sf = self._bee_features(self._gym_env.observation_space, state, 0)[1]
-        # sf.append(state._context[5])
-        return sf
+        return self._bee_features(self._gym_env.observation_space, state, 0)[1]
     
     def _bee_features(self, space, element, start):
         if isinstance(space, gym.spaces.box.Box):
