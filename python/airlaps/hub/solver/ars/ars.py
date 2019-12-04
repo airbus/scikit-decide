@@ -1,13 +1,16 @@
-import numpy as np
-import gym
-from typing import Callable
+from __future__ import annotations
+
 from collections.abc import Iterable
+from typing import Callable
+
+import gym
+import numpy as np
 
 from airlaps import Domain, Solver
-from airlaps.hub.solver.cgp import cgp
-from airlaps.builders.solver import Policies, Restorable
 from airlaps.builders.domain import SingleAgent, Sequential, Environment, UnrestrictedActions, Initializable, History, \
     PartiallyObservable, Rewards
+from airlaps.builders.solver import Policies, Restorable
+from airlaps.hub.solver.cgp import cgp
 
 
 class D(Domain, SingleAgent, Sequential, Environment, UnrestrictedActions, Initializable, History, PartiallyObservable,
