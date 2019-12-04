@@ -29,45 +29,6 @@ try:
 
     from __airlaps_hub_cpp import _RIWSolver_ as riw_solver
 
-    # riw_pool = None  # must be separated from the domain since it cannot be pickled
-
-    # class RIWActionProxy:
-    #     def __init__(self, a):
-    #         self.action = a
-    #         self.ns_result = None
-        
-    #     def __str__(self):
-    #         return self.action.__str__()
-
-    # def RIWDomain_parallel_get_applicable_actions(self, state):  # self is a domain
-    #     return ListSpace([RIWActionProxy(a) for a in self.get_applicable_actions(state).get_elements()])
-
-
-    # def RIWDomain_sequential_get_applicable_actions(self, state):  # self is a domain
-    #     return ListSpace([RIWActionProxy(a) for a in self.get_applicable_actions(state).get_elements()])
-
-
-    # def RIWDomain_pickable_get_next_state(domain, state, action):
-    #     return domain.get_next_state(state, action)
-
-
-    # def RIWDomain_parallel_compute_next_state(self, state, action):  # self is a domain
-    #     global riw_pool
-    #     action.ns_result = riw_pool.apply_async(RIWDomain_pickable_get_next_state, (self, state, action.action))
-
-
-    # def RIWDomain_sequential_compute_next_state(self, state, action):  # self is a domain
-    #     action.ns_result = self.get_next_state(state, action.action)
-
-
-    # def RIWDomain_parallel_get_next_state(self, state, action):  # self is a domain
-    #     return action.ns_result.get()
-
-
-    # def RIWDomain_sequential_get_next_state(self, state, action):  # self is a domain
-    #     return action.ns_result
-
-
     class D(Domain, SingleAgent, Sequential, Environment, Actions, DeterministicInitialized, Markovian,
             FullyObservable, Rewards):  # TODO: check why DeterministicInitialized & PositiveCosts/Rewards?
         pass
@@ -100,22 +61,6 @@ try:
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
             self._domain = domain_factory()
-            # if self._parallel:
-            #     global riw_pool
-            #     riw_pool = multiprocessing.Pool()
-            #     setattr(self._domain.__class__, 'wrapped_get_applicable_actions',
-            #             RIWDomain_parallel_get_applicable_actions)
-            #     setattr(self._domain.__class__, 'wrapped_compute_next_state',
-            #             RIWDomain_parallel_compute_next_state)
-            #     setattr(self._domain.__class__, 'wrapped_get_next_state',
-            #             RIWDomain_parallel_get_next_state)
-            # else:
-            #     setattr(self._domain.__class__, 'wrapped_get_applicable_actions',
-            #             RIWDomain_sequential_get_applicable_actions)
-            #     setattr(self._domain.__class__, 'wrapped_compute_next_state',
-            #             RIWDomain_sequential_compute_next_state)
-            #     setattr(self._domain.__class__, 'wrapped_get_next_state',
-            #             RIWDomain_sequential_get_next_state)
             self._solver = riw_solver(domain=self._domain,
                                       state_features=lambda o: self._state_features(o, self._domain),
                                       use_state_feature_hash=self._use_state_feature_hash,
