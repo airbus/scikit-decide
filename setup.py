@@ -212,6 +212,7 @@ setup(
         'airlaps.solvers': [
             'AOstar = airlaps.hub.solver.aostar:AOstar',
             'Astar = airlaps.hub.solver.astar:Astar',
+            'AugmentedRandomSearch = airlaps.hub.solver.ars:AugmentedRandomSearch [solvers]',
             'BFWS = airlaps.hub.solver.bfws:BFWS',
             'CGP = airlaps.hub.solver.cgp:CGP [solvers]',
             'IW = airlaps.hub.solver.iw:IW',
