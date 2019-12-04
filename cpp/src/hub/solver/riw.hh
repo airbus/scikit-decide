@@ -211,7 +211,7 @@ public :
 
     bool is_solution_defined_for(const State& s) const {
         auto si = _graph.find(Node(s, _state_features));
-        if ((si == _graph.end()) || (si->best_action == nullptr) {// || (si->solved == false)) {
+        if ((si == _graph.end()) || (si->best_action == nullptr)) {// || (si->solved == false)) {
             return false;
         } else {
             return true;
