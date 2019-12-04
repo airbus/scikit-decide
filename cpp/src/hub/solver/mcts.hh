@@ -29,7 +29,7 @@ class DefaultTreePolicy {
 public :
     DefaultTreePolicy() {
         std::random_device rd;
-        gen = std::make_unique<std::mt19937>(rd());
+        gen = std::mt19937(rd());
     }
 
     template <typename Tsolver, typename Texpander, typename TactionSelector>
@@ -47,7 +47,7 @@ public :
                 if (action == nullptr) {
                     throw std::runtime_error("AIRLAPS exception: no best action found in state " + current_node->state.print());
                 } else {
-                    current_node = action->dist_to_outcome[action->dist(*gen)]->first;
+                    current_node = action->dist_to_outcome[action->dist(gen)]->first;
                 }
             } else {
                 current_node = next_node;
@@ -58,7 +58,7 @@ public :
     }
 
 private :
-    std::unique_ptr<std::mt19937> gen;
+    mutable std::mt19937 gen;
 };
 
 
@@ -72,7 +72,7 @@ class EnumerationExpand {
 public :
     EnumerationExpand() {
         std::random_device rd;
-        gen = std::make_unique<std::mt19937>(rd());
+        gen = std::mt19937(rd());
     }
 
     template <typename Tsolver>
@@ -108,7 +108,7 @@ public :
             return nullptr;
         } else {
             std::discrete_distribution<> odist(weights.begin(), weights.end());
-            auto& uo = untried_outcomes[odist(*gen)];
+            auto& uo = untried_outcomes[odist(gen)];
             if (uo.second == nullptr) { // unexpanded action
                 // Generate the next states of this action
                 auto next_states = solver.domain().get_next_state_distribution(n.state, uo.first->action)->get_values();
@@ -134,7 +134,7 @@ public :
                 }
                 // Pick a random next state
                 action.dist = std::discrete_distribution<>(weights.begin(), weights.end());
-                return untried_outcomes[uo.first->dist(*gen)].second;
+                return untried_outcomes[uo.first->dist(gen)].second;
             } else { // expanded action, just return the selected next state
                 return uo.second;
             }
@@ -142,7 +142,7 @@ public :
     }
 
 private :
-    std::unique_ptr<std::mt19937> gen;
+    mutable std::mt19937 gen;
 };
 
 
@@ -418,11 +418,11 @@ private :
     double _discount;
     std::size_t _nb_rollouts;
     bool _debug_logs;
-    const TreePolicy& _tree_policy;
-    const Expander& _expander;
-    const ActionSelector& _action_selector;
-    const DefaultPolicy& _default_policy;
-    const BackPropagator& _back_propagator;
+    TreePolicy _tree_policy;
+    Expander _expander;
+    ActionSelector _action_selector;
+    DefaultPolicy _default_policy;
+    BackPropagator _back_propagator;
 
     Graph _graph;
 }; // MCTSSolver class

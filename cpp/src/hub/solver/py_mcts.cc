@@ -55,20 +55,28 @@ public :
                  bool debug_logs = false) {
         if (parallel) {
             if (uct_mode) {
-                _implementation = std::make_unique<Implementation<airlaps::ParallelExecution>>(
-                    domain, time_budget, rollout_budget, max_depth, discount, debug_logs
+                _implementation = std::make_unique<Implementation<airlaps::ParallelExecution,
+                                                                  airlaps::DefaultTreePolicy,
+                                                                  airlaps::EnumerationExpand,
+                                                                  airlaps::UCB1BestChild,
+                                                                  airlaps::RandomDefaultPolicy,
+                                                                  airlaps::EnumerationBackup>>(
+                    domain, time_budget, rollout_budget, max_depth, discount, ucb_constant, debug_logs
                 );
-                // _implementation->ucb_constant(ucb_constant);
             } else {
                 spdlog::error("MCTS only supports MCTS at the moment.");
                 throw std::runtime_error("MCTS only supports MCTS at the moment.");
             }
         } else {
             if (uct_mode) {
-                _implementation = std::make_unique<Implementation<airlaps::SequentialExecution>>(
-                    domain, time_budget, rollout_budget, max_depth, discount, debug_logs
+                _implementation = std::make_unique<Implementation<airlaps::SequentialExecution,
+                                                                  airlaps::DefaultTreePolicy,
+                                                                  airlaps::EnumerationExpand,
+                                                                  airlaps::UCB1BestChild,
+                                                                  airlaps::RandomDefaultPolicy,
+                                                                  airlaps::EnumerationBackup>>(
+                    domain, time_budget, rollout_budget, max_depth, discount, ucb_constant, debug_logs
                 );
-                // _implementation->ucb_constant(ucb_constant);
             } else {
                 spdlog::error("MCTS only supports MCTS at the moment.");
                 throw std::runtime_error("MCTS only supports MCTS at the moment.");
@@ -113,12 +121,16 @@ private :
         virtual py::bool_ is_solution_defined_for(const py::object& s) =0;
         virtual py::object get_next_action(const py::object& s) =0;
         virtual py::float_ get_utility(const py::object& s) =0;
-        virtual void ucb_constant(double ucb_constant) =0;
         virtual py::int_ get_nb_of_explored_states() =0;
         virtual py::int_ get_nb_rollouts() =0;
     };
 
-    template <typename Texecution>
+    template <typename Texecution,
+              typename TtreePolicy,
+              typename Texpander,
+              typename TactionSelector,
+              typename TdefaultPolicy,
+              typename TbackPropagator>
     class Implementation : public BaseImplementation {
     public :
         Implementation(py::object& domain,
@@ -126,20 +138,54 @@ private :
                        std::size_t rollout_budget = 100000,
                        std::size_t max_depth = 1000,
                        double discount = 1.0,
+                       double ucb_constant = 1.0 / std::sqrt(2.0),
                        bool debug_logs = false) {
 
             _domain = std::make_unique<PyMCTSDomain<Texecution>>(domain);
-            _solver = std::make_unique<airlaps::MCTSSolver<PyMCTSDomain<Texecution>, Texecution>>(
+            _solver = std::make_unique<airlaps::MCTSSolver<PyMCTSDomain<Texecution>,
+                                                           Texecution,
+                                                           TtreePolicy,
+                                                           Texpander,
+                                                           TactionSelector,
+                                                           TdefaultPolicy,
+                                                           TbackPropagator>>(
                         *_domain,
                         time_budget,
                         rollout_budget,
                         max_depth,
                         discount,
-                        debug_logs);
+                        debug_logs,
+                        init_tree_policy(),
+                        init_expander(),
+                        init_action_selector((TactionSelector*) nullptr, ucb_constant),
+                        init_default_policy(),
+                        init_back_propagator());
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
                                                                             py::module::import("sys").attr("stderr"));
+        }
+
+        TtreePolicy init_tree_policy() {
+            return TtreePolicy();
+        }
+
+        Texpander init_expander() {
+            return Texpander();
+        }
+
+        template <typename TTactionSelector = TactionSelector,
+                  std::enable_if_t<std::is_same<TTactionSelector, airlaps::UCB1BestChild>::value, int> = 0>
+        TTactionSelector init_action_selector(TTactionSelector* dummy, double ucb_constant) {
+            return TTactionSelector(ucb_constant);
+        }
+
+        TdefaultPolicy init_default_policy() {
+            return TdefaultPolicy();
+        }
+
+        TbackPropagator init_back_propagator() {
+            return TbackPropagator();
         }
 
         virtual void clear() {
@@ -169,10 +215,6 @@ private :
 
         virtual py::int_ get_nb_rollouts() {
             return _solver->nb_rollouts();
-        }
-
-        virtual void ucb_constant(double ucb_constant) {
-            // _solver->action_selector().ucb_constant() = ucb_constant;
         }
 
     private :
