@@ -80,7 +80,8 @@ try:
             return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            self._solve_from(observation)
+            if not self._is_solution_defined_for(observation):
+                self._solve_from(observation)
             action = self._solver.get_next_action(observation)
             if action is None:
                 print('\x1b[3;33;40m' + 'No best action found in observation ' +

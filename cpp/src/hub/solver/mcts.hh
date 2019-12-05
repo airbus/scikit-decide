@@ -85,6 +85,10 @@ public :
     typename Tsolver::StateNode* operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
         try {
             if (solver.debug_logs()) { spdlog::debug("Test expansion of state " + n.state.print()); }
+            if (n.expanded) {
+                if (solver.debug_logs()) { spdlog::debug("State already fully expanded"); }
+                return nullptr;
+            }
             // Generate applicable actions if not already done
             if (n.actions.empty()) {
                 if (solver.debug_logs()) { spdlog::debug("State never expanded, generating all next actions"); }
@@ -107,7 +111,7 @@ public :
                     std::vector<double> probs = a->dist.probabilities();
                     for (std::size_t p = 0 ; p < probs.size() ; p++) {
                         typename Tsolver::StateNode* on = a->dist_to_outcome[p]->first;
-                        if (on->actions.empty()) {
+                        if (on->visits_count == 0) {
                             untried_outcomes.push_back(std::make_pair(a.get(), on));
                             weights.push_back(probs[p]);
                         }
@@ -115,7 +119,8 @@ public :
                 }
             }
             if (untried_outcomes.empty()) { // nothing to expand
-                if (solver.debug_logs()) { spdlog::debug("All actions already tried"); }
+                if (solver.debug_logs()) { spdlog::debug("All outcomes already tried"); }
+                n.expanded = true;
                 return nullptr;
             } else {
                 std::discrete_distribution<> odist(weights.begin(), weights.end());
@@ -228,7 +233,9 @@ public :
                                                         ", next state=" + current_state.print() +
                                                         ", reward=" + std::to_string(o->reward())); }
             }
-            n.value = reward;
+            // since we can come to state n after exhausting the depth, n might be already visited
+            // so don't erase its value but rather update it
+            n.value = ((n.visits_count * n.value)  + reward) / ((double) (n.visits_count + 1));
             n.visits_count += 1;
         } catch (const std::exception& e) {
             spdlog::error("AIRLAPS exception in MCTS when simulating the random default policy from state " + n.state.print() + ": " + e.what());
@@ -256,10 +263,10 @@ struct EnumerationBackup {
                     for (auto i = range.first ; i != range.second ; ++i) {
                         q_value += i->second + (solver.discount() * i->first->value);
                     }
-                    a->value = (a->value / ((double) (a->visits_count + 1))) * (a->visits_count + q_value);
+                    a->value = (((a->visits_count) * (a->value))  + q_value) / ((double) (a->visits_count + 1));
                     a->visits_count += 1;
                     typename Tsolver::StateNode* parent_node = a->parent;
-                    parent_node->value = (parent_node->value / ((double) (parent_node->visits_count + 1))) * (parent_node->visits_count + a->value);
+                    parent_node->value = (((parent_node->visits_count) * (parent_node->value))  + (a->value)) / ((double) (parent_node->visits_count + 1));
                     parent_node->visits_count += 1;
                     new_frontier.insert(parent_node);
                     if (solver.debug_logs()) { spdlog::debug("Updating state " + parent_node->state.print() +
@@ -297,13 +304,15 @@ public :
     struct StateNode {
         State state;
         bool terminal;
+        bool expanded;
         std::list<std::unique_ptr<ActionNode>> actions;
         double value;
         std::size_t visits_count;
         std::list<ActionNode*> parents;
 
         StateNode(const State& s)
-            : state(s), terminal(false), value(0.0), visits_count(0) {}
+            : state(s), terminal(false), expanded(false),
+              value(0.0), visits_count(0) {}
         
         struct Key {
             const State& operator()(const StateNode& sn) const { return sn.state; }
@@ -373,6 +382,7 @@ public :
                 StateNode* sn = _tree_policy(*this, _expander, _action_selector, root_node, depth);
                 _default_policy(*this, *sn, depth);
                 _back_propagator(*this, *sn);
+                _nb_rollouts++;
 
             }
 
