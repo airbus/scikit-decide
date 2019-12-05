@@ -165,6 +165,13 @@ if __name__ == '__main__':
          'entry': 'Astar',
          'config': {'heuristic': lambda s, d: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
                     'parallel': True, 'debug_logs': False}},
+        
+         # UCT
+        {'name': 'UCT',
+         'entry': 'UCT',
+         'config': {'time_budget': 3600000, 'rollout_budget': 100000,
+                    'max_depth': 1000, 'discount': 1.0, 'ucb_constant': 1.0 / sqrt(2.0),
+                    'parallel': False, 'debug_logs': True}},
 
         # IW (planning)
         {'name': 'IW (planning)',

@@ -212,10 +212,13 @@ setup(
         'airlaps.solvers': [
             'AOstar = airlaps.hub.solver.aostar:AOstar',
             'Astar = airlaps.hub.solver.astar:Astar',
+            'MCTS = airlaps.hub.solver.mcts:MCTS',
+            'UCT = airlaps.hub.solver.mcts:UCT',
             'AugmentedRandomSearch = airlaps.hub.solver.ars:AugmentedRandomSearch [solvers]',
             'BFWS = airlaps.hub.solver.bfws:BFWS',
             'CGP = airlaps.hub.solver.cgp:CGP [solvers]',
             'IW = airlaps.hub.solver.iw:IW',
+            'RIW = airlaps.hub.solver.riw:RIW',
             'LazyAstar = airlaps.hub.solver.lazy_astar:LazyAstar',
             'MaxentIRL = airlaps.hub.solver.maxent_irl:MaxentIRL [solvers]',
             'POMCP = airlaps.hub.solver.pomcp:POMCP',

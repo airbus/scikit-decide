@@ -151,7 +151,7 @@ private :
 
 
 void init_pyastar(py::module& m) {
-    py::class_<PyAStarSolver> py_astar_solver(m, "_AStartSolver_");
+    py::class_<PyAStarSolver> py_astar_solver(m, "_AStarSolver_");
         py_astar_solver
             .def(py::init<py::object&,
                           const std::function<bool (const py::object&)>&,
