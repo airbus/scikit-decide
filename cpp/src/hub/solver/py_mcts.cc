@@ -125,12 +125,16 @@ public :
         return _implementation->get_utility(s);
     }
 
-    virtual py::int_ get_nb_of_explored_states() {
+    py::int_ get_nb_of_explored_states() {
         return _implementation->get_nb_of_explored_states();
     }
 
-    virtual py::int_ get_nb_rollouts() {
+    py::int_ get_nb_rollouts() {
         return _implementation->get_nb_rollouts();
+    }
+
+    py::dict get_policy() {
+        return _implementation->get_policy();
     }
 
 private :
@@ -144,6 +148,7 @@ private :
         virtual py::float_ get_utility(const py::object& s) =0;
         virtual py::int_ get_nb_of_explored_states() =0;
         virtual py::int_ get_nb_rollouts() =0;
+        virtual py::dict get_policy() =0;
     };
 
     template <typename Texecution,
@@ -245,6 +250,16 @@ private :
 
         virtual py::int_ get_nb_rollouts() {
             return _solver->nb_rollouts();
+        }
+
+        virtual py::dict get_policy() {
+            typename airlaps::GilControl<Texecution>::Release release;
+            py::dict d;
+            auto&& p = _solver->policy();
+            for (auto& e : p) {
+                d[e.first._state] = py::make_tuple(e.second.first._event, e.second.second);
+            }
+            return d;
         }
 
     private :
@@ -673,5 +688,6 @@ void init_pymcts(py::module& m) {
             .def("get_utility", &PyMCTSSolver::get_utility, py::arg("state"))
             .def("get_nb_of_explored_states", &PyMCTSSolver::get_nb_of_explored_states)
             .def("get_nb_rollouts", &PyMCTSSolver::get_nb_rollouts)
+            .def("get_policy", &PyMCTSSolver::get_policy)
         ;
 }

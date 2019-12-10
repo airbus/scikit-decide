@@ -12,7 +12,7 @@ import multiprocessing
 import os
 import sys
 from math import sqrt
-from typing import Callable, Any
+from typing import Callable, Dict, Tuple, Any
 
 from airlaps import Domain, Solver
 from airlaps import hub
@@ -122,6 +122,9 @@ try:
         
         def get_nb_rollouts(self) -> int:
             return self._solver.get_nb_rollouts()
+        
+        def get_policy(self) -> Dict[Any, Tuple[Any, float]]:
+            return self._solver.get_policy()
     
 
     class UCT(MCTS):

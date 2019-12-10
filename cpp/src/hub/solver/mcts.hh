@@ -620,6 +620,17 @@ public :
         return _nb_rollouts;
     }
 
+    typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() {
+        typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
+        for (auto& n : _graph) {
+            ActionNode* action = _action_selector_execution(*this, n);
+            if (action != nullptr) {
+                p.insert(std::make_pair(n.state, std::make_pair(action->action, action->value)));
+            }
+        }
+        return p;
+    }
+
     Domain& domain() { return _domain; }
 
     std::size_t time_budget() const { return _time_budget; }
