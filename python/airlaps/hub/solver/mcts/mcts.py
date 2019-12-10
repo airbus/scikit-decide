@@ -28,6 +28,7 @@ if airlaps_cpp_extension_lib_path not in sys.path:
 try:
 
     from __airlaps_hub_cpp import _MCTSSolver_ as mcts_solver
+    from __airlaps_hub_cpp import _MCTSOptions_ as mcts_options
 
     class D(Domain, SingleAgent, Sequential, Environment, Actions, DeterministicInitialized, Markovian,
             FullyObservable, Rewards):  # TODO: check why DeterministicInitialized & PositiveCosts/Rewards?
@@ -37,6 +38,8 @@ try:
     class MCTS(Solver, DeterministicPolicies, Utilities):
         T_domain = D
 
+        Options = mcts_options
+
         def __init__(self,
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
@@ -44,6 +47,12 @@ try:
                      discount: float = 1.0,
                      uct_mode: bool = True,
                      ucb_constant: float = 1.0 / sqrt(2.0),
+                     tree_policy: Options.TreePolicy = Options.TreePolicy.Default,
+                     expander: Options.Expander = Options.Expander.Full,
+                     action_selector_optimization: Options.ActionSelector = Options.ActionSelector.UCB1,
+                     action_selector_execution: Options.ActionSelector = Options.ActionSelector.BestQValue,
+                     default_policy: Options.DefaultPolicy = Options.DefaultPolicy.Random,
+                     back_propagator: Options.BackPropagator = Options.BackPropagator.Graph,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             self._solver = None
@@ -54,6 +63,12 @@ try:
             self._discount = discount
             self._uct_mode = uct_mode
             self._ucb_constant = ucb_constant
+            self._tree_policy = tree_policy
+            self._expander = expander
+            self._action_selector_optimization = action_selector_optimization
+            self._action_selector_execution = action_selector_execution
+            self._default_policy = default_policy
+            self._back_propagator = back_propagator
             self._parallel = parallel
             self._debug_logs = debug_logs
 
@@ -66,6 +81,12 @@ try:
                                        discount=self._discount,
                                        uct_mode=self._uct_mode,
                                        ucb_constant=self._ucb_constant,
+                                       tree_policy=self._tree_policy,
+                                       expander=self._expander,
+                                       action_selector_optimization=self._action_selector_optimization,
+                                       action_selector_execution=self._action_selector_execution,
+                                       default_policy=self._default_policy,
+                                       back_propagator=self._back_propagator,
                                        parallel=self._parallel,
                                        debug_logs=self._debug_logs)
             self._solver.clear()

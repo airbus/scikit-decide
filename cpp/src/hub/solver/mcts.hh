@@ -23,15 +23,65 @@
 
 namespace airlaps {
 
+/** Use Environment domain knowledge for rollouts */
+template <typename Tsolver>
+struct EnvironmentRollout {
+    std::list<typename Tsolver::Domain::Event> action_prefix;
+
+    void init_rollout(Tsolver& solver) {
+        solver.domain().reset();
+        std::for_each(action_prefix.begin(), action_prefix.end(),
+                      [&solver](const typename Tsolver::Domain::Event& a){solver.domain().step(a);});
+    }
+
+    std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> progress(
+            Tsolver& solver,
+            const typename Tsolver::Domain::State& state,
+            const typename Tsolver::Domain::Event& action) {
+        return solver.domain().step(action);
+    }
+
+    typename Tsolver::StateNode* advance(Tsolver& solver,
+                                         typename Tsolver::ActionNode& action,
+                                         bool record_action) {
+        if (record_action) {
+            action_prefix.push_back(action.action);
+        }
+        auto outcome = solver.domain().step(action.action);
+        auto si = solver.graph().find(typename Tsolver::StateNode(outcome->state()));
+        if (si == solver.graph().end()) {
+            return nullptr;
+        } else {
+            // we won't change the real key (ActionNode::action) so we are safe
+            return &const_cast<typename Tsolver::StateNode&>(*si);
+        }
+    }
+};
+
+
+/** Use Simulation domain knowledge for rollouts */
+template <typename Tsolver>
+struct SimulationRollout {
+    void init_rollout(Tsolver& solver) {}
+
+    std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> progress(
+            Tsolver& solver,
+            const typename Tsolver::Domain::State& state,
+            const typename Tsolver::Domain::Event& action) {
+        return solver.domain().sample(state, action);
+    }
+
+    typename Tsolver::StateNode* advance(Tsolver& solver,
+                                         typename Tsolver::ActionNode& action,
+                                         bool record_action) {
+        return action->dist_to_outcome[action->dist(solver.gen())]->first;
+    }
+};
+
 
 /** Default tree policy as used in UCT */
 class DefaultTreePolicy {
 public :
-    DefaultTreePolicy() {
-        std::random_device rd;
-        gen = std::mt19937(rd());
-    }
-
     template <typename Tsolver, typename Texpander, typename TactionSelector>
     typename Tsolver::StateNode* operator()(Tsolver& solver,
                                             const Texpander& expander,
@@ -49,7 +99,7 @@ public :
                     if (action == nullptr) {
                         throw std::runtime_error("AIRLAPS exception: no best action found in state " + current_node->state.print());
                     } else {
-                        current_node = action->dist_to_outcome[action->dist(gen)]->first;
+                        current_node = action->dist_to_outcome[action->dist(solver.gen())]->first;
                     }
                 } else {
                     current_node = next_node;
@@ -62,25 +112,17 @@ public :
             throw;
         }
     }
-
-private :
-    mutable std::mt19937 gen;
 };
 
 
 /** Test if a given node needs to be expanded by assuming that applicable actions and next states
- *  can be enumerated. Returns nullptr if all actions and outcomes have already tried, otherwise a
+ *  can be enumerated. Returns nullptr if all actions and outcomes have already been tried, otherwise a
  *  sampled unvisited outcome according to its probability (among only unvisited outcomes).
  *  REQUIREMENTS: returns nullptr if all actions have been already tried, and set the terminal
  *  flag of the returned next state
  */
-class EnumerationExpand {
+class FullExpand {
 public :
-    EnumerationExpand() {
-        std::random_device rd;
-        gen = std::mt19937(rd());
-    }
-
     template <typename Tsolver>
     typename Tsolver::StateNode* operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
         try {
@@ -94,8 +136,11 @@ public :
                 if (solver.debug_logs()) { spdlog::debug("State never expanded, generating all next actions"); }
                 auto applicable_actions = solver.domain().get_applicable_actions(n.state)->get_elements();
                 for (const auto& a : applicable_actions) {
-                    n.actions.emplace_back(std::make_unique<typename Tsolver::ActionNode>(a));
-                    n.actions.back()->parent = &n;
+                    auto i = n.actions.emplace(typename Tsolver::ActionNode(a));
+                    if (i.second) {
+                        // we won't change the real key (ActionNode::action) so we are safe
+                        const_cast<typename Tsolver::ActionNode&>(*i.first).parent = &n;
+                    }
                 }
             }
             // Check for untried outcomes
@@ -103,16 +148,19 @@ public :
             std::vector<std::pair<typename Tsolver::ActionNode*, typename Tsolver::StateNode*>> untried_outcomes;
             std::vector<double> weights;
             for (auto& a : n.actions) {
-                if (a->outcomes.empty()) {
-                    untried_outcomes.push_back(std::make_pair(a.get(), nullptr));
+                // we won't change the real key (ActionNode::action) so we are safe
+                typename Tsolver::ActionNode& ca = const_cast<typename Tsolver::ActionNode&>(a);
+                if (a.outcomes.empty()) {
+                    // we won't change the real key (ActionNode::action) so we are safe
+                    untried_outcomes.push_back(std::make_pair(&ca, nullptr));
                     weights.push_back(1.0);
                 } else {
                     // Check if there are next states that have been never visited
-                    std::vector<double> probs = a->dist.probabilities();
+                    std::vector<double> probs = a.dist.probabilities();
                     for (std::size_t p = 0 ; p < probs.size() ; p++) {
-                        typename Tsolver::StateNode* on = a->dist_to_outcome[p]->first;
+                        typename Tsolver::StateNode* on = ca.dist_to_outcome[p]->first;
                         if (on->visits_count == 0) {
-                            untried_outcomes.push_back(std::make_pair(a.get(), on));
+                            untried_outcomes.push_back(std::make_pair(&ca, on));
                             weights.push_back(probs[p]);
                         }
                     }
@@ -124,7 +172,7 @@ public :
                 return nullptr;
             } else {
                 std::discrete_distribution<> odist(weights.begin(), weights.end());
-                auto& uo = untried_outcomes[odist(gen)];
+                auto& uo = untried_outcomes[odist(solver.gen())];
                 if (uo.second == nullptr) { // unexpanded action
                     if (solver.debug_logs()) { spdlog::debug("Found one unexpanded action: " + uo.first->action.print()); }
                     // Generate the next states of this action
@@ -156,11 +204,11 @@ public :
                     // Pick a random next state
                     if (untried_outcomes.empty()) {
                         // All next states already visited => pick a random next state using action.dist
-                        return action.dist_to_outcome[action.dist(gen)]->first;
+                        return action.dist_to_outcome[action.dist(solver.gen())]->first;
                     } else {
                         // Pick a random next state among untried ones
                         odist = std::discrete_distribution<>(weights.begin(), weights.end());
-                        return untried_outcomes[odist(gen)].second;
+                        return untried_outcomes[odist(solver.gen())].second;
                     }
                 } else { // expanded action, just return the selected next state
                     if (solver.debug_logs()) { spdlog::debug("Found one untried outcome: action " + uo.first->action.print() +
@@ -173,17 +221,110 @@ public :
             throw;
         }
     }
-
-private :
-    mutable std::mt19937 gen;
 };
 
 
+/** Test if a given node needs to be expanded by sampling applicable actions and next states.
+ *  Returns nullptr if all actions and outcomes have already tried, otherwise a
+ *  sampled unvisited outcome according to its probability (among only unvisited outcomes).
+ *  REQUIREMENTS: returns nullptr if all actions have been already tried, and set the terminal
+ *  flag of the returned next state
+ */
+// class PartialExpand {
+// public :
+//     template <typename Tsolver>
+//     typename Tsolver::StateNode* operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
+//         try {
+//             if (solver.debug_logs()) { spdlog::debug("Test expansion of state " + n.state.print()); }
+//             if (n.expanded) {
+//                 if (solver.debug_logs()) { spdlog::debug("State already fully expanded"); }
+//                 return nullptr;
+//             }
+//             // Generate applicable actions if not already done
+//             if (n.actions.empty()) {
+//                 if (solver.debug_logs()) { spdlog::debug("State never expanded, generating all next actions"); }
+//                 auto applicable_actions = solver.domain().get_applicable_actions(n.state)->get_elements();
+//                 for (const auto& a : applicable_actions) {
+//                     n.actions.emplace_back(std::make_unique<typename Tsolver::ActionNode>(a));
+//                     n.actions.back()->parent = &n;
+//                 }
+//             }
+//             // Check for untried actions
+//             if (solver.debug_logs()) { spdlog::debug("Checking for untried actions..."); }
+//             typename Tsolver::ActionNode* sampled_action = nullptr;
+//             std::vector<typename Tsolver::ActionNode*> untried_actions;
+//             for (auto& a : n.actions) {
+//                 if (a->visits_count == 0) {
+//                     untried_actions.push_back(a.get());
+//                 }
+//             }
+//             if (untried_actions.empty()) { // nothing to expand
+//                 if (solver.debug_logs()) { spdlog::debug("All actions already tried, trying to sample new outcome"); }
+//                 sampled_action = n.actions
+//                 return nullptr;
+//             } else {
+//                 std::uniform_int_distribution<> odist(0, untried_actions.size()-1);
+//                 sampled_action = untried_actions[odist(gen)];
+//                 //
+
+//                 std::discrete_distribution<> odist(weights.begin(), weights.end());
+//                 auto& uo = untried_outcomes[odist(gen)];
+//                 if (uo.second == nullptr) { // unexpanded action
+//                     if (solver.debug_logs()) { spdlog::debug("Found one unexpanded action: " + uo.first->action.print()); }
+//                     // Generate the next states of this action
+//                     auto next_states = solver.domain().get_next_state_distribution(n.state, uo.first->action)->get_values();
+//                     typename Tsolver::ActionNode& action = *uo.first;
+//                     untried_outcomes.clear();
+//                     weights.clear();
+//                     std::vector<double> outcome_weights;
+//                     for (const auto& ns : next_states) {
+//                         typename Tsolver::Domain::OutcomeExtractor oe(ns);
+//                         auto i = solver.graph().emplace(oe.state());
+//                         typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
+//                         auto ii = action.outcomes.insert(std::make_pair(&next_node,
+//                                                                         solver.domain().get_transition_reward(n.state, action.action, next_node.state)));
+//                         action.dist_to_outcome.insert(std::make_pair(outcome_weights.size(), ii));
+//                         outcome_weights.push_back(oe.probability());
+//                         next_node.parents.push_back(&action);
+//                         if (i.second) { // new node
+//                             next_node.terminal = solver.domain().is_terminal(next_node.state);
+//                         }
+//                         if (next_node.actions.empty()) {
+//                             if (solver.debug_logs()) spdlog::debug("Candidate next state: " + next_node.state.print());
+//                             untried_outcomes.push_back(std::make_pair(&action, &next_node));
+//                             weights.push_back(oe.probability());
+//                         }
+//                     }
+//                     // Record the action's outcomes distribution
+//                     action.dist = std::discrete_distribution<>(outcome_weights.begin(), outcome_weights.end());
+//                     // Pick a random next state
+//                     if (untried_outcomes.empty()) {
+//                         // All next states already visited => pick a random next state using action.dist
+//                         return action.dist_to_outcome[action.dist(gen)]->first;
+//                     } else {
+//                         // Pick a random next state among untried ones
+//                         odist = std::discrete_distribution<>(weights.begin(), weights.end());
+//                         return untried_outcomes[odist(gen)].second;
+//                     }
+//                 } else { // expanded action, just return the selected next state
+//                     if (solver.debug_logs()) { spdlog::debug("Found one untried outcome: action " + uo.first->action.print() +
+//                                                              " and next state " + uo.second->state.print()); }
+//                     return uo.second;
+//                 }
+//             }
+//         } catch (const std::exception& e) {
+//             spdlog::error("AIRLAPS exception in MCTS when expanding state " + n.state.print() + ": " + e.what());
+//             throw;
+//         }
+//     }
+// };
+
+
 /** UCB1 Best Child */
-class UCB1BestChild {
+class UCB1ActionSelector {
 public :
     // 1/sqrt(2) is a good compromise for rewards in [0;1]
-    UCB1BestChild(double ucb_constant = 1.0 / std::sqrt(2.0))
+    UCB1ActionSelector(double ucb_constant = 1.0 / std::sqrt(2.0))
     : _ucb_constant(ucb_constant) {}
 
     template <typename Tsolver>
@@ -191,20 +332,45 @@ public :
         double best_value = -std::numeric_limits<double>::max();
         typename Tsolver::ActionNode* best_action = nullptr;
         for (const auto& a : n.actions) {
-            double tentative_value = a->value + (_ucb_constant * std::sqrt((2.0 * std::log(n.visits_count)) / a->visits_count));
-            if (tentative_value > best_value) {
-                best_value = tentative_value;
-                best_action = &(*a);
+            if (a.visits_count > 0) {
+                double tentative_value = a.value + (_ucb_constant * std::sqrt((2.0 * std::log(n.visits_count)) / a.visits_count));
+                if (tentative_value > best_value) {
+                    best_value = tentative_value;
+                    best_action = &const_cast<typename Tsolver::ActionNode&>(a); // we won't change the real key (ActionNode::action) so we are safe
+                }
             }
         }
         if (solver.debug_logs()) { spdlog::debug("UCB1 selection from state " + n.state.print() +
                                                  ": value=" + std::to_string(best_value) +
-                                                 ", action=" + best_action->action.print()); }
+                                                 ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr"))); }
         return best_action;
     }
 
 private :
     double _ucb_constant;
+};
+
+
+/** Select action with maximum Q-value */
+class BestQValueActionSelector {
+public :
+    template <typename Tsolver>
+    typename Tsolver::ActionNode* operator()(Tsolver& solver, const typename Tsolver::StateNode& n) const {
+        double best_value = -std::numeric_limits<double>::max();
+        typename Tsolver::ActionNode* best_action = nullptr;
+        for (const auto& a : n.actions) {
+            if (a.visits_count > 0) {
+                if (a.value > best_value) {
+                    best_value = a.value;
+                    best_action = &const_cast<typename Tsolver::ActionNode&>(a); // we won't change the real key (ActionNode::action) so we are safe
+                }
+            }
+        }
+        if (solver.debug_logs()) { spdlog::debug("Best Q-value selection from state " + n.state.print() +
+                                                 ": value=" + std::to_string(best_value) +
+                                                 ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr"))); }
+        return best_action;
+    }
 };
 
 
@@ -245,8 +411,8 @@ public :
 };
 
 
-/** Enumeration backup: enumerate all next states to update Q values */
-struct EnumerationBackup {
+/** Graph backup: update Q values using the graph ancestors (rather than only the trajectory leading to n) */
+struct GraphBackup {
     template <typename Tsolver>
     void operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
         if (solver.debug_logs()) { spdlog::debug("Back-propagating values from state " + n.state.print()); }
@@ -283,10 +449,11 @@ struct EnumerationBackup {
 template <typename Tdomain,
           typename Texecution_policy = ParallelExecution,
           typename TtreePolicy = DefaultTreePolicy,
-          typename Texpander = EnumerationExpand,
-          typename TactionSelector = UCB1BestChild,
+          typename Texpander = FullExpand,
+          typename TactionSelectorOptimization = UCB1ActionSelector,
+          typename TactionSelectorExecution = BestQValueActionSelector,
           typename TdefaultPolicy = RandomDefaultPolicy,
-          typename TbackPropagator = EnumerationBackup>
+          typename TbackPropagator = GraphBackup>
 class MCTSSolver {
 public :
     typedef Tdomain Domain;
@@ -294,7 +461,8 @@ public :
     typedef typename Domain::Event Action;
     typedef TtreePolicy TreePolicy;
     typedef Texpander Expander;
-    typedef TactionSelector ActionSelector;
+    typedef TactionSelectorOptimization ActionSelectorOptimization;
+    typedef TactionSelectorExecution ActionSelectorExecution;
     typedef TdefaultPolicy DefaultPolicy;
     typedef TbackPropagator BackPropagator;
     typedef Texecution_policy ExecutionPolicy;
@@ -302,10 +470,11 @@ public :
     struct ActionNode;
 
     struct StateNode {
+        typedef typename SetTypeDeducer<ActionNode, Action>::Set ActionSet;
         State state;
         bool terminal;
         bool expanded;
-        std::list<std::unique_ptr<ActionNode>> actions;
+        ActionSet actions;
         double value;
         std::size_t visits_count;
         std::list<ActionNode*> parents;
@@ -330,6 +499,10 @@ public :
 
         ActionNode(const Action& a)
             : action(a), value(0.0), visits_count(0), parent(nullptr) {}
+        
+        struct Key {
+            const Action& operator()(const ActionNode& an) const { return an.action; }
+        };
     };
 
     typedef typename SetTypeDeducer<StateNode, State>::Set Graph;
@@ -342,20 +515,25 @@ public :
                bool debug_logs = false,
                const TreePolicy& tree_policy = TreePolicy(),
                const Expander& expander = Expander(),
-               const ActionSelector& action_selector = ActionSelector(),
+               const ActionSelectorOptimization& action_selector_optimization = ActionSelectorOptimization(),
+               const ActionSelectorExecution& action_selector_execution = ActionSelectorExecution(),
                const DefaultPolicy& default_policy = DefaultPolicy(),
                const BackPropagator& back_propagator = BackPropagator())
     : _domain(domain),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _discount(discount), _nb_rollouts(0),
       _debug_logs(debug_logs), _tree_policy(tree_policy), _expander(expander),
-      _action_selector(action_selector), _default_policy(default_policy),
-      _back_propagator(back_propagator) {
+      _action_selector_optimization(action_selector_optimization),
+      _action_selector_execution(action_selector_execution),
+      _default_policy(default_policy), _back_propagator(back_propagator) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {
             spdlog::set_level(spdlog::level::info);
         }
+
+        std::random_device rd;
+        _gen = std::make_unique<std::mt19937>(rd());
     }
 
     // clears the solver (clears the search graph, thus preventing from reusing
@@ -379,7 +557,7 @@ public :
                        _nb_rollouts < _rollout_budget) {
                 
                 std::size_t depth = 0;
-                StateNode* sn = _tree_policy(*this, _expander, _action_selector, root_node, depth);
+                StateNode* sn = _tree_policy(*this, _expander, _action_selector_optimization, root_node, depth);
                 _default_policy(*this, *sn, depth);
                 _back_propagator(*this, *sn);
                 _nb_rollouts++;
@@ -398,19 +576,19 @@ public :
     }
 
     bool is_solution_defined_for(const State& s) const {
-        auto si = _graph.find(StateNode(s));
+        auto si = _graph.find(s);
         if (si == _graph.end()) {
             return false;
         } else {
-            return _action_selector(*this, *si) != nullptr;
+            return _action_selector_execution(*this, *si) != nullptr;
         }
     }
 
     Action get_best_action(const State& s) {
-        auto si = _graph.find(StateNode(s));
+        auto si = _graph.find(s);
         ActionNode* action = nullptr;
         if (si != _graph.end()) {
-            action = _action_selector(*this, *si);
+            action = _action_selector_execution(*this, *si);
         }
         if (action == nullptr) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
@@ -424,7 +602,7 @@ public :
         auto si = _graph.find(StateNode(s));
         ActionNode* action = nullptr;
         if (si != _graph.end()) {
-            action = _action_selector(*this, *si);
+            action = _action_selector_execution(*this, *si);
         }
         if (action == nullptr) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
@@ -456,13 +634,17 @@ public :
 
     const Expander& expander() { return _expander; }
 
-    const ActionSelector& action_selector() { return _action_selector; }
+    const ActionSelectorOptimization& action_selector_optimization() { return _action_selector_optimization; }
+
+    const ActionSelectorExecution& action_selector_execution() { return _action_selector_execution; }
 
     const DefaultPolicy& default_policy() { return _default_policy; }
 
     const BackPropagator& back_propagator() { return _back_propagator; }
 
     Graph& graph() { return _graph; }
+
+    std::mt19937& gen() { return *_gen; }
 
     bool debug_logs() const { return _debug_logs; }
 
@@ -477,11 +659,14 @@ private :
     bool _debug_logs;
     TreePolicy _tree_policy;
     Expander _expander;
-    ActionSelector _action_selector;
+    ActionSelectorOptimization _action_selector_optimization;
+    ActionSelectorExecution _action_selector_execution;
     DefaultPolicy _default_policy;
     BackPropagator _back_propagator;
 
     Graph _graph;
+
+    std::unique_ptr<std::mt19937> _gen;
 }; // MCTSSolver class
 
 /** UCT is MCTS with the default template options */

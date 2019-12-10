@@ -86,12 +86,25 @@ class GymDomainStateProxy :
     
     def __hash__(self):
         return str(self._state).__hash__()
+        # return hash(tuple(self.flatten(self._state)))
     
     def __eq__(self, other):
         return str(self._state).__eq__(str(other))
+        # return self.flatten(self._state) == self.flatten(other._state)
     
     def __str__(self):
         return self._state.__str__()
+    
+    def flatten(self, e):
+        if isinstance(e, np.ndarray):
+            return [e.item(c) for c in range(e.size)]
+        elif isinstance(e, tuple):
+            return [tt for t in e for tt in self.flatten(t)]
+        elif isinstance(e, dict):
+            return [tt for k, v in e.items() for tt in self.flatten(v)]
+        else:
+            return [e]
+
 
 
 # class GymDomainActionProxy :

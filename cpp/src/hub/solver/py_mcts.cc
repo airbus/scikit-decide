@@ -42,8 +42,33 @@ public :
 };
 
 
+struct PyMCTSOptions {
+    enum class TreePolicy {
+        Default
+    };
+
+    enum class Expander {
+        Full
+    };
+
+    enum class ActionSelector {
+        UCB1,
+        BestQValue
+    };
+
+    enum class DefaultPolicy {
+        Random
+    };
+
+    enum class BackPropagator {
+        Graph
+    };
+};
+
+
 class PyMCTSSolver {
 public :
+
     PyMCTSSolver(py::object& domain,
                  std::size_t time_budget = 3600000,
                  std::size_t rollout_budget = 100000,
@@ -51,36 +76,32 @@ public :
                  double discount = 1.0,
                  bool uct_mode = true,
                  double ucb_constant = 1.0 / std::sqrt(2.0),
+                 PyMCTSOptions::TreePolicy tree_policy = PyMCTSOptions::TreePolicy::Default,
+                 PyMCTSOptions::Expander expander = PyMCTSOptions::Expander::Full,
+                 PyMCTSOptions::ActionSelector action_selector_optimization = PyMCTSOptions::ActionSelector::UCB1,
+                 PyMCTSOptions::ActionSelector action_selector_execution = PyMCTSOptions::ActionSelector::BestQValue,
+                 PyMCTSOptions::DefaultPolicy default_policy = PyMCTSOptions::DefaultPolicy::Random,
+                 PyMCTSOptions::BackPropagator back_propagator = PyMCTSOptions::BackPropagator::Graph,
                  bool parallel = true,
                  bool debug_logs = false) {
-        if (parallel) {
-            if (uct_mode) {
-                _implementation = std::make_unique<Implementation<airlaps::ParallelExecution,
-                                                                  airlaps::DefaultTreePolicy,
-                                                                  airlaps::EnumerationExpand,
-                                                                  airlaps::UCB1BestChild,
-                                                                  airlaps::RandomDefaultPolicy,
-                                                                  airlaps::EnumerationBackup>>(
-                    domain, time_budget, rollout_budget, max_depth, discount, ucb_constant, debug_logs
-                );
-            } else {
-                spdlog::error("MCTS only supports MCTS at the moment.");
-                throw std::runtime_error("MCTS only supports MCTS at the moment.");
-            }
+        if (uct_mode) {
+            initialize_tree_policy(domain,
+                                   time_budget,
+                                   rollout_budget,
+                                   max_depth,
+                                   discount,
+                                   ucb_constant,
+                                   PyMCTSOptions::TreePolicy::Default,
+                                   expander,
+                                   PyMCTSOptions::ActionSelector::UCB1,
+                                   action_selector_execution,
+                                   PyMCTSOptions::DefaultPolicy::Random,
+                                   PyMCTSOptions::BackPropagator::Graph,
+                                   parallel,
+                                   debug_logs);
         } else {
-            if (uct_mode) {
-                _implementation = std::make_unique<Implementation<airlaps::SequentialExecution,
-                                                                  airlaps::DefaultTreePolicy,
-                                                                  airlaps::EnumerationExpand,
-                                                                  airlaps::UCB1BestChild,
-                                                                  airlaps::RandomDefaultPolicy,
-                                                                  airlaps::EnumerationBackup>>(
-                    domain, time_budget, rollout_budget, max_depth, discount, ucb_constant, debug_logs
-                );
-            } else {
-                spdlog::error("MCTS only supports MCTS at the moment.");
-                throw std::runtime_error("MCTS only supports MCTS at the moment.");
-            }
+            spdlog::error("MCTS only supports UCT mode at the moment.");
+            throw std::runtime_error("MCTS only supports UCT mode at the moment.");
         }
     }
 
@@ -128,7 +149,8 @@ private :
     template <typename Texecution,
               typename TtreePolicy,
               typename Texpander,
-              typename TactionSelector,
+              typename TactionSelectorOptimization,
+              typename TactionSelectorExecution,
               typename TdefaultPolicy,
               typename TbackPropagator>
     class Implementation : public BaseImplementation {
@@ -146,7 +168,8 @@ private :
                                                            Texecution,
                                                            TtreePolicy,
                                                            Texpander,
-                                                           TactionSelector,
+                                                           TactionSelectorOptimization,
+                                                           TactionSelectorExecution,
                                                            TdefaultPolicy,
                                                            TbackPropagator>>(
                         *_domain,
@@ -157,7 +180,8 @@ private :
                         debug_logs,
                         init_tree_policy(),
                         init_expander(),
-                        init_action_selector((TactionSelector*) nullptr, ucb_constant),
+                        init_action_selector((TactionSelectorOptimization*) nullptr, ucb_constant),
+                        init_action_selector((TactionSelectorExecution*) nullptr, ucb_constant),
                         init_default_policy(),
                         init_back_propagator());
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
@@ -174,10 +198,16 @@ private :
             return Texpander();
         }
 
-        template <typename TTactionSelector = TactionSelector,
-                  std::enable_if_t<std::is_same<TTactionSelector, airlaps::UCB1BestChild>::value, int> = 0>
-        TTactionSelector init_action_selector(TTactionSelector* dummy, double ucb_constant) {
-            return TTactionSelector(ucb_constant);
+        template <typename TactionSelector,
+                  std::enable_if_t<std::is_same<TactionSelector, airlaps::UCB1ActionSelector>::value, int> = 0>
+        TactionSelector init_action_selector(TactionSelector* dummy, double ucb_constant) {
+            return airlaps::UCB1ActionSelector(ucb_constant);
+        }
+
+        template <typename TactionSelector,
+                  std::enable_if_t<std::is_same<TactionSelector, airlaps::BestQValueActionSelector>::value, int> = 0>
+        TactionSelector init_action_selector(TactionSelector* dummy, double ucb_constant) {
+            return airlaps::BestQValueActionSelector();
         }
 
         TdefaultPolicy init_default_policy() {
@@ -219,7 +249,14 @@ private :
 
     private :
         std::unique_ptr<PyMCTSDomain<Texecution>> _domain;
-        std::unique_ptr<airlaps::MCTSSolver<PyMCTSDomain<Texecution>, Texecution>> _solver;
+        std::unique_ptr<airlaps::MCTSSolver<PyMCTSDomain<Texecution>,
+                                            Texecution,
+                                            TtreePolicy,
+                                            Texpander,
+                                            TactionSelectorOptimization,
+                                            TactionSelectorExecution,
+                                            TdefaultPolicy,
+                                            TbackPropagator>> _solver;
 
         std::function<bool (const py::object&)> _goal_checker;
         std::function<double (const py::object&)> _heuristic;
@@ -229,10 +266,374 @@ private :
     };
 
     std::unique_ptr<BaseImplementation> _implementation;
+
+    void initialize_tree_policy(
+                py::object& domain,
+                std::size_t time_budget,
+                std::size_t rollout_budget,
+                std::size_t max_depth,
+                double discount,
+                double ucb_constant,
+                PyMCTSOptions::TreePolicy tree_policy,
+                PyMCTSOptions::Expander expander,
+                PyMCTSOptions::ActionSelector action_selector_optimization,
+                PyMCTSOptions::ActionSelector action_selector_execution,
+                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::BackPropagator back_propagator,
+                bool parallel,
+                bool debug_logs) {
+        switch (tree_policy) {
+            case PyMCTSOptions::TreePolicy::Default:
+                initialize_expander<airlaps::DefaultTreePolicy>(
+                                        domain,
+                                        time_budget,
+                                        rollout_budget,
+                                        max_depth,
+                                        discount,
+                                        ucb_constant,
+                                        expander,
+                                        action_selector_optimization,
+                                        action_selector_execution,
+                                        default_policy,
+                                        back_propagator,
+                                        parallel,
+                                        debug_logs);
+                break;
+            
+            default:
+                spdlog::error("Available tree policies: TreePolicy.Default");
+                throw std::runtime_error("Available tree policies: TreePolicy.Default");
+        }
+    }
+
+    template <typename TtreePolicy>
+    void initialize_expander(
+                py::object& domain,
+                std::size_t time_budget,
+                std::size_t rollout_budget,
+                std::size_t max_depth,
+                double discount,
+                double ucb_constant,
+                PyMCTSOptions::Expander expander,
+                PyMCTSOptions::ActionSelector action_selector_optimization,
+                PyMCTSOptions::ActionSelector action_selector_execution,
+                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::BackPropagator back_propagator,
+                bool parallel,
+                bool debug_logs) {
+        switch (expander) {
+            case PyMCTSOptions::Expander::Full:
+                initialize_action_selector_optimization<TtreePolicy,
+                                                        airlaps::FullExpand>(
+                                domain,
+                                time_budget,
+                                rollout_budget,
+                                max_depth,
+                                discount,
+                                ucb_constant,
+                                action_selector_optimization,
+                                action_selector_execution,
+                                default_policy,
+                                back_propagator,
+                                parallel,
+                                debug_logs);
+                break;
+            
+            default:
+                spdlog::error("Available expanders: Expander.Full");
+                throw std::runtime_error("Available expanders: Expander.Full");
+        }
+    }
+
+    template <typename TtreePolicy,
+              typename Texpander>
+    void initialize_action_selector_optimization(
+                py::object& domain,
+                std::size_t time_budget,
+                std::size_t rollout_budget,
+                std::size_t max_depth,
+                double discount,
+                double ucb_constant,
+                PyMCTSOptions::ActionSelector action_selector_optimization,
+                PyMCTSOptions::ActionSelector action_selector_execution,
+                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::BackPropagator back_propagator,
+                bool parallel,
+                bool debug_logs) {
+        switch (action_selector_optimization) {
+            case PyMCTSOptions::ActionSelector::UCB1:
+                initialize_action_selector_execution<TtreePolicy,
+                                                     Texpander,
+                                                     airlaps::UCB1ActionSelector>(
+                                domain,
+                                time_budget,
+                                rollout_budget,
+                                max_depth,
+                                discount,
+                                ucb_constant,
+                                action_selector_execution,
+                                default_policy,
+                                back_propagator,
+                                parallel,
+                                debug_logs);
+                break;
+            
+            case PyMCTSOptions::ActionSelector::BestQValue:
+                initialize_action_selector_execution<TtreePolicy,
+                                                     Texpander,
+                                                     airlaps::BestQValueActionSelector>(
+                                domain,
+                                time_budget,
+                                rollout_budget,
+                                max_depth,
+                                discount,
+                                ucb_constant,
+                                action_selector_execution,
+                                default_policy,
+                                back_propagator,
+                                parallel,
+                                debug_logs);
+                break;
+            
+            default:
+                spdlog::error("Available action selector: ActionSelector.UCB1 , ActionSelector.BestQValue");
+                throw std::runtime_error("Available action selector: ActionSelector.UCB1 , ActionSelector.BestQValue");
+        }
+    }
+
+    template <typename TtreePolicy,
+              typename Texpander,
+              typename TactionSelectorOptimization>
+    void initialize_action_selector_execution(
+                py::object& domain,
+                std::size_t time_budget,
+                std::size_t rollout_budget,
+                std::size_t max_depth,
+                double discount,
+                double ucb_constant,
+                PyMCTSOptions::ActionSelector action_selector_execution,
+                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::BackPropagator back_propagator,
+                bool parallel,
+                bool debug_logs) {
+        switch (action_selector_execution) {
+            case PyMCTSOptions::ActionSelector::UCB1:
+                initialize_default_policy<TtreePolicy,
+                                          Texpander,
+                                          TactionSelectorOptimization,
+                                          airlaps::UCB1ActionSelector>(
+                                domain,
+                                time_budget,
+                                rollout_budget,
+                                max_depth,
+                                discount,
+                                ucb_constant,
+                                default_policy,
+                                back_propagator,
+                                parallel,
+                                debug_logs);
+                break;
+            
+            case PyMCTSOptions::ActionSelector::BestQValue:
+                initialize_default_policy<TtreePolicy,
+                                          Texpander,
+                                          TactionSelectorOptimization,
+                                          airlaps::BestQValueActionSelector>(
+                                domain,
+                                time_budget,
+                                rollout_budget,
+                                max_depth,
+                                discount,
+                                ucb_constant,
+                                default_policy,
+                                back_propagator,
+                                parallel,
+                                debug_logs);
+                break;
+            
+            default:
+                spdlog::error("Available action selector: ActionSelector.UCB1 , ActionSelector.BestQValue");
+                throw std::runtime_error("Available action selector: ActionSelector.UCB1 , ActionSelector.BestQValue");
+        }
+    }
+
+    template <typename TtreePolicy,
+              typename Texpander,
+              typename TactionSelectorOptimization,
+              typename TactionSelectorExecution>
+    void initialize_default_policy(
+                py::object& domain,
+                std::size_t time_budget,
+                std::size_t rollout_budget,
+                std::size_t max_depth,
+                double discount,
+                double ucb_constant,
+                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::BackPropagator back_propagator,
+                bool parallel,
+                bool debug_logs) {
+        switch (default_policy) {
+            case PyMCTSOptions::DefaultPolicy::Random:
+                initialize_back_propagator<TtreePolicy,
+                                           Texpander,
+                                           TactionSelectorOptimization,
+                                           TactionSelectorExecution,
+                                           airlaps::RandomDefaultPolicy>(
+                                domain,
+                                time_budget,
+                                rollout_budget,
+                                max_depth,
+                                discount,
+                                ucb_constant,
+                                back_propagator,
+                                parallel,
+                                debug_logs);
+                break;
+            
+            default:
+                spdlog::error("Available default policies: DefaultPolicy.Random");
+                throw std::runtime_error("Available default policies: DefaultPolicy.Random");
+        }
+    }
+
+    template <typename TtreePolicy,
+              typename Texpander,
+              typename TactionSelectorOptimization,
+              typename TactionSelectorExecution,
+              typename TdefaultPolicy>
+    void initialize_back_propagator(
+                py::object& domain,
+                std::size_t time_budget,
+                std::size_t rollout_budget,
+                std::size_t max_depth,
+                double discount,
+                double ucb_constant,
+                PyMCTSOptions::BackPropagator back_propagator,
+                bool parallel,
+                bool debug_logs) {
+        switch (back_propagator) {
+            case PyMCTSOptions::BackPropagator::Graph:
+                initialize_execution<TtreePolicy,
+                                     Texpander,
+                                     TactionSelectorOptimization,
+                                     TactionSelectorExecution,
+                                     TdefaultPolicy,
+                                     airlaps::GraphBackup>(
+                                domain,
+                                time_budget,
+                                rollout_budget,
+                                max_depth,
+                                discount,
+                                ucb_constant,
+                                parallel,
+                                debug_logs);
+                break;
+            
+            default:
+                spdlog::error("Available back propagators: BackPropagator.Graph");
+                throw std::runtime_error("Available back propagators: BackPropagator.Graph");
+        }
+    }
+
+    template <typename TtreePolicy,
+              typename Texpander,
+              typename TactionSelectorOptimization,
+              typename TactionSelectorExecution,
+              typename TdefaultPolicy,
+              typename TbackPropagator>
+    void initialize_execution(
+                py::object& domain,
+                std::size_t time_budget ,
+                std::size_t rollout_budget,
+                std::size_t max_depth,
+                double discount,
+                double ucb_constant,
+                bool parallel ,
+                bool debug_logs) {
+        if (parallel) {
+            initialize<airlaps::ParallelExecution,
+                       TtreePolicy,
+                       Texpander,
+                       TactionSelectorOptimization,
+                       TactionSelectorExecution,
+                       TdefaultPolicy,
+                       TbackPropagator>(domain,
+                                        time_budget,
+                                        rollout_budget,
+                                        max_depth,
+                                        discount,
+                                        ucb_constant,
+                                        debug_logs);
+        } else {
+            initialize<airlaps::SequentialExecution,
+                       TtreePolicy,
+                       Texpander,
+                       TactionSelectorOptimization,
+                       TactionSelectorExecution,
+                       TdefaultPolicy,
+                       TbackPropagator>(domain,
+                                        time_budget,
+                                        rollout_budget,
+                                        max_depth,
+                                        discount,
+                                        ucb_constant,
+                                                debug_logs);
+        }
+    }
+
+    template <typename Texecution,
+              typename TtreePolicy,
+              typename Texpander,
+              typename TactionSelectorOptimization,
+              typename TactionSelectorExecution,
+              typename TdefaultPolicy,
+              typename TbackPropagator>
+    void initialize(
+                py::object& domain,
+                std::size_t time_budget = 3600000,
+                std::size_t rollout_budget = 100000,
+                std::size_t max_depth = 1000,
+                double discount = 1.0,
+                double ucb_constant = 1.0 / std::sqrt(2.0),
+                bool parallel = true,
+                bool debug_logs = false) {
+        _implementation = std::make_unique<Implementation<Texecution,
+                                                          TtreePolicy,
+                                                          Texpander,
+                                                          TactionSelectorOptimization,
+                                                          TactionSelectorExecution,
+                                                          TdefaultPolicy,
+                                                          TbackPropagator>>(
+                                    domain,
+                                    time_budget,
+                                    rollout_budget,
+                                    max_depth,
+                                    discount,
+                                    ucb_constant,
+                                    debug_logs);
+    }
 };
 
 
 void init_pymcts(py::module& m) {
+    py::class_<PyMCTSOptions> py_mcts_options(m, "_MCTSOptions_");
+
+    py::enum_<PyMCTSOptions::TreePolicy>(py_mcts_options, "TreePolicy")
+        .value("Default", PyMCTSOptions::TreePolicy::Default);
+    
+    py::enum_<PyMCTSOptions::Expander>(py_mcts_options, "Expander")
+        .value("Full", PyMCTSOptions::Expander::Full);
+    
+    py::enum_<PyMCTSOptions::ActionSelector>(py_mcts_options, "ActionSelector")
+        .value("UCB1", PyMCTSOptions::ActionSelector::UCB1)
+        .value("BestQValue", PyMCTSOptions::ActionSelector::BestQValue);
+    
+    py::enum_<PyMCTSOptions::DefaultPolicy>(py_mcts_options, "DefaultPolicy")
+        .value("Random", PyMCTSOptions::DefaultPolicy::Random);
+    
+    py::enum_<PyMCTSOptions::BackPropagator>(py_mcts_options, "BackPropagator")
+        .value("Graph", PyMCTSOptions::BackPropagator::Graph);
+    
     py::class_<PyMCTSSolver> py_mcts_solver(m, "_MCTSSolver_");
         py_mcts_solver
             .def(py::init<py::object&,
@@ -242,6 +643,12 @@ void init_pymcts(py::module& m) {
                           double,
                           bool,
                           double,
+                          PyMCTSOptions::TreePolicy,
+                          PyMCTSOptions::Expander,
+                          PyMCTSOptions::ActionSelector,
+                          PyMCTSOptions::ActionSelector,
+                          PyMCTSOptions::DefaultPolicy,
+                          PyMCTSOptions::BackPropagator,
                           bool,
                           bool>(),
                  py::arg("domain"),
@@ -251,6 +658,12 @@ void init_pymcts(py::module& m) {
                  py::arg("discount")=1.0,
                  py::arg("uct_mode")=true,
                  py::arg("ucb_constant")=1.0/std::sqrt(2.0),
+                 py::arg("tree_policy")=PyMCTSOptions::TreePolicy::Default,
+                 py::arg("expander")=PyMCTSOptions::Expander::Full,
+                 py::arg("action_selector_optimization")=PyMCTSOptions::ActionSelector::UCB1,
+                 py::arg("action_selector_execution")=PyMCTSOptions::ActionSelector::BestQValue,
+                 py::arg("default_policy")=PyMCTSOptions::DefaultPolicy::Random,
+                 py::arg("back_propagator")=PyMCTSOptions::BackPropagator::Graph,
                  py::arg("parallel")=true,
                  py::arg("debug_logs")=false)
             .def("clear", &PyMCTSSolver::clear)
