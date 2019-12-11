@@ -47,6 +47,7 @@ try:
                      discount: float = 1.0,
                      uct_mode: bool = True,
                      ucb_constant: float = 1.0 / sqrt(2.0),
+                     transition_mode: Options.TransitionMode = Options.TransitionMode.Distribution,
                      tree_policy: Options.TreePolicy = Options.TreePolicy.Default,
                      expander: Options.Expander = Options.Expander.Full,
                      action_selector_optimization: Options.ActionSelector = Options.ActionSelector.UCB1,
@@ -63,6 +64,7 @@ try:
             self._discount = discount
             self._uct_mode = uct_mode
             self._ucb_constant = ucb_constant
+            self._transition_mode = transition_mode
             self._tree_policy = tree_policy
             self._expander = expander
             self._action_selector_optimization = action_selector_optimization
@@ -81,6 +83,7 @@ try:
                                        discount=self._discount,
                                        uct_mode=self._uct_mode,
                                        ucb_constant=self._ucb_constant,
+                                       transition_mode=self._transition_mode,
                                        tree_policy=self._tree_policy,
                                        expander=self._expander,
                                        action_selector_optimization=self._action_selector_optimization,
@@ -123,8 +126,11 @@ try:
         def get_nb_rollouts(self) -> int:
             return self._solver.get_nb_rollouts()
         
-        def get_policy(self) -> Dict[Any, Tuple[Any, float]]:
+        def get_policy(self) -> Dict[D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], float]]:
             return self._solver.get_policy()
+        
+        def get_action_prefix(self) -> List[D.T_agent[D.T_observation]]:
+            return self._solver.get_action_prefix()
     
 
     class UCT(MCTS):
@@ -134,6 +140,7 @@ try:
                      max_depth: int = 1000,
                      discount: float = 1.0,
                      ucb_constant: float = 1.0 / sqrt(2.0),
+                     transition_mode: mcts_options.TransitionMode = mcts_options.TransitionMode.Distribution,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             super().__init__(time_budget=time_budget,
@@ -142,6 +149,7 @@ try:
                              discount=discount,
                              uct_mode=True,
                              ucb_constant=ucb_constant,
+                             transition_mode=transition_mode,
                              parallel=parallel,
                              debug_logs=debug_logs)
     

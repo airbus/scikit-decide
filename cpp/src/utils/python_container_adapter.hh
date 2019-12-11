@@ -35,7 +35,7 @@ public :
         }
 
         template <typename T,
-                  typename  = typename std::enable_if<std::is_fundamental<T>::value>::type>
+                  std::enable_if_t<std::is_fundamental<T>::value, int> = 0>
         value_type(const T& value) {
             _value = std::make_unique<PrimitiveType<T>>(value);
         }

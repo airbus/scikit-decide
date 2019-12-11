@@ -16,33 +16,13 @@
 namespace py = pybind11;
 
 
-template <typename Texecution>
-class PyMCTSDomain : public airlaps::PythonDomainAdapter<Texecution> {
-public :
-
-    PyMCTSDomain(const py::object& domain)
-    : airlaps::PythonDomainAdapter<Texecution>(domain) {
-        if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
-        }
-        if (!py::hasattr(domain, "get_next_state_distribution")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing get_next_state_distribution()");
-        }
-        if (!py::hasattr(domain, "sample")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing sample()");
-        }
-        if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing get_transition_value()");
-        }
-        if (!py::hasattr(domain, "is_terminal")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing is_terminal()");
-        }
-    }
-
-};
-
-
 struct PyMCTSOptions {
+    enum class TransitionMode {
+        Step,
+        Sample,
+        Distribution
+    };
+
     enum class TreePolicy {
         Default
     };
@@ -66,6 +46,58 @@ struct PyMCTSOptions {
 };
 
 
+template <typename Texecution>
+class PyMCTSDomain : public airlaps::PythonDomainAdapter<Texecution> {
+public :
+
+    template <typename TtransitionMode,
+              std::enable_if_t<std::is_same<TtransitionMode, airlaps::StepTransitionMode>::value, int> = 0>
+    PyMCTSDomain(const py::object& domain, TtransitionMode* dummy)
+    : airlaps::PythonDomainAdapter<Texecution>(domain) {
+        if (!py::hasattr(domain, "get_applicable_actions")) {
+            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
+        }
+        if (!py::hasattr(domain, "step")) {
+            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with step transition mode needs python domain for implementing step()");
+        }
+    }
+
+    template <typename TtransitionMode,
+              std::enable_if_t<std::is_same<TtransitionMode, airlaps::SampleTransitionMode>::value, int> = 0>
+    PyMCTSDomain(const py::object& domain, TtransitionMode* dummy)
+    : airlaps::PythonDomainAdapter<Texecution>(domain) {
+        if (!py::hasattr(domain, "get_applicable_actions")) {
+            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
+        }
+        if (!py::hasattr(domain, "sample")) {
+            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with sample or distribution transition mode needs python domain for implementing sample()");
+        }
+    }
+
+    template <typename TtransitionMode,
+              std::enable_if_t<std::is_same<TtransitionMode, airlaps::DistributionTransitionMode>::value, int> = 0>
+    PyMCTSDomain(const py::object& domain, TtransitionMode* dummy)
+    : airlaps::PythonDomainAdapter<Texecution>(domain) {
+        if (!py::hasattr(domain, "get_applicable_actions")) {
+            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
+        }
+        if (!py::hasattr(domain, "sample")) {
+            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with sample or distribution transition mode needs python domain for implementing sample()");
+        }
+        if (!py::hasattr(domain, "get_next_state_distribution")) {
+            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with distribution transition mode needs python domain for implementing get_next_state_distribution()");
+        }
+        if (!py::hasattr(domain, "get_transition_value")) {
+            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with distribution transition mode needs python domain for implementing get_transition_value()");
+        }
+        if (!py::hasattr(domain, "is_terminal")) {
+            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with distribution transition mode needs python domain for implementing is_terminal()");
+        }
+    }
+
+};
+
+
 class PyMCTSSolver {
 public :
 
@@ -76,6 +108,7 @@ public :
                  double discount = 1.0,
                  bool uct_mode = true,
                  double ucb_constant = 1.0 / std::sqrt(2.0),
+                 PyMCTSOptions::TransitionMode transition_mode = PyMCTSOptions::TransitionMode::Distribution,
                  PyMCTSOptions::TreePolicy tree_policy = PyMCTSOptions::TreePolicy::Default,
                  PyMCTSOptions::Expander expander = PyMCTSOptions::Expander::Full,
                  PyMCTSOptions::ActionSelector action_selector_optimization = PyMCTSOptions::ActionSelector::UCB1,
@@ -85,20 +118,21 @@ public :
                  bool parallel = true,
                  bool debug_logs = false) {
         if (uct_mode) {
-            initialize_tree_policy(domain,
-                                   time_budget,
-                                   rollout_budget,
-                                   max_depth,
-                                   discount,
-                                   ucb_constant,
-                                   PyMCTSOptions::TreePolicy::Default,
-                                   expander,
-                                   PyMCTSOptions::ActionSelector::UCB1,
-                                   action_selector_execution,
-                                   PyMCTSOptions::DefaultPolicy::Random,
-                                   PyMCTSOptions::BackPropagator::Graph,
-                                   parallel,
-                                   debug_logs);
+            initialize_transition_mode(domain,
+                                       time_budget,
+                                       rollout_budget,
+                                       max_depth,
+                                       discount,
+                                       ucb_constant,
+                                       transition_mode,
+                                       PyMCTSOptions::TreePolicy::Default,
+                                       expander,
+                                       PyMCTSOptions::ActionSelector::UCB1,
+                                       action_selector_execution,
+                                       PyMCTSOptions::DefaultPolicy::Random,
+                                       PyMCTSOptions::BackPropagator::Graph,
+                                       parallel,
+                                       debug_logs);
         } else {
             spdlog::error("MCTS only supports UCT mode at the moment.");
             throw std::runtime_error("MCTS only supports UCT mode at the moment.");
@@ -137,6 +171,10 @@ public :
         return _implementation->get_policy();
     }
 
+    py::list get_action_prefix() {
+        return _implementation->get_action_prefix();
+    }
+
 private :
 
     class BaseImplementation {
@@ -149,9 +187,11 @@ private :
         virtual py::int_ get_nb_of_explored_states() =0;
         virtual py::int_ get_nb_rollouts() =0;
         virtual py::dict get_policy() =0;
+        virtual py::list get_action_prefix() =0;
     };
 
     template <typename Texecution,
+              typename TtransitionMode,
               typename TtreePolicy,
               typename Texpander,
               typename TactionSelectorOptimization,
@@ -168,9 +208,10 @@ private :
                        double ucb_constant = 1.0 / std::sqrt(2.0),
                        bool debug_logs = false) {
 
-            _domain = std::make_unique<PyMCTSDomain<Texecution>>(domain);
+            _domain = std::make_unique<PyMCTSDomain<Texecution>>(domain, (TtransitionMode*) nullptr);
             _solver = std::make_unique<airlaps::MCTSSolver<PyMCTSDomain<Texecution>,
                                                            Texecution,
+                                                           TtransitionMode,
                                                            TtreePolicy,
                                                            Texpander,
                                                            TactionSelectorOptimization,
@@ -253,7 +294,7 @@ private :
         }
 
         virtual py::dict get_policy() {
-            typename airlaps::GilControl<Texecution>::Release release;
+            typename airlaps::GilControl<Texecution>::Release acquire;
             py::dict d;
             auto&& p = _solver->policy();
             for (auto& e : p) {
@@ -262,10 +303,21 @@ private :
             return d;
         }
 
+        virtual py::list get_action_prefix() {
+            typename airlaps::GilControl<Texecution>::Release acquire;
+            py::list l;
+            const auto& ll = _solver->action_prefix();
+            for (const auto& e : ll) {
+                l.append(e);
+            }
+            return l;
+        }
+
     private :
         std::unique_ptr<PyMCTSDomain<Texecution>> _domain;
         std::unique_ptr<airlaps::MCTSSolver<PyMCTSDomain<Texecution>,
                                             Texecution,
+                                            TtransitionMode,
                                             TtreePolicy,
                                             Texpander,
                                             TactionSelectorOptimization,
@@ -282,6 +334,84 @@ private :
 
     std::unique_ptr<BaseImplementation> _implementation;
 
+    void initialize_transition_mode(
+                py::object& domain,
+                std::size_t time_budget,
+                std::size_t rollout_budget,
+                std::size_t max_depth,
+                double discount,
+                double ucb_constant,
+                PyMCTSOptions::TransitionMode transition_mode,
+                PyMCTSOptions::TreePolicy tree_policy,
+                PyMCTSOptions::Expander expander,
+                PyMCTSOptions::ActionSelector action_selector_optimization,
+                PyMCTSOptions::ActionSelector action_selector_execution,
+                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::BackPropagator back_propagator,
+                bool parallel,
+                bool debug_logs) {
+        switch (transition_mode) {
+            case PyMCTSOptions::TransitionMode::Step:
+                initialize_tree_policy<airlaps::StepTransitionMode>(
+                                            domain,
+                                            time_budget,
+                                            rollout_budget,
+                                            max_depth,
+                                            discount,
+                                            ucb_constant,
+                                            tree_policy,
+                                            expander,
+                                            action_selector_optimization,
+                                            action_selector_execution,
+                                            default_policy,
+                                            back_propagator,
+                                            parallel,
+                                            debug_logs);
+                break;
+            
+            case PyMCTSOptions::TransitionMode::Sample:
+                initialize_tree_policy<airlaps::SampleTransitionMode>(
+                                            domain,
+                                            time_budget,
+                                            rollout_budget,
+                                            max_depth,
+                                            discount,
+                                            ucb_constant,
+                                            tree_policy,
+                                            expander,
+                                            action_selector_optimization,
+                                            action_selector_execution,
+                                            default_policy,
+                                            back_propagator,
+                                            parallel,
+                                            debug_logs);
+                break;
+            
+            case PyMCTSOptions::TransitionMode::Distribution:
+                initialize_tree_policy<airlaps::DistributionTransitionMode>(
+                                            domain,
+                                            time_budget,
+                                            rollout_budget,
+                                            max_depth,
+                                            discount,
+                                            ucb_constant,
+                                            tree_policy,
+                                            expander,
+                                            action_selector_optimization,
+                                            action_selector_execution,
+                                            default_policy,
+                                            back_propagator,
+                                            parallel,
+                                            debug_logs);
+                break;
+            
+            default:
+                spdlog::error("Available transition modes: TransitionMode.Step , TransitionMode.Sample , TransitionMode.Distribution");
+                throw std::runtime_error("Available transition modes: TransitionMode.Step , TransitionMode.Sample , TransitionMode.Distribution");
+        }
+    }
+
+    template <typename TtransitionMode>
     void initialize_tree_policy(
                 py::object& domain,
                 std::size_t time_budget,
@@ -299,7 +429,8 @@ private :
                 bool debug_logs) {
         switch (tree_policy) {
             case PyMCTSOptions::TreePolicy::Default:
-                initialize_expander<airlaps::DefaultTreePolicy>(
+                initialize_expander<TtransitionMode,
+                                    airlaps::DefaultTreePolicy>(
                                         domain,
                                         time_budget,
                                         rollout_budget,
@@ -321,7 +452,8 @@ private :
         }
     }
 
-    template <typename TtreePolicy>
+    template <typename TtransitionMode,
+              typename TtreePolicy>
     void initialize_expander(
                 py::object& domain,
                 std::size_t time_budget,
@@ -338,7 +470,8 @@ private :
                 bool debug_logs) {
         switch (expander) {
             case PyMCTSOptions::Expander::Full:
-                initialize_action_selector_optimization<TtreePolicy,
+                initialize_action_selector_optimization<TtransitionMode,
+                                                        TtreePolicy,
                                                         airlaps::FullExpand>(
                                 domain,
                                 time_budget,
@@ -360,7 +493,8 @@ private :
         }
     }
 
-    template <typename TtreePolicy,
+    template <typename TtransitionMode,
+              typename TtreePolicy,
               typename Texpander>
     void initialize_action_selector_optimization(
                 py::object& domain,
@@ -377,7 +511,8 @@ private :
                 bool debug_logs) {
         switch (action_selector_optimization) {
             case PyMCTSOptions::ActionSelector::UCB1:
-                initialize_action_selector_execution<TtreePolicy,
+                initialize_action_selector_execution<TtransitionMode,
+                                                     TtreePolicy,
                                                      Texpander,
                                                      airlaps::UCB1ActionSelector>(
                                 domain,
@@ -394,7 +529,8 @@ private :
                 break;
             
             case PyMCTSOptions::ActionSelector::BestQValue:
-                initialize_action_selector_execution<TtreePolicy,
+                initialize_action_selector_execution<TtransitionMode,
+                                                     TtreePolicy,
                                                      Texpander,
                                                      airlaps::BestQValueActionSelector>(
                                 domain,
@@ -416,7 +552,8 @@ private :
         }
     }
 
-    template <typename TtreePolicy,
+    template <typename TtransitionMode,
+              typename TtreePolicy,
               typename Texpander,
               typename TactionSelectorOptimization>
     void initialize_action_selector_execution(
@@ -433,7 +570,8 @@ private :
                 bool debug_logs) {
         switch (action_selector_execution) {
             case PyMCTSOptions::ActionSelector::UCB1:
-                initialize_default_policy<TtreePolicy,
+                initialize_default_policy<TtransitionMode,
+                                          TtreePolicy,
                                           Texpander,
                                           TactionSelectorOptimization,
                                           airlaps::UCB1ActionSelector>(
@@ -450,7 +588,8 @@ private :
                 break;
             
             case PyMCTSOptions::ActionSelector::BestQValue:
-                initialize_default_policy<TtreePolicy,
+                initialize_default_policy<TtransitionMode,
+                                          TtreePolicy,
                                           Texpander,
                                           TactionSelectorOptimization,
                                           airlaps::BestQValueActionSelector>(
@@ -472,7 +611,8 @@ private :
         }
     }
 
-    template <typename TtreePolicy,
+    template <typename TtransitionMode,
+              typename TtreePolicy,
               typename Texpander,
               typename TactionSelectorOptimization,
               typename TactionSelectorExecution>
@@ -489,7 +629,8 @@ private :
                 bool debug_logs) {
         switch (default_policy) {
             case PyMCTSOptions::DefaultPolicy::Random:
-                initialize_back_propagator<TtreePolicy,
+                initialize_back_propagator<TtransitionMode,
+                                           TtreePolicy,
                                            Texpander,
                                            TactionSelectorOptimization,
                                            TactionSelectorExecution,
@@ -511,7 +652,8 @@ private :
         }
     }
 
-    template <typename TtreePolicy,
+    template <typename TtransitionMode,
+              typename TtreePolicy,
               typename Texpander,
               typename TactionSelectorOptimization,
               typename TactionSelectorExecution,
@@ -528,7 +670,8 @@ private :
                 bool debug_logs) {
         switch (back_propagator) {
             case PyMCTSOptions::BackPropagator::Graph:
-                initialize_execution<TtreePolicy,
+                initialize_execution<TtransitionMode,
+                                     TtreePolicy,
                                      Texpander,
                                      TactionSelectorOptimization,
                                      TactionSelectorExecution,
@@ -550,7 +693,8 @@ private :
         }
     }
 
-    template <typename TtreePolicy,
+    template <typename TtransitionMode,
+              typename TtreePolicy,
               typename Texpander,
               typename TactionSelectorOptimization,
               typename TactionSelectorExecution,
@@ -567,6 +711,7 @@ private :
                 bool debug_logs) {
         if (parallel) {
             initialize<airlaps::ParallelExecution,
+                       TtransitionMode,
                        TtreePolicy,
                        Texpander,
                        TactionSelectorOptimization,
@@ -581,6 +726,7 @@ private :
                                         debug_logs);
         } else {
             initialize<airlaps::SequentialExecution,
+                       TtransitionMode,
                        TtreePolicy,
                        Texpander,
                        TactionSelectorOptimization,
@@ -597,6 +743,7 @@ private :
     }
 
     template <typename Texecution,
+              typename TtransitionMode,
               typename TtreePolicy,
               typename Texpander,
               typename TactionSelectorOptimization,
@@ -613,6 +760,7 @@ private :
                 bool parallel = true,
                 bool debug_logs = false) {
         _implementation = std::make_unique<Implementation<Texecution,
+                                                          TtransitionMode,
                                                           TtreePolicy,
                                                           Texpander,
                                                           TactionSelectorOptimization,
@@ -632,6 +780,11 @@ private :
 
 void init_pymcts(py::module& m) {
     py::class_<PyMCTSOptions> py_mcts_options(m, "_MCTSOptions_");
+
+    py::enum_<PyMCTSOptions::TransitionMode>(py_mcts_options, "TransitionMode")
+        .value("Step", PyMCTSOptions::TransitionMode::Step)
+        .value("Sample", PyMCTSOptions::TransitionMode::Sample)
+        .value("Distribution", PyMCTSOptions::TransitionMode::Distribution);
 
     py::enum_<PyMCTSOptions::TreePolicy>(py_mcts_options, "TreePolicy")
         .value("Default", PyMCTSOptions::TreePolicy::Default);
@@ -658,6 +811,7 @@ void init_pymcts(py::module& m) {
                           double,
                           bool,
                           double,
+                          PyMCTSOptions::TransitionMode,
                           PyMCTSOptions::TreePolicy,
                           PyMCTSOptions::Expander,
                           PyMCTSOptions::ActionSelector,
@@ -673,6 +827,7 @@ void init_pymcts(py::module& m) {
                  py::arg("discount")=1.0,
                  py::arg("uct_mode")=true,
                  py::arg("ucb_constant")=1.0/std::sqrt(2.0),
+                 py::arg("transition_mode")=PyMCTSOptions::TransitionMode::Distribution,
                  py::arg("tree_policy")=PyMCTSOptions::TreePolicy::Default,
                  py::arg("expander")=PyMCTSOptions::Expander::Full,
                  py::arg("action_selector_optimization")=PyMCTSOptions::ActionSelector::UCB1,
@@ -689,5 +844,6 @@ void init_pymcts(py::module& m) {
             .def("get_nb_of_explored_states", &PyMCTSSolver::get_nb_of_explored_states)
             .def("get_nb_rollouts", &PyMCTSSolver::get_nb_rollouts)
             .def("get_policy", &PyMCTSSolver::get_policy)
+            .def("get_action_prefix", &PyMCTSSolver::get_action_prefix)
         ;
 }

@@ -23,30 +23,27 @@
 
 namespace airlaps {
 
-/** Use Environment domain knowledge for rollouts */
-template <typename Tsolver>
-struct EnvironmentRollout {
-    std::list<typename Tsolver::Domain::Event> action_prefix;
-
-    void init_rollout(Tsolver& solver) {
+/** Use Environment domain knowledge for transitions */
+struct StepTransitionMode {
+    template <typename Tsolver>
+    void init_rollout(Tsolver& solver) const {
         solver.domain().reset();
-        std::for_each(action_prefix.begin(), action_prefix.end(),
+        std::for_each(solver.action_prefix().begin(), solver.action_prefix().end(),
                       [&solver](const typename Tsolver::Domain::Event& a){solver.domain().step(a);});
     }
 
-    std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> progress(
+    template <typename Tsolver>
+    std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
             Tsolver& solver,
             const typename Tsolver::Domain::State& state,
-            const typename Tsolver::Domain::Event& action) {
+            const typename Tsolver::Domain::Event& action) const {
         return solver.domain().step(action);
     }
 
-    typename Tsolver::StateNode* advance(Tsolver& solver,
-                                         typename Tsolver::ActionNode& action,
-                                         bool record_action) {
-        if (record_action) {
-            action_prefix.push_back(action.action);
-        }
+    template <typename Tsolver>
+    typename Tsolver::StateNode* random_next_node(
+            Tsolver& solver,
+            typename Tsolver::ActionNode& action) const {
         auto outcome = solver.domain().step(action.action);
         auto si = solver.graph().find(typename Tsolver::StateNode(outcome->state()));
         if (si == solver.graph().end()) {
@@ -59,22 +56,46 @@ struct EnvironmentRollout {
 };
 
 
-/** Use Simulation domain knowledge for rollouts */
-template <typename Tsolver>
-struct SimulationRollout {
-    void init_rollout(Tsolver& solver) {}
+/** Use Simulation domain knowledge for transitions */
+struct SampleTransitionMode {
+    template <typename Tsolver>
+    void init_rollout(Tsolver& solver) const {}
 
-    std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> progress(
+    template <typename Tsolver>
+    std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
             Tsolver& solver,
             const typename Tsolver::Domain::State& state,
-            const typename Tsolver::Domain::Event& action) {
+            const typename Tsolver::Domain::Event& action) const {
         return solver.domain().sample(state, action);
     }
 
-    typename Tsolver::StateNode* advance(Tsolver& solver,
-                                         typename Tsolver::ActionNode& action,
-                                         bool record_action) {
-        return action->dist_to_outcome[action->dist(solver.gen())]->first;
+    template <typename Tsolver>
+    typename Tsolver::StateNode* random_next_node(
+            Tsolver& solver,
+            typename Tsolver::ActionNode& action) const {
+        return action.dist_to_outcome[action.dist(solver.gen())]->first;
+    }
+};
+
+
+/** Use uncertain transitions domain knowledge for transitions */
+struct DistributionTransitionMode {
+    template <typename Tsolver>
+    void init_rollout(Tsolver& solver) const {}
+
+    template <typename Tsolver>
+    std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
+            Tsolver& solver,
+            const typename Tsolver::Domain::State& state,
+            const typename Tsolver::Domain::Event& action) const {
+        return solver.domain().sample(state, action);
+    }
+
+    template <typename Tsolver>
+    typename Tsolver::StateNode* random_next_node(
+            Tsolver& solver,
+            typename Tsolver::ActionNode& action) const {
+        return action.dist_to_outcome[action.dist(solver.gen())]->first;
     }
 };
 
@@ -90,6 +111,7 @@ public :
                                             std::size_t& d) const {
         try {
             if (solver.debug_logs()) { spdlog::debug("Launching default tree policy from state " + n.state.print()); }
+            solver.transition_mode().init_rollout(solver);
             typename Tsolver::StateNode* current_node = &n;
             while(!(current_node->terminal) && d < solver.max_depth()) {
                 typename Tsolver::StateNode* next_node = expander(solver, *current_node);
@@ -99,7 +121,7 @@ public :
                     if (action == nullptr) {
                         throw std::runtime_error("AIRLAPS exception: no best action found in state " + current_node->state.print());
                     } else {
-                        current_node = action->dist_to_outcome[action->dist(solver.gen())]->first;
+                        current_node = solver.transition_mode().random_next_node(solver, *action);
                     }
                 } else {
                     current_node = next_node;
@@ -123,10 +145,13 @@ public :
  */
 class FullExpand {
 public :
+    FullExpand()
+    : _checked_transition_mode(false) {}
+
     template <typename Tsolver>
     typename Tsolver::StateNode* operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
         try {
-            if (solver.debug_logs()) { spdlog::debug("Test expansion of state " + n.state.print()); }
+            if (solver.debug_logs()) { spdlog::debug("Testing expansion of state " + n.state.print()); }
             if (n.expanded) {
                 if (solver.debug_logs()) { spdlog::debug("State already fully expanded"); }
                 return nullptr;
@@ -175,41 +200,7 @@ public :
                 auto& uo = untried_outcomes[odist(solver.gen())];
                 if (uo.second == nullptr) { // unexpanded action
                     if (solver.debug_logs()) { spdlog::debug("Found one unexpanded action: " + uo.first->action.print()); }
-                    // Generate the next states of this action
-                    auto next_states = solver.domain().get_next_state_distribution(n.state, uo.first->action)->get_values();
-                    typename Tsolver::ActionNode& action = *uo.first;
-                    untried_outcomes.clear();
-                    weights.clear();
-                    std::vector<double> outcome_weights;
-                    for (const auto& ns : next_states) {
-                        typename Tsolver::Domain::OutcomeExtractor oe(ns);
-                        auto i = solver.graph().emplace(oe.state());
-                        typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                        auto ii = action.outcomes.insert(std::make_pair(&next_node,
-                                                                        solver.domain().get_transition_reward(n.state, action.action, next_node.state)));
-                        action.dist_to_outcome.insert(std::make_pair(outcome_weights.size(), ii));
-                        outcome_weights.push_back(oe.probability());
-                        next_node.parents.push_back(&action);
-                        if (i.second) { // new node
-                            next_node.terminal = solver.domain().is_terminal(next_node.state);
-                        }
-                        if (next_node.actions.empty()) {
-                            if (solver.debug_logs()) spdlog::debug("Candidate next state: " + next_node.state.print());
-                            untried_outcomes.push_back(std::make_pair(&action, &next_node));
-                            weights.push_back(oe.probability());
-                        }
-                    }
-                    // Record the action's outcomes distribution
-                    action.dist = std::discrete_distribution<>(outcome_weights.begin(), outcome_weights.end());
-                    // Pick a random next state
-                    if (untried_outcomes.empty()) {
-                        // All next states already visited => pick a random next state using action.dist
-                        return action.dist_to_outcome[action.dist(solver.gen())]->first;
-                    } else {
-                        // Pick a random next state among untried ones
-                        odist = std::discrete_distribution<>(weights.begin(), weights.end());
-                        return untried_outcomes[odist(solver.gen())].second;
-                    }
+                    return expand_action(solver, solver.transition_mode(), n, *(uo.first));
                 } else { // expanded action, just return the selected next state
                     if (solver.debug_logs()) { spdlog::debug("Found one untried outcome: action " + uo.first->action.print() +
                                                              " and next state " + uo.second->state.print()); }
@@ -221,103 +212,176 @@ public :
             throw;
         }
     }
+
+    template <typename Tsolver, typename Ttransition_mode,
+              std::enable_if_t<std::is_same<Ttransition_mode, DistributionTransitionMode>::value, int> = 0>
+    typename Tsolver::StateNode* expand_action(Tsolver& solver, const Ttransition_mode& transition_mode,
+                                               typename Tsolver::StateNode& state, typename Tsolver::ActionNode& action) const {
+        try {
+            // Generate the next states of this action
+            auto next_states = solver.domain().get_next_state_distribution(state.state, action.action)->get_values();
+            std::vector<typename Tsolver::StateNode*> untried_outcomes;
+            std::vector<double> weights;
+            std::vector<double> outcome_weights;
+            for (const auto& ns : next_states) {
+                typename Tsolver::Domain::OutcomeExtractor oe(ns);
+                auto i = solver.graph().emplace(oe.state());
+                typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
+                double reward = solver.domain().get_transition_reward(state.state, action.action, next_node.state);
+                auto ii = action.outcomes.insert(std::make_pair(&next_node, std::make_pair(reward, 1)));
+                if (ii.second) { // new outcome
+                    action.dist_to_outcome.push_back(ii.first);
+                    outcome_weights.push_back(oe.probability());
+                } else { // existing outcome (following code not efficient but hopefully very rare case if domain is well defined)
+                    for (unsigned int oid = 0 ; oid < outcome_weights.size() ; oid++) {
+                        if (action.dist_to_outcome[oid]->first == ii.first->first) { // found my outcome!
+                            std::pair<double, std::size_t>& mp = ii.first->second;
+                            mp.first = ((double) (outcome_weights[oid] * mp.first) + (reward * oe.probability())) / ((double) (outcome_weights[oid] + oe.probability()));
+                            outcome_weights[oid] += oe.probability();
+                            mp.second += 1; // useless in this mode a priori, but just keep track for coherency
+                            break;
+                        }
+                    }
+                }
+                next_node.parents.push_back(&action);
+                if (i.second) { // new node
+                    next_node.terminal = solver.domain().is_terminal(next_node.state);
+                }
+                if (next_node.actions.empty()) {
+                    if (solver.debug_logs()) spdlog::debug("Candidate next state: " + next_node.state.print());
+                    untried_outcomes.push_back(&next_node);
+                    weights.push_back(oe.probability());
+                }
+            }
+            // Record the action's outcomes distribution
+            action.dist = std::discrete_distribution<>(outcome_weights.begin(), outcome_weights.end());
+            // Pick a random next state
+            if (untried_outcomes.empty()) {
+                // All next states already visited => pick a random next state using action.dist
+                return action.dist_to_outcome[action.dist(solver.gen())]->first;
+            } else {
+                // Pick a random next state among untried ones
+                std::discrete_distribution<> odist(weights.begin(), weights.end());
+                return untried_outcomes[odist(solver.gen())];
+            }
+        } catch (const std::exception& e) {
+            spdlog::error("AIRLAPS exception in MCTS when expanding action " + action.action.print() + ": " + e.what());
+            throw;
+        }
+    }
+
+    template <typename Tsolver, typename Ttransition_mode,
+              std::enable_if_t<std::is_same<Ttransition_mode, StepTransitionMode>::value ||
+                               std::is_same<Ttransition_mode, SampleTransitionMode>::value, int> = 0>
+    typename Tsolver::StateNode* expand_action(Tsolver& solver, const Ttransition_mode& transition_mode,
+                                               typename Tsolver::StateNode& state, typename Tsolver::ActionNode& action) const {
+        try {
+            if (!_checked_transition_mode) {
+                spdlog::warn("Using MCTS full expansion mode with step() or sample() domain's transition mode assumes the domain is deterministic (unpredictable result otherwise).");
+                _checked_transition_mode = true;
+            }
+            // Generate the next state of this action
+            std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = transition_mode.random_next_outcome(solver, state.state, action.action);
+            auto i = solver.graph().emplace(to->state());
+            typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
+            auto ii = action.outcomes.insert(std::make_pair(&next_node, std::make_pair(to->reward(), 1)));
+            action.dist_to_outcome.push_back(ii.first);
+            next_node.parents.push_back(&action);
+            if (i.second) { // new node
+                next_node.terminal = to->terminal();
+            }
+            // Record the action's outcomes distribution
+            action.dist = std::discrete_distribution<>({1.0});
+            if (solver.debug_logs()) spdlog::debug("Candidate next state: " + next_node.state.print());
+            return &next_node;
+        } catch (const std::exception& e) {
+            spdlog::error("AIRLAPS exception in MCTS when expanding action " + action.action.print() + ": " + e.what());
+            throw;
+        }
+    }
+
+private :
+    mutable bool _checked_transition_mode;
 };
 
 
 /** Test if a given node needs to be expanded by sampling applicable actions and next states.
- *  Returns nullptr if all actions and outcomes have already tried, otherwise a
- *  sampled unvisited outcome according to its probability (among only unvisited outcomes).
+ *  Tries to sample new outcomes with a probability proportional to the number of actual expansions.
+ *  Returns nullptr if we cannot sample new outcomes, otherwise a sampled unvisited outcome
+ *  according to its probability (among only unvisited outcomes).
  *  REQUIREMENTS: returns nullptr if all actions have been already tried, and set the terminal
  *  flag of the returned next state
  */
-// class PartialExpand {
-// public :
-//     template <typename Tsolver>
-//     typename Tsolver::StateNode* operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
-//         try {
-//             if (solver.debug_logs()) { spdlog::debug("Test expansion of state " + n.state.print()); }
-//             if (n.expanded) {
-//                 if (solver.debug_logs()) { spdlog::debug("State already fully expanded"); }
-//                 return nullptr;
-//             }
-//             // Generate applicable actions if not already done
-//             if (n.actions.empty()) {
-//                 if (solver.debug_logs()) { spdlog::debug("State never expanded, generating all next actions"); }
-//                 auto applicable_actions = solver.domain().get_applicable_actions(n.state)->get_elements();
-//                 for (const auto& a : applicable_actions) {
-//                     n.actions.emplace_back(std::make_unique<typename Tsolver::ActionNode>(a));
-//                     n.actions.back()->parent = &n;
-//                 }
-//             }
-//             // Check for untried actions
-//             if (solver.debug_logs()) { spdlog::debug("Checking for untried actions..."); }
-//             typename Tsolver::ActionNode* sampled_action = nullptr;
-//             std::vector<typename Tsolver::ActionNode*> untried_actions;
-//             for (auto& a : n.actions) {
-//                 if (a->visits_count == 0) {
-//                     untried_actions.push_back(a.get());
-//                 }
-//             }
-//             if (untried_actions.empty()) { // nothing to expand
-//                 if (solver.debug_logs()) { spdlog::debug("All actions already tried, trying to sample new outcome"); }
-//                 sampled_action = n.actions
-//                 return nullptr;
-//             } else {
-//                 std::uniform_int_distribution<> odist(0, untried_actions.size()-1);
-//                 sampled_action = untried_actions[odist(gen)];
-//                 //
-
-//                 std::discrete_distribution<> odist(weights.begin(), weights.end());
-//                 auto& uo = untried_outcomes[odist(gen)];
-//                 if (uo.second == nullptr) { // unexpanded action
-//                     if (solver.debug_logs()) { spdlog::debug("Found one unexpanded action: " + uo.first->action.print()); }
-//                     // Generate the next states of this action
-//                     auto next_states = solver.domain().get_next_state_distribution(n.state, uo.first->action)->get_values();
-//                     typename Tsolver::ActionNode& action = *uo.first;
-//                     untried_outcomes.clear();
-//                     weights.clear();
-//                     std::vector<double> outcome_weights;
-//                     for (const auto& ns : next_states) {
-//                         typename Tsolver::Domain::OutcomeExtractor oe(ns);
-//                         auto i = solver.graph().emplace(oe.state());
-//                         typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-//                         auto ii = action.outcomes.insert(std::make_pair(&next_node,
-//                                                                         solver.domain().get_transition_reward(n.state, action.action, next_node.state)));
-//                         action.dist_to_outcome.insert(std::make_pair(outcome_weights.size(), ii));
-//                         outcome_weights.push_back(oe.probability());
-//                         next_node.parents.push_back(&action);
-//                         if (i.second) { // new node
-//                             next_node.terminal = solver.domain().is_terminal(next_node.state);
-//                         }
-//                         if (next_node.actions.empty()) {
-//                             if (solver.debug_logs()) spdlog::debug("Candidate next state: " + next_node.state.print());
-//                             untried_outcomes.push_back(std::make_pair(&action, &next_node));
-//                             weights.push_back(oe.probability());
-//                         }
-//                     }
-//                     // Record the action's outcomes distribution
-//                     action.dist = std::discrete_distribution<>(outcome_weights.begin(), outcome_weights.end());
-//                     // Pick a random next state
-//                     if (untried_outcomes.empty()) {
-//                         // All next states already visited => pick a random next state using action.dist
-//                         return action.dist_to_outcome[action.dist(gen)]->first;
-//                     } else {
-//                         // Pick a random next state among untried ones
-//                         odist = std::discrete_distribution<>(weights.begin(), weights.end());
-//                         return untried_outcomes[odist(gen)].second;
-//                     }
-//                 } else { // expanded action, just return the selected next state
-//                     if (solver.debug_logs()) { spdlog::debug("Found one untried outcome: action " + uo.first->action.print() +
-//                                                              " and next state " + uo.second->state.print()); }
-//                     return uo.second;
-//                 }
-//             }
-//         } catch (const std::exception& e) {
-//             spdlog::error("AIRLAPS exception in MCTS when expanding state " + n.state.print() + ": " + e.what());
-//             throw;
-//         }
-//     }
-// };
+class PartialExpand {
+public :
+    template <typename Tsolver>
+    typename Tsolver::StateNode* operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
+        try {
+            if (solver.debug_logs()) { spdlog::debug("Test expansion of state " + n.state.print()); }
+            // Sample an action
+            std::bernoulli_distribution dist_state_expansion((n.visits_count > 0)?
+                                                             (((double) n.expansions_count) / ((double) n.visits_count)):
+                                                             1.0);
+            typename Tsolver::ActionNode* action_node = nullptr;
+            if (dist_state_expansion(solver.gen())) {
+                typename Tsolver::Domain::Action action = solver.domain().get_applicable_actions(n.state).sample();
+                auto a = n.actions.emplace(typename Tsolver::ActionNode(action));
+                if (a.second) { // new action
+                    n.expansions_count += 1;
+                }
+                action_node = &const_cast<typename Tsolver::ActionNode&>(*(a.first)); // we won't change the real key (ActionNode::action) so we are safe
+                if (solver.debug_logs()) { spdlog::debug("Tried to sample a new action: " + action_node->action.print()); }
+            } else {
+                std::vector<typename Tsolver::ActionNode*> actions;
+                for (auto& a : n.actions) {
+                    actions.push_back(&a);
+                }
+                std::uniform_int_distribution<> dist_known_actions(0, actions.size()-1);
+                action_node = actions[dist_known_actions(solver.gen())];
+                if (solver.debug_logs()) { spdlog::debug("Sampled among known actions: " + action_node->action.print()); }
+            }
+            // Sample an outcome
+            std::bernoulli_distribution dist_action_expansion((action_node->visits_count > 0)?
+                                                              (((double) action_node->expansions_count) / ((double) action_node->visits_count)):
+                                                              1.0);
+            typename Tsolver::StateNode* ns = nullptr;
+            if (dist_action_expansion(solver.gen())) {
+                std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = solver.transition_mode().random_next_outcome(n.state, action_node->action);
+                auto s = solver.graph().emplace(to->state());
+                ns = &const_cast<typename Tsolver::StateNode&>(*(s.first)); // we won't change the real key (StateNode::state) so we are safe
+                if (s.second) { // new state
+                    ns->terminal = to->termination();
+                }
+                auto ins = action_node->outcomes.emplace(std::make_pair(ns, std::make_pair(to->reward(), 1)));
+                // Update the outcome's reward and visits count
+                if (ins.second) { // new outcome
+                    action_node->dist_to_outcome.push_back(ins.first);
+                    action_node->expansions_count += 1;
+                    ns->parents.push_back(action_node);
+                } else { // known outcome
+                    std::pair<double, std::size_t>& mp = ins.first->second;
+                    mp.first = ((double) (mp.second * mp.first) + to->reward()) / ((double) (mp.second + 1));
+                    mp.second += 1;
+                    ns = nullptr; // we have not discovered anything new
+                }
+                // Reconstruct the probability distribution
+                std::vector<double> weights(action_node->dist_to_outcome.size());
+                for (unsigned int oid = 0 ; oid < weights.size() ; oid++) {
+                    weights[oid] = action_node->dist_to_outcome[oid]->second.second;
+                }
+                action_node->dist = std::discrete_distribution<>(weights.begin(), weights.end());
+                if (solver.debug_logs()) { spdlog::debug("Tried to sample a new outcome: " + ns->state.print()); }
+            } else {
+                ns = nullptr; // we have not discovered anything new
+                if (solver.debug_logs()) { spdlog::debug("Sampled among known outcomes: " + ns->state.print()); }
+            }
+            return ns;
+        } catch (const std::exception& e) {
+            spdlog::error("AIRLAPS exception in MCTS when expanding state " + n.state.print() + ": " + e.what());
+            throw;
+        }
+    }
+};
 
 
 /** UCB1 Best Child */
@@ -382,18 +446,18 @@ public :
         try {
             if (solver.debug_logs()) { spdlog::debug("Launching random default policy from state " + n.state.print()); }
             typename Tsolver::Domain::State current_state = n.state;
+            bool termination = false;
             std::size_t current_depth = d;
             double reward = 0.0;
             double gamma_n = 1.0;
-            while(!solver.domain().is_terminal(current_state) && current_depth < solver.max_depth()) {
+            while(!termination && current_depth < solver.max_depth()) {
                 std::unique_ptr<typename Tsolver::Domain::Action> action = solver.domain().get_applicable_actions(current_state)->sample();
-                typename std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> o = solver.domain().sample(
-                    current_state,
-                    *action
-                );
+
+                std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> o = solver.transition_mode().random_next_outcome(solver, current_state, *action);
                 reward += gamma_n * (o->reward());
                 gamma_n *= solver.discount();
                 current_state = o->state();
+                termination = o->terminal();
                 current_depth++;
                 if (solver.debug_logs()) { spdlog::debug("Sampled transition: action=" + action->print() +
                                                         ", next state=" + current_state.print() +
@@ -424,11 +488,7 @@ struct GraphBackup {
             std::unordered_set<typename Tsolver::StateNode*> new_frontier;
             for (auto& f : frontier) {
                 for (auto& a : f->parents) {
-                    double q_value = 0.0;
-                    auto range = a->outcomes.equal_range(f); // get all same next states (in case of redundancies)
-                    for (auto i = range.first ; i != range.second ; ++i) {
-                        q_value += i->second + (solver.discount() * i->first->value);
-                    }
+                    double q_value = a->outcomes[f].first + (solver.discount() * (f->value));
                     a->value = (((a->visits_count) * (a->value))  + q_value) / ((double) (a->visits_count + 1));
                     a->visits_count += 1;
                     typename Tsolver::StateNode* parent_node = a->parent;
@@ -447,7 +507,8 @@ struct GraphBackup {
 
 
 template <typename Tdomain,
-          typename Texecution_policy = ParallelExecution,
+          typename TexecutionPolicy = ParallelExecution,
+          typename TtransitionMode = DistributionTransitionMode,
           typename TtreePolicy = DefaultTreePolicy,
           typename Texpander = FullExpand,
           typename TactionSelectorOptimization = UCB1ActionSelector,
@@ -465,7 +526,8 @@ public :
     typedef TactionSelectorExecution ActionSelectorExecution;
     typedef TdefaultPolicy DefaultPolicy;
     typedef TbackPropagator BackPropagator;
-    typedef Texecution_policy ExecutionPolicy;
+    typedef TexecutionPolicy ExecutionPolicy;
+    typedef TtransitionMode TransitionMode;
 
     struct ActionNode;
 
@@ -473,7 +535,8 @@ public :
         typedef typename SetTypeDeducer<ActionNode, Action>::Set ActionSet;
         State state;
         bool terminal;
-        bool expanded;
+        bool expanded; // used only for full expansion mode
+        std::size_t expansions_count; // used only for partial expansion mode
         ActionSet actions;
         double value;
         std::size_t visits_count;
@@ -481,7 +544,7 @@ public :
 
         StateNode(const State& s)
             : state(s), terminal(false), expanded(false),
-              value(0.0), visits_count(0) {}
+              expansions_count(0), value(0.0), visits_count(0) {}
         
         struct Key {
             const State& operator()(const StateNode& sn) const { return sn.state; }
@@ -490,15 +553,17 @@ public :
 
     struct ActionNode {
         Action action;
-        std::unordered_multimap<StateNode*, double> outcomes; // next state nodes owned by _graph
-        std::unordered_map<std::size_t, typename std::unordered_multimap<StateNode*, double>::iterator> dist_to_outcome;
+        std::unordered_map<StateNode*, std::pair<double, std::size_t>> outcomes; // next state nodes owned by _graph
+        std::vector<typename std::unordered_map<StateNode*, std::pair<double, std::size_t>>::iterator> dist_to_outcome;
         std::discrete_distribution<> dist;
+        std::size_t expansions_count; // used only for partial expansion mode
         double value;
         std::size_t visits_count;
         StateNode* parent;
 
         ActionNode(const Action& a)
-            : action(a), value(0.0), visits_count(0), parent(nullptr) {}
+            : action(a), expansions_count(0), value(0.0),
+              visits_count(0), parent(nullptr) {}
         
         struct Key {
             const Action& operator()(const ActionNode& an) const { return an.action; }
@@ -594,6 +659,7 @@ public :
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
         } else {
+            _action_prefix.push_back(action->action);
             return action->action;
         }
     }
@@ -641,6 +707,8 @@ public :
 
     double discount() const { return _discount; }
 
+    TransitionMode& transition_mode() { return _transition_mode; }
+
     const TreePolicy& tree_policy() { return _tree_policy; }
 
     const Expander& expander() { return _expander; }
@@ -655,6 +723,8 @@ public :
 
     Graph& graph() { return _graph; }
 
+    const std::list<Action>& action_prefix() const { return _action_prefix; }
+
     std::mt19937& gen() { return *_gen; }
 
     bool debug_logs() const { return _debug_logs; }
@@ -668,6 +738,7 @@ private :
     double _discount;
     std::size_t _nb_rollouts;
     bool _debug_logs;
+    TransitionMode _transition_mode;
     TreePolicy _tree_policy;
     Expander _expander;
     ActionSelectorOptimization _action_selector_optimization;
@@ -676,13 +747,14 @@ private :
     BackPropagator _back_propagator;
 
     Graph _graph;
+    std::list<Action> _action_prefix;
 
     std::unique_ptr<std::mt19937> _gen;
 }; // MCTSSolver class
 
 /** UCT is MCTS with the default template options */
-template <typename Tdomain, typename Texecution_policy, typename ...T>
-using UCTSolver = MCTSSolver<Tdomain, Texecution_policy, T...>;
+template <typename Tdomain, typename Texecution_policy, typename TtransitionMode, typename ...T>
+using UCTSolver = MCTSSolver<Tdomain, Texecution_policy, TtransitionMode, T...>;
 
 } // namespace airlaps
 

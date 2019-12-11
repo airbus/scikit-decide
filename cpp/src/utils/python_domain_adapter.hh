@@ -108,9 +108,6 @@ public :
         ApplicableActionSpace(const py::object& applicable_actions)
         : _applicable_actions(applicable_actions) {
             typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(_applicable_actions, "get_elements")) {
-                throw std::invalid_argument("AIRLAPS exception: python applicable action object must implement get_elements()");
-            }
         }
 
         ~ApplicableActionSpace() {
@@ -142,7 +139,11 @@ public :
 
         ApplicableActionSpaceElements get_elements() const {
             typename GilControl<Texecution>::Acquire acquire;
-            return ApplicableActionSpaceElements(_applicable_actions.attr("get_elements")());
+            if (!py::hasattr(_applicable_actions, "get_elements")) {
+                throw std::invalid_argument("AIRLAPS exception: python applicable action object must implement get_elements()");
+            } else {
+                return ApplicableActionSpaceElements(_applicable_actions.attr("get_elements")());
+            }
         }
 
         std::unique_ptr<Event> sample() const {
