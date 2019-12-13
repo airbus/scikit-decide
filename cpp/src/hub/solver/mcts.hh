@@ -121,7 +121,12 @@ public :
                     if (action == nullptr) {
                         throw std::runtime_error("AIRLAPS exception: no best action found in state " + current_node->state.print());
                     } else {
-                        current_node = solver.transition_mode().random_next_node(solver, *action);
+                        next_node = solver.transition_mode().random_next_node(solver, *action);
+                        if (next_node == nullptr) { // might happen with step transition mode and stochastic environments
+                            break;
+                        } else {
+                            current_node = next_node;
+                        }
                     }
                 } else {
                     current_node = next_node;
@@ -659,6 +664,14 @@ public :
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
         } else {
+            if (_debug_logs) {
+                std::string str = "(";
+                for (const auto& o : action->outcomes) {
+                    str += "\n    " + o.first->state.print();
+                }
+                str += "\n)";
+                spdlog::debug("Best action's known outcomes:\n" + str);
+            }
             _action_prefix.push_back(action->action);
             return action->action;
         }
