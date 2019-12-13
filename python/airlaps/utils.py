@@ -29,6 +29,15 @@ __all__ = ['get_registered_domains', 'get_registered_solvers', 'load_registered_
 
 logger = logging.getLogger('airlaps.utils')
 
+logger.setLevel(logging.INFO)
+
+if not len(logger.handlers):
+    ch = logging.StreamHandler()
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+    ch.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(ch)
 
 def _get_registered_entries(entry_type: str) -> List[str]:
     return [e.name for e in iter_entry_points(entry_type)]
@@ -102,6 +111,10 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
     outcome_formatter: The function transforming EnvironmentOutcome objects in the string to print (if None, no print).
     save_result: Directory in which state visited, actions applied and Transition Value are saved to json. 
     """
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+        logger.debug('Logger is in verbose mode: all debug messages will be there for you to enjoy （〜^∇^ )〜')
+
     if solver is None:
         # Create solver-like random walker that works for any domain
         class RandomWalk(Policies):
@@ -148,9 +161,8 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             domain.set_memory(from_memory)
             last_state = from_memory[-1] if has_memory else from_memory
             observation = domain.get_observation_distribution(last_state, from_action).sample()
-        if verbose:
-            logger.info(f'Episode {i_episode + 1} started with following observation:')
-            logger.info(observation)
+        logger.debug(f'Episode {i_episode + 1} started with following observation:')
+        logger.debug(observation)
         # Run episode
         step = 1
 
@@ -184,10 +196,9 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                         "s'": hash(observation)
                     }
             if outcome_formatter is not None:
-                logger.info('Result:', outcome_formatter(outcome))
+                logger.debug('Result:', outcome_formatter(outcome))
             if outcome.termination:
-                if verbose:
-                    logger.info(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
+                logger.debug(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
                 break
             if max_framerate is not None:
                 wait = 1 / max_framerate - (time.perf_counter() - old_time)
@@ -196,7 +207,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
             step += 1
         if render and has_render:
             domain.render()
-        if verbose and has_goal:
+        if has_goal:
             logger.info(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
                         f'in episode {i_episode + 1}.')
         if save_result_directory is not None:
