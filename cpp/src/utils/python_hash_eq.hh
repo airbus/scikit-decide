@@ -52,9 +52,11 @@ struct PythonHash {
             } else {
                 return compute_hash(o);
             }
-        } catch(const py::error_already_set& e) {
-            spdlog::error(std::string("AIRLAPS exception when hashing python object: ") + e.what());
-            throw;
+        } catch(const py::error_already_set* e) {
+            spdlog::error(std::string("AIRLAPS exception when hashing python object: ") + e->what());
+            std::runtime_error err(e->what());
+            delete e;
+            throw err;
         }
     }
 };
@@ -93,9 +95,11 @@ struct PythonEqual {
             } else {
                 return compute_equal(o1, o2);
             }
-        } catch(const py::error_already_set& e) {
-            spdlog::error(std::string("AIRLAPS exception when testing equality of python objects: ") + e.what());
-            throw;
+        } catch(const py::error_already_set* e) {
+            spdlog::error(std::string("AIRLAPS exception when testing equality of python objects: ") + e->what());
+            std::runtime_error err(e->what());
+            delete e;
+            throw err;
         }
     }
 };

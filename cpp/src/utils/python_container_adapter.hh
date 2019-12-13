@@ -89,7 +89,21 @@ public :
 
         class ObjectType : public BaseType {
         public :
-            ObjectType(const py::object& value) : _value(value) {}
+            ObjectType(const py::object& value) {
+                typename GilControl<Texecution>::Acquire acquire;
+                this->_value = value;
+            }
+
+            ObjectType(const ObjectType& other) {
+                typename GilControl<Texecution>::Acquire acquire;
+                this->_value = other.value;
+            }
+
+            ObjectType& operator=(const ObjectType& other) {
+                typename GilControl<Texecution>::Acquire acquire;
+                this->_value = other.value;
+                return *this;
+            }
 
             ~ObjectType() {
                 typename GilControl<Texecution>::Acquire acquire;
@@ -104,9 +118,11 @@ public :
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
                     return airlaps::PythonHash<Texecution>()(_value);
-                } catch(const py::error_already_set& ex) {
-                    spdlog::error(std::string("AIRLAPS exception when hashing state feature items: ") + ex.what());
-                    throw;
+                } catch(const py::error_already_set* e) {
+                    spdlog::error(std::string("AIRLAPS exception when hashing state feature items: ") + e->what());
+                    std::runtime_error err(e->what());
+                    delete e;
+                    throw err;
                 }
             }
 
@@ -115,9 +131,11 @@ public :
                 try {
                     const ObjectType* o = dynamic_cast<const ObjectType*>(&other);
                     return  ((o != nullptr) && airlaps::PythonEqual<Texecution>()(_value, o->_value));
-                } catch(const py::error_already_set& ex) {
-                    spdlog::error(std::string("AIRLAPS exception when testing state feature items equality: ") + ex.what());
-                    throw;
+                } catch(const py::error_already_set* e) {
+                    spdlog::error(std::string("AIRLAPS exception when testing state feature items equality: ") + e->what());
+                    std::runtime_error err(e->what());
+                    delete e;
+                    throw err;
                 }
             }
 
@@ -131,6 +149,7 @@ public :
     PythonContainerAdapter() {}
 
     PythonContainerAdapter(const py::object& vector) {
+        typename GilControl<Texecution>::Acquire acquire;
         if (py::isinstance<py::list>(vector)) {
             _implementation = std::make_unique<SequenceImplementation<py::list>>(vector);
         } else if (py::isinstance<py::tuple>(vector)) {
@@ -229,8 +248,21 @@ private :
     template <typename Tsequence>
     class SequenceImplementation : public BaseImplementation {
     public :
-        SequenceImplementation(const py::object& vector)
-        : _vector(static_cast<const Tsequence&>(vector)) {}
+        SequenceImplementation(const py::object& vector) {
+            typename GilControl<Texecution>::Acquire acquire;
+            this->_vector = static_cast<const Tsequence&>(vector);
+        }
+
+        SequenceImplementation(const SequenceImplementation& other) {
+            typename GilControl<Texecution>::Acquire acquire;
+            this->_vector = other._vector;
+        }
+
+        SequenceImplementation& operator=(const SequenceImplementation& other) {
+            typename GilControl<Texecution>::Acquire acquire;
+            this->_vector = other._vector;
+            return *this;
+        }
 
         ~SequenceImplementation() {
             typename GilControl<Texecution>::Acquire acquire;
@@ -258,9 +290,23 @@ private :
     template <typename T>
     class NumpyImplementation : public BaseImplementation {
     public :
-        NumpyImplementation(const py::object& vector)
-        : _vector(static_cast<const py::array_t<T>&>(vector)) {
+        NumpyImplementation(const py::object& vector) {
+            typename GilControl<Texecution>::Acquire acquire;
+            _vector = static_cast<const py::array_t<T>&>(vector);
             _buffer = _vector.request();
+        }
+
+        NumpyImplementation(const NumpyImplementation& other) {
+            typename GilControl<Texecution>::Acquire acquire;
+            this->_vector = other._vector;
+            this->_buffer = other._buffer;
+        }
+
+        NumpyImplementation& operator=(const NumpyImplementation& other) {
+            typename GilControl<Texecution>::Acquire acquire;
+            this->_vector = other._vector;
+            this->_buffer = other._buffer;
+            return *this;
         }
 
         ~NumpyImplementation() {
