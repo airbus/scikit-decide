@@ -294,7 +294,6 @@ private :
         }
 
         virtual py::dict get_policy() {
-            typename airlaps::GilControl<Texecution>::Release acquire;
             py::dict d;
             auto&& p = _solver->policy();
             for (auto& e : p) {
@@ -304,7 +303,6 @@ private :
         }
 
         virtual py::list get_action_prefix() {
-            typename airlaps::GilControl<Texecution>::Release acquire;
             py::list l;
             const auto& ll = _solver->action_prefix();
             for (const auto& e : ll) {
