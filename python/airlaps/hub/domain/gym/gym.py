@@ -747,7 +747,7 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         # and we want to do it only once
         if not self._restarting_from_initial_state:
             self._current_depth = 0
-            if isinstance(self, GymDomain):
+            if isinstance(self, GymWidthDomain):
                 self._reset_features()
             self._restarting_from_initial_state = True
 
