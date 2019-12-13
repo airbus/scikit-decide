@@ -738,7 +738,7 @@ private :
                                         max_depth,
                                         discount,
                                         ucb_constant,
-                                                debug_logs);
+                                        debug_logs);
         }
     }
 
@@ -757,7 +757,6 @@ private :
                 std::size_t max_depth = 1000,
                 double discount = 1.0,
                 double ucb_constant = 1.0 / std::sqrt(2.0),
-                bool parallel = true,
                 bool debug_logs = false) {
         _implementation = std::make_unique<Implementation<Texecution,
                                                           TtransitionMode,
