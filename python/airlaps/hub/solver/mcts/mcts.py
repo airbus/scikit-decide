@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import multiprocessing
 import os
 import sys
 from math import sqrt
@@ -16,6 +15,7 @@ from typing import Callable, Dict, Tuple, Any
 
 from airlaps import Domain, Solver
 from airlaps import hub
+from airlaps.domains import ParallelDomain
 from airlaps.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from airlaps.builders.solver import DeterministicPolicies, Utilities
@@ -33,8 +33,8 @@ try:
     class D(Domain, SingleAgent, Sequential, Environment, Actions, DeterministicInitialized, Markovian,
             FullyObservable, Rewards):  # TODO: check why DeterministicInitialized & PositiveCosts/Rewards?
         pass
-
-
+    
+    
     class MCTS(Solver, DeterministicPolicies, Utilities):
         T_domain = D
 
@@ -75,7 +75,7 @@ try:
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            self._domain = domain_factory()
+            self._domain = ParallelDomain(domain_factory) if self._parallel else domain_factory()
             self._solver = mcts_solver(domain=self._domain,
                                        time_budget=self._time_budget,
                                        rollout_budget=self._rollout_budget,

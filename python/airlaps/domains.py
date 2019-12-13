@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import os
 from typing import NewType, Optional, Callable
-from multiprocessing import Pool, Queue, Manager
+from multiprocessing import Pool, Manager
+from multiprocessing.managers import SyncManager
+from queue import LifoQueue
 
 from airlaps.core import autocast_all
 from airlaps.builders.domain.agent import MultiAgent, SingleAgent
@@ -351,20 +353,26 @@ def parallel_domain_launcher(id):
     global _parallel_domain_, _domain_factory_
     _parallel_domain_.launch_domain_server(_domain_factory_, id)
 
+class ExtendedManager(SyncManager):
+    pass
+
+ExtendedManager.register('LifoQueue', LifoQueue)
 
 class ParallelDomain:
     """This class can be used to create and launch n domains in separate processes.
     Each domain listens for incoming domain requests.
-    Each request can indicate which domain should serve it, otherwise an arbitrary domain
-    is chosen among sleeping ones and its id returned to the incoming request.
+    Each request can indicate which domain should serve it, otherwise the first available
+    domain  is chosen and its id is returned to the incoming request.
     """
     def __init__(self, domain_factory, nb_domains = os.cpu_count()):
         global _parallel_domain_, _domain_factory_
         _parallel_domain_ = self
         _domain_factory_ = domain_factory
-        self._manager = Manager()
+        self._manager = ExtendedManager()
+        self._manager.start()
         self._waiting_jobs = [self._manager.Queue() for i in range(nb_domains)]
-        self._sleeping_domains = self._manager.dict({i:i for i in range(nb_domains)})
+        self._sleeping_domains = self._manager.LifoQueue()
+        self._active_domains = self._manager.list([False for i in range(nb_domains)])
         self._job_results = self._manager.list([None for i in range(nb_domains)])
         self._pool = Pool()
         for i in range(os.cpu_count()):
@@ -376,23 +384,34 @@ class ParallelDomain:
         self._pool.close()
         self._pool.join()
     
+    def nb_domains(self):
+        return len(self._job_results)
+    
     def launch_domain_server(self, domain_factory, id):
         domain = domain_factory()
         while True:
+            self._active_domains[id] = False
+            self._sleeping_domains.put(id)
             job = self._waiting_jobs[id].get()
+            self._active_domains[id] = True
             self._job_results[id] = None
             if job is None:
-                self._sleeping_domains[id] = id
                 break
             else:
                 self._job_results[id] = getattr(domain, job[0])(*job[1])
-                self._sleeping_domains[id] = id
     
     def wake_up_domain(self, id=None):
+        # in case of previous call to wake_up_domain
+        # with a forced id, the elements in queue
+        # self._sleeping_domains with that id could not
+        # be popped out thus must be checked for actual inactivity
         if id is None:
-            return self._sleeping_domains.popitem()[0]
+            while True:
+                tid = self._sleeping_domains.get()
+                if not self._active_domains[tid]:
+                    return tid
         else:
-            return self._sleeping_domains.pop(id, id)
+            return id
     
     def reset(self, id=None):
         mid = self.wake_up_domain(id)
