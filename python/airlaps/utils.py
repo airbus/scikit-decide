@@ -182,7 +182,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                 previous_observation = copy.deepcopy(observation)
             action = solver.sample_action(observation)
             if action_formatter is not None:
-                logger.debug('Action:', action_formatter(action))
+                logger.debug('Action: {}'.format(action_formatter(action)))
             outcome = domain.step(action)
             observation = outcome.observation
             if save_result_directory is not None:
@@ -196,7 +196,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                         "s'": hash(observation)
                     }
             if outcome_formatter is not None:
-                logger.debug('Result:', outcome_formatter(outcome))
+                logger.debug('Result: {}'.format(outcome_formatter(outcome)))
             if outcome.termination:
                 logger.debug(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
                 break
