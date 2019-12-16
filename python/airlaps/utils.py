@@ -38,6 +38,8 @@ if not len(logger.handlers):
     ch.setFormatter(formatter)
     # add the handlers to the logger
     logger.addHandler(ch)
+    logger.propagate = False
+
 
 def _get_registered_entries(entry_type: str) -> List[str]:
     return [e.name for e in iter_entry_points(entry_type)]
