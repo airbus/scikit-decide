@@ -11,7 +11,6 @@ from __future__ import annotations
 from typing import Callable
 from collections.abc import Iterable
 
-
 import gym
 import numpy as np
 
@@ -29,7 +28,8 @@ class D(Domain, SingleAgent, Sequential, Environment, UnrestrictedActions, Initi
         Rewards):
     pass
 
-def change_interval (x, inmin, inmax, outmin, outmax):
+
+def change_interval(x, inmin, inmax, outmin, outmax):
     # making sure x is in the interval
     x = max(inmin, min(inmax, x))
     # normalizing x between 0 and 1
@@ -37,12 +37,14 @@ def change_interval (x, inmin, inmax, outmin, outmax):
     # denormalizing between outmin and outmax
     return x * (outmax - outmin) + outmin
 
-def change_float_to_int_interval (x, inmin, inmax, outdiscmin, outdiscmax):
+
+def change_float_to_int_interval(x, inmin, inmax, outdiscmin, outdiscmax):
     x = change_interval(x, inmin, inmax, 0, 1)
-    if x==1:
+    if x == 1:
         return outdiscmax
     else:
         return int(x * (outdiscmax - outdiscmin + 1) + outdiscmin)
+
 
 def flatten(c):
     """
@@ -56,6 +58,7 @@ def flatten(c):
             yield x
         else:
             yield from flatten(x)
+
 
 def norm_and_flatten(vals, types):
     """
@@ -83,12 +86,13 @@ def norm_and_flatten(vals, types):
                 flat_vals[index] = change_interval(flat_vals[index], lows[j], highs[j], -1, 1)
                 index += 1
         elif isinstance(t, gym.spaces.Discrete):
-            flat_vals[index] = change_interval(flat_vals[index], 0, t.n-1, -1, 1)
+            flat_vals[index] = change_interval(flat_vals[index], 0, t.n - 1, -1, 1)
             index += 1
         else:
             raise ValueError("Unsupported type ", str(t))
-    
+
     return flat_vals
+
 
 def norm(vals, types):
     """
@@ -112,7 +116,7 @@ def norm(vals, types):
             for j in range(len(lows)):
                 temp_vals[i][j] = change_interval(temp_vals[i][j], lows[j], highs[j], -1, 1)
         elif isinstance(t, gym.spaces.Discrete):
-            temp_vals[i] = change_interval(temp_vals[i], 0, t.n-1, -1, 1)
+            temp_vals[i] = change_interval(temp_vals[i], 0, t.n - 1, -1, 1)
         else:
             raise ValueError("Unsupported type ", str(t))
 
@@ -120,6 +124,7 @@ def norm(vals, types):
         temp_vals = temp_vals[0]
 
     return temp_vals
+
 
 def denorm(vals, types):
     """
@@ -145,7 +150,7 @@ def denorm(vals, types):
                 index += 1
             out += out_temp
         elif isinstance(t, gym.spaces.Discrete):
-            out += [change_float_to_int_interval(vals[index], -1, 1, 0, t.n-1)]
+            out += [change_float_to_int_interval(vals[index], -1, 1, 0, t.n - 1)]
             index += 1
         else:
             raise ValueError("Unsupported type ", str(t))
@@ -154,6 +159,7 @@ def denorm(vals, types):
         return out[0]
     else:
         return out
+
 
 class CGPWrapper(Solver, DeterministicPolicies, Restorable):
     T_domain = D
@@ -194,7 +200,7 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
             else:
                 num_outputs = 1
             cgpFather = CGP.random(len(domain.get_observation_space().sample()),
-                                num_outputs, self._col, self._row, self._library, 1.0)
+                                   num_outputs, self._col, self._row, self._library, 1.0)
         else:
             cgpFather = CGP.load_from_file(self._genome, self._library)
 
@@ -211,9 +217,9 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
 
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
 
-        #return denorm(self._es.father.run(norm(observation, self._domain.get_observation_space().unwrapped())), self._domain.get_action_space().unwrapped())
-        # previous return, with flattened values
-        return denorm(self._es.father.run(norm_and_flatten(observation, self._domain.get_observation_space().unwrapped())), self._domain.get_action_space().unwrapped())
+        return denorm(
+            self._es.father.run(norm_and_flatten(observation, self._domain.get_observation_space().unwrapped())),
+            self._domain.get_action_space().unwrapped())
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
         return True
@@ -279,10 +285,8 @@ class AirlapsEvaluator(Evaluator):
             step = 0
             while not end and step < self.it_max:
 
-                # previously, the action was calculated with flattened values but is not needed
-                actions = denorm(cgp.run(norm_and_flatten(states, self.domain.get_observation_space().unwrapped())), self.domain.get_action_space().unwrapped())
-                #actions = denorm(cgp.run(norm(states, self.domain.get_observation_space().unwrapped())), self.domain.get_action_space().unwrapped())
-
+                actions = denorm(cgp.run(norm_and_flatten(states, self.domain.get_observation_space().unwrapped())),
+                                 self.domain.get_action_space().unwrapped())
                 states, transition_value, end, _ = self.domain.step(actions).astuple()
                 reward = transition_value[0]  # TODO: correct Gym wrapper
 
