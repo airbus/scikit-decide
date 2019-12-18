@@ -1,16 +1,23 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 from __future__ import annotations
 
-from collections.abc import Iterable
-from typing import Callable
-
-import gym
 import numpy as np
+import gym
+from typing import Callable
+from collections.abc import Iterable
 
 from airlaps import Domain, Solver
+from airlaps.hub.solver.cgp import cgp
+from airlaps.builders.solver import Policies, Restorable
 from airlaps.builders.domain import SingleAgent, Sequential, Environment, UnrestrictedActions, Initializable, History, \
     PartiallyObservable, Rewards
-from airlaps.builders.solver import Policies, Restorable
-from airlaps.hub.solver.cgp import cgp
 
 
 class D(Domain, SingleAgent, Sequential, Environment, UnrestrictedActions, Initializable, History, PartiallyObservable,
@@ -18,8 +25,8 @@ class D(Domain, SingleAgent, Sequential, Environment, UnrestrictedActions, Initi
     pass
 
 
-# Class for normalizing states
-class Normalizer:
+#for normalizing states
+class Normalizer():
 
     def __init__(self, nb_inputs):
         self.n = np.zeros(nb_inputs)
@@ -62,7 +69,8 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
                  directions = 10,
                  top_directions = 3,
                  learning_rate = 0.02,
-                 policy_noise = 0.03
+                 policy_noise = 0.03,
+                 reward_maximization = True
                  ) -> None:
         self.env = None
         self.n_epochs = n_epochs
@@ -72,6 +80,7 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
         self.top_directions = top_directions
         self.policy = None
         self.policy_noise = policy_noise
+        self.reward_maximization = reward_maximization
         assert self.top_directions <= self.directions
 
     def evaluate_policy(self, state, delta=None, direction=None):
@@ -148,11 +157,6 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
         for step in range(self.n_epochs):
 
             # Initializing the perturbations deltas and the positive/negative rewards
-            #probar esto!
-
-            #deltas = self.generate_perturbations(self.env.get_action_space().unwrapped())
-
-
 
             deltas = [2* np.random.random_sample(self.policy.shape)-1 for _ in range(self.directions)]
             positive_rewards = [0] * self.directions
@@ -172,7 +176,7 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
 
             # Sorting the rollouts by the max(r_pos, r_neg) and selecting the best directions
             scores = {k: max(r_pos, r_neg) for k, (r_pos, r_neg) in enumerate(zip(positive_rewards, negative_rewards))}
-            order = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)[:self.top_directions]
+            order = sorted(scores.keys(), key=lambda x: scores[x], reverse=self.reward_maximization)[:self.top_directions]
             rollouts = [(positive_rewards[k], negative_rewards[k], deltas[k]) for k in order]
 
             # Updating our policy
@@ -190,4 +194,3 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
         action = self.policy.dot(cgp.norm_and_flatten(observation, self.env.get_observation_space().unwrapped()))
         action = cgp.denorm(action, self.env.get_action_space().unwrapped())
         return action
-
