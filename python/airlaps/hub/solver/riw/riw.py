@@ -44,6 +44,8 @@ try:
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
                      exploration: float = 0.25,
+                     discount: float = 1.0,
+                     online_node_garbage: bool = False,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             self._solver = None
@@ -55,6 +57,8 @@ try:
             self._rollout_budget = rollout_budget
             self._max_depth = max_depth
             self._exploration = exploration
+            self._discount = discount
+            self._online_node_garbage = online_node_garbage
             self._parallel = parallel
             self._debug_logs = debug_logs
 
@@ -68,6 +72,8 @@ try:
                                       rollout_budget=self._rollout_budget,
                                       max_depth=self._max_depth,
                                       exploration=self._exploration,
+                                      discount=self._discount,
+                                      online_node_garbage=self._online_node_garbage,
                                       parallel=self._parallel,
                                       debug_logs=self._debug_logs)
             self._solver.clear()

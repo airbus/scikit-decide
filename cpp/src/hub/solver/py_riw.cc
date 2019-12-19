@@ -55,6 +55,8 @@ public :
                 unsigned int rollout_budget = 100000,
                 unsigned int max_depth = 1000,
                 double exploration = 0.25,
+                double discount = 1.0,
+                bool online_node_garbage = false,
                 bool parallel = true,
                 bool debug_logs = false) {
 
@@ -62,36 +64,42 @@ public :
             if (use_state_feature_hash) {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, discount, online_node_garbage, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, discount, online_node_garbage, debug_logs);
                 }
             } else {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth,
+                        exploration, discount, online_node_garbage, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth,
+                        exploration, discount, online_node_garbage, debug_logs);
                 }
             }
         } else {
             if (use_state_feature_hash) {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth,
+                        exploration, discount, online_node_garbage, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth,
+                        exploration, discount, online_node_garbage, debug_logs);
                 }
             } else {
                 if (use_simulation_domain) {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash, airlaps::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth,
+                        exploration, discount, online_node_garbage, debug_logs);
                 } else {
                     _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash, airlaps::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, debug_logs);
+                        domain, state_features, time_budget, rollout_budget, max_depth,
+                        exploration, discount, online_node_garbage, debug_logs);
                 }
             }
         }
@@ -155,6 +163,8 @@ private :
                        unsigned int rollout_budget = 100000,
                        unsigned int max_depth = 1000,
                        double exploration = 0.25,
+                       double discount = 1.0,
+                       bool online_node_garbage = false,
                        bool debug_logs = false)
             : _state_features(state_features) {
             
@@ -175,6 +185,8 @@ private :
                                                                             rollout_budget,
                                                                             max_depth,
                                                                             exploration,
+                                                                            discount,
+                                                                            online_node_garbage,
                                                                             debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
@@ -248,6 +260,8 @@ void init_pyriw(py::module& m) {
                           unsigned int,
                           unsigned int,
                           double,
+                          double,
+                          bool,
                           bool,
                           bool>(),
                  py::arg("domain"),
@@ -258,6 +272,8 @@ void init_pyriw(py::module& m) {
                  py::arg("rollout_budget")=100000,
                  py::arg("max_depth")=1000,
                  py::arg("exploration")=0.25,
+                 py::arg("discount")=1.0,
+                 py::arg("online_node_garbage")=false,
                  py::arg("parallel")=true,
                  py::arg("debug_logs")=false)
             .def("clear", &PyRIWSolver::clear)
