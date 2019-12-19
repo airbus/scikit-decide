@@ -1,6 +1,5 @@
 import gym
 import gym_jsbsim
-
 from airlaps.hub.domain.gym import GymDomain
 from airlaps.hub.solver.ars import ars
 from airlaps.utils import load_registered_domain, rollout
@@ -58,12 +57,31 @@ if __name__ == '__main__':
         # Ask user input to select domain
         domain_choice = int(input('\nChoose a domain:\n{domains}\n'.format(
             domains='\n'.join([f'{i + 1}. {d["name"]}' for i, d in enumerate(domains)]))))
+
+        # for learning to fly
+        if domain_choice <=4:
+            n_epochs = 500
+            epoch_size = 200
+            directions = 10
+            top_directions = 3
+            learning_rate = 0.02
+            policy_noise = 0.03
+            reward_maximization = True
+        else:
+            n_epochs = 300
+            epoch_size = 200
+            directions = 25
+            top_directions = 3
+            learning_rate = 1
+            policy_noise = 1
+            reward_maximization = True
+
         selected_domain = domains[domain_choice - 1]
         domain_type = selected_domain['entry']
         domain = domain_type(**selected_domain['config'])
 
-        solver_factory = lambda: ars.AugmentedRandomSearch(n_epochs=300, epoch_size=200, directions=25,
-                                                              top_directions=3, learning_rate=1, policy_noise=1)
+        solver_factory = lambda: ars.AugmentedRandomSearch(n_epochs=n_epochs, epoch_size=epoch_size, directions=directions,
+                                                              top_directions=top_directions, learning_rate=learning_rate, policy_noise=policy_noise, reward_maximization=reward_maximization)
         solver = GymDomain.solve_with(solver_factory, lambda: domain_type(**selected_domain['config']))
         # Test solver solution on domain
         print('==================== TEST SOLVER ====================')
