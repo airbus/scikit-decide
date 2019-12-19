@@ -12,6 +12,7 @@ import numpy as np
 import folium
 import bisect
 import sys
+import math
 
 from typing import Callable, Any
 
@@ -71,29 +72,38 @@ class GymRIWDomain(D):
         gym_env._max_episode_steps = max_depth
         self._max_depth = max_depth
         self._current_depth = 0
+        self._cumulated_reward = 0
+        self._continuous_feature_fidelity = continuous_feature_fidelity
         self._map = None
         self._path = None
-        self._continuous_feature_fidelity = continuous_feature_fidelity
-        self._cumulated_reward = 0
-        self._last_execution_reward = 0
-        self.reset_features()
+        self._must_reset_features = True
     
     def _state_reset(self) -> D.T_state:
         s = super()._state_reset()
-        self._cumulated_reward = 0
         self._current_depth = 0
-        return GymDomainStateProxy(state=s._state, context=(0, 0))
+        self._cumulated_reward = 0
+        self._cumulated_dist_to_start = 0
+        self._cumulated_dist_to_line = 0
+        return GymDomainStateProxy(state=s._state, context=(0, 0, 0, 0))
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
             D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
         o = super()._state_step(action)
-        self._cumulated_reward += o.value.reward
         self._current_depth += 1
-        return TransitionOutcome(state=GymDomainStateProxy(state=o.state._state, context=(self._cumulated_reward, self._current_depth)),
+        self._cumulated_reward += o.value.reward
+        self._cumulated_dist_to_start += math.exp(-math.fabs(self._gym_env.sim.get_property_value(prp.position_distance_from_start_mag_mt)))
+        self._cumulated_dist_to_line += math.exp(-math.fabs(self._gym_env.sim.get_property_value(prp.shortest_dist)))
+        return TransitionOutcome(state=GymDomainStateProxy(state=o.state._state, context=(self._current_depth,
+                                                                                          self._cumulated_reward,
+                                                                                          self._cumulated_dist_to_start,
+                                                                                          self._cumulated_dist_to_line)),
                                  value=o.value,
                                  termination=o.termination, info=o.info)
     
     def reset_features(self):
+        self._must_reset_features = True
+    
+    def reset_reward_features(self):
         self._feature_increments = []
         # positive increments list for each fidelity level
         self._feature_increments.append([[[0] for f in range(self._continuous_feature_fidelity)] for d in range(self._max_depth)])
@@ -101,10 +111,13 @@ class GymRIWDomain(D):
         self._feature_increments.append([[[0] for f in range(self._continuous_feature_fidelity)] for d in range(self._max_depth)])
     
     def bee_reward_features(self, state):
+        if self._must_reset_features:
+            self.reset_reward_features()
+            self._must_reset_features = False
         features = []
         ref_val = 0
-        reward = state._context[0]
-        depth = state._context[1]
+        depth = state._context[0]
+        reward = state._context[1]
         if reward > 0:
             for f in range(self._continuous_feature_fidelity):
                 i = bisect.bisect_left(self._feature_increments[0][depth][f], reward - ref_val)
@@ -121,6 +134,44 @@ class GymRIWDomain(D):
                     self._feature_increments[1][depth][f].append(ref_val - reward)
                 if i > 0:
                     ref_val = ref_val - self._feature_increments[1][depth][f][i-1]
+        return features
+    
+    def reset_distance_features(self):
+        self._feature_increments = []
+        for i in range(2):
+            # positive increments list for each fidelity level
+            self._feature_increments.append([[[0] for f in range(self._continuous_feature_fidelity)] for d in range(self._max_depth)])
+            # negative increments list for each fidelity level
+            self._feature_increments.append([[[0] for f in range(self._continuous_feature_fidelity)] for d in range(self._max_depth)])
+    
+    def bee_distance_features(self, state):
+        if self._must_reset_features:
+            self.reset_distance_features()
+            self._must_reset_features = False
+        features = []
+        depth = state._context[0]
+        index = 0
+        for feature in state._context[2:-1]:
+            ref_val = 0
+            cf = []
+            if feature > 0:
+                for f in range(self._continuous_feature_fidelity):
+                    i = bisect.bisect_left(self._feature_increments[2*index][depth][f], feature - ref_val)
+                    cf.append(i)
+                    if i >= len(self._feature_increments[2*index][depth][f]):
+                        self._feature_increments[2*index][depth][f].append(feature - ref_val)
+                    if i > 0:
+                        ref_val = ref_val + self._feature_increments[2*index][depth][f][i-1]
+            else:
+                for f in range(self._continuous_feature_fidelity):
+                    i = bisect.bisect_left(self._feature_increments[2*index+1][depth][f], ref_val - feature)
+                    cf.append(-i)
+                    if i >= len(self._feature_increments[2*index+1][depth][f]):
+                        self._feature_increments[2*index+1][depth][f].append(ref_val - feature)
+                    if i > 0:
+                        ref_val = ref_val - self._feature_increments[2*index+1][depth][f][i-1]
+            features += cf
+            index += 1
         return features
     
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
@@ -176,7 +227,6 @@ class GymRIW(RIW):
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
         self._solve_from(observation)
         action = self._solver.get_next_action(observation)
-        self._last_execution_reward = observation._context
         self._domain.reset_features()
         if action is None:
             print('\x1b[3;33;40m' + 'No best action found in observation ' +
@@ -195,7 +245,7 @@ domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
 domain = domain_factory()
 
 if True:#RIW.check_domain(domain):
-    solver_factory = lambda: GymRIW(state_features=lambda s, d: d.bee_reward_features(s),
+    solver_factory = lambda: GymRIW(state_features=lambda s, d: d.bee_distance_features(s),
                                     use_state_feature_hash=False,
                                     use_simulation_domain=False,
                                     time_budget=3600000,
