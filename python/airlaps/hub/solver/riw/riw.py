@@ -111,6 +111,12 @@ try:
         
         def get_nb_rollouts(self) -> int:
             return self._solver.get_nb_rollouts()
+        
+        def get_policy(self) -> Dict[D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], float]]:
+            return self._solver.get_policy()
+        
+        def get_action_prefix(self) -> List[D.T_agent[D.T_observation]]:
+            return self._solver.get_action_prefix()
     
 except ImportError:
     sys.path = record_sys_path

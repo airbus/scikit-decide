@@ -13,6 +13,7 @@ import folium
 import bisect
 import sys
 import math
+import json
 
 from typing import Callable, Any
 
@@ -239,7 +240,7 @@ class GymRIW(RIW):
 domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
                                       set_state=lambda e, s: e.set_state(s),
                                       get_state=lambda e: e.get_state(),
-                                      continuous_feature_fidelity=1,
+                                      continuous_feature_fidelity=3,
                                       discretization_factor=9,
                                       max_depth=HORIZON)
 domain = domain_factory()
@@ -258,3 +259,6 @@ if True:#RIW.check_domain(domain):
     rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30, verbose=True,
             outcome_formatter=lambda o: f'{o.observation} - reward: {o.value.reward:.2f}',
             action_formatter=lambda a: f'{a}')
+    with open('gym_jsbsim_riw.json', 'w') as myfile:
+        mydict = solver.get_policy()
+        json.dump({str(s): (str(v[0]), v[1]) for s, v in mydict.items()}, myfile)

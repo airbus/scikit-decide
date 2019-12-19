@@ -89,11 +89,11 @@ struct StateFeatureHash {
 /** Use Environment domain knowledge for rollouts */
 template <typename Tdomain>
 struct EnvironmentRollout {
-    std::list<typename Tdomain::Event> action_prefix;
+    std::list<typename Tdomain::Event> _action_prefix;
 
     void init_rollout(Tdomain& domain) {
         domain.reset();
-        std::for_each(action_prefix.begin(), action_prefix.end(),
+        std::for_each(_action_prefix.begin(), _action_prefix.end(),
                       [&domain](const typename Tdomain::Event& a){domain.step(a);});
     }
 
@@ -108,10 +108,14 @@ struct EnvironmentRollout {
                  const typename Tdomain::Event& action,
                  bool record_action) {
         if (record_action) {
-            action_prefix.push_back(action);
+            _action_prefix.push_back(action);
         } else {
             domain.step(action);
         }
+    }
+
+    std::list<typename Tdomain::Event> action_prefix() const {
+        return _action_prefix;
     }
 };
 
@@ -131,6 +135,10 @@ struct SimulationRollout {
                  const typename Tdomain::State& state,
                  const typename Tdomain::Event& action,
                  bool record_action) {}
+    
+    std::list<typename Tdomain::Event> action_prefix() const {
+        return std::list<typename Tdomain::Event>();
+    }
 };
 
 
@@ -275,6 +283,20 @@ public :
 
     std::size_t get_nb_rollouts() const {
         return _nb_rollouts;
+    }
+
+    std::list<Action> action_prefix() const {
+        return _rollout_policy.action_prefix();
+    }
+
+    typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() {
+        typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
+        for (auto& n : _graph) {
+            if (n.best_action != nullptr) {
+                p.insert(std::make_pair(n.state, std::make_pair(*n.best_action, n.value)));
+            }
+        }
+        return p;
     }
 
 private :
