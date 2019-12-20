@@ -246,15 +246,15 @@ domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
 domain = domain_factory()
 
 if True:#RIW.check_domain(domain):
-    solver_factory = lambda: GymRIW(state_features=lambda s, d: d.bee_distance_features(s),
+    solver_factory = lambda: GymRIW(state_features=lambda d, s: d.bee_distance_features(s),
                                     use_state_feature_hash=False,
                                     use_simulation_domain=False,
                                     time_budget=3600000,
                                     rollout_budget=100,
                                     max_depth=500,
                                     exploration=0.5,
-                                    parallel=False,
-                                    debug_logs=False)
+                                    parallel=True,
+                                    debug_logs=True)
     solver = GymRIWDomain.solve_with(solver_factory, domain_factory)
     rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30, verbose=True,
             outcome_formatter=lambda o: f'{o.observation} - reward: {o.value.reward:.2f}',

@@ -387,152 +387,159 @@ class ParallelDomain:
     def nb_domains(self):
         return len(self._job_results)
     
-    def launch_domain_server(self, domain_factory, id):
+    def launch_domain_server(self, domain_factory, i):
         domain = domain_factory()
         while True:
-            self._active_domains[id] = False
-            self._sleeping_domains.put(id)
-            job = self._waiting_jobs[id].get()
-            self._active_domains[id] = True
-            self._job_results[id] = None
+            self._active_domains[i] = False
+            self._sleeping_domains.put(i)
+            job = self._waiting_jobs[i].get()
+            self._active_domains[i] = True
+            self._job_results[i] = None
             if job is None:
                 break
             else:
-                self._job_results[id] = getattr(domain, job[0])(*job[1])
+                self._job_results[i] = getattr(domain, job[0])(*job[1])
     
-    def wake_up_domain(self, id=None):
+    def wake_up_domain(self, i=None):
         # in case of previous call to wake_up_domain
-        # with a forced id, the elements in queue
-        # self._sleeping_domains with that id could not
+        # with a forced i, the elements in queue
+        # self._sleeping_domains with that i could not
         # be popped out thus must be checked for actual inactivity
-        if id is None:
+        if i is None:
             while True:
-                tid = self._sleeping_domains.get()
-                if not self._active_domains[tid]:
-                    return tid
+                ti = self._sleeping_domains.get()
+                if not self._active_domains[ti]:
+                    return ti
         else:
-            return id
+            return i
     
-    def reset(self, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("reset", []))
-        return mid
+    def reset(self, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("reset", []))
+        return mi
     
-    def get_initial_state_distribution(self, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_initial_state_distribution", []))
-        return mid
+    def get_initial_state_distribution(self, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_initial_state_distribution", []))
+        return mi
     
-    def get_initial_state(self, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_initial_state", []))
-        return mid
+    def get_initial_state(self, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_initial_state", []))
+        return mi
     
-    def get_observation_space(self, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_observation_space", []))
-        return mid
+    def get_observation_space(self, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_observation_space", []))
+        return mi
     
-    def is_observation(self, observation, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("is_observation", [observation]))
-        return mid
+    def is_observation(self, observation, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("is_observation", [observation]))
+        return mi
     
-    def get_observation_distribution(self, state, action, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_observation_distribution", [state, action]))
-        return mid
+    def get_observation_distribution(self, state, action, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_observation_distribution", [state, action]))
+        return mi
     
-    def get_observation(self, state, action, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_observation", [state, action]))
-        return mid
+    def get_observation(self, state, action, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_observation", [state, action]))
+        return mi
     
-    def get_enabled_events(self, memory, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_enabled_events", [memory]))
-        return mid
+    def get_enabled_events(self, memory, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_enabled_events", [memory]))
+        return mi
     
-    def is_enabled_event(self, event, memory, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("is_enabled_event", [event, memory]))
-        return mid
+    def is_enabled_event(self, event, memory, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("is_enabled_event", [event, memory]))
+        return mi
     
-    def get_action_space(self, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_action_space", []))
-        return mid
+    def get_action_space(self, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_action_space", []))
+        return mi
 
-    def is_action(self, event, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("is_action", [event]))
-        return mid
+    def is_action(self, event, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("is_action", [event]))
+        return mi
     
-    def get_applicable_actions(self, memory, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_applicable_actions", [memory]))
-        return mid
+    def get_applicable_actions(self, memory, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_applicable_actions", [memory]))
+        return mi
     
-    def is_applicable_action(self, action, memory, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("is_applicable_action", [action, memory]))
-        return mid
+    def is_applicable_action(self, action, memory, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("is_applicable_action", [action, memory]))
+        return mi
     
-    def step(self, action, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("step", [action]))
-        return mid
+    def step(self, action, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("step", [action]))
+        return mi
     
-    def sample(self, memory, action, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("sample", [memory, action]))
-        return mid
+    def sample(self, memory, action, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("sample", [memory, action]))
+        return mi
     
-    def get_next_state_distribution(self, memory, action, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_next_state_distribution", [memory, action]))
-        return mid
+    def get_next_state_distribution(self, memory, action, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_next_state_distribution", [memory, action]))
+        return mi
     
-    def get_next_state(self, memory, action, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_next_state", [memory, action]))
-        return mid
+    def get_next_state(self, memory, action, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_next_state", [memory, action]))
+        return mi
     
-    def get_transition_value(self, memory, action, next_state, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_transition_value", [memory, action, next_state]))
-        return mid
+    def get_transition_value(self, memory, action, next_state, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_transition_value", [memory, action, next_state]))
+        return mi
     
-    def is_transition_value_dependent_on_next_state(self, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("is_transition_value_dependent_on_next_state", []))
-        return mid
+    def is_transition_value_dependent_on_next_state(self, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("is_transition_value_dependent_on_next_state", []))
+        return mi
     
-    def get_goals(self, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("get_goals", []))
-        return mid
+    def get_goals(self, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("get_goals", []))
+        return mi
     
-    def is_goal(self, observation, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("is_goal", [observation]))
-        return mid
+    def is_goal(self, observation, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("is_goal", [observation]))
+        return mi
     
-    def is_terminal(self, state, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("is_terminal", [state]))
-        return mid
+    def is_terminal(self, state, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("is_terminal", [state]))
+        return mi
     
-    def check_value(self, value, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("check_value", [value]))
-        return mid
+    def check_value(self, value, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("check_value", [value]))
+        return mi
     
-    def render(self, memory, id=None):
-        mid = self.wake_up_domain(id)
-        self._waiting_jobs[mid].put(("render", [memory]))
-        return mid
+    def render(self, memory, i=None):
+        mi = self.wake_up_domain(i)
+        self._waiting_jobs[mi].put(("render", [memory]))
+        return mi
     
-    def get_result(self, id):
-        r = self._job_results[id]
-        return r if r is not None else None
+    def get_result(self, i):
+        return self._job_results[i]
+    
+    # The original sequential domain may have methods we don't know
+    def __getattr__(self, name):
+        def method(*args, i=None):
+            mi = self.wake_up_domain(i)
+            self._waiting_jobs[mi].put((name, args))
+            return mi
+        return method

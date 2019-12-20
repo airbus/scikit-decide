@@ -15,6 +15,7 @@ from typing import Callable, Any
 
 from airlaps import Domain, Solver
 from airlaps import hub
+from airlaps.domains import ParallelDomain
 from airlaps.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from airlaps.builders.solver import DeterministicPolicies, Utilities
@@ -37,7 +38,7 @@ try:
         T_domain = D
 
         def __init__(self,
-                     state_features: Callable[[D.T_state, Domain], Any],
+                     state_features: Callable[[Domain, D.T_state], Any],
                      use_state_feature_hash: bool = False,
                      use_simulation_domain = False,
                      time_budget: int = 3600000,
@@ -63,9 +64,9 @@ try:
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            self._domain = domain_factory()
+            self._domain = ParallelDomain(domain_factory) if self._parallel else domain_factory()
             self._solver = riw_solver(domain=self._domain,
-                                      state_features=lambda o: self._state_features(o, self._domain),
+                                      state_features=self._state_features,
                                       use_state_feature_hash=self._use_state_feature_hash,
                                       use_simulation_domain=self._use_simulation_domain,
                                       time_budget=self._time_budget,

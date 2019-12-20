@@ -564,6 +564,11 @@ public :
         return _implementation->is_terminal(s);
     }
 
+    template <typename Tfunction, typename ... Types>
+    py::object call(const Tfunction& func, Types ... args) {
+        return _implementation->call(func, args...);
+    }
+
 protected :
 
     template <typename TexecutionPolicy, typename Enable = void>
@@ -722,6 +727,19 @@ protected :
             }
         }
 
+        template <typename Tfunction, typename ... Types>
+        py::object call(const Tfunction& func, Types ... args) {
+            typename GilControl<Texecution>::Acquire acquire;
+            try {
+                return func(_domain, args...);
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("AIRLAPS exception when calling anonymous domain method: " + std::string(e->what())));
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
+            }
+        }
+
         py::object _domain;
     };
 
@@ -751,14 +769,15 @@ protected :
             _domain = py::object();
         }
 
-        template <typename ... Types>
-        py::object launch(const char* name, Types ... args) {
+        template <typename Tfunction, typename ... Types>
+        py::object do_launch(const Tfunction& func, Types ... args) {
             py::object id;
             {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    id = _domain.attr(name)(args...);
-                } catch(py::error_already_set* e) {
+                    id = func(_domain, args...);
+                } catch(const py::error_already_set* e) {
+                    spdlog::error("AIRLAPS exception when asynchronously calling anonymous domain method: " + std::string(e->what()));
                     std::runtime_error err(e->what());
                     id = py::object();
                     delete e;
@@ -771,9 +790,11 @@ protected :
                 try {
                     py::object r = _domain.attr("get_result")(id);
                     if (!r.is_none()) {
+                        id = py::object();
                         return r;
                     }
                 } catch(const py::error_already_set* e) {
+                    spdlog::error("AIRLAPS exception when asynchronously calling the domain's get_result() method: " + std::string(e->what()));
                     std::runtime_error err(e->what());
                     id = py::object();
                     delete e;
@@ -781,7 +802,13 @@ protected :
                 }
             }
             typename GilControl<Texecution>::Acquire acquire;
+            id = py::object();
             return py::none();
+        }
+
+        template <typename ... Types>
+        py::object launch(const char* name, Types ... args) {
+            return do_launch([this, &name](py::object& d, Types ... aargs){return d.attr(name)(aargs...);}, args...);
         }
 
         std::unique_ptr<ApplicableActionSpace> get_applicable_actions(const State& s) {
@@ -922,6 +949,16 @@ protected :
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("AIRLAPS exception when testing terminal condition of state ") +
                               s.print() + ": " + e.what());
+                throw;
+            }
+        }
+
+        template <typename Tfunction, typename ... Types>
+        py::object call(const Tfunction& func, Types ... args) {
+            try {
+                return do_launch(func, args...);
+            } catch(const std::exception& e) {
+                spdlog::error(std::string("AIRLAPS exception when calling anonymous domain method: " + std::string(e.what())));
                 throw;
             }
         }
