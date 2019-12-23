@@ -15,6 +15,8 @@
 #include <chrono>
 #include <random>
 
+#include <boost/range/irange.hpp>
+
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
@@ -26,25 +28,27 @@ namespace airlaps {
 /** Use Environment domain knowledge for transitions */
 struct StepTransitionMode {
     template <typename Tsolver>
-    void init_rollout(Tsolver& solver) const {
+    void init_rollout(Tsolver& solver, const int& thread_id) const {
         solver.domain().reset();
         std::for_each(solver.action_prefix().begin(), solver.action_prefix().end(),
-                      [&solver](const typename Tsolver::Domain::Event& a){solver.domain().step(a);});
+                      [&solver, &thread_id](const typename Tsolver::Domain::Event& a){solver.domain().step(a, thread_id);});
     }
 
     template <typename Tsolver>
     std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
             Tsolver& solver,
+            const int& thread_id,
             const typename Tsolver::Domain::State& state,
             const typename Tsolver::Domain::Event& action) const {
-        return solver.domain().step(action);
+        return solver.domain().step(action, thread_id);
     }
 
     template <typename Tsolver>
     typename Tsolver::StateNode* random_next_node(
             Tsolver& solver,
+            const int& thread_id,
             typename Tsolver::ActionNode& action) const {
-        auto outcome = solver.domain().step(action.action);
+        auto outcome = solver.domain().step(action.action, thread_id);
         auto si = solver.graph().find(typename Tsolver::StateNode(outcome->state()));
         if (si == solver.graph().end()) {
             return nullptr;
@@ -59,19 +63,21 @@ struct StepTransitionMode {
 /** Use Simulation domain knowledge for transitions */
 struct SampleTransitionMode {
     template <typename Tsolver>
-    void init_rollout(Tsolver& solver) const {}
+    void init_rollout(Tsolver& solver, const int& thread_id) const {}
 
     template <typename Tsolver>
     std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
             Tsolver& solver,
+            const int& thread_id,
             const typename Tsolver::Domain::State& state,
             const typename Tsolver::Domain::Event& action) const {
-        return solver.domain().sample(state, action);
+        return solver.domain().sample(state, action, thread_id);
     }
 
     template <typename Tsolver>
     typename Tsolver::StateNode* random_next_node(
             Tsolver& solver,
+            const int& thread_id,
             typename Tsolver::ActionNode& action) const {
         return action.dist_to_outcome[action.dist(solver.gen())]->first;
     }
@@ -81,19 +87,21 @@ struct SampleTransitionMode {
 /** Use uncertain transitions domain knowledge for transitions */
 struct DistributionTransitionMode {
     template <typename Tsolver>
-    void init_rollout(Tsolver& solver) const {}
+    void init_rollout(Tsolver& solver, const int& thread_id) const {}
 
     template <typename Tsolver>
     std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
             Tsolver& solver,
+            const int& thread_id,
             const typename Tsolver::Domain::State& state,
             const typename Tsolver::Domain::Event& action) const {
-        return solver.domain().sample(state, action);
+        return solver.domain().sample(state, action, thread_id);
     }
 
     template <typename Tsolver>
     typename Tsolver::StateNode* random_next_node(
             Tsolver& solver,
+            const int& thread_id,
             typename Tsolver::ActionNode& action) const {
         return action.dist_to_outcome[action.dist(solver.gen())]->first;
     }
@@ -105,23 +113,24 @@ class DefaultTreePolicy {
 public :
     template <typename Tsolver, typename Texpander, typename TactionSelector>
     typename Tsolver::StateNode* operator()(Tsolver& solver,
+                                            const int& thread_id, // for parallelisation
                                             const Texpander& expander,
                                             const TactionSelector& action_selector,
                                             typename Tsolver::StateNode& n,
                                             std::size_t& d) const {
         try {
             if (solver.debug_logs()) { spdlog::debug("Launching default tree policy from state " + n.state.print()); }
-            solver.transition_mode().init_rollout(solver);
+            solver.transition_mode().init_rollout(solver, thread_id);
             typename Tsolver::StateNode* current_node = &n;
             while(!(current_node->terminal) && d < solver.max_depth()) {
-                typename Tsolver::StateNode* next_node = expander(solver, *current_node);
+                typename Tsolver::StateNode* next_node = expander(solver, thread_id, *current_node);
                 d++;
                 if (next_node == nullptr) { // node fully expanded
-                    typename Tsolver::ActionNode* action = action_selector(solver, *current_node);
+                    typename Tsolver::ActionNode* action = action_selector(solver, thread_id, *current_node);
                     if (action == nullptr) {
                         throw std::runtime_error("AIRLAPS exception: no best action found in state " + current_node->state.print());
                     } else {
-                        next_node = solver.transition_mode().random_next_node(solver, *action);
+                        next_node = solver.transition_mode().random_next_node(solver, thread_id, *action);
                         if (next_node == nullptr) { // might happen with step transition mode and stochastic environments
                             break;
                         } else {
@@ -154,7 +163,9 @@ public :
     : _checked_transition_mode(false) {}
 
     template <typename Tsolver>
-    typename Tsolver::StateNode* operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
+    typename Tsolver::StateNode* operator()(Tsolver& solver,
+                                            const int& thread_id,
+                                            typename Tsolver::StateNode& n) const {
         try {
             if (solver.debug_logs()) { spdlog::debug("Testing expansion of state " + n.state.print()); }
             if (n.expanded) {
@@ -164,7 +175,7 @@ public :
             // Generate applicable actions if not already done
             if (n.actions.empty()) {
                 if (solver.debug_logs()) { spdlog::debug("State never expanded, generating all next actions"); }
-                auto applicable_actions = solver.domain().get_applicable_actions(n.state)->get_elements();
+                auto applicable_actions = solver.domain().get_applicable_actions(n.state, thread_id)->get_elements();
                 for (const auto& a : applicable_actions) {
                     auto i = n.actions.emplace(typename Tsolver::ActionNode(a));
                     if (i.second) {
@@ -205,7 +216,7 @@ public :
                 auto& uo = untried_outcomes[odist(solver.gen())];
                 if (uo.second == nullptr) { // unexpanded action
                     if (solver.debug_logs()) { spdlog::debug("Found one unexpanded action: " + uo.first->action.print()); }
-                    return expand_action(solver, solver.transition_mode(), n, *(uo.first));
+                    return expand_action(solver, thread_id, solver.transition_mode(), n, *(uo.first));
                 } else { // expanded action, just return the selected next state
                     if (solver.debug_logs()) { spdlog::debug("Found one untried outcome: action " + uo.first->action.print() +
                                                              " and next state " + uo.second->state.print()); }
@@ -220,11 +231,14 @@ public :
 
     template <typename Tsolver, typename Ttransition_mode,
               std::enable_if_t<std::is_same<Ttransition_mode, DistributionTransitionMode>::value, int> = 0>
-    typename Tsolver::StateNode* expand_action(Tsolver& solver, const Ttransition_mode& transition_mode,
-                                               typename Tsolver::StateNode& state, typename Tsolver::ActionNode& action) const {
+    typename Tsolver::StateNode* expand_action(Tsolver& solver,
+                                               const int& thread_id,
+                                               const Ttransition_mode& transition_mode,
+                                               typename Tsolver::StateNode& state,
+                                               typename Tsolver::ActionNode& action) const {
         try {
             // Generate the next states of this action
-            auto next_states = solver.domain().get_next_state_distribution(state.state, action.action)->get_values();
+            auto next_states = solver.domain().get_next_state_distribution(state.state, action.action, thread_id)->get_values();
             std::vector<typename Tsolver::StateNode*> untried_outcomes;
             std::vector<double> weights;
             std::vector<double> outcome_weights;
@@ -232,7 +246,7 @@ public :
                 typename Tsolver::Domain::OutcomeExtractor oe(ns);
                 auto i = solver.graph().emplace(oe.state());
                 typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                double reward = solver.domain().get_transition_reward(state.state, action.action, next_node.state);
+                double reward = solver.domain().get_transition_reward(state.state, action.action, next_node.state, thread_id);
                 auto ii = action.outcomes.insert(std::make_pair(&next_node, std::make_pair(reward, 1)));
                 if (ii.second) { // new outcome
                     action.dist_to_outcome.push_back(ii.first);
@@ -250,7 +264,7 @@ public :
                 }
                 next_node.parents.push_back(&action);
                 if (i.second) { // new node
-                    next_node.terminal = solver.domain().is_terminal(next_node.state);
+                    next_node.terminal = solver.domain().is_terminal(next_node.state, thread_id);
                 }
                 if (next_node.actions.empty()) {
                     if (solver.debug_logs()) spdlog::debug("Candidate next state: " + next_node.state.print());
@@ -278,15 +292,18 @@ public :
     template <typename Tsolver, typename Ttransition_mode,
               std::enable_if_t<std::is_same<Ttransition_mode, StepTransitionMode>::value ||
                                std::is_same<Ttransition_mode, SampleTransitionMode>::value, int> = 0>
-    typename Tsolver::StateNode* expand_action(Tsolver& solver, const Ttransition_mode& transition_mode,
-                                               typename Tsolver::StateNode& state, typename Tsolver::ActionNode& action) const {
+    typename Tsolver::StateNode* expand_action(Tsolver& solver,
+                                               const int& thread_id,
+                                               const Ttransition_mode& transition_mode,
+                                               typename Tsolver::StateNode& state,
+                                               typename Tsolver::ActionNode& action) const {
         try {
             if (!_checked_transition_mode) {
                 spdlog::warn("Using MCTS full expansion mode with step() or sample() domain's transition mode assumes the domain is deterministic (unpredictable result otherwise).");
                 _checked_transition_mode = true;
             }
             // Generate the next state of this action
-            std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = transition_mode.random_next_outcome(solver, state.state, action.action);
+            std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = transition_mode.random_next_outcome(solver, thread_id, state.state, action.action);
             auto i = solver.graph().emplace(to->state());
             typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
             auto ii = action.outcomes.insert(std::make_pair(&next_node, std::make_pair(to->reward(), 1)));
@@ -320,7 +337,9 @@ private :
 class PartialExpand {
 public :
     template <typename Tsolver>
-    typename Tsolver::StateNode* operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
+    typename Tsolver::StateNode* operator()(Tsolver& solver,
+                                            const int& thread_id,
+                                            typename Tsolver::StateNode& n) const {
         try {
             if (solver.debug_logs()) { spdlog::debug("Test expansion of state " + n.state.print()); }
             // Sample an action
@@ -329,7 +348,7 @@ public :
                                                              1.0);
             typename Tsolver::ActionNode* action_node = nullptr;
             if (dist_state_expansion(solver.gen())) {
-                typename Tsolver::Domain::Action action = solver.domain().get_applicable_actions(n.state).sample();
+                typename Tsolver::Domain::Action action = solver.domain().get_applicable_actions(n.state, thread_id).sample();
                 auto a = n.actions.emplace(typename Tsolver::ActionNode(action));
                 if (a.second) { // new action
                     n.expansions_count += 1;
@@ -351,7 +370,7 @@ public :
                                                               1.0);
             typename Tsolver::StateNode* ns = nullptr;
             if (dist_action_expansion(solver.gen())) {
-                std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = solver.transition_mode().random_next_outcome(n.state, action_node->action);
+                std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = solver.transition_mode().random_next_outcome(n.state, action_node->action, thread_id);
                 auto s = solver.graph().emplace(to->state());
                 ns = &const_cast<typename Tsolver::StateNode&>(*(s.first)); // we won't change the real key (StateNode::state) so we are safe
                 if (s.second) { // new state
@@ -397,7 +416,9 @@ public :
     : _ucb_constant(ucb_constant) {}
 
     template <typename Tsolver>
-    typename Tsolver::ActionNode* operator()(Tsolver& solver, const typename Tsolver::StateNode& n) const {
+    typename Tsolver::ActionNode* operator()(Tsolver& solver,
+                                             const int& thread_id,
+                                             const typename Tsolver::StateNode& n) const {
         double best_value = -std::numeric_limits<double>::max();
         typename Tsolver::ActionNode* best_action = nullptr;
         for (const auto& a : n.actions) {
@@ -424,7 +445,9 @@ private :
 class BestQValueActionSelector {
 public :
     template <typename Tsolver>
-    typename Tsolver::ActionNode* operator()(Tsolver& solver, const typename Tsolver::StateNode& n) const {
+    typename Tsolver::ActionNode* operator()(Tsolver& solver,
+                                             const int& thread_id,
+                                             const typename Tsolver::StateNode& n) const {
         double best_value = -std::numeric_limits<double>::max();
         typename Tsolver::ActionNode* best_action = nullptr;
         for (const auto& a : n.actions) {
@@ -447,7 +470,10 @@ public :
 class RandomDefaultPolicy {
 public :
     template <typename Tsolver>
-    void operator()(Tsolver& solver, typename Tsolver::StateNode& n, std::size_t d) const {
+    void operator()(Tsolver& solver,
+                    const int& thread_id,
+                    typename Tsolver::StateNode& n,
+                    std::size_t d) const {
         try {
             if (solver.debug_logs()) { spdlog::debug("Launching random default policy from state " + n.state.print()); }
             typename Tsolver::Domain::State current_state = n.state;
@@ -456,9 +482,9 @@ public :
             double reward = 0.0;
             double gamma_n = 1.0;
             while(!termination && current_depth < solver.max_depth()) {
-                std::unique_ptr<typename Tsolver::Domain::Action> action = solver.domain().get_applicable_actions(current_state)->sample();
+                std::unique_ptr<typename Tsolver::Domain::Action> action = solver.domain().get_applicable_actions(current_state, thread_id)->sample();
 
-                std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> o = solver.transition_mode().random_next_outcome(solver, current_state, *action);
+                std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> o = solver.transition_mode().random_next_outcome(solver, thread_id, current_state, *action);
                 reward += gamma_n * (o->reward());
                 gamma_n *= solver.discount();
                 current_state = o->state();
@@ -483,7 +509,9 @@ public :
 /** Graph backup: update Q values using the graph ancestors (rather than only the trajectory leading to n) */
 struct GraphBackup {
     template <typename Tsolver>
-    void operator()(Tsolver& solver, typename Tsolver::StateNode& n) const {
+    void operator()(Tsolver& solver,
+                    const int& thread_id,
+                    typename Tsolver::StateNode& n) const {
         if (solver.debug_logs()) { spdlog::debug("Back-propagating values from state " + n.state.print()); }
         std::size_t depth = 0; // used to prevent infinite loop in case of cycles
         std::unordered_set<typename Tsolver::StateNode*> frontier;
@@ -623,16 +651,19 @@ public :
             auto si = _graph.emplace(s);
             StateNode& root_node = const_cast<StateNode&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
 
-            while (static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) < _time_budget &&
+            boost::integer_range<std::size_t> parallel_rollouts(0, _domain.get_parallel_capacity());
+            std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(), [this, &start_time, &root_node] (const int& thread_id) {
+                 while (static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) < _time_budget &&
                        _nb_rollouts < _rollout_budget) {
                 
-                std::size_t depth = 0;
-                StateNode* sn = _tree_policy(*this, _expander, _action_selector_optimization, root_node, depth);
-                _default_policy(*this, *sn, depth);
-                _back_propagator(*this, *sn);
-                _nb_rollouts++;
+                    std::size_t depth = 0;
+                    StateNode* sn = _tree_policy(*this, thread_id, _expander, _action_selector_optimization, root_node, depth);
+                    _default_policy(*this, thread_id, *sn, depth);
+                    _back_propagator(*this, thread_id, *sn);
+                    _nb_rollouts++;
 
-            }
+                }
+            });
 
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
@@ -650,7 +681,7 @@ public :
         if (si == _graph.end()) {
             return false;
         } else {
-            return _action_selector_execution(*this, *si) != nullptr;
+            return _action_selector_execution(*this, -1, *si) != nullptr;
         }
     }
 
@@ -658,7 +689,7 @@ public :
         auto si = _graph.find(s);
         ActionNode* action = nullptr;
         if (si != _graph.end()) {
-            action = _action_selector_execution(*this, *si);
+            action = _action_selector_execution(*this, -1, *si);
         }
         if (action == nullptr) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
@@ -681,7 +712,7 @@ public :
         auto si = _graph.find(StateNode(s));
         ActionNode* action = nullptr;
         if (si != _graph.end()) {
-            action = _action_selector_execution(*this, *si);
+            action = _action_selector_execution(*this, -1, *si);
         }
         if (action == nullptr) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
@@ -702,7 +733,7 @@ public :
     typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() {
         typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
         for (auto& n : _graph) {
-            ActionNode* action = _action_selector_execution(*this, n);
+            ActionNode* action = _action_selector_execution(*this, -1, n);
             if (action != nullptr) {
                 p.insert(std::make_pair(n.state, std::make_pair(action->action, action->value)));
             }

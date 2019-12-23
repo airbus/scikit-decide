@@ -48,7 +48,7 @@ class PyRIWSolver {
 public :
 
     PyRIWSolver(py::object& domain,
-                const std::function<py::object (py::object&, const py::object&)>& state_features,
+                const std::function<py::object (py::object&, const py::object&, const py::object&)>& state_features,  // last arg used for optional thread_id
                 bool use_state_feature_hash = false,
                 bool use_simulation_domain = false,
                 unsigned int time_budget = 3600000,
@@ -168,7 +168,7 @@ private :
     public :
 
         Implementation(py::object& domain,
-                       const std::function<py::object (py::object&, const py::object&)>& state_features,
+                       const std::function<py::object (py::object&, const py::object&, const py::object&)>& state_features,  // last arg used for optional thread_id
                        unsigned int time_budget = 3600000,
                        unsigned int rollout_budget = 100000,
                        unsigned int max_depth = 1000,
@@ -182,9 +182,9 @@ private :
                 std::is_same<Trollout_policy<PyRIWDomain<Texecution>>, airlaps::SimulationRollout<PyRIWDomain<Texecution>>>::value);
             _solver = std::make_unique<airlaps::RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>>(
                                                                             *_domain,
-                                                                            [this](PyRIWDomain<Texecution>& d, const typename PyRIWDomain<Texecution>::State& s)->std::unique_ptr<PyRIWFeatureVector<Texecution>> {
+                                                                            [this](PyRIWDomain<Texecution>& d, const typename PyRIWDomain<Texecution>::State& s, const int& thread_id)->std::unique_ptr<PyRIWFeatureVector<Texecution>> {
                                                                                 try {
-                                                                                    return std::make_unique<PyRIWFeatureVector<Texecution>>(d.call(_state_features, s._state));
+                                                                                    return std::make_unique<PyRIWFeatureVector<Texecution>>(d.call(thread_id, _state_features, s._state));
                                                                                 } catch (const py::error_already_set* e) {
                                                                                     typename airlaps::GilControl<Texecution>::Acquire acquire;
                                                                                     spdlog::error(std::string("AIRLAPS exception when calling state features: ") + e->what());
@@ -269,7 +269,7 @@ private :
         std::unique_ptr<PyRIWDomain<Texecution>> _domain;
         std::unique_ptr<airlaps::RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>> _solver;
         
-        std::function<py::object (py::object&, const py::object&)> _state_features;
+        std::function<py::object (py::object&, const py::object&, const py::object&)> _state_features;  // last arg used for optional thread_id
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -283,7 +283,7 @@ void init_pyriw(py::module& m) {
     py::class_<PyRIWSolver> py_riw_solver(m, "_RIWSolver_");
         py_riw_solver
             .def(py::init<py::object&,
-                          const std::function<py::object (py::object&, const py::object&)>&,
+                          const std::function<py::object (py::object&, const py::object&, const py::object&)>&,  // last arg used for optional thread_id
                           bool,
                           bool,
                           unsigned int,

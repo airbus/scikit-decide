@@ -158,7 +158,7 @@ public :
     typedef Texecution_policy ExecutionPolicy;
 
     RIWSolver(Domain& domain,
-              const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)>& state_features,
+              const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& state_features,
               std::size_t time_budget = 3600000,
               std::size_t rollout_budget = 100000,
               std::size_t max_depth = 1000,
@@ -192,7 +192,7 @@ public :
             spdlog::info("Running " + ExecutionPolicy::print() + " RIW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             _nb_rollouts = 0;
-            std::size_t nb_of_binary_features = _state_features(_domain, s)->size();
+            std::size_t nb_of_binary_features = _state_features(_domain, s, -1)->size(); // TODO replace with correct thread id
 
             TupleVector feature_tuples;
 
@@ -302,7 +302,7 @@ public :
 private :
 
     Domain& _domain;
-    std::function<std::unique_ptr<FeatureVector> (Domain&, const State& s)> _state_features;
+    std::function<std::unique_ptr<FeatureVector> (Domain&, const State& s, const int& thread_id)> _state_features;
     std::size_t _time_budget;
     std::size_t _rollout_budget;
     std::size_t _max_depth;
@@ -327,7 +327,7 @@ private :
         bool pruned; // true if pruned from novelty measure perspective
         bool solved; // from this node: true if all reached states are either max_depth, or terminal or pruned
 
-        Node(const State& s, Domain& d, const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)>& state_features)
+        Node(const State& s, Domain& d, const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& state_features)
             : state(s),
               value(-std::numeric_limits<double>::max()),
               depth(std::numeric_limits<std::size_t>::max()),
@@ -336,7 +336,7 @@ private :
               terminal(false),
               pruned(false),
               solved(false) {
-            features = state_features(d, s);
+            features = state_features(d, s, -1); // TODO: replace with correct thread id
         }
         
         struct Key {
@@ -363,7 +363,7 @@ private :
         typedef Texecution_policy ExecutionPolicy;
 
         WidthSolver(RIWSolver& parent_solver, Domain& domain,
-                    const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)>& state_features,
+                    const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& state_features,
                     std::size_t time_budget,
                     std::size_t rollout_budget,
                     std::size_t max_depth,
@@ -517,7 +517,7 @@ private :
     private :
         RIWSolver& _parent_solver;
         Domain& _domain;
-        const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)>& _state_features;
+        const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& _state_features;
         std::size_t _time_budget;
         std::size_t _rollout_budget;
         std::size_t _max_depth;

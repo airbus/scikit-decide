@@ -66,7 +66,7 @@ try:
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
             self._domain = ParallelDomain(domain_factory) if self._parallel else domain_factory()
             self._solver = riw_solver(domain=self._domain,
-                                      state_features=self._state_features,
+                                      state_features=lambda d, s, i=None: self._state_features(d, s) if not self._parallel else d.call(self._state_features, s, i),
                                       use_state_feature_hash=self._use_state_feature_hash,
                                       use_simulation_domain=self._use_simulation_domain,
                                       time_budget=self._time_budget,

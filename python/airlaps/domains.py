@@ -368,6 +368,7 @@ class ParallelDomain:
         global _parallel_domain_, _domain_factory_
         _parallel_domain_ = self
         _domain_factory_ = domain_factory
+        self._call_i = None
         self._manager = ExtendedManager()
         self._manager.start()
         self._waiting_jobs = [self._manager.Queue() for i in range(nb_domains)]
@@ -383,6 +384,9 @@ class ParallelDomain:
             self._waiting_jobs[i].put(None)
         self._pool.close()
         self._pool.join()
+    
+    def get_parallel_capacity(self):
+        return self.nb_domains()
     
     def nb_domains(self):
         return len(self._job_results)
@@ -533,12 +537,18 @@ class ParallelDomain:
         self._waiting_jobs[mi].put(("render", [memory]))
         return mi
     
+    def call(self, function, *args, i=None):
+        self._call_i = i
+        mi = function(self, args)  # will most probably call __getattr__.method below
+        self._call_i = None
+        return mi
+    
     def get_result(self, i):
         return self._job_results[i]
     
     # The original sequential domain may have methods we don't know
     def __getattr__(self, name):
-        def method(*args, i=None):
+        def method(*args, i=self._call_i):
             mi = self.wake_up_domain(i)
             self._waiting_jobs[mi].put((name, args))
             return mi
