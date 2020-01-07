@@ -537,9 +537,9 @@ class ParallelDomain:
         self._waiting_jobs[mi].put(("render", [memory]))
         return mi
     
-    def call(self, function, *args, i=None):
+    def call(self, i, function, *args):
         self._call_i = i
-        mi = function(self, args)  # will most probably call __getattr__.method below
+        mi = function(self, *args)  # will most probably call __getattr__.method below
         self._call_i = None
         return mi
     
