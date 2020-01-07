@@ -266,12 +266,13 @@ class GymWidthDomain:
 
     def _init_bee_features(self, space, state):
         if isinstance(space, gym.spaces.box.Box):
-            for cell in np.nditer(state):
+            for cell_id in range(state.size):
+                cell = state.item(cell_id)
                 self._init_continuous_state_variables.append(cell)
                 # positive increments list for each fidelity level
-                self._feature_increments.append([[] for f in range(self._continuous_feature_fidelity)])
+                self._feature_increments.append(GymWidthDomain.BEENode(cell))
                 # negative increments list for each fidelity level
-                self._feature_increments.append([[] for f in range(self._continuous_feature_fidelity)])
+                self._feature_increments.append(GymWidthDomain.BEENode(cell))
         elif isinstance(space, gym.spaces.tuple.Tuple):
             for s in range(len(space.spaces)):
                 self._init_bee_features(space.spaces[s], state[s])
@@ -293,25 +294,35 @@ class GymWidthDomain:
         if isinstance(space, gym.spaces.box.Box):
             features = []
             index = start
-            for cell in np.nditer(element):
-                ref_val = self._init_continuous_state_variables[index]
+            for cell_id in range(element.size):
+                cell = element.item(cell_id)
                 cf = []
                 if cell > self._init_continuous_state_variables[index]:
+                    node = self._feature_increments[2*index]
                     for f in range(self._continuous_feature_fidelity):
-                        i = bisect.bisect_left(self._feature_increments[2*index][f], cell - ref_val)
+                        i = bisect.bisect_left(node.increments, cell - node.reference)
                         cf.append(i)
-                        if i >= len(self._feature_increments[2*index][f]):
-                            self._feature_increments[2*index][f].append(cell - ref_val)
-                        if i > 0:
-                            ref_val = ref_val + self._feature_increments[2*index][f][i-1]
+                        if i >= len(node.increments):
+                            node.increments.append(cell - node.reference)
+                            node.children.append(GymWidthDomain.BEENode(node.reference + (node.increments[i-1] if i > 0 else 0)))
+                            for ff in range(f+1, self._continuous_feature_fidelity):
+                                cf.append(0)
+                            break
+                        elif i > 0:
+                            node = node.children[i-1]
                 else:
+                    node = self._feature_increments[2*index + 1]
                     for f in range(self._continuous_feature_fidelity):
-                        i = bisect.bisect_left(self._feature_increments[2*index + 1][f], ref_val - cell)
+                        i = bisect.bisect_left(node.increments, node.reference - cell)
                         cf.append(-i)
-                        if i >= len(self._feature_increments[2*index + 1][f]):
-                            self._feature_increments[2*index + 1][f].append(ref_val - cell)
-                        if i > 0:
-                            ref_val = ref_val - self._feature_increments[2*index + 1][f][i-1]
+                        if i >= len(node.increments):
+                            node.increments.append(node.reference - cell)
+                            node.children.append(GymWidthDomain.BEENode(node.reference - (node.increments[i-1] if i > 0 else 0)))
+                            for ff in range(f+1, self._continuous_feature_fidelity):
+                                cf.append(0)
+                            break
+                        elif i > 0:
+                            node = node.children[i-1]
                 # features.append(tuple(cf))
                 features += cf
                 index += 1
@@ -338,6 +349,12 @@ class GymWidthDomain:
             return index, features
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
+    
+    class BEENode:
+        def __init__(self, ref):
+            self.reference = ref
+            self.increments = [0]
+            self.children = []
     
     def nb_of_binary_features(self) -> int:
         """Return the size of the bit vector encoding an observation
