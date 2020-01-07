@@ -15,6 +15,7 @@ from typing import Callable, Any
 
 from airlaps import Domain, Solver
 from airlaps import hub
+from airlaps.domains import ParallelDomain
 from airlaps.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from airlaps.builders.solver import DeterministicPolicies, Utilities
@@ -28,58 +29,6 @@ if airlaps_cpp_extension_lib_path not in sys.path:
 try:
 
     from __airlaps_hub_cpp import _IWSolver_ as iw_solver
-
-    class IWActionProxy:
-        def __init__(self, a):
-            self.action = a
-            self.ns_result = None
-        
-        def __str__(self):
-            return self.action.__str__()
-
-    def IWDomain_pickable_get_next_state(domain, state, action):
-        return domain.get_next_state(state, action)
-    
-
-    class IWProxyDomain:
-        def __init__(self, domain):
-            self._domain = domain
-        
-        def get_initial_state(self):
-            return self._domain.get_initial_state()
-
-        def get_applicable_actions(self, state):
-            return ListSpace([IWActionProxy(a) for a in self._domain.get_applicable_actions(state).get_elements()])
-        
-        def get_transition_value(self, memory, action, next_state):
-            return self._domain.get_transition_value(memory, action, next_state)
-        
-        def is_goal(self, state):
-            return self._domain.is_goal(state)
-        
-        def is_terminal(self, state):
-            return self._domain.is_terminal(state)
-    
-    class IWParallelDomain(IWProxyDomain):
-        def __init__(self, domain):
-            super().__init__(domain)
-            self.iw_pool = multiprocessing.Pool()
-
-        def compute_next_state(self, state, action):  # self is a domain
-            action.ns_result = self.iw_pool.apply_async(
-                                    IWDomain_pickable_get_next_state,
-                                    (self._domain, state, action.action))
-        
-        def get_next_state(self, state, action):  # self is a domain
-            return action.ns_result.get()
-    
-    class IWSequentialDomain(IWProxyDomain):
-        def compute_next_state(self, state, action):  # self is a domain
-            action.ns_result = self._domain.get_next_state(state, action.action)
-
-        def get_next_state(self, state, action):  # self is a domain
-            return action.ns_result
-
 
     class D(Domain, SingleAgent, Sequential, DeterministicTransitions, Actions, DeterministicInitialized, Markovian,
             FullyObservable, Rewards):  # TODO: check why DeterministicInitialized & PositiveCosts/Rewards?
@@ -104,12 +53,9 @@ try:
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            if self._parallel:
-                self._domain = IWParallelDomain(domain_factory())
-            else:
-                self._domain = IWSequentialDomain(domain_factory())
+            self._domain = ParallelDomain(domain_factory) if self._parallel else domain_factory()
             self._solver = iw_solver(domain=self._domain,
-                                     state_features=lambda o: self._state_features(o, self._domain._domain),
+                                     state_features=lambda o: self._state_features(o, self._domain),
                                      use_state_feature_hash=self._use_state_feature_hash,
                                      node_ordering=self._node_ordering,
                                      parallel=self._parallel,
@@ -128,8 +74,7 @@ try:
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
             if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
-            action_proxy = self._solver.get_next_action(observation)
-            return action_proxy.action if action_proxy is not None else None
+            return self._solver.get_next_action(observation)
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             return self._solver.get_utility(observation)

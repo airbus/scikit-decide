@@ -26,11 +26,8 @@ public :
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing get_applicable_actions()");
         }
-        if (!py::hasattr(domain, "compute_next_state")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing compute_sample()");
-        }
         if (!py::hasattr(domain, "get_next_state")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing get_sample()");
+            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing get_next_state()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
             throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing get_transition_value()");
