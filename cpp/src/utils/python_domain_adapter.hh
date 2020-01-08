@@ -759,6 +759,7 @@ protected :
         }
 
         std::size_t get_parallel_capacity() {
+            typename GilControl<Texecution>::Acquire acquire;
             return py::cast<std::size_t>(_domain.attr("get_parallel_capacity")());
         }
 

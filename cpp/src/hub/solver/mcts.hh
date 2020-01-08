@@ -123,10 +123,16 @@ public :
             solver.transition_mode().init_rollout(solver, thread_id);
             typename Tsolver::StateNode* current_node = &n;
             while(!(current_node->terminal) && d < solver.max_depth()) {
-                typename Tsolver::StateNode* next_node = expander(solver, thread_id, *current_node);
+                typename Tsolver::StateNode* next_node = nullptr;
+                solver.execution_policy().protect([&next_node, &expander, &solver, &thread_id, &current_node]{
+                    next_node = expander(solver, thread_id, *current_node);
+                }, current_node->mutex);
                 d++;
                 if (next_node == nullptr) { // node fully expanded
-                    typename Tsolver::ActionNode* action = action_selector(solver, thread_id, *current_node);
+                    typename Tsolver::ActionNode* action = nullptr;
+                    solver.execution_policy().protect([&action, &action_selector, &solver, &thread_id, &current_node](){
+                        action = action_selector(solver, thread_id, *current_node);
+                    }, current_node->mutex);
                     if (action == nullptr) {
                         throw std::runtime_error("AIRLAPS exception: no best action found in state " + current_node->state.print());
                     } else {
@@ -160,6 +166,9 @@ public :
 class FullExpand {
 public :
     FullExpand()
+    : _checked_transition_mode(false) {}
+
+    FullExpand(const FullExpand& other)
     : _checked_transition_mode(false) {}
 
     template <typename Tsolver>
@@ -323,7 +332,7 @@ public :
     }
 
 private :
-    mutable bool _checked_transition_mode;
+    mutable std::atomic<bool> _checked_transition_mode;
 };
 
 
@@ -562,6 +571,10 @@ public :
     typedef TexecutionPolicy ExecutionPolicy;
     typedef TtransitionMode TransitionMode;
 
+    typedef typename ExecutionPolicy::template atomic<std::size_t> atomic_size_t;
+    typedef typename ExecutionPolicy::template atomic<double> atomic_double;
+    typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
+
     struct ActionNode;
 
     struct StateNode {
@@ -574,6 +587,7 @@ public :
         double value;
         std::size_t visits_count;
         std::list<ActionNode*> parents;
+        typename ExecutionPolicy::Mutex mutex;
 
         StateNode(const State& s)
             : state(s), terminal(false), expanded(false),
@@ -653,8 +667,7 @@ public :
 
             boost::integer_range<std::size_t> parallel_rollouts(0, _domain.get_parallel_capacity());
             std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(), [this, &start_time, &root_node] (const int& thread_id) {
-                 while (static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) < _time_budget &&
-                       _nb_rollouts < _rollout_budget) {
+                 while (elapsed_time(start_time) < _time_budget && _nb_rollouts < _rollout_budget) {
                 
                     std::size_t depth = 0;
                     StateNode* sn = _tree_policy(*this, thread_id, _expander, _action_selector_optimization, root_node, depth);
@@ -708,7 +721,7 @@ public :
         }
     }
 
-    const double& get_best_value(const State& s) const {
+    double get_best_value(const State& s) const {
         auto si = _graph.find(StateNode(s));
         ActionNode* action = nullptr;
         if (si != _graph.end()) {
@@ -765,6 +778,8 @@ public :
 
     const BackPropagator& back_propagator() { return _back_propagator; }
 
+    ExecutionPolicy& execution_policy() { return _execution_policy; }
+
     Graph& graph() { return _graph; }
 
     const std::list<Action>& action_prefix() const { return _action_prefix; }
@@ -776,12 +791,12 @@ public :
 private :
 
     Domain& _domain;
-    std::size_t _time_budget;
-    std::size_t _rollout_budget;
-    std::size_t _max_depth;
-    double _discount;
-    std::size_t _nb_rollouts;
-    bool _debug_logs;
+    atomic_size_t _time_budget;
+    atomic_size_t _rollout_budget;
+    atomic_size_t _max_depth;
+    atomic_double _discount;
+    atomic_size_t _nb_rollouts;
+    atomic_bool _debug_logs;
     TransitionMode _transition_mode;
     TreePolicy _tree_policy;
     Expander _expander;
@@ -789,11 +804,25 @@ private :
     ActionSelectorExecution _action_selector_execution;
     DefaultPolicy _default_policy;
     BackPropagator _back_propagator;
+    ExecutionPolicy _execution_policy;
 
     Graph _graph;
     std::list<Action> _action_prefix;
 
     std::unique_ptr<std::mt19937> _gen;
+
+    template <typename Tdate>
+    std::size_t elapsed_time(const Tdate& start_time) {
+        std::size_t milliseconds_duration;
+        _execution_policy.protect([&milliseconds_duration, &start_time](){
+            milliseconds_duration = static_cast<std::size_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::high_resolution_clock::now() - start_time
+                ).count()
+            );
+        });
+        return milliseconds_duration;
+    }
 }; // MCTSSolver class
 
 /** UCT is MCTS with the default template options */
