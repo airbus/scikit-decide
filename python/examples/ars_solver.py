@@ -1,8 +1,8 @@
 import gym
 import gym_jsbsim
-from airlaps.hub.domain.gym import GymDomain
-from airlaps.hub.solver.ars import ars
-from airlaps.utils import load_registered_domain, rollout
+from skdecide.hub.domain.gym import GymDomain
+from skdecide.hub.solver.ars import ars
+from skdecide.utils import load_registered_domain, rollout
 
 
 if __name__ == '__main__':

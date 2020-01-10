@@ -2,10 +2,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 import gym
 # from stable_baselines import PPO2
 # from stable_baselines.common.policies import MlpPolicy
@@ -16,11 +12,11 @@ from stable_baselines import DDPG
 import numpy as np
 from typing import Callable, Any
 
-from airlaps.core import EnvironmentOutcome, TransitionValue
-from airlaps.hub.domain.gym import GymDomain, GymWidthDomain
-from airlaps.hub.solver.stable_baselines import StableBaseline
-from airlaps.hub.solver.wrl import WidthEnvironmentDomain
-from airlaps.utils import rollout
+from skdecide.core import EnvironmentOutcome, TransitionValue
+from skdecide.hub.domain.gym import GymDomain, GymWidthDomain
+from skdecide.hub.solver.stable_baselines import StableBaseline
+from skdecide.hub.solver.wrl import WidthEnvironmentDomain
+from skdecide.utils import rollout
 
 ENV_NAME = 'MountainCarContinuous-v0'
 HORIZON = 200

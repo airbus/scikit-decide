@@ -2,17 +2,13 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 import gym
 import numpy as np
 from typing import Callable
 
-from airlaps.hub.domain.gym import DeterministicGymDomain, GymWidthDomain, GymDiscreteActionDomain
-from airlaps.hub.solver.riw import RIW
-from airlaps.utils import rollout
+from skdecide.hub.domain.gym import DeterministicGymDomain, GymWidthDomain, GymDiscreteActionDomain
+from skdecide.hub.solver.riw import RIW
+from skdecide.utils import rollout
 
 ENV_NAME = 'CartPole-v0'
 HORIZON = 200

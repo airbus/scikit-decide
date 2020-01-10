@@ -2,12 +2,12 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_VALUE_HH
-#define AIRLAPS_VALUE_HH
+#ifndef SKDECIDE_VALUE_HH
+#define SKDECIDE_VALUE_HH
 
 #include "core.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Tvalue>
 class RewardDomain {
@@ -26,6 +26,6 @@ public :
     }
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_VALUE_HH
+#endif // SKDECIDE_VALUE_HH

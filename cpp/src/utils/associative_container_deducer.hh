@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_ASSOCIATIVE_CONTAINER_DEDUCER_HH
-#define AIRLAPS_ASSOCIATIVE_CONTAINER_DEDUCER_HH
+#ifndef SKDECIDE_ASSOCIATIVE_CONTAINER_DEDUCER_HH
+#define SKDECIDE_ASSOCIATIVE_CONTAINER_DEDUCER_HH
 
 #include <type_traits>
 #include <unordered_set>
@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <map>
 
-namespace airlaps {
+namespace skdecide {
 
     template <typename T>
     struct has_hash {
@@ -126,6 +126,6 @@ namespace airlaps {
         
     };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_ASSOCIATIVE_CONTAINER_DEDUCER_HH
+#endif // SKDECIDE_ASSOCIATIVE_CONTAINER_DEDUCER_HH

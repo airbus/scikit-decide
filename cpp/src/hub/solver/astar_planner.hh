@@ -6,8 +6,8 @@
 // Created by TEICHTEIL_FL on 15/05/2018.
 //
 
-#ifndef AIRLAPS_ASTAR_PLANNER_HH
-#define AIRLAPS_ASTAR_PLANNER_HH
+#ifndef SKDECIDE_ASTAR_PLANNER_HH
+#define SKDECIDE_ASTAR_PLANNER_HH
 
 
 #include <solver/cpp/planner.hh>
@@ -198,4 +198,4 @@ protected :
 };
 
 
-#endif //AIRLAPS_ASTAR_PLANNER_HH
+#endif //SKDECIDE_ASTAR_PLANNER_HH

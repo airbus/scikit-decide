@@ -2,10 +2,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 # TODO: Update this example according to latest changes
 
 from enum import IntEnum
@@ -13,11 +9,11 @@ from typing import NamedTuple, Iterable
 import getopt, sys
 import numpy as np
 
-from airlaps import DeterministicPlanningDomain, Memory, TransitionValue, Domain, Space, ImplicitSpace, EnumerableSpace
-from airlaps.builders.domain import EnumerableTransitionDomain, ActionDomain, GoalDomain, \
+from skdecide import DeterministicPlanningDomain, Memory, TransitionValue, Domain, Space, ImplicitSpace, EnumerableSpace
+from skdecide.builders.domain import EnumerableTransitionDomain, ActionDomain, GoalDomain, \
     DeterministicInitializedDomain, MarkovianDomain, PositiveCostDomain, FullyObservableDomain
-from airlaps.utils import rollout
-from airlaps.catalog.solver.iw import IW
+from skdecide.utils import rollout
+from skdecide.catalog.solver.iw import IW
 
 
 class State(NamedTuple):

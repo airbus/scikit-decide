@@ -2,14 +2,14 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_INITIALIZATION_HH
-#define AIRLAPS_INITIALIZATION_HH
+#ifndef SKDECIDE_INITIALIZATION_HH
+#define SKDECIDE_INITIALIZATION_HH
 
 #include "observability.hh"
 #include "memory.hh"
 #include <memory>
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Tstate, typename Tobservation, typename Tevent,
           typename TstateSpace = Space<Tstate>,
@@ -121,6 +121,6 @@ private :
     }
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_INITIALIZATION_HH
+#endif // SKDECIDE_INITIALIZATION_HH

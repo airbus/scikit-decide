@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PYTHON_HASH_EQ_HH
-#define AIRLAPS_PYTHON_HASH_EQ_HH
+#ifndef SKDECIDE_PYTHON_HASH_EQ_HH
+#define SKDECIDE_PYTHON_HASH_EQ_HH
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -16,7 +16,7 @@
 
 namespace py = pybind11;
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Texecution> class PythonContainerAdapter;
 
@@ -42,7 +42,7 @@ struct PythonHash {
                     py::object s = o.attr("__str__")();
                     if (!py::hasattr(s, "__hash__") || s.attr("__hash__").is_none()) {
                         // Desperate case...
-                        throw std::invalid_argument("AIRLAPS exception: python object does not provide usable __hash__ nor hashable __repr__ or __str__");
+                        throw std::invalid_argument("SKDECIDE exception: python object does not provide usable __hash__ nor hashable __repr__ or __str__");
                     } else {
                         return compute_hash(s);
                     }
@@ -53,7 +53,7 @@ struct PythonHash {
                 return compute_hash(o);
             }
         } catch(const py::error_already_set* e) {
-            spdlog::error(std::string("AIRLAPS exception when hashing python object: ") + e->what());
+            spdlog::error(std::string("SKDECIDE exception when hashing python object: ") + e->what());
             std::runtime_error err(e->what());
             delete e;
             throw err;
@@ -85,7 +85,7 @@ struct PythonEqual {
                     if (!py::hasattr(s1, "__eq__") || s1.attr("__eq__").is_none() ||
                         !py::hasattr(s2, "__eq__") || s2.attr("__eq__").is_none()) {
                         // Desperate case...
-                        throw std::invalid_argument("AIRLAPS exception: python objects do not provide usable __eq__ nor equal tests using __repr__ or __str__");
+                        throw std::invalid_argument("SKDECIDE exception: python objects do not provide usable __eq__ nor equal tests using __repr__ or __str__");
                     } else {
                         return compute_equal(s1, s2);
                     }
@@ -96,7 +96,7 @@ struct PythonEqual {
                 return compute_equal(o1, o2);
             }
         } catch(const py::error_already_set* e) {
-            spdlog::error(std::string("AIRLAPS exception when testing equality of python objects: ") + e->what());
+            spdlog::error(std::string("SKDECIDE exception when testing equality of python objects: ") + e->what());
             std::runtime_error err(e->what());
             delete e;
             throw err;
@@ -104,6 +104,6 @@ struct PythonEqual {
     }
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_PYTHON_HASH_EQ_HH
+#endif // SKDECIDE_PYTHON_HASH_EQ_HH

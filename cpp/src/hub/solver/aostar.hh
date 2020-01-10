@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_AOSTAR_HH
-#define AIRLAPS_AOSTAR_HH
+#ifndef SKDECIDE_AOSTAR_HH
+#define SKDECIDE_AOSTAR_HH
 
 #include <functional>
 #include <memory>
@@ -18,7 +18,7 @@
 #include "utils/associative_container_deducer.hh"
 #include "utils/execution.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Tdomain,
           typename Texecution_policy = ParallelExecution>
@@ -157,7 +157,7 @@ public :
                     if (_detect_cycles) {
                         for (const auto& ps : new_frontier) {
                             if (explored_states->find(ps) != explored_states->end()) {
-                                throw std::logic_error("AIRLAPS exception: cycle detected in the MDP graph! [with state " + ps->state.print() + "]");
+                                throw std::logic_error("SKDECIDE exception: cycle detected in the MDP graph! [with state " + ps->state.print() + "]");
                             }
                             explored_states->insert(ps);
                         }
@@ -205,7 +205,7 @@ public :
     const Action& get_best_action(const State& s) const {
         auto si = _graph.find(s);
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
+            throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
         return si->best_action->action;
     }
@@ -213,7 +213,7 @@ public :
     const double& get_best_value(const State& s) const {
         auto si = _graph.find(s);
         if (si == _graph.end()) {
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
+            throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
         return si->best_value;
     }
@@ -268,6 +268,6 @@ private :
     Graph _graph;
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_AOSTAR_HH
+#endif // SKDECIDE_AOSTAR_HH

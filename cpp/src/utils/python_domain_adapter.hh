@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PYTHON_DOMAIN_ADAPTER_HH
-#define AIRLAPS_PYTHON_DOMAIN_ADAPTER_HH
+#ifndef SKDECIDE_PYTHON_DOMAIN_ADAPTER_HH
+#define SKDECIDE_PYTHON_DOMAIN_ADAPTER_HH
 
 #include <pybind11/pybind11.h>
 
@@ -13,7 +13,7 @@
 
 namespace py = pybind11;
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Texecution>
 class PythonDomainAdapter {
@@ -52,9 +52,9 @@ public :
         struct Hash {
             std::size_t operator()(const State& s) const {
                 try {
-                    return airlaps::PythonHash<Texecution>()(s._state);
+                    return skdecide::PythonHash<Texecution>()(s._state);
                 } catch(const std::exception& e) {
-                    spdlog::error(std::string("AIRLAPS exception when hashing states: ") + e.what());
+                    spdlog::error(std::string("SKDECIDE exception when hashing states: ") + e.what());
                     throw;
                 }
             }
@@ -63,9 +63,9 @@ public :
         struct Equal {
             bool operator()(const State& s1, const State& s2) const {
                 try {
-                    return airlaps::PythonEqual<Texecution>()(s1._state, s2._state);
+                    return skdecide::PythonEqual<Texecution>()(s1._state, s2._state);
                 } catch(const std::exception& e) {
-                    spdlog::error(std::string("AIRLAPS exception when testing states equality: ") + e.what());
+                    spdlog::error(std::string("SKDECIDE exception when testing states equality: ") + e.what());
                     throw;
                 }
             }
@@ -115,9 +115,9 @@ public :
         struct Hash {
             std::size_t operator()(const Event& e) const {
                 try {
-                    return airlaps::PythonHash<Texecution>()(e._event);
+                    return skdecide::PythonHash<Texecution>()(e._event);
                 } catch(const std::exception& ex) {
-                    spdlog::error(std::string("AIRLAPS exception when hashing events: ") + ex.what());
+                    spdlog::error(std::string("SKDECIDE exception when hashing events: ") + ex.what());
                     throw;
                 }
             }
@@ -126,9 +126,9 @@ public :
         struct Equal {
             bool operator()(const Event& e1, const Event& e2) const {
                 try {
-                    return airlaps::PythonEqual<Texecution>()(e1._event, e2._event);
+                    return skdecide::PythonEqual<Texecution>()(e1._event, e2._event);
                 } catch(const std::exception& ex) {
-                    spdlog::error(std::string("AIRLAPS exception when testing events equality: ") + ex.what());
+                    spdlog::error(std::string("SKDECIDE exception when testing events equality: ") + ex.what());
                     throw;
                 }
             }
@@ -137,7 +137,7 @@ public :
 
     typedef Event Action;
 
-    struct ApplicableActionSpace { // don't inherit from airlaps::EnumerableSpace since otherwise we would need to copy the applicable action python object into a c++ iterable object
+    struct ApplicableActionSpace { // don't inherit from skdecide::EnumerableSpace since otherwise we would need to copy the applicable action python object into a c++ iterable object
         py::object _applicable_actions;
 
         ApplicableActionSpace(const py::object& applicable_actions) {
@@ -199,7 +199,7 @@ public :
         ApplicableActionSpaceElements get_elements() const {
             typename GilControl<Texecution>::Acquire acquire;
             if (!py::hasattr(_applicable_actions, "get_elements")) {
-                throw std::invalid_argument("AIRLAPS exception: python applicable action object must implement get_elements()");
+                throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement get_elements()");
             } else {
                 return ApplicableActionSpaceElements(_applicable_actions.attr("get_elements")());
             }
@@ -208,7 +208,7 @@ public :
         std::unique_ptr<Event> sample() const {
             typename GilControl<Texecution>::Acquire acquire;
             if (!py::hasattr(_applicable_actions, "sample")) {
-                throw std::invalid_argument("AIRLAPS exception: python applicable action object must implement sample()");
+                throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement sample()");
             } else {
                 return std::make_unique<Event>(_applicable_actions.attr("sample")());
             }
@@ -227,16 +227,16 @@ public :
             } else if (py::hasattr(_outcome, "observation")) {
                 _state = _outcome.attr("observation");
             } else {
-                throw std::invalid_argument("AIRLAPS exception: python transition outcome object must provide 'state' or 'observation'");
+                throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'state' or 'observation'");
             }
             if (!py::hasattr(_outcome, "value")) {
-                throw std::invalid_argument("AIRLAPS exception: python transition outcome object must provide 'value'");
+                throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'value'");
             }
             if (!py::hasattr(_outcome, "termination")) {
-                throw std::invalid_argument("AIRLAPS exception: python transition outcome object must provide 'termination'");
+                throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'termination'");
             }
             if (!py::hasattr(_outcome, "info")) {
-                throw std::invalid_argument("AIRLAPS exception: python transition outcome object must provide 'info'");
+                throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'info'");
             }
         }
 
@@ -276,7 +276,7 @@ public :
                     _outcome.attr("observation") = s;
                 }
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when setting outcome's state: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting outcome's state: ") + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -292,7 +292,7 @@ public :
             try {
                 return py::cast<double>(_outcome.attr("value").attr("cost"));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when getting outcome's cost: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting outcome's cost: ") + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -304,7 +304,7 @@ public :
             try {
                 _outcome.attr("value").attr("cost") = py::float_(c);
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when setting outcome's cost: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting outcome's cost: ") + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -316,7 +316,7 @@ public :
             try {
                 return py::cast<double>(_outcome.attr("value").attr("reward"));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when getting outcome's reward: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting outcome's reward: ") + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -328,7 +328,7 @@ public :
             try {
                 _outcome.attr("value").attr("reward") = py::float_(r);
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when setting outcome's reward: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting outcome's reward: ") + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -340,7 +340,7 @@ public :
             try {
                 return py::cast<bool>(_outcome.attr("termination"));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when getting outcome's state: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting outcome's state: ") + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -352,7 +352,7 @@ public :
             try {
                 _outcome.attr("termination") = py::bool_(t);
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when setting outcome's observation: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting outcome's observation: ") + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -364,7 +364,7 @@ public :
             try {
                 return _outcome.attr("info");
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when getting outcome's info: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting outcome's info: ") + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -376,7 +376,7 @@ public :
             try {
                 _outcome.attr("info") = i;
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when setting outcome's info: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting outcome's info: ") + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -402,7 +402,7 @@ public :
             typename GilControl<Texecution>::Acquire acquire;
             this->_next_state_distribution = next_state_distribution;
             if (!py::hasattr(_next_state_distribution, "get_values")) {
-                throw std::invalid_argument("AIRLAPS exception: python next state distribution object must implement get_values()");
+                throw std::invalid_argument("SKDECIDE exception: python next state distribution object must implement get_values()");
             }
         }
 
@@ -462,7 +462,7 @@ public :
             try {
                 return NextStateDistributionValues(_next_state_distribution.attr("get_values")());
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when getting next state's distribution values: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting next state's distribution values: ") + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -477,7 +477,7 @@ public :
         OutcomeExtractor(const py::handle& o) {
             typename GilControl<Texecution>::Acquire acquire;
             if (!py::isinstance<py::tuple>(o)) {
-                throw std::invalid_argument("AIRLAPS exception: python next state distribution returned value should be an iterable over tuple objects");
+                throw std::invalid_argument("SKDECIDE exception: python next state distribution returned value should be an iterable over tuple objects");
             }
             py::tuple t = o.cast<py::tuple>();
             _state = t[0];
@@ -593,7 +593,7 @@ protected :
             try {
                 return std::make_unique<ApplicableActionSpace>(_domain.attr("get_applicable_actions")(s._state));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when getting applicable actions in state ") + s.print() + ": " + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting applicable actions in state ") + s.print() + ": " + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -605,7 +605,7 @@ protected :
             try {
                 return std::make_unique<State>(_domain.attr("reset")());
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("AIRLAPS exception when resetting the domain: ") + ex->what());
+                spdlog::error(std::string("SKDECIDE exception when resetting the domain: ") + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
@@ -617,7 +617,7 @@ protected :
             try {
                 return std::make_unique<TransitionOutcome>(_domain.attr("step")(e._event));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("AIRLAPS exception when stepping with action ") +
+                spdlog::error(std::string("SKDECIDE exception when stepping with action ") +
                             e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -630,7 +630,7 @@ protected :
             try {
                 return std::make_unique<TransitionOutcome>(_domain.attr("sample")(s._state, e._event));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("AIRLAPS exception when sampling from state ") + s.print() +
+                spdlog::error(std::string("SKDECIDE exception when sampling from state ") + s.print() +
                               " with action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -643,7 +643,7 @@ protected :
             try {
                 return _domain.attr("get_next_state")(s._state, e._event);
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("AIRLAPS exception when getting next state from state ") +
+                spdlog::error(std::string("SKDECIDE exception when getting next state from state ") +
                               s.print() + " and applying action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -656,7 +656,7 @@ protected :
             try {
                 return std::make_unique<NextStateDistribution>(_domain.attr("get_next_state_distribution")(s._state, e._event));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("AIRLAPS exception when getting next state distribution from state ") +
+                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from state ") +
                               s.print() + " and applying action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -669,7 +669,7 @@ protected :
             try {
                 return py::cast<double>(_domain.attr("get_transition_value")(s._state, e._event, sp._state).attr("cost"));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("AIRLAPS exception when getting value of transition (") +
+                spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
                             s.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -682,7 +682,7 @@ protected :
             try {
                 return py::cast<double>(_domain.attr("get_transition_value")(s._state, e._event, sp._state).attr("reward"));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("AIRLAPS exception when getting value of transition (") +
+                spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
                             s.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -695,7 +695,7 @@ protected :
             try {
                 return py::cast<bool>(_domain.attr("is_goal")(s._state));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("AIRLAPS exception when testing goal condition of state ") +
+                spdlog::error(std::string("SKDECIDE exception when testing goal condition of state ") +
                             s.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -708,7 +708,7 @@ protected :
             try {
                 return py::cast<bool>(_domain.attr("is_terminal")(s._state));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("AIRLAPS exception when testing terminal condition of state ") +
+                spdlog::error(std::string("SKDECIDE exception when testing terminal condition of state ") +
                             s.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -722,7 +722,7 @@ protected :
             try {
                 return func(_domain, args..., py::none());
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("AIRLAPS exception when calling anonymous domain method: " + std::string(e->what())));
+                spdlog::error(std::string("SKDECIDE exception when calling anonymous domain method: " + std::string(e->what())));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -775,7 +775,7 @@ protected :
                         id = func(_domain, args..., py::none());
                     }
                 } catch(const py::error_already_set* e) {
-                    spdlog::error("AIRLAPS exception when asynchronously calling anonymous domain method: " + std::string(e->what()));
+                    spdlog::error("SKDECIDE exception when asynchronously calling anonymous domain method: " + std::string(e->what()));
                     std::runtime_error err(e->what());
                     id = py::object();
                     delete e;
@@ -792,7 +792,7 @@ protected :
                         return r;
                     }
                 } catch(const py::error_already_set* e) {
-                    spdlog::error("AIRLAPS exception when asynchronously calling the domain's get_result() method: " + std::string(e->what()));
+                    spdlog::error("SKDECIDE exception when asynchronously calling the domain's get_result() method: " + std::string(e->what()));
                     std::runtime_error err(e->what());
                     id = py::object();
                     delete e;
@@ -814,7 +814,7 @@ protected :
                 return std::make_unique<ApplicableActionSpace>(launch(thread_id, "get_applicable_actions", s._state));
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("AIRLAPS exception when getting applicable actions in state ") + s.print() + ": " + e.what());
+                spdlog::error(std::string("SKDECIDE exception when getting applicable actions in state ") + s.print() + ": " + e.what());
                 throw;
             }
         }
@@ -824,7 +824,7 @@ protected :
                 return std::make_unique<State>(launch(thread_id, "reset"));
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("AIRLAPS exception when resetting the domain: ") + e.what());
+                spdlog::error(std::string("SKDECIDE exception when resetting the domain: ") + e.what());
                 throw;
             }
         }
@@ -834,7 +834,7 @@ protected :
                 return std::make_unique<TransitionOutcome>(launch(thread_id, "step", e._event));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("AIRLAPS exception when stepping with action ") +
+                spdlog::error(std::string("SKDECIDE exception when stepping with action ") +
                               e.print() + ": " + ex.what());
                 throw;
             }
@@ -845,7 +845,7 @@ protected :
                 return std::make_unique<TransitionOutcome>(launch(thread_id, "sample", s._state, e._event));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("AIRLAPS exception when sampling from state ") + s.print() +
+                spdlog::error(std::string("SKDECIDE exception when sampling from state ") + s.print() +
                             " with action " + e.print() + ": " + ex.what());
                 throw;
             }
@@ -856,7 +856,7 @@ protected :
                 return launch(thread_id, "get_next_state", s._state, e._event);
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("AIRLAPS exception when getting next state from state ") +
+                spdlog::error(std::string("SKDECIDE exception when getting next state from state ") +
                             s.print() + " and applying action " + e.print() + ": " + ex.what());
                 throw;
             }
@@ -867,7 +867,7 @@ protected :
                 return std::make_unique<NextStateDistribution>(launch(thread_id, "get_next_state_distribution", s._state, e._event));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("AIRLAPS exception when getting next state distribution from state ") +
+                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from state ") +
                             s.print() + " and applying action " + e.print() + ": " + ex.what());
                 throw;
             }
@@ -880,7 +880,7 @@ protected :
                 return py::cast<double>(r.attr("cost"));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("AIRLAPS exception when getting value of transition (") +
+                spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
                               s.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex.what());
                 throw;
             }
@@ -893,7 +893,7 @@ protected :
                 return py::cast<double>(r.attr("reward"));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("AIRLAPS exception when getting value of transition (") +
+                spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
                               s.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex.what());
                 throw;
             }
@@ -906,7 +906,7 @@ protected :
                 return py::cast<bool>(r);
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("AIRLAPS exception when testing goal condition of state ") +
+                spdlog::error(std::string("SKDECIDE exception when testing goal condition of state ") +
                               s.print() + ": " + e.what());
                 throw;
             }
@@ -919,7 +919,7 @@ protected :
                 return py::cast<bool>(r);
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("AIRLAPS exception when testing terminal condition of state ") +
+                spdlog::error(std::string("SKDECIDE exception when testing terminal condition of state ") +
                               s.print() + ": " + e.what());
                 throw;
             }
@@ -930,7 +930,7 @@ protected :
             try {
                 return do_launch(thread_id, func, args...);
             } catch(const std::exception& e) {
-                spdlog::error(std::string("AIRLAPS exception when calling anonymous domain method: " + std::string(e.what())));
+                spdlog::error(std::string("SKDECIDE exception when calling anonymous domain method: " + std::string(e.what())));
                 throw;
             }
         }
@@ -941,6 +941,6 @@ protected :
     std::unique_ptr<Implementation<Texecution>> _implementation;
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_PYTHON_DOMAIN_ADAPTER_HH
+#endif // SKDECIDE_PYTHON_DOMAIN_ADAPTER_HH

@@ -18,22 +18,22 @@ namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyRIWDomain : public airlaps::PythonDomainAdapter<Texecution> {
+class PyRIWDomain : public skdecide::PythonDomainAdapter<Texecution> {
 public :
     
     PyRIWDomain(const py::object& domain, bool use_simulation_domain)
-    : airlaps::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python domain for implementing get_applicable_actions()");
+            throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing get_applicable_actions()");
         }
         if (!use_simulation_domain && !py::hasattr(domain, "reset")) {
-            throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python domain for implementing reset() in environment mode");
+            throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing reset() in environment mode");
         }
         if (!use_simulation_domain && !py::hasattr(domain, "step")) {
-            throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python domain for implementing step() in environment mode");
+            throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing step() in environment mode");
         }
         if (use_simulation_domain && !py::hasattr(domain, "sample")) {
-            throw std::invalid_argument("AIRLAPS exception: RIW algorithm needs python domain for implementing sample() in simulation mode");
+            throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing sample() in simulation mode");
         }
     }
 
@@ -41,7 +41,7 @@ public :
 
 
 template <typename Texecution>
-using PyRIWFeatureVector = airlaps::PythonContainerAdapter<Texecution>;
+using PyRIWFeatureVector = skdecide::PythonContainerAdapter<Texecution>;
 
 
 class PyRIWSolver {
@@ -63,19 +63,19 @@ public :
         if (parallel) {
             if (use_state_feature_hash) {
                 if (use_simulation_domain) {
-                    _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash, airlaps::SimulationRollout>>(
+                    _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::StateFeatureHash, skdecide::SimulationRollout>>(
                         domain, state_features, time_budget, rollout_budget, max_depth, exploration, discount, online_node_garbage, debug_logs);
                 } else {
-                    _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash, airlaps::EnvironmentRollout>>(
+                    _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::StateFeatureHash, skdecide::EnvironmentRollout>>(
                         domain, state_features, time_budget, rollout_budget, max_depth, exploration, discount, online_node_garbage, debug_logs);
                 }
             } else {
                 if (use_simulation_domain) {
-                    _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash, airlaps::SimulationRollout>>(
+                    _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::DomainStateHash, skdecide::SimulationRollout>>(
                         domain, state_features, time_budget, rollout_budget, max_depth,
                         exploration, discount, online_node_garbage, debug_logs);
                 } else {
-                    _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash, airlaps::EnvironmentRollout>>(
+                    _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::DomainStateHash, skdecide::EnvironmentRollout>>(
                         domain, state_features, time_budget, rollout_budget, max_depth,
                         exploration, discount, online_node_garbage, debug_logs);
                 }
@@ -83,21 +83,21 @@ public :
         } else {
             if (use_state_feature_hash) {
                 if (use_simulation_domain) {
-                    _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash, airlaps::SimulationRollout>>(
+                    _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::StateFeatureHash, skdecide::SimulationRollout>>(
                         domain, state_features, time_budget, rollout_budget, max_depth,
                         exploration, discount, online_node_garbage, debug_logs);
                 } else {
-                    _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash, airlaps::EnvironmentRollout>>(
+                    _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::StateFeatureHash, skdecide::EnvironmentRollout>>(
                         domain, state_features, time_budget, rollout_budget, max_depth,
                         exploration, discount, online_node_garbage, debug_logs);
                 }
             } else {
                 if (use_simulation_domain) {
-                    _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash, airlaps::SimulationRollout>>(
+                    _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::DomainStateHash, skdecide::SimulationRollout>>(
                         domain, state_features, time_budget, rollout_budget, max_depth,
                         exploration, discount, online_node_garbage, debug_logs);
                 } else {
-                    _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash, airlaps::EnvironmentRollout>>(
+                    _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::DomainStateHash, skdecide::EnvironmentRollout>>(
                         domain, state_features, time_budget, rollout_budget, max_depth,
                         exploration, discount, online_node_garbage, debug_logs);
                 }
@@ -179,15 +179,15 @@ private :
             : _state_features(state_features) {
             
             _domain = std::make_unique<PyRIWDomain<Texecution>>(domain,
-                std::is_same<Trollout_policy<PyRIWDomain<Texecution>>, airlaps::SimulationRollout<PyRIWDomain<Texecution>>>::value);
-            _solver = std::make_unique<airlaps::RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>>(
+                std::is_same<Trollout_policy<PyRIWDomain<Texecution>>, skdecide::SimulationRollout<PyRIWDomain<Texecution>>>::value);
+            _solver = std::make_unique<skdecide::RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>>(
                                                                             *_domain,
                                                                             [this](PyRIWDomain<Texecution>& d, const typename PyRIWDomain<Texecution>::State& s, const int& thread_id)->std::unique_ptr<PyRIWFeatureVector<Texecution>> {
                                                                                 try {
                                                                                     return std::make_unique<PyRIWFeatureVector<Texecution>>(d.call(thread_id, _state_features, s._state));
                                                                                 } catch (const py::error_already_set* e) {
-                                                                                    typename airlaps::GilControl<Texecution>::Acquire acquire;
-                                                                                    spdlog::error(std::string("AIRLAPS exception when calling state features: ") + e->what());
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e->what());
                                                                                     std::runtime_error err(e->what());
                                                                                     delete e;
                                                                                     throw err;
@@ -211,7 +211,7 @@ private :
         }
 
         virtual void solve(const py::object& s) {
-            typename airlaps::GilControl<Texecution>::Release release;
+            typename skdecide::GilControl<Texecution>::Release release;
             _solver->solve(s);
         }
 
@@ -267,7 +267,7 @@ private :
 
     private :
         std::unique_ptr<PyRIWDomain<Texecution>> _domain;
-        std::unique_ptr<airlaps::RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>> _solver;
+        std::unique_ptr<skdecide::RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>> _solver;
         
         std::function<py::object (py::object&, const py::object&, const py::object&)> _state_features;  // last arg used for optional thread_id
 

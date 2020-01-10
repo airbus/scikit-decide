@@ -2,20 +2,16 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 from enum import Enum
 from typing import NamedTuple, Optional
 
 from stable_baselines import PPO2
 from stable_baselines.common.policies import MlpPolicy
 
-from airlaps import DeterministicPlanningDomain, TransitionValue, Space
-from airlaps.builders.domain import UnrestrictedActions
-from airlaps.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
-from airlaps.utils import load_registered_solver, rollout
+from skdecide import DeterministicPlanningDomain, TransitionValue, Space
+from skdecide.builders.domain import UnrestrictedActions
+from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
+from skdecide.utils import load_registered_solver, rollout
 
 
 class State(NamedTuple):

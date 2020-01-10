@@ -2,17 +2,13 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 # TODO: check update to new API
 
 import random
 from enum import Enum
 
-from airlaps import RLDomain, TransitionOutcome, TransitionValue, nocopy
-from airlaps.builders.domain import FullyObservable
+from skdecide import RLDomain, TransitionOutcome, TransitionValue, nocopy
+from skdecide.builders.domain import FullyObservable
 from dataclasses import dataclass, replace
 
 

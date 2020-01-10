@@ -2,19 +2,15 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 from enum import IntEnum
 from typing import NamedTuple, Optional, Iterable
 from math import sqrt
 import getopt, sys
 
-from airlaps import GoalMDPDomain, TransitionValue, Space, EnumerableSpace, ImplicitSpace, DiscreteDistribution
-from airlaps.builders.domain import Actions
-from airlaps.hub.space.gym import MultiDiscreteSpace
-from airlaps.utils import load_registered_solver, rollout
+from skdecide import GoalMDPDomain, TransitionValue, Space, EnumerableSpace, ImplicitSpace, DiscreteDistribution
+from skdecide.builders.domain import Actions
+from skdecide.hub.space.gym import MultiDiscreteSpace
+from skdecide.utils import load_registered_solver, rollout
 
 
 class MyState(NamedTuple):

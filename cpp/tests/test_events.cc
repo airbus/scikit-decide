@@ -7,7 +7,7 @@
 #include "builders/domain/events.hh"
 
 TEST_CASE("Event domain", "[event-domain]") {
-    class AlphabetSpace : public airlaps::Space<char> {
+    class AlphabetSpace : public skdecide::Space<char> {
     public :
         AlphabetSpace(bool with_capitals) {
             std::vector<char> v(26);
@@ -27,19 +27,19 @@ TEST_CASE("Event domain", "[event-domain]") {
         std::set<char> _alphabet;
     };
     
-    class TestEventDomain : public airlaps::EventDomain<int, char,
+    class TestEventDomain : public skdecide::EventDomain<int, char,
                                                         AlphabetSpace, AlphabetSpace,
-                                                        airlaps::ImplicitSpace<char>, airlaps::ImplicitSpace<char>> {
+                                                        skdecide::ImplicitSpace<char>, skdecide::ImplicitSpace<char>> {
     public :
-        virtual std::unique_ptr<airlaps::ImplicitSpace<char>> get_enabled_events(const airlaps::Memory<int>& memory) {
-            return std::make_unique<airlaps::ImplicitSpace<char>>([this, &memory](const char& c)->bool {
+        virtual std::unique_ptr<skdecide::ImplicitSpace<char>> get_enabled_events(const skdecide::Memory<int>& memory) {
+            return std::make_unique<skdecide::ImplicitSpace<char>>([this, &memory](const char& c)->bool {
                 return (std::find(memory.begin(), memory.end(), int(c)) != memory.end()) &&
                        (this->get_event_space().contains(c));
             });
         }
 
-        virtual std::unique_ptr<airlaps::ImplicitSpace<char>> get_applicable_actions(const airlaps::Memory<int>& memory) {
-            return std::make_unique<airlaps::ImplicitSpace<char>>([this, &memory](const char& c)->bool {
+        virtual std::unique_ptr<skdecide::ImplicitSpace<char>> get_applicable_actions(const skdecide::Memory<int>& memory) {
+            return std::make_unique<skdecide::ImplicitSpace<char>>([this, &memory](const char& c)->bool {
                 return (std::find(memory.begin(), memory.end(), int(c)) != memory.end()) &&
                        (this->get_action_space().contains(c));
             });

@@ -7,7 +7,7 @@
 
 #include "type.hh"
 
-using namespace airlaps::pddl;
+using namespace skdecide::pddl;
 
 const Type::Ptr Type::_object = std::make_shared<Type>("object");
 const Type::Ptr Type::_number = std::make_shared<Type>("number");

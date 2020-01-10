@@ -17,22 +17,22 @@ namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyAOStarDomain : public airlaps::PythonDomainAdapter<Texecution> {
+class PyAOStarDomain : public skdecide::PythonDomainAdapter<Texecution> {
 public :
     
     PyAOStarDomain(const py::object& domain)
-    : airlaps::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python domain for implementing get_applicable_actions()");
+            throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_applicable_actions()");
         }
         if (!py::hasattr(domain, "compute_next_state_distribution")) {
-            throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python domain for implementing compute_next_state_distribution()");
+            throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing compute_next_state_distribution()");
         }
         if (!py::hasattr(domain, "get_next_state_distribution")) {
-            throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python domain for implementing get_next_state_distribution()");
+            throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_next_state_distribution()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("AIRLAPS exception: AO* algorithm needs python domain for implementing get_transition_value()");
+            throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_transition_value()");
         }
     }
 
@@ -50,11 +50,11 @@ public :
                    bool parallel = true,
                    bool debug_logs = false) {
         if (parallel) {
-            _implementation = std::make_unique<Implementation<airlaps::ParallelExecution>>(
+            _implementation = std::make_unique<Implementation<skdecide::ParallelExecution>>(
                 domain, goal_checker, heuristic, discount, max_tip_expansions, detect_cycles, debug_logs
             );
         } else {
-            _implementation = std::make_unique<Implementation<airlaps::SequentialExecution>>(
+            _implementation = std::make_unique<Implementation<skdecide::SequentialExecution>>(
                 domain, goal_checker, heuristic, discount, max_tip_expansions, detect_cycles, debug_logs
             );
         }
@@ -103,14 +103,14 @@ private :
                        bool debug_logs = false)
         : _goal_checker(goal_checker), _heuristic(heuristic) {
             _domain = std::make_unique<PyAOStarDomain<Texecution>>(domain);
-            _solver = std::make_unique<airlaps::AOStarSolver<PyAOStarDomain<Texecution>, Texecution>>(
+            _solver = std::make_unique<skdecide::AOStarSolver<PyAOStarDomain<Texecution>, Texecution>>(
                                                                             *_domain,
                                                                             [this](const typename PyAOStarDomain<Texecution>::State& s)->bool {
-                                                                                typename airlaps::GilControl<Texecution>::Acquire acquire;
+                                                                                typename skdecide::GilControl<Texecution>::Acquire acquire;
                                                                                 return _goal_checker(s._state);
                                                                             },
                                                                             [this](const typename PyAOStarDomain<Texecution>::State& s)->double {
-                                                                                typename airlaps::GilControl<Texecution>::Acquire acquire;
+                                                                                typename skdecide::GilControl<Texecution>::Acquire acquire;
                                                                                 return _heuristic(s._state);
                                                                             },
                                                                             discount,
@@ -128,7 +128,7 @@ private :
         }
 
         virtual void solve(const py::object& s) {
-            typename airlaps::GilControl<Texecution>::Release release;
+            typename skdecide::GilControl<Texecution>::Release release;
             _solver->solve(s);
         }
 
@@ -146,7 +146,7 @@ private :
 
     private :
         std::unique_ptr<PyAOStarDomain<Texecution>> _domain;
-        std::unique_ptr<airlaps::AOStarSolver<PyAOStarDomain<Texecution>, Texecution>> _solver;
+        std::unique_ptr<skdecide::AOStarSolver<PyAOStarDomain<Texecution>, Texecution>> _solver;
 
         std::function<bool (const py::object&)> _goal_checker;
         std::function<double (const py::object&)> _heuristic;

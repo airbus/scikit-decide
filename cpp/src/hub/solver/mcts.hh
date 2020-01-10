@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_MCTS_HH
-#define AIRLAPS_MCTS_HH
+#ifndef SKDECIDE_MCTS_HH
+#define SKDECIDE_MCTS_HH
 
 #include <functional>
 #include <memory>
@@ -23,7 +23,7 @@
 #include "utils/associative_container_deducer.hh"
 #include "utils/execution.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 /** Use Environment domain knowledge for transitions */
 struct StepTransitionMode {
@@ -165,7 +165,7 @@ public :
                     }, current_node->mutex);
                     
                     if (action == nullptr) {
-                        throw std::runtime_error("AIRLAPS exception: no best action found in state " + current_node->state.print());
+                        throw std::runtime_error("SKDECIDE exception: no best action found in state " + current_node->state.print());
                     } else {
                         next_node = solver.transition_mode().random_next_node(solver, thread_id, *action);
 
@@ -182,7 +182,7 @@ public :
             }
             return current_node;
         } catch (const std::exception& e) {
-            spdlog::error("AIRLAPS exception in MCTS when simulating the tree policy from state " + n.state.print() + ": " + e.what());
+            spdlog::error("SKDECIDE exception in MCTS when simulating the tree policy from state " + n.state.print() + ": " + e.what());
             throw;
         }
     }
@@ -284,7 +284,7 @@ public :
                 }
             }
         } catch (const std::exception& e) {
-            spdlog::error("AIRLAPS exception in MCTS when expanding state " + n.state.print() + ": " + e.what());
+            spdlog::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what());
             throw;
         }
     }
@@ -373,7 +373,7 @@ public :
                 return untried_outcomes[outcome_id];
             }
         } catch (const std::exception& e) {
-            spdlog::error("AIRLAPS exception in MCTS when expanding action " + action.action.print() + ": " + e.what());
+            spdlog::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what());
             throw;
         }
     }
@@ -417,7 +417,7 @@ public :
             
             return &next_node;
         } catch (const std::exception& e) {
-            spdlog::error("AIRLAPS exception in MCTS when expanding action " + action.action.print() + ": " + e.what());
+            spdlog::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what());
             throw;
         }
     }
@@ -548,7 +548,7 @@ public :
 
             return ns;
         } catch (const std::exception& e) {
-            spdlog::error("AIRLAPS exception in MCTS when expanding state " + n.state.print() + ": " + e.what());
+            spdlog::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what());
             throw;
         }
     }
@@ -662,7 +662,7 @@ public :
                 n.visits_count += 1;
             }, n.mutex);
         } catch (const std::exception& e) {
-            spdlog::error("AIRLAPS exception in MCTS when simulating the random default policy from state " + n.state.print() + ": " + e.what());
+            spdlog::error("SKDECIDE exception in MCTS when simulating the random default policy from state " + n.state.print() + ": " + e.what());
             throw;
         }
     }
@@ -883,8 +883,8 @@ public :
             action = _action_selector_execution(*this, -1, *si);
         }
         if (action == nullptr) {
-            spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
+            spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
+            throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         } else {
             if (_debug_logs) {
                 std::string str = "(";
@@ -906,8 +906,8 @@ public :
             action = _action_selector_execution(*this, -1, *si);
         }
         if (action == nullptr) {
-            spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
+            spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
+            throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         } else {
             return action->value;
         }
@@ -1007,6 +1007,6 @@ private :
 template <typename Tdomain, typename Texecution_policy, typename TtransitionMode, typename ...T>
 using UCTSolver = MCTSSolver<Tdomain, Texecution_policy, TtransitionMode, T...>;
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_MCTS_HH
+#endif // SKDECIDE_MCTS_HH

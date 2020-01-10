@@ -2,13 +2,13 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_MEMORY_HH
-#define AIRLAPS_MEMORY_HH
+#ifndef SKDECIDE_MEMORY_HH
+#define SKDECIDE_MEMORY_HH
 
 #include <limits>
 #include <stdexcept>
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Tstate>
 class HistoryDomain {
@@ -138,6 +138,6 @@ protected :
     }
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_MEMORY_HH
+#endif // SKDECIDE_MEMORY_HH

@@ -15,7 +15,7 @@
 #include "predicate.hh"
 #include "function.hh"
 
-using namespace airlaps::pddl;
+using namespace skdecide::pddl;
 
 Domain::Domain() {
     add_type(Type::object());

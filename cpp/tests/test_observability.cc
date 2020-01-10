@@ -11,18 +11,18 @@
 #include "builders/domain/observability.hh"
 
 TEST_CASE("Partially observable domain", "[partially-observable-domain") {
-    class TestPartiallyObservableDomain : public airlaps::PartiallyObservableDomain<float, int, std::nullptr_t> {
+    class TestPartiallyObservableDomain : public skdecide::PartiallyObservableDomain<float, int, std::nullptr_t> {
     public :
-        virtual std::unique_ptr<airlaps::Space<int>> make_observation_space() {
-            return std::make_unique<airlaps::ImplicitSpace<int>>([](const int& o)->bool{return o >=0 && o <= 10;});
+        virtual std::unique_ptr<skdecide::Space<int>> make_observation_space() {
+            return std::make_unique<skdecide::ImplicitSpace<int>>([](const int& o)->bool{return o >=0 && o <= 10;});
         }
 
-        virtual std::unique_ptr<airlaps::Space<float>> make_state_space() {
-            return std::make_unique<airlaps::ImplicitSpace<float>>([](const float& s)->bool{return s >= -0.5 && s <= 10.5;});
+        virtual std::unique_ptr<skdecide::Space<float>> make_state_space() {
+            return std::make_unique<skdecide::ImplicitSpace<float>>([](const float& s)->bool{return s >= -0.5 && s <= 10.5;});
         }
 
-        virtual std::unique_ptr<airlaps::Distribution<int>> get_observation_distribution(const float& state, const std::nullptr_t& event) {
-            return std::make_unique<airlaps::SingleValueDistribution<int>>(std::min(std::max(0, int(std::round(state))), 10));
+        virtual std::unique_ptr<skdecide::Distribution<int>> get_observation_distribution(const float& state, const std::nullptr_t& event) {
+            return std::make_unique<skdecide::SingleValueDistribution<int>>(std::min(std::max(0, int(std::round(state))), 10));
         }
     };
 
@@ -35,7 +35,7 @@ TEST_CASE("Partially observable domain", "[partially-observable-domain") {
 }
 
 TEST_CASE("Fully observable domain", "[fully-observable-domain]") {
-    class AlphabetSpace : public airlaps::Space<char> {
+    class AlphabetSpace : public skdecide::Space<char> {
     public :
         AlphabetSpace() {
             std::vector<char> v(26);
@@ -51,7 +51,7 @@ TEST_CASE("Fully observable domain", "[fully-observable-domain]") {
         std::set<char> _alphabet;
     };
 
-    class TestFullyObservableDomain : public airlaps::FullyObservableDomain<char, std::nullptr_t, AlphabetSpace> {
+    class TestFullyObservableDomain : public skdecide::FullyObservableDomain<char, std::nullptr_t, AlphabetSpace> {
     private :
         virtual std::unique_ptr<AlphabetSpace> make_state_space() {
             return std::make_unique<AlphabetSpace>();

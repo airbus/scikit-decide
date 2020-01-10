@@ -6,7 +6,7 @@
 #include <sstream>
 #include "requirements.hh"
 
-using namespace airlaps::pddl;
+using namespace skdecide::pddl;
 
 Requirements::Requirements()
 : _equality(false),

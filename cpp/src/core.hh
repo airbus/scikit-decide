@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_CORE_HH
-#define AIRLAPS_CORE_HH
+#ifndef SKDECIDE_CORE_HH
+#define SKDECIDE_CORE_HH
 
 #include <functional>
 #include <random>
@@ -15,7 +15,7 @@
 #include <json.hpp>
 using json = nlohmann::json;
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename T>
 class Space {
@@ -399,6 +399,6 @@ protected :
     std::size_t _maxlen;
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_CORE_HH
+#endif // SKDECIDE_CORE_HH

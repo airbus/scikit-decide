@@ -2,15 +2,15 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_ASSOCIATIVE_CONTAINER_HH
-#define AIRLAPS_PDDL_ASSOCIATIVE_CONTAINER_HH
+#ifndef SKDECIDE_PDDL_ASSOCIATIVE_CONTAINER_HH
+#define SKDECIDE_PDDL_ASSOCIATIVE_CONTAINER_HH
 
 #include <unordered_set>
 #include <memory>
 #include <string>
 #include <sstream>
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -54,7 +54,7 @@ namespace airlaps {
             const SymbolPtr& add(const SymbolPtr& symbol) {
                 std::pair<typename SymbolSet::const_iterator, bool> i = _container.emplace(symbol);
                 if (!i.second) {
-                    throw std::logic_error("AIRLAPS exception: " + std::string(Symbol::class_name) + " '" +
+                    throw std::logic_error("SKDECIDE exception: " + std::string(Symbol::class_name) + " '" +
                                            symbol->get_name() +
                                            "' already in the set of " + std::string(Symbol::class_name) + "s of " +
                                            std::string(Derived::class_name) + " '" + static_cast<const Derived*>(this)->get_name() + "'");
@@ -77,7 +77,7 @@ namespace airlaps {
              */
             void remove(const SymbolPtr& symbol) {
                 if (_container.erase(symbol) == 0) {
-                    throw std::logic_error("AIRLAPS exception: " + std::string(Symbol::class_name) + " '" +
+                    throw std::logic_error("SKDECIDE exception: " + std::string(Symbol::class_name) + " '" +
                                            symbol->get_name() +
                                            "' not in the set of " + std::string(Symbol::class_name) + "s of " +
                                            std::string(Derived::class_name) + " '" + static_cast<const Derived*>(this)->get_name() + "'");
@@ -99,7 +99,7 @@ namespace airlaps {
             const SymbolPtr& get(const SymbolPtr& symbol) const {
                 typename SymbolSet::const_iterator i = _container.find(symbol);
                 if (i == _container.end()) {
-                    throw std::logic_error("AIRLAPS exception: " + std::string(Symbol::class_name) + " '" +
+                    throw std::logic_error("SKDECIDE exception: " + std::string(Symbol::class_name) + " '" +
                                            symbol->get_name() +
                                            "' not in the set of " + std::string(Symbol::class_name) + "s of " +
                                            std::string(Derived::class_name) + " '" + static_cast<const Derived*>(this)->get_name() + "'");
@@ -123,6 +123,6 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_PDDL_ASSOCIATIVE_CONTAINER_HH
+#endif // SKDECIDE_PDDL_ASSOCIATIVE_CONTAINER_HH

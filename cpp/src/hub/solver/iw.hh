@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_IW_HH
-#define AIRLAPS_IW_HH
+#ifndef SKDECIDE_IW_HH
+#define SKDECIDE_IW_HH
 
 #include <functional>
 #include <memory>
@@ -21,7 +21,7 @@
 #include "utils/associative_container_deducer.hh"
 #include "utils/execution.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 /** Use default hasher provided with domain's states */
 template <typename Tdomain, typename Tfeature_vector>
@@ -162,8 +162,8 @@ public :
     const Action& get_best_action(const State& s) const {
         auto si = _graph.find(Node(s, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
-            spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
+            spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
+            throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
         return *(si->best_action);
     }
@@ -171,8 +171,8 @@ public :
     const double& get_best_value(const State& s) const {
         auto si = _graph.find(Node(s, _state_features));
         if (si == _graph.end()) {
-            spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
+            spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
+            throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
         return si->fscore;
     }
@@ -448,6 +448,6 @@ private :
     };
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_IW_HH
+#endif // SKDECIDE_IW_HH

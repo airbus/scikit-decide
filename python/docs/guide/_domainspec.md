@@ -3,7 +3,7 @@ navbar: false
 sidebar: false
 ---
 
-<airlaps-spec>
+<skdecide-spec>
 
 <template v-slot:Domain>
 
@@ -458,7 +458,7 @@ A dice roll simulator is an example of memoryless domain (next states are indepe
 
 ::: tip
 Whenever an existing domain (environment, simulator...) needs to be wrapped instead of implemented fully in
-AIRLAPS (e.g. compiled ATARI games), Memoryless can be used because the domain memory (if any) would
+scikit-decide (e.g. compiled ATARI games), Memoryless can be used because the domain memory (if any) would
 be handled externally.
 :::
 
@@ -516,5 +516,5 @@ Having only positive costs is a required assumption for certain solvers to work,
 
 </template>
 
-</airlaps-spec>
+</skdecide-spec>
 

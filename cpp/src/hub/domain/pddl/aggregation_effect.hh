@@ -2,13 +2,13 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_AGGREGATION_EFFECT_HH
-#define AIRLAPS_PDDL_AGGREGATION_EFFECT_HH
+#ifndef SKDECIDE_PDDL_AGGREGATION_EFFECT_HH
+#define SKDECIDE_PDDL_AGGREGATION_EFFECT_HH
 
 #include "effect.hh"
 #include <vector>
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -43,7 +43,7 @@ namespace airlaps {
              */
             AggregationEffect& remove_effect(const std::size_t& index) {
                 if (index >= _effects.size()) {
-                    throw std::out_of_range("AIRLAPS exception: index " + std::to_string(index) +
+                    throw std::out_of_range("SKDECIDE exception: index " + std::to_string(index) +
                                             " exceeds the size of the '" + Derived::class_name + "' effect");
                 } else {
                     _effects.erase(_effects.begin() + index);
@@ -58,7 +58,7 @@ namespace airlaps {
              */
             const Effect::Ptr& effect_at(const std::size_t& index) {
                 if (index >= _effects.size()) {
-                    throw std::out_of_range("AIRLAPS exception: index " + std::to_string(index) +
+                    throw std::out_of_range("SKDECIDE exception: index " + std::to_string(index) +
                                             " exceeds the size of the '" + Derived::class_name + "' effect");
                 } else {
                     return _effects[index];
@@ -128,6 +128,6 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_PDDL_AGGREGATION_EFFECT_HH
+#endif // SKDECIDE_PDDL_AGGREGATION_EFFECT_HH

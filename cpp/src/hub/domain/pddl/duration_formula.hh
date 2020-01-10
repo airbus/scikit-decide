@@ -2,12 +2,12 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_DURATION_FORMULA_HH
-#define AIRLAPS_PDDL_DURATION_FORMULA_HH
+#ifndef SKDECIDE_PDDL_DURATION_FORMULA_HH
+#define SKDECIDE_PDDL_DURATION_FORMULA_HH
 
 #include "formula.hh"
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -52,6 +52,6 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_PDDL_DURATION_FORMULA_HH
+#endif // SKDECIDE_PDDL_DURATION_FORMULA_HH

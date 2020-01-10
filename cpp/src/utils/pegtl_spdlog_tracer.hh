@@ -5,8 +5,8 @@
 // Copyright (c) 2014-2019 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
-#ifndef _AIRLAPS_PEGTL_SPDLOG_TRACER_HH
-#define _AIRLAPS_PEGTL_SPDLOG_TRACER_HH
+#ifndef _SKDECIDE_PEGTL_SPDLOG_TRACER_HH
+#define _SKDECIDE_PEGTL_SPDLOG_TRACER_HH
 
 #include <cassert>
 #include <iomanip>
@@ -208,4 +208,4 @@ namespace tao
 
 }  // namespace tao
 
-#endif // _AIRLAPS_PEGTL_SPDLOG_TRACER_HH
+#endif // _SKDECIDE_PEGTL_SPDLOG_TRACER_HH

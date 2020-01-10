@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_WRL_HH
-#define AIRLAPS_WRL_HH
+#ifndef SKDECIDE_WRL_HH
+#define SKDECIDE_WRL_HH
 
 #include <boost/container_hash/hash.hpp>
 #include <random>
@@ -13,7 +13,7 @@
 
 #include "utils/associative_container_deducer.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 /** Use default hasher provided with domain's observations */
 template <typename Tdomain, typename Tfeature_vector>
@@ -614,4 +614,4 @@ private :
 
 }
 
-#endif // AIRLAPS_WRL_HH
+#endif // SKDECIDE_WRL_HH

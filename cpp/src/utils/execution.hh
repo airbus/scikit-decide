@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_EXECUTION_HH
-#define AIRLAPS_EXECUTION_HH
+#ifndef SKDECIDE_EXECUTION_HH
+#define SKDECIDE_EXECUTION_HH
 
 #include "config.h"
 #if defined(HAS_EXECUTION)
@@ -13,7 +13,7 @@
 #endif
 #include <atomic>
 
-namespace airlaps {
+namespace skdecide {
     
 #if defined(HAS_EXECUTION)
     struct SequentialExecution {
@@ -159,7 +159,7 @@ namespace airlaps {
     };
 #endif
 
-} // namespace airlaps
+} // namespace skdecide
 
 namespace std {
 #if !defined(HAS_EXECUTION)
@@ -182,4 +182,4 @@ namespace std {
 #endif // !defined(HAS_EXECUTION)
 } // namespace std
 
-#endif // AIRLAPS_EXECUTION_HH
+#endif // SKDECIDE_EXECUTION_HH

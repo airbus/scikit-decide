@@ -2,14 +2,14 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_EFFECT_HH
-#define AIRLAPS_PDDL_EFFECT_HH
+#ifndef SKDECIDE_PDDL_EFFECT_HH
+#define SKDECIDE_PDDL_EFFECT_HH
 
 #include <memory>
 #include <ostream>
 #include <sstream>
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -29,11 +29,11 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
 // Effect printing operator
-inline std::ostream& operator<<(std::ostream& o, const airlaps::pddl::Effect& f) {
+inline std::ostream& operator<<(std::ostream& o, const skdecide::pddl::Effect& f) {
     return f.print(o);
 }
 
-#endif // AIRLAPS_PDDL_EFFECT_HH
+#endif // SKDECIDE_PDDL_EFFECT_HH

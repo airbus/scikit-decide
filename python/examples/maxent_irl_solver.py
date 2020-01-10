@@ -1,8 +1,8 @@
 import gym
 
-from airlaps.hub.domain.gym import GymDomain
-from airlaps.hub.solver.maxent_irl import MaxentIRL  # maximum entropy inverse reinforcement learning
-from airlaps.utils import rollout
+from skdecide.hub.domain.gym import GymDomain
+from skdecide.hub.solver.maxent_irl import MaxentIRL  # maximum entropy inverse reinforcement learning
+from skdecide.utils import rollout
 
 ENV_NAME = 'MountainCar-v0'
 

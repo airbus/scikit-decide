@@ -2,13 +2,13 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_AGGREGATION_FORMULA_HH
-#define AIRLAPS_PDDL_AGGREGATION_FORMULA_HH
+#ifndef SKDECIDE_PDDL_AGGREGATION_FORMULA_HH
+#define SKDECIDE_PDDL_AGGREGATION_FORMULA_HH
 
 #include "formula.hh"
 #include <vector>
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -43,7 +43,7 @@ namespace airlaps {
              */
             AggregationFormula& remove_formula(const std::size_t& index) {
                 if (index >= _formulas.size()) {
-                    throw std::out_of_range("AIRLAPS exception: index " + std::to_string(index) +
+                    throw std::out_of_range("SKDECIDE exception: index " + std::to_string(index) +
                                             " exceeds the size of the '" + Derived::class_name + "' formula");
                 } else {
                     _formulas.erase(_formulas.begin() + index);
@@ -58,7 +58,7 @@ namespace airlaps {
              */
             const Formula::Ptr& formula_at(const std::size_t& index) {
                 if (index >= _formulas.size()) {
-                    throw std::out_of_range("AIRLAPS exception: index " + std::to_string(index) +
+                    throw std::out_of_range("SKDECIDE exception: index " + std::to_string(index) +
                                             " exceeds the size of the '" + Derived::class_name + "' formula");
                 } else {
                     return _formulas[index];
@@ -128,6 +128,6 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_PDDL_AGGREGATION_FORMULA_HH
+#endif // SKDECIDE_PDDL_AGGREGATION_FORMULA_HH

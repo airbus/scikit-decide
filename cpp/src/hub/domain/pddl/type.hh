@@ -2,15 +2,15 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_TYPE_HH
-#define AIRLAPS_PDDL_TYPE_HH
+#ifndef SKDECIDE_PDDL_TYPE_HH
+#define SKDECIDE_PDDL_TYPE_HH
 
 #include <ostream>
 
 #include "identifier.hh"
 #include "type_container.hh"
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -36,9 +36,9 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
 // Type printing operator
-std::ostream& operator<<(std::ostream& o, const airlaps::pddl::Type& t);
+std::ostream& operator<<(std::ostream& o, const skdecide::pddl::Type& t);
 
-#endif // AIRLAPS_PDDL_TYPE_HH
+#endif // SKDECIDE_PDDL_TYPE_HH

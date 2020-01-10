@@ -2,19 +2,15 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 # TODO: update to new API or remove (quite redundant with other examples)
 
 import random
 from enum import Enum
 from typing import Dict
 
-from airlaps import RLDomain, Distribution, TransitionOutcome, TransitionValue, ImplicitDistribution, nocopy
-from airlaps.dataclasses import dataclass, \
-    replace  # TODO: replace 'airlaps.dataclasses' by 'dataclasses' once transitioned to Python 3.7
+from skdecide import RLDomain, Distribution, TransitionOutcome, TransitionValue, ImplicitDistribution, nocopy
+from skdecide.dataclasses import dataclass, \
+    replace  # TODO: replace 'skdecide.dataclasses' by 'dataclasses' once transitioned to Python 3.7
 
 
 # @nocopy avoids copy to optimize memory since State is recursively immutable

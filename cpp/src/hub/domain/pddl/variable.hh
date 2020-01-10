@@ -2,13 +2,13 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_VARIABLE_HH
-#define AIRLAPS_PDDL_VARIABLE_HH
+#ifndef SKDECIDE_PDDL_VARIABLE_HH
+#define SKDECIDE_PDDL_VARIABLE_HH
 
 #include "type.hh"
 #include "term.hh"
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -41,11 +41,11 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
 // Object printing operator
-inline std::ostream& operator<<(std::ostream& o, const airlaps::pddl::Variable& v) {
+inline std::ostream& operator<<(std::ostream& o, const skdecide::pddl::Variable& v) {
     return v.print(o);
 }
 
-#endif // AIRLAPS_PDDL_VARIABLE_HH
+#endif // SKDECIDE_PDDL_VARIABLE_HH

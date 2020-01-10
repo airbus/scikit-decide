@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_RIW_HH
-#define AIRLAPS_RIW_HH
+#ifndef SKDECIDE_RIW_HH
+#define SKDECIDE_RIW_HH
 
 #include <functional>
 #include <memory>
@@ -23,7 +23,7 @@
 #include "utils/associative_container_deducer.hh"
 #include "utils/execution.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 /** Use default hasher provided with domain's states */
 template <typename Tdomain, typename Tfeature_vector>
@@ -230,8 +230,8 @@ public :
     Action get_best_action(const State& s) {
         auto si = _graph.find(Node(s, _domain, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
-            spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
+            spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
+            throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
         _rollout_policy.advance(_domain, s, *(si->best_action), true);
         Action best_action = *(si->best_action);
@@ -245,8 +245,8 @@ public :
             }
         }
         if (next_node == nullptr) {
-            spdlog::error("AIRLAPS exception: best action's next node from state " + s.print() + " not found in the graph");
-            throw std::runtime_error("AIRLAPS exception: best action's next node from state " + s.print() + " not found in the graph");
+            spdlog::error("SKDECIDE exception: best action's next node from state " + s.print() + " not found in the graph");
+            throw std::runtime_error("SKDECIDE exception: best action's next node from state " + s.print() + " not found in the graph");
         }
         if (_debug_logs) { spdlog::debug("Expected outcome of best action " + si->best_action->print() +
                                          ": " + next_node->state.print()); }
@@ -261,8 +261,8 @@ public :
     const double& get_best_value(const State& s) const {
         auto si = _graph.find(Node(s, _domain, _state_features));
         if (si == _graph.end()) {
-            spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
+            spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
+            throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
         return si->value;
     }
@@ -754,6 +754,6 @@ private :
     }
 }; // RIWSolver class
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_RIW_HH
+#endif // SKDECIDE_RIW_HH

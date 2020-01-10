@@ -7,14 +7,14 @@
 
 
 TEST_CASE("Implicit space", "[implicit-space]") {
-    airlaps::ImplicitSpace<double> is([](const double& e) {return e > 2.0 && e < 3.0;});
+    skdecide::ImplicitSpace<double> is([](const double& e) {return e > 2.0 && e < 3.0;});
     REQUIRE( is.contains(2.5) == true );
     REQUIRE( is.contains(3.5) == false );
 }
 
 
 TEST_CASE("Enumerable space", "[enumerable-space]") {
-    struct TestEnumerableSpace : public airlaps::EnumerableSpace<char> {
+    struct TestEnumerableSpace : public skdecide::EnumerableSpace<char> {
         std::unordered_set<char> elements;
 
         TestEnumerableSpace(std::initializer_list<char> init)
@@ -36,7 +36,7 @@ TEST_CASE("Enumerable space", "[enumerable-space]") {
 
 
 TEST_CASE("Serializable space", "[serializable-space]") {
-    struct TestSerializableSpace : public airlaps::SerializableSpace<std::vector<bool>>,
+    struct TestSerializableSpace : public skdecide::SerializableSpace<std::vector<bool>>,
                                    public std::unordered_set<std::vector<bool>> {
         TestSerializableSpace(std::initializer_list<std::vector<bool>> init)
         : std::unordered_set<std::vector<bool>>(init) {}
@@ -58,7 +58,7 @@ TEST_CASE("Serializable space", "[serializable-space]") {
 TEST_CASE("Implicit distribution", "[implicit-distribution]") {
     std::random_device g;
     std::uniform_real_distribution<> d(1.0, 2.0);
-    airlaps::ImplicitDistribution<double> id([&d, &g]()->double {return d(g);});
+    skdecide::ImplicitDistribution<double> id([&d, &g]()->double {return d(g);});
     std::vector<double> v;
     std::generate_n(std::back_inserter(v), 10, [&id]() {return id.sample();});
     REQUIRE( std::all_of(v.begin(), v.end(), [](const auto& e)->bool {return e >= 1.0 && e <= 2.0;}) );
@@ -66,7 +66,7 @@ TEST_CASE("Implicit distribution", "[implicit-distribution]") {
 
 
 TEST_CASE("Discrete distribution", "[discrete-distribution]") {
-    airlaps::DiscreteDistribution<std::string> dd = {{"one", 0.2}, {"two", 0.4}, {"three", 0.4}, {"two", 0.2}}; // duplicates and non-normalized weights
+    skdecide::DiscreteDistribution<std::string> dd = {{"one", 0.2}, {"two", 0.4}, {"three", 0.4}, {"two", 0.2}}; // duplicates and non-normalized weights
     std::vector<std::string> v;
     std::generate_n(std::back_inserter(v), 10, [&dd]() {return dd.sample();});
     REQUIRE( dd.get_values().at("two") == Approx(0.5) );
@@ -76,7 +76,7 @@ TEST_CASE("Discrete distribution", "[discrete-distribution]") {
 
 
 TEST_CASE("Single-Value distribution", "[single-value-distribution]") {
-    airlaps::SingleValueDistribution<std::string> svd("unique");
+    skdecide::SingleValueDistribution<std::string> svd("unique");
     std::vector<std::string> v;
     std::generate_n(std::back_inserter(v), 10, [&svd]() {return svd.sample();});
     REQUIRE( (svd.get_values().size() == 1 && svd.get_values().at("unique") == Approx(1.0)) );
@@ -85,15 +85,15 @@ TEST_CASE("Single-Value distribution", "[single-value-distribution]") {
 
 
 TEST_CASE("Transition value", "[transition-value]") {
-    airlaps::TransitionValue<airlaps::TransitionType::COST> tv(8.0);
+    skdecide::TransitionValue<skdecide::TransitionType::COST> tv(8.0);
     REQUIRE( tv.reward() + tv.cost() == Approx(0.0) );
 }
 
 
 TEST_CASE("Memory", "[memory]") {
-    airlaps::Memory<char> m({'a', 'b', 'c', 'd', 'e'}, 3);
-    REQUIRE( m == airlaps::Memory<char>({'c', 'd', 'e'}, 3) );
+    skdecide::Memory<char> m({'a', 'b', 'c', 'd', 'e'}, 3);
+    REQUIRE( m == skdecide::Memory<char>({'c', 'd', 'e'}, 3) );
     m.push_back('f');
     m.push_front('a');
-    REQUIRE( m == airlaps::Memory<char>({'a', 'd', 'e'}, 3) );
+    REQUIRE( m == skdecide::Memory<char>({'a', 'd', 'e'}, 3) );
 }

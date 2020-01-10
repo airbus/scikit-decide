@@ -8,7 +8,7 @@
 #include "builders/domain/memory.hh"
 
 TEST_CASE("History Domain", "[history-domain]") {
-    class TestHistoryDomain : public airlaps::HistoryDomain<int> {
+    class TestHistoryDomain : public skdecide::HistoryDomain<int> {
     public :
         TestHistoryDomain() {
             std::vector<int> v(100);
@@ -31,14 +31,14 @@ TEST_CASE("History Domain", "[history-domain]") {
     REQUIRE( thd.get_memory_length() == 50 );
     REQUIRE( thd.get_last_state() == 51 );
 
-    airlaps::Memory<std::string> m({"Hello", "I", "am", "airlaps"}, 5);
+    skdecide::Memory<std::string> m({"Hello", "I", "am", "skdecide"}, 5);
     m.push_back("of");
     m.push_back("course");
-    REQUIRE( airlaps::HistoryDomain<std::string>::get_last_state(m) == "course" );
+    REQUIRE( skdecide::HistoryDomain<std::string>::get_last_state(m) == "course" );
 }
 
 TEST_CASE("Finite History Domain", "[finite-history-domain]") {
-    class TestFiniteHistoryDomain : public airlaps::FiniteHistoryDomain<char> {
+    class TestFiniteHistoryDomain : public skdecide::FiniteHistoryDomain<char> {
     public :
         TestFiniteHistoryDomain() {
             std::vector<char> v(26);
@@ -46,7 +46,7 @@ TEST_CASE("Finite History Domain", "[finite-history-domain]") {
             this->_memory = this->_init_memory(v.begin(), v.end());
         }
 
-        const airlaps::Memory<char>& get_memory() const {
+        const skdecide::Memory<char>& get_memory() const {
             return *(this->_memory);
         }
 
@@ -58,27 +58,27 @@ TEST_CASE("Finite History Domain", "[finite-history-domain]") {
 
     TestFiniteHistoryDomain tfhd;
     REQUIRE( tfhd.check_memory() == true );
-    airlaps::Memory<char> m(tfhd.get_memory().begin(), tfhd.get_memory().end(), 3);
+    skdecide::Memory<char> m(tfhd.get_memory().begin(), tfhd.get_memory().end(), 3);
     REQUIRE( tfhd.check_memory(m) == false );
 }
 
 TEST_CASE("Markovian Domain", "[markovian-domain]") {
-    class TestUninitializedMarkovianDomain : public airlaps::MarkovianDomain<int> {
+    class TestUninitializedMarkovianDomain : public skdecide::MarkovianDomain<int> {
     public :
-        TestUninitializedMarkovianDomain() : airlaps::MarkovianDomain<int>() {}
+        TestUninitializedMarkovianDomain() : skdecide::MarkovianDomain<int>() {}
     };
 
     TestUninitializedMarkovianDomain tumd;
-    airlaps::Memory<int> m({1, 2, 3}, 1);
+    skdecide::Memory<int> m({1, 2, 3}, 1);
     REQUIRE( tumd.check_memory(m) == true );
     REQUIRE( tumd.get_last_state(m) == 3 );
-    airlaps::Memory<int> mm({1, 2, 3}, 2);
+    skdecide::Memory<int> mm({1, 2, 3}, 2);
     REQUIRE( tumd.check_memory(mm) == false );
     REQUIRE_THROWS( tumd.check_memory() );
 
-    class TestInitializedMarkovianDomain : public airlaps::MarkovianDomain<int> {
+    class TestInitializedMarkovianDomain : public skdecide::MarkovianDomain<int> {
     public :
-        TestInitializedMarkovianDomain() : airlaps::MarkovianDomain<int>() {
+        TestInitializedMarkovianDomain() : skdecide::MarkovianDomain<int>() {
             this->_memory = this->_init_memory({3});
         }
     };
@@ -89,9 +89,9 @@ TEST_CASE("Markovian Domain", "[markovian-domain]") {
 }
 
 TEST_CASE("Memory-Less Domain", "[memory-less-domain]") {
-    airlaps::MemorylessDomain<double> mld;
-    REQUIRE( mld.check_memory(airlaps::Memory<double>({1, 2}, 0)) == true );
-    REQUIRE( mld.check_memory(airlaps::Memory<double>({1, 2}, 2)) == false );
+    skdecide::MemorylessDomain<double> mld;
+    REQUIRE( mld.check_memory(skdecide::Memory<double>({1, 2}, 0)) == true );
+    REQUIRE( mld.check_memory(skdecide::Memory<double>({1, 2}, 2)) == false );
     REQUIRE( mld.check_memory() == true );
     REQUIRE_THROWS_AS( mld.get_last_state(), std::out_of_range );
 }

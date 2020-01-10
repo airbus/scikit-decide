@@ -2,19 +2,19 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_GOALS_HH
-#define AIRLAPS_GOALS_HH
+#ifndef SKDECIDE_GOALS_HH
+#define SKDECIDE_GOALS_HH
 
 #include "core.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Tobservation,
           typename TobservationSpace = Space<Tobservation>,
           template <typename...> class TsmartPointer = std::unique_ptr>
 class GoalDomain {
     static_assert(std::is_same<typename TobservationSpace::element_type, Tobservation>::value, "Observation space elements must be of type Tobservation");
-    static_assert(std::is_base_of<Space<Tobservation>, TobservationSpace>::value, "Observation space type must be derived from airlaps::Space<Tobservation>");
+    static_assert(std::is_base_of<Space<Tobservation>, TobservationSpace>::value, "Observation space type must be derived from skdecide::Space<Tobservation>");
     
 public :
     typedef Tobservation Observation;
@@ -39,6 +39,6 @@ private :
     ObservationSpacePtr _goals;
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_GOALS_HH
+#endif // SKDECIDE_GOALS_HH

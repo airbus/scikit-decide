@@ -5,7 +5,7 @@
 #include "gym_spaces.hh"
 #include <algorithm>
 
-using namespace airlaps;
+using namespace skdecide;
 
 std::unique_ptr<GymSpace> GymSpace::import_from_python(const py::object& gym_space, Encoding encoding, double space_relative_precision, unsigned int feature_atom_vector_begin) {
     std::string space = py::str(gym_space.attr("__class__").attr("__name__"));

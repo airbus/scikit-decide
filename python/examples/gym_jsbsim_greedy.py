@@ -2,10 +2,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 import gym
 import gym_jsbsim
 import numpy as np
@@ -13,12 +9,12 @@ import folium
 
 from typing import Callable, Any
 
-from airlaps import TransitionOutcome, TransitionValue, Solver, Space, Domain
-from airlaps.builders.domain import SingleAgent, Rewards, Sequential, UnrestrictedActions, Initializable, Memoryless, FullyObservable, Renderable
-from airlaps.hub.domain.gym import DeterministicGymDomain, GymDiscreteActionDomain
-from airlaps.builders.solver import DeterministicPolicies, Utilities
-from airlaps.hub.space.gym import GymSpace
-from airlaps.utils import rollout
+from skdecide import TransitionOutcome, TransitionValue, Solver, Space, Domain
+from skdecide.builders.domain import SingleAgent, Rewards, Sequential, UnrestrictedActions, Initializable, Memoryless, FullyObservable, Renderable
+from skdecide.hub.domain.gym import DeterministicGymDomain, GymDiscreteActionDomain
+from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.hub.space.gym import GymSpace
+from skdecide.utils import rollout
 
 from gym_jsbsim.catalogs.catalog import Catalog as prp
 from gym_jsbsim.envs.taxi_utils2 import *

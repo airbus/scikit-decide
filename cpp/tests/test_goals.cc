@@ -8,10 +8,10 @@
 #include "builders/domain/goals.hh"
 
 TEST_CASE("GoalDomain", "[goal-domain]") {
-    class TestGoalDomain : public airlaps::GoalDomain<int> {
+    class TestGoalDomain : public skdecide::GoalDomain<int> {
     private :
-        virtual std::unique_ptr<airlaps::Space<int>> make_goals() {
-            return std::make_unique<airlaps::ImplicitSpace<int>>([](const int& s)->bool{return s >= 'h' && s <= 'm';});
+        virtual std::unique_ptr<skdecide::Space<int>> make_goals() {
+            return std::make_unique<skdecide::ImplicitSpace<int>>([](const int& s)->bool{return s >= 'h' && s <= 'm';});
         }
     };
 

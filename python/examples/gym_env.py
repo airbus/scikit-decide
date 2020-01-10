@@ -2,10 +2,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 """Example 1: Run a Gym environment"""
 
 # %%
@@ -16,8 +12,8 @@ Import modules.
 # %%
 import gym
 
-from airlaps.hub.domain.gym import GymDomain
-from airlaps.utils import rollout
+from skdecide.hub.domain.gym import GymDomain
+from skdecide.utils import rollout
 
 # %%
 '''

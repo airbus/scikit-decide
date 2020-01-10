@@ -2,13 +2,13 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_DERIVED_PREDICATE_HH
-#define AIRLAPS_PDDL_DERIVED_PREDICATE_HH
+#ifndef SKDECIDE_PDDL_DERIVED_PREDICATE_HH
+#define SKDECIDE_PDDL_DERIVED_PREDICATE_HH
 
 #include "predicate.hh"
 #include "formula.hh"
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -68,11 +68,11 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
 // Derived predicate printing operator
-inline std::ostream& operator<<(std::ostream& o, const airlaps::pddl::DerivedPredicate& d) {
+inline std::ostream& operator<<(std::ostream& o, const skdecide::pddl::DerivedPredicate& d) {
     return d.print(o);
 }
 
-#endif // AIRLAPS_PDDL_DERIVED_PREDICATE_HH
+#endif // SKDECIDE_PDDL_DERIVED_PREDICATE_HH

@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_BFWS_HH
-#define AIRLAPS_BFWS_HH
+#ifndef SKDECIDE_BFWS_HH
+#define SKDECIDE_BFWS_HH
 
 // From paper: Best-First Width Search: Exploration and Exploitation in Classical Planning
 //             by Nir Lipovetsky and Hector Geffner
@@ -22,7 +22,7 @@
 #include "utils/associative_container_deducer.hh"
 #include "utils/execution.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Tdomain,
           typename Texecution_policy = ParallelExecution>
@@ -177,7 +177,7 @@ public :
     const Action& get_best_action(const State& s) const {
         auto si = _graph.find(s);
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
+            throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
         return *(si->best_action);
     }
@@ -185,7 +185,7 @@ public :
     const double& get_best_value(const State& s) const {
         auto si = _graph.find(s);
         if (si == _graph.end()) {
-            throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
+            throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
         return si->fscore;
     }
@@ -252,6 +252,6 @@ private :
     Graph _graph;
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_BFWS_HH
+#endif // SKDECIDE_BFWS_HH

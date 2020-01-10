@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_GYM_SPACES_HH
-#define AIRLAPS_GYM_SPACES_HH
+#ifndef SKDECIDE_GYM_SPACES_HH
+#define SKDECIDE_GYM_SPACES_HH
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -14,7 +14,7 @@
 
 namespace py = pybind11;
 
-namespace airlaps {
+namespace skdecide {
 
 class GymSpace {
 public :
@@ -352,6 +352,6 @@ private :
                    const std::function<void(const std::vector<int>&)>& f, std::vector<int>& feature_atoms) const;
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_GYM_SPACES_HH
+#endif // SKDECIDE_GYM_SPACES_HH

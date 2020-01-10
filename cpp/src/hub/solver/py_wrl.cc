@@ -16,23 +16,23 @@
 
 namespace py = pybind11;
 
-class PyWRLDomain : public airlaps::PythonDomainAdapter<airlaps::SequentialExecution> {
+class PyWRLDomain : public skdecide::PythonDomainAdapter<skdecide::SequentialExecution> {
 public :
 
     PyWRLDomain(const py::object& domain)
-    : airlaps::PythonDomainAdapter<airlaps::SequentialExecution>(domain) {
+    : skdecide::PythonDomainAdapter<skdecide::SequentialExecution>(domain) {
         if (!py::hasattr(domain, "reset")) {
-            throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python domain for implementing reset()");
+            throw std::invalid_argument("SKDECIDE exception: width-based proxy domain needs python domain for implementing reset()");
         }
         if (!py::hasattr(domain, "step") && !py::hasattr(domain, "sample")) {
-            throw std::invalid_argument("AIRLAPS exception: width-based proxy domain needs python domain for implementing step() or sample()");
+            throw std::invalid_argument("SKDECIDE exception: width-based proxy domain needs python domain for implementing step() or sample()");
         }
     }
 
 };
 
 
-using PyWRLFeatureVector = airlaps::PythonContainerAdapter<airlaps::SequentialExecution>;
+using PyWRLFeatureVector = skdecide::PythonContainerAdapter<skdecide::SequentialExecution>;
 
 
 class PyWRLUnderlyingSolver;
@@ -51,11 +51,11 @@ public :
                       bool cache_transitions = false,
                       bool debug_logs = false) {
         if (use_observation_feature_hash) {
-            _implementation = std::make_unique<Implementation<airlaps::ObservationFeatureHash>>(
+            _implementation = std::make_unique<Implementation<skdecide::ObservationFeatureHash>>(
                 domain, observation_features, initial_pruning_probability, temperature_increase_rate,
                 width_increase_resilience, max_depth, cache_transitions, debug_logs);
         } else {
-            _implementation = std::make_unique<Implementation<airlaps::DomainObservationHash>>(
+            _implementation = std::make_unique<Implementation<skdecide::DomainObservationHash>>(
                 domain, observation_features, initial_pruning_probability, temperature_increase_rate,
                 width_increase_resilience, max_depth, cache_transitions, debug_logs);
         }
@@ -63,18 +63,18 @@ public :
 
     template <typename TWRLSolverDomainFilterPtr,
               std::enable_if_t<std::is_same<typename TWRLSolverDomainFilterPtr::element_type::Solver::HashingPolicy,
-                                            airlaps::DomainObservationHash<typename TWRLSolverDomainFilterPtr::element_type::Solver::Domain,
+                                            skdecide::DomainObservationHash<typename TWRLSolverDomainFilterPtr::element_type::Solver::Domain,
                                                                      typename TWRLSolverDomainFilterPtr::element_type::Solver::FeatureVector>>::value, int> = 0>
     PyWRLDomainFilter(TWRLSolverDomainFilterPtr domain_filter) {
-        _implementation = std::make_unique<Implementation<airlaps::DomainObservationHash>>(std::move(domain_filter));
+        _implementation = std::make_unique<Implementation<skdecide::DomainObservationHash>>(std::move(domain_filter));
     }
 
     template <typename TWRLSolverDomainFilterPtr,
               std::enable_if_t<std::is_same<typename TWRLSolverDomainFilterPtr::element_type::Solver::HashingPolicy,
-                                            airlaps::ObservationFeatureHash<typename TWRLSolverDomainFilterPtr::element_type::Solver::Domain,
+                                            skdecide::ObservationFeatureHash<typename TWRLSolverDomainFilterPtr::element_type::Solver::Domain,
                                                                       typename TWRLSolverDomainFilterPtr::element_type::Solver::FeatureVector>>::value, int> = 0>
     PyWRLDomainFilter(TWRLSolverDomainFilterPtr domain_filter) {
-        _implementation = std::make_unique<Implementation<airlaps::ObservationFeatureHash>>(std::move(domain_filter));
+        _implementation = std::make_unique<Implementation<skdecide::ObservationFeatureHash>>(std::move(domain_filter));
     }
 
     py::object reset() {
@@ -120,7 +120,7 @@ private :
                         try {
                             return std::make_unique<PyWRLFeatureVector>(_observation_features(s._state));
                         } catch (const py::error_already_set& e) {
-                            spdlog::error(std::string("AIRLAPS exception when calling observation features: ") + e.what());
+                            spdlog::error(std::string("SKDECIDE exception when calling observation features: ") + e.what());
                             throw;
                         }
                     },
@@ -134,7 +134,7 @@ private :
                         try {
                             return std::make_unique<PyWRLFeatureVector>(_observation_features(s._state));
                         } catch (const py::error_already_set& e) {
-                            spdlog::error(std::string("AIRLAPS exception when calling observation features: ") + e.what());
+                            spdlog::error(std::string("SKDECIDE exception when calling observation features: ") + e.what());
                             throw;
                         }
                     },
@@ -149,7 +149,7 @@ private :
                                                                              py::module::import("sys").attr("stderr"));
         }
 
-        Implementation(std::unique_ptr<typename airlaps::WRLSolver<PyWRLDomain,
+        Implementation(std::unique_ptr<typename skdecide::WRLSolver<PyWRLDomain,
                                                                    PyWRLUnderlyingSolver,
                                                                    PyWRLFeatureVector,
                                                                    Thashing_policy>::WRLDomainFilter> domain_filter) {
@@ -173,7 +173,7 @@ private :
         }
     
     private :
-        typedef airlaps::WRLSolver<PyWRLDomain, PyWRLUnderlyingSolver, PyWRLFeatureVector, Thashing_policy> _WRLSolver;
+        typedef skdecide::WRLSolver<PyWRLDomain, PyWRLUnderlyingSolver, PyWRLFeatureVector, Thashing_policy> _WRLSolver;
         std::unique_ptr<typename _WRLSolver::WRLDomainFilter> _domain_filter;
 
         std::function<py::object (const py::object&)> _observation_features;
@@ -191,10 +191,10 @@ public :
     PyWRLUnderlyingSolver(py::object& solver)
     : _solver(solver) {
         if (!py::hasattr(solver, "reset")) {
-            throw std::invalid_argument("AIRLAPS exception: RWL algorithm needs the original solver to provide the 'reset' method");
+            throw std::invalid_argument("SKDECIDE exception: RWL algorithm needs the original solver to provide the 'reset' method");
         }
         if (!py::hasattr(solver, "solve")) {
-            throw std::invalid_argument("AIRLAPS exception: RWL algorithm needs the original solver to provide the 'solve' method");
+            throw std::invalid_argument("SKDECIDE exception: RWL algorithm needs the original solver to provide the 'solve' method");
         }
     }
 
@@ -211,7 +211,7 @@ public :
                 return std::make_unique<PyWRLDomainFilter>(domain_factory());
             });
         } catch(const py::error_already_set& e) {
-            spdlog::error(std::string("AIRLAPS exception when calling the original solve method: ") + e.what());
+            spdlog::error(std::string("SKDECIDE exception when calling the original solve method: ") + e.what());
             throw;
         }
     }
@@ -235,12 +235,12 @@ public :
                 bool debug_logs = false) {
         
         if (use_observation_feature_hash) {
-            _implementation = std::make_unique<Implementation<airlaps::ObservationFeatureHash>>(
+            _implementation = std::make_unique<Implementation<skdecide::ObservationFeatureHash>>(
                 solver, observation_features, initial_pruning_probability, temperature_increase_rate,
                 width_increase_resilience, max_depth, cache_transitions, debug_logs
             );
         } else {
-            _implementation = std::make_unique<Implementation<airlaps::DomainObservationHash>>(
+            _implementation = std::make_unique<Implementation<skdecide::DomainObservationHash>>(
                 solver, observation_features, initial_pruning_probability, temperature_increase_rate,
                 width_increase_resilience, max_depth, cache_transitions, debug_logs
             );
@@ -279,13 +279,13 @@ private :
 
             _underlying_solver = std::make_unique<PyWRLUnderlyingSolver>(solver);
             
-            _solver = std::make_unique<airlaps::WRLSolver<PyWRLDomain, PyWRLUnderlyingSolver, PyWRLFeatureVector, Thashing_policy>>(
+            _solver = std::make_unique<skdecide::WRLSolver<PyWRLDomain, PyWRLUnderlyingSolver, PyWRLFeatureVector, Thashing_policy>>(
                 *_underlying_solver,
                 [this](const typename PyWRLDomain::Observation& s)->std::unique_ptr<PyWRLFeatureVector> {
                     try {
                         return std::make_unique<PyWRLFeatureVector>(_observation_features(s._state));
                     } catch (const py::error_already_set& e) {
-                        spdlog::error(std::string("AIRLAPS exception when calling observation features: ") + e.what());
+                        spdlog::error(std::string("SKDECIDE exception when calling observation features: ") + e.what());
                         throw;
                     }
                 },
@@ -313,7 +313,7 @@ private :
         }
 
     private :
-        typedef airlaps::WRLSolver<PyWRLDomain, PyWRLUnderlyingSolver, PyWRLFeatureVector, Thashing_policy> _WRLSolver;
+        typedef skdecide::WRLSolver<PyWRLDomain, PyWRLUnderlyingSolver, PyWRLFeatureVector, Thashing_policy> _WRLSolver;
         std::unique_ptr<_WRLSolver> _solver;
         std::unique_ptr<PyWRLUnderlyingSolver> _underlying_solver;
         

@@ -2,10 +2,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 """Example 2: Solve a Gym environment with Reinforcement Learning"""
 
 # %%
@@ -18,13 +14,13 @@ import gym
 from stable_baselines import PPO2
 from stable_baselines.common.policies import MlpPolicy
 
-from airlaps.hub.domain.gym import GymDomain
-from airlaps.hub.solver.stable_baselines import StableBaseline
-from airlaps.utils import rollout
+from skdecide.hub.domain.gym import GymDomain
+from skdecide.hub.solver.stable_baselines import StableBaseline
+from skdecide.utils import rollout
 
 # %%
 '''
-Select a [Gym environment](https://gym.openai.com/envs) and solve it with a [Stable Baselines](https://stable-baselines.readthedocs.io/en/master/index.html) solver wrapped in AIRLAPS.
+Select a [Gym environment](https://gym.openai.com/envs) and solve it with a [Stable Baselines](https://stable-baselines.readthedocs.io/en/master/index.html) solver wrapped in scikit-decide.
 The solution is then saved (for later reuse) and assessed in rollout.
 '''
 

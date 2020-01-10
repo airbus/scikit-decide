@@ -18,25 +18,25 @@ namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyBFWSDomain : public airlaps::PythonDomainAdapter<Texecution> {
+class PyBFWSDomain : public skdecide::PythonDomainAdapter<Texecution> {
 public :
 
     PyBFWSDomain(const py::object& domain)
-    : airlaps::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python domain for implementing get_applicable_actions()");
+            throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_applicable_actions()");
         }
         if (!py::hasattr(domain, "compute_next_state")) {
-            throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python domain for implementing compute_sample()");
+            throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing compute_sample()");
         }
         if (!py::hasattr(domain, "get_next_state")) {
-            throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python domain for implementing get_sample()");
+            throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_sample()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python domain for implementing get_transition_value()");
+            throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_transition_value()");
         }
         if (!py::hasattr(domain, "is_terminal")) {
-            throw std::invalid_argument("AIRLAPS exception: BFWS algorithm needs python domain for implementing is_terminal()");
+            throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing is_terminal()");
         }
     }
 
@@ -52,11 +52,11 @@ public :
                  bool parallel = true,
                  bool debug_logs = false) {
         if (parallel) {
-            _implementation = std::make_unique<Implementation<airlaps::ParallelExecution>>(
+            _implementation = std::make_unique<Implementation<skdecide::ParallelExecution>>(
                 domain, state_binarizer, heuristic, termination_checker, debug_logs
             );
         } else {
-            _implementation = std::make_unique<Implementation<airlaps::SequentialExecution>>(
+            _implementation = std::make_unique<Implementation<skdecide::SequentialExecution>>(
                 domain, state_binarizer, heuristic, termination_checker, debug_logs
             );
         }
@@ -103,19 +103,19 @@ private :
                        bool debug_logs = false)
         : _state_binarizer(state_binarizer), _heuristic(heuristic), _termination_checker(termination_checker) {
             _domain = std::make_unique<PyBFWSDomain<Texecution>>(domain);
-            _solver = std::make_unique<airlaps::BFWSSolver<PyBFWSDomain<Texecution>, Texecution>>(
+            _solver = std::make_unique<skdecide::BFWSSolver<PyBFWSDomain<Texecution>, Texecution>>(
                                                                             *_domain,
                                                                             [this](const typename PyBFWSDomain<Texecution>::State& s,
                                                                                 const std::function<void (const py::int_&)>& f)->void {
-                                                                                typename airlaps::GilControl<Texecution>::Acquire acquire;
+                                                                                typename skdecide::GilControl<Texecution>::Acquire acquire;
                                                                                 _state_binarizer(s._state, f);
                                                                             },
                                                                             [this](const typename PyBFWSDomain<Texecution>::State& s)->double {
-                                                                                typename airlaps::GilControl<Texecution>::Acquire acquire;
+                                                                                typename skdecide::GilControl<Texecution>::Acquire acquire;
                                                                                 return _heuristic(s._state);
                                                                             },
                                                                             [this](const typename PyBFWSDomain<Texecution>::State& s)->bool {
-                                                                                typename airlaps::GilControl<Texecution>::Acquire acquire;
+                                                                                typename skdecide::GilControl<Texecution>::Acquire acquire;
                                                                                 return _termination_checker(s._state);
                                                                             },
                                                                             debug_logs);
@@ -130,7 +130,7 @@ private :
         }
 
         virtual void solve(const py::object& s) {
-            typename airlaps::GilControl<Texecution>::Release release;
+            typename skdecide::GilControl<Texecution>::Release release;
             _solver->solve(s);
         }
 
@@ -148,7 +148,7 @@ private :
 
     private :
         std::unique_ptr<PyBFWSDomain<Texecution>> _domain;
-        std::unique_ptr<airlaps::BFWSSolver<PyBFWSDomain<Texecution>, Texecution>> _solver;
+        std::unique_ptr<skdecide::BFWSSolver<PyBFWSDomain<Texecution>, Texecution>> _solver;
         
         std::function<void (const py::object&, const std::function<void (const py::int_&)>&)> _state_binarizer;
         std::function<double (const py::object&)> _heuristic;

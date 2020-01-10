@@ -3,7 +3,7 @@ navbar: false
 sidebar: false
 ---
 
-<airlaps-spec isSolver>
+<skdecide-spec isSolver>
 
 <template v-slot:Solver>
 
@@ -86,5 +86,5 @@ reuse its solution).
 
 </template>
 
-</airlaps-spec>
+</skdecide-spec>
 

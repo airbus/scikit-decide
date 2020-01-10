@@ -20,7 +20,7 @@
 
 namespace pegtl = tao::TAO_PEGTL_NAMESPACE;  // NOLINT
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -545,26 +545,26 @@ namespace airlaps {
                     pegtl::trace_state t;
                     if (!pegtl::parse<parser::grammar, parser::action, pegtl::tracer>(in, t, s)) {
                         spdlog::error("unable to parse " + parsed_files_msg);
-                        throw std::runtime_error("AIRLAPS exception: unable to parse " + parsed_files_msg);
+                        throw std::runtime_error("SKDECIDE exception: unable to parse " + parsed_files_msg);
                     }
                 } else {
                     if (!pegtl::parse<parser::grammar, parser::action>(in, s)) {
                         spdlog::error("unable to parse " + parsed_files_msg);
-                        throw std::runtime_error("AIRLAPS exception: unable to parse " + parsed_files_msg);
+                        throw std::runtime_error("SKDECIDE exception: unable to parse " + parsed_files_msg);
                     }
                 }
             } catch (const pegtl::parse_error& e) {
                 spdlog::error("Error when parsing " + parsed_files_msg + ": " + e.what());
-                throw std::runtime_error("AIRLAPS exception: error when parsing " + parsed_files_msg + ": " + e.what());
+                throw std::runtime_error("SKDECIDE exception: error when parsing " + parsed_files_msg + ": " + e.what());
             } catch (const pegtl::input_error& e) {
                 spdlog::error("Error when reading " + parsed_files_msg + ": " + e.what());
-                throw std::runtime_error("AIRLAPS exception: error when reading " + parsed_files_msg + ": " + e.what());
+                throw std::runtime_error("SKDECIDE exception: error when reading " + parsed_files_msg + ": " + e.what());
             } catch (const std::exception& e) {
                 spdlog::error("Error when parsing " + parsed_files_msg + ": " + e.what());
-                throw std::runtime_error("AIRLAPS exception: error when parsing " + parsed_files_msg + ": " + e.what());
+                throw std::runtime_error("SKDECIDE exception: error when parsing " + parsed_files_msg + ": " + e.what());
             }
         }
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide

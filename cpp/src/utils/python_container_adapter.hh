@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PYTHON_CONTAINER_ADAPTER_HH
-#define AIRLAPS_PYTHON_CONTAINER_ADAPTER_HH
+#ifndef SKDECIDE_PYTHON_CONTAINER_ADAPTER_HH
+#define SKDECIDE_PYTHON_CONTAINER_ADAPTER_HH
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -17,7 +17,7 @@
 
 namespace py = pybind11;
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Texecution> struct PythonHash;
 template <typename Texecution> struct PythonEqual;
@@ -117,9 +117,9 @@ public :
             virtual std::size_t hash() const {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    return airlaps::PythonHash<Texecution>()(_value);
+                    return skdecide::PythonHash<Texecution>()(_value);
                 } catch(const py::error_already_set* e) {
-                    spdlog::error(std::string("AIRLAPS exception when hashing state feature items: ") + e->what());
+                    spdlog::error(std::string("SKDECIDE exception when hashing state feature items: ") + e->what());
                     std::runtime_error err(e->what());
                     delete e;
                     throw err;
@@ -130,9 +130,9 @@ public :
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
                     const ObjectType* o = dynamic_cast<const ObjectType*>(&other);
-                    return  ((o != nullptr) && airlaps::PythonEqual<Texecution>()(_value, o->_value));
+                    return  ((o != nullptr) && skdecide::PythonEqual<Texecution>()(_value, o->_value));
                 } catch(const py::error_already_set* e) {
-                    spdlog::error(std::string("AIRLAPS exception when testing state feature items equality: ") + e->what());
+                    spdlog::error(std::string("SKDECIDE exception when testing state feature items equality: ") + e->what());
                     std::runtime_error err(e->what());
                     delete e;
                     throw err;
@@ -188,7 +188,7 @@ public :
                 _implementation = std::make_unique<NumpyImplementation<std::uint64_t>>(vector);
             } else {
                 spdlog::error("Unhandled array dtype '" + dtype + "' when parsing python sequence as numpy array");
-                throw std::invalid_argument("AIRLAPS exception: Unhandled array dtype '" + dtype +
+                throw std::invalid_argument("SKDECIDE exception: Unhandled array dtype '" + dtype +
                                             "' when parsing state features as numpy array");
             }
         } else {
@@ -337,14 +337,14 @@ private :
 };
 
 
-inline std::size_t hash_value(const PythonContainerAdapter<airlaps::SequentialExecution>::value_type& o) {
+inline std::size_t hash_value(const PythonContainerAdapter<skdecide::SequentialExecution>::value_type& o) {
     return o.hash();
 }
 
-inline std::size_t hash_value(const PythonContainerAdapter<airlaps::ParallelExecution>::value_type& o) {
+inline std::size_t hash_value(const PythonContainerAdapter<skdecide::ParallelExecution>::value_type& o) {
     return o.hash();
 }
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_PYTHON_CONTAINER_ADAPTER_HH
+#endif // SKDECIDE_PYTHON_CONTAINER_ADAPTER_HH

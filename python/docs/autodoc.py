@@ -2,10 +2,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 import ast
 import importlib
 import inspect
@@ -17,7 +13,7 @@ import sys
 from functools import lru_cache
 from glob import glob
 
-import airlaps
+import skdecide
 
 refs = set()
 header_comment = '# %%\n'
@@ -193,7 +189,7 @@ def doc_escape(md):
 def write_signature(md, member):
     if 'signature' in member:
         escape_json_sig = json_escape(member['signature'])
-        md += f'<airlaps-signature name= "{member["name"]}" :sig="{escape_json_sig}"></airlaps-signature>\n\n'
+        md += f'<skdecide-signature name= "{member["name"]}" :sig="{escape_json_sig}"></skdecide-signature>\n\n'
     return md
 
 
@@ -205,9 +201,9 @@ if __name__ == '__main__':
 
     # ========== GATHER AUTODOC INFOS ==========
 
-    # Get all AIRLAPS (sub)modules
+    # Get all scikit-decide (sub)modules
     modules = []
-    for m in find_abs_modules(airlaps):
+    for m in find_abs_modules(skdecide):
         try:
             module = importlib.import_module(m)
             modules.append(module)
@@ -284,7 +280,7 @@ if __name__ == '__main__':
     for oldpath in glob('reference/_*.md') + glob('guide/_*.md') + glob('.vuepress/public/notebooks/*.ipynb'):
         os.remove(oldpath)
 
-    # Generate Reference Markdown files (reference/_airlaps.*.md)
+    # Generate Reference Markdown files (reference/_skdecide.*.md)
     for module in autodocs:
 
         # Initiate Markdown
@@ -301,7 +297,7 @@ if __name__ == '__main__':
         md += '[[toc]]\n\n'
 
         # Write domain spec summary
-        md += '::: tip\n<airlaps-summary></airlaps-summary>\n:::\n\n'
+        md += '::: tip\n<skdecide-summary></skdecide-summary>\n:::\n\n'
 
         # Write members
         for member in module['members']:
@@ -348,7 +344,7 @@ if __name__ == '__main__':
             section = e['section'][:i]
             if section not in sections:
                 title = 'Reference'
-                if section[-1] != 'airlaps':
+                if section[-1] != 'skdecide':
                     title = section[-1]
                     reference += '\n'
                 reference += f'{"".join(["#"]*i)} {title}\n\n'
@@ -370,11 +366,11 @@ if __name__ == '__main__':
     }
     for element in ['domain', 'solver']:
         spec = ''
-        characteristics = [module for module in autodocs if module['ref'].startswith(f'airlaps.builders.{element}.')]
+        characteristics = [module for module in autodocs if module['ref'].startswith(f'skdecide.builders.{element}.')]
         default_characteristics = {c['ref'].split('.')[-1].capitalize(): '(none)' for c in characteristics}
     
         tmp_templates = []
-        for template in [member for module in autodocs if module['ref'] == f'airlaps.{element}s' for member in module['members']]:
+        for template in [member for module in autodocs if module['ref'] == f'skdecide.{element}s' for member in module['members']]:
             if template['name'] == element.capitalize():
                 mandatory_characteristics = [base.split('.')[-2].capitalize() for base in template['bases'] or []]
             tmp_templates.append({'name': template['name'], 'characteristics': dict(default_characteristics, **{base.split('.')[-2].capitalize(): base.split('.')[-1] for base in template['bases'] or [] if base.split('.')[-1] != element.capitalize()})})
@@ -410,20 +406,20 @@ if __name__ == '__main__':
                      'navbar: false\n' \
                      'sidebar: false\n' \
                      '---\n\n' \
-                     f'<airlaps-spec{" isSolver" if element == "solver" else ""}>\n\n' + spec
-        spec += '</airlaps-spec>\n\n'
+                     f'<skdecide-spec{" isSolver" if element == "solver" else ""}>\n\n' + spec
+        spec += '</skdecide-spec>\n\n'
 
         with open(f'guide/_{element}spec.md', 'w') as f:
             f.write(spec)
 
     # Write Json state (.vuepress/_state.json)
-    state['objects'] = {member['name']: f'/reference/_airlaps.core.html#{member["name"].lower()}' for module in autodocs if module['ref'] == 'airlaps.core' for member in module['members']}
+    state['objects'] = {member['name']: f'/reference/_skdecide.core.html#{member["name"].lower()}' for module in autodocs if module['ref'] == 'skdecide.core' for member in module['members']}
     for element in ['domain', 'solver']:
         tmp_methods = {}  # TODO: detect classmethods/staticmethods to add decorator in code generator (only necessary if there was any NotImplemented classmethod/staticmethod in base template or any characteristic level)
         tmp_types = {}
         tmp_signatures = {}
         for module in autodocs:
-            if module['ref'].startswith(f'airlaps.builders.{element}.'):
+            if module['ref'].startswith(f'skdecide.builders.{element}.'):
                 not_implemented = set()
                 for level in module.get('members', []):
                     level_name = level['name']
@@ -440,7 +436,7 @@ if __name__ == '__main__':
                             types_dict[member_name] = member['ref']
                     tmp_methods[level_name] = list(not_implemented)
                     tmp_types[level_name] = types_dict
-            elif module['ref'] == f'airlaps.{element}s':
+            elif module['ref'] == f'skdecide.{element}s':
                 for template in module['members']:
                     if template['name'] == element.capitalize():
                         tmp_methods[element] = []
@@ -471,8 +467,8 @@ if __name__ == '__main__':
         examples += f'## {docstr[docstr.index(":")+1:]}\n\n'
         examples += f'<el-link type="primary" icon="el-icon-bottom" :underline="false" style="margin: 10px" href="/notebooks/{name}.ipynb">Download Notebook</el-link>\n'
         # TODO: replace with correct link address in line below once deployed on Github pages
-        examples += f'<el-link type="warning" icon="el-icon-cloudy" :underline="false" style="margin: 10px" href="https://colab.research.google.com/github/airbus-ai-research/airlaps/gh-pages/notebooks/{name}.ipynb">Run in Google Colab</el-link>\n\n'
-        # examples += f'<airlaps-notebook file="/notebooks/{name}.ipynb"></airlaps-notebook>\n\n'
+        examples += f'<el-link type="warning" icon="el-icon-cloudy" :underline="false" style="margin: 10px" href="https://colab.research.google.com/github/airbus-ai-research/skdecide/gh-pages/notebooks/{name}.ipynb">Run in Google Colab</el-link>\n\n'
+        # examples += f'<skdecide-notebook file="/notebooks/{name}.ipynb"></skdecide-notebook>\n\n'
         notebook = py2nb(code)
 
         for cell in notebook.get('cells', []):

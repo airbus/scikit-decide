@@ -11,7 +11,7 @@
 #include "pddl.hh"
 
 namespace py = pybind11;
-using namespace airlaps::pddl;
+using namespace skdecide::pddl;
 
 template <typename Instance>
 void inherit_identifier(Instance& instance) {
@@ -260,13 +260,13 @@ void init_pypddl(py::module& m) {
     py::class_<PDDL> py_pddl(m, "_PDDL_");
         py_pddl
             .def(py::init<>())
-            .def("load", &airlaps::pddl::PDDL::load,
+            .def("load", &skdecide::pddl::PDDL::load,
                 py::arg("domain"),
                 py::arg("problem")=std::string(""),
                 py::arg("debug_logs")=false,
                 py::call_guard<py::scoped_ostream_redirect,
                                py::scoped_estream_redirect>())
-            .def("get_domain", &airlaps::pddl::PDDL::get_domain,
+            .def("get_domain", &skdecide::pddl::PDDL::get_domain,
                                py::return_value_policy::reference_internal)
         ;
     

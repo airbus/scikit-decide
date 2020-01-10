@@ -2,10 +2,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 import gym
 import numpy as np
 
@@ -13,12 +9,12 @@ from typing import Callable, Any
 from math import sqrt, exp, fabs
 from gym.envs.classic_control import rendering
 
-from airlaps import TransitionOutcome, TransitionValue
-from airlaps.builders.domain import Renderable
-from airlaps.hub.domain.gym import DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain
-from airlaps.hub.solver.iw import IW
-from airlaps.hub.solver.riw import RIW
-from airlaps.utils import rollout
+from skdecide import TransitionOutcome, TransitionValue
+from skdecide.builders.domain import Renderable
+from skdecide.hub.domain.gym import DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain
+from skdecide.hub.solver.iw import IW
+from skdecide.hub.solver.riw import RIW
+from skdecide.utils import rollout
 
 HORIZON = 500
 

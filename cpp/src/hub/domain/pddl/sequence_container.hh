@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_SEQUENCE_CONTAINER_HH
-#define AIRLAPS_PDDL_SEQUENCE_CONTAINER_HH
+#ifndef SKDECIDE_PDDL_SEQUENCE_CONTAINER_HH
+#define SKDECIDE_PDDL_SEQUENCE_CONTAINER_HH
 
 #include <vector>
 #include <memory>
@@ -11,7 +11,7 @@
 #include <sstream>
 #include <algorithm>
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -97,7 +97,7 @@ namespace airlaps {
              */
             const SymbolPtr& at(const std::size_t& index) const {
                 if (index >= _container.size()) {
-                    throw std::out_of_range("AIRLAPS exception: index " + std::to_string(index) +
+                    throw std::out_of_range("SKDECIDE exception: index " + std::to_string(index) +
                                             " exceeds the size of the vector of " + std::string(Symbol::class_name) + "s of " +
                                             std::string(Derived::class_name) + " '" + static_cast<const Derived*>(this)->get_name() + "'");
                 } else {
@@ -112,6 +112,6 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_PDDL_SEQUENCE_CONTAINER_HH
+#endif // SKDECIDE_PDDL_SEQUENCE_CONTAINER_HH

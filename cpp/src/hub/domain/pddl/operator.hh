@@ -2,14 +2,14 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_OPERATOR_HH
-#define AIRLAPS_PDDL_OPERATOR_HH
+#ifndef SKDECIDE_PDDL_OPERATOR_HH
+#define SKDECIDE_PDDL_OPERATOR_HH
 
 #include "identifier.hh"
 #include "variable_container.hh"
 #include "binary_effect.hh"
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -169,21 +169,21 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
 // Action printing operator
-inline std::ostream& operator<<(std::ostream& o, const airlaps::pddl::Action& a) {
+inline std::ostream& operator<<(std::ostream& o, const skdecide::pddl::Action& a) {
     return a.print(o);
 }
 
 // Event printing operator
-inline std::ostream& operator<<(std::ostream& o, const airlaps::pddl::Event& e) {
+inline std::ostream& operator<<(std::ostream& o, const skdecide::pddl::Event& e) {
     return e.print(o);
 }
 
 // Process printing operator
-inline std::ostream& operator<<(std::ostream& o, const airlaps::pddl::Process& p) {
+inline std::ostream& operator<<(std::ostream& o, const skdecide::pddl::Process& p) {
     return p.print(o);
 }
 
-#endif // AIRLAPS_PDDL_OPERATOR_HH
+#endif // SKDECIDE_PDDL_OPERATOR_HH

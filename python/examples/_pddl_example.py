@@ -2,13 +2,9 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 import getopt, sys, os
 
-from airlaps.catalog.domain.pddl import *
+from skdecide.catalog.domain.pddl import *
 
 if __name__ == '__main__':
 

@@ -2,12 +2,12 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_RENDERABILITY_HH
-#define AIRLAPS_RENDERABILITY_HH
+#ifndef SKDECIDE_RENDERABILITY_HH
+#define SKDECIDE_RENDERABILITY_HH
 
 #include "core.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Tstate>
 class RenderableDomain : public virtual HistoryDomain<Tstate> {
@@ -19,6 +19,6 @@ public :
     }
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_RENDERABILITY_HH
+#endif // SKDECIDE_RENDERABILITY_HH

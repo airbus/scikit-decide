@@ -18,25 +18,25 @@ namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyIWDomain : public airlaps::PythonDomainAdapter<Texecution> {
+class PyIWDomain : public skdecide::PythonDomainAdapter<Texecution> {
 public :
 
     PyIWDomain(const py::object& domain)
-    : airlaps::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing get_applicable_actions()");
+            throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing get_applicable_actions()");
         }
         if (!py::hasattr(domain, "get_next_state")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing get_next_state()");
+            throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing get_next_state()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing get_transition_value()");
+            throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing get_transition_value()");
         }
         if (!py::hasattr(domain, "is_goal")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing is_goal()");
+            throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing is_goal()");
         }
         if (!py::hasattr(domain, "is_terminal")) {
-            throw std::invalid_argument("AIRLAPS exception: IW algorithm needs python domain for implementing is_terminal()");
+            throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing is_terminal()");
         }
     }
 
@@ -44,7 +44,7 @@ public :
 
 
 template <typename Texecution>
-using PyIWFeatureVector = airlaps::PythonContainerAdapter<Texecution>;
+using PyIWFeatureVector = skdecide::PythonContainerAdapter<Texecution>;
 
 
 class PyIWSolver {
@@ -60,18 +60,18 @@ public :
 
         if (parallel) {
             if (use_state_feature_hash) {
-                _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::StateFeatureHash>>(
+                _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::StateFeatureHash>>(
                     domain, state_features, node_ordering, debug_logs);
             } else {
-                _implementation = std::make_unique<Implementation<airlaps::ParallelExecution, airlaps::DomainStateHash>>(
+                _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::DomainStateHash>>(
                     domain, state_features, node_ordering, debug_logs);
             }
         } else {
             if (use_state_feature_hash) {
-                _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::StateFeatureHash>>(
+                _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::StateFeatureHash>>(
                     domain, state_features, node_ordering, debug_logs);
             } else {
-                _implementation = std::make_unique<Implementation<airlaps::SequentialExecution, airlaps::DomainStateHash>>(
+                _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::DomainStateHash>>(
                     domain, state_features, node_ordering, debug_logs);
             }
         }
@@ -135,24 +135,24 @@ private :
                 pno = [this](const double& a_gscore, const std::size_t& a_novelty, const std::size_t& a_depth,
                              const double& b_gscore, const std::size_t& b_novelty, const std::size_t& b_depth) -> bool {
                     try {
-                        typename airlaps::GilControl<Texecution>::Acquire acquire;
+                        typename skdecide::GilControl<Texecution>::Acquire acquire;
                         return _node_ordering(a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth);
                     } catch (const py::error_already_set& e) {
-                        spdlog::error(std::string("AIRLAPS exception when calling custom node ordering: ") + e.what());
+                        spdlog::error(std::string("SKDECIDE exception when calling custom node ordering: ") + e.what());
                         throw;
                     }
                 };
             }
 
             _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
-            _solver = std::make_unique<airlaps::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>>(
+            _solver = std::make_unique<skdecide::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>>(
                                                                             *_domain,
                                                                             [this](const typename PyIWDomain<Texecution>::State& s)->std::unique_ptr<PyIWFeatureVector<Texecution>> {
                                                                                 try {
-                                                                                    typename airlaps::GilControl<Texecution>::Acquire acquire;
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
                                                                                     return std::make_unique<PyIWFeatureVector<Texecution>>(_state_features(s._state));
                                                                                 } catch (const py::error_already_set& e) {
-                                                                                    spdlog::error(std::string("AIRLAPS exception when calling state features: ") + e.what());
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },
@@ -169,7 +169,7 @@ private :
         }
 
         virtual void solve(const py::object& s) {
-            typename airlaps::GilControl<Texecution>::Release release;
+            typename skdecide::GilControl<Texecution>::Release release;
             _solver->solve(s);
         }
 
@@ -203,7 +203,7 @@ private :
 
     private :
         std::unique_ptr<PyIWDomain<Texecution>> _domain;
-        std::unique_ptr<airlaps::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>> _solver;
+        std::unique_ptr<skdecide::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>> _solver;
         
         std::function<py::object (const py::object&)> _state_features;
         std::function<bool (const double&, const std::size_t&, const std::size_t&,

@@ -47,51 +47,51 @@ struct PyMCTSOptions {
 
 
 template <typename Texecution>
-class PyMCTSDomain : public airlaps::PythonDomainAdapter<Texecution> {
+class PyMCTSDomain : public skdecide::PythonDomainAdapter<Texecution> {
 public :
 
     template <typename TtransitionMode,
-              std::enable_if_t<std::is_same<TtransitionMode, airlaps::StepTransitionMode>::value, int> = 0>
+              std::enable_if_t<std::is_same<TtransitionMode, skdecide::StepTransitionMode>::value, int> = 0>
     PyMCTSDomain(const py::object& domain, TtransitionMode* dummy)
-    : airlaps::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
+            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
         }
         if (!py::hasattr(domain, "step")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with step transition mode needs python domain for implementing step()");
+            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with step transition mode needs python domain for implementing step()");
         }
     }
 
     template <typename TtransitionMode,
-              std::enable_if_t<std::is_same<TtransitionMode, airlaps::SampleTransitionMode>::value, int> = 0>
+              std::enable_if_t<std::is_same<TtransitionMode, skdecide::SampleTransitionMode>::value, int> = 0>
     PyMCTSDomain(const py::object& domain, TtransitionMode* dummy)
-    : airlaps::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
+            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
         }
         if (!py::hasattr(domain, "sample")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with sample or distribution transition mode needs python domain for implementing sample()");
+            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with sample or distribution transition mode needs python domain for implementing sample()");
         }
     }
 
     template <typename TtransitionMode,
-              std::enable_if_t<std::is_same<TtransitionMode, airlaps::DistributionTransitionMode>::value, int> = 0>
+              std::enable_if_t<std::is_same<TtransitionMode, skdecide::DistributionTransitionMode>::value, int> = 0>
     PyMCTSDomain(const py::object& domain, TtransitionMode* dummy)
-    : airlaps::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
+            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
         }
         if (!py::hasattr(domain, "sample")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with sample or distribution transition mode needs python domain for implementing sample()");
+            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with sample or distribution transition mode needs python domain for implementing sample()");
         }
         if (!py::hasattr(domain, "get_next_state_distribution")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with distribution transition mode needs python domain for implementing get_next_state_distribution()");
+            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with distribution transition mode needs python domain for implementing get_next_state_distribution()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with distribution transition mode needs python domain for implementing get_transition_value()");
+            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with distribution transition mode needs python domain for implementing get_transition_value()");
         }
         if (!py::hasattr(domain, "is_terminal")) {
-            throw std::invalid_argument("AIRLAPS exception: MCTS algorithm with distribution transition mode needs python domain for implementing is_terminal()");
+            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with distribution transition mode needs python domain for implementing is_terminal()");
         }
     }
 
@@ -209,7 +209,7 @@ private :
                        bool debug_logs = false) {
 
             _domain = std::make_unique<PyMCTSDomain<Texecution>>(domain, (TtransitionMode*) nullptr);
-            _solver = std::make_unique<airlaps::MCTSSolver<PyMCTSDomain<Texecution>,
+            _solver = std::make_unique<skdecide::MCTSSolver<PyMCTSDomain<Texecution>,
                                                            Texecution,
                                                            TtransitionMode,
                                                            TtreePolicy,
@@ -245,15 +245,15 @@ private :
         }
 
         template <typename TactionSelector,
-                  std::enable_if_t<std::is_same<TactionSelector, airlaps::UCB1ActionSelector>::value, int> = 0>
+                  std::enable_if_t<std::is_same<TactionSelector, skdecide::UCB1ActionSelector>::value, int> = 0>
         TactionSelector init_action_selector(TactionSelector* dummy, double ucb_constant) {
-            return airlaps::UCB1ActionSelector(ucb_constant);
+            return skdecide::UCB1ActionSelector(ucb_constant);
         }
 
         template <typename TactionSelector,
-                  std::enable_if_t<std::is_same<TactionSelector, airlaps::BestQValueActionSelector>::value, int> = 0>
+                  std::enable_if_t<std::is_same<TactionSelector, skdecide::BestQValueActionSelector>::value, int> = 0>
         TactionSelector init_action_selector(TactionSelector* dummy, double ucb_constant) {
-            return airlaps::BestQValueActionSelector();
+            return skdecide::BestQValueActionSelector();
         }
 
         TdefaultPolicy init_default_policy() {
@@ -269,7 +269,7 @@ private :
         }
 
         virtual void solve(const py::object& s) {
-            typename airlaps::GilControl<Texecution>::Release release;
+            typename skdecide::GilControl<Texecution>::Release release;
             _solver->solve(s);
         }
 
@@ -313,7 +313,7 @@ private :
 
     private :
         std::unique_ptr<PyMCTSDomain<Texecution>> _domain;
-        std::unique_ptr<airlaps::MCTSSolver<PyMCTSDomain<Texecution>,
+        std::unique_ptr<skdecide::MCTSSolver<PyMCTSDomain<Texecution>,
                                             Texecution,
                                             TtransitionMode,
                                             TtreePolicy,
@@ -350,7 +350,7 @@ private :
                 bool debug_logs) {
         switch (transition_mode) {
             case PyMCTSOptions::TransitionMode::Step:
-                initialize_tree_policy<airlaps::StepTransitionMode>(
+                initialize_tree_policy<skdecide::StepTransitionMode>(
                                             domain,
                                             time_budget,
                                             rollout_budget,
@@ -368,7 +368,7 @@ private :
                 break;
             
             case PyMCTSOptions::TransitionMode::Sample:
-                initialize_tree_policy<airlaps::SampleTransitionMode>(
+                initialize_tree_policy<skdecide::SampleTransitionMode>(
                                             domain,
                                             time_budget,
                                             rollout_budget,
@@ -386,7 +386,7 @@ private :
                 break;
             
             case PyMCTSOptions::TransitionMode::Distribution:
-                initialize_tree_policy<airlaps::DistributionTransitionMode>(
+                initialize_tree_policy<skdecide::DistributionTransitionMode>(
                                             domain,
                                             time_budget,
                                             rollout_budget,
@@ -428,7 +428,7 @@ private :
         switch (tree_policy) {
             case PyMCTSOptions::TreePolicy::Default:
                 initialize_expander<TtransitionMode,
-                                    airlaps::DefaultTreePolicy>(
+                                    skdecide::DefaultTreePolicy>(
                                         domain,
                                         time_budget,
                                         rollout_budget,
@@ -470,7 +470,7 @@ private :
             case PyMCTSOptions::Expander::Full:
                 initialize_action_selector_optimization<TtransitionMode,
                                                         TtreePolicy,
-                                                        airlaps::FullExpand>(
+                                                        skdecide::FullExpand>(
                                 domain,
                                 time_budget,
                                 rollout_budget,
@@ -512,7 +512,7 @@ private :
                 initialize_action_selector_execution<TtransitionMode,
                                                      TtreePolicy,
                                                      Texpander,
-                                                     airlaps::UCB1ActionSelector>(
+                                                     skdecide::UCB1ActionSelector>(
                                 domain,
                                 time_budget,
                                 rollout_budget,
@@ -530,7 +530,7 @@ private :
                 initialize_action_selector_execution<TtransitionMode,
                                                      TtreePolicy,
                                                      Texpander,
-                                                     airlaps::BestQValueActionSelector>(
+                                                     skdecide::BestQValueActionSelector>(
                                 domain,
                                 time_budget,
                                 rollout_budget,
@@ -572,7 +572,7 @@ private :
                                           TtreePolicy,
                                           Texpander,
                                           TactionSelectorOptimization,
-                                          airlaps::UCB1ActionSelector>(
+                                          skdecide::UCB1ActionSelector>(
                                 domain,
                                 time_budget,
                                 rollout_budget,
@@ -590,7 +590,7 @@ private :
                                           TtreePolicy,
                                           Texpander,
                                           TactionSelectorOptimization,
-                                          airlaps::BestQValueActionSelector>(
+                                          skdecide::BestQValueActionSelector>(
                                 domain,
                                 time_budget,
                                 rollout_budget,
@@ -632,7 +632,7 @@ private :
                                            Texpander,
                                            TactionSelectorOptimization,
                                            TactionSelectorExecution,
-                                           airlaps::RandomDefaultPolicy>(
+                                           skdecide::RandomDefaultPolicy>(
                                 domain,
                                 time_budget,
                                 rollout_budget,
@@ -674,7 +674,7 @@ private :
                                      TactionSelectorOptimization,
                                      TactionSelectorExecution,
                                      TdefaultPolicy,
-                                     airlaps::GraphBackup>(
+                                     skdecide::GraphBackup>(
                                 domain,
                                 time_budget,
                                 rollout_budget,
@@ -708,7 +708,7 @@ private :
                 bool parallel ,
                 bool debug_logs) {
         if (parallel) {
-            initialize<airlaps::ParallelExecution,
+            initialize<skdecide::ParallelExecution,
                        TtransitionMode,
                        TtreePolicy,
                        Texpander,
@@ -723,7 +723,7 @@ private :
                                         ucb_constant,
                                         debug_logs);
         } else {
-            initialize<airlaps::SequentialExecution,
+            initialize<skdecide::SequentialExecution,
                        TtransitionMode,
                        TtreePolicy,
                        Texpander,

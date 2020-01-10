@@ -2,15 +2,11 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 import gym
 from stable_baselines import PPO2
 from stable_baselines.common.policies import MlpPolicy
 
-from airlaps.utils import load_registered_domain, load_registered_solver, match_solvers, rollout
+from skdecide.utils import load_registered_domain, load_registered_solver, match_solvers, rollout
 
 
 if __name__ == '__main__':

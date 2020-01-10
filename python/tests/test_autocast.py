@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from airlaps import *
-from airlaps.builders.domain import *
-from airlaps.core import autocast
+from skdecide import *
+from skdecide.builders.domain import *
+from skdecide.core import autocast
 
 
 # FIXTURES

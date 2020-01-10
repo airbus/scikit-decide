@@ -2,14 +2,14 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_PDDL_FUNCTION_EXPRESSION_HH
-#define AIRLAPS_PDDL_FUNCTION_EXPRESSION_HH
+#ifndef SKDECIDE_PDDL_FUNCTION_EXPRESSION_HH
+#define SKDECIDE_PDDL_FUNCTION_EXPRESSION_HH
 
 #include "expression.hh"
 #include "function.hh"
 #include "term_container.hh"
 
-namespace airlaps {
+namespace skdecide {
 
     namespace pddl {
 
@@ -63,6 +63,6 @@ namespace airlaps {
 
     } // namespace pddl
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_PDDL_FUNCTION_EXPRESSION_HH
+#endif // SKDECIDE_PDDL_FUNCTION_EXPRESSION_HH

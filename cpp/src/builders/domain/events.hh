@@ -2,15 +2,15 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_EVENTS_HH
-#define AIRLAPS_EVENTS_HH
+#ifndef SKDECIDE_EVENTS_HH
+#define SKDECIDE_EVENTS_HH
 
 #include <memory>
 #include <type_traits>
 #include "core.hh"
 #include "memory.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Tstate, typename Tevent,
           typename TeventSpace = Space<Tevent>,
@@ -20,13 +20,13 @@ template <typename Tstate, typename Tevent,
           template <typename...> class TsmartPointer = std::unique_ptr>
 class EventDomain : public virtual HistoryDomain<Tstate> {
     static_assert(std::is_same<typename TeventSpace::element_type, Tevent>::value, "Event space elements must be of type Tevent");
-    static_assert(std::is_base_of<Space<Tevent>, TeventSpace>::value, "Event space type must be derived from airlaps::Space<Tevent>");
+    static_assert(std::is_base_of<Space<Tevent>, TeventSpace>::value, "Event space type must be derived from skdecide::Space<Tevent>");
     static_assert(std::is_same<typename TactionSpace::element_type, Tevent>::value, "Action space elements must be of type Tevent");
-    static_assert(std::is_base_of<Space<Tevent>, TactionSpace>::value, "Action space type must be derived from airlaps::Space<Tevent>");
+    static_assert(std::is_base_of<Space<Tevent>, TactionSpace>::value, "Action space type must be derived from skdecide::Space<Tevent>");
     static_assert(std::is_same<typename TenabledEventSpace::element_type, Tevent>::value, "Enabled event space elements must be of type Tevent");
-    static_assert(std::is_base_of<Space<Tevent>, TenabledEventSpace>::value, "Enabled event space type must be derived from airlaps::Space<Tevent>");
+    static_assert(std::is_base_of<Space<Tevent>, TenabledEventSpace>::value, "Enabled event space type must be derived from skdecide::Space<Tevent>");
     static_assert(std::is_same<typename TapplicableActionSpace::element_type, Tevent>::value, "Applicable action space elements must be of type Tevent");
-    static_assert(std::is_base_of<Space<Tevent>, TapplicableActionSpace>::value, "Applicable action space type must be derived from airlaps::Space<Tevent>");
+    static_assert(std::is_base_of<Space<Tevent>, TapplicableActionSpace>::value, "Applicable action space type must be derived from skdecide::Space<Tevent>");
 
 public :
     typedef Tstate State;
@@ -144,6 +144,6 @@ public :
     }
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_EVENTS_HH
+#endif // SKDECIDE_EVENTS_HH

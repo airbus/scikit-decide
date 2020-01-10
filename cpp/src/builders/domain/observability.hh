@@ -2,14 +2,14 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_OBSERVABILITY_HH
-#define AIRLAPS_OBSERVABILITY_HH
+#ifndef SKDECIDE_OBSERVABILITY_HH
+#define SKDECIDE_OBSERVABILITY_HH
 
 #include <memory>
 #include <type_traits>
 #include "core.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Tstate, typename Tobservation, typename Tevent,
           typename TstateSpace = Space<Tstate>,
@@ -18,11 +18,11 @@ template <typename Tstate, typename Tobservation, typename Tevent,
           template <typename...> class TsmartPointer = std::unique_ptr>
 class PartiallyObservableDomain {
     static_assert(std::is_same<typename TstateSpace::element_type, Tstate>::value, "State space elements must be of type Tstate");
-    static_assert(std::is_base_of<Space<Tstate>, TstateSpace>::value, "State space type must be derived from airlaps::Space<Tstate>");
+    static_assert(std::is_base_of<Space<Tstate>, TstateSpace>::value, "State space type must be derived from skdecide::Space<Tstate>");
     static_assert(std::is_same<typename TobservationSpace::element_type, Tobservation>::value, "Observation space elements must be of type Tobservation");
-    static_assert(std::is_base_of<Space<Tobservation>, TobservationSpace>::value, "Observation space type must be derived from airlaps::Space<Tobservation>");
+    static_assert(std::is_base_of<Space<Tobservation>, TobservationSpace>::value, "Observation space type must be derived from skdecide::Space<Tobservation>");
     static_assert(std::is_same<typename TobservationDistribution::element_type, Tobservation>::value, "Observation distribution elements must be of type Tobservation");
-    static_assert(std::is_base_of<Distribution<Tobservation>, TobservationDistribution>::value, "State space type must be derived from airlaps::Space<Tstate>");
+    static_assert(std::is_base_of<Distribution<Tobservation>, TobservationDistribution>::value, "State space type must be derived from skdecide::Space<Tstate>");
 
 public :
     typedef Tobservation Observation;
@@ -93,6 +93,6 @@ protected :
     }
 };
 
-} // namespace airlaps
+} // namespace skdecide
 
-#endif // AIRLAPS_OBSERVABILITY_HH
+#endif // SKDECIDE_OBSERVABILITY_HH

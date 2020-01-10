@@ -1,5 +1,5 @@
-title: 'AIRLAPS'
-description: 'AIRLAPS: AI framework for Reinforcement Learning, Automated Planning and Scheduling'
+title: 'Scikit-decide'
+description: 'Scikit-decide: AI framework for Reinforcement Learning, Automated Planning and Scheduling'
 themeConfig:
   nav:
   - text: 'Home'

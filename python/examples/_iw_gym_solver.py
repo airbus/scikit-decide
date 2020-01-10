@@ -2,17 +2,13 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 # TODO: update to new API or remove
 
 import gym
 
-from airlaps import Memory
-from airlaps.wrappers.domain.gym import GymDomain
-from airlaps.catalog.solver.iw import IW
+from skdecide import Memory
+from skdecide.wrappers.domain.gym import GymDomain
+from skdecide.catalog.solver.iw import IW
 
 ENV_NAME = 'CartPole-v1'
 

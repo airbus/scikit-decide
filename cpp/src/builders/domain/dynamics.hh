@@ -2,14 +2,14 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef AIRLAPS_DYNAMICS_HH
-#define AIRLAPS_DYNAMICS_HH
+#ifndef SKDECIDE_DYNAMICS_HH
+#define SKDECIDE_DYNAMICS_HH
 
 #include "core.hh"
 #include "observability.hh"
 #include "memory.hh"
 
-namespace airlaps {
+namespace skdecide {
 
 template <typename Tstate, typename Tobservation, typename Tevent,
           TransitionType TT, typename Tvalue, typename Tinfo,
@@ -138,7 +138,7 @@ class EnumerableTransitionDomain : public UncertainTransitionDomain<Tstate, Tobs
                                                                     Distribution<Tstate>, // Not the specialized DiscreteDistribution<Tstate> to allow for common base class recognition with multiple inheritance
                                                                     TstateSpace, TobservationSpace,
                                                                     TobservationDistribution, TsmartPointer> {
-    static_assert(std::is_base_of<DiscreteDistribution<Tstate>, TstateDistribution>::value, "State distribution type must be derived from airlaps::DiscreteDistribution<Tstate>");
+    static_assert(std::is_base_of<DiscreteDistribution<Tstate>, TstateDistribution>::value, "State distribution type must be derived from skdecide::DiscreteDistribution<Tstate>");
     
 public :
     typedef Tevent Event;
@@ -179,4 +179,4 @@ public :
 
 }
 
-#endif // AIRLAPS_DYNAMICS_HH
+#endif // SKDECIDE_DYNAMICS_HH

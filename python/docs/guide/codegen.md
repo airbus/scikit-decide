@@ -1,17 +1,17 @@
 # Code generators
 
 ::: tip
-<airlaps-summary></airlaps-summary>
+<skdecide-summary></skdecide-summary>
 :::
 
-<airlaps-codegen>
+<skdecide-codegen>
 
 <template v-slot:SolverSummary>
 
 ::: warning
-<airlaps-summary isSolver></airlaps-summary>
+<skdecide-summary isSolver></skdecide-summary>
 :::
 
 </template>
 
-</airlaps-codegen>
+</skdecide-codegen>

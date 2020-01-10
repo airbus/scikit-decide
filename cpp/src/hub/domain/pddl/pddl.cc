@@ -9,7 +9,7 @@
 #include "pddl.hh"
 #include "parser.hh"
 
-using namespace airlaps::pddl;
+using namespace skdecide::pddl;
 
 void PDDL::load(const std::string& domain_file, const std::string& problem_file, bool debug_logs) {
     try {
