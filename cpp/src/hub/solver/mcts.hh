@@ -29,7 +29,7 @@ namespace skdecide {
 struct StepTransitionMode {
     template <typename Tsolver>
     void init_rollout(Tsolver& solver, const int& thread_id) const {
-        solver.domain().reset();
+        solver.domain().reset(thread_id);
         std::for_each(solver.action_prefix().begin(), solver.action_prefix().end(),
                       [&solver, &thread_id](const typename Tsolver::Domain::Event& a){solver.domain().step(a, thread_id);});
     }
@@ -180,6 +180,7 @@ public :
                     break;
                 }
             }
+
             return current_node;
         } catch (const std::exception& e) {
             spdlog::error("SKDECIDE exception in MCTS when simulating the tree policy from state " + n.state.print() + ": " + e.what());

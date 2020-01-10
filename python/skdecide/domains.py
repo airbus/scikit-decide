@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 from typing import NewType, Optional, Callable
-from multiprocessing import Pool, Manager, Pipe
+from multiprocessing import Process, Manager, Pipe
 from multiprocessing.managers import SyncManager
 from queue import LifoQueue
 
@@ -345,9 +345,9 @@ class DeterministicPlanningDomain(Domain, SingleAgent, Sequential, Deterministic
 _parallel_domain_ = None
 _domain_factory_ = None
 
-def parallel_domain_launcher(id, conn):
+def parallel_domain_launcher(i, conn):
     global _parallel_domain_, _domain_factory_
-    _parallel_domain_.launch_domain_server(_domain_factory_, id, conn)
+    _parallel_domain_.launch_domain_server(_domain_factory_, i, conn)
 
 class ExtendedManager(SyncManager):
     pass
@@ -371,17 +371,17 @@ class ParallelDomain:
         self._sleeping_domains = self._manager.LifoQueue()
         self._active_domains = self._manager.list([False for i in range(nb_domains)])
         self._job_results = self._manager.list([None for i in range(nb_domains)])
-        self._pool = Pool()
-        for i in range(os.cpu_count()):
+        self._processes = [None] * nb_domains
+        for i in range(nb_domains):
             pparent, pchild = Pipe()
             self._waiting_jobs[i] = pparent
-            self._pool.apply_async(parallel_domain_launcher, [i, pchild])
+            self._processes[i] = Process(target=parallel_domain_launcher, args=[i, pchild])
+            self._processes[i].start()
     
     def __del__(self):
         for i in range(len(self._job_results)):
             self._waiting_jobs[i].send(None)
-        self._pool.close()
-        self._pool.join()
+            self._processes[i].join()
     
     def get_parallel_capacity(self):
         return self.nb_domains()

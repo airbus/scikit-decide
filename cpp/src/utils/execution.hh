@@ -40,7 +40,7 @@ namespace skdecide {
     struct ParallelExecution {
         static constexpr std::execution::parallel_policy policy = std::execution::par;
 
-        typedef std::mutex Mutex;
+        typedef std::recursive_mutex Mutex;
 
         inline void protect(const std::function<void ()>& f, Mutex& m) {
             std::scoped_lock lock(m);
@@ -55,7 +55,7 @@ namespace skdecide {
             return "parallel (C++-17/TBB)";
         }
 
-        std::mutex _mutex;
+        Mutex _mutex;
 
         template <typename T>
         using atomic = std::atomic<T>;
@@ -87,30 +87,32 @@ namespace skdecide {
 
         struct Mutex {
             Mutex() {
-                omp_init_lock(_lock);
+                omp_init_nest_lock(_lock);
             }
 
             ~Mutex() {
-                omp_destroy_lock(_lock);
+                omp_destroy_nest_lock(_lock);
             }
 
-            omp_lock_t* _lock;
+            omp_nest_lock_t* _lock;
         };
 
         inline void protect(const std::function<void ()>& f, Mutex& m) {
-            omp_set_lock(m._lock);
+            omp_set_nest_lock(m._lock);
             f();
-            omp_unset_lock(m._lock);
+            omp_unset_nest_lock(m._lock);
         }
 
         inline void protect(const std::function<void ()>& f) {
-            #pragma omp critical
+            protect(f, _mutex); // don't use '#pragma omp critical' so the lock can be recursive
             f();
         }
 
         inline static std::string print() {
             return "parallel (OpenMP)";
         }
+
+        Mutex _mutex;
 
         template <typename T>
         using atomic = std::atomic<T>;
