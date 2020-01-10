@@ -92,7 +92,8 @@ class GymRIWDomain(D):
         o = super()._state_step(action)
         self._current_depth += 1
         self._cumulated_reward += o.value.reward
-        self._cumulated_dist_to_start += math.exp(-math.fabs(self._gym_env.sim.get_property_value(prp.position_distance_from_start_mag_mt)))
+        # self._cumulated_dist_to_start += math.exp(-math.fabs(self._gym_env.sim.get_property_value(prp.position_distance_from_start_mag_mt)))
+        self._cumulated_dist_to_start = self._gym_env.sim.get_property_value(prp.position_distance_from_start_mag_mt)
         self._cumulated_dist_to_line += math.exp(-math.fabs(self._gym_env.sim.get_property_value(prp.shortest_dist)))
         return TransitionOutcome(state=GymDomainStateProxy(state=o.state._state, context=(self._current_depth,
                                                                                           self._cumulated_reward,
@@ -152,7 +153,7 @@ class GymRIWDomain(D):
         features = []
         depth = state._context[0]
         index = 0
-        for feature in state._context[2:-1]:
+        for feature in state._context[2:]:
             ref_val = 0
             cf = []
             if feature > 0:
@@ -226,7 +227,8 @@ class GymRIW(RIW):
                          debug_logs=debug_logs)
     
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        self._solve_from(observation)
+        if not self._is_solution_defined_for(observation):
+            self._solve_from(observation)
         action = self._solver.get_next_action(observation)
         self._domain.reset_features()
         if action is None:
@@ -240,20 +242,20 @@ class GymRIW(RIW):
 domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
                                       set_state=lambda e, s: e.set_state(s),
                                       get_state=lambda e: e.get_state(),
-                                      continuous_feature_fidelity=3,
+                                      continuous_feature_fidelity=9,
                                       discretization_factor=9,
                                       max_depth=HORIZON)
 domain = domain_factory()
 
 if True:#RIW.check_domain(domain):
-    solver_factory = lambda: GymRIW(state_features=lambda s, d: d.bee_distance_features(s),
+    solver_factory = lambda: GymRIW(state_features=lambda d, s: d.bee_distance_features(s),
                                     use_state_feature_hash=False,
                                     use_simulation_domain=False,
                                     time_budget=3600000,
-                                    rollout_budget=100,
-                                    max_depth=500,
+                                    rollout_budget=10000,
+                                    max_depth=5000,
                                     exploration=0.5,
-                                    parallel=False,
+                                    parallel=True,
                                     debug_logs=False)
     solver = GymRIWDomain.solve_with(solver_factory, domain_factory)
     rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30, verbose=True,

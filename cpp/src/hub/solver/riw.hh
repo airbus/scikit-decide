@@ -158,7 +158,7 @@ public :
     typedef Texecution_policy ExecutionPolicy;
 
     RIWSolver(Domain& domain,
-              const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
+              const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& state_features,
               std::size_t time_budget = 3600000,
               std::size_t rollout_budget = 100000,
               std::size_t max_depth = 1000,
@@ -192,7 +192,7 @@ public :
             spdlog::info("Running " + ExecutionPolicy::print() + " RIW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             _nb_rollouts = 0;
-            std::size_t nb_of_binary_features = _state_features(s)->size();
+            std::size_t nb_of_binary_features = _state_features(_domain, s, -1)->size(); // TODO replace with correct thread id
 
             TupleVector feature_tuples;
 
@@ -219,7 +219,7 @@ public :
     }
 
     bool is_solution_defined_for(const State& s) const {
-        auto si = _graph.find(Node(s, _state_features));
+        auto si = _graph.find(Node(s, _domain, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {// || (si->solved == false)) {
             return false;
         } else {
@@ -228,7 +228,7 @@ public :
     }
 
     Action get_best_action(const State& s) {
-        auto si = _graph.find(Node(s, _state_features));
+        auto si = _graph.find(Node(s, _domain, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
@@ -259,7 +259,7 @@ public :
     }
 
     const double& get_best_value(const State& s) const {
-        auto si = _graph.find(Node(s, _state_features));
+        auto si = _graph.find(Node(s, _domain, _state_features));
         if (si == _graph.end()) {
             spdlog::error("AIRLAPS exception: no best action found in state " + s.print());
             throw std::runtime_error("AIRLAPS exception: no best action found in state " + s.print());
@@ -302,7 +302,7 @@ public :
 private :
 
     Domain& _domain;
-    std::function<std::unique_ptr<FeatureVector> (const State& s)> _state_features;
+    std::function<std::unique_ptr<FeatureVector> (Domain&, const State& s, const int& thread_id)> _state_features;
     std::size_t _time_budget;
     std::size_t _rollout_budget;
     std::size_t _max_depth;
@@ -327,7 +327,7 @@ private :
         bool pruned; // true if pruned from novelty measure perspective
         bool solved; // from this node: true if all reached states are either max_depth, or terminal or pruned
 
-        Node(const State& s, const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features)
+        Node(const State& s, Domain& d, const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& state_features)
             : state(s),
               value(-std::numeric_limits<double>::max()),
               depth(std::numeric_limits<std::size_t>::max()),
@@ -336,7 +336,7 @@ private :
               terminal(false),
               pruned(false),
               solved(false) {
-            features = state_features(s);
+            features = state_features(d, s, -1); // TODO: replace with correct thread id
         }
         
         struct Key {
@@ -363,7 +363,7 @@ private :
         typedef Texecution_policy ExecutionPolicy;
 
         WidthSolver(RIWSolver& parent_solver, Domain& domain,
-                    const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
+                    const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& state_features,
                     std::size_t time_budget,
                     std::size_t rollout_budget,
                     std::size_t max_depth,
@@ -402,7 +402,7 @@ private :
                 });
 
                 // Create the root node containing the given state s
-                auto si = _graph.emplace(Node(s, _state_features));
+                auto si = _graph.emplace(Node(s, _domain, _state_features));
                 Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
                 root_node.depth = 0;
                 bool states_pruned = false;
@@ -517,7 +517,7 @@ private :
     private :
         RIWSolver& _parent_solver;
         Domain& _domain;
-        const std::function<std::unique_ptr<FeatureVector> (const State& s)>& _state_features;
+        const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& _state_features;
         std::size_t _time_budget;
         std::size_t _rollout_budget;
         std::size_t _max_depth;
@@ -597,7 +597,7 @@ private :
             if (!std::get<2>(node->children[action_number])) { // first visit
                 // Sampled child has not been visited so far, so generate it
                 auto outcome = _rollout_policy.progress(_domain, node->state, std::get<0>(node->children[action_number]));
-                auto i = _graph.emplace(Node(outcome->state(), _state_features));
+                auto i = _graph.emplace(Node(outcome->state(), _domain, _state_features));
                 new_node = i.second;
                 std::get<2>(node->children[action_number]) = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 std::get<1>(node->children[action_number]) = outcome->reward();
@@ -710,7 +710,7 @@ private :
         }
         // Second pass: actually remove nodes in root_subgraph but not in child_subgraph
         for (auto& n : removed_subgraph) {
-            _graph.erase(Node(n->state, _state_features));
+            _graph.erase(Node(n->state, _domain, _state_features));
         }
         // Third pass: recompute fscores
         backup_values(frontier);

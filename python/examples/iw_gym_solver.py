@@ -15,7 +15,7 @@ from airlaps.hub.solver.iw import IW
 # from airlaps.hub.solver.riw import RIW
 from airlaps.utils import rollout
 
-ENV_NAME = 'MountainCar-v0'
+ENV_NAME = 'Pendulum-v0'
 HORIZON = 500
 
 def simple_rollout(domain, solver, max_steps):

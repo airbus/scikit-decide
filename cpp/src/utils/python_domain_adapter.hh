@@ -510,58 +510,67 @@ public :
         _implementation = std::make_unique<Implementation<Texecution>>(domain);
     }
 
-    std::unique_ptr<ApplicableActionSpace> get_applicable_actions(const State& s) {
-        return _implementation->get_applicable_actions(s);
+    std::size_t get_parallel_capacity() {
+        return _implementation->get_parallel_capacity();
     }
 
-    std::unique_ptr<State> reset() {
-        return _implementation->reset();
+    std::unique_ptr<ApplicableActionSpace> get_applicable_actions(const State& s, const int& thread_id = -1) {
+        return _implementation->get_applicable_actions(s, thread_id);
     }
 
-    std::unique_ptr<TransitionOutcome> step(const Event& e) {
-        return _implementation->step(e);
+    std::unique_ptr<State> reset(const int& thread_id = -1) {
+        return _implementation->reset(thread_id);
     }
 
-    std::unique_ptr<TransitionOutcome> sample(const State& s, const Event& e) {
-        return _implementation->sample(s, e);
+    std::unique_ptr<TransitionOutcome> step(const Event& e, const int& thread_id = -1) {
+        return _implementation->step(e, thread_id);
     }
 
-    void compute_next_state(const State& s, const Event& e) {
+    std::unique_ptr<TransitionOutcome> sample(const State& s, const Event& e, const int& thread_id = -1) {
+        return _implementation->sample(s, e, thread_id);
+    }
+
+    void compute_next_state(const State& s, const Event& e, [[maybe_unused]] const int& thread_id = -1) {
         throw std::runtime_error("DEPRECATED");
     }
 
-    py::object get_next_state(const State& s, const Event& e) {
-        return _implementation->get_next_state(s, e);
+    py::object get_next_state(const State& s, const Event& e, const int& thread_id = -1) {
+        return _implementation->get_next_state(s, e, thread_id);
     }
 
-    void compute_next_state_distribution(const State& s, const Event& e) {
+    void compute_next_state_distribution(const State& s, const Event& e, [[maybe_unused]] const int& thread_id = -1) {
         throw std::runtime_error("DEPRECATED");
     }
 
-    std::unique_ptr<NextStateDistribution> get_next_state_distribution(const State& s, const Event& e) {
-        return _implementation->get_next_state_distribution(s, e);
+    std::unique_ptr<NextStateDistribution> get_next_state_distribution(const State& s, const Event& e, const int& thread_id = -1) {
+        return _implementation->get_next_state_distribution(s, e, thread_id);
     }
 
-    double get_transition_cost(const State& s, const Event& e, const State& sp) {
-        return _implementation->get_transition_cost(s, e, sp);
+    double get_transition_cost(const State& s, const Event& e, const State& sp, const int& thread_id = -1) {
+        return _implementation->get_transition_cost(s, e, sp, thread_id);
     }
 
-    double get_transition_reward(const State& s, const Event& e, const State& sp) {
-        return _implementation->get_transition_reward(s, e, sp);
+    double get_transition_reward(const State& s, const Event& e, const State& sp, const int& thread_id = -1) {
+        return _implementation->get_transition_reward(s, e, sp, thread_id);
     }
 
-    bool is_goal(const State& s) {
-        return _implementation->is_goal(s);
+    bool is_goal(const State& s, const int& thread_id = -1) {
+        return _implementation->is_goal(s, thread_id);
     }
 
     // Used only if the domain provides is_goal, which is not the case of simulation of environment
     // domains that are mosts expected for RIW (but sometimes the domain can b a planning domain)
-    bool is_optional_goal(const State& s) {
-        return _implementation->is_optional_goal(s);
+    bool is_optional_goal(const State& s, const int& thread_id = -1) {
+        return _implementation->is_optional_goal(s, thread_id);
     }
 
-    bool is_terminal(const State& s) {
-        return _implementation->is_terminal(s);
+    bool is_terminal(const State& s, const int& thread_id = -1) {
+        return _implementation->is_terminal(s, thread_id);
+    }
+
+    template <typename Tfunction, typename ... Types>
+    py::object call(const int& thread_id, const Tfunction& func, Types ... args) {
+        return _implementation->call(thread_id, func, args...);
     }
 
 protected :
@@ -575,7 +584,11 @@ protected :
         Implementation(const py::object& domain)
         : _domain(domain) {}
 
-        std::unique_ptr<ApplicableActionSpace> get_applicable_actions(const State& s) {
+        static std::size_t get_parallel_capacity() {
+            return 1;
+        }
+
+        std::unique_ptr<ApplicableActionSpace> get_applicable_actions(const State& s, [[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return std::make_unique<ApplicableActionSpace>(_domain.attr("get_applicable_actions")(s._state));
@@ -587,7 +600,7 @@ protected :
             }
         }
 
-        std::unique_ptr<State> reset() {
+        std::unique_ptr<State> reset([[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return std::make_unique<State>(_domain.attr("reset")());
@@ -599,7 +612,7 @@ protected :
             }
         }
 
-        std::unique_ptr<TransitionOutcome> step(const Event& e) {
+        std::unique_ptr<TransitionOutcome> step(const Event& e, [[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return std::make_unique<TransitionOutcome>(_domain.attr("step")(e._event));
@@ -612,7 +625,7 @@ protected :
             }
         }
 
-        std::unique_ptr<TransitionOutcome> sample(const State& s, const Event& e) {
+        std::unique_ptr<TransitionOutcome> sample(const State& s, const Event& e, [[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return std::make_unique<TransitionOutcome>(_domain.attr("sample")(s._state, e._event));
@@ -625,7 +638,7 @@ protected :
             }
         }
 
-        py::object get_next_state(const State& s, const Event& e) {
+        py::object get_next_state(const State& s, const Event& e, [[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return _domain.attr("get_next_state")(s._state, e._event);
@@ -638,7 +651,7 @@ protected :
             }
         }
 
-        std::unique_ptr<NextStateDistribution> get_next_state_distribution(const State& s, const Event& e) {
+        std::unique_ptr<NextStateDistribution> get_next_state_distribution(const State& s, const Event& e, [[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return std::make_unique<NextStateDistribution>(_domain.attr("get_next_state_distribution")(s._state, e._event));
@@ -651,7 +664,7 @@ protected :
             }
         }
 
-        double get_transition_cost(const State& s, const Event& e, const State& sp) {
+        double get_transition_cost(const State& s, const Event& e, const State& sp, [[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return py::cast<double>(_domain.attr("get_transition_value")(s._state, e._event, sp._state).attr("cost"));
@@ -664,7 +677,7 @@ protected :
             }
         }
 
-        double get_transition_reward(const State& s, const Event& e, const State& sp) {
+        double get_transition_reward(const State& s, const Event& e, const State& sp, [[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return py::cast<double>(_domain.attr("get_transition_value")(s._state, e._event, sp._state).attr("reward"));
@@ -677,7 +690,7 @@ protected :
             }
         }
 
-        bool is_goal(const State& s) {
+        bool is_goal(const State& s, [[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return py::cast<bool>(_domain.attr("is_goal")(s._state));
@@ -690,26 +703,7 @@ protected :
             }
         }
 
-        // Used only if the domain provides is_goal, which is not the case of simulation of environment
-        // domains that are mosts expected for RIW (but sometimes the domain can b a planning domain)
-        bool is_optional_goal(const State& s) {
-            typename GilControl<Texecution>::Acquire acquire;
-            try {
-                if (py::hasattr(_domain, "is_goal")) {
-                    return py::cast<bool>(_domain.attr("is_goal")(s._state));
-                } else {
-                    return false;
-                }
-            } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("AIRLAPS exception when testing goal condition of state ") +
-                            s.print() + ": " + ex->what());
-                std::runtime_error err(ex->what());
-                delete ex;
-                throw err;
-            }
-        }
-
-        bool is_terminal(const State& s) {
+        bool is_terminal(const State& s, [[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return py::cast<bool>(_domain.attr("is_terminal")(s._state));
@@ -718,6 +712,19 @@ protected :
                             s.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
+                throw err;
+            }
+        }
+
+        template <typename Tfunction, typename ... Types>
+        py::object call([[maybe_unused]] const int& thread_id, const Tfunction& func, Types ... args) {
+            typename GilControl<Texecution>::Acquire acquire;
+            try {
+                return func(_domain, args..., py::none());
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("AIRLAPS exception when calling anonymous domain method: " + std::string(e->what())));
+                std::runtime_error err(e->what());
+                delete e;
                 throw err;
             }
         }
@@ -751,14 +758,24 @@ protected :
             _domain = py::object();
         }
 
-        template <typename ... Types>
-        py::object launch(const char* name, Types ... args) {
+        std::size_t get_parallel_capacity() {
+            typename GilControl<Texecution>::Acquire acquire;
+            return py::cast<std::size_t>(_domain.attr("get_parallel_capacity")());
+        }
+
+        template <typename Tfunction, typename ... Types>
+        py::object do_launch(const int& thread_id, const Tfunction& func, Types ... args) {
             py::object id;
             {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    id = _domain.attr(name)(args...);
-                } catch(py::error_already_set* e) {
+                    if (thread_id >= 0) {
+                        id = func(_domain, args..., py::int_(thread_id));
+                    } else {
+                        id = func(_domain, args..., py::none());
+                    }
+                } catch(const py::error_already_set* e) {
+                    spdlog::error("AIRLAPS exception when asynchronously calling anonymous domain method: " + std::string(e->what()));
                     std::runtime_error err(e->what());
                     id = py::object();
                     delete e;
@@ -771,9 +788,11 @@ protected :
                 try {
                     py::object r = _domain.attr("get_result")(id);
                     if (!r.is_none()) {
+                        id = py::object();
                         return r;
                     }
                 } catch(const py::error_already_set* e) {
+                    spdlog::error("AIRLAPS exception when asynchronously calling the domain's get_result() method: " + std::string(e->what()));
                     std::runtime_error err(e->what());
                     id = py::object();
                     delete e;
@@ -781,12 +800,18 @@ protected :
                 }
             }
             typename GilControl<Texecution>::Acquire acquire;
+            id = py::object();
             return py::none();
         }
 
-        std::unique_ptr<ApplicableActionSpace> get_applicable_actions(const State& s) {
+        template <typename ... Types>
+        py::object launch(const int& thread_id, const char* name, Types ... args) {
+            return do_launch(thread_id, [&name](py::object& d, auto ... aargs){return d.attr(name)(aargs...);}, args...);
+        }
+
+        std::unique_ptr<ApplicableActionSpace> get_applicable_actions(const State& s, const int& thread_id = -1) {
             try {
-                return std::make_unique<ApplicableActionSpace>(launch("get_applicable_actions", s._state));
+                return std::make_unique<ApplicableActionSpace>(launch(thread_id, "get_applicable_actions", s._state));
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("AIRLAPS exception when getting applicable actions in state ") + s.print() + ": " + e.what());
@@ -794,9 +819,9 @@ protected :
             }
         }
 
-        std::unique_ptr<State> reset() {
+        std::unique_ptr<State> reset(const int& thread_id = -1) {
             try {
-                return std::make_unique<State>(launch("reset"));
+                return std::make_unique<State>(launch(thread_id, "reset"));
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("AIRLAPS exception when resetting the domain: ") + e.what());
@@ -804,9 +829,9 @@ protected :
             }
         }
 
-        std::unique_ptr<TransitionOutcome> step(const Event& e) {
+        std::unique_ptr<TransitionOutcome> step(const Event& e, const int& thread_id = -1) {
             try {
-                return std::make_unique<TransitionOutcome>(launch("step", e._event));
+                return std::make_unique<TransitionOutcome>(launch(thread_id, "step", e._event));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("AIRLAPS exception when stepping with action ") +
@@ -815,9 +840,9 @@ protected :
             }
         }
 
-        std::unique_ptr<TransitionOutcome> sample(const State& s, const Event& e) {
+        std::unique_ptr<TransitionOutcome> sample(const State& s, const Event& e, const int& thread_id = -1) {
             try {
-                return std::make_unique<TransitionOutcome>(launch("sample", s._state, e._event));
+                return std::make_unique<TransitionOutcome>(launch(thread_id, "sample", s._state, e._event));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("AIRLAPS exception when sampling from state ") + s.print() +
@@ -826,9 +851,9 @@ protected :
             }
         }
 
-        py::object get_next_state(const State& s, const Event& e) {
+        py::object get_next_state(const State& s, const Event& e, const int& thread_id = -1) {
             try {
-                return launch("get_next_state", s._state, e._event);
+                return launch(thread_id, "get_next_state", s._state, e._event);
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("AIRLAPS exception when getting next state from state ") +
@@ -837,9 +862,9 @@ protected :
             }
         }
 
-        std::unique_ptr<NextStateDistribution> get_next_state_distribution(const State& s, const Event& e) {
+        std::unique_ptr<NextStateDistribution> get_next_state_distribution(const State& s, const Event& e, const int& thread_id = -1) {
             try {
-                return std::make_unique<NextStateDistribution>(launch("get_next_state_distribution", s._state, e._event));
+                return std::make_unique<NextStateDistribution>(launch(thread_id, "get_next_state_distribution", s._state, e._event));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("AIRLAPS exception when getting next state distribution from state ") +
@@ -848,9 +873,9 @@ protected :
             }
         }
 
-        double get_transition_cost(const State& s, const Event& e, const State& sp) {
+        double get_transition_cost(const State& s, const Event& e, const State& sp, const int& thread_id = -1) {
             try {
-                py::object r = launch("get_transition_value", s._state, e._event, sp._state);
+                py::object r = launch(thread_id, "get_transition_value", s._state, e._event, sp._state);
                 typename GilControl<Texecution>::Acquire acquire;
                 return py::cast<double>(r.attr("cost"));
             } catch(const std::exception& ex) {
@@ -861,9 +886,9 @@ protected :
             }
         }
 
-        double get_transition_reward(const State& s, const Event& e, const State& sp) {
+        double get_transition_reward(const State& s, const Event& e, const State& sp, const int& thread_id = -1) {
             try {
-                py::object r = launch("get_transition_value", s._state, e._event, sp._state);
+                py::object r = launch(thread_id, "get_transition_value", s._state, e._event, sp._state);
                 typename GilControl<Texecution>::Acquire acquire;
                 return py::cast<double>(r.attr("reward"));
             } catch(const std::exception& ex) {
@@ -874,9 +899,9 @@ protected :
             }
         }
 
-        bool is_goal(const State& s) {
+        bool is_goal(const State& s, const int& thread_id = -1) {
             try {
-                py::object r = launch("is_goal", s._state);
+                py::object r = launch(thread_id, "is_goal", s._state);
                 typename GilControl<Texecution>::Acquire acquire;
                 return py::cast<bool>(r);
             } catch(const std::exception& e) {
@@ -887,41 +912,25 @@ protected :
             }
         }
 
-        bool is_optional_goal(const State& s) {
-            typename GilControl<Texecution>::Acquire acquire;
+        bool is_terminal(const State& s, const int& thread_id = -1) {
             try {
-                bool has_goal;
-                {
-                    typename GilControl<Texecution>::Acquire acquire;
-                    has_goal = py::hasattr(_domain, "is_goal");
-                }
-                if (has_goal) {
-                    py::object r = launch("is_goal", s._state);
-                    typename GilControl<Texecution>::Acquire acquire;
-                    return py::cast<bool>(r);
-                } else {
-                    return false;
-                }
-            } catch(py::error_already_set* e) {
-                    std::runtime_error err(e->what());
-                    delete e;
-                    throw err;
-            } catch(const std::exception& e) {
-                spdlog::error(std::string("AIRLAPS exception when testing goal condition of state ") +
-                              s.print() + ": " + e.what());
-                throw;
-            }
-        }
-
-        bool is_terminal(const State& s) {
-            try {
-                py::object r = launch("is_terminal", s._state);
+                py::object r = launch(thread_id, "is_terminal", s._state);
                 typename GilControl<Texecution>::Acquire acquire;
                 return py::cast<bool>(r);
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("AIRLAPS exception when testing terminal condition of state ") +
                               s.print() + ": " + e.what());
+                throw;
+            }
+        }
+
+        template <typename Tfunction, typename ... Types>
+        py::object call(const int& thread_id, const Tfunction& func, Types ... args) {
+            try {
+                return do_launch(thread_id, func, args...);
+            } catch(const std::exception& e) {
+                spdlog::error(std::string("AIRLAPS exception when calling anonymous domain method: " + std::string(e.what())));
                 throw;
             }
         }

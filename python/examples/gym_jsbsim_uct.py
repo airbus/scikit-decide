@@ -298,18 +298,18 @@ domain_factory = lambda: GymUCTRawDomain(gym_env=gym.make(ENV_NAME),
                                             max_depth=HORIZON)
 
 if True:#UCT.check_domain(domain_factory()):
-    solver_factory = lambda: UCT(time_budget = 10000,
-                                 rollout_budget = sys.maxsize,# 100000,
-                                 max_depth = 100,#HORIZON+1,
+    solver_factory = lambda: UCT(time_budget = 3600000,
+                                 rollout_budget = 10,
+                                 max_depth = 500,#HORIZON+1,
                                  discount = 1.0,
                                  ucb_constant = 1.0 / sqrt(2.0),
                                  transition_mode=UCT.Options.TransitionMode.Step,
-                                 parallel=False,
-                                 debug_logs = False)
+                                 parallel=True,
+                                 debug_logs = True)
     solver = GymUCTRawDomain.solve_with(solver_factory, domain_factory)
     solver._domain.reset()
     rollout(domain_factory(), solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
-            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}',
+            outcome_formatter=lambda o: f'{o.observation} - reward: {o.value.reward:.2f}',
             action_formatter=lambda a: f'{a}', verbose=True)
     with open('gym_jsbsim_uct.json', 'w') as myfile:
         mydict = solver.get_policy()
