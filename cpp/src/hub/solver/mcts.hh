@@ -754,7 +754,7 @@ public :
         atomic_double value;
         atomic_size_t visits_count;
         std::list<ActionNode*> parents;
-        typename ExecutionPolicy::Mutex mutex;
+        typename ExecutionPolicy::RecursiveMutex mutex; // to prevent deadlocks due to self loops exploration
 
         StateNode(const State& s)
             : state(s), terminal(false), expanded(false),

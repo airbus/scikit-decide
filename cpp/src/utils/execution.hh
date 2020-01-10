@@ -20,8 +20,10 @@ namespace skdecide {
         static constexpr std::execution::sequenced_policy policy = std::execution::seq;
 
         struct Mutex { Mutex() {} };
+        struct RecursiveMutex { RecursiveMutex() {} };
 
-        inline void protect(const std::function<void ()>& f, [[maybe_unused]] Mutex& m) {
+        template <typename Tmutex>
+        inline void protect(const std::function<void ()>& f, [[maybe_unused]] Tmutex& m) {
             f();
         }
 
@@ -40,9 +42,13 @@ namespace skdecide {
     struct ParallelExecution {
         static constexpr std::execution::parallel_policy policy = std::execution::par;
 
-        typedef std::recursive_mutex Mutex;
+        typedef std::mutex Mutex;
+        typedef std::recursive_mutex RecursiveMutex;
 
-        inline void protect(const std::function<void ()>& f, Mutex& m) {
+        Mutex _mutex;
+
+        template <typename Tmutex>
+        inline void protect(const std::function<void ()>& f, Tmutex& m) {
             std::scoped_lock lock(m);
             f();
         }
@@ -55,8 +61,6 @@ namespace skdecide {
             return "parallel (C++-17/TBB)";
         }
 
-        Mutex _mutex;
-
         template <typename T>
         using atomic = std::atomic<T>;
     };
@@ -65,8 +69,10 @@ namespace skdecide {
         static constexpr char policy = 0; // only useful for c++-17 thread support
 
         struct Mutex { Mutex() {} };
+        struct RecursiveMutex { RecursiveMutex() {} };
 
-        inline void protect(const std::function<void ()>& f, [[maybe_unused]] Mutex& m) {
+        template <typename Tmutex>
+        inline void protect(const std::function<void ()>& f, [[maybe_unused]] Tmutex& m) {
             f();
         }
 
@@ -87,10 +93,22 @@ namespace skdecide {
 
         struct Mutex {
             Mutex() {
-                omp_init_nest_lock(_lock);
+                omp_init_lock(_lock);
             }
 
             ~Mutex() {
+                omp_destroy_lock(_lock);
+            }
+
+            omp_lock_t* _lock;
+        };
+
+        struct RecursiveMutex {
+            RecursiveMutex() {
+                omp_init_nest_lock(_lock);
+            }
+
+            ~RecursiveMutex() {
                 omp_destroy_nest_lock(_lock);
             }
 
@@ -98,21 +116,25 @@ namespace skdecide {
         };
 
         inline void protect(const std::function<void ()>& f, Mutex& m) {
+            omp_set_lock(m._lock);
+            f();
+            omp_unset_lock(m._lock);
+        }
+
+        inline void protect(const std::function<void ()>& f, RecursiveMutex& m) {
             omp_set_nest_lock(m._lock);
             f();
             omp_unset_nest_lock(m._lock);
         }
 
         inline void protect(const std::function<void ()>& f) {
-            protect(f, _mutex); // don't use '#pragma omp critical' so the lock can be recursive
+            #pragma omp critical
             f();
         }
 
         inline static std::string print() {
             return "parallel (OpenMP)";
         }
-
-        Mutex _mutex;
 
         template <typename T>
         using atomic = std::atomic<T>;
@@ -122,8 +144,10 @@ namespace skdecide {
         static constexpr char policy = 0;
 
         struct Mutex { Mutex() {} };
+        struct RecursiveMutex { RecursiveMutex() {} };
 
-        inline void protect(const std::function<void ()>& f, [[maybe_unused]] Mutex& m) {
+        template <typename Tmutex>
+        inline void protect(const std::function<void ()>& f, [[maybe_unused]] Tmutex& m) {
             f();
         }
 
@@ -143,8 +167,10 @@ namespace skdecide {
         static constexpr int policy = 0;
 
         struct Mutex { Mutex() {} };
+        struct RecursiveMutex { RecursiveMutex() {} };
 
-        inline void protect(const std::function<void ()>& f, [[maybe_unused]] Mutex& m) {
+        template <typename Tmutex>
+        inline void protect(const std::function<void ()>& f, [[maybe_unused]] Tmutex& m) {
             f();
         }
 
