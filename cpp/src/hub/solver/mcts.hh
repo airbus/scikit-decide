@@ -493,7 +493,7 @@ public :
             });
 
             if (dist_res) {
-                std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = solver.transition_mode().random_next_outcome(n.state, action_node->action, thread_id);
+                std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = solver.transition_mode().random_next_outcome(solver, thread_id, n.state, action_node->action);
                 std::pair<typename Tsolver::Graph::iterator, bool> s;
 
                 solver.execution_policy().protect([&s, &solver, &to](){
@@ -652,8 +652,8 @@ public :
                 termination = o->terminal();
                 current_depth++;
                 if (solver.debug_logs()) { spdlog::debug("Sampled transition: action=" + action->print() +
-                                                        ", next state=" + current_state.print() +
-                                                        ", reward=" + std::to_string(o->reward())); }
+                                                         ", next state=" + current_state.print() +
+                                                         ", reward=" + std::to_string(o->reward())); }
             }
 
             // since we can come to state n after exhausting the depth, n might be already visited
