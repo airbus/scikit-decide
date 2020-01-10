@@ -404,7 +404,10 @@ class ParallelDomain:
             if job is None:
                 break
             else:
-                self._job_results[i] = getattr(domain, job[0])(*job[1])
+                try:
+                    self._job_results[i] = getattr(domain, job[0])(*job[1])
+                except Exception as e:
+                    print('\x1b[3;33;40m' + 'ERROR: unable to perform job: ' + str(e) + '\x1b[0m')
     
     def wake_up_domain(self, i=None):
         # in case of previous call to wake_up_domain

@@ -63,7 +63,7 @@ class GymRIWDomain(D):
 
 
 domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
-                                      continuous_feature_fidelity=1,
+                                      continuous_feature_fidelity=5,
                                       discretization_factor=3,
                                       max_depth=HORIZON)
 domain = domain_factory()

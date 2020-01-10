@@ -305,7 +305,7 @@ if True:#UCT.check_domain(domain_factory()):
                                  ucb_constant = 1.0 / sqrt(2.0),
                                  transition_mode=UCT.Options.TransitionMode.Step,
                                  parallel=True,
-                                 debug_logs = False)
+                                 debug_logs = True)
     solver = GymUCTRawDomain.solve_with(solver_factory, domain_factory)
     solver._domain.reset()
     rollout(domain_factory(), solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
