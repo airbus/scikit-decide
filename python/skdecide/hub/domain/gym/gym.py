@@ -259,34 +259,40 @@ class GymWidthDomain:
     def _reset_features(self):
         self._init_continuous_state_variables = []
         self._feature_increments = []
+    
+    class BEE1Node:
+        def __init__(self, ref):
+            self.reference = ref
+            self.increments = [0]
+            self.children = []
 
-    def _init_bee_features(self, space, state):
+    def _init_bee1_features(self, space, state):
         if isinstance(space, gym.spaces.box.Box):
             for cell_id in range(state.size):
                 cell = state.item(cell_id)
                 self._init_continuous_state_variables.append(cell)
                 # positive increments list for each fidelity level
-                self._feature_increments.append(GymWidthDomain.BEENode(cell))
+                self._feature_increments.append(GymWidthDomain.BEE1Node(cell))
                 # negative increments list for each fidelity level
-                self._feature_increments.append(GymWidthDomain.BEENode(cell))
+                self._feature_increments.append(GymWidthDomain.BEE1Node(cell))
         elif isinstance(space, gym.spaces.tuple.Tuple):
             for s in range(len(space.spaces)):
-                self._init_bee_features(space.spaces[s], state[s])
+                self._init_bee1_features(space.spaces[s], state[s])
         elif isinstance(space, gym.spaces.dict.Dict):
             for k, s in space.spaces:
-                self._init_bee_features(s, state[k])
+                self._init_bee1_features(s, state[k])
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
 
-    def bee_features(self, state):
+    def bee1_features(self, state):
         """Return a numpy vector of ints representing the current 'cumulated layer' of each state variable
         """
         state = state._state if isinstance(state, GymDomainStateProxy) else state
         if len(self._feature_increments) == 0:
-            self._init_bee_features(self._gym_env.observation_space, state)
-        return self._bee_features(self._gym_env.observation_space, state, 0)[1]
+            self._init_bee1_features(self._gym_env.observation_space, state)
+        return self._bee1_features(self._gym_env.observation_space, state, 0)[1]
     
-    def _bee_features(self, space, element, start):
+    def _bee1_features(self, space, element, start):
         if isinstance(space, gym.spaces.box.Box):
             features = []
             index = start
@@ -295,31 +301,21 @@ class GymWidthDomain:
                 cf = []
                 if cell > self._init_continuous_state_variables[index]:
                     node = self._feature_increments[2*index]
-                    for f in range(self._continuous_feature_fidelity):
-                        i = bisect.bisect_left(node.increments, cell - node.reference)
-                        cf.append(i)
-                        if i >= len(node.increments):
-                            node.increments.append(cell - node.reference)
-                            node.children.append(GymWidthDomain.BEENode(node.reference + (node.increments[i-1] if i > 0 else 0)))
-                            for ff in range(f+1, self._continuous_feature_fidelity):
-                                cf.append(0)
-                            break
-                        elif i > 0:
-                            node = node.children[i-1]
+                    sign = 1
                 else:
-                    node = self._feature_increments[2*index + 1]
-                    for f in range(self._continuous_feature_fidelity):
-                        i = bisect.bisect_left(node.increments, node.reference - cell)
-                        cf.append(-i)
-                        if i >= len(node.increments):
-                            node.increments.append(node.reference - cell)
-                            node.children.append(GymWidthDomain.BEENode(node.reference - (node.increments[i-1] if i > 0 else 0)))
-                            for ff in range(f+1, self._continuous_feature_fidelity):
-                                cf.append(0)
-                            break
-                        elif i > 0:
-                            node = node.children[i-1]
-                # features.append(tuple(cf))
+                    node = self._feature_increments[2*index+1]
+                    sign = -1
+                for f in range(self._continuous_feature_fidelity):
+                    i = bisect.bisect_left(node.increments, sign * (cell - node.reference))
+                    cf.append(sign * i)
+                    if i >= len(node.increments):
+                        node.increments.append(sign * (cell - node.reference))
+                        node.children.append(GymWidthDomain.BEE1Node(node.reference + (sign * node.increments[i-1])))
+                        for ff in range(f+1, self._continuous_feature_fidelity):
+                            cf.append(0)
+                        break
+                    elif i > 0:
+                        node = node.children[i-1]
                 features += cf
                 index += 1
             return index, features
@@ -333,24 +329,112 @@ class GymWidthDomain:
             index = start
             features = []
             for i in range(len(space.spaces)):
-                index, l = self._bee_features(space.spaces[i], element[i], index)
+                index, l = self._bee1_features(space.spaces[i], element[i], index)
                 features += l
             return index, features
         elif isinstance(space, gym.spaces.dict.Dict):
             index = start
             features = []
             for k in space.spaces.keys():
-                index, l = self._bee_features(space.spaces[k], element[k], index)
+                index, l = self._bee1_features(space.spaces[k], element[k], index)
                 features += l
             return index, features
         else:
             raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
     
-    class BEENode:
-        def __init__(self, ref):
-            self.reference = ref
-            self.increments = [0]
+    class BEE2Node:
+        def __init__(self):
+            self.I = []
+            self.llb = None
+            self.gub = None
             self.children = []
+
+        def eval(self, x, level=0):
+            if len(self.I) == 0:
+                self.I = [(x, x)]
+                self.children = [GymWidthDomain.BEE2Node()]
+                self.llb = x
+                self.gub = x
+                return tuple([0] + [-1 for k in range(level)])
+            if x < self.llb:
+                self.I += [(x, self.llb)]
+                self.children += [GymWidthDomain.BEE2Node()]
+                self.llb = x
+                return tuple([len(self.I) - 1] + [-1 for k in range(level)])
+            elif x > self.gub:
+                self.I += [(self.gub, x)]
+                self.children += [GymWidthDomain.BEE2Node()]
+                self.gub = x
+                return tuple([len(self.I) - 1] + [-1 for k in range(level)])
+            else:
+                # we need to search
+                for k, i_k in enumerate(self.I):
+                    if i_k[0] <= x <= i_k[1]:
+                        sub = []
+                        if level > 0:
+                            sub = self.children[k].eval(x, level - 1)
+                        return tuple([k] + list(sub))
+                        #return k
+            raise RuntimeError("Should never get here!")
+        
+        def __repr__(self):
+            return '[I={}, llb={}, gub={}]'.format(self.I, self.llb, self.gub)
+    
+    def _init_bee2_features(self, space, state):
+        if isinstance(space, gym.spaces.box.Box):
+            for cell_id in range(state.size):
+                cell = state.item(cell_id)
+                self._init_continuous_state_variables.append(cell)
+                self._feature_increments.append(GymWidthDomain.BEE2Node())
+                self._feature_increments[-1].eval(cell)
+        elif isinstance(space, gym.spaces.tuple.Tuple):
+            for s in range(len(space.spaces)):
+                self._init_bee2_features(space.spaces[s], state[s])
+        elif isinstance(space, gym.spaces.dict.Dict):
+            for k, s in space.spaces:
+                self._init_bee2_features(s, state[k])
+        else:
+            raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
+
+    def bee2_features(self, state):
+        """Return a numpy vector of ints representing the current 'cumulated layer' of each state variable
+        """
+        state = state._state if isinstance(state, GymDomainStateProxy) else state
+        if len(self._feature_increments) == 0:
+            self._init_bee2_features(self._gym_env.observation_space, state)
+        return self._bee2_features(self._gym_env.observation_space, state, 0)[1]
+    
+    def _bee2_features(self, space, element, start):
+        if isinstance(space, gym.spaces.box.Box):
+            features = []
+            index = start
+            for cell_id in range(element.size):
+                cell = element.item(cell_id)
+                features += self._feature_increments[index].eval(cell, self._continuous_feature_fidelity - 1)
+                index += 1
+            return index, features
+        elif isinstance(space, gym.spaces.discrete.Discrete):
+            return start, [element]
+        elif isinstance(space, gym.spaces.multi_discrete.MultiDiscrete):
+            return start, [e for e in element]
+        elif isinstance(space, gym.spaces.multi_binary.MultiBinary):
+            return start, [e for e in element]
+        elif isinstance(space, gym.spaces.tuple.Tuple):
+            index = start
+            features = []
+            for i in range(len(space.spaces)):
+                index, l = self._bee2_features(space.spaces[i], element[i], index)
+                features += l
+            return index, features
+        elif isinstance(space, gym.spaces.dict.Dict):
+            index = start
+            features = []
+            for k in space.spaces.keys():
+                index, l = self._bee2_features(space.spaces[k], element[k], index)
+                features += l
+            return index, features
+        else:
+            raise RuntimeError('Unknown Gym space element of type ' + str(type(space)))
     
     def nb_of_binary_features(self) -> int:
         """Return the size of the bit vector encoding an observation
