@@ -18,4 +18,3 @@ We try to follow the PEP style guidelines and encourage you to as well.
 ## License
 By contributing to this repository, you agree that your contributions will be licensed
 under the LICENSE file in the root directory of this source tree.
-

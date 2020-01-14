@@ -2,10 +2,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Copyright (c) AIRBUS and its affiliates.
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 import os
 import re
 import sys
@@ -186,7 +182,7 @@ extras_require['all'] = all_extra
 
 # TODO: import the following from python/setup.py
 setup(
-    name='airlaps',
+    name='skdecide',
     version=__version__,
     package_dir={'': 'python'},
     packages=find_packages(where='./python'),
@@ -196,38 +192,38 @@ setup(
     url='www.airbus.com',
     license='MIT',
     author='Airbus',
-    description='AIRLAPS is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.',
+    description='Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.',
     entry_points={
-        'airlaps.domains': [
-            'GymDomain = airlaps.hub.domain.gym:GymDomain [domains]',
-            'DeterministicGymDomain = airlaps.hub.domain.gym:DeterministicGymDomain [domains]',
-            'CostDeterministicGymDomain = airlaps.hub.domain.gym:CostDeterministicGymDomain [domains]',
-            'GymPlanningDomain = airlaps.hub.domain.gym:GymPlanningDomain [domains]',
-            'GymWidthPlanningDomain = airlaps.hub.domain.gym:GymWidthPlanningDomain [domains]',
-            'MasterMind = airlaps.hub.domain.mastermind:MasterMind [domains]',
-            'Maze = airlaps.hub.domain.maze:Maze [domains]',
-            'RockPaperScissors = airlaps.hub.domain.rock_paper_scissors:RockPaperScissors [domains]',
-            'SimpleGridWorld = airlaps.hub.domain.simple_grid_world:SimpleGridWorld [domains]'
+        'skdecide.domains': [
+            'GymDomain = skdecide.hub.domain.gym:GymDomain [domains]',
+            'DeterministicGymDomain = skdecide.hub.domain.gym:DeterministicGymDomain [domains]',
+            'CostDeterministicGymDomain = skdecide.hub.domain.gym:CostDeterministicGymDomain [domains]',
+            'GymPlanningDomain = skdecide.hub.domain.gym:GymPlanningDomain [domains]',
+            'GymWidthPlanningDomain = skdecide.hub.domain.gym:GymWidthPlanningDomain [domains]',
+            'MasterMind = skdecide.hub.domain.mastermind:MasterMind [domains]',
+            'Maze = skdecide.hub.domain.maze:Maze [domains]',
+            'RockPaperScissors = skdecide.hub.domain.rock_paper_scissors:RockPaperScissors [domains]',
+            'SimpleGridWorld = skdecide.hub.domain.simple_grid_world:SimpleGridWorld [domains]'
         ],
-        'airlaps.solvers': [
-            'AOstar = airlaps.hub.solver.aostar:AOstar',
-            'Astar = airlaps.hub.solver.astar:Astar',
-            'MCTS = airlaps.hub.solver.mcts:MCTS',
-            'UCT = airlaps.hub.solver.mcts:UCT',
-            'AugmentedRandomSearch = airlaps.hub.solver.ars:AugmentedRandomSearch [solvers]',
-            'BFWS = airlaps.hub.solver.bfws:BFWS',
-            'CGP = airlaps.hub.solver.cgp:CGP [solvers]',
-            'IW = airlaps.hub.solver.iw:IW',
-            'RIW = airlaps.hub.solver.riw:RIW',
-            'LazyAstar = airlaps.hub.solver.lazy_astar:LazyAstar',
-            'MaxentIRL = airlaps.hub.solver.maxent_irl:MaxentIRL [solvers]',
-            'POMCP = airlaps.hub.solver.pomcp:POMCP',
-            'RayRLlib = airlaps.hub.solver.ray_rllib:RayRLlib [solvers]',
-            'SimpleGreedy = airlaps.hub.solver.simple_greedy:SimpleGreedy',
-            'StableBaseline = airlaps.hub.solver.stable_baselines:StableBaseline [solvers]'
+        'skdecide.solvers': [
+            'AOstar = skdecide.hub.solver.aostar:AOstar',
+            'Astar = skdecide.hub.solver.astar:Astar',
+            'MCTS = skdecide.hub.solver.mcts:MCTS',
+            'UCT = skdecide.hub.solver.mcts:UCT',
+            'AugmentedRandomSearch = skdecide.hub.solver.ars:AugmentedRandomSearch [solvers]',
+            'BFWS = skdecide.hub.solver.bfws:BFWS',
+            'CGP = skdecide.hub.solver.cgp:CGP [solvers]',
+            'IW = skdecide.hub.solver.iw:IW',
+            'RIW = skdecide.hub.solver.riw:RIW',
+            'LazyAstar = skdecide.hub.solver.lazy_astar:LazyAstar',
+            'MaxentIRL = skdecide.hub.solver.maxent_irl:MaxentIRL [solvers]',
+            'POMCP = skdecide.hub.solver.pomcp:POMCP',
+            'RayRLlib = skdecide.hub.solver.ray_rllib:RayRLlib [solvers]',
+            'SimpleGreedy = skdecide.hub.solver.simple_greedy:SimpleGreedy',
+            'StableBaseline = skdecide.hub.solver.stable_baselines:StableBaseline [solvers]'
         ]
     },
     extras_require=extras_require,
-    ext_modules=[CMakeExtension(name='airlaps/hub/', sourcedir='cpp')],
+    ext_modules=[CMakeExtension(name='skdecide/hub/', sourcedir='cpp')],
     cmdclass=dict(build_ext=CMakeBuild, install=InstallCommand, bdist_wheel=BDistWheelCommand)
 )
