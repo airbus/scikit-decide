@@ -7,7 +7,7 @@ from __future__ import annotations
 import multiprocessing
 import os
 import sys
-from typing import Callable, Any
+from typing import Callable, Any, List, Tuple
 
 from skdecide import Domain, Solver
 from skdecide import hub
@@ -38,6 +38,7 @@ try:
                      state_features: Callable[[D.T_state, Domain], Any],
                      use_state_feature_hash: bool = False,
                      node_ordering: Callable[[float, int, int, float, int, int], bool] = None,
+                     time_budget: int = 0,  # time budget to continue searching for better plans after a goal has been reached
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             self._solver = None
@@ -45,6 +46,7 @@ try:
             self._state_features = state_features
             self._use_state_feature_hash = use_state_feature_hash
             self._node_ordering = node_ordering
+            self._time_budget = time_budget
             self._parallel = parallel
             self._debug_logs = debug_logs
 
@@ -54,6 +56,7 @@ try:
                                      state_features=lambda o: self._state_features(o, self._domain),
                                      use_state_feature_hash=self._use_state_feature_hash,
                                      node_ordering=self._node_ordering,
+                                     time_budget=self._time_budget,
                                      parallel=self._parallel,
                                      debug_logs=self._debug_logs)
             self._solver.clear()
@@ -83,6 +86,9 @@ try:
         
         def get_nb_of_pruned_states(self) -> int:
             return self._solver.get_nb_of_pruned_states()
+        
+        def get_intermediate_scores(self) -> List[Tuple[int, float]]:
+            return self._solver.get_intermediate_scores()
     
 except ImportError:
     sys.path = record_sys_path

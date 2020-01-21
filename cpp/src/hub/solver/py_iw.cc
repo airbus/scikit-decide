@@ -55,24 +55,25 @@ public :
                bool use_state_feature_hash = false,
                const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                          const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
+               std::size_t time_budget = 0,
                bool parallel = true,
                bool debug_logs = false) {
 
         if (parallel) {
             if (use_state_feature_hash) {
                 _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::StateFeatureHash>>(
-                    domain, state_features, node_ordering, debug_logs);
+                    domain, state_features, node_ordering, time_budget, debug_logs);
             } else {
                 _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::DomainStateHash>>(
-                    domain, state_features, node_ordering, debug_logs);
+                    domain, state_features, node_ordering, time_budget, debug_logs);
             }
         } else {
             if (use_state_feature_hash) {
                 _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::StateFeatureHash>>(
-                    domain, state_features, node_ordering, debug_logs);
+                    domain, state_features, node_ordering, time_budget, debug_logs);
             } else {
                 _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::DomainStateHash>>(
-                    domain, state_features, node_ordering, debug_logs);
+                    domain, state_features, node_ordering, time_budget, debug_logs);
             }
         }
     }
@@ -105,6 +106,10 @@ public :
         return _implementation->get_nb_of_pruned_states();
     }
 
+    py::list get_intermediate_scores() {
+        return _implementation->get_intermediate_scores();
+    }
+
 private :
 
     class BaseImplementation {
@@ -116,6 +121,7 @@ private :
         virtual py::float_ get_utility(const py::object& s) =0;
         virtual py::int_ get_nb_of_explored_states() =0;
         virtual py::int_ get_nb_of_pruned_states() =0;
+        virtual py::list get_intermediate_scores() =0;
     };
 
     template <typename Texecution, template <typename...> class Thashing_policy>
@@ -126,6 +132,7 @@ private :
                        const std::function<py::object (const py::object&)>& state_features,
                        const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                                  const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
+                       std::size_t time_budget = 0,
                        bool debug_logs = false)
             : _state_features(state_features), _node_ordering(node_ordering) {
             
@@ -157,6 +164,7 @@ private :
                                                                                 }
                                                                             },
                                                                             pno,
+                                                                            time_budget,
                                                                             debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
@@ -201,6 +209,14 @@ private :
             return _solver->get_nb_of_pruned_states();
         }
 
+        virtual py::list get_intermediate_scores() {
+            py::list l;
+            for (const auto& p : _solver->get_intermediate_scores()) {
+                l.append(py::make_tuple(std::get<0>(p), std::get<1>(p), std::get<2>(p)));
+            }
+            return l;
+        }
+
     private :
         std::unique_ptr<PyIWDomain<Texecution>> _domain;
         std::unique_ptr<skdecide::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>> _solver;
@@ -225,12 +241,14 @@ void init_pyiw(py::module& m) {
                           bool,
                           const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                                     const double&, const std::size_t&, const std::size_t&)>&,
+                          std::size_t,
                           bool,
                           bool>(),
                  py::arg("domain"),
                  py::arg("state_features"),
                  py::arg("use_state_feature_hash")=false,
                  py::arg("node_ordering")=nullptr,
+                 py::arg("time_budget")=0,
                  py::arg("parallel")=true,
                  py::arg("debug_logs")=false)
             .def("clear", &PyIWSolver::clear)
@@ -240,5 +258,6 @@ void init_pyiw(py::module& m) {
             .def("get_utility", &PyIWSolver::get_utility, py::arg("state"))
             .def("get_nb_of_explored_states", &PyIWSolver::get_nb_of_explored_states)
             .def("get_nb_of_pruned_states", &PyIWSolver::get_nb_of_pruned_states)
+            .def("get_intermediate_scores", &PyIWSolver::get_intermediate_scores)
         ;
 }

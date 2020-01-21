@@ -818,7 +818,8 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = super()._get_initial_state_()
-        initial_state._context.append(0)
+        initial_state._context.append(0)  # Depth
+        initial_state._context.append(0)  # Accumulated reward
         self._initial_state = initial_state
         self._current_depth = 0
         return initial_state
@@ -833,6 +834,7 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
             self._restarting_from_initial_state = False
         next_state = super()._get_next_state(memory, action)
         next_state._context.append(memory._context[5] + 1)
+        next_state._context.append(memory._context[6] + memory._context[3].value.reward if memory._context[3] is not None else memory._context[6])
         if (memory._context[5] + 1 > self._current_depth):
             self._current_depth = memory._context[5] + 1
             print('Current depth:', str(self._current_depth), '/', str(self._max_depth))

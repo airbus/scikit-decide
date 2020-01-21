@@ -101,8 +101,9 @@ public :
              const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
              const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                        const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
+             std::size_t time_budget = 0,  // time budget to continue searching for better plans after a goal has been reached
              bool debug_logs = false)
-    : _domain(domain), _state_features(state_features), _debug_logs(debug_logs) {
+    : _domain(domain), _state_features(state_features), _time_budget(time_budget), _debug_logs(debug_logs) {
         if (!node_ordering) {
             _node_ordering = [](const double& a_gscore, const std::size_t& a_novelty, const std::size_t&  a_depth,
                                 const double& b_gscore, const std::size_t& b_novelty, const std::size_t& b_depth) -> bool {
@@ -130,12 +131,27 @@ public :
             spdlog::info("Running " + ExecutionPolicy::print() + " IW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             std::size_t nb_of_binary_features = _state_features(s)->size();
+            bool found_goal = false;
+            _intermediate_scores.clear();
 
             for (std::size_t w = 1 ; w <= nb_of_binary_features ; w++) {
-                std::pair<bool, bool> res = WidthSolver(_domain, _state_features, _node_ordering, w, _graph, _debug_logs).solve(s);
+                std::pair<bool, bool> res = WidthSolver(_domain, _state_features, _node_ordering, w,
+                                                        _graph, _time_budget, _intermediate_scores,
+                                                        _debug_logs).solve(s, start_time, found_goal);
                 if (res.first) { // solution found with width w
-                    auto end_time = std::chrono::high_resolution_clock::now();
-                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+                    auto now_time = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - start_time).count();
+
+                    if (static_cast<std::size_t>(duration) < _time_budget) {
+                        if (_debug_logs) spdlog::debug("Remaining time budget, trying to improve the solution by augmenting the search width");
+                    } else {
+                        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now_time - start_time).count();
+                        spdlog::info("IW finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+                        return;
+                    }
+                } else if (found_goal) {
+                    auto now_time = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now_time - start_time).count();
                     spdlog::info("IW finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
                     return;
                 } else if (!res.second) { // no states pruned => problem is unsolvable
@@ -191,12 +207,18 @@ public :
         return cnt;
     }
 
+    const std::list<std::tuple<std::size_t, std::size_t, double>>& get_intermediate_scores() const {
+        return _intermediate_scores;
+    }
+
 private :
 
     Domain& _domain;
     std::function<std::unique_ptr<FeatureVector> (const State& s)> _state_features;
     std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                        const double&, const std::size_t&, const std::size_t&)> _node_ordering;
+    std::size_t _time_budget;
+    std::list<std::tuple<std::size_t, std::size_t, double>> _intermediate_scores;
     bool _debug_logs;
 
     struct Node {
@@ -248,16 +270,19 @@ private :
                                               const double&, const std::size_t&, const std::size_t&)>& node_ordering,
                     std::size_t width,
                     Graph& graph,
+                    std::size_t time_budget,
+                    std::list<std::tuple<std::size_t, std::size_t, double>>& intermediate_scores,
                     bool debug_logs)
             : _domain(domain), _state_features(state_features), _node_ordering(node_ordering),
-              _width(width), _graph(graph), _debug_logs(debug_logs) {}
+              _width(width), _graph(graph), _time_budget(time_budget),
+              _intermediate_scores(intermediate_scores), _debug_logs(debug_logs) {}
         
         // solves from state s
         // returned pair p: p.first==true iff solvable, p.second==true iff states have been pruned
-        std::pair<bool, bool> solve(const State& s) {
+        std::pair<bool, bool> solve(const State& s, const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time, bool& found_goal) {
             try {
                 spdlog::info("Running " + ExecutionPolicy::print() + " IW(" + std::to_string(_width) + ") solver from state " + s.print());
-                auto start_time = std::chrono::high_resolution_clock::now();
+                auto local_start_time = std::chrono::high_resolution_clock::now();
 
                 // Create the root node containing the given state s
                 auto si = _graph.emplace(Node(s, _state_features));
@@ -302,28 +327,50 @@ private :
                                                    ", gscore=" + std::to_string(best_tip_node->gscore) +
                                                    ", novelty=" + std::to_string(best_tip_node->novelty) +
                                                    ", depth=" + std::to_string(best_tip_node->depth));
+                    
+                    closed_set.insert(best_tip_node);
 
                     if (_domain.is_goal(best_tip_node->state) || best_tip_node->solved) {
-                        if (_debug_logs) spdlog::debug("Found a goal state: " + best_tip_node->state.print());
                         auto current_node = best_tip_node;
-                        if (!(best_tip_node->solved)) { current_node->fscore = 0; } // goal state
-                        best_tip_node->solved = true;
+                        double tentative_fscore = 0;
 
                         while (current_node != &root_node) {
                             Node* parent_node = std::get<0>(current_node->best_parent);
-                            parent_node->best_action = &std::get<1>(current_node->best_parent);
-                            parent_node->fscore = std::get<2>(current_node->best_parent) + current_node->fscore;
-                            parent_node->solved = true;
+                            tentative_fscore += std::get<2>(current_node->best_parent);
                             current_node = parent_node;
                         }
 
-                        auto end_time = std::chrono::high_resolution_clock::now();
-                        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-                        spdlog::info("IW(" + std::to_string(_width) + ") finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
-                        return std::make_pair(true, states_pruned);
-                    }
+                        if (!found_goal || root_node.fscore > tentative_fscore) {
+                            current_node = best_tip_node;
+                            if (!(best_tip_node->solved)) { current_node->fscore = 0; } // goal state
+                            best_tip_node->solved = true;
 
-                    closed_set.insert(best_tip_node);
+                            while (current_node != &root_node) {
+                                Node* parent_node = std::get<0>(current_node->best_parent);
+                                parent_node->best_action = &std::get<1>(current_node->best_parent);
+                                parent_node->fscore = std::get<2>(current_node->best_parent) + current_node->fscore;
+                                parent_node->solved = true;
+                                current_node = parent_node;
+                            }
+                        }
+
+                        spdlog::info("Found a goal state: " + best_tip_node->state.print() +
+                                     " (cost=" + std::to_string(tentative_fscore) +
+                                     "; best=" + std::to_string(root_node.fscore) + ")");
+                        found_goal = true;
+                        auto now_time = std::chrono::high_resolution_clock::now();
+                        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - start_time).count();
+                        _intermediate_scores.push_back(std::make_tuple(static_cast<std::size_t>(duration), _width, root_node.fscore));
+
+                        if (static_cast<std::size_t>(duration) < _time_budget) {
+                            if (_debug_logs) spdlog::debug("Remaining time budget, continuing searching for better plans with current width...");
+                            continue;
+                        } else {
+                            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now_time - local_start_time).count();
+                            spdlog::info("IW(" + std::to_string(_width) + ") finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+                            return std::make_pair(true, states_pruned);
+                        }
+                    }
 
                     if (_domain.is_terminal(best_tip_node->state)) { // dead-end state
                         if (_debug_logs) spdlog::debug("Found a dead-end state: " + best_tip_node->state.print());
@@ -332,7 +379,7 @@ private :
 
                     // Expand best tip node
                     auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state)->get_elements();
-                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &closed_set, &feature_tuples, &states_pruned](const auto& a){
+                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &feature_tuples, &states_pruned](const auto& a){
                         if (_debug_logs) spdlog::debug("Current expanded action: " + Action(a).print());
                         auto next_state = _domain.get_next_state(best_tip_node->state, a);
                         std::pair<typename Graph::iterator, bool> i;
@@ -373,8 +420,15 @@ private :
                     });
                 }
 
-                spdlog::info("IW(" + std::to_string(_width) + ") could not find a solution from state " + s.print());
-                return std::make_pair(false, states_pruned);
+                if (found_goal) {
+                    auto now_time = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now_time - local_start_time).count();
+                    spdlog::info("IW(" + std::to_string(_width) + ") finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+                    return std::make_pair(true, states_pruned);
+                } else {
+                    spdlog::info("IW(" + std::to_string(_width) + ") could not find a solution from state " + s.print());
+                    return std::make_pair(false, states_pruned);
+                }
             } catch (const std::exception& e) {
                 spdlog::error("IW(" + std::to_string(_width) + ") failed solving from state " + s.print() + ". Reason: " + e.what());
                 throw;
@@ -388,6 +442,8 @@ private :
                                   const double&, const std::size_t&, const std::size_t&)>& _node_ordering;
         std::size_t _width;
         Graph& _graph;
+        std::size_t _time_budget;
+        std::list<std::tuple<std::size_t, std::size_t, double>>& _intermediate_scores;
         bool _debug_logs;
         ExecutionPolicy _execution_policy;
 
