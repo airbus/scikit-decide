@@ -21,6 +21,7 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 
 #include "utils/associative_container_deducer.hh"
+#include "utils/string_converter.hh"
 #include "utils/execution.hh"
 
 namespace skdecide {
@@ -195,6 +196,7 @@ public :
             std::size_t nb_of_binary_features = _state_features(_domain, s, -1)->size(); // TODO replace with correct thread id
 
             TupleVector feature_tuples;
+            bool found_solution = false;
 
             for (std::size_t w = 1 ; w <= nb_of_binary_features ; w++) {
                 if(WidthSolver(*this, _domain, _state_features,
@@ -202,16 +204,20 @@ public :
                                _max_depth, _exploration, _discount,
                                _min_reward, w, _graph, _rollout_policy,
                                _debug_logs).solve(s, start_time, _nb_rollouts, feature_tuples)) {
-                    auto end_time = std::chrono::high_resolution_clock::now();
-                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-                    spdlog::info("RIW finished to solve from state " + s.print() +
-                                 " in " + std::to_string((double) duration / (double) 1e9) + " seconds with " +
-                                 std::to_string(_nb_rollouts) + " rollouts.");
-                    return;
+                    found_solution = true;
+                    break;
                 }
             }
 
-            spdlog::info("RIW could not find a solution from state " + s.print());
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+            auto exploration_statistics = get_exploration_statistics();
+            std::string solution_str(found_solution?("finished to solve"):("could not find a solution"));
+            spdlog::info("RIW " + solution_str + " from state " + s.print() +
+                         " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds with " +
+                         StringConverter::from(_nb_rollouts) + " rollouts and pruned " +
+                         StringConverter::from(exploration_statistics.second) + " states among " +
+                         StringConverter::from(exploration_statistics.first) + " visited states.");
         } catch (const std::exception& e) {
             spdlog::error("RIW failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
@@ -279,6 +285,18 @@ public :
             }
         }
         return cnt;
+    }
+
+    std::pair<std::size_t, std::size_t> get_exploration_statistics() const {
+        std::size_t pruned = 0;
+        std::size_t explored = 0;
+        for (const auto&  n : _graph)  {
+            explored++;
+            if (n.pruned) {
+                pruned++;
+            }
+        }
+        return std::make_pair(explored, pruned);
     }
 
     std::size_t get_nb_rollouts() const {
@@ -388,7 +406,7 @@ private :
                    std::size_t& nb_rollouts,
                    TupleVector& feature_tuples) {
             try {
-                spdlog::info("Running " + ExecutionPolicy::print() + " RIW(" + std::to_string(_width) + ") solver from state " + s.print());
+                spdlog::info("Running " + ExecutionPolicy::print() + " RIW(" + StringConverter::from(_width) + ") solver from state " + s.print());
                 auto local_start_time = std::chrono::high_resolution_clock::now();
                 std::random_device rd;
                 std::mt19937 gen(rd());
@@ -406,6 +424,7 @@ private :
                 Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
                 root_node.depth = 0;
                 bool states_pruned = false;
+                bool reached_end_of_trajectory_once = false;
 
                 // Vector of sets of state feature tuples generated so far, for each w <= _width
                 if (feature_tuples.size() < _width) {
@@ -423,15 +442,15 @@ private :
                     Node* current_node = &root_node;
 
                     if (_debug_logs) spdlog::debug("New rollout from state: " + current_node->state.print() +
-                                                   ", depth=" + std::to_string(current_node->depth) +
-                                                   ", value=" + std::to_string(current_node->value));
+                                                   ", depth=" + StringConverter::from(current_node->depth) +
+                                                   ", value=" + StringConverter::from(current_node->value));
                     _rollout_policy.init_rollout(_domain);
 
                     while (!(current_node->solved)) {
                         
                         if (_debug_logs) spdlog::debug("Current state: " + current_node->state.print() +
-                                                       ", depth=" + std::to_string(current_node->depth) +
-                                                       ", value=" + std::to_string(current_node->value));
+                                                       ", depth=" + StringConverter::from(current_node->depth) +
+                                                       ", value=" + StringConverter::from(current_node->value));
 
                         if (current_node->children.empty()) {
                             // Generate applicable actions
@@ -459,14 +478,15 @@ private :
 
                         if (fill_child_node(current_node, pick, new_node)) { // terminal state
                             if (_debug_logs) spdlog::debug("Found a terminal state: " + current_node->state.print() +
-                                                           ", depth=" + std::to_string(current_node->depth) +
-                                                           ", value=" + std::to_string(current_node->value));
+                                                           ", depth=" + StringConverter::from(current_node->depth) +
+                                                           ", value=" + StringConverter::from(current_node->value));
                             update_node(*current_node, true);
+                            reached_end_of_trajectory_once = true;
                             break;
                         } else if (!novelty(feature_tuples, *current_node, new_node)) { // no new tuple or not reached with lower depth => terminal node
                             if (_debug_logs) spdlog::debug("Pruning state: " + current_node->state.print() +
-                                                           ", depth=" + std::to_string(current_node->depth) +
-                                                           ", value=" + std::to_string(current_node->value));
+                                                           ", depth=" + StringConverter::from(current_node->depth) +
+                                                           ", value=" + StringConverter::from(current_node->value));
                             states_pruned = true;
                             current_node->pruned = true;
                             // /!\ current_node can become solved with some unsolved children in case it was
@@ -475,14 +495,15 @@ private :
                             break;
                         } else if (current_node->depth >= _max_depth) {
                             if (_debug_logs) spdlog::debug("Max depth reached in state: " + current_node->state.print() +
-                                                           ", depth=" + std::to_string(current_node->depth) +
-                                                           ", value=" + std::to_string(current_node->value));
+                                                           ", depth=" + StringConverter::from(current_node->depth) +
+                                                           ", value=" + StringConverter::from(current_node->value));
                             update_node(*current_node, true);
+                            reached_end_of_trajectory_once = true;
                             break;
                         } else if (static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) >= _time_budget) {
                             if (_debug_logs) spdlog::debug("Time budget consumed in state: " + current_node->state.print() +
-                                                           ", depth=" + std::to_string(current_node->depth) +
-                                                           ", value=" + std::to_string(current_node->value));
+                                                           ", depth=" + StringConverter::from(current_node->depth) +
+                                                           ", value=" + StringConverter::from(current_node->value));
                             // next test: unexpanded node considered as a temporary (i.e. not solved) terminal node
                             // don't backup expanded node at this point otherwise the fscore initialization in update_node is wrong!
                             if (current_node->children.empty()) {
@@ -493,23 +514,24 @@ private :
                     }
                 }
 
-                if (_debug_logs) spdlog::debug("time budget: " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) +
-                                               " ms, rollout budget: " + std::to_string(nb_rollouts) +
-                                               ", states pruned: " + std::to_string(states_pruned));
+                if (_debug_logs) spdlog::debug("time budget: " + StringConverter::from(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) +
+                                               " ms, rollout budget: " + StringConverter::from(nb_rollouts) +
+                                               ", states pruned: " + StringConverter::from(states_pruned));
 
                 if (static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) < _time_budget &&
                     nb_rollouts < _rollout_budget &&
+                    !reached_end_of_trajectory_once &&
                     states_pruned) {
-                    spdlog::info("RIW(" + std::to_string(_width) + ") could not find a solution from state " + s.print());
+                    spdlog::info("RIW(" + StringConverter::from(_width) + ") could not find a solution from state " + s.print());
                     return false;
                 } else {
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - local_start_time).count();
-                    spdlog::info("RIW(" + std::to_string(_width) + ") finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+                    spdlog::info("RIW(" + StringConverter::from(_width) + ") finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
                     return true;
                 }
             } catch (const std::exception& e) {
-                spdlog::error("RIW(" + std::to_string(_width) + ") failed solving from state " + s.print() + ". Reason: " + e.what());
+                spdlog::error("RIW(" + StringConverter::from(_width) + ") failed solving from state " + s.print() + ". Reason: " + e.what());
                 throw;
             }
         }
@@ -556,8 +578,8 @@ private :
                 });
             }
             n.novelty = nov;
-            if (_debug_logs) spdlog::debug("Novelty: " + std::to_string(nov));
-            if (_debug_logs) spdlog::debug("Novelty depth check: " + std::to_string(novel_depth));
+            if (_debug_logs) spdlog::debug("Novelty: " + StringConverter::from(nov));
+            if (_debug_logs) spdlog::debug("Novelty depth check: " + StringConverter::from(novel_depth));
             return novel_depth;
         }
 
@@ -608,8 +630,8 @@ private :
                 }
                 if (new_node) {
                     if (_debug_logs) spdlog::debug("Exploring new outcome: " + i.first->state.print() +
-                                                   ", depth=" + std::to_string(i.first->depth) +
-                                                   ", value=" + std::to_string(i.first->value));
+                                                   ", depth=" + StringConverter::from(i.first->depth) +
+                                                   ", value=" + StringConverter::from(i.first->value));
                     std::get<2>(node->children[action_number])->depth = node->depth + 1;
                     node = std::get<2>(node->children[action_number]);
                     node->terminal = outcome->terminal();
@@ -619,8 +641,8 @@ private :
                     }
                 } else { // outcome already explored
                     if (_debug_logs) spdlog::debug("Exploring known outcome: " + i.first->state.print() +
-                                                   ", depth=" + std::to_string(i.first->depth) +
-                                                   ", value=" + std::to_string(i.first->value));
+                                                   ", depth=" + StringConverter::from(i.first->depth) +
+                                                   ", value=" + StringConverter::from(i.first->value));
                     std::get<2>(node->children[action_number])->depth = std::min(
                         std::get<2>(node->children[action_number])->depth, node->depth + 1);
                     if (std::get<2>(node->children[action_number])->solved) { // solved child
@@ -636,8 +658,8 @@ private :
                     std::get<2>(node->children[action_number])->depth, node->depth + 1);
                 node = std::get<2>(node->children[action_number]);
                 if (_debug_logs) spdlog::debug("Exploring known outcome: " + node->state.print() +
-                                               ", depth=" + std::to_string(node->depth) +
-                                               ", value=" + std::to_string(node->value));
+                                               ", depth=" + StringConverter::from(node->depth) +
+                                               ", value=" + StringConverter::from(node->value));
             }
             return node->terminal;
         }
