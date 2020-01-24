@@ -1,6 +1,5 @@
 ---
 home: true
-heroImage: /skdecide.svg
 heroText: Scikit-decide
 tagline: AI framework for Reinforcement Learning, Automated Planning and Scheduling
 actionText: Get Started →
