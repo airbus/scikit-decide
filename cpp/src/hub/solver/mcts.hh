@@ -474,7 +474,7 @@ public :
                 std::uniform_int_distribution<> dist_known_actions(0, actions.size()-1);
                 std::size_t action_id = 0;
 
-                solver.exeuction_policy().protect([&action_id, &solver, &dist_known_actions](){
+                solver.execution_policy().protect([&action_id, &solver, &dist_known_actions](){
                     action_id = dist_known_actions(solver.gen());
                 });
 
