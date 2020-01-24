@@ -35,11 +35,16 @@ export default ({
       },
       mutations: {
         loadSelection (state) {
-          const rawStoredSelection = localStorage.getItem('selection')
-          if (rawStoredSelection) {
-            // Replace the state selection with the stored item
-            const storedSelection = JSON.parse(rawStoredSelection)
-            state.selection = {...state.selection, ...storedSelection}
+          try {  // avoid error when rendering server-side (no access to localStorage)
+            const rawStoredSelection = localStorage.getItem('selection')
+            if (rawStoredSelection) {
+              // Replace the state selection with the stored item
+              const storedSelection = JSON.parse(rawStoredSelection)
+              state.selection = {...state.selection, ...storedSelection}
+            }
+          }
+          catch(err) {
+            console.log(err.message)
           }
         },
         updateSelection (state, {selection, domainOrSolver}) {
