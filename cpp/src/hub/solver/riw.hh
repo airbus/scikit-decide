@@ -16,6 +16,7 @@
 #include <random>
 
 #include <boost/container_hash/hash.hpp>
+#include <boost/range/irange.hpp>
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
@@ -198,7 +199,7 @@ public :
             TupleVector feature_tuples;
             bool found_solution = false;
 
-            for (std::size_t w = 1 ; w <= nb_of_binary_features ; w++) {
+            for (atomic_size_t w = 1 ; w <= nb_of_binary_features ; w++) {
                 if(WidthSolver(*this, _domain, _state_features,
                                _time_budget, _rollout_budget,
                                _max_depth, _exploration, _discount,
@@ -319,18 +320,22 @@ public :
 
 private :
 
+    typedef typename ExecutionPolicy::template atomic<std::size_t> atomic_size_t;
+    typedef typename ExecutionPolicy::template atomic<double> atomic_double;
+    typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
+
     Domain& _domain;
     std::function<std::unique_ptr<FeatureVector> (Domain&, const State& s, const int& thread_id)> _state_features;
-    std::size_t _time_budget;
-    std::size_t _rollout_budget;
-    std::size_t _max_depth;
-    double _exploration;
-    double _discount;
+    atomic_size_t _time_budget;
+    atomic_size_t _rollout_budget;
+    atomic_size_t _max_depth;
+    atomic_double _exploration;
+    atomic_double _discount;
     bool _online_node_garbage;
-    double _min_reward;
-    std::size_t _nb_rollouts;
+    atomic_double _min_reward;
+    atomic_size_t _nb_rollouts;
     RolloutPolicy _rollout_policy;
-    bool _debug_logs;
+    atomic_bool _debug_logs;
 
     struct Node {
         State state;
@@ -382,16 +387,16 @@ private :
 
         WidthSolver(RIWSolver& parent_solver, Domain& domain,
                     const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& state_features,
-                    std::size_t time_budget,
-                    std::size_t rollout_budget,
-                    std::size_t max_depth,
-                    double exploration,
-                    double discount,
-                    double& min_reward,
-                    std::size_t width,
+                    const atomic_size_t& time_budget,
+                    const atomic_size_t& rollout_budget,
+                    const atomic_size_t& max_depth,
+                    const atomic_double& exploration,
+                    const atomic_double& discount,
+                    atomic_double& min_reward,
+                    const atomic_size_t& width,
                     Graph& graph,
                     RolloutPolicy& rollout_policy,
-                    bool debug_logs)
+                    const atomic_bool& debug_logs)
             : _parent_solver(parent_solver), _domain(domain), _state_features(state_features),
               _time_budget(time_budget), _rollout_budget(rollout_budget),
               _max_depth(max_depth), _exploration(exploration),
@@ -403,7 +408,7 @@ private :
         // return true iff no state has been pruned or time or rollout budgets are consumed
         bool solve(const State& s,
                    const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
-                   std::size_t& nb_rollouts,
+                   atomic_size_t& nb_rollouts,
                    TupleVector& feature_tuples) {
             try {
                 spdlog::info("Running " + ExecutionPolicy::print() + " RIW(" + StringConverter::from(_width) + ") solver from state " + s.print());
@@ -423,8 +428,8 @@ private :
                 auto si = _graph.emplace(Node(s, _domain, _state_features));
                 Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
                 root_node.depth = 0;
-                bool states_pruned = false;
-                bool reached_end_of_trajectory_once = false;
+                atomic_bool states_pruned = false;
+                atomic_bool reached_end_of_trajectory_once = false;
 
                 // Vector of sets of state feature tuples generated so far, for each w <= _width
                 if (feature_tuples.size() < _width) {
@@ -432,89 +437,18 @@ private :
                 }
                 novelty(feature_tuples, root_node, true); // initialize feature_tuples with the root node's bits
 
-                // Start rollouts
-                while (!root_node.solved &&
-                       static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) < _time_budget &&
-                       nb_rollouts < _rollout_budget) {
+                boost::integer_range<std::size_t> parallel_rollouts(0, _domain.get_parallel_capacity());
 
-                    // Start new rollout
-                    nb_rollouts += 1;
-                    Node* current_node = &root_node;
-
-                    if (_debug_logs) spdlog::debug("New rollout from state: " + current_node->state.print() +
-                                                   ", depth=" + StringConverter::from(current_node->depth) +
-                                                   ", value=" + StringConverter::from(current_node->value));
-                    _rollout_policy.init_rollout(_domain);
-
-                    while (!(current_node->solved)) {
-                        
-                        if (_debug_logs) spdlog::debug("Current state: " + current_node->state.print() +
-                                                       ", depth=" + StringConverter::from(current_node->depth) +
-                                                       ", value=" + StringConverter::from(current_node->value));
-
-                        if (current_node->children.empty()) {
-                            // Generate applicable actions
-                            auto applicable_actions = _domain.get_applicable_actions(current_node->state)->get_elements();
-                            std::for_each(applicable_actions.begin(), applicable_actions.end(), [this, &current_node](const auto& a){
-                                current_node->children.push_back(std::make_tuple(a, 0, nullptr));
-                            });
-                        }
-                        
-                        // Sample unsolved child
-                        std::vector<std::size_t> unsolved_children;
-                        std::vector<double> probabilities;
-                        for (std::size_t i = 0 ; i < current_node->children.size() ; i++) {
-                            Node* n = std::get<2>(current_node->children[i]);
-                            if (!n) {
-                                unsolved_children.push_back(i);
-                                probabilities.push_back(_exploration);
-                            } else if (!n->solved) {
-                                unsolved_children.push_back(i);
-                                probabilities.push_back((1.0 - _exploration) / ((double) n->novelty));
-                            }
-                        }
-                        std::size_t pick = unsolved_children[std::discrete_distribution<>(probabilities.begin(), probabilities.end())(gen)];
-                        bool new_node = false;
-
-                        if (fill_child_node(current_node, pick, new_node)) { // terminal state
-                            if (_debug_logs) spdlog::debug("Found a terminal state: " + current_node->state.print() +
-                                                           ", depth=" + StringConverter::from(current_node->depth) +
-                                                           ", value=" + StringConverter::from(current_node->value));
-                            update_node(*current_node, true);
-                            reached_end_of_trajectory_once = true;
-                            break;
-                        } else if (!novelty(feature_tuples, *current_node, new_node)) { // no new tuple or not reached with lower depth => terminal node
-                            if (_debug_logs) spdlog::debug("Pruning state: " + current_node->state.print() +
-                                                           ", depth=" + StringConverter::from(current_node->depth) +
-                                                           ", value=" + StringConverter::from(current_node->value));
-                            states_pruned = true;
-                            current_node->pruned = true;
-                            // /!\ current_node can become solved with some unsolved children in case it was
-                            // already visited and novel but now some of its features are reached with lower depth
-                            update_node(*current_node, true);
-                            break;
-                        } else if (current_node->depth >= _max_depth) {
-                            if (_debug_logs) spdlog::debug("Max depth reached in state: " + current_node->state.print() +
-                                                           ", depth=" + StringConverter::from(current_node->depth) +
-                                                           ", value=" + StringConverter::from(current_node->value));
-                            update_node(*current_node, true);
-                            reached_end_of_trajectory_once = true;
-                            break;
-                        } else if (static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) >= _time_budget) {
-                            if (_debug_logs) spdlog::debug("Time budget consumed in state: " + current_node->state.print() +
-                                                           ", depth=" + StringConverter::from(current_node->depth) +
-                                                           ", value=" + StringConverter::from(current_node->value));
-                            // next test: unexpanded node considered as a temporary (i.e. not solved) terminal node
-                            // don't backup expanded node at this point otherwise the fscore initialization in update_node is wrong!
-                            if (current_node->children.empty()) {
-                                update_node(*current_node, false);
-                            }
-                            break;
-                        }
+                std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(),
+                              [this, &start_time, &root_node, &feature_tuples, &nb_rollouts, &states_pruned,
+                               &reached_end_of_trajectory_once, &gen] (const int& thread_id) {
+                    // Start rollouts
+                    while (!root_node.solved && elapsed_time(start_time) < _time_budget && nb_rollouts < _rollout_budget) {
+                        rollout(root_node, feature_tuples, nb_rollouts, states_pruned, reached_end_of_trajectory_once, start_time, gen);
                     }
-                }
+                });
 
-                if (_debug_logs) spdlog::debug("time budget: " + StringConverter::from(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) +
+                if (_debug_logs) spdlog::debug("time budget: " + StringConverter::from(elapsed_time(start_time)) +
                                                " ms, rollout budget: " + StringConverter::from(nb_rollouts) +
                                                ", states pruned: " + StringConverter::from(states_pruned));
 
@@ -537,21 +471,106 @@ private :
         }
 
     private :
+        typedef typename ExecutionPolicy::template atomic<std::size_t> atomic_size_t;
+        typedef typename ExecutionPolicy::template atomic<double> atomic_double;
+        typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
+
         RIWSolver& _parent_solver;
         Domain& _domain;
         const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& _state_features;
-        std::size_t _time_budget;
-        std::size_t _rollout_budget;
-        std::size_t _max_depth;
-        double _exploration;
-        double _discount;
-        double& _min_reward;
-        bool _min_reward_changed;
-        std::size_t _width;
+        const atomic_size_t& _time_budget;
+        const atomic_size_t& _rollout_budget;
+        const atomic_size_t& _max_depth;
+        const atomic_double& _exploration;
+        const atomic_double& _discount;
+        atomic_double& _min_reward;
+        atomic_bool _min_reward_changed;
+        const atomic_size_t& _width;
         Graph& _graph;
         RolloutPolicy& _rollout_policy;
         ExecutionPolicy _execution_policy;
-        bool _debug_logs;
+        const atomic_bool& _debug_logs;
+
+        void rollout(Node& root_node, TupleVector& feature_tuples, atomic_size_t& nb_rollouts,
+                     atomic_bool& states_pruned, atomic_bool& reached_end_of_trajectory_once,
+                     const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
+                     std::mt19937& gen) {
+            // Start new rollout
+            nb_rollouts += 1;
+            Node* current_node = &root_node;
+
+            if (_debug_logs) spdlog::debug("New rollout from state: " + current_node->state.print() +
+                                            ", depth=" + StringConverter::from(current_node->depth) +
+                                            ", value=" + StringConverter::from(current_node->value));
+            _rollout_policy.init_rollout(_domain);
+
+            while (!(current_node->solved)) {
+                
+                if (_debug_logs) spdlog::debug("Current state: " + current_node->state.print() +
+                                                ", depth=" + StringConverter::from(current_node->depth) +
+                                                ", value=" + StringConverter::from(current_node->value));
+
+                if (current_node->children.empty()) {
+                    // Generate applicable actions
+                    auto applicable_actions = _domain.get_applicable_actions(current_node->state)->get_elements();
+                    std::for_each(applicable_actions.begin(), applicable_actions.end(), [this, &current_node](const auto& a){
+                        current_node->children.push_back(std::make_tuple(a, 0, nullptr));
+                    });
+                }
+                
+                // Sample unsolved child
+                std::vector<std::size_t> unsolved_children;
+                std::vector<double> probabilities;
+                for (std::size_t i = 0 ; i < current_node->children.size() ; i++) {
+                    Node* n = std::get<2>(current_node->children[i]);
+                    if (!n) {
+                        unsolved_children.push_back(i);
+                        probabilities.push_back(_exploration);
+                    } else if (!n->solved) {
+                        unsolved_children.push_back(i);
+                        probabilities.push_back((1.0 - _exploration) / ((double) n->novelty));
+                    }
+                }
+                std::size_t pick = unsolved_children[std::discrete_distribution<>(probabilities.begin(), probabilities.end())(gen)];
+                bool new_node = false;
+
+                if (fill_child_node(current_node, pick, new_node)) { // terminal state
+                    if (_debug_logs) spdlog::debug("Found a terminal state: " + current_node->state.print() +
+                                                    ", depth=" + StringConverter::from(current_node->depth) +
+                                                    ", value=" + StringConverter::from(current_node->value));
+                    update_node(*current_node, true);
+                    reached_end_of_trajectory_once = true;
+                    break;
+                } else if (!novelty(feature_tuples, *current_node, new_node)) { // no new tuple or not reached with lower depth => terminal node
+                    if (_debug_logs) spdlog::debug("Pruning state: " + current_node->state.print() +
+                                                    ", depth=" + StringConverter::from(current_node->depth) +
+                                                    ", value=" + StringConverter::from(current_node->value));
+                    states_pruned = true;
+                    current_node->pruned = true;
+                    // /!\ current_node can become solved with some unsolved children in case it was
+                    // already visited and novel but now some of its features are reached with lower depth
+                    update_node(*current_node, true);
+                    break;
+                } else if (current_node->depth >= _max_depth) {
+                    if (_debug_logs) spdlog::debug("Max depth reached in state: " + current_node->state.print() +
+                                                    ", depth=" + StringConverter::from(current_node->depth) +
+                                                    ", value=" + StringConverter::from(current_node->value));
+                    update_node(*current_node, true);
+                    reached_end_of_trajectory_once = true;
+                    break;
+                } else if (elapsed_time(start_time) >= _time_budget) {
+                    if (_debug_logs) spdlog::debug("Time budget consumed in state: " + current_node->state.print() +
+                                                    ", depth=" + StringConverter::from(current_node->depth) +
+                                                    ", value=" + StringConverter::from(current_node->value));
+                    // next test: unexpanded node considered as a temporary (i.e. not solved) terminal node
+                    // don't backup expanded node at this point otherwise the fscore initialization in update_node is wrong!
+                    if (current_node->children.empty()) {
+                        update_node(*current_node, false);
+                    }
+                    break;
+                }
+            }
+        }
 
         // Input: feature tuple vector, node for which to compute novelty depth, boolean indicating whether this node is new or not
         // Returns true if at least one tuple is new or is reached with lower depth
@@ -561,7 +580,7 @@ private :
             const FeatureVector& state_features = *n.features;
             bool novel_depth = false;
 
-            for (std::size_t k = 1 ; k <= std::min(_width, (std::size_t) state_features.size()) ; k++) {
+            for (std::size_t k = 1 ; k <= std::min((std::size_t) _width, (std::size_t) state_features.size()) ; k++) {
                 // we must recompute combinations from previous width values just in case
                 // this state would be visited for the first time across width iterations
                 generate_tuples(k, state_features.size(),
@@ -680,6 +699,18 @@ private :
                 frontier.insert(&node);
             }
             _parent_solver.backup_values(frontier);
+        }
+
+        std::size_t elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time) {
+            std::size_t milliseconds_duration;
+            _execution_policy.protect([&milliseconds_duration, &start_time](){
+                milliseconds_duration = static_cast<std::size_t>(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::high_resolution_clock::now() - start_time
+                    ).count()
+                );
+            });
+            return milliseconds_duration;
         }
     }; // WidthSolver class
 

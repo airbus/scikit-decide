@@ -43,6 +43,7 @@ try:
                      exploration: float = 0.25,
                      discount: float = 1.0,
                      online_node_garbage: bool = False,
+                     continuous_planning: bool = True,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             self._solver = None
@@ -56,6 +57,7 @@ try:
             self._exploration = exploration
             self._discount = discount
             self._online_node_garbage = online_node_garbage
+            self._continuous_planning = continuous_planning
             self._parallel = parallel
             self._debug_logs = debug_logs
 
@@ -85,7 +87,8 @@ try:
             return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            self._solve_from(observation)
+            if self._continuous_planning or not self._is_solution_defined_for(observation):
+                self._solve_from(observation)
             action = self._solver.get_next_action(observation)
             if action is None:
                 print('\x1b[3;33;40m' + 'No best action found in observation ' +

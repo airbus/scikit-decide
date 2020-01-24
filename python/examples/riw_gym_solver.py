@@ -10,7 +10,7 @@ from skdecide.hub.domain.gym import DeterministicGymDomain, GymWidthDomain, GymD
 from skdecide.hub.solver.riw import RIW
 from skdecide.utils import rollout
 
-ENV_NAME = 'Pendulum-v0'
+ENV_NAME = 'CartPole-v0'
 HORIZON = 200
 
 
@@ -69,8 +69,8 @@ if RIW.check_domain(domain):
     solver_factory = lambda: RIW(state_features=lambda d, s: d.bee2_features(s),
                                  use_state_feature_hash=False,
                                  use_simulation_domain=True,
-                                 time_budget=900000,
-                                 rollout_budget=1000000,
+                                 time_budget=200,
+                                 rollout_budget=1000,
                                  max_depth=200,
                                  exploration=0.25,
                                  parallel=False,

@@ -990,8 +990,7 @@ private :
 
     std::unique_ptr<std::mt19937> _gen;
 
-    template <typename Tdate>
-    std::size_t elapsed_time(const Tdate& start_time) {
+    std::size_t elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time) {
         std::size_t milliseconds_duration;
         _execution_policy.protect([&milliseconds_duration, &start_time](){
             milliseconds_duration = static_cast<std::size_t>(
