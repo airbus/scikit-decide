@@ -354,7 +354,7 @@ private :
         atomic_bool terminal; // true if seen terminal from the simulator's perspective
         atomic_bool pruned; // true if pruned from novelty measure perspective
         atomic_bool solved; // from this node: true if all reached states are either max_depth, or terminal or pruned
-        mutable typename ExecutionPolicy::RecursiveMutex mutex; // to prevent deadlocks due to self loops exploration
+        mutable typename ExecutionPolicy::Mutex mutex;
 
         Node(const State& s, Domain& d,
              const std::function<std::unique_ptr<FeatureVector> (Domain&, const State&, const int&)>& state_features,
@@ -524,8 +524,10 @@ private :
 
             while (!(current_node->solved) && !break_loop) {
 
-                _execution_policy.protect([this, &current_node, &feature_tuples, &states_pruned, &break_loop,
-                                           &reached_end_of_trajectory_once, &start_time, &gen, &thread_id](){
+                std::vector<std::size_t> unsolved_children;
+                std::vector<double> probabilities;
+
+                _execution_policy.protect([this, &current_node, &unsolved_children, &probabilities, &thread_id](){
                     if (_debug_logs) spdlog::debug("Current state: " + current_node->state.print() +
                                                    ", depth=" + StringConverter::from(current_node->depth) +
                                                    ", value=" + StringConverter::from(current_node->value));
@@ -539,8 +541,6 @@ private :
                     }
                     
                     // Sample unsolved child
-                    std::vector<std::size_t> unsolved_children;
-                    std::vector<double> probabilities;
                     for (std::size_t i = 0 ; i < current_node->children.size() ; i++) {
                         Node* n = std::get<2>(current_node->children[i]);
                         if (!n) {
@@ -551,48 +551,65 @@ private :
                             probabilities.push_back((1.0 - _exploration) / ((double) n->novelty));
                         }
                     }
-                    std::size_t pick = 0;
-                    _execution_policy.protect([&pick, &unsolved_children, &probabilities, &gen](){
-                        pick = unsolved_children[std::discrete_distribution<>(probabilities.begin(), probabilities.end())(gen)];
-                    });
-                    bool new_node = false;
-
-                    if (fill_child_node(current_node, pick, new_node, thread_id)) { // terminal state
-                        if (_debug_logs) spdlog::debug("Found a terminal state: " + current_node->state.print() +
-                                                       ", depth=" + StringConverter::from(current_node->depth) +
-                                                       ", value=" + StringConverter::from(current_node->value));
-                        update_node(*current_node, true);
-                        reached_end_of_trajectory_once = true;
-                        break_loop = true;
-                    } else if (!novelty(feature_tuples, *current_node, new_node)) { // no new tuple or not reached with lower depth => terminal node
-                        if (_debug_logs) spdlog::debug("Pruning state: " + current_node->state.print() +
-                                                       ", depth=" + StringConverter::from(current_node->depth) +
-                                                       ", value=" + StringConverter::from(current_node->value));
-                        states_pruned = true;
-                        current_node->pruned = true;
-                        // /!\ current_node can become solved with some unsolved children in case it was
-                        // already visited and novel but now some of its features are reached with lower depth
-                        update_node(*current_node, true);
-                        break_loop = true;
-                    } else if (current_node->depth >= _max_depth) {
-                        if (_debug_logs) spdlog::debug("Max depth reached in state: " + current_node->state.print() +
-                                                       ", depth=" + StringConverter::from(current_node->depth) +
-                                                       ", value=" + StringConverter::from(current_node->value));
-                        update_node(*current_node, true);
-                        reached_end_of_trajectory_once = true;
-                        break_loop = true;
-                    } else if (elapsed_time(start_time) >= _time_budget) {
-                        if (_debug_logs) spdlog::debug("Time budget consumed in state: " + current_node->state.print() +
-                                                       ", depth=" + StringConverter::from(current_node->depth) +
-                                                       ", value=" + StringConverter::from(current_node->value));
-                        // next test: unexpanded node considered as a temporary (i.e. not solved) terminal node
-                        // don't backup expanded node at this point otherwise the fscore initialization in update_node is wrong!
-                        if (current_node->children.empty()) {
-                            update_node(*current_node, false);
-                        }
-                        break_loop = true;
-                    }
                 }, current_node->mutex);
+
+                std::size_t pick = 0;
+                _execution_policy.protect([&pick, &unsolved_children, &probabilities, &gen](){
+                    pick = unsolved_children[std::discrete_distribution<>(probabilities.begin(), probabilities.end())(gen)];
+                });
+                bool new_node = false;
+
+                if (fill_child_node(current_node, pick, new_node, thread_id)) { // terminal state
+                    if (_debug_logs) {
+                        _execution_policy.protect([&current_node](){
+                            spdlog::debug("Found a terminal state: " + current_node->state.print() +
+                                          ", depth=" + StringConverter::from(current_node->depth) +
+                                          ", value=" + StringConverter::from(current_node->value));
+                        }, current_node->mutex);
+                    }
+                    update_node(*current_node, true);
+                    reached_end_of_trajectory_once = true;
+                    break_loop = true;
+                } else if (!novelty(feature_tuples, *current_node, new_node)) { // no new tuple or not reached with lower depth => terminal node
+                    if (_debug_logs) {
+                        _execution_policy.protect([&current_node](){
+                            spdlog::debug("Pruning state: " + current_node->state.print() +
+                                          ", depth=" + StringConverter::from(current_node->depth) +
+                                          ", value=" + StringConverter::from(current_node->value));
+                        }, current_node->mutex);
+                    }
+                    states_pruned = true;
+                    current_node->pruned = true;
+                    // /!\ current_node can become solved with some unsolved children in case it was
+                    // already visited and novel but now some of its features are reached with lower depth
+                    update_node(*current_node, true);
+                    break_loop = true;
+                } else if (current_node->depth >= _max_depth) {
+                    if (_debug_logs) {
+                        _execution_policy.protect([&current_node](){
+                            spdlog::debug("Max depth reached in state: " + current_node->state.print() +
+                                          ", depth=" + StringConverter::from(current_node->depth) +
+                                          ", value=" + StringConverter::from(current_node->value));
+                        }, current_node->mutex);
+                    }
+                    update_node(*current_node, true);
+                    reached_end_of_trajectory_once = true;
+                    break_loop = true;
+                } else if (elapsed_time(start_time) >= _time_budget) {
+                    if (_debug_logs) {
+                        _execution_policy.protect([&current_node](){
+                            spdlog::debug("Time budget consumed in state: " + current_node->state.print() +
+                                          ", depth=" + StringConverter::from(current_node->depth) +
+                                          ", value=" + StringConverter::from(current_node->value));
+                        }, current_node->mutex);
+                    }
+                    // next test: unexpanded node considered as a temporary (i.e. not solved) terminal node
+                    // don't backup expanded node at this point otherwise the fscore initialization in update_node is wrong!
+                    if (current_node->children.empty()) {
+                        update_node(*current_node, false);
+                    }
+                    break_loop = true;
+                }
             }
         }
 
@@ -660,22 +677,35 @@ private :
         // Get the state reachable by calling the simulator from given node by applying given action number
         // Sets given node to the next one and returns whether the next one is terminal or not
         bool fill_child_node(Node*& node, std::size_t action_number, bool& new_node, const int& thread_id) {
-            if (_debug_logs) spdlog::debug("Applying action: " + std::get<0>(node->children[action_number]).print());
-            if (!std::get<2>(node->children[action_number])) { // first visit
+            Node* node_child = nullptr;
+
+            _execution_policy.protect([this, &node, &node_child, &action_number](){
+                if (_debug_logs) spdlog::debug("Applying action: " + std::get<0>(node->children[action_number]).print());
+                node_child = std::get<2>(node->children[action_number]);
+            }, node->mutex);
+
+            if (!node_child) { // first visit
                 // Sampled child has not been visited so far, so generate it
-                auto outcome = _rollout_policy.progress(_domain, node->state, std::get<0>(node->children[action_number]), thread_id);
-                _execution_policy.protect([this, &outcome, &thread_id, &new_node, &node, &action_number](){
+                std::unique_ptr<typename Domain::TransitionOutcome> outcome;
+                _execution_policy.protect([this, &node, &outcome, &action_number, &thread_id](){
+                    outcome = _rollout_policy.progress(_domain, node->state, std::get<0>(node->children[action_number]), thread_id);
+                }, node->mutex);
+                
+                _execution_policy.protect([this, &node_child, &thread_id, &new_node, &outcome](){
                     auto i = _graph.emplace(Node(outcome->state(), _domain, _state_features, thread_id));
                     new_node = i.second;
-                    std::get<2>(node->children[action_number]) = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
+                    node_child = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 });
-                Node& next_node = *std::get<2>(node->children[action_number]);
-                std::get<1>(node->children[action_number]) = outcome->reward();
+                Node& next_node = *node_child;
+                _execution_policy.protect([&node, &action_number, &outcome, &thread_id](){
+                    std::get<1>(node->children[action_number]) = outcome->reward();
+                }, node->mutex);
                 if (outcome->reward() < _min_reward) {
                     _min_reward = outcome->reward();
                     _min_reward_changed = true;
                 }
-                _execution_policy.protect([this, &node, &next_node, &new_node, &outcome](){
+                
+                _execution_policy.protect([this, &node, &next_node, &new_node, &outcome, &thread_id](){
                     next_node.parents.insert(node);
                     if (new_node) {
                         if (_debug_logs) spdlog::debug("Exploring new outcome: " + next_node.state.print() +
@@ -699,15 +729,20 @@ private :
             } else { // second visit, unsolved child
                 new_node = false;
                 // call the simulator to be coherent with the new current node /!\ Assumes deterministic environment!
-                _rollout_policy.advance(_domain, node->state, std::get<0>(node->children[action_number]), false, thread_id);
-                Node& next_node = *std::get<2>(node->children[action_number]);
-                _execution_policy.protect([this, &node, &next_node, &action_number](){
-                    next_node.depth = std::min((std::size_t) next_node.depth, (std::size_t) node->depth + 1);
-                    node = std::get<2>(node->children[action_number]);
-                    if (_debug_logs) spdlog::debug("Exploring known outcome: " + node->state.print() +
-                                                   ", depth=" + StringConverter::from(node->depth) +
-                                                   ", value=" + StringConverter::from(node->value));
-                }, next_node.mutex);
+                _execution_policy.protect([this, &node, &action_number, &thread_id](){
+                    _rollout_policy.advance(_domain, node->state, std::get<0>(node->children[action_number]), false, thread_id);
+                }, node->mutex);
+                Node& next_node = *node_child;
+                next_node.depth = std::min((std::size_t) next_node.depth, (std::size_t) node->depth + 1);
+                node = node_child;
+                if (_debug_logs) {
+                    _execution_policy.protect([&node, &thread_id](){
+                        spdlog::info("A6(" + std::to_string(thread_id) + "): " + std::to_string((std::size_t) node));
+                        spdlog::debug("Exploring known outcome: " + node->state.print() +
+                                                ", depth=" + StringConverter::from(node->depth) +
+                                                ", value=" + StringConverter::from(node->value));
+                    }, next_node.mutex);
+                }
             }
             return (node->terminal) || (node->solved); // consider solved node as terminal to stop current rollout
         }
@@ -818,30 +853,59 @@ private :
             depth += 1;
             std::unordered_set<Node*> new_frontier;
             for (auto& n : frontier) {
-                _execution_policy.protect([this, &n, &new_frontier](){
-                    for (auto& p : n->parents) {
-                        _execution_policy.protect([this, &p](){
-                            p->solved = true;
-                            p->value = -std::numeric_limits<double>::max();
-                            p->best_action = nullptr;
-                            for (auto& nn : p->children) {
-                                p->solved = p->solved && std::get<2>(nn) && std::get<2>(nn)->solved;
-                                if (std::get<2>(nn)) {
-                                    _execution_policy.protect([this, &p, &nn](){
-                                        double tentative_value = std::get<1>(nn) + (_discount * std::get<2>(nn)->value);
-                                        if (p->value < tentative_value) {
-                                            p->value = tentative_value;
-                                            p->best_action = &std::get<0>(nn);
-                                        }
-                                    }, std::get<2>(nn)->mutex);
-                                }
-                            }
-                        }, p->mutex);
-                        new_frontier.insert(p);
-                    }
-                }, n->mutex);
+                update_frontier(new_frontier, n, &_execution_policy);
             }
             frontier = new_frontier;
+        }
+    }
+
+    template <typename TTexecution_policy,
+              std::enable_if_t<std::is_same<TTexecution_policy, SequentialExecution>::value, int> = 0>
+    void update_frontier(std::unordered_set<Node*>& new_frontier, Node* n, [[maybe_unused]] TTexecution_policy* execution_policy) {
+        for (auto& p : n->parents) {
+            p->solved = true;
+            p->value = -std::numeric_limits<double>::max();
+            p->best_action = nullptr;
+            for (auto& nn : p->children) {
+                p->solved = p->solved && std::get<2>(nn) && std::get<2>(nn)->solved;
+                if (std::get<2>(nn)) {
+                    double tentative_value = std::get<1>(nn) + (_discount * std::get<2>(nn)->value);
+                    if (p->value < tentative_value) {
+                        p->value = tentative_value;
+                        p->best_action = &std::get<0>(nn);
+                    }
+                }
+            }
+            new_frontier.insert(p);
+        }
+    }
+
+    template <typename TTexecution_policy,
+              std::enable_if_t<std::is_same<TTexecution_policy, ParallelExecution>::value, int> = 0>
+    void update_frontier(std::unordered_set<Node*>& new_frontier, Node* n, [[maybe_unused]] TTexecution_policy* execution_policy) {
+        std::list<Node*> parents;
+        _execution_policy.protect([&n, &parents](){
+            for (auto& p : n->parents) {
+                parents.push_back(p);
+            }
+        }, n->mutex);
+        for (auto& p : parents) {
+            p->solved = true;
+            p->value = -std::numeric_limits<double>::max();
+            p->best_action = nullptr;
+            for (auto& nn : p->children) {
+                p->solved = p->solved && std::get<2>(nn) && std::get<2>(nn)->solved;
+                if (std::get<2>(nn)) {
+                    _execution_policy.protect([this, &p, &nn](){
+                        double tentative_value = std::get<1>(nn) + (_discount * std::get<2>(nn)->value);
+                        if (p->value < tentative_value) {
+                            p->value = tentative_value;
+                            p->best_action = &std::get<0>(nn);
+                        }
+                    }, std::get<2>(nn)->mutex);
+                }
+            }
+            new_frontier.insert(p);
         }
     }
 }; // RIWSolver class

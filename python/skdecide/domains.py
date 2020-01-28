@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import os
 from typing import NewType, Optional, Callable
-from multiprocessing import Process, Manager, Pipe
+# from pathos.helpers import mp
+from multiprocessing import Manager, Process, Pipe, Lock
 from multiprocessing.managers import SyncManager
 from queue import LifoQueue
 
@@ -349,6 +350,22 @@ def parallel_domain_launcher(i, conn):
     global _parallel_domain_, _domain_factory_
     _parallel_domain_.launch_domain_server(_domain_factory_, i, conn)
 
+def _launch_domain_server_(domain_factory, i, active_domains, sleeping_domains, job_results, conn):
+    domain = domain_factory()
+    while True:
+        active_domains[i] = False
+        sleeping_domains.put(i)
+        job = conn.recv()
+        active_domains[i] = True
+        job_results[i] = None
+        if job is None:
+            break
+        else:
+            try:
+                job_results[i] = getattr(domain, job[0])(*job[1])
+            except Exception as e:
+                print('\x1b[3;33;40m' + 'ERROR: unable to perform job: ' + str(e) + '\x1b[0m')
+
 class ExtendedManager(SyncManager):
     pass
 
@@ -365,18 +382,25 @@ class ParallelDomain:
         _parallel_domain_ = self
         _domain_factory_ = domain_factory
         self._call_i = None
+        self._call_domain = False
+        self._call_result = None
         self._manager = ExtendedManager()
         self._manager.start()
         self._waiting_jobs = [None] * nb_domains
         self._sleeping_domains = self._manager.LifoQueue()
-        self._active_domains = self._manager.list([False for i in range(nb_domains)])
+        self._active_domains = self._manager.list([None for i in range(nb_domains)])
         self._job_results = self._manager.list([None for i in range(nb_domains)])
         self._processes = [None] * nb_domains
+        self._lock = Lock()
         for i in range(nb_domains):
             pparent, pchild = Pipe()
+            # pparent, pchild = mp.Pipe()
             self._waiting_jobs[i] = pparent
             self._processes[i] = Process(target=parallel_domain_launcher, args=[i, pchild])
+            # self._processes[i] = mp.Process(target=_launch_domain_server_, args=[domain_factory, i, self._active_domains, self._sleeping_domains, self._job_results, pchild])
             self._processes[i].start()
+        while None in set(self._active_domains):
+            continue
     
     def __del__(self):
         for i in range(len(self._job_results)):
@@ -392,16 +416,23 @@ class ParallelDomain:
     def launch_domain_server(self, domain_factory, i, conn):
         domain = domain_factory()
         while True:
+            self._lock.acquire()
             self._active_domains[i] = False
             self._sleeping_domains.put(i)
+            self._lock.release()
             job = conn.recv()
+            self._lock.acquire()
             self._active_domains[i] = True
             self._job_results[i] = None
+            self._lock.release()
             if job is None:
                 break
             else:
                 try:
-                    self._job_results[i] = getattr(domain, job[0])(*job[1])
+                    r = getattr(domain, job[0])(*job[1])
+                    self._lock.acquire()
+                    self._job_results[i] = r
+                    self._lock.release()
                 except Exception as e:
                     print('\x1b[3;33;40m' + 'ERROR: unable to perform job: ' + str(e) + '\x1b[0m')
     
@@ -413,8 +444,11 @@ class ParallelDomain:
         if i is None:
             while True:
                 ti = self._sleeping_domains.get()
+                self._lock.acquire()
                 if not self._active_domains[ti]:
+                    self._lock.release()
                     return ti
+                self._lock.release()
         else:
             return i
     
@@ -540,16 +574,29 @@ class ParallelDomain:
     
     def call(self, i, function, *args):
         self._call_i = i
+        self._call_domain = False
         mi = function(self, *args)  # will most probably call __getattr__.method below
         self._call_i = None
-        return mi
+        if not self._call_domain:  # function is a lambda not calling the original domain
+            self._call_result = mi
+            return -1
+        else:
+            return mi
     
     def get_result(self, i):
-        return self._job_results[i]
+        if i >= 0:
+            self._lock.acquire()
+            r = self._job_results[i]
+            self._job_results[i] = None
+            self._lock.release()
+            return r
+        else:  # we called a lambda function without using the original domain => main thread execution
+            return self._call_result
     
     # The original sequential domain may have methods we don't know
     def __getattr__(self, name):
         def method(*args, i=self._call_i):
+            self._call_domain = True
             mi = self.wake_up_domain(i)
             self._waiting_jobs[mi].send((name, args))
             return mi

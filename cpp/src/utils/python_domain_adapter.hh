@@ -569,7 +569,7 @@ public :
     }
 
     template <typename Tfunction, typename ... Types>
-    py::object call(const int& thread_id, const Tfunction& func, Types ... args) {
+    py::object call(const int& thread_id, const Tfunction& func, const Types& ... args) {
         return _implementation->call(thread_id, func, args...);
     }
 
@@ -717,7 +717,7 @@ protected :
         }
 
         template <typename Tfunction, typename ... Types>
-        py::object call([[maybe_unused]] const int& thread_id, const Tfunction& func, Types ... args) {
+        py::object call([[maybe_unused]] const int& thread_id, const Tfunction& func, const Types& ... args) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return func(_domain, args..., py::none());
@@ -764,7 +764,7 @@ protected :
         }
 
         template <typename Tfunction, typename ... Types>
-        py::object do_launch(const int& thread_id, const Tfunction& func, Types ... args) {
+        py::object do_launch(const int& thread_id, const Tfunction& func, const Types& ... args) {
             py::object id;
             {
                 typename GilControl<Texecution>::Acquire acquire;
@@ -805,7 +805,7 @@ protected :
         }
 
         template <typename ... Types>
-        py::object launch(const int& thread_id, const char* name, Types ... args) {
+        py::object launch(const int& thread_id, const char* name, const Types& ... args) {
             return do_launch(thread_id, [&name](py::object& d, auto ... aargs){return d.attr(name)(aargs...);}, args...);
         }
 
@@ -926,7 +926,7 @@ protected :
         }
 
         template <typename Tfunction, typename ... Types>
-        py::object call(const int& thread_id, const Tfunction& func, Types ... args) {
+        py::object call(const int& thread_id, const Tfunction& func, const Types& ... args) {
             try {
                 return do_launch(thread_id, func, args...);
             } catch(const std::exception& e) {
