@@ -107,7 +107,14 @@ try:
             if action is None:
                 print('\x1b[3;33;40m' + 'No best action found in observation ' +
                       str(observation) + ', applying random action' + '\x1b[0m')
-                return self._domain.get_action_space().sample()
+                if not self._parallel:
+                    return self._domain.get_action_space().sample()
+                else:
+                    domain_id = self._domain.get_action_space()
+                    while True:
+                        action_space = self._domain.get_result(domain_id)
+                        if action_space is not None:
+                            return action_space.sample()
             else:
                 return action
         

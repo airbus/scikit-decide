@@ -877,7 +877,9 @@ protected :
             try {
                 py::object r = launch(thread_id, "get_transition_value", s._state, e._event, sp._state);
                 typename GilControl<Texecution>::Acquire acquire;
-                return py::cast<double>(r.attr("cost"));
+                double rr = py::cast<double>(r.attr("cost"));
+                r = py::object();
+                return rr;
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
@@ -890,7 +892,9 @@ protected :
             try {
                 py::object r = launch(thread_id, "get_transition_value", s._state, e._event, sp._state);
                 typename GilControl<Texecution>::Acquire acquire;
-                return py::cast<double>(r.attr("reward"));
+                double rr = py::cast<double>(r.attr("reward"));
+                r = py::object();
+                return rr;
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
@@ -903,7 +907,9 @@ protected :
             try {
                 py::object r = launch(thread_id, "is_goal", s._state);
                 typename GilControl<Texecution>::Acquire acquire;
-                return py::cast<bool>(r);
+                bool rr = py::cast<bool>(r);
+                r = py::object();
+                return rr;
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when testing goal condition of state ") +
@@ -916,7 +922,9 @@ protected :
             try {
                 py::object r = launch(thread_id, "is_terminal", s._state);
                 typename GilControl<Texecution>::Acquire acquire;
-                return py::cast<bool>(r);
+                bool rr = py::cast<bool>(r);
+                r = py::object();
+                return rr;
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when testing terminal condition of state ") +

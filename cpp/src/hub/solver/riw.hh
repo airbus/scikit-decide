@@ -885,9 +885,7 @@ private :
     void update_frontier(std::unordered_set<Node*>& new_frontier, Node* n, [[maybe_unused]] TTexecution_policy* execution_policy) {
         std::list<Node*> parents;
         _execution_policy.protect([&n, &parents](){
-            for (auto& p : n->parents) {
-                parents.push_back(p);
-            }
+            std::copy(n->parents.begin(), n->parents.end(), std::back_inserter(parents));
         }, n->mutex);
         for (auto& p : parents) {
             p->solved = true;
