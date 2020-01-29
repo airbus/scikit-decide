@@ -36,8 +36,9 @@ struct PyMCTSOptions {
         BestQValue
     };
 
-    enum class DefaultPolicy {
-        Random
+    enum class RolloutPolicy {
+        Random,
+        Custom
     };
 
     enum class BackPropagator {
@@ -50,9 +51,9 @@ template <typename Texecution>
 class PyMCTSDomain : public skdecide::PythonDomainAdapter<Texecution> {
 public :
 
-    template <typename TtransitionMode,
-              std::enable_if_t<std::is_same<TtransitionMode, skdecide::StepTransitionMode>::value, int> = 0>
-    PyMCTSDomain(const py::object& domain, TtransitionMode* dummy)
+    template <typename Tsolver, typename TtransitionMode,
+              std::enable_if_t<std::is_same<TtransitionMode, skdecide::StepTransitionMode<Tsolver>>::value, int> = 0>
+    PyMCTSDomain(const py::object& domain, [[maybe_unused]] Tsolver* dummy_solver, [[maybe_unused]] TtransitionMode* dummy_transition_mode)
     : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
@@ -62,9 +63,9 @@ public :
         }
     }
 
-    template <typename TtransitionMode,
-              std::enable_if_t<std::is_same<TtransitionMode, skdecide::SampleTransitionMode>::value, int> = 0>
-    PyMCTSDomain(const py::object& domain, TtransitionMode* dummy)
+    template <typename Tsolver, typename TtransitionMode,
+              std::enable_if_t<std::is_same<TtransitionMode, skdecide::SampleTransitionMode<Tsolver>>::value, int> = 0>
+    PyMCTSDomain(const py::object& domain, [[maybe_unused]] Tsolver* dummy_solver, [[maybe_unused]] TtransitionMode* dummy_transition_mode)
     : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
@@ -74,9 +75,9 @@ public :
         }
     }
 
-    template <typename TtransitionMode,
-              std::enable_if_t<std::is_same<TtransitionMode, skdecide::DistributionTransitionMode>::value, int> = 0>
-    PyMCTSDomain(const py::object& domain, TtransitionMode* dummy)
+    template <typename Tsolver, typename TtransitionMode,
+              std::enable_if_t<std::is_same<TtransitionMode, skdecide::DistributionTransitionMode<Tsolver>>::value, int> = 0>
+    PyMCTSDomain(const py::object& domain, [[maybe_unused]] Tsolver* dummy_solver, [[maybe_unused]] TtransitionMode* dummy_transition_mode)
     : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
@@ -101,6 +102,8 @@ public :
 class PyMCTSSolver {
 public :
 
+    typedef std::function<py::object (py::object&, const py::object&, const py::object&)> RolloutPolicyFunctor;
+
     PyMCTSSolver(py::object& domain,
                  std::size_t time_budget = 3600000,
                  std::size_t rollout_budget = 100000,
@@ -108,12 +111,13 @@ public :
                  double discount = 1.0,
                  bool uct_mode = true,
                  double ucb_constant = 1.0 / std::sqrt(2.0),
+                 const RolloutPolicyFunctor& rollout_policy_functor = nullptr,
                  PyMCTSOptions::TransitionMode transition_mode = PyMCTSOptions::TransitionMode::Distribution,
                  PyMCTSOptions::TreePolicy tree_policy = PyMCTSOptions::TreePolicy::Default,
                  PyMCTSOptions::Expander expander = PyMCTSOptions::Expander::Full,
                  PyMCTSOptions::ActionSelector action_selector_optimization = PyMCTSOptions::ActionSelector::UCB1,
                  PyMCTSOptions::ActionSelector action_selector_execution = PyMCTSOptions::ActionSelector::BestQValue,
-                 PyMCTSOptions::DefaultPolicy default_policy = PyMCTSOptions::DefaultPolicy::Random,
+                 PyMCTSOptions::RolloutPolicy rollout_policy = PyMCTSOptions::RolloutPolicy::Random,
                  PyMCTSOptions::BackPropagator back_propagator = PyMCTSOptions::BackPropagator::Graph,
                  bool parallel = true,
                  bool debug_logs = false) {
@@ -124,12 +128,13 @@ public :
                                        max_depth,
                                        discount,
                                        ucb_constant,
+                                       rollout_policy_functor,
                                        transition_mode,
                                        PyMCTSOptions::TreePolicy::Default,
                                        expander,
                                        PyMCTSOptions::ActionSelector::UCB1,
                                        action_selector_execution,
-                                       PyMCTSOptions::DefaultPolicy::Random,
+                                       PyMCTSOptions::RolloutPolicy::Random,
                                        PyMCTSOptions::BackPropagator::Graph,
                                        parallel,
                                        debug_logs);
@@ -191,33 +196,33 @@ private :
     };
 
     template <typename Texecution,
-              typename TtransitionMode,
-              typename TtreePolicy,
-              typename Texpander,
-              typename TactionSelectorOptimization,
-              typename TactionSelectorExecution,
-              typename TdefaultPolicy,
-              typename TbackPropagator>
+              template <typename Tsolver> class TtransitionMode,
+              template <typename Tsolver> class TtreePolicy,
+              template <typename Tsolver> class Texpander,
+              template <typename Tsolver> class TactionSelectorOptimization,
+              template <typename Tsolver> class TactionSelectorExecution,
+              template <typename Tsolver> class TrolloutPolicy,
+              template <typename Tsolver> class TbackPropagator>
     class Implementation : public BaseImplementation {
     public :
-        Implementation(py::object& domain,
-                       std::size_t time_budget = 3600000,
-                       std::size_t rollout_budget = 100000,
-                       std::size_t max_depth = 1000,
-                       double discount = 1.0,
-                       double ucb_constant = 1.0 / std::sqrt(2.0),
-                       bool debug_logs = false) {
 
-            _domain = std::make_unique<PyMCTSDomain<Texecution>>(domain, (TtransitionMode*) nullptr);
-            _solver = std::make_unique<skdecide::MCTSSolver<PyMCTSDomain<Texecution>,
-                                                           Texecution,
-                                                           TtransitionMode,
-                                                           TtreePolicy,
-                                                           Texpander,
-                                                           TactionSelectorOptimization,
-                                                           TactionSelectorExecution,
-                                                           TdefaultPolicy,
-                                                           TbackPropagator>>(
+        typedef skdecide::MCTSSolver<PyMCTSDomain<Texecution>, Texecution,
+                                     TtransitionMode, TtreePolicy, Texpander,
+                                     TactionSelectorOptimization, TactionSelectorExecution,
+                                     TrolloutPolicy, TbackPropagator> PyMCTSSolver;
+        
+        Implementation(py::object& domain,
+                       std::size_t time_budget,
+                       std::size_t rollout_budget,
+                       std::size_t max_depth,
+                       double discount,
+                       double ucb_constant,
+                       const RolloutPolicyFunctor& rollout_policy_functor,
+                       bool debug_logs)
+            : _rollout_policy_functor(rollout_policy_functor) {
+
+            _domain = std::make_unique<PyMCTSDomain<Texecution>>(domain, (PyMCTSSolver*) nullptr, (TtransitionMode<PyMCTSSolver>*) nullptr);
+            _solver = std::make_unique<PyMCTSSolver>(
                         *_domain,
                         time_budget,
                         rollout_budget,
@@ -226,42 +231,51 @@ private :
                         debug_logs,
                         init_tree_policy(),
                         init_expander(),
-                        init_action_selector((TactionSelectorOptimization*) nullptr, ucb_constant),
-                        init_action_selector((TactionSelectorExecution*) nullptr, ucb_constant),
-                        init_default_policy(),
+                        init_action_selector((TactionSelectorOptimization<PyMCTSSolver>*) nullptr, ucb_constant),
+                        init_action_selector((TactionSelectorExecution<PyMCTSSolver>*) nullptr, ucb_constant),
+                        init_rollout_policy(_rollout_policy_functor),
                         init_back_propagator());
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
-                                                                            py::module::import("sys").attr("stdout"));
+                                                                             py::module::import("sys").attr("stdout"));
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
-                                                                            py::module::import("sys").attr("stderr"));
+                                                                             py::module::import("sys").attr("stderr"));
         }
 
-        TtreePolicy init_tree_policy() {
-            return TtreePolicy();
+        std::unique_ptr<TtreePolicy<PyMCTSSolver>> init_tree_policy() {
+            return std::make_unique<TtreePolicy<PyMCTSSolver>>();
         }
 
-        Texpander init_expander() {
-            return Texpander();
-        }
-
-        template <typename TactionSelector,
-                  std::enable_if_t<std::is_same<TactionSelector, skdecide::UCB1ActionSelector>::value, int> = 0>
-        TactionSelector init_action_selector(TactionSelector* dummy, double ucb_constant) {
-            return skdecide::UCB1ActionSelector(ucb_constant);
+        std::unique_ptr<Texpander<PyMCTSSolver>> init_expander() {
+            return std::make_unique<Texpander<PyMCTSSolver>>();
         }
 
         template <typename TactionSelector,
-                  std::enable_if_t<std::is_same<TactionSelector, skdecide::BestQValueActionSelector>::value, int> = 0>
-        TactionSelector init_action_selector(TactionSelector* dummy, double ucb_constant) {
-            return skdecide::BestQValueActionSelector();
+                  std::enable_if_t<std::is_same<TactionSelector, skdecide::UCB1ActionSelector<PyMCTSSolver>>::value, int> = 0>
+        std::unique_ptr<TactionSelector> init_action_selector(TactionSelector* dummy, double ucb_constant) {
+            return std::make_unique<skdecide::UCB1ActionSelector<PyMCTSSolver>>(ucb_constant);
         }
 
-        TdefaultPolicy init_default_policy() {
-            return TdefaultPolicy();
+        template <typename TactionSelector,
+                  std::enable_if_t<std::is_same<TactionSelector, skdecide::BestQValueActionSelector<PyMCTSSolver>>::value, int> = 0>
+        std::unique_ptr<TactionSelector> init_action_selector(TactionSelector* dummy, double ucb_constant) {
+            return std::make_unique<skdecide::BestQValueActionSelector<PyMCTSSolver>>();
         }
 
-        TbackPropagator init_back_propagator() {
-            return TbackPropagator();
+        std::unique_ptr<TrolloutPolicy<PyMCTSSolver>> init_rollout_policy(const RolloutPolicyFunctor& rollout_policy_functor) {
+            if (!rollout_policy_functor) { // use random rollout policy
+                return std::make_unique<TrolloutPolicy<PyMCTSSolver>>();
+            } else {
+                return std::make_unique<TrolloutPolicy<PyMCTSSolver>>([&rollout_policy_functor](
+                                                    PyMCTSDomain<Texecution>& d,
+                                                    const typename PyMCTSDomain<Texecution>::State& s,
+                                                    const int& thread_id) -> std::unique_ptr<typename PyMCTSDomain<Texecution>::Action> {
+                    return std::make_unique<typename PyMCTSDomain<Texecution>::Action>(d.call(thread_id, rollout_policy_functor, s._state));
+                });
+            }
+        }
+
+        std::unique_ptr<TbackPropagator<PyMCTSSolver>> init_back_propagator() {
+            return std::make_unique<TbackPropagator<PyMCTSSolver>>();
         }
 
         virtual void clear() {
@@ -313,18 +327,9 @@ private :
 
     private :
         std::unique_ptr<PyMCTSDomain<Texecution>> _domain;
-        std::unique_ptr<skdecide::MCTSSolver<PyMCTSDomain<Texecution>,
-                                            Texecution,
-                                            TtransitionMode,
-                                            TtreePolicy,
-                                            Texpander,
-                                            TactionSelectorOptimization,
-                                            TactionSelectorExecution,
-                                            TdefaultPolicy,
-                                            TbackPropagator>> _solver;
+        std::unique_ptr<PyMCTSSolver> _solver;
 
-        std::function<bool (const py::object&)> _goal_checker;
-        std::function<double (const py::object&)> _heuristic;
+        RolloutPolicyFunctor _rollout_policy_functor;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -339,12 +344,13 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
+                const RolloutPolicyFunctor& rollout_policy_functor,
                 PyMCTSOptions::TransitionMode transition_mode,
                 PyMCTSOptions::TreePolicy tree_policy,
                 PyMCTSOptions::Expander expander,
                 PyMCTSOptions::ActionSelector action_selector_optimization,
                 PyMCTSOptions::ActionSelector action_selector_execution,
-                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
                 bool debug_logs) {
@@ -357,11 +363,12 @@ private :
                                             max_depth,
                                             discount,
                                             ucb_constant,
+                                            rollout_policy_functor,
                                             tree_policy,
                                             expander,
                                             action_selector_optimization,
                                             action_selector_execution,
-                                            default_policy,
+                                            rollout_policy,
                                             back_propagator,
                                             parallel,
                                             debug_logs);
@@ -375,11 +382,12 @@ private :
                                             max_depth,
                                             discount,
                                             ucb_constant,
+                                            rollout_policy_functor,
                                             tree_policy,
                                             expander,
                                             action_selector_optimization,
                                             action_selector_execution,
-                                            default_policy,
+                                            rollout_policy,
                                             back_propagator,
                                             parallel,
                                             debug_logs);
@@ -393,11 +401,12 @@ private :
                                             max_depth,
                                             discount,
                                             ucb_constant,
+                                            rollout_policy_functor,
                                             tree_policy,
                                             expander,
                                             action_selector_optimization,
                                             action_selector_execution,
-                                            default_policy,
+                                            rollout_policy,
                                             back_propagator,
                                             parallel,
                                             debug_logs);
@@ -409,7 +418,7 @@ private :
         }
     }
 
-    template <typename TtransitionMode>
+    template <template <typename Tsolver> class TtransitionMode>
     void initialize_tree_policy(
                 py::object& domain,
                 std::size_t time_budget,
@@ -417,11 +426,12 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
+                const RolloutPolicyFunctor& rollout_policy_functor,
                 PyMCTSOptions::TreePolicy tree_policy,
                 PyMCTSOptions::Expander expander,
                 PyMCTSOptions::ActionSelector action_selector_optimization,
                 PyMCTSOptions::ActionSelector action_selector_execution,
-                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
                 bool debug_logs) {
@@ -435,10 +445,11 @@ private :
                                         max_depth,
                                         discount,
                                         ucb_constant,
+                                        rollout_policy_functor,
                                         expander,
                                         action_selector_optimization,
                                         action_selector_execution,
-                                        default_policy,
+                                        rollout_policy,
                                         back_propagator,
                                         parallel,
                                         debug_logs);
@@ -450,8 +461,8 @@ private :
         }
     }
 
-    template <typename TtransitionMode,
-              typename TtreePolicy>
+    template <template <typename Tsolver> class TtransitionMode,
+              template <typename Tsolver> class TtreePolicy>
     void initialize_expander(
                 py::object& domain,
                 std::size_t time_budget,
@@ -459,10 +470,11 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
+                const RolloutPolicyFunctor& rollout_policy_functor,
                 PyMCTSOptions::Expander expander,
                 PyMCTSOptions::ActionSelector action_selector_optimization,
                 PyMCTSOptions::ActionSelector action_selector_execution,
-                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
                 bool debug_logs) {
@@ -477,9 +489,10 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
+                                rollout_policy_functor,
                                 action_selector_optimization,
                                 action_selector_execution,
-                                default_policy,
+                                rollout_policy,
                                 back_propagator,
                                 parallel,
                                 debug_logs);
@@ -491,9 +504,9 @@ private :
         }
     }
 
-    template <typename TtransitionMode,
-              typename TtreePolicy,
-              typename Texpander>
+    template <template <typename Tsolver> class TtransitionMode,
+              template <typename Tsolver> class TtreePolicy,
+              template <typename Tsolver> class Texpander>
     void initialize_action_selector_optimization(
                 py::object& domain,
                 std::size_t time_budget,
@@ -501,9 +514,10 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
+                const RolloutPolicyFunctor& rollout_policy_functor,
                 PyMCTSOptions::ActionSelector action_selector_optimization,
                 PyMCTSOptions::ActionSelector action_selector_execution,
-                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
                 bool debug_logs) {
@@ -519,8 +533,9 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
+                                rollout_policy_functor,
                                 action_selector_execution,
-                                default_policy,
+                                rollout_policy,
                                 back_propagator,
                                 parallel,
                                 debug_logs);
@@ -537,8 +552,9 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
+                                rollout_policy_functor,
                                 action_selector_execution,
-                                default_policy,
+                                rollout_policy,
                                 back_propagator,
                                 parallel,
                                 debug_logs);
@@ -550,10 +566,10 @@ private :
         }
     }
 
-    template <typename TtransitionMode,
-              typename TtreePolicy,
-              typename Texpander,
-              typename TactionSelectorOptimization>
+    template <template <typename Tsolver> class TtransitionMode,
+              template <typename Tsolver> class TtreePolicy,
+              template <typename Tsolver> class Texpander,
+              template <typename Tsolver> class TactionSelectorOptimization>
     void initialize_action_selector_execution(
                 py::object& domain,
                 std::size_t time_budget,
@@ -561,14 +577,15 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
+                const RolloutPolicyFunctor& rollout_policy_functor,
                 PyMCTSOptions::ActionSelector action_selector_execution,
-                PyMCTSOptions::DefaultPolicy default_policy,
+                PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
                 bool debug_logs) {
         switch (action_selector_execution) {
             case PyMCTSOptions::ActionSelector::UCB1:
-                initialize_default_policy<TtransitionMode,
+                initialize_rollout_policy<TtransitionMode,
                                           TtreePolicy,
                                           Texpander,
                                           TactionSelectorOptimization,
@@ -579,14 +596,15 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
-                                default_policy,
+                                rollout_policy_functor,
+                                rollout_policy,
                                 back_propagator,
                                 parallel,
                                 debug_logs);
                 break;
             
             case PyMCTSOptions::ActionSelector::BestQValue:
-                initialize_default_policy<TtransitionMode,
+                initialize_rollout_policy<TtransitionMode,
                                           TtreePolicy,
                                           Texpander,
                                           TactionSelectorOptimization,
@@ -597,7 +615,8 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
-                                default_policy,
+                                rollout_policy_functor,
+                                rollout_policy,
                                 back_propagator,
                                 parallel,
                                 debug_logs);
@@ -609,53 +628,74 @@ private :
         }
     }
 
-    template <typename TtransitionMode,
-              typename TtreePolicy,
-              typename Texpander,
-              typename TactionSelectorOptimization,
-              typename TactionSelectorExecution>
-    void initialize_default_policy(
+    template <template <typename Tsolver> class TtransitionMode,
+              template <typename Tsolver> class TtreePolicy,
+              template <typename Tsolver> class Texpander,
+              template <typename Tsolver> class TactionSelectorOptimization,
+              template <typename Tsolver> class TactionSelectorExecution>
+    void initialize_rollout_policy(
                 py::object& domain,
                 std::size_t time_budget,
                 std::size_t rollout_budget,
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
-                PyMCTSOptions::DefaultPolicy default_policy,
+                const RolloutPolicyFunctor& rollout_policy_functor,
+                PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
                 bool debug_logs) {
-        switch (default_policy) {
-            case PyMCTSOptions::DefaultPolicy::Random:
+        switch (rollout_policy) {
+            case PyMCTSOptions::RolloutPolicy::Random:
                 initialize_back_propagator<TtransitionMode,
                                            TtreePolicy,
                                            Texpander,
                                            TactionSelectorOptimization,
                                            TactionSelectorExecution,
-                                           skdecide::RandomDefaultPolicy>(
+                                           skdecide::DefaultRolloutPolicy>(
                                 domain,
                                 time_budget,
                                 rollout_budget,
                                 max_depth,
                                 discount,
                                 ucb_constant,
+                                nullptr,
+                                back_propagator,
+                                parallel,
+                                debug_logs);
+                break;
+            
+            case PyMCTSOptions::RolloutPolicy::Custom:
+                initialize_back_propagator<TtransitionMode,
+                                           TtreePolicy,
+                                           Texpander,
+                                           TactionSelectorOptimization,
+                                           TactionSelectorExecution,
+                                           skdecide::DefaultRolloutPolicy>(
+                                domain,
+                                time_budget,
+                                rollout_budget,
+                                max_depth,
+                                discount,
+                                ucb_constant,
+                                rollout_policy_functor,
                                 back_propagator,
                                 parallel,
                                 debug_logs);
                 break;
             
             default:
-                spdlog::error("Available default policies: DefaultPolicy.Random");
-                throw std::runtime_error("Available default policies: DefaultPolicy.Random");
+                spdlog::error("Available default policies: RolloutPolicy.Random");
+                throw std::runtime_error("Available default policies: RolloutPolicy.Random");
         }
     }
 
-    template <typename TtransitionMode,
-              typename TtreePolicy,
-              typename Texpander,
-              typename TactionSelectorOptimization,
-              typename TactionSelectorExecution,
-              typename TdefaultPolicy>
+    template <template <typename Tsolver> class TtransitionMode,
+              template <typename Tsolver> class TtreePolicy,
+              template <typename Tsolver> class Texpander,
+              template <typename Tsolver> class TactionSelectorOptimization,
+              template <typename Tsolver> class TactionSelectorExecution,
+              template <typename Tsolver> class TrolloutPolicy>
     void initialize_back_propagator(
                 py::object& domain,
                 std::size_t time_budget,
@@ -663,6 +703,7 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
+                const RolloutPolicyFunctor& rollout_policy_functor,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
                 bool debug_logs) {
@@ -673,7 +714,7 @@ private :
                                      Texpander,
                                      TactionSelectorOptimization,
                                      TactionSelectorExecution,
-                                     TdefaultPolicy,
+                                     TrolloutPolicy,
                                      skdecide::GraphBackup>(
                                 domain,
                                 time_budget,
@@ -681,6 +722,7 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
+                                rollout_policy_functor,
                                 parallel,
                                 debug_logs);
                 break;
@@ -691,13 +733,13 @@ private :
         }
     }
 
-    template <typename TtransitionMode,
-              typename TtreePolicy,
-              typename Texpander,
-              typename TactionSelectorOptimization,
-              typename TactionSelectorExecution,
-              typename TdefaultPolicy,
-              typename TbackPropagator>
+    template <template <typename Tsolver> class TtransitionMode,
+              template <typename Tsolver> class TtreePolicy,
+              template <typename Tsolver> class Texpander,
+              template <typename Tsolver> class TactionSelectorOptimization,
+              template <typename Tsolver> class TactionSelectorExecution,
+              template <typename Tsolver> class TrolloutPolicy,
+              template <typename Tsolver> class TbackPropagator>
     void initialize_execution(
                 py::object& domain,
                 std::size_t time_budget ,
@@ -705,6 +747,7 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
+                const RolloutPolicyFunctor& rollout_policy_functor,
                 bool parallel ,
                 bool debug_logs) {
         if (parallel) {
@@ -714,13 +757,14 @@ private :
                        Texpander,
                        TactionSelectorOptimization,
                        TactionSelectorExecution,
-                       TdefaultPolicy,
+                       TrolloutPolicy,
                        TbackPropagator>(domain,
                                         time_budget,
                                         rollout_budget,
                                         max_depth,
                                         discount,
                                         ucb_constant,
+                                        rollout_policy_functor,
                                         debug_logs);
         } else {
             initialize<skdecide::SequentialExecution,
@@ -729,32 +773,34 @@ private :
                        Texpander,
                        TactionSelectorOptimization,
                        TactionSelectorExecution,
-                       TdefaultPolicy,
+                       TrolloutPolicy,
                        TbackPropagator>(domain,
                                         time_budget,
                                         rollout_budget,
                                         max_depth,
                                         discount,
                                         ucb_constant,
+                                        rollout_policy_functor,
                                         debug_logs);
         }
     }
 
     template <typename Texecution,
-              typename TtransitionMode,
-              typename TtreePolicy,
-              typename Texpander,
-              typename TactionSelectorOptimization,
-              typename TactionSelectorExecution,
-              typename TdefaultPolicy,
-              typename TbackPropagator>
+              template <typename Tsolver> class TtransitionMode,
+              template <typename Tsolver> class TtreePolicy,
+              template <typename Tsolver> class Texpander,
+              template <typename Tsolver> class TactionSelectorOptimization,
+              template <typename Tsolver> class TactionSelectorExecution,
+              template <typename Tsolver> class TrolloutPolicy,
+              template <typename Tsolver> class TbackPropagator>
     void initialize(
                 py::object& domain,
-                std::size_t time_budget = 3600000,
-                std::size_t rollout_budget = 100000,
-                std::size_t max_depth = 1000,
-                double discount = 1.0,
-                double ucb_constant = 1.0 / std::sqrt(2.0),
+                std::size_t time_budget,
+                std::size_t rollout_budget,
+                std::size_t max_depth,
+                double discount,
+                double ucb_constant,
+                const RolloutPolicyFunctor& rollout_policy_functor,
                 bool debug_logs = false) {
         _implementation = std::make_unique<Implementation<Texecution,
                                                           TtransitionMode,
@@ -762,7 +808,7 @@ private :
                                                           Texpander,
                                                           TactionSelectorOptimization,
                                                           TactionSelectorExecution,
-                                                          TdefaultPolicy,
+                                                          TrolloutPolicy,
                                                           TbackPropagator>>(
                                     domain,
                                     time_budget,
@@ -770,6 +816,7 @@ private :
                                     max_depth,
                                     discount,
                                     ucb_constant,
+                                    rollout_policy_functor,
                                     debug_logs);
     }
 };
@@ -793,8 +840,9 @@ void init_pymcts(py::module& m) {
         .value("UCB1", PyMCTSOptions::ActionSelector::UCB1)
         .value("BestQValue", PyMCTSOptions::ActionSelector::BestQValue);
     
-    py::enum_<PyMCTSOptions::DefaultPolicy>(py_mcts_options, "DefaultPolicy")
-        .value("Random", PyMCTSOptions::DefaultPolicy::Random);
+    py::enum_<PyMCTSOptions::RolloutPolicy>(py_mcts_options, "RolloutPolicy")
+        .value("Random", PyMCTSOptions::RolloutPolicy::Random)
+        .value("Custom", PyMCTSOptions::RolloutPolicy::Custom);
     
     py::enum_<PyMCTSOptions::BackPropagator>(py_mcts_options, "BackPropagator")
         .value("Graph", PyMCTSOptions::BackPropagator::Graph);
@@ -808,12 +856,13 @@ void init_pymcts(py::module& m) {
                           double,
                           bool,
                           double,
+                          const std::function<py::object (const py::object&, const py::object&, const py::object&)>&,
                           PyMCTSOptions::TransitionMode,
                           PyMCTSOptions::TreePolicy,
                           PyMCTSOptions::Expander,
                           PyMCTSOptions::ActionSelector,
                           PyMCTSOptions::ActionSelector,
-                          PyMCTSOptions::DefaultPolicy,
+                          PyMCTSOptions::RolloutPolicy,
                           PyMCTSOptions::BackPropagator,
                           bool,
                           bool>(),
@@ -824,12 +873,13 @@ void init_pymcts(py::module& m) {
                  py::arg("discount")=1.0,
                  py::arg("uct_mode")=true,
                  py::arg("ucb_constant")=1.0/std::sqrt(2.0),
+                 py::arg("rollout_policy_functor")=nullptr,
                  py::arg("transition_mode")=PyMCTSOptions::TransitionMode::Distribution,
                  py::arg("tree_policy")=PyMCTSOptions::TreePolicy::Default,
                  py::arg("expander")=PyMCTSOptions::Expander::Full,
                  py::arg("action_selector_optimization")=PyMCTSOptions::ActionSelector::UCB1,
                  py::arg("action_selector_execution")=PyMCTSOptions::ActionSelector::BestQValue,
-                 py::arg("default_policy")=PyMCTSOptions::DefaultPolicy::Random,
+                 py::arg("rollout_policy")=PyMCTSOptions::RolloutPolicy::Random,
                  py::arg("back_propagator")=PyMCTSOptions::BackPropagator::Graph,
                  py::arg("parallel")=true,
                  py::arg("debug_logs")=false)

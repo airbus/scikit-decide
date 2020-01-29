@@ -26,15 +26,14 @@
 namespace skdecide {
 
 /** Use Environment domain knowledge for transitions */
+template <typename Tsolver>
 struct StepTransitionMode {
-    template <typename Tsolver>
     void init_rollout(Tsolver& solver, const int& thread_id) const {
         solver.domain().reset(thread_id);
         std::for_each(solver.action_prefix().begin(), solver.action_prefix().end(),
                       [&solver, &thread_id](const typename Tsolver::Domain::Event& a){solver.domain().step(a, thread_id);});
     }
 
-    template <typename Tsolver>
     std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
             Tsolver& solver,
             const int& thread_id,
@@ -43,7 +42,6 @@ struct StepTransitionMode {
         return solver.domain().step(action, thread_id);
     }
 
-    template <typename Tsolver>
     typename Tsolver::StateNode* random_next_node(
             Tsolver& solver,
             const int& thread_id,
@@ -65,11 +63,10 @@ struct StepTransitionMode {
 
 
 /** Use Simulation domain knowledge for transitions */
+template <typename Tsolver>
 struct SampleTransitionMode {
-    template <typename Tsolver>
     void init_rollout(Tsolver& solver, const int& thread_id) const {}
 
-    template <typename Tsolver>
     std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
             Tsolver& solver,
             const int& thread_id,
@@ -78,7 +75,6 @@ struct SampleTransitionMode {
         return solver.domain().sample(state, action, thread_id);
     }
 
-    template <typename Tsolver>
     typename Tsolver::StateNode* random_next_node(
             Tsolver& solver,
             const int& thread_id,
@@ -97,11 +93,10 @@ struct SampleTransitionMode {
 
 
 /** Use uncertain transitions domain knowledge for transitions */
+template <typename Tsolver>
 struct DistributionTransitionMode {
-    template <typename Tsolver>
     void init_rollout(Tsolver& solver, const int& thread_id) const {}
 
-    template <typename Tsolver>
     std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
             Tsolver& solver,
             const int& thread_id,
@@ -110,7 +105,6 @@ struct DistributionTransitionMode {
         return solver.domain().sample(state, action, thread_id);
     }
 
-    template <typename Tsolver>
     typename Tsolver::StateNode* random_next_node(
             Tsolver& solver,
             const int& thread_id,
@@ -129,13 +123,13 @@ struct DistributionTransitionMode {
 
 
 /** Default tree policy as used in UCT */
+template <typename Tsolver>
 class DefaultTreePolicy {
 public :
-    template <typename Tsolver, typename Texpander, typename TactionSelector>
     typename Tsolver::StateNode* operator()(Tsolver& solver,
                                             const int& thread_id, // for parallelisation
-                                            const Texpander& expander,
-                                            const TactionSelector& action_selector,
+                                            const typename Tsolver::Expander& expander,
+                                            const typename Tsolver::ActionSelectorOptimization& action_selector,
                                             typename Tsolver::StateNode& n,
                                             std::size_t& d) const {
         try {
@@ -189,6 +183,7 @@ public :
  *  REQUIREMENTS: returns nullptr if all actions have been already tried, and set the terminal
  *  flag of the returned next state
  */
+template <typename Tsolver>
 class FullExpand {
 public :
     FullExpand()
@@ -197,7 +192,6 @@ public :
     FullExpand(const FullExpand& other)
     : _checked_transition_mode(false) {}
 
-    template <typename Tsolver>
     typename Tsolver::StateNode* operator()(Tsolver& solver,
                                             const int& thread_id,
                                             typename Tsolver::StateNode& n) const {
@@ -293,8 +287,8 @@ public :
         }
     }
 
-    template <typename Tsolver, typename Ttransition_mode,
-              std::enable_if_t<std::is_same<Ttransition_mode, DistributionTransitionMode>::value, int> = 0>
+    template <typename Ttransition_mode,
+              std::enable_if_t<std::is_same<Ttransition_mode, DistributionTransitionMode<Tsolver>>::value, int> = 0>
     typename Tsolver::StateNode* expand_action(Tsolver& solver,
                                                const int& thread_id,
                                                const Ttransition_mode& transition_mode,
@@ -396,9 +390,9 @@ public :
         }
     }
 
-    template <typename Tsolver, typename Ttransition_mode,
-              std::enable_if_t<std::is_same<Ttransition_mode, StepTransitionMode>::value ||
-                               std::is_same<Ttransition_mode, SampleTransitionMode>::value, int> = 0>
+    template <typename Ttransition_mode,
+              std::enable_if_t<std::is_same<Ttransition_mode, StepTransitionMode<Tsolver>>::value ||
+                               std::is_same<Ttransition_mode, SampleTransitionMode<Tsolver>>::value, int> = 0>
     typename Tsolver::StateNode* expand_action(Tsolver& solver,
                                                const int& thread_id,
                                                const Ttransition_mode& transition_mode,
@@ -424,7 +418,7 @@ public :
                 action.dist_to_outcome.push_back(ii.first);
             }, action.parent->mutex);
 
-            solver.execution_policy().protect([&next_node, &action, &i, &to, &solver](){
+            solver.execution_policy().protect([&next_node, &action](){
                 next_node.parents.push_back(&action);
             }, next_node.mutex);
 
@@ -453,7 +447,7 @@ public :
     }
 
 private :
-    mutable std::atomic<bool> _checked_transition_mode;
+    mutable typename Tsolver::ExecutionPolicy::template atomic<bool> _checked_transition_mode;
 };
 
 
@@ -464,9 +458,9 @@ private :
  *  REQUIREMENTS: returns nullptr if all actions have been already tried, and set the terminal
  *  flag of the returned next state
  */
+template <typename Tsolver>
 class PartialExpand {
 public :
-    template <typename Tsolver>
     typename Tsolver::StateNode* operator()(Tsolver& solver,
                                             const int& thread_id,
                                             typename Tsolver::StateNode& n) const {
@@ -610,6 +604,7 @@ public :
 
 
 /** UCB1 Best Child */
+template <typename Tsolver>
 class UCB1ActionSelector {
 public :
     // 1/sqrt(2) is a good compromise for rewards in [0;1]
@@ -619,7 +614,6 @@ public :
     UCB1ActionSelector(const UCB1ActionSelector& other)
     : _ucb_constant((double) other._ucb_constant) {}
 
-    template <typename Tsolver>
     typename Tsolver::ActionNode* operator()(Tsolver& solver,
                                              const int& thread_id,
                                              const typename Tsolver::StateNode& n) const {
@@ -647,14 +641,14 @@ public :
     }
 
 private :
-    std::atomic<double> _ucb_constant;
+    typename Tsolver::ExecutionPolicy::template atomic<double> _ucb_constant;
 };
 
 
 /** Select action with maximum Q-value */
+template <typename Tsolver>
 class BestQValueActionSelector {
 public :
-    template <typename Tsolver>
     typename Tsolver::ActionNode* operator()(Tsolver& solver,
                                              const int& thread_id,
                                              const typename Tsolver::StateNode& n) const {
@@ -681,10 +675,20 @@ public :
 };
 
 
-/** Random default policy */
-class RandomDefaultPolicy {
+/** Default rollout policy */
+template <typename Tsolver>
+class DefaultRolloutPolicy {
 public :
-    template <typename Tsolver>
+    typedef std::function<std::unique_ptr<typename Tsolver::Domain::Action>
+                          (typename Tsolver::Domain&, const typename Tsolver::Domain::State&, const int&)> PolicyFunctor;
+
+    DefaultRolloutPolicy(const PolicyFunctor& policy = [](typename Tsolver::Domain& domain,
+                                                          const typename Tsolver::Domain::State& state,
+                                                          const int& thread_id) {
+        return domain.get_applicable_actions(state, thread_id)->sample();
+    })
+    : _policy(policy) {}
+
     void operator()(Tsolver& solver,
                     const int& thread_id,
                     typename Tsolver::StateNode& n,
@@ -693,7 +697,7 @@ public :
             typename Tsolver::Domain::State current_state;
 
             solver.execution_policy().protect([&solver, &n, &current_state](){
-                if (solver.debug_logs()) { spdlog::debug("Launching random default policy from state " + n.state.print()); }
+                if (solver.debug_logs()) { spdlog::debug("Launching default rollout policy from state " + n.state.print()); }
                 current_state = n.state;
             }, n.mutex);
 
@@ -703,8 +707,7 @@ public :
             double gamma_n = 1.0;
 
             while(!termination && current_depth < solver.max_depth()) {
-                std::unique_ptr<typename Tsolver::Domain::Action> action = solver.domain().get_applicable_actions(current_state, thread_id)->sample();
-
+                std::unique_ptr<typename Tsolver::Domain::Action> action = _policy(solver.domain(), current_state, thread_id);
                 std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> o = solver.transition_mode().random_next_outcome(solver, thread_id, current_state, *action);
                 reward += gamma_n * (o->reward());
                 gamma_n *= solver.discount();
@@ -729,12 +732,15 @@ public :
             throw;
         }
     }
+
+private :
+    PolicyFunctor _policy;
 };
 
 
 /** Graph backup: update Q values using the graph ancestors (rather than only the trajectory leading to n) */
+template <typename Tsolver>
 struct GraphBackup {
-    template <typename Tsolver>
     void operator()(Tsolver& solver,
                     const int& thread_id,
                     typename Tsolver::StateNode& n) const {
@@ -760,7 +766,7 @@ struct GraphBackup {
         }
     }
 
-    template <typename Tsolver, typename Texecution_policy,
+    template <typename Texecution_policy,
               std::enable_if_t<std::is_same<Texecution_policy, SequentialExecution>::value, int> = 0>
     static void update_frontier(Tsolver& solver,
                                 std::unordered_set<typename Tsolver::StateNode*>& new_frontier, typename Tsolver::StateNode* f,
@@ -779,7 +785,7 @@ struct GraphBackup {
         }
     }
 
-    template <typename Tsolver, typename Texecution_policy,
+    template <typename Texecution_policy,
               std::enable_if_t<std::is_same<Texecution_policy, ParallelExecution>::value, int> = 0>
     static void update_frontier(Tsolver& solver,
                                 std::unordered_set<typename Tsolver::StateNode*>& new_frontier, typename Tsolver::StateNode* f,
@@ -808,26 +814,31 @@ struct GraphBackup {
 
 template <typename Tdomain,
           typename TexecutionPolicy = ParallelExecution,
-          typename TtransitionMode = DistributionTransitionMode,
-          typename TtreePolicy = DefaultTreePolicy,
-          typename Texpander = FullExpand,
-          typename TactionSelectorOptimization = UCB1ActionSelector,
-          typename TactionSelectorExecution = BestQValueActionSelector,
-          typename TdefaultPolicy = RandomDefaultPolicy,
-          typename TbackPropagator = GraphBackup>
+          template <typename Tsolver> class TtransitionMode = DistributionTransitionMode,
+          template <typename Tsolver> class TtreePolicy = DefaultTreePolicy,
+          template <typename Tsolver> class Texpander = FullExpand,
+          template <typename Tsolver> class TactionSelectorOptimization = UCB1ActionSelector,
+          template <typename Tsolver> class TactionSelectorExecution = BestQValueActionSelector,
+          template <typename Tsolver> class TrolloutPolicy = DefaultRolloutPolicy,
+          template <typename Tsolver> class TbackPropagator = GraphBackup>
 class MCTSSolver {
 public :
+    typedef MCTSSolver<Tdomain, TexecutionPolicy,
+                       TtransitionMode, TtreePolicy, Texpander,
+                       TactionSelectorOptimization, TactionSelectorExecution,
+                       TrolloutPolicy, TbackPropagator> Solver;
+
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Event Action;
-    typedef TtreePolicy TreePolicy;
-    typedef Texpander Expander;
-    typedef TactionSelectorOptimization ActionSelectorOptimization;
-    typedef TactionSelectorExecution ActionSelectorExecution;
-    typedef TdefaultPolicy DefaultPolicy;
-    typedef TbackPropagator BackPropagator;
     typedef TexecutionPolicy ExecutionPolicy;
-    typedef TtransitionMode TransitionMode;
+    typedef TtransitionMode<Solver> TransitionMode;
+    typedef TtreePolicy<Solver> TreePolicy;
+    typedef Texpander<Solver> Expander;
+    typedef TactionSelectorOptimization<Solver> ActionSelectorOptimization;
+    typedef TactionSelectorExecution<Solver> ActionSelectorExecution;
+    typedef TrolloutPolicy<Solver> RolloutPolicy;
+    typedef TbackPropagator<Solver> BackPropagator;
 
     typedef typename ExecutionPolicy::template atomic<std::size_t> atomic_size_t;
     typedef typename ExecutionPolicy::template atomic<double> atomic_double;
@@ -896,19 +907,19 @@ public :
                std::size_t max_depth = 1000,
                double discount = 1.0,
                bool debug_logs = false,
-               const TreePolicy& tree_policy = TreePolicy(),
-               const Expander& expander = Expander(),
-               const ActionSelectorOptimization& action_selector_optimization = ActionSelectorOptimization(),
-               const ActionSelectorExecution& action_selector_execution = ActionSelectorExecution(),
-               const DefaultPolicy& default_policy = DefaultPolicy(),
-               const BackPropagator& back_propagator = BackPropagator())
+               std::unique_ptr<TreePolicy> tree_policy = std::make_unique<TreePolicy>(),
+               std::unique_ptr<Expander> expander = std::make_unique<Expander>(),
+               std::unique_ptr<ActionSelectorOptimization> action_selector_optimization = std::make_unique<ActionSelectorOptimization>(),
+               std::unique_ptr<ActionSelectorExecution> action_selector_execution = std::make_unique<ActionSelectorExecution>(),
+               std::unique_ptr<RolloutPolicy> rollout_policy = std::make_unique<RolloutPolicy>(),
+               std::unique_ptr<BackPropagator> back_propagator = std::make_unique<BackPropagator>())
     : _domain(domain),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _discount(discount), _nb_rollouts(0),
-      _debug_logs(debug_logs), _tree_policy(tree_policy), _expander(expander),
-      _action_selector_optimization(action_selector_optimization),
-      _action_selector_execution(action_selector_execution),
-      _default_policy(default_policy), _back_propagator(back_propagator) {
+      _debug_logs(debug_logs), _tree_policy(std::move(tree_policy)), _expander(std::move(expander)),
+      _action_selector_optimization(std::move(action_selector_optimization)),
+      _action_selector_execution(std::move(action_selector_execution)),
+      _rollout_policy(std::move(rollout_policy)), _back_propagator(std::move(back_propagator)) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {
@@ -941,9 +952,9 @@ public :
                  while (elapsed_time(start_time) < _time_budget && _nb_rollouts < _rollout_budget) {
                 
                     std::size_t depth = 0;
-                    StateNode* sn = _tree_policy(*this, thread_id, _expander, _action_selector_optimization, root_node, depth);
-                    _default_policy(*this, thread_id, *sn, depth);
-                    _back_propagator(*this, thread_id, *sn);
+                    StateNode* sn = (*_tree_policy)(*this, thread_id, *_expander, *_action_selector_optimization, root_node, depth);
+                    (*_rollout_policy)(*this, thread_id, *sn, depth);
+                    (*_back_propagator)(*this, thread_id, *sn);
                     _nb_rollouts++;
 
                 }
@@ -965,7 +976,7 @@ public :
         if (si == _graph.end()) {
             return false;
         } else {
-            return _action_selector_execution(*this, -1, *si) != nullptr;
+            return (*_action_selector_execution)(*this, -1, *si) != nullptr;
         }
     }
 
@@ -973,7 +984,7 @@ public :
         auto si = _graph.find(s);
         ActionNode* action = nullptr;
         if (si != _graph.end()) {
-            action = _action_selector_execution(*this, -1, *si);
+            action = (*_action_selector_execution)(*this, -1, *si);
         }
         if (action == nullptr) {
             spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
@@ -996,7 +1007,7 @@ public :
         auto si = _graph.find(StateNode(s));
         ActionNode* action = nullptr;
         if (si != _graph.end()) {
-            action = _action_selector_execution(*this, -1, *si);
+            action = (*_action_selector_execution)(*this, -1, *si);
         }
         if (action == nullptr) {
             spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
@@ -1017,7 +1028,7 @@ public :
     typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() {
         typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
         for (auto& n : _graph) {
-            ActionNode* action = _action_selector_execution(*this, -1, n);
+            ActionNode* action = (*_action_selector_execution)(*this, -1, n);
             if (action != nullptr) {
                 p.insert(std::make_pair(n.state, std::make_pair(action->action, (double) action->value)));
             }
@@ -1035,21 +1046,21 @@ public :
 
     double discount() const { return _discount; }
 
+    ExecutionPolicy& execution_policy() { return _execution_policy; }
+
     TransitionMode& transition_mode() { return _transition_mode; }
 
-    const TreePolicy& tree_policy() { return _tree_policy; }
+    const TreePolicy& tree_policy() { return *_tree_policy; }
 
-    const Expander& expander() { return _expander; }
+    const Expander& expander() { return *_expander; }
 
-    const ActionSelectorOptimization& action_selector_optimization() { return _action_selector_optimization; }
+    const ActionSelectorOptimization& action_selector_optimization() { return *_action_selector_optimization; }
 
-    const ActionSelectorExecution& action_selector_execution() { return _action_selector_execution; }
+    const ActionSelectorExecution& action_selector_execution() { return *_action_selector_execution; }
 
-    const DefaultPolicy& default_policy() { return _default_policy; }
+    const RolloutPolicy& rollout_policy() { return *_rollout_policy; }
 
-    const BackPropagator& back_propagator() { return _back_propagator; }
-
-    ExecutionPolicy& execution_policy() { return _execution_policy; }
+    const BackPropagator& back_propagator() { return *_back_propagator; }
 
     Graph& graph() { return _graph; }
 
@@ -1068,14 +1079,16 @@ private :
     atomic_double _discount;
     atomic_size_t _nb_rollouts;
     atomic_bool _debug_logs;
-    TransitionMode _transition_mode;
-    TreePolicy _tree_policy;
-    Expander _expander;
-    ActionSelectorOptimization _action_selector_optimization;
-    ActionSelectorExecution _action_selector_execution;
-    DefaultPolicy _default_policy;
-    BackPropagator _back_propagator;
+
     ExecutionPolicy _execution_policy;
+    TransitionMode _transition_mode;
+
+    std::unique_ptr<TreePolicy> _tree_policy;
+    std::unique_ptr<Expander> _expander;
+    std::unique_ptr<ActionSelectorOptimization> _action_selector_optimization;
+    std::unique_ptr<ActionSelectorExecution> _action_selector_execution;
+    std::unique_ptr<RolloutPolicy> _rollout_policy;
+    std::unique_ptr<BackPropagator> _back_propagator;
 
     Graph _graph;
     std::list<Action> _action_prefix;
@@ -1096,7 +1109,10 @@ private :
 }; // MCTSSolver class
 
 /** UCT is MCTS with the default template options */
-template <typename Tdomain, typename Texecution_policy, typename TtransitionMode, typename ...T>
+template <typename Tdomain,
+          typename Texecution_policy,
+          template <typename Tsolver> typename TtransitionMode,
+          template <typename Tsolver> typename ...T>
 using UCTSolver = MCTSSolver<Tdomain, Texecution_policy, TtransitionMode, T...>;
 
 } // namespace skdecide

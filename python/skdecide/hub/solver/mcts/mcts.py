@@ -43,12 +43,13 @@ try:
                      discount: float = 1.0,
                      uct_mode: bool = True,
                      ucb_constant: float = 1.0 / sqrt(2.0),
+                     rollout_policy_functor: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
                      transition_mode: Options.TransitionMode = Options.TransitionMode.Distribution,
                      tree_policy: Options.TreePolicy = Options.TreePolicy.Default,
                      expander: Options.Expander = Options.Expander.Full,
                      action_selector_optimization: Options.ActionSelector = Options.ActionSelector.UCB1,
                      action_selector_execution: Options.ActionSelector = Options.ActionSelector.BestQValue,
-                     default_policy: Options.DefaultPolicy = Options.DefaultPolicy.Random,
+                     rollout_policy: Options.RolloutPolicy = Options.RolloutPolicy.Random,
                      back_propagator: Options.BackPropagator = Options.BackPropagator.Graph,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
@@ -60,12 +61,13 @@ try:
             self._discount = discount
             self._uct_mode = uct_mode
             self._ucb_constant = ucb_constant
+            self._rollout_policy_functor = rollout_policy_functor
             self._transition_mode = transition_mode
             self._tree_policy = tree_policy
             self._expander = expander
             self._action_selector_optimization = action_selector_optimization
             self._action_selector_execution = action_selector_execution
-            self._default_policy = default_policy
+            self._rollout_policy = rollout_policy
             self._back_propagator = back_propagator
             self._parallel = parallel
             self._debug_logs = debug_logs
@@ -79,12 +81,13 @@ try:
                                        discount=self._discount,
                                        uct_mode=self._uct_mode,
                                        ucb_constant=self._ucb_constant,
+                                       rollout_policy_functor=self._rollout_policy_functor,
                                        transition_mode=self._transition_mode,
                                        tree_policy=self._tree_policy,
                                        expander=self._expander,
                                        action_selector_optimization=self._action_selector_optimization,
                                        action_selector_execution=self._action_selector_execution,
-                                       default_policy=self._default_policy,
+                                       rollout_policy=self._rollout_policy,
                                        back_propagator=self._back_propagator,
                                        parallel=self._parallel,
                                        debug_logs=self._debug_logs)
@@ -144,7 +147,9 @@ try:
                      max_depth: int = 1000,
                      discount: float = 1.0,
                      ucb_constant: float = 1.0 / sqrt(2.0),
+                     rollout_policy_functor: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
                      transition_mode: mcts_options.TransitionMode = mcts_options.TransitionMode.Distribution,
+                     rollout_policy: Options.RolloutPolicy = mcts_options.RolloutPolicy.Random,
                      parallel: bool = True,
                      debug_logs: bool = False) -> None:
             super().__init__(time_budget=time_budget,
@@ -153,7 +158,9 @@ try:
                              discount=discount,
                              uct_mode=True,
                              ucb_constant=ucb_constant,
+                             rollout_policy_functor=rollout_policy_functor,
                              transition_mode=transition_mode,
+                             rollout_policy=rollout_policy,
                              parallel=parallel,
                              debug_logs=debug_logs)
     

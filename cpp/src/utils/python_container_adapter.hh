@@ -60,6 +60,7 @@ public :
     private :
         class BaseType {
         public :
+            virtual ~BaseType() {}
             virtual void copy(std::unique_ptr<BaseType>& other) const =0;
             virtual std::size_t hash() const =0;
             virtual bool equal(const BaseType& other) const =0;
@@ -69,6 +70,7 @@ public :
         class PrimitiveType : public BaseType {
         public :
             PrimitiveType(const T& value) : _value(value) {}
+            virtual ~PrimitiveType() {}
 
             virtual void copy(std::unique_ptr<BaseType>& other) const {
                 other = std::make_unique<PrimitiveType<T>>(_value);
@@ -105,7 +107,7 @@ public :
                 return *this;
             }
 
-            ~ObjectType() {
+            virtual ~ObjectType() {
                 typename GilControl<Texecution>::Acquire acquire;
                 _value = py::object();
             }
@@ -219,6 +221,7 @@ private :
 
     class BaseImplementation {
     public :
+        virtual ~BaseImplementation() {}
         virtual std::size_t size() const =0;
         virtual value_type at(std::size_t index) const =0;
         virtual bool same_type(const BaseImplementation& other) const =0;
@@ -264,7 +267,7 @@ private :
             return *this;
         }
 
-        ~SequenceImplementation() {
+        virtual ~SequenceImplementation() {
             typename GilControl<Texecution>::Acquire acquire;
             _vector = Tsequence();
         }
@@ -309,7 +312,7 @@ private :
             return *this;
         }
 
-        ~NumpyImplementation() {
+        virtual ~NumpyImplementation() {
             typename GilControl<Texecution>::Acquire acquire;
             _vector = py::array_t<T>();
         }
