@@ -409,7 +409,7 @@ private :
                         }
 
                         _execution_policy.protect([this, &feature_tuples, &open_queue, &neighbor, &states_pruned]{
-                            if (novelty(feature_tuples, neighbor) > _width) {
+                            if (this->novelty(feature_tuples, neighbor) > _width) {
                                 if (_debug_logs) spdlog::debug("Pruning state");
                                 states_pruned = true;
                                 neighbor.pruned = true;
@@ -460,7 +460,7 @@ private :
                 // we must recompute combinations from previous width values just in case
                 // this state would be visited for the first time across width iterations
                 generate_tuples(k, state_features.size(),
-                                [this, &state_features, &feature_tuples, &k, &nov](TupleType& cv){
+                                [&state_features, &feature_tuples, &k, &nov](TupleType& cv){
                     for (auto& e : cv) {
                         e.second = state_features[e.first];
                     }

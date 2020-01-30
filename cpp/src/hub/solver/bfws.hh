@@ -151,7 +151,7 @@ public :
                     neighbor.heuristic = _heuristic(neighbor.state);
                     if (_debug_logs) spdlog::debug("Heuristic: " + std::to_string(neighbor.heuristic));
                     _execution_policy.protect([this, &true_bits_map, &open_queue, &neighbor]{
-                        neighbor.novelty = novelty(true_bits_map, neighbor.heuristic, neighbor.state);
+                        neighbor.novelty = this->novelty(true_bits_map, neighbor.heuristic, neighbor.state);
                         open_queue.push(&neighbor);
                         if (_debug_logs) spdlog::debug("Novelty: " + std::to_string(neighbor.novelty));
                     });
