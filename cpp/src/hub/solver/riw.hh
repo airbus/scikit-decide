@@ -443,8 +443,8 @@ private :
                 auto si = _graph.emplace(Node(s, _domain, _state_features, -1));
                 Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
                 root_node.depth = 0;
-                atomic_bool states_pruned = false;
-                atomic_bool reached_end_of_trajectory_once = false;
+                atomic_bool states_pruned(false);
+                atomic_bool reached_end_of_trajectory_once(false);
 
                 // Vector of sets of state feature tuples generated so far, for each w <= _width
                 if (feature_tuples.size() < _width) {
