@@ -844,7 +844,33 @@ public :
     typedef typename ExecutionPolicy::template atomic<double> atomic_double;
     typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
 
-    struct ActionNode;
+    struct StateNode;
+
+    struct ActionNode {
+        Action action;
+        typedef std::unordered_map<StateNode*, std::pair<double, std::size_t>> OutcomeMap; // next state nodes owned by _graph
+        OutcomeMap outcomes;
+        std::vector<typename OutcomeMap::iterator> dist_to_outcome;
+        std::discrete_distribution<> dist;
+        atomic_size_t expansions_count; // used only for partial expansion mode
+        atomic_double value;
+        atomic_size_t visits_count;
+        StateNode* parent;
+
+        ActionNode(const Action& a)
+            : action(a), expansions_count(0), value(0.0),
+              visits_count(0), parent(nullptr) {}
+        
+        ActionNode(const ActionNode& a)
+            : action(a.action), outcomes(a.outcomes), dist_to_outcome(a.dist_to_outcome),
+              dist(a.dist), expansions_count((std::size_t) a.expansions_count),
+              value((double) a.value), visits_count((std::size_t) a.visits_count),
+              parent(a.parent) {}
+        
+        struct Key {
+            const Action& operator()(const ActionNode& an) const { return an.action; }
+        };
+    };
 
     struct StateNode {
         typedef typename SetTypeDeducer<ActionNode, Action>::Set ActionSet;
@@ -870,32 +896,6 @@ public :
         
         struct Key {
             const State& operator()(const StateNode& sn) const { return sn.state; }
-        };
-    };
-
-    struct ActionNode {
-        Action action;
-        typedef std::unordered_map<StateNode*, std::pair<double, std::size_t>> OutcomeMap; // next state nodes owned by _graph
-        OutcomeMap outcomes;
-        std::vector<typename OutcomeMap::iterator> dist_to_outcome;
-        std::discrete_distribution<> dist;
-        atomic_size_t expansions_count; // used only for partial expansion mode
-        atomic_double value;
-        atomic_size_t visits_count;
-        StateNode* parent;
-
-        ActionNode(const Action& a)
-            : action(a), expansions_count(0), value(0.0),
-              visits_count(0), parent(nullptr) {}
-        
-        ActionNode(const ActionNode& a)
-            : action(a.action), outcomes(a.outcomes), dist_to_outcome(a.dist_to_outcome),
-              dist(a.dist), expansions_count((std::size_t) a.expansions_count),
-              value((double) a.value), visits_count((std::size_t) a.visits_count),
-              parent(a.parent) {}
-        
-        struct Key {
-            const Action& operator()(const ActionNode& an) const { return an.action; }
         };
     };
 
