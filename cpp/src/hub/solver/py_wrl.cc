@@ -93,6 +93,7 @@ private :
 
     class BaseImplementation {
     public :
+        virtual ~BaseImplementation() {}
         virtual py::object reset() =0;
         virtual py::object step(const py::object& action) =0;
         virtual py::object sample(const py::object& observation, const py::object& action) =0;
@@ -159,6 +160,8 @@ private :
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
                                                                              py::module::import("sys").attr("stderr"));
         }
+
+        virtual ~Implementation() {}
 
         virtual py::object reset() {
             return _domain_filter->reset()->_state;
@@ -259,6 +262,7 @@ private :
 
     class BaseImplementation {
     public :
+        virtual ~BaseImplementation() {}
         virtual void reset() =0;
         virtual void solve(const std::function<py::object ()>& domain_factory) =0;
     };
@@ -301,6 +305,8 @@ private :
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
                                                                              py::module::import("sys").attr("stderr"));
         }
+
+        virtual ~Implementation() {}
 
         virtual void reset() {
             _solver->reset();

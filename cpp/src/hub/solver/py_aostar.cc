@@ -25,9 +25,6 @@ public :
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_applicable_actions()");
         }
-        if (!py::hasattr(domain, "compute_next_state_distribution")) {
-            throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing compute_next_state_distribution()");
-        }
         if (!py::hasattr(domain, "get_next_state_distribution")) {
             throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_next_state_distribution()");
         }
@@ -84,6 +81,7 @@ private :
 
     class BaseImplementation {
     public :
+        virtual ~BaseImplementation() {}
         virtual void clear() =0;
         virtual void solve(const py::object& s) =0;
         virtual py::bool_ is_solution_defined_for(const py::object& s) =0;
@@ -107,11 +105,27 @@ private :
                                                                             *_domain,
                                                                             [this](const typename PyAOStarDomain<Texecution>::State& s)->bool {
                                                                                 typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                return _goal_checker(s._state);
+                                                                                try {
+                                                                                    return _goal_checker(s._state);
+                                                                                } catch (const py::error_already_set* e) {
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling the goal checker: ") + e->what());
+                                                                                    std::runtime_error err(e->what());
+                                                                                    delete e;
+                                                                                    throw err;
+                                                                                }
                                                                             },
                                                                             [this](const typename PyAOStarDomain<Texecution>::State& s)->double {
                                                                                 typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                return _heuristic(s._state);
+                                                                                try {
+                                                                                    return _heuristic(s._state);
+                                                                                } catch (const py::error_already_set* e) {
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling the heuristic function: ") + e->what());
+                                                                                    std::runtime_error err(e->what());
+                                                                                    delete e;
+                                                                                    throw err;
+                                                                                }
                                                                             },
                                                                             discount,
                                                                             max_tip_expansions,
@@ -122,6 +136,8 @@ private :
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
                                                                             py::module::import("sys").attr("stderr"));
         }
+
+        virtual ~Implementation() {}
 
         virtual void clear() {
             _solver->clear();

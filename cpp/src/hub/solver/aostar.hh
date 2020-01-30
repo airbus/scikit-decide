@@ -84,13 +84,6 @@ public :
                     auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state)->get_elements();
                     std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node](const auto& a){
                         if (_debug_logs) spdlog::debug("Current expanded action: " + Action(a).print());
-                        // Asynchronously compute next state distribution
-                        // Must be separated from next loop in case the domain is
-                        // python so that it is in this case actually implemented as
-                        // a pool of independent processes
-                        _domain.compute_next_state_distribution(best_tip_node->state, a);
-                    });
-                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node](const auto& a){
                         _execution_policy.protect([&best_tip_node, &a]{
                             best_tip_node->actions.push_back(std::make_unique<ActionNode>(a));
                         });

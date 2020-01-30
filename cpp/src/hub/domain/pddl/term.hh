@@ -14,6 +14,7 @@ namespace skdecide {
         class Term {
         public :
             static constexpr char class_name[] = "term";
+            virtual ~Term() {}
             virtual const std::string& get_name() const =0;
             virtual std::ostream& print(std::ostream& o) const =0;
         };

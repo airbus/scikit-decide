@@ -86,6 +86,7 @@ private :
 
     class BaseImplementation {
     public :
+        virtual ~BaseImplementation() {}
         virtual void clear() =0;
         virtual void solve(const py::object& s) =0;
         virtual py::bool_ is_solution_defined_for(const py::object& s) =0;
@@ -124,6 +125,8 @@ private :
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
                                                                             py::module::import("sys").attr("stderr"));
         }
+
+        virtual ~Implementation() {}
 
         virtual void clear() {
             _solver->clear();

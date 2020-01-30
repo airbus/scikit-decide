@@ -30,7 +30,7 @@ namespace skdecide {
 /** Use default hasher provided with domain's states */
 template <typename Tdomain, typename Tfeature_vector>
 struct DomainStateHash {
-    typedef const typename Tdomain::State& Key;
+    typedef typename Tdomain::State Key;
 
     template <typename Tnode>
     static const Key& get_key(const Tnode& n) {
@@ -535,7 +535,7 @@ private :
                     if (current_node->children.empty()) {
                         // Generate applicable actions
                         auto applicable_actions = _domain.get_applicable_actions(current_node->state, thread_id)->get_elements();
-                        std::for_each(applicable_actions.begin(), applicable_actions.end(), [this, &current_node](const auto& a){
+                        std::for_each(applicable_actions.begin(), applicable_actions.end(), [&current_node](const auto& a){
                             current_node->children.push_back(std::make_tuple(a, 0, nullptr));
                         });
                     }
@@ -697,7 +697,7 @@ private :
                     node_child = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 });
                 Node& next_node = *node_child;
-                _execution_policy.protect([&node, &action_number, &outcome, &thread_id](){
+                _execution_policy.protect([&node, &action_number, &outcome](){
                     std::get<1>(node->children[action_number]) = outcome->reward();
                 }, node->mutex);
                 if (outcome->reward() < _min_reward) {
@@ -705,7 +705,7 @@ private :
                     _min_reward_changed = true;
                 }
                 
-                _execution_policy.protect([this, &node, &next_node, &new_node, &outcome, &thread_id](){
+                _execution_policy.protect([this, &node, &next_node, &new_node, &outcome](){
                     next_node.parents.insert(node);
                     if (new_node) {
                         if (_debug_logs) spdlog::debug("Exploring new outcome: " + next_node.state.print() +

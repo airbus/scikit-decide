@@ -23,6 +23,8 @@ namespace skdecide {
 
             Variable(const Variable& other)
                 : Identifier(other), TypeContainer<Variable>(other) {}
+            
+            virtual ~Variable() {}
 
             Variable& operator=(const Variable& other) {
                 dynamic_cast<Identifier&>(*this) = other;

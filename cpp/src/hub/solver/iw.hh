@@ -27,7 +27,7 @@ namespace skdecide {
 /** Use default hasher provided with domain's states */
 template <typename Tdomain, typename Tfeature_vector>
 struct DomainStateHash {
-    typedef const typename Tdomain::State& Key;
+    typedef typename Tdomain::State Key;
 
     template <typename Tnode>
     static const Key& get_key(const Tnode& n) {

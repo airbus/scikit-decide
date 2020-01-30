@@ -28,7 +28,7 @@ namespace skdecide {
                 : UnaryFormula<AlwaysFormula>(other) {}
             
             AlwaysFormula& operator= (const AlwaysFormula& other) {
-                dynamic_cast<AlwaysFormula&>(*this) = other;
+                dynamic_cast<UnaryFormula<AlwaysFormula>&>(*this) = other;
                 return *this;
             }
 
@@ -51,7 +51,7 @@ namespace skdecide {
                 : UnaryFormula<SometimeFormula>(other) {}
             
             SometimeFormula& operator= (const SometimeFormula& other) {
-                dynamic_cast<SometimeFormula&>(*this) = other;
+                dynamic_cast<UnaryFormula<SometimeFormula>&>(*this) = other;
                 return *this;
             }
 
@@ -74,7 +74,7 @@ namespace skdecide {
                 : UnaryFormula<AtMostOnceFormula>(other) {}
             
             AtMostOnceFormula& operator= (const AtMostOnceFormula& other) {
-                dynamic_cast<AtMostOnceFormula&>(*this) = other;
+                dynamic_cast<UnaryFormula<AtMostOnceFormula>&>(*this) = other;
                 return *this;
             }
 
@@ -98,7 +98,7 @@ namespace skdecide {
                   _deadline(other._deadline) {}
             
             WithinFormula& operator= (const WithinFormula& other) {
-                dynamic_cast<WithinFormula&>(*this) = other;
+                dynamic_cast<UnaryFormula<WithinFormula>&>(*this) = other;
                 this->_deadline = other._deadline;
                 return *this;
             }
@@ -139,7 +139,7 @@ namespace skdecide {
                   _from(other._from) {}
             
             HoldAfterFormula& operator= (const HoldAfterFormula& other) {
-                dynamic_cast<HoldAfterFormula&>(*this) = other;
+                dynamic_cast<UnaryFormula<HoldAfterFormula>&>(*this) = other;
                 this->_from = other._from;
                 return *this;
             }
@@ -183,7 +183,7 @@ namespace skdecide {
                   _from(other._from), _deadline(other._deadline) {}
             
             HoldDuringFormula& operator= (const HoldDuringFormula& other) {
-                dynamic_cast<HoldDuringFormula&>(*this) = other;
+                dynamic_cast<UnaryFormula<HoldDuringFormula>&>(*this) = other;
                 this->_from = other._from;
                 this->_deadline = other._deadline;
                 return *this;

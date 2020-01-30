@@ -18,7 +18,7 @@ namespace skdecide {
 /** Use default hasher provided with domain's observations */
 template <typename Tdomain, typename Tfeature_vector>
 struct DomainObservationHash {
-    typedef const typename Tdomain::Observation& Key;
+    typedef typename Tdomain::Observation Key;
 
     template <typename Tnode>
     static const Key& get_key(const Tnode& n) {
@@ -139,6 +139,8 @@ public :
                     }
               }
         
+        virtual ~WRLDomainFilter() {}
+        
         virtual void clear() =0;
         virtual std::unique_ptr<Observation> reset() =0;
         virtual std::unique_ptr<EnvironmentOutcome> step(const Action& action) =0;
@@ -204,6 +206,8 @@ public :
                               temperature_increase_rate, width_increase_resilience,
                               max_depth, debug_logs),
               _nb_pruned_expansions(0) {}
+        
+        virtual ~WRLUncachedDomainFilter() {}
         
         virtual void clear() {
             this->_feature_tuples = TupleVector(1);
@@ -337,6 +341,8 @@ public :
             : WRLDomainFilter(std::move(domain), observation_features, initial_pruning_probability,
                               temperature_increase_rate, width_increase_resilience,
                               max_depth, debug_logs) {}
+        
+        virtual ~WRLCachedDomainFilter() {}
         
         virtual void clear() {
             this->_graph.clear();
@@ -524,7 +530,7 @@ public :
                 // we must recompute combinations from previous width values just in case
                 // this observation would be visited for the first time across width iterations
                 this->generate_tuples(k, observation_features.size(),
-                                      [this, &observation_features, &feature_tuples, &k, &nov](TupleType& cv){
+                                      [&observation_features, &feature_tuples, &k, &nov](TupleType& cv){
                     for (auto& e : cv) {
                         e.second = observation_features[e.first];
                     }
