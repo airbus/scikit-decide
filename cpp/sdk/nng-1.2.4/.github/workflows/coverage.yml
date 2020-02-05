@@ -1,0 +1,65 @@
+name: coverage
+on: [push]
+jobs:
+
+  linux-coverage:
+    name: linux
+    runs-on: [ ubuntu-latest ]
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v1
+
+    - name: Install mbedTLS
+      run: sudo apt-get install libmbedtls-dev
+
+    - name: Install ninja
+      run: sudo apt-get install ninja-build
+
+    - name: Configure
+      run:  mkdir build && cd build && cmake -G Ninja -DNNG_ENABLE_COVERAGE=ON -DNNG_ENABLE_TLS=ON ..
+
+    - name: build
+      run: cd build && ninja
+
+    - name: Test
+      run: cd build && ctest --output-on-failure
+
+    - name: Upload report
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        yml: ./.codecov.yml
+
+  darwin-coverage:
+    name: darwin
+    runs-on: [ macos-latest ]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+
+      - name: Install mbedTLS
+        run: brew install mbedtls
+
+      - name: Install ninja
+        run: brew install ninja
+
+      - name: Install lcov
+        run: brew install lcov
+
+      - name: Configure
+        run:  mkdir build && cd build && cmake -G Ninja -DNNG_ENABLE_COVERAGE=ON -DNNG_ENABLE_TLS=ON ..
+
+      - name: build
+        run: cd build && ninja
+
+      - name: Test
+        run: cd build && ctest --output-on-failure
+
+      - name: Preprocess
+        run: cd build && lcov -c -d . -o lcov.info
+
+      - name: Upload report
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          yml: ./.codecov.yml

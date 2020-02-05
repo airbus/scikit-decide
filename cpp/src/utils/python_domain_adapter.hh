@@ -7,6 +7,9 @@
 
 #include <pybind11/pybind11.h>
 
+#include <nngpp/nngpp.h>
+#include <nngpp/protocol/pull0.h>
+
 #include "utils/python_gil_control.hh"
 #include "utils/python_hash_eq.hh"
 #include "utils/execution.hh"
@@ -735,21 +738,42 @@ protected :
     template <typename TexecutionPolicy>
     struct Implementation<TexecutionPolicy,
                           typename std::enable_if<std::is_same<TexecutionPolicy, ParallelExecution>::value>::type> {
-        static constexpr std::chrono::milliseconds PERIOD = std::chrono::milliseconds(10);
-
+        std::vector<std::unique_ptr<nng::socket>> _connections;
+        
         Implementation(const py::object& domain) {
             typename GilControl<Texecution>::Acquire acquire;
             this->_domain = domain;
+
+            if (!py::hasattr(domain, "get_ipc_connections")) {
+                std::string err_msg = "SKDECIDE exception: the python domain object must provide the get_shm_files() method in parallel mode.";
+                spdlog::error(err_msg);
+                throw std::runtime_error(err_msg);
+            } else {
+                try {
+                    py::list ipc_connections = domain.attr("get_ipc_connections")();
+                    for (auto f : ipc_connections) {
+                        _connections.push_back(std::make_unique<nng::socket>(nng::pull::open()));
+                        _connections.back()->listen(std::string(py::str(f)).c_str());
+                    }
+                } catch (const nng::exception& e) {
+                    std::string err_msg("SKDECIDE exception when trying to make pipeline connections with the python parallel domain: ");
+                    err_msg += e.who() + std::string(": ") + e.what();
+                    spdlog::error(err_msg);
+                    throw std::runtime_error(err_msg);
+                }
+            }
         }
 
         Implementation(const Implementation& other) {
             typename GilControl<Texecution>::Acquire acquire;
             this->_domain = other._domain;
+            this->_connections = other._connections;
         }
 
         Implementation& operator=(const Implementation& other) {
             typename GilControl<Texecution>::Acquire acquire;
             this->_domain = other._domain;
+            this->_connections = other._connections;
             return *this;
         }
 
@@ -766,6 +790,7 @@ protected :
         template <typename Tfunction, typename ... Types>
         py::object do_launch(const int& thread_id, const Tfunction& func, const Types& ... args) {
             py::object id;
+            nng::socket* conn = nullptr;
             {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
@@ -774,6 +799,7 @@ protected :
                     } else {
                         id = func(_domain, args..., py::none());
                     }
+                    conn = _connections[py::cast<std::size_t>(id)].get();
                 } catch(const py::error_already_set* e) {
                     spdlog::error("SKDECIDE exception when asynchronously calling anonymous domain method: " + std::string(e->what()));
                     std::runtime_error err(e->what());
@@ -783,7 +809,14 @@ protected :
                 }
             }
             while (true) {
-                std::this_thread::sleep_for(PERIOD);
+                try {
+                    conn->recv_msg();
+                } catch (const nng::exception& e) {
+                    std::string err_msg("SKDECIDE exception when waiting for a response from the python parallel domain: ");
+                    err_msg += e.who() + std::string(": ") + e.what();
+                    spdlog::error(err_msg);
+                    throw std::runtime_error(err_msg);
+                }
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
                     py::object r = _domain.attr("get_result")(id);

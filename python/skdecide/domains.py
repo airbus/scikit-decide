@@ -7,10 +7,12 @@ from __future__ import annotations
 
 import os
 from typing import NewType, Optional, Callable
-# from pathos.helpers import mp
-from multiprocessing import Manager, Process, Pipe, Lock
-from multiprocessing.managers import SyncManager
-from queue import LifoQueue
+
+from pathos.helpers import mp
+from multiprocessing import Manager, Lock, Pipe, Process
+from multiprocessing.sharedctypes import Array
+import tempfile
+from pynng import Push0
 
 from skdecide.core import autocast_all
 from skdecide.builders.domain.agent import MultiAgent, SingleAgent
@@ -343,33 +345,29 @@ class DeterministicPlanningDomain(Domain, SingleAgent, Sequential, Deterministic
     pass
 
 
-_parallel_domain_ = None
-_domain_factory_ = None
-
-def parallel_domain_launcher(i, conn):
-    global _parallel_domain_, _domain_factory_
-    _parallel_domain_.launch_domain_server(_domain_factory_, i, conn)
-
-def _launch_domain_server_(domain_factory, i, active_domains, sleeping_domains, job_results, conn):
+def _launch_domain_server_(domain_factory, i, lock, active_domains, job_results, conn, ipc_conn):
     domain = domain_factory()
+    pusher = Push0()
+    pusher.dial(ipc_conn)
     while True:
         active_domains[i] = False
-        sleeping_domains.put(i)
         job = conn.recv()
+        lock.acquire()
         active_domains[i] = True
         job_results[i] = None
+        lock.release()
         if job is None:
+            pusher.close()
             break
         else:
             try:
-                job_results[i] = getattr(domain, job[0])(*job[1])
+                r = getattr(domain, job[0])(*job[1])
+                lock.acquire()
+                job_results[i] = r
+                lock.release()
+                pusher.send(b'')
             except Exception as e:
                 print('\x1b[3;33;40m' + 'ERROR: unable to perform job: ' + str(e) + '\x1b[0m')
-
-class ExtendedManager(SyncManager):
-    pass
-
-ExtendedManager.register('LifoQueue', LifoQueue)
 
 class ParallelDomain:
     """This class can be used to create and launch n domains in separate processes.
@@ -378,34 +376,45 @@ class ParallelDomain:
     domain  is chosen and its id is returned to the incoming request.
     """
     def __init__(self, domain_factory, nb_domains = os.cpu_count()):
-        global _parallel_domain_, _domain_factory_
-        _parallel_domain_ = self
-        _domain_factory_ = domain_factory
+        self._domain_factory = domain_factory
         self._call_i = None
         self._call_domain = False
         self._call_result = None
-        self._manager = ExtendedManager()
-        self._manager.start()
+        self._manager = Manager()
         self._waiting_jobs = [None] * nb_domains
-        self._sleeping_domains = self._manager.LifoQueue()
-        self._active_domains = self._manager.list([None for i in range(nb_domains)])
+        self._active_domains = Array('b', [True for i in range(nb_domains)], lock=True)
+        self._temp_connections = [tempfile.NamedTemporaryFile() for i in range(nb_domains)]
+        self._ipc_connections = ['ipc://' + f.name + '.ipc' for f in self._temp_connections]
         self._job_results = self._manager.list([None for i in range(nb_domains)])
         self._processes = [None] * nb_domains
         self._lock = Lock()
-        for i in range(nb_domains):
-            pparent, pchild = Pipe()
-            # pparent, pchild = mp.Pipe()
-            self._waiting_jobs[i] = pparent
-            self._processes[i] = Process(target=parallel_domain_launcher, args=[i, pchild])
-            # self._processes[i] = mp.Process(target=_launch_domain_server_, args=[domain_factory, i, self._active_domains, self._sleeping_domains, self._job_results, pchild])
-            self._processes[i].start()
-        while None in set(self._active_domains):
-            continue
+        self._ongoing_session = False
     
-    def __del__(self):
-        for i in range(len(self._job_results)):
-            self._waiting_jobs[i].send(None)
-            self._processes[i].join()
+    def start_session(self):
+        if not self._ongoing_session:
+            self._ongoing_session = True
+            for i in range(len(self._job_results)):
+                pparent, pchild = Pipe()
+                self._waiting_jobs[i] = pparent
+                self._processes[i] = mp.Process(target=_launch_domain_server_,
+                                                args=[self._domain_factory, i, self._lock, self._active_domains,
+                                                    self._job_results, pchild, self._ipc_connections[i]])
+                self._processes[i].start()
+            # Waits for all jobs to be launched and waiting each for requests
+            while True in set(self._active_domains):
+                continue
+    
+    def end_session(self):
+        if self._ongoing_session:
+            self._ongoing_session = False
+            for i in range(len(self._job_results)):
+                self._waiting_jobs[i].send(None)
+                self._processes[i].join()
+                self._processes[i].close()
+                self._processes[i] = None
+    
+    def get_ipc_connections(self):
+        return self._ipc_connections
     
     def get_parallel_capacity(self):
         return self.nb_domains()
@@ -413,42 +422,12 @@ class ParallelDomain:
     def nb_domains(self):
         return len(self._job_results)
     
-    def launch_domain_server(self, domain_factory, i, conn):
-        domain = domain_factory()
-        while True:
-            self._lock.acquire()
-            self._active_domains[i] = False
-            self._sleeping_domains.put(i)
-            self._lock.release()
-            job = conn.recv()
-            self._lock.acquire()
-            self._active_domains[i] = True
-            self._job_results[i] = None
-            self._lock.release()
-            if job is None:
-                break
-            else:
-                try:
-                    r = getattr(domain, job[0])(*job[1])
-                    self._lock.acquire()
-                    self._job_results[i] = r
-                    self._lock.release()
-                except Exception as e:
-                    print('\x1b[3;33;40m' + 'ERROR: unable to perform job: ' + str(e) + '\x1b[0m')
-    
     def wake_up_domain(self, i=None):
-        # in case of previous call to wake_up_domain
-        # with a forced i, the elements in queue
-        # self._sleeping_domains with that i could not
-        # be popped out thus must be checked for actual inactivity
         if i is None:
             while True:
-                ti = self._sleeping_domains.get()
-                self._lock.acquire()
-                if not self._active_domains[ti]:
-                    self._lock.release()
-                    return ti
-                self._lock.release()
+                for j, v in enumerate(self._active_domains):
+                    if not v:
+                        return j
         else:
             return i
     
