@@ -174,7 +174,16 @@ if __name__ == '__main__':
          'entry': 'IW',
          'config': {'state_features': lambda s, d: [s.x, s.y],
                     'use_state_feature_hash': False,
-                    'parallel': True, 'debug_logs': False}},
+                    'parallel': False, 'debug_logs': False}},
+        
+        # Rollout-IW (classical planning)
+        {'name': 'Rollout-IW (classical planning)',
+         'entry': 'RIW',
+         'config': {'state_features': lambda d, s: [s.x, s.y],
+                    'time_budget': 1000, 'rollout_budget': 100,
+                    'max_depth': 500, 'exploration': 0.25,
+                    'use_simulation_domain': True, 'online_node_garbage': True,
+                    'continuous_planning': False, 'parallel': False}},
 
         # BFWS (planning)
         {'name': 'BFWS (planning) - (num_rows * num_cols) binary encoding (1 binary variable <=> 1 cell)',

@@ -4,6 +4,7 @@
 
 from enum import Enum
 from typing import NamedTuple, Optional
+from math import sqrt
 
 from stable_baselines import PPO2
 from stable_baselines.common.policies import MlpPolicy
@@ -87,13 +88,34 @@ if __name__ == '__main__':
         # Lazy A* (classical planning)
         {'name': 'Lazy A* (classical planning)',
          'entry': 'LazyAstar',
-         'config': {'verbose': True}},
+         'config': {'verbose': False}},
+
+        # UCT (reinforcement learning / search)
+        {'name': 'UCT (reinforcement learning / search)',
+         'entry': 'UCT',
+         'config': {'time_budget': 1000, 'rollout_budget': 100,
+                    'max_depth': 500, 'ucb_constant': 1.0 / sqrt(2.0)}},
 
         # PPO: Proximal Policy Optimization (deep reinforcement learning)
         {'name': 'PPO: Proximal Policy Optimization (deep reinforcement learning)',
          'entry': 'StableBaseline',
          'config': {'algo_class': PPO2, 'baselines_policy': MlpPolicy, 'learn_config': {'total_timesteps': 25000},
                     'verbose': 1}},
+        
+        # Rollout-IW (classical planning)
+        {'name': 'Rollout-IW (classical planning)',
+         'entry': 'RIW',
+         'config': {'state_features': lambda d, s: (s.x, s.y),
+                    'time_budget': 1000, 'rollout_budget': 100,
+                    'max_depth': 500, 'exploration': 0.25,
+                    'use_simulation_domain': True, 'online_node_garbage': True,
+                    'continuous_planning': True, 'parallel': True}},
+        
+         # IW (classical planning)
+        {'name': 'IW (classical planning)',
+         'entry': 'IW',
+         'config': {'state_features': lambda s, d: (s.x, s.y),
+                    'parallel': False}},
     ]
 
     # Load solvers (filtering out badly installed ones)
