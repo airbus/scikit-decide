@@ -11,7 +11,7 @@ from typing import Callable, Dict, Tuple, Any
 
 from skdecide import Domain, Solver
 from skdecide import hub
-from skdecide.domains import ParallelDomain
+from skdecide.domains import ParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from skdecide.builders.solver import DeterministicPolicies, Utilities
@@ -52,6 +52,7 @@ try:
                      rollout_policy: Options.RolloutPolicy = Options.RolloutPolicy.Random,
                      back_propagator: Options.BackPropagator = Options.BackPropagator.Graph,
                      parallel: bool = True,
+                     shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
@@ -70,10 +71,17 @@ try:
             self._rollout_policy = rollout_policy
             self._back_propagator = back_propagator
             self._parallel = parallel
+            self._shared_memory_proxy = shared_memory_proxy
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            self._domain = ParallelDomain(domain_factory) if self._parallel else domain_factory()
+            if self._parallel:
+                if self._shared_memory_proxy is None:
+                    self._domain = ParallelDomain(domain_factory)
+                else:
+                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
+            else:
+                self._domain = domain_factory()
             self._solver = mcts_solver(domain=self._domain,
                                        time_budget=self._time_budget,
                                        rollout_budget=self._rollout_budget,
@@ -155,6 +163,7 @@ try:
                      transition_mode: mcts_options.TransitionMode = mcts_options.TransitionMode.Distribution,
                      rollout_policy: Options.RolloutPolicy = mcts_options.RolloutPolicy.Random,
                      parallel: bool = True,
+                     shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
             super().__init__(time_budget=time_budget,
                              rollout_budget=rollout_budget,
@@ -166,6 +175,7 @@ try:
                              transition_mode=transition_mode,
                              rollout_policy=rollout_policy,
                              parallel=parallel,
+                             shared_memory_proxy=shared_memory_proxy,
                              debug_logs=debug_logs)
     
 except ImportError:

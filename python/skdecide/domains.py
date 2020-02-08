@@ -6,10 +6,11 @@
 from __future__ import annotations
 
 import os
+import logging
 from typing import NewType, Optional, Callable
 
 from pathos.helpers import mp
-from multiprocessing import Manager, Lock, Pipe, Process
+from multiprocessing import Manager, Lock, Pipe, Process, Condition
 from multiprocessing.sharedctypes import Array
 import tempfile
 from pynng import Push0
@@ -579,4 +580,265 @@ class ParallelDomain:
             mi = self.wake_up_domain(i)
             self._waiting_jobs[mi].send((name, args))
             return mi
+        return method
+
+
+def _shm_launch_domain_server_(domain_factory, i, active_domains,
+                               shm_proxy, shm_registers, shm_types,
+                               rsize, shm_arrays, shm_name, shm_params,
+                               cond, ipc_conn, logger):
+    domain = domain_factory()
+    pusher = Push0()
+    pusher.dial(ipc_conn)
+    
+    def get_string(s):
+        for i, c in enumerate(s):
+            if c == b'\x00':
+                return s[:i].decode()
+        return s.decode()
+
+    while True:
+        active_domains[i] = False
+        with cond:
+            cond.wait()
+        active_domains[i] = True
+        if shm_name[0] == 0:
+            pusher.close()
+            break
+        else:
+            try:
+                job_name = get_string(shm_name[i])
+                job_args = [shm_proxy.decode(shm_types[p], shm_arrays[(i * rsize) + p])
+                            for p in shm_params[i] if p >= 0]
+                result = getattr(domain, job_name)(*job_args)
+                shm_params[i][:] = [-1] * len(shm_params[i])
+                if type(result) is not tuple:
+                    result = (result,)
+                if result[0] is not None:
+                    type_counters = {}
+                    for j, r in enumerate(result):
+                        res_name = type(r).__name__
+                        (start, end) = shm_registers[res_name]
+                        if res_name in type_counters:
+                            type_counters[res_name] += 1
+                            k = type_counters[res_name]
+                            if (k >= end):
+                                raise IndexError('''No more available register for type {}. 
+                                                    Please increase the number of registers 
+                                                    for that type.'''.format(res_name))
+                        else:
+                            type_counters[res_name] = start
+                            k = start
+                        shm_params[i][j] = k
+                        shm_proxy.encode(r, shm_arrays[(i * rsize) + k])
+                pusher.send(b'')
+            except Exception as e:
+                logger.error(rf'/!\ Unable to perform job {job_name}: {e}')
+
+class ShmParallelDomain:
+    """This class can be used to create and launch n domains in separate processes
+    with shared memory between the Python processes.
+    Each domain listens for incoming domain requests.
+    Each request can indicate which domain should serve it, otherwise the first available
+    domain  is chosen and its id is returned to the incoming request.
+    """
+    def __init__(self, domain_factory, shm_proxy, nb_domains = 1):#os.cpu_count()):
+        self._domain_factory = domain_factory
+        self._call_i = None
+        self._call_domain = False
+        self._call_result = None
+        self._manager = Manager()
+        self._active_domains = Array('b', [True for i in range(nb_domains)], lock=True)
+        self._temp_connections = [tempfile.NamedTemporaryFile() for i in range(nb_domains)]
+        self._ipc_connections = ['ipc://' + f.name + '.ipc' for f in self._temp_connections]
+        self._processes = [None] * nb_domains
+        self._conditions = [Condition()] * nb_domains
+        self._ongoing_session = False
+        self._logger = logging.getLogger('skdecide.domains')
+        self._logger.setLevel(logging.INFO)
+        self._shm_proxy = shm_proxy
+        self._shm_registers = {}  # Maps from registered method parameter types to vectorized array ranges
+        self._shm_types = {}  # Maps from register index to type
+        self._shm_arrays = []  # Methods' vectorized parameters
+        self._rsize = sum([r[1] for r in shm_proxy.register()])  # Total size of the register
+        self._shm_names = [Array('c', bytearray(100))] * nb_domains  # Vectorized methods' names
+        self._shm_params = [Array('i', [-1] * self._rsize)] * nb_domains  # Indices of methods' vectorized parameters
+        j = 0
+        for r in shm_proxy.register():
+            self._shm_registers[r[0].__name__] = (j, j + r[1])
+            self._shm_types.update({k: r[0] for k in range(j, j + r[1])})
+            j += r[1]
+        for i in range(nb_domains):
+            for r in shm_proxy.register():
+                m = shm_proxy.initialize(r[0])
+                self._shm_arrays += (m if type(m) == list or type(m) == tuple else [m]) * r[1]
+    
+    def start_session(self):
+        if not self._ongoing_session:
+            self._ongoing_session = True
+            for i in range(len(self._processes)):
+                self._processes[i] = mp.Process(target=_shm_launch_domain_server_,
+                                                args=[self._domain_factory, i, self._active_domains,
+                                                      self._shm_proxy.copy(),
+                                                      dict(self._shm_registers),  # copy to prevent concurrent accesses to read-only dict
+                                                      dict(self._shm_types),  # copy to prevent concurrent accesses to read_only dict
+                                                      self._rsize, list(self._shm_arrays), list(self._shm_names), list(self._shm_params),
+                                                      self._conditions[i], self._ipc_connections[i], self._logger])
+                self._processes[i].start()
+            # Waits for all jobs to be launched and waiting each for requests
+            while True in set(self._active_domains):
+                continue
+    
+    def end_session(self):
+        if self._ongoing_session:
+            self._ongoing_session = False
+            self._shm_names[:][:] = bytearray(len(self._shm_names[:]))  # reset with null bytes
+            for i in range(len(self._processes)):
+                self._conditions[i].notify_all()
+                self._processes[i].join()
+                self._processes[i].close()
+                self._processes[i] = None
+    
+    def get_ipc_connections(self):
+        return self._ipc_connections
+    
+    def get_parallel_capacity(self):
+        return self.nb_domains()
+    
+    def nb_domains(self):
+        return len(self._processes)
+    
+    def wake_up_domain(self, i=None):
+        if i is None:
+            while True:
+                for j, v in enumerate(self._active_domains):
+                    if not v:
+                        return j
+        else:
+            return i
+    
+    def launch(self, i, name, *args):
+        try:
+            mi = self.wake_up_domain(i)
+            self._shm_names[mi][:] = bytearray(name, encoding='utf-8') + \
+                                     bytearray(len(self._shm_names[mi]) - len(name))
+            self._shm_params[mi][:] = [-1] * len(self._shm_params[mi])
+            type_counters = {}
+            for j, a in enumerate(args):
+                arg_name = type(a).__name__
+                (start, end) = self._shm_registers[arg_name]
+                if arg_name in type_counters:
+                    type_counters[arg_name] += 1
+                    k = type_counters[arg_name]
+                    if (k >= end):
+                        raise IndexError('''No more available register for type {}. 
+                                            Please increase the number of registers 
+                                            for that type.'''.format(arg_name))
+                else:
+                    type_counters[arg_name] = start
+                    k = start
+                self._shm_params[mi][j] = k
+                self._shm_proxy.encode(a, self._shm_arrays[(mi * self._rsize) + k])
+            with self._conditions[mi]:
+                self._conditions[mi].notify_all()
+            return mi
+        except Exception as e:
+            self._logger.error(rf'/!\ Unable to launch job {name}: {e}')
+    
+    def reset(self, i=None):
+        return self.launch(i, 'reset')
+    
+    def get_initial_state_distribution(self, i=None):
+        return self.launch(i, 'get_initial_state_distribution')
+    
+    def get_initial_state(self, i=None):
+        return self.launch(i, 'get_initial_state')
+    
+    def get_observation_space(self, i=None):
+        return self.launch(i, 'get_observation_space')
+    
+    def is_observation(self, observation, i=None):
+        return self.launch(i, 'is_observation', observation)
+    
+    def get_observation_distribution(self, state, action, i=None):
+        return self.launch(i, 'get_observation_distribution', state, action)
+    
+    def get_observation(self, state, action, i=None):
+        return self.launch(i, 'get_observation', state, action)
+    
+    def get_enabled_events(self, memory, i=None):
+        return self.launch(i, 'get_enabled_events', memory)
+    
+    def is_enabled_event(self, event, memory, i=None):
+        return self.launch(i, 'is_enabled_event', event, memory)
+    
+    def get_action_space(self, i=None):
+        return self.launch(i, 'get_action_space')
+
+    def is_action(self, event, i=None):
+        return self.launch(i, 'is_action', event)
+    
+    def get_applicable_actions(self, memory, i=None):
+        return self.launch(i, 'get_applicable_actions', memory)
+    
+    def is_applicable_action(self, action, memory, i=None):
+        return self.launch(i, 'is_applicable_action', action, memory)
+    
+    def step(self, action, i=None):
+        return self.launch(i, 'step', action)
+    
+    def sample(self, memory, action, i=None):
+        return self.launch(i, 'sample', memory, action)
+    
+    def get_next_state_distribution(self, memory, action, i=None):
+        return self.launch(i, 'get_next_state_distribution', memory, action)
+    
+    def get_next_state(self, memory, action, i=None):
+        return self.launch(i, 'get_next_state', memory, action)
+    
+    def get_transition_value(self, memory, action, next_state, i=None):
+        return self.launch(i, 'get_transition_value', memory, action, next_state)
+    
+    def is_transition_value_dependent_on_next_state(self, i=None):
+        return self.launch(i, 'is_transition_value_dependent_on_next_state')
+    
+    def get_goals(self, i=None):
+        return self.launch(i, 'get_goals')
+    
+    def is_goal(self, observation, i=None):
+        return self.launch(i, 'is_goal', observation)
+    
+    def is_terminal(self, state, i=None):
+        return self.launch(i, 'is_terminal', state)
+    
+    def check_value(self, value, i=None):
+        return self.launch(i, 'check_value', value)
+    
+    def render(self, memory, i=None):
+        return self.launch(i, 'render', memory)
+    
+    def call(self, i, function, *args):
+        self._call_i = i
+        self._call_domain = False
+        mi = function(self, *args)  # will most probably call __getattr__.method below
+        self._call_i = None
+        if not self._call_domain:  # function is a lambda not calling the original domain
+            self._call_result = mi
+            return -1
+        else:
+            return mi
+    
+    def get_result(self, i):
+        if i >= 0:
+            results = [self._shm_proxy.decode(self._shm_types[r], self._shm_arrays[(i * self._rsize) + r])
+                       for r in self._shm_params[i] if r >= 0]
+            return results if len(results) > 1 else results[0] if len(results) > 0 else None
+        else:  # we called a lambda function without using the original domain => main thread execution
+            return self._call_result
+    
+    # The original sequential domain may have methods we don't know
+    def __getattr__(self, name):
+        def method(*args, i=self._call_i):
+            self._call_domain = True
+            return self.launch(i, name, args)
         return method
