@@ -31,6 +31,19 @@ if False:  # trick to avoid circular import & IDE error ("Unresolved reference '
 __all__ = ['Domain', 'RLDomain', 'MultiAgentRLDomain', 'StatelessSimulatorDomain', 'MDPDomain', 'POMDPDomain',
            'GoalMDPDomain', 'GoalPOMDPDomain', 'DeterministicPlanningDomain']
 
+logger = logging.getLogger('skdecide.domains')
+
+logger.setLevel(logging.INFO)
+
+if not len(logger.handlers):
+    ch = logging.StreamHandler()
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+    ch.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(ch)
+    logger.propagate = False
+
 
 # MAIN BASE CLASS
 
@@ -346,358 +359,31 @@ class DeterministicPlanningDomain(Domain, SingleAgent, Sequential, Deterministic
     pass
 
 
-def _launch_domain_server_(domain_factory, i, lock, active_domains, job_results, conn, ipc_conn):
-    domain = domain_factory()
-    pusher = Push0()
-    pusher.dial(ipc_conn)
-    while True:
-        active_domains[i] = False
-        job = conn.recv()
-        lock.acquire()
-        active_domains[i] = True
-        job_results[i] = None
-        lock.release()
-        if job is None:
-            pusher.close()
-            break
-        else:
-            try:
-                r = getattr(domain, job[0])(*job[1])
-                lock.acquire()
-                job_results[i] = r
-                lock.release()
-                pusher.send(b'')
-            except Exception as e:
-                print('\x1b[3;33;40m' + 'ERROR: unable to perform job: ' + str(e) + '\x1b[0m')
-
 class ParallelDomain:
-    """This class can be used to create and launch n domains in separate processes.
+    """Base class for creating and launching n domains in separate processes.
     Each domain listens for incoming domain requests.
     Each request can indicate which domain should serve it, otherwise the first available
-    domain  is chosen and its id is returned to the incoming request.
+    domain i is chosen and its id is returned to the incoming request.
     """
     def __init__(self, domain_factory, nb_domains = os.cpu_count()):
         self._domain_factory = domain_factory
         self._call_i = None
         self._call_domain = False
         self._call_result = None
-        self._manager = Manager()
-        self._waiting_jobs = [None] * nb_domains
-        self._active_domains = Array('b', [True for i in range(nb_domains)], lock=True)
-        self._temp_connections = [tempfile.NamedTemporaryFile() for i in range(nb_domains)]
-        self._ipc_connections = ['ipc://' + f.name + '.ipc' for f in self._temp_connections]
-        self._job_results = self._manager.list([None for i in range(nb_domains)])
-        self._processes = [None] * nb_domains
-        self._lock = Lock()
-        self._ongoing_session = False
-    
-    def start_session(self):
-        if not self._ongoing_session:
-            self._ongoing_session = True
-            for i in range(len(self._job_results)):
-                pparent, pchild = Pipe()
-                self._waiting_jobs[i] = pparent
-                self._processes[i] = mp.Process(target=_launch_domain_server_,
-                                                args=[self._domain_factory, i, self._lock, self._active_domains,
-                                                    self._job_results, pchild, self._ipc_connections[i]])
-                self._processes[i].start()
-            # Waits for all jobs to be launched and waiting each for requests
-            while True in set(self._active_domains):
-                continue
-    
-    def end_session(self):
-        if self._ongoing_session:
-            self._ongoing_session = False
-            for i in range(len(self._job_results)):
-                self._waiting_jobs[i].send(None)
-                self._processes[i].join()
-                self._processes[i].close()
-                self._processes[i] = None
-    
-    def get_ipc_connections(self):
-        return self._ipc_connections
-    
-    def get_parallel_capacity(self):
-        return self.nb_domains()
-    
-    def nb_domains(self):
-        return len(self._job_results)
-    
-    def wake_up_domain(self, i=None):
-        if i is None:
-            while True:
-                for j, v in enumerate(self._active_domains):
-                    if not v:
-                        return j
-        else:
-            return i
-    
-    def reset(self, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("reset", []))
-        return mi
-    
-    def get_initial_state_distribution(self, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_initial_state_distribution", []))
-        return mi
-    
-    def get_initial_state(self, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_initial_state", []))
-        return mi
-    
-    def get_observation_space(self, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_observation_space", []))
-        return mi
-    
-    def is_observation(self, observation, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("is_observation", [observation]))
-        return mi
-    
-    def get_observation_distribution(self, state, action, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_observation_distribution", [state, action]))
-        return mi
-    
-    def get_observation(self, state, action, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_observation", [state, action]))
-        return mi
-    
-    def get_enabled_events(self, memory, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_enabled_events", [memory]))
-        return mi
-    
-    def is_enabled_event(self, event, memory, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("is_enabled_event", [event, memory]))
-        return mi
-    
-    def get_action_space(self, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_action_space", []))
-        return mi
-
-    def is_action(self, event, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("is_action", [event]))
-        return mi
-    
-    def get_applicable_actions(self, memory, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_applicable_actions", [memory]))
-        return mi
-    
-    def is_applicable_action(self, action, memory, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("is_applicable_action", [action, memory]))
-        return mi
-    
-    def step(self, action, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("step", [action]))
-        return mi
-    
-    def sample(self, memory, action, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("sample", [memory, action]))
-        return mi
-    
-    def get_next_state_distribution(self, memory, action, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_next_state_distribution", [memory, action]))
-        return mi
-    
-    def get_next_state(self, memory, action, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_next_state", [memory, action]))
-        return mi
-    
-    def get_transition_value(self, memory, action, next_state, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_transition_value", [memory, action, next_state]))
-        return mi
-    
-    def is_transition_value_dependent_on_next_state(self, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("is_transition_value_dependent_on_next_state", []))
-        return mi
-    
-    def get_goals(self, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("get_goals", []))
-        return mi
-    
-    def is_goal(self, observation, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("is_goal", [observation]))
-        return mi
-    
-    def is_terminal(self, state, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("is_terminal", [state]))
-        return mi
-    
-    def check_value(self, value, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("check_value", [value]))
-        return mi
-    
-    def render(self, memory, i=None):
-        mi = self.wake_up_domain(i)
-        self._waiting_jobs[mi].send(("render", [memory]))
-        return mi
-    
-    def call(self, i, function, *args):
-        self._call_i = i
-        self._call_domain = False
-        mi = function(self, *args)  # will most probably call __getattr__.method below
-        self._call_i = None
-        if not self._call_domain:  # function is a lambda not calling the original domain
-            self._call_result = mi
-            return -1
-        else:
-            return mi
-    
-    def get_result(self, i):
-        if i >= 0:
-            self._lock.acquire()
-            r = self._job_results[i]
-            self._job_results[i] = None
-            self._lock.release()
-            return r
-        else:  # we called a lambda function without using the original domain => main thread execution
-            return self._call_result
-    
-    # The original sequential domain may have methods we don't know
-    def __getattr__(self, name):
-        def method(*args, i=self._call_i):
-            self._call_domain = True
-            mi = self.wake_up_domain(i)
-            self._waiting_jobs[mi].send((name, args))
-            return mi
-        return method
-
-
-def _shm_launch_domain_server_(domain_factory, i, active_domains,
-                               shm_proxy, shm_registers, shm_types,
-                               rsize, shm_arrays, shm_name, shm_params,
-                               cond, ipc_conn, logger):
-    domain = domain_factory()
-    pusher = Push0()
-    pusher.dial(ipc_conn)
-    
-    def get_string(s):
-        for i, c in enumerate(s):
-            if c == b'\x00':
-                return s[:i].decode()
-        return s.decode()
-
-    while True:
-        active_domains[i] = False
-        with cond:
-            cond.wait()
-        active_domains[i] = True
-        if shm_name[0] == 0:
-            pusher.close()
-            break
-        else:
-            try:
-                job_name = get_string(shm_name[i])
-                job_args = [shm_proxy.decode(shm_types[p], shm_arrays[(i * rsize) + p])
-                            for p in shm_params[i] if p >= 0]
-                result = getattr(domain, job_name)(*job_args)
-                shm_params[i][:] = [-1] * len(shm_params[i])
-                if type(result) is not tuple:
-                    result = (result,)
-                if result[0] is not None:
-                    type_counters = {}
-                    for j, r in enumerate(result):
-                        res_name = type(r).__name__
-                        (start, end) = shm_registers[res_name]
-                        if res_name in type_counters:
-                            type_counters[res_name] += 1
-                            k = type_counters[res_name]
-                            if (k >= end):
-                                raise IndexError('''No more available register for type {}. 
-                                                    Please increase the number of registers 
-                                                    for that type.'''.format(res_name))
-                        else:
-                            type_counters[res_name] = start
-                            k = start
-                        shm_params[i][j] = k
-                        shm_proxy.encode(r, shm_arrays[(i * rsize) + k])
-                pusher.send(b'')
-            except Exception as e:
-                logger.error(rf'/!\ Unable to perform job {job_name}: {e}')
-
-class ShmParallelDomain:
-    """This class can be used to create and launch n domains in separate processes
-    with shared memory between the Python processes.
-    Each domain listens for incoming domain requests.
-    Each request can indicate which domain should serve it, otherwise the first available
-    domain  is chosen and its id is returned to the incoming request.
-    """
-    def __init__(self, domain_factory, shm_proxy, nb_domains = 1):#os.cpu_count()):
-        self._domain_factory = domain_factory
-        self._call_i = None
-        self._call_domain = False
-        self._call_result = None
-        self._manager = Manager()
         self._active_domains = Array('b', [True for i in range(nb_domains)], lock=True)
         self._temp_connections = [tempfile.NamedTemporaryFile() for i in range(nb_domains)]
         self._ipc_connections = ['ipc://' + f.name + '.ipc' for f in self._temp_connections]
         self._processes = [None] * nb_domains
-        self._conditions = [Condition()] * nb_domains
         self._ongoing_session = False
-        self._logger = logging.getLogger('skdecide.domains')
-        self._logger.setLevel(logging.INFO)
-        self._shm_proxy = shm_proxy
-        self._shm_registers = {}  # Maps from registered method parameter types to vectorized array ranges
-        self._shm_types = {}  # Maps from register index to type
-        self._shm_arrays = []  # Methods' vectorized parameters
-        self._rsize = sum([r[1] for r in shm_proxy.register()])  # Total size of the register
-        self._shm_names = [Array('c', bytearray(100))] * nb_domains  # Vectorized methods' names
-        self._shm_params = [Array('i', [-1] * self._rsize)] * nb_domains  # Indices of methods' vectorized parameters
-        j = 0
-        for r in shm_proxy.register():
-            self._shm_registers[r[0].__name__] = (j, j + r[1])
-            self._shm_types.update({k: r[0] for k in range(j, j + r[1])})
-            j += r[1]
-        for i in range(nb_domains):
-            for r in shm_proxy.register():
-                m = shm_proxy.initialize(r[0])
-                self._shm_arrays += (m if type(m) == list or type(m) == tuple else [m]) * r[1]
     
     def start_session(self):
-        if not self._ongoing_session:
-            self._ongoing_session = True
-            for i in range(len(self._processes)):
-                self._processes[i] = mp.Process(target=_shm_launch_domain_server_,
-                                                args=[self._domain_factory, i, self._active_domains,
-                                                      self._shm_proxy.copy(),
-                                                      dict(self._shm_registers),  # copy to prevent concurrent accesses to read-only dict
-                                                      dict(self._shm_types),  # copy to prevent concurrent accesses to read_only dict
-                                                      self._rsize, list(self._shm_arrays), list(self._shm_names), list(self._shm_params),
-                                                      self._conditions[i], self._ipc_connections[i], self._logger])
-                self._processes[i].start()
-            # Waits for all jobs to be launched and waiting each for requests
-            while True in set(self._active_domains):
-                continue
-    
+        raise NotImplementedError
+
     def end_session(self):
-        if self._ongoing_session:
-            self._ongoing_session = False
-            self._shm_names[:][:] = bytearray(len(self._shm_names[:]))  # reset with null bytes
-            for i in range(len(self._processes)):
-                self._conditions[i].notify_all()
-                self._processes[i].join()
-                self._processes[i].close()
-                self._processes[i] = None
+        raise NotImplementedError
+
+    def launch(self, i, name, *args):
+        raise NotImplementedError
     
     def get_ipc_connections(self):
         return self._ipc_connections
@@ -716,34 +402,6 @@ class ShmParallelDomain:
                         return j
         else:
             return i
-    
-    def launch(self, i, name, *args):
-        try:
-            mi = self.wake_up_domain(i)
-            self._shm_names[mi][:] = bytearray(name, encoding='utf-8') + \
-                                     bytearray(len(self._shm_names[mi]) - len(name))
-            self._shm_params[mi][:] = [-1] * len(self._shm_params[mi])
-            type_counters = {}
-            for j, a in enumerate(args):
-                arg_name = type(a).__name__
-                (start, end) = self._shm_registers[arg_name]
-                if arg_name in type_counters:
-                    type_counters[arg_name] += 1
-                    k = type_counters[arg_name]
-                    if (k >= end):
-                        raise IndexError('''No more available register for type {}. 
-                                            Please increase the number of registers 
-                                            for that type.'''.format(arg_name))
-                else:
-                    type_counters[arg_name] = start
-                    k = start
-                self._shm_params[mi][j] = k
-                self._shm_proxy.encode(a, self._shm_arrays[(mi * self._rsize) + k])
-            with self._conditions[mi]:
-                self._conditions[mi].notify_all()
-            return mi
-        except Exception as e:
-            self._logger.error(rf'/!\ Unable to launch job {name}: {e}')
     
     def reset(self, i=None):
         return self.launch(i, 'reset')
@@ -828,17 +486,279 @@ class ShmParallelDomain:
         else:
             return mi
     
-    def get_result(self, i):
-        if i >= 0:
-            results = [self._shm_proxy.decode(self._shm_types[r], self._shm_arrays[(i * self._rsize) + r])
-                       for r in self._shm_params[i] if r >= 0]
-            return results if len(results) > 1 else results[0] if len(results) > 0 else None
-        else:  # we called a lambda function without using the original domain => main thread execution
-            return self._call_result
-    
     # The original sequential domain may have methods we don't know
     def __getattr__(self, name):
         def method(*args, i=self._call_i):
             self._call_domain = True
             return self.launch(i, name, args)
         return method
+
+
+def _launch_domain_server_(domain_factory, i, lock, active_domains,
+                           job_results, conn, ipc_conn, logger):
+    domain = domain_factory()
+    pusher = Push0()
+    pusher.dial(ipc_conn)
+    while True:
+        active_domains[i] = False
+        job = conn.recv()
+        lock.acquire()
+        active_domains[i] = True
+        job_results[i] = None
+        lock.release()
+        if job is None:
+            pusher.close()
+            break
+        else:
+            try:
+                r = getattr(domain, job[0])(*job[1])
+                lock.acquire()
+                job_results[i] = r
+                lock.release()
+                pusher.send(b'')
+            except Exception as e:
+                logger.error(rf'/!\ Unable to perform job {job[0]}: {e}')
+
+class PipeParallelDomain(ParallelDomain):
+    """This class can be used to create and launch n domains in separate processes.
+    Each domain listens for incoming domain requests.
+    Each request can indicate which domain should serve it, otherwise the first available
+    domain i is chosen and its id is returned to the incoming request.
+    """
+    def __init__(self, domain_factory, nb_domains = os.cpu_count()):
+        super().__init__(domain_factory, nb_domains)
+        self._manager = Manager()
+        self._waiting_jobs = [None] * nb_domains
+        self._job_results = self._manager.list([None for i in range(nb_domains)])
+        self._lock = Lock()
+        logger.info(rf'Using {nb_domains} parallel piped domains')
+    
+    def start_session(self):
+        if not self._ongoing_session:
+            self._ongoing_session = True
+            for i in range(len(self._job_results)):
+                pparent, pchild = Pipe()
+                self._waiting_jobs[i] = pparent
+                self._processes[i] = mp.Process(target=_launch_domain_server_,
+                                                args=[self._domain_factory, i, self._lock, self._active_domains,
+                                                      self._job_results, pchild, self._ipc_connections[i], logger])
+                self._processes[i].start()
+            # Waits for all jobs to be launched and waiting each for requests
+            while True in set(self._active_domains):
+                continue
+    
+    def end_session(self):
+        if self._ongoing_session:
+            self._ongoing_session = False
+            for i in range(len(self._job_results)):
+                self._waiting_jobs[i].send(None)
+                self._processes[i].join()
+                self._processes[i].close()
+                self._processes[i] = None
+    
+    def launch(self, i, name, *args):
+        try:
+            mi = self.wake_up_domain(i)
+            self._waiting_jobs[mi].send((name, args))
+            return mi
+        except Exception as e:
+            logger.error(rf'/!\ Unable to launch job {name}: {e}')
+    
+    def get_result(self, i):
+        if i >= 0:
+            self._lock.acquire()
+            r = self._job_results[i]
+            self._job_results[i] = None
+            self._lock.release()
+            return r
+        else:  # we called a lambda function without using the original domain => main thread execution
+            return self._call_result
+
+
+def _shm_launch_domain_server_(domain_factory, i, active_domains,
+                               shm_proxy, shm_registers, shm_types, shm_sizes,
+                               rsize, shm_arrays, shm_names, shm_params,
+                               cond, ipc_conn, logger):
+    domain = domain_factory()
+    pusher = Push0()
+    pusher.dial(ipc_conn)
+    
+    def get_string(s):
+        for i, c in enumerate(s):
+            if c == b'\x00':
+                return s[:i].decode()
+        return s.decode()
+
+    while True:
+        active_domains[i] = False
+        with cond:
+            cond.wait()
+        active_domains[i] = True
+        if shm_names[i][0] == b'\x00':
+            pusher.close()
+            break
+        else:
+            try:
+                job_name = get_string(shm_names[i])
+                job_args = []
+                for p in shm_params[i]:
+                    if p >= 0:
+                        sz = shm_sizes[shm_types[p].__name__]
+                        if sz > 1:
+                            si = (i * rsize) + p
+                            job_args.append(shm_proxy.decode(shm_types[p], shm_arrays[si:(si + sz)]))
+                        else:
+                            job_args.append(shm_proxy.decode(shm_types[p], shm_arrays[(i * rsize) + p]))
+                    else:
+                        break  # no more args
+                result = getattr(domain, job_name)(*job_args)
+                shm_params[i][:] = [-1] * len(shm_params[i])
+                if type(result) is not tuple:
+                    result = (result,)
+                if result[0] is not None:
+                    type_counters = {}
+                    for j, r in enumerate(result):
+                        res_name = type(r).__name__
+                        (start, end) = shm_registers[res_name]
+                        if res_name in type_counters:
+                            type_counters[res_name] += 1
+                            k = type_counters[res_name]
+                            if (k >= end):
+                                raise IndexError('''No more available register for type {}. 
+                                                    Please increase the number of registers 
+                                                    for that type.'''.format(res_name))
+                        else:
+                            type_counters[res_name] = start
+                            k = start
+                        shm_params[i][j] = k
+                        sz = shm_sizes[res_name]
+                        if sz > 1:
+                            si = (i * rsize) + k
+                            shm_proxy.encode(r, shm_arrays[si:(si + sz)])
+                        else:
+                            shm_proxy.encode(r, shm_arrays[(i * rsize) + k])
+                pusher.send(b'')
+            except Exception as e:
+                logger.error(rf'/!\ Unable to perform job {job_name}: {e}')
+
+class ShmParallelDomain(ParallelDomain):
+    """This class can be used to create and launch n domains in separate processes
+    with shared memory between the Python processes.
+    Each domain listens for incoming domain requests.
+    Each request can indicate which domain should serve it, otherwise the first available
+    domain is chosen and its id is returned to the incoming request.
+    """
+    def __init__(self, domain_factory, shm_proxy, nb_domains = os.cpu_count()):
+        super().__init__(domain_factory, nb_domains)
+        self._conditions = [Condition() for i in range(nb_domains)]
+        self._shm_proxy = shm_proxy
+        self._shm_registers = {}  # Maps from registered method parameter types to vectorized array ranges
+        self._shm_types = {}  # Maps from register index to type
+        self._shm_sizes = {}  # Maps from register method parameter types to number of arrays encoding each type
+        self._shm_arrays = []  # Methods' vectorized parameters
+        self._rsize = 0  # Total size of the register (updated below)
+        self._shm_names = [None] * nb_domains  # Vectorized methods' names
+        self._shm_params = [None] * nb_domains  # Indices of methods' vectorized parameters
+        for i in range(nb_domains):
+            j = 0
+            for r in shm_proxy.register():
+                for k in range(r[1]):
+                    m = shm_proxy.initialize(r[0])
+                    if type(m) == list or type(m) == tuple:
+                        if i == 0 and k == 0:  # do it once for all the domains and redundant initializers
+                            self._shm_sizes[r[0].__name__] = len(m)
+                            self._shm_registers[r[0].__name__] = (j, j + (r[1] * len(m)))
+                            self._shm_types.update({kk: r[0] for kk in range(j, j + (r[1] * len(m)), len(m))})
+                            self._rsize += (r[1] * len(m))
+                        self._shm_arrays.extend(m)
+                        j += len(m)
+                    else:
+                        if i == 0 and k == 0:  # do it once for all the domains and redundant initializers
+                            self._shm_sizes[r[0].__name__] = 1
+                            self._shm_registers[r[0].__name__] = (j, j + r[1])
+                            self._shm_types.update({kk: r[0] for kk in range(j, j + r[1])})
+                            self._rsize += r[1]
+                        self._shm_arrays.append(m)
+                        j += 1
+            self._shm_names[i] = Array('c', bytearray(100))
+            self._shm_params[i] = Array('i', [-1] * sum(r[1] for r in shm_proxy.register()))
+        logger.info(rf'Using {nb_domains} parallel shared memory domains')
+    
+    def start_session(self):
+        if not self._ongoing_session:
+            self._ongoing_session = True
+            for i in range(len(self._processes)):
+                self._processes[i] = mp.Process(target=_shm_launch_domain_server_,
+                                                args=[self._domain_factory, i, self._active_domains,
+                                                      self._shm_proxy.copy(),
+                                                      dict(self._shm_registers),
+                                                      dict(self._shm_types),
+                                                      dict(self._shm_sizes),
+                                                      self._rsize, list(self._shm_arrays), list(self._shm_names), list(self._shm_params),
+                                                      self._conditions[i], self._ipc_connections[i], logger])
+                self._processes[i].start()
+            # Waits for all jobs to be launched and waiting each for requests
+            while True in set(self._active_domains):
+                continue
+    
+    def end_session(self):
+        if self._ongoing_session:
+            self._ongoing_session = False
+            for i in range(len(self._processes)):
+                self._shm_names[i][:] = bytearray(len(self._shm_names[i]))  # reset with null bytes
+                self._shm_params[i][:] = [-1] * len(self._shm_params[i])
+                with self._conditions[i]:
+                    self._conditions[i].notify_all()
+                self._processes[i].join()
+                self._processes[i].close()
+                self._processes[i] = None
+    
+    def launch(self, i, name, *args):
+        try:
+            mi = self.wake_up_domain(i)
+            self._shm_names[mi][:] = bytearray(name, encoding='utf-8') + \
+                                     bytearray(len(self._shm_names[mi]) - len(name))
+            self._shm_params[mi][:] = [-1] * len(self._shm_params[mi])
+            type_counters = {}
+            for j, a in enumerate(args):
+                arg_name = type(a).__name__
+                (start, end) = self._shm_registers[arg_name]
+                if arg_name in type_counters:
+                    type_counters[arg_name] += self._shm_sizes[arg_name]
+                    k = type_counters[arg_name]
+                    if (k >= end):
+                        raise IndexError('''No more available register for type {}. 
+                                            Please increase the number of registers 
+                                            for that type.'''.format(arg_name))
+                else:
+                    type_counters[arg_name] = start
+                    k = start
+                self._shm_params[mi][j] = k
+                sz = self._shm_sizes[arg_name]
+                if sz > 1:
+                    si = (mi * self._rsize) + k
+                    self._shm_proxy.encode(a, self._shm_arrays[si:(si + sz)])
+                else:
+                    self._shm_proxy.encode(a, self._shm_arrays[(mi * self._rsize) + k])
+            with self._conditions[mi]:
+                self._conditions[mi].notify_all()
+            return mi
+        except Exception as e:
+            logger.error(rf'/!\ Unable to launch job {name}: {e}')
+    
+    def get_result(self, i):
+        results = []
+        if i >= 0:
+            for r in self._shm_params[i]:
+                if r >= 0:
+                    sz = self._shm_sizes[self._shm_types[r].__name__]
+                    if sz > 1:
+                        si = (i * self._rsize) + r
+                        results.append(self._shm_proxy.decode(self._shm_types[r], self._shm_arrays[si:(si + sz)]))
+                    else:
+                        results.append(self._shm_proxy.decode(self._shm_types[r], self._shm_arrays[(i * self._rsize) + r]))
+                else:
+                    break  # no more params
+            return results if len(results) > 1 else results[0] if len(results) > 0 else None
+        else:  # we called a lambda function without using the original domain => main thread execution
+            return self._call_result

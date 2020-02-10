@@ -799,7 +799,10 @@ protected :
                     } else {
                         id = func(_domain, args..., py::none());
                     }
-                    conn = _connections[py::cast<std::size_t>(id)].get();
+                    int did = py::cast<int>(id);
+                    if (did >= 0) {
+                        conn = _connections[(std::size_t) did].get();
+                    }
                 } catch(const py::error_already_set* e) {
                     spdlog::error("SKDECIDE exception when asynchronously calling anonymous domain method: " + std::string(e->what()));
                     std::runtime_error err(e->what());
@@ -809,13 +812,15 @@ protected :
                 }
             }
             while (true) {
-                try {
-                    conn->recv_msg();
-                } catch (const nng::exception& e) {
-                    std::string err_msg("SKDECIDE exception when waiting for a response from the python parallel domain: ");
-                    err_msg += e.who() + std::string(": ") + e.what();
-                    spdlog::error(err_msg);
-                    throw std::runtime_error(err_msg);
+                if (conn) { // positive id returned
+                    try {
+                        conn->recv_msg();
+                    } catch (const nng::exception& e) {
+                        std::string err_msg("SKDECIDE exception when waiting for a response from the python parallel domain: ");
+                        err_msg += e.who() + std::string(": ") + e.what();
+                        spdlog::error(err_msg);
+                        throw std::runtime_error(err_msg);
+                    }
                 }
                 typename GilControl<Texecution>::Acquire acquire;
                 try {

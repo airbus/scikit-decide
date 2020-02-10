@@ -165,27 +165,24 @@ class MyShmProxy:
     
     class TransitionValueProxy:
 
-        class MyStructure(Structure):
-            _fields_ = [('value', c_double), ('reward', c_bool)]
-
         @staticmethod
         def initialize():
-            return Array(MyShmProxy.TransitionValueProxy.MyStructure, [(0, True)])
+            return [Value('d', 0), Value('b', False)]
         
         def encode(value, shm_value):
             if value.reward is not None:
-                shm_value[0].value = value.reward
-                shm_value[0].reward = True
+                shm_value[0] = value.reward
+                shm_value[1] = True
             elif value.cost is not None:
-                shm_value[0].value = value.cost
-                shm_value[0].reward = False
+                shm_value[0] = value.cost
+                shm_value[1] = False
             else:
-                shm_value[0].value = 0
-                shm_value[0].reward = True
+                shm_value[0] = 0
+                shm_value[1] = True
         
         @staticmethod
         def decode(value):
-            if value[0].reward:
+            if value[1].value:
                 return TransitionValue(reward=value[0].value)
             else:
                 return TransitionValue(cost=value[0].value)
@@ -193,8 +190,20 @@ class MyShmProxy:
     class EnvironmentOutcomeProxy:
         @staticmethod
         def initialize():
-            class MyStructure(Structure):
-                _fields_ = []
+            return [MyShmProxy.StateProxy.initialize()] + \
+                   MyShmProxy.TransitionValueProxy.initialize() + \
+                   [MyShmProxy.BoolProxy.initialize()]
+        
+        def encode(outcome, shm_outcome):
+            MyShmProxy.StateProxy.encode(outcome.observation, shm_outcome[0])
+            MyShmProxy.TransitionValueProxy.encode(outcome.value, shm_outcome[1:3])
+            MyShmProxy.BoolProxy.encode(outcome.termination, shm_outcome[3])
+        
+        @staticmethod
+        def decode(outcome):
+            return EnvironmentOutcome(observation=MyShmProxy.StateProxy.decode(outcome[0]),
+                                      value=MyShmProxy.TransitionValueProxy.decode(outcome[1:3]),
+                                      termination=MyShmProxy.BoolProxy.decode(outcome[3]))
     
     class BoolProxy:
         @staticmethod
@@ -202,11 +211,11 @@ class MyShmProxy:
             return Value('b', False)
         
         def encode(val, shm_val):
-            shm_val = val
+            shm_val.value = val
         
         @staticmethod
         def decode(val):
-            return bool(val)
+            return bool(val.value)
 
 
 if __name__ == '__main__':
@@ -231,7 +240,7 @@ if __name__ == '__main__':
                                      transition_mode=UCT.Options.TransitionMode.Distribution,
                                      parallel=True,
                                      shared_memory_proxy=MyShmProxy(),
-                                     debug_logs=True)
+                                     debug_logs=False)
         solver = MyDomain.solve_with(solver_factory, domain_factory)
         rollout(domain, solver, num_episodes=1, max_steps=2, max_framerate=30,
                 outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

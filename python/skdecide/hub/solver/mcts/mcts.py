@@ -11,7 +11,7 @@ from typing import Callable, Dict, Tuple, Any
 
 from skdecide import Domain, Solver
 from skdecide import hub
-from skdecide.domains import ParallelDomain, ShmParallelDomain
+from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from skdecide.builders.solver import DeterministicPolicies, Utilities
@@ -77,7 +77,7 @@ try:
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
             if self._parallel:
                 if self._shared_memory_proxy is None:
-                    self._domain = ParallelDomain(domain_factory)
+                    self._domain = PipeParallelDomain(domain_factory)
                 else:
                     self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
             else:
@@ -125,11 +125,14 @@ try:
                 if not self._parallel:
                     return self._domain.get_action_space().sample()
                 else:
+                    self._domain.start_session()
                     domain_id = self._domain.get_action_space()
                     while True:
                         action_space = self._domain.get_result(domain_id)
                         if action_space is not None:
-                            return action_space.sample()
+                            r = action_space.sample()
+                    self._domain.end_session()
+                    return r
             else:
                 return action
         

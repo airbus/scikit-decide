@@ -11,7 +11,7 @@ from typing import Callable, Any
 
 from skdecide import Domain, Solver
 from skdecide import hub
-from skdecide.domains import ParallelDomain
+from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from skdecide.builders.solver import DeterministicPolicies, Utilities
@@ -45,6 +45,7 @@ try:
                      online_node_garbage: bool = False,
                      continuous_planning: bool = True,
                      parallel: bool = True,
+                     shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
@@ -59,10 +60,17 @@ try:
             self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
             self._parallel = parallel
+            self._shared_memory_proxy = shared_memory_proxy
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            self._domain = ParallelDomain(domain_factory) if self._parallel else domain_factory()
+            if self._parallel:
+                if self._shared_memory_proxy is None:
+                    self._domain = PipeParallelDomain(domain_factory)
+                else:
+                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
+            else:
+                self._domain = domain_factory()
             self._solver = riw_solver(domain=self._domain,
                                       state_features=lambda d, s, i=None: self._state_features(d, s) if not self._parallel else d.call(i, self._state_features, s),
                                       use_state_feature_hash=self._use_state_feature_hash,
@@ -81,7 +89,11 @@ try:
             self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+            if self._parallel:
+                self._domain.start_session()
             self._solver.solve(memory)
+            if self._parallel:
+                self._domain.end_session()
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
             return self._solver.is_solution_defined_for(observation)
@@ -96,11 +108,15 @@ try:
                 if not self._parallel:
                     return self._domain.get_action_space().sample()
                 else:
+                    self._domain.start_session()
                     domain_id = self._domain.get_action_space()
                     while True:
                         action_space = self._domain.get_result(domain_id)
                         if action_space is not None:
-                            return action_space.sample()
+                            r = action_space.sample()
+                            break
+                    self._domain.end_session()
+                    return r
             else:
                 return action
         
