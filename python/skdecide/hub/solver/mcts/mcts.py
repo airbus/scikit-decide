@@ -89,7 +89,7 @@ try:
                                        discount=self._discount,
                                        uct_mode=self._uct_mode,
                                        ucb_constant=self._ucb_constant,
-                                       rollout_policy_functor=self._rollout_policy_functor,
+                                       rollout_policy_functor=lambda d, s, i=None: self._rollout_policy_functor(d, s) if not self._parallel else d.call(i, self._rollout_policy_functor, s),
                                        transition_mode=self._transition_mode,
                                        tree_policy=self._tree_policy,
                                        expander=self._expander,

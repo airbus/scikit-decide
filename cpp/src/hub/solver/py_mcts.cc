@@ -139,8 +139,22 @@ public :
                                        parallel,
                                        debug_logs);
         } else {
-            spdlog::error("MCTS only supports UCT mode at the moment.");
-            throw std::runtime_error("MCTS only supports UCT mode at the moment.");
+            initialize_transition_mode(domain,
+                                       time_budget,
+                                       rollout_budget,
+                                       max_depth,
+                                       discount,
+                                       ucb_constant,
+                                       rollout_policy_functor,
+                                       transition_mode,
+                                       tree_policy,
+                                       expander,
+                                       action_selector_optimization,
+                                       action_selector_execution,
+                                       rollout_policy,
+                                       back_propagator,
+                                       parallel,
+                                       debug_logs);
         }
     }
 
