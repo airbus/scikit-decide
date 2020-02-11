@@ -49,6 +49,7 @@ try:
                      debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
+            self._domain_factory = None  # Used for random action sampling
             self._state_features = state_features
             self._use_state_feature_hash = use_state_feature_hash
             self._use_simulation_domain = use_simulation_domain
@@ -71,6 +72,7 @@ try:
                     self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
             else:
                 self._domain = domain_factory()
+            self._domain_factory = domain_factory  # Used for random action sampling
             self._solver = riw_solver(domain=self._domain,
                                       state_features=lambda d, s, i=None: self._state_features(d, s) if not self._parallel else d.call(i, self._state_features, s),
                                       use_state_feature_hash=self._use_state_feature_hash,
@@ -90,7 +92,7 @@ try:
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             if self._parallel:
-                self._domain.start_session()
+                self._domain.start_session(ipc_notify=True)
             self._solver.solve(memory)
             if self._parallel:
                 self._domain.end_session()
@@ -108,13 +110,10 @@ try:
                 if not self._parallel:
                     return self._domain.get_action_space().sample()
                 else:
-                    self._domain.start_session()
+                    self._domain.start_session(ipc_notify=False)
                     domain_id = self._domain.get_action_space()
-                    while True:
-                        action_space = self._domain.get_result(domain_id)
-                        if action_space is not None:
-                            r = action_space.sample()
-                            break
+                    self._domain.wait_job(domain_id)
+                    r = self._domain.get_result(domain_id).sample()
                     self._domain.end_session()
                     return r
             else:

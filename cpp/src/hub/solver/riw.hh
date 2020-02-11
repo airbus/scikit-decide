@@ -737,7 +737,6 @@ private :
                 node = node_child;
                 if (_debug_logs) {
                     _execution_policy.protect([&node, &thread_id](){
-                        spdlog::info("A6(" + std::to_string(thread_id) + "): " + std::to_string((std::size_t) node));
                         spdlog::debug("Exploring known outcome: " + node->state.print() +
                                                 ", depth=" + StringConverter::from(node->depth) +
                                                 ", value=" + StringConverter::from(node->value));

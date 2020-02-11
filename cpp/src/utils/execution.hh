@@ -93,38 +93,38 @@ namespace skdecide {
 
         struct Mutex {
             Mutex() {
-                omp_init_lock(_lock);
+                omp_init_lock(&_lock);
             }
 
             ~Mutex() {
-                omp_destroy_lock(_lock);
+                omp_destroy_lock(&_lock);
             }
 
-            omp_lock_t* _lock;
+            omp_lock_t _lock;
         };
 
         struct RecursiveMutex {
             RecursiveMutex() {
-                omp_init_nest_lock(_lock);
+                omp_init_nest_lock(&_lock);
             }
 
             ~RecursiveMutex() {
-                omp_destroy_nest_lock(_lock);
+                omp_destroy_nest_lock(&_lock);
             }
 
-            omp_nest_lock_t* _lock;
+            omp_nest_lock_t _lock;
         };
 
         inline void protect(const std::function<void ()>& f, Mutex& m) {
-            omp_set_lock(m._lock);
+            omp_set_lock(&(m._lock));
             f();
-            omp_unset_lock(m._lock);
+            omp_unset_lock(&(m._lock));
         }
 
         inline void protect(const std::function<void ()>& f, RecursiveMutex& m) {
-            omp_set_nest_lock(m._lock);
+            omp_set_nest_lock(&(m._lock));
             f();
-            omp_unset_nest_lock(m._lock);
+            omp_unset_nest_lock(&(m._lock));
         }
 
         inline void protect(const std::function<void ()>& f) {

@@ -95,7 +95,7 @@ class MyShmProxy:
                           SingleValueDistribution: MyShmProxy.SingleValueDistributionProxy,
                           TransitionValue: MyShmProxy.TransitionValueProxy,
                           EnvironmentOutcome: MyShmProxy.EnvironmentOutcomeProxy,
-                          TransitionOutcome: MyShmProxy.EnvironmentOutcomeProxy,
+                          TransitionOutcome: MyShmProxy.TransitionOutcomeProxy,
                           bool: MyShmProxy.BoolProxy}
     
     def copy(self):
@@ -207,6 +207,24 @@ class MyShmProxy:
                                       value=MyShmProxy.TransitionValueProxy.decode(outcome[1:3]),
                                       termination=MyShmProxy.BoolProxy.decode(outcome[3]))
     
+    class TransitionOutcomeProxy:
+        @staticmethod
+        def initialize():
+            return [MyShmProxy.StateProxy.initialize()] + \
+                   MyShmProxy.TransitionValueProxy.initialize() + \
+                   [MyShmProxy.BoolProxy.initialize()]
+        
+        def encode(outcome, shm_outcome):
+            MyShmProxy.StateProxy.encode(outcome.state, shm_outcome[0])
+            MyShmProxy.TransitionValueProxy.encode(outcome.value, shm_outcome[1:3])
+            MyShmProxy.BoolProxy.encode(outcome.termination, shm_outcome[3])
+        
+        @staticmethod
+        def decode(outcome):
+            return TransitionOutcome(state=MyShmProxy.StateProxy.decode(outcome[0]),
+                                     value=MyShmProxy.TransitionValueProxy.decode(outcome[1:3]),
+                                     termination=MyShmProxy.BoolProxy.decode(outcome[3]))
+    
     class BoolProxy:
         @staticmethod
         def initialize():
@@ -227,23 +245,23 @@ if __name__ == '__main__':
     domain.reset()
 
     if RIW.check_domain(domain):
-        solver_factory = lambda: RIW(state_features=lambda d, s: (s.x, s.y),
-                                     use_state_feature_hash=False,
-                                     use_simulation_domain=False,
-                                     time_budget=1000,
+        # solver_factory = lambda: RIW(state_features=lambda d, s: (s.x, s.y),
+        #                              use_state_feature_hash=False,
+        #                              use_simulation_domain=True,
+        #                              time_budget=1000,
+        #                              rollout_budget=100,
+        #                              max_depth=200,
+        #                              exploration=0.25,
+        #                              parallel=True,
+        #                              shared_memory_proxy=MyShmProxy(),
+        #                              debug_logs=False)
+        solver_factory = lambda: UCT(time_budget=1000,
                                      rollout_budget=100,
                                      max_depth=200,
-                                     exploration=0.25,
+                                     transition_mode=UCT.Options.TransitionMode.Distribution,
                                      parallel=True,
                                      shared_memory_proxy=MyShmProxy(),
                                      debug_logs=False)
-        # solver_factory = lambda: UCT(time_budget=1000,
-        #                              rollout_budget=100,
-        #                              max_depth=200,
-        #                              transition_mode=UCT.Options.TransitionMode.Distribution,
-        #                              parallel=False,
-        #                              shared_memory_proxy=MyShmProxy(),
-        #                              debug_logs=False)
         solver = MyDomain.solve_with(solver_factory, domain_factory)
         rollout(domain, solver, num_episodes=1, max_steps=2, max_framerate=30,
                 outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

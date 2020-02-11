@@ -384,8 +384,14 @@ class ParallelDomain:
 
     def launch(self, i, name, *args):
         raise NotImplementedError
+
+    def wait_job(self, i):  # using process connections (see below)
+        raise NotImplementedError
+
+    def get_proc_connections(self):  # process connections for use in python
+        raise NotImplementedError
     
-    def get_ipc_connections(self):
+    def get_ipc_connections(self):  # inter-process connections for use with C++
         return self._ipc_connections
     
     def get_parallel_capacity(self):
@@ -497,8 +503,9 @@ class ParallelDomain:
 def _launch_domain_server_(domain_factory, i, lock, active_domains,
                            job_results, conn, ipc_conn, logger):
     domain = domain_factory()
-    pusher = Push0()
-    pusher.dial(ipc_conn)
+    if ipc_conn is not None:
+        pusher = Push0()
+        pusher.dial(ipc_conn)
     while True:
         active_domains[i] = False
         job = conn.recv()
@@ -507,7 +514,8 @@ def _launch_domain_server_(domain_factory, i, lock, active_domains,
         job_results[i] = None
         lock.release()
         if job is None:
-            pusher.close()
+            if ipc_conn is not None:
+                pusher.close()
             break
         else:
             try:
@@ -515,7 +523,10 @@ def _launch_domain_server_(domain_factory, i, lock, active_domains,
                 lock.acquire()
                 job_results[i] = r
                 lock.release()
-                pusher.send(b'')
+                if ipc_conn is not None:
+                    pusher.send(b'')
+                else:
+                    conn.send('')
             except Exception as e:
                 logger.error(rf'/!\ Unable to perform job {job[0]}: {e}')
 
@@ -533,7 +544,13 @@ class PipeParallelDomain(ParallelDomain):
         self._lock = Lock()
         logger.info(rf'Using {nb_domains} parallel piped domains')
     
-    def start_session(self):
+    def get_proc_connections(self):
+        return self._waiting_jobs
+    
+    def wait_job(self, i):
+        self._waiting_jobs[i].recv()
+    
+    def start_session(self, ipc_notify=False):
         if not self._ongoing_session:
             self._ongoing_session = True
             for i in range(len(self._job_results)):
@@ -541,7 +558,7 @@ class PipeParallelDomain(ParallelDomain):
                 self._waiting_jobs[i] = pparent
                 self._processes[i] = mp.Process(target=_launch_domain_server_,
                                                 args=[self._domain_factory, i, self._lock, self._active_domains,
-                                                      self._job_results, pchild, self._ipc_connections[i], logger])
+                                                      self._job_results, pchild, self._ipc_connections[i] if ipc_notify else None, logger])
                 self._processes[i].start()
             # Waits for all jobs to be launched and waiting each for requests
             while True in set(self._active_domains):
@@ -580,8 +597,9 @@ def _shm_launch_domain_server_(domain_factory, i, active_domains,
                                rsize, shm_arrays, shm_names, shm_params,
                                cond, ipc_conn, logger):
     domain = domain_factory()
-    pusher = Push0()
-    pusher.dial(ipc_conn)
+    if ipc_conn is not None:
+        pusher = Push0()
+        pusher.dial(ipc_conn)
     
     def get_string(s):
         for i, c in enumerate(s):
@@ -595,7 +613,8 @@ def _shm_launch_domain_server_(domain_factory, i, active_domains,
             cond.wait()
         active_domains[i] = True
         if shm_names[i][0] == b'\x00':
-            pusher.close()
+            if ipc_conn is not None:
+                pusher.close()
             break
         else:
             try:
@@ -637,7 +656,11 @@ def _shm_launch_domain_server_(domain_factory, i, active_domains,
                             shm_proxy.encode(r, shm_arrays[si:(si + sz)])
                         else:
                             shm_proxy.encode(r, shm_arrays[(i * rsize) + k])
-                pusher.send(b'')
+                if ipc_conn is not None:
+                    pusher.send(b'')
+                else:
+                    with cond:
+                        cond.notify_all()
             except Exception as e:
                 logger.error(rf'/!\ Unable to perform job {job_name}: {e}')
 
@@ -684,7 +707,14 @@ class ShmParallelDomain(ParallelDomain):
             self._shm_params[i] = Array('i', [-1] * sum(r[1] for r in shm_proxy.register()))
         logger.info(rf'Using {nb_domains} parallel shared memory domains')
     
-    def start_session(self):
+    def get_proc_connections(self):
+        return self._conditions
+    
+    def wait_job(self, i):
+        with self._conditions[i]:
+            self._conditions[i].wait()
+    
+    def start_session(self, ipc_notify=False):
         if not self._ongoing_session:
             self._ongoing_session = True
             for i in range(len(self._processes)):
@@ -695,7 +725,7 @@ class ShmParallelDomain(ParallelDomain):
                                                       dict(self._shm_types),
                                                       dict(self._shm_sizes),
                                                       self._rsize, list(self._shm_arrays), list(self._shm_names), list(self._shm_params),
-                                                      self._conditions[i], self._ipc_connections[i], logger])
+                                                      self._conditions[i], self._ipc_connections[i] if ipc_notify else None, logger])
                 self._processes[i].start()
             # Waits for all jobs to be launched and waiting each for requests
             while True in set(self._active_domains):
