@@ -253,7 +253,7 @@ private :
     public :
         SequenceImplementation(const py::object& vector) {
             typename GilControl<Texecution>::Acquire acquire;
-            this->_vector = static_cast<const Tsequence&>(vector);
+            this->_vector = Tsequence(vector);
         }
 
         SequenceImplementation(const SequenceImplementation& other) {
@@ -269,7 +269,7 @@ private :
 
         virtual ~SequenceImplementation() {
             typename GilControl<Texecution>::Acquire acquire;
-            _vector = Tsequence();
+            _vector = py::object(); // Tsequence() does not create a null object!
         }
 
         virtual std::size_t size() const {
@@ -295,7 +295,7 @@ private :
     public :
         NumpyImplementation(const py::object& vector) {
             typename GilControl<Texecution>::Acquire acquire;
-            _vector = static_cast<const py::array_t<T>&>(vector);
+            _vector = py::array_t<T>(vector);
             _buffer = _vector.request();
         }
 
@@ -314,7 +314,7 @@ private :
 
         virtual ~NumpyImplementation() {
             typename GilControl<Texecution>::Acquire acquire;
-            _vector = py::array_t<T>();
+            _vector = py::object(); // py::array<T>() does not create a null object!
         }
 
         virtual std::size_t size() const {
