@@ -314,7 +314,7 @@ private :
 
         virtual ~NumpyImplementation() {
             typename GilControl<Texecution>::Acquire acquire;
-            _vector = py::object(); // py::array<T>() does not create a null object!
+            _vector = py::object(); // py::array_t<T>() does not create a null object!
         }
 
         virtual std::size_t size() const {
