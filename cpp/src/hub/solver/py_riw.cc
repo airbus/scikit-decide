@@ -51,9 +51,9 @@ public :
                 const std::function<py::object (py::object&, const py::object&, const py::object&)>& state_features,  // last arg used for optional thread_id
                 bool use_state_feature_hash = false,
                 bool use_simulation_domain = false,
-                unsigned int time_budget = 3600000,
-                unsigned int rollout_budget = 100000,
-                unsigned int max_depth = 1000,
+                std::size_t time_budget = 3600000,
+                std::size_t rollout_budget = 100000,
+                std::size_t max_depth = 1000,
                 double exploration = 0.25,
                 double discount = 1.0,
                 bool online_node_garbage = false,
@@ -170,9 +170,9 @@ private :
 
         Implementation(py::object& domain,
                        const std::function<py::object (py::object&, const py::object&, const py::object&)>& state_features,  // last arg used for optional thread_id
-                       unsigned int time_budget = 3600000,
-                       unsigned int rollout_budget = 100000,
-                       unsigned int max_depth = 1000,
+                       std::size_t time_budget = 3600000,
+                       std::size_t rollout_budget = 100000,
+                       std::size_t max_depth = 1000,
                        double exploration = 0.25,
                        double discount = 1.0,
                        bool online_node_garbage = false,
@@ -289,9 +289,9 @@ void init_pyriw(py::module& m) {
                           const std::function<py::object (py::object&, const py::object&, const py::object&)>&,  // last arg used for optional thread_id
                           bool,
                           bool,
-                          unsigned int,
-                          unsigned int,
-                          unsigned int,
+                          std::size_t,
+                          std::size_t,
+                          std::size_t,
                           double,
                           double,
                           bool,

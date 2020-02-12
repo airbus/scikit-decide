@@ -841,7 +841,7 @@ private :
             _execution_policy.protect([this, &n](){
                 if (n->pruned) {
                     n->value = 0;
-                    for (unsigned int d = 0 ; d < (_max_depth - n->depth) ; d++) {
+                    for (std::size_t d = 0 ; d < (_max_depth - n->depth) ; d++) {
                         n->value = _min_reward + (_discount * (n->value));
                     }
                 }
