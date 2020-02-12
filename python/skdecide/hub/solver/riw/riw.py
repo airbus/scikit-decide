@@ -36,7 +36,7 @@ try:
         def __init__(self,
                      state_features: Callable[[Domain, D.T_state], Any],
                      use_state_feature_hash: bool = False,
-                     use_simulation_domain = False,
+                     use_simulation_domain: bool = False,
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
