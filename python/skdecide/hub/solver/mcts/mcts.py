@@ -51,6 +51,7 @@ try:
                      action_selector_execution: Options.ActionSelector = Options.ActionSelector.BestQValue,
                      rollout_policy: Options.RolloutPolicy = Options.RolloutPolicy.Random,
                      back_propagator: Options.BackPropagator = Options.BackPropagator.Graph,
+                     continuous_planning: bool = True,
                      parallel: bool = True,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
@@ -70,6 +71,7 @@ try:
             self._action_selector_execution = action_selector_execution
             self._rollout_policy = rollout_policy
             self._back_propagator = back_propagator
+            self._continuous_planning = continuous_planning
             self._parallel = parallel
             self._shared_memory_proxy = shared_memory_proxy
             self._debug_logs = debug_logs
@@ -115,9 +117,8 @@ try:
             return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            # if not self._is_solution_defined_for(observation):
-            #     self._solve_from(observation)
-            self._solve_from(observation)
+            if self._continuous_planning or not self._is_solution_defined_for(observation):
+                self._solve_from(observation)
             action = self._solver.get_next_action(observation)
             if action is None:
                 print('\x1b[3;33;40m' + 'No best action found in observation ' +
@@ -163,6 +164,7 @@ try:
                      rollout_policy_functor: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
                      transition_mode: mcts_options.TransitionMode = mcts_options.TransitionMode.Distribution,
                      rollout_policy: Options.RolloutPolicy = mcts_options.RolloutPolicy.Random,
+                     continuous_planning: bool = True,
                      parallel: bool = True,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
@@ -175,6 +177,7 @@ try:
                              rollout_policy_functor=rollout_policy_functor,
                              transition_mode=transition_mode,
                              rollout_policy=rollout_policy,
+                             continuous_planning=continuous_planning,
                              parallel=parallel,
                              shared_memory_proxy=shared_memory_proxy,
                              debug_logs=debug_logs)
