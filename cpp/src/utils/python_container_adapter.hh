@@ -268,8 +268,11 @@ private :
         }
 
         virtual ~SequenceImplementation() {
+            // Assigning to Tsequence() is in sufficient
+            // because it does not create a null object!
             typename GilControl<Texecution>::Acquire acquire;
-            _vector = py::object(); // Tsequence() does not create a null object!
+            _vector.dec_ref();
+            _vector.release();
         }
 
         virtual std::size_t size() const {
@@ -313,8 +316,11 @@ private :
         }
 
         virtual ~NumpyImplementation() {
+            // Assigning to py::array_t<T>() is in sufficient
+            // because it does not create a null object!
             typename GilControl<Texecution>::Acquire acquire;
-            _vector = py::object(); // py::array_t<T>() does not create a null object!
+            _vector.dec_ref();
+            _vector.release();
         }
 
         virtual std::size_t size() const {
