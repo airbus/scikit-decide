@@ -496,7 +496,7 @@ class ParallelDomain:
     def __getattr__(self, name):
         def method(*args, i=self._call_i):
             self._call_domain = True
-            return self.launch(i, name, args)
+            return self.launch(i, name, *args)
         return method
 
 
