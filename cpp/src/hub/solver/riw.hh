@@ -697,8 +697,9 @@ private :
                     node_child = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 });
                 Node& next_node = *node_child;
-                _execution_policy.protect([&node, &action_number, &outcome](){
+                _execution_policy.protect([&node, &action_number, &outcome, &node_child](){
                     std::get<1>(node->children[action_number]) = outcome->reward();
+                    std::get<2>(node->children[action_number]) = node_child;
                 }, node->mutex);
                 if (outcome->reward() < _min_reward) {
                     _min_reward = outcome->reward();
