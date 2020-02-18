@@ -77,10 +77,13 @@ class Maze(D):
                 else:
                     row.append(0)  # walls are 0s
             maze.append(row)
+        # self._render_maze = deepcopy(self._maze)
         self._maze = maze
         self._num_cols = len(maze[0])
         self._num_rows = len(maze)
         self._ax = None
+        self._image = None
+
 
     def _get_next_state(self, memory: D.T_memory[D.T_state],
                         action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
@@ -128,9 +131,10 @@ class Maze(D):
 
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
         if self._ax is None:
-            fig = plt.gcf()
+            # fig = plt.gcf()
+            fig, ax  = plt.subplots(1)
             fig.canvas.set_window_title('Maze')
-            ax = plt.axes()
+            # ax = plt.axes()
             ax.set_aspect('equal')  # set the x and y axes to the same scale
             plt.xticks([])  # remove the tick marks by setting to an empty list
             plt.yticks([])  # remove the tick marks by setting to an empty list
@@ -140,5 +144,10 @@ class Maze(D):
         maze = deepcopy(self._maze)
         maze[self._goal.y][self._goal.x] = 0.7
         maze[memory.y][memory.x] = 0.3
-        self._ax.pcolormesh(maze)
-        plt.pause(0.0001)
+        if self._image is None:
+            self._image = self._ax.imshow(maze)
+        else:
+            self._image.set_data(maze)
+        # self._ax.pcolormesh(maze)
+        # plt.draw()
+        plt.pause(0.001)
