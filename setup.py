@@ -208,6 +208,7 @@ setup(
         'skdecide.solvers': [
             'AOstar = skdecide.hub.solver.aostar:AOstar',
             'Astar = skdecide.hub.solver.astar:Astar',
+            'LRTAstar = skdecide.hub.solver.lrtastar:LRTAstar',
             'MCTS = skdecide.hub.solver.mcts:MCTS',
             'UCT = skdecide.hub.solver.mcts:UCT',
             'AugmentedRandomSearch = skdecide.hub.solver.ars:AugmentedRandomSearch [solvers]',
