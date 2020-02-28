@@ -25,7 +25,7 @@
 
     <!-- Spec dialog -->
     <el-dialog :title="'Edit ' + domainOrSolver + ' specification'" :visible.sync="specDialogVisible">
-      <iframe v-if="specDialogVisible" :src="'/guide/_' + domainOrSolver + 'spec.html'" frameborder="0" style="width: 100%; height: 50vh"></iframe>
+      <iframe v-if="specDialogVisible" :src="$withBase('/guide/_' + domainOrSolver + 'spec.html')" frameborder="0" style="width: 100%; height: 50vh"></iframe>
     </el-dialog>
   </div>
 </template>

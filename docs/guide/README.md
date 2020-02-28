@@ -8,7 +8,7 @@ Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning 
 
 It is meant for being a one-stop shop solution to formalize decision-making problems, finding compatible solvers among a growing catalog and get the best solution possible. The catalog is a combination of wrapped existing domains/solvers and newly contributed ones.
 
-![Architecture](/architecture.png)
+<img :src="$withBase('/architecture.png')" alt="Architecture">
 
 ### As a domain developer
 
@@ -59,7 +59,7 @@ Domain characteristics are one of the key concepts in scikit-decide: they are co
 
 Each characteristic has various levels, from general (high-level) to specialized (low-level) ones, each level inheriting higher-level functions. Any domain fully contained in a solver's envelope is compatible with this solver, unless it violates additional requirements (optional).
 
-![Characteristics](/characteristics.png)
+<img :src="$withBase('/characteristics.png')" alt="Characteristics">
 
 Defining a domain to solve is a matter of:
 - selecting a base domain class (`Domain` by default or any pre-made template for typical combinations like `DeterministicPlanningDomain`)
@@ -128,7 +128,7 @@ utils.rollout(MyDomain(), solution, num_episodes=3, max_steps=1000, max_framerat
 
 In the example of the Maze solved with Lazy A*, the goal (in green) should be reached by the agent (in blue):
 
-![Maze](/maze.png)
+<img :src="$withBase('/maze.png')" alt="Maze">
 
 ## Examples
 
