@@ -11,6 +11,7 @@ from typing import Optional, Callable
 
 from skdecide import Domain, Solver
 from skdecide import hub
+from skdecide.domains import ParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, EnumerableTransitions, Actions, Goals, Markovian, \
     FullyObservable, PositiveCosts
 from skdecide.builders.solver import DeterministicPolicies, Utilities
@@ -28,48 +29,6 @@ try:
     class D(Domain, SingleAgent, Sequential, EnumerableTransitions, Actions, Goals, Markovian, FullyObservable,
             PositiveCosts):
         pass
-
-    def AOStarDomain_pickable_get_next_state_distribution(domain, state, action):
-        return domain.get_next_state_distribution(state, action)
-
-    class AOStarProxyDomain:
-        def __init__(self, domain):
-            self._domain = domain
-            self.aostar_nsd_results = {}
-        
-        def get_initial_state(self):
-            return self._domain.get_initial_state()
-
-        def get_applicable_actions(self, state):
-            actions = self._domain.get_applicable_actions(state)
-            self.aostar_nsd_results = {a: None for a in actions.get_elements()}
-            return actions
-        
-        def get_transition_value(self, memory, action, next_state):
-            return self._domain.get_transition_value(memory, action, next_state)
-        
-        def is_goal(self, state):
-            return self._domain.is_goal(state)
-    
-    class AOStarParallelDomain(AOStarProxyDomain):
-        def __init__(self, domain):
-            super().__init__(domain)
-            self.aostar_pool = multiprocessing.Pool()
-
-        def compute_next_state_distribution(self, state, action):  # self is a domain
-            self.aostar_nsd_results[action] = self.aostar_pool.apply_async(
-                                                    AOStarDomain_pickable_get_next_state_distribution,
-                                                    (self._domain, state, action))
-        
-        def get_next_state_distribution(self, state, action):  # self is a domain
-            return self.aostar_nsd_results[action].get()
-    
-    class AOStarSequentialDomain(AOStarProxyDomain):
-        def compute_next_state_distribution(self, state, action):  # self is a domain
-            self.aostar_nsd_results[action] = self._domain.get_next_state_distribution(state, action)
-
-        def get_next_state_distribution(self, state, action):  # self is a domain
-            return self.aostar_nsd_results[action]
 
     class AOstar(Solver, DeterministicPolicies, Utilities):
         T_domain = D
@@ -89,13 +48,10 @@ try:
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
-            if self._parallel:
-                self._domain = AOStarParallelDomain(domain_factory())
-            else:
-                self._domain = AOStarSequentialDomain(domain_factory())
+            self._domain = ParallelDomain(domain_factory) if self._parallel else domain_factory()
             self._solver = aostar_solver(domain=self._domain,
                                          goal_checker=lambda o: self._domain.is_goal(o),
-                                         heuristic=(lambda o: self._heuristic(o, self._domain._domain)) if self._heuristic is not None else (lambda o: 0),
+                                         heuristic=(lambda o: self._heuristic(o, self._domain)) if self._heuristic is not None else (lambda o: 0),
                                          discount=self._discount,
                                          max_tip_expansions=self._max_tip_expansions,
                                          detect_cycles=self._detect_cycles,
