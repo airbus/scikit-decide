@@ -180,12 +180,10 @@ for extra in extras_require.values():
 extras_require['all'] = all_extra
 
 
-# TODO: import the following from python/setup.py
 setup(
     name='skdecide',
     version=__version__,
-    package_dir={'': 'python'},
-    packages=find_packages(where='./python'),
+    packages=find_packages(),
     install_requires=[
        'simplejson>=3.16.0'
     ],
