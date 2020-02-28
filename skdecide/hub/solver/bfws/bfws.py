@@ -11,6 +11,7 @@ from typing import Callable
 
 from skdecide import Domain, Solver
 from skdecide import hub
+from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from skdecide.builders.solver import DeterministicPolicies, Utilities
@@ -23,48 +24,6 @@ if skdecide_cpp_extension_lib_path not in sys.path:
 try:
 
     from __skdecide_hub_cpp import _BFWSSolver_ as bfws_solver
-
-    def BFWSDomain_pickable_get_next_state(domain, state, action):
-        return domain.get_next_state(state, action)
-    
-    class BFWSProxyDomain:
-        def __init__(self, domain):
-            self._domain = domain
-            self.bfws_nsd_results = {}
-        
-        def get_initial_state(self):
-            return self._domain.get_initial_state()
-
-        def get_applicable_actions(self, state):
-            actions = self._domain.get_applicable_actions(state)
-            self.bfws_nsd_results = {a: None for a in actions.get_elements()}
-            return actions
-        
-        def get_transition_value(self, memory, action, next_state):
-            return self._domain.get_transition_value(memory, action, next_state)
-        
-        def is_goal(self, state):
-            return self._domain.is_goal(state)
-    
-    class BFWSParallelDomain(BFWSProxyDomain):
-        def __init__(self, domain):
-            super().__init__(domain)
-            self.bfws_pool = multiprocessing.Pool()
-
-        def compute_next_state(self, state, action):  # self is a domain
-            self.bfws_nsd_results[action] = self.bfws_pool.apply_async(
-                                                    BFWSDomain_pickable_get_next_state,
-                                                    (self._domain, state, action))
-        
-        def get_next_state(self, state, action):  # self is a domain
-            return self.bfws_nsd_results[action].get()
-    
-    class BFWSSequentialDomain(BFWSProxyDomain):
-        def compute_next_state(self, state, action):  # self is a domain
-            self.bfws_nsd_results[action] = self._domain.get_next_state(state, action)
-
-        def get_next_state(self, state, action):  # self is a domain
-            return self.bfws_nsd_results[action]
 
 
     class D(Domain, SingleAgent, Sequential, DeterministicTransitions, Actions, DeterministicInitialized, Markovian,
@@ -80,6 +39,7 @@ try:
                      heuristic: Callable[[D.T_state, Domain], float],
                      termination_checker: Callable[[D.T_state, Domain], bool],
                      parallel: bool = True,
+                     shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
@@ -87,13 +47,17 @@ try:
             self._heuristic = heuristic
             self._termination_checker = termination_checker
             self._parallel = parallel
+            self._shared_memory_proxy = shared_memory_proxy
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
             if self._parallel:
-                self._domain = BFWSParallelDomain(domain_factory())
+                if self._shared_memory_proxy is None:
+                    self._domain = PipeParallelDomain(domain_factory)
+                else:
+                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
             else:
-                self._domain = BFWSSequentialDomain(domain_factory())
+                self._domain = domain_factory()
             self._solver = bfws_solver(domain=self._domain,
                                        state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
                                        heuristic=lambda o: self._heuristic(o, self._domain),

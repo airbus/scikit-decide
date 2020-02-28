@@ -533,16 +533,8 @@ public :
         return _implementation->sample(s, e, thread_id);
     }
 
-    void compute_next_state(const State& s, const Event& e, [[maybe_unused]] const int& thread_id = -1) {
-        throw std::runtime_error("DEPRECATED");
-    }
-
     py::object get_next_state(const State& s, const Event& e, const int& thread_id = -1) {
         return _implementation->get_next_state(s, e, thread_id);
-    }
-
-    void compute_next_state_distribution(const State& s, const Event& e, [[maybe_unused]] const int& thread_id = -1) {
-        throw std::runtime_error("DEPRECATED");
     }
 
     std::unique_ptr<NextStateDistribution> get_next_state_distribution(const State& s, const Event& e, const int& thread_id = -1) {

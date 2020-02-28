@@ -11,7 +11,7 @@ from typing import Callable, Any, List, Tuple
 
 from skdecide import Domain, Solver
 from skdecide import hub
-from skdecide.domains import ParallelDomain
+from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from skdecide.builders.solver import DeterministicPolicies, Utilities
@@ -40,6 +40,7 @@ try:
                      node_ordering: Callable[[float, int, int, float, int, int], bool] = None,
                      time_budget: int = 0,  # time budget to continue searching for better plans after a goal has been reached
                      parallel: bool = True,
+                     shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
@@ -48,10 +49,17 @@ try:
             self._node_ordering = node_ordering
             self._time_budget = time_budget
             self._parallel = parallel
+            self._shared_memory_proxy = shared_memory_proxy
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            self._domain = ParallelDomain(domain_factory) if self._parallel else domain_factory()
+            if self._parallel:
+                if self._shared_memory_proxy is None:
+                    self._domain = PipeParallelDomain(domain_factory)
+                else:
+                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
+            else:
+                self._domain = domain_factory()
             self._solver = iw_solver(domain=self._domain,
                                      state_features=lambda o: self._state_features(o, self._domain),
                                      use_state_feature_hash=self._use_state_feature_hash,

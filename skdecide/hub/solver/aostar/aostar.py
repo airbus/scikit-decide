@@ -11,7 +11,7 @@ from typing import Optional, Callable
 
 from skdecide import Domain, Solver
 from skdecide import hub
-from skdecide.domains import ParallelDomain
+from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, EnumerableTransitions, Actions, Goals, Markovian, \
     FullyObservable, PositiveCosts
 from skdecide.builders.solver import DeterministicPolicies, Utilities
@@ -33,10 +33,12 @@ try:
     class AOstar(Solver, DeterministicPolicies, Utilities):
         T_domain = D
         
-        def __init__(self, heuristic: Optional[Callable[[D.T_state, Domain], float]] = None,
+        def __init__(self,
+                     heuristic: Optional[Callable[[D.T_state, Domain], float]] = None,
                      discount: float = 1.,
                      max_tip_expanions: int = 1,
                      parallel: bool = True,
+                     shared_memory_proxy = None,
                      detect_cycles: bool = False,
                      debug_logs: bool = False) -> None:
             self._solver = None
@@ -44,11 +46,18 @@ try:
             self._discount = discount
             self._max_tip_expansions = max_tip_expanions
             self._parallel = parallel
+            self._shared_memory_proxy = shared_memory_proxy
             self._detect_cycles = detect_cycles
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
-            self._domain = ParallelDomain(domain_factory) if self._parallel else domain_factory()
+            if self._parallel:
+                if self._shared_memory_proxy is None:
+                    self._domain = PipeParallelDomain(domain_factory)
+                else:
+                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
+            else:
+                self._domain = domain_factory()
             self._solver = aostar_solver(domain=self._domain,
                                          goal_checker=lambda o: self._domain.is_goal(o),
                                          heuristic=(lambda o: self._heuristic(o, self._domain)) if self._heuristic is not None else (lambda o: 0),
