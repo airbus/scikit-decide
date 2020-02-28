@@ -35,6 +35,23 @@ Make sure you are in the "scikit-decide for Python" root directory and install w
 
 This will only install the core library, which is enough if you intend to create your own domain and solver.
 
+#### c. C++ extension installation
+
+This extension provides several algorithms implemented in C++ that are directly available in the Python interface.
+Make sure you have a recent C++ compiler with c++-17 support.
+Make sure you are in the "scikit-decide for Python" root directory and install with Pip:
+
+    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
+    pip install --install-option="--cpp-extension" --install-option="--cxx-compiler=<PATH_TO_YOUR_CPP_COMPILER>" --install-option="--cmake-options="<OPTIONAL_CMAKE_OPTIONS>" .\[all\] -v
+
+CMake options are useful in case of unusual system configurations, so we recommend to try to build the C++ extension without providing cmake options.
+Should you need to pass cmake options to the installer, use the same format as the standard cmake command.
+
+if you just want to build a dstributable wheel of scikit-decide containing the compiled C++ extension, make sure you are in the "scikit-decide for Python" root directory and build it with setuptools:
+
+    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
+    python setup.py bdist_wheel --cpp-extension --cxx-compiler=<PATH_TO_YOUR_CPP_COMPILER> --cmake-options=<OPTIONAL_CMAKE_OPTIONS>
+
 ## Documentation (work in progress)
 
 The documentation is currently being updated for more control and flexibility, using [VuePress](https://v1.vuepress.vuejs.org) to generate an interactive static website.
