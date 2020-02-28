@@ -29,7 +29,7 @@ ENV_NAME = 'GymJsbsim-TaxiapControlTask-v0'
 HORIZON = 1000
 
 
-class D(GymDomainHashable, GymDiscreteActionDomain):
+class D(GymDomainHashable, GymDiscreteActionDomain, GymWidthDomain):
     pass
 
 
@@ -66,6 +66,7 @@ class GymRIWDomain(D):
         GymDiscreteActionDomain.__init__(self,
                                          discretization_factor=discretization_factor,
                                          branching_factor=branching_factor)
+        GymWidthDomain.__init__(self, continuous_feature_fidelity=continuous_feature_fidelity)
         gym_env._max_episode_steps = max_depth
         self._max_depth = max_depth
         self._current_depth = 0
@@ -210,6 +211,8 @@ class GymRIW(RIW):
                  rollout_budget: int = 100000,
                  max_depth: int = 1000,
                  exploration: float = 0.25,
+                 online_node_garbage: bool = False,
+                 continuous_planning: bool = True,
                  parallel: bool = True,
                  debug_logs: bool = False) -> None:
         super().__init__(state_features=state_features,
@@ -219,11 +222,13 @@ class GymRIW(RIW):
                          rollout_budget=rollout_budget,
                          max_depth=max_depth,
                          exploration=exploration,
+                         online_node_garbage=online_node_garbage,
+                         continuous_planning=continuous_planning,
                          parallel=parallel,
                          debug_logs=debug_logs)
     
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        if not self._is_solution_defined_for(observation):
+        if self._continuous_planning or not self._is_solution_defined_for(observation):
             self._solve_from(observation)
         action = self._solver.get_next_action(observation)
         self._domain.reset_features()
@@ -238,20 +243,22 @@ class GymRIW(RIW):
 domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
                                       set_state=lambda e, s: e.set_state(s),
                                       get_state=lambda e: e.get_state(),
-                                      continuous_feature_fidelity=9,
+                                      continuous_feature_fidelity=1,
                                       discretization_factor=9,
                                       max_depth=HORIZON)
 domain = domain_factory()
 
 if True:#RIW.check_domain(domain):
-    solver_factory = lambda: GymRIW(state_features=lambda d, s: d.bee_distance_features(s),
+    solver_factory = lambda: GymRIW(state_features=lambda d, s: d.bee1_features(s),
                                     use_state_feature_hash=False,
                                     use_simulation_domain=False,
-                                    time_budget=3600000,
-                                    rollout_budget=10000,
-                                    max_depth=5000,
+                                    continuous_planning=True,
+                                    online_node_garbage=True,
+                                    time_budget=60000,
+                                    rollout_budget=30,
+                                    max_depth=100,
                                     exploration=0.5,
-                                    parallel=True,
+                                    parallel=False,
                                     debug_logs=False)
     solver = GymRIWDomain.solve_with(solver_factory, domain_factory)
     rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30, verbose=True,
