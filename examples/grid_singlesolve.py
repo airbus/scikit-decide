@@ -13,8 +13,12 @@ from skdecide import DeterministicPlanningDomain, TransitionValue, \
                      SingleValueDistribution
 from skdecide.builders.domain import UnrestrictedActions
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
+from skdecide.hub.solver.astar import Astar
+from skdecide.hub.solver.aostar import AOstar
+from skdecide.hub.solver.iw import IW
 from skdecide.hub.solver.riw import RIW
 from skdecide.hub.solver.mcts import UCT
+from skdecide.hub.solver.bfws import BFWS
 from skdecide.utils import rollout
 
 
@@ -245,6 +249,21 @@ if __name__ == '__main__':
     domain.reset()
 
     if RIW.check_domain(domain):
+        # solver_factory = lambda: Astar(heuristic=lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+        #                                parallel=False,
+        #                                shared_memory_proxy=MyShmProxy(),
+        #                                debug_logs=False)
+        # solver_factory = lambda: AOstar(heuristic=lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+        #                                 discount=1.0,
+        #                                 detect_cycles=True,
+        #                                 parallel=False,
+        #                                 shared_memory_proxy=MyShmProxy(),
+        #                                 debug_logs=False)
+        # solver_factory = lambda: IW(state_features=lambda d, s: (s.x, s.y),
+        #                              use_state_feature_hash=False,
+        #                              parallel=False,
+        #                              shared_memory_proxy=MyShmProxy(),
+        #                              debug_logs=False)
         # solver_factory = lambda: RIW(state_features=lambda d, s: (s.x, s.y),
         #                              use_state_feature_hash=False,
         #                              use_simulation_domain=True,
@@ -255,13 +274,19 @@ if __name__ == '__main__':
         #                              parallel=True,
         #                              shared_memory_proxy=MyShmProxy(),
         #                              debug_logs=False)
-        solver_factory = lambda: UCT(time_budget=1000,
-                                     rollout_budget=100,
-                                     max_depth=200,
-                                     transition_mode=UCT.Options.TransitionMode.Distribution,
-                                     parallel=True,
-                                     shared_memory_proxy=MyShmProxy(),
-                                     debug_logs=False)
+        # solver_factory = lambda: UCT(time_budget=1000,
+        #                              rollout_budget=100,
+        #                              max_depth=200,
+        #                              transition_mode=UCT.Options.TransitionMode.Distribution,
+        #                              parallel=True,
+        #                              shared_memory_proxy=MyShmProxy(),
+        #                              debug_logs=False)
+        solver_factory = lambda: BFWS(state_features=lambda d, s: (s.x, s.y),
+                                      heuristic=lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                                      termination_checker=lambda d, s: d.is_goal(s),
+                                      parallel=False,
+                                      shared_memory_proxy=MyShmProxy(),
+                                      debug_logs=False)
         solver = MyDomain.solve_with(solver_factory, domain_factory)
-        rollout(domain, solver, num_episodes=1, max_steps=2, max_framerate=30,
+        rollout(domain, solver, num_episodes=1, max_steps=20, max_framerate=30,
                 outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
