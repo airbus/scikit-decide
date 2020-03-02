@@ -35,15 +35,15 @@ try:
         T_domain = D
 
         def __init__(self,
-                     state_binarizer: Callable[[D.T_state, Domain, Callable[[int], None]], None],
-                     heuristic: Callable[[D.T_state, Domain], float],
-                     termination_checker: Callable[[D.T_state, Domain], bool],
+                     state_features: Callable[[Domain, D.T_state], Any],
+                     heuristic: Callable[[Domain, D.T_state], float],
+                     termination_checker: Callable[[Domain, D.T_state], bool],
                      parallel: bool = True,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
             self._solver = None
             self._domain = None
-            self._state_binarizer = state_binarizer
+            self._state_features = state_features
             self._heuristic = heuristic
             self._termination_checker = termination_checker
             self._parallel = parallel
@@ -58,10 +58,14 @@ try:
                     self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
             else:
                 self._domain = domain_factory()
+            if self._heuristic is None:
+                heuristic = lambda d, s: 0
+            else:
+                heuristic = self._heuristic
             self._solver = bfws_solver(domain=self._domain,
-                                       state_binarizer=lambda o, f: self._state_binarizer(o, self._domain, f),
-                                       heuristic=lambda o: self._heuristic(o, self._domain),
-                                       termination_checker=lambda o: self._termination_checker(o, self._domain),
+                                       state_features=lambda d, s: self._state_features(d, s) if not self._parallel else d.call(None, self._state_features, s),
+                                       heuristic=lambda d, s: heuristic(d, s) if not self._parallel else d.call(None, heuristic, s),
+                                       termination_checker=lambda d, s: self._termination_checker(d, s) if not self._parallel else d.call(None, self._termination_checker, s),
                                        parallel=self._parallel,
                                        debug_logs=self._debug_logs)
             self._solver.clear()

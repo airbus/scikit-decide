@@ -26,9 +26,6 @@ public :
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_applicable_actions()");
         }
-        if (!py::hasattr(domain, "compute_next_state")) {
-            throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing compute_sample()");
-        }
         if (!py::hasattr(domain, "get_next_state")) {
             throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_sample()");
         }
@@ -43,22 +40,39 @@ public :
 };
 
 
+template <typename Texecution>
+using PyBFWSFeatureVector = skdecide::PythonContainerAdapter<Texecution>;
+
+
 class PyBFWSSolver {
 public :
     PyBFWSSolver(py::object& domain,
-                 const std::function<void (const py::object&, const std::function<void (const py::int_&)>&)>& state_binarizer,
-                 const std::function<double (const py::object&)>& heuristic,
-                 const std::function<bool (const py::object&)>& termination_checker,
+                 const std::function<py::object (const py::object&, const py::object&)>& state_features,
+                 const std::function<py::object (const py::object&, const py::object&)>& heuristic,
+                 const std::function<py::object (const py::object&, const py::object&)>& termination_checker,
+                 bool use_state_feature_hash = false,
                  bool parallel = true,
                  bool debug_logs = false) {
         if (parallel) {
-            _implementation = std::make_unique<Implementation<skdecide::ParallelExecution>>(
-                domain, state_binarizer, heuristic, termination_checker, debug_logs
-            );
+            if (use_state_feature_hash) {
+                _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::StateFeatureHash>>(
+                    domain, state_features, heuristic, termination_checker, debug_logs
+                );
+            } else {
+                _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::DomainStateHash>>(
+                    domain, state_features, heuristic, termination_checker, debug_logs
+                );
+            }
         } else {
-            _implementation = std::make_unique<Implementation<skdecide::SequentialExecution>>(
-                domain, state_binarizer, heuristic, termination_checker, debug_logs
-            );
+            if (use_state_feature_hash) {
+                _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::StateFeatureHash>>(
+                    domain, state_features, heuristic, termination_checker, debug_logs
+                );
+            } else {
+                _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::DomainStateHash>>(
+                    domain, state_features, heuristic, termination_checker, debug_logs
+                );
+            }
         }
     }
 
@@ -94,30 +108,59 @@ private :
         virtual py::float_ get_utility(const py::object& s) =0;
     };
 
-    template <typename Texecution>
+    template <typename Texecution, template <typename...> class Thashing_policy>
     class Implementation : public BaseImplementation {
     public :
         Implementation(py::object& domain,
-                       const std::function<void (const py::object&, const std::function<void (const py::int_&)>&)>& state_binarizer,
-                       const std::function<double (const py::object&)>& heuristic,
-                       const std::function<bool (const py::object&)>& termination_checker,
+                       const std::function<py::object (const py::object&, const py::object&)>& state_features,
+                       const std::function<py::object (const py::object&, const py::object&)>& heuristic,
+                       const std::function<py::object (const py::object&, const py::object&)>& termination_checker,
                        bool debug_logs = false)
-        : _state_binarizer(state_binarizer), _heuristic(heuristic), _termination_checker(termination_checker) {
+        : _state_features(state_features), _heuristic(heuristic), _termination_checker(termination_checker) {
             _domain = std::make_unique<PyBFWSDomain<Texecution>>(domain);
-            _solver = std::make_unique<skdecide::BFWSSolver<PyBFWSDomain<Texecution>, Texecution>>(
+            _solver = std::make_unique<skdecide::BFWSSolver<PyBFWSDomain<Texecution>, PyBFWSFeatureVector<Texecution>, Thashing_policy, Texecution>>(
                                                                             *_domain,
-                                                                            [this](const typename PyBFWSDomain<Texecution>::State& s,
-                                                                                const std::function<void (const py::int_&)>& f)->void {
-                                                                                typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                _state_binarizer(s._state, f);
+                                                                            [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s)->std::unique_ptr<PyBFWSFeatureVector<Texecution>> {
+                                                                                try {
+                                                                                    auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                                                                                        return _state_features(dd, ss);
+                                                                                    };
+                                                                                    return std::make_unique<PyBFWSFeatureVector<Texecution>>(d.call(-1, fsf, s._state));
+                                                                                } catch (const py::error_already_set* e) {
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e->what());
+                                                                                    std::runtime_error err(e->what());
+                                                                                    delete e;
+                                                                                    throw err;
+                                                                                }
                                                                             },
-                                                                            [this](const typename PyBFWSDomain<Texecution>::State& s)->double {
-                                                                                typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                return _heuristic(s._state);
+                                                                            [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s)->double {
+                                                                                try {
+                                                                                    auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                                                                                        return _heuristic(dd, ss);
+                                                                                    };
+                                                                                    return d.call(-1, fh, s._state).template cast<bool>();
+                                                                                } catch (const py::error_already_set* e) {
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e->what());
+                                                                                    std::runtime_error err(e->what());
+                                                                                    delete e;
+                                                                                    throw err;
+                                                                                }
                                                                             },
-                                                                            [this](const typename PyBFWSDomain<Texecution>::State& s)->bool {
-                                                                                typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                return _termination_checker(s._state);
+                                                                            [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s)->bool {
+                                                                                try {
+                                                                                    auto ftc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                                                                                        return _termination_checker(dd, ss);
+                                                                                    };
+                                                                                    return d.call(-1, ftc, s._state).template cast<double>();
+                                                                                } catch (const py::error_already_set* e) {
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling termination checker: ") + e->what());
+                                                                                    std::runtime_error err(e->what());
+                                                                                    delete e;
+                                                                                    throw err;
+                                                                                }
                                                                             },
                                                                             debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
@@ -151,11 +194,11 @@ private :
 
     private :
         std::unique_ptr<PyBFWSDomain<Texecution>> _domain;
-        std::unique_ptr<skdecide::BFWSSolver<PyBFWSDomain<Texecution>, Texecution>> _solver;
+        std::unique_ptr<skdecide::BFWSSolver<PyBFWSDomain<Texecution>, PyBFWSFeatureVector<Texecution>, Thashing_policy, Texecution>> _solver;
         
-        std::function<void (const py::object&, const std::function<void (const py::int_&)>&)> _state_binarizer;
-        std::function<double (const py::object&)> _heuristic;
-        std::function<bool (const py::object&)> _termination_checker;
+        std::function<py::object (const py::object&, const py::object&)> _state_features;
+        std::function<py::object (const py::object&, const py::object&)> _heuristic;
+        std::function<py::object (const py::object&, const py::object&)> _termination_checker;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -169,15 +212,17 @@ void init_pybfws(py::module& m) {
     py::class_<PyBFWSSolver> py_bfws_solver(m, "_BFWSSolver_");
         py_bfws_solver
             .def(py::init<py::object&,
-                          const std::function<void (const py::object&, const std::function<void (const py::int_&)>&)>&,
-                          const std::function<double (const py::object&)>&,
-                          const std::function<bool (const py::object&)>&,
+                          const std::function<py::object (const py::object&, const py::object&)>&,
+                          const std::function<py::object (const py::object&, const py::object&)>&,
+                          const std::function<py::object (const py::object&, const py::object&)>&,
+                          bool,
                           bool,
                           bool>(),
                  py::arg("domain"),
-                 py::arg("state_binarizer"),
+                 py::arg("state_features"),
                  py::arg("heuristic"),
                  py::arg("termination_checker"),
+                 py::arg("use_state_feature_hash")=false,
                  py::arg("parallel")=true,
                  py::arg("debug_logs")=false)
             .def("clear", &PyBFWSSolver::clear)
