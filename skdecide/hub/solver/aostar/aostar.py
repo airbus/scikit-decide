@@ -74,15 +74,20 @@ try:
         
         def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
             self._init_solve(domain_factory)
-            self._solve_from(self._domain.get_initial_state())
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+            if self._parallel:
+                self._domain.start_session(ipc_notify=True)
             self._solver.solve(memory)
+            if self._parallel:
+                self._domain.end_session()
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
             return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+            if not self._is_solution_defined_for(observation):
+                self._solve_from(observation)
             return self._solver.get_next_action(observation)
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:

@@ -73,7 +73,11 @@ try:
             self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+            if self._parallel:
+                self._domain.start_session(ipc_notify=True)
             self._solver.solve(memory)
+            if self._parallel:
+                self._domain.end_session()
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
             return self._solver.is_solution_defined_for(observation)
