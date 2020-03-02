@@ -54,10 +54,10 @@ try:
                     self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
             else:
                 self._domain = domain_factory()
-                if self._heuristic is None:
-                    heuristic = lambda d, s: 0
-                else:
-                    heuristic = self._heuristic
+            if self._heuristic is None:
+                heuristic = lambda d, s: 0
+            else:
+                heuristic = self._heuristic
             self._solver = astar_solver(domain=self._domain,
                                         goal_checker=lambda d, s: d.is_goal(s),
                                         heuristic=lambda d, s: heuristic(d, s) if not self._parallel else d.call(None, heuristic, s),
