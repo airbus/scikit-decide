@@ -30,8 +30,8 @@ public :
     typedef Texecution_policy ExecutionPolicy;
 
     AStarSolver(Domain& domain,
-                const std::function<bool (const State&)>& goal_checker,
-                const std::function<double (const State&)>& heuristic,
+                const std::function<bool (Domain&, const State&)>& goal_checker,
+                const std::function<double (Domain&, const State&)>& heuristic,
                 bool debug_logs = false)
         : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
           _debug_logs(debug_logs) {
@@ -56,11 +56,11 @@ public :
 
             // Create the root node containing the given state s
             auto si = _graph.emplace(s);
-            if (si.first->solved || _goal_checker(s)) { // problem already solved from this state (was present in _graph and already solved)
+            if (si.first->solved || _goal_checker(_domain, s)) { // problem already solved from this state (was present in _graph and already solved)
                 return;
             }
             Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
-            root_node.fscore = _heuristic(root_node.state);
+            root_node.fscore = _heuristic(_domain, root_node.state);
 
             // Priority queue used to sort non-goal unsolved tip nodes by increasing cost-to-go values (so-called OPEN container)
             std::priority_queue<Node*, std::vector<Node*>, NodeCompare> open_queue;
@@ -82,7 +82,7 @@ public :
 
                 if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print());
 
-                if (_goal_checker(best_tip_node->state) || best_tip_node->solved) {
+                if (_goal_checker(_domain, best_tip_node->state) || best_tip_node->solved) {
                     if (_debug_logs) spdlog::debug("Closing a goal state: " + best_tip_node->state.print());
                     auto current_node = best_tip_node;
                     if (!(best_tip_node->solved)) { current_node->fscore = 0; } // goal state
@@ -124,7 +124,7 @@ public :
 
                     if ((i.second) || (tentative_gscore < neighbor.gscore)) {
                         neighbor.gscore = tentative_gscore;
-                        neighbor.fscore = tentative_gscore + _heuristic(neighbor.state);
+                        neighbor.fscore = tentative_gscore + _heuristic(_domain, neighbor.state);
                         neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
                         _execution_policy.protect([&open_queue, &neighbor]{
                             open_queue.push(&neighbor);
@@ -167,8 +167,8 @@ public :
 
 private :
     Domain& _domain;
-    std::function<bool (const State&)> _goal_checker;
-    std::function<double (const State&)> _heuristic;
+    std::function<bool (Domain&, const State&)> _goal_checker;
+    std::function<double (Domain&, const State&)> _heuristic;
     bool _debug_logs;
     ExecutionPolicy _execution_policy;
 
