@@ -102,7 +102,6 @@ private :
                                                                                     auto fgc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _goal_checker(dd, ss);
                                                                                     };
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
                                                                                     return d.call(-1, fgc, s._state).template cast<double>();
                                                                                 } catch (const py::error_already_set* e) {
                                                                                     typename skdecide::GilControl<Texecution>::Acquire acquire;
@@ -117,7 +116,6 @@ private :
                                                                                     auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _heuristic(dd, ss);
                                                                                     };
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
                                                                                     return d.call(-1, fh, s._state).template cast<bool>();
                                                                                 } catch (const py::error_already_set* e) {
                                                                                     typename skdecide::GilControl<Texecution>::Acquire acquire;
