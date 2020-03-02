@@ -99,7 +99,7 @@ public :
     typedef Texecution_policy ExecutionPolicy;
 
     IWSolver(Domain& domain,
-             const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
+             const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)>& state_features,
              const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                        const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
              std::size_t time_budget = 0,  // time budget to continue searching for better plans after a goal has been reached
@@ -131,7 +131,7 @@ public :
         try {
             spdlog::info("Running " + ExecutionPolicy::print() + " IW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
-            std::size_t nb_of_binary_features = _state_features(s)->size();
+            std::size_t nb_of_binary_features = _state_features(_domain, s)->size();
             bool found_goal = false;
             _intermediate_scores.clear();
 
@@ -168,7 +168,7 @@ public :
     }
 
     bool is_solution_defined_for(const State& s) const {
-        auto si = _graph.find(Node(s, _state_features));
+        auto si = _graph.find(Node(s, _domain, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr) || (si->solved == false)) {
             return false;
         } else {
@@ -177,7 +177,7 @@ public :
     }
 
     const Action& get_best_action(const State& s) const {
-        auto si = _graph.find(Node(s, _state_features));
+        auto si = _graph.find(Node(s, _domain, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
             spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
             throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
@@ -186,7 +186,7 @@ public :
     }
 
     const double& get_best_value(const State& s) const {
-        auto si = _graph.find(Node(s, _state_features));
+        auto si = _graph.find(Node(s, _domain, _state_features));
         if (si == _graph.end()) {
             spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
             throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
@@ -215,7 +215,7 @@ public :
 private :
 
     Domain& _domain;
-    std::function<std::unique_ptr<FeatureVector> (const State& s)> _state_features;
+    std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)> _state_features;
     std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                        const double&, const std::size_t&, const std::size_t&)> _node_ordering;
     std::size_t _time_budget;
@@ -234,7 +234,8 @@ private :
         bool pruned; // true if pruned by the novelty test (used only to report nb of pruned states)
         bool solved; // set to true if on the solution path constructed backward from the goal state
 
-        Node(const State& s, const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features)
+        Node(const State& s, Domain& d,
+             const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)>& state_features)
             : state(s),
               gscore(std::numeric_limits<double>::infinity()),
               fscore(std::numeric_limits<double>::infinity()),
@@ -243,7 +244,7 @@ private :
               best_action(nullptr),
               pruned(false),
               solved(false) {
-            features = state_features(s);
+            features = state_features(d, s);
         }
         
         struct Key {
@@ -266,7 +267,7 @@ private :
         typedef Texecution_policy ExecutionPolicy;
 
         WidthSolver(Domain& domain,
-                    const std::function<std::unique_ptr<FeatureVector> (const State& s)>& state_features,
+                    const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)>& state_features,
                     const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                               const double&, const std::size_t&, const std::size_t&)>& node_ordering,
                     std::size_t width,
@@ -286,7 +287,7 @@ private :
                 auto local_start_time = std::chrono::high_resolution_clock::now();
 
                 // Create the root node containing the given state s
-                auto si = _graph.emplace(Node(s, _state_features));
+                auto si = _graph.emplace(Node(s, _domain, _state_features));
                 if (si.first->solved || _domain.is_goal(s)) { // problem already solved from this state (was present in _graph and already solved)
                     return std::make_pair(true, false);
                 } else if (_domain.is_terminal(s)) { // dead-end state
@@ -385,7 +386,7 @@ private :
                         auto next_state = _domain.get_next_state(best_tip_node->state, a);
                         std::pair<typename Graph::iterator, bool> i;
                         _execution_policy.protect([this, &i, &next_state]{
-                            i = _graph.emplace(Node(next_state, _state_features));
+                            i = _graph.emplace(Node(next_state, _domain, _state_features));
                         });
                         Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                         if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print() +
@@ -438,7 +439,7 @@ private :
 
     private :
         Domain& _domain;
-        const std::function<std::unique_ptr<FeatureVector> (const State& s)>& _state_features;
+        const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)>& _state_features;
         const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                   const double&, const std::size_t&, const std::size_t&)>& _node_ordering;
         std::size_t _width;

@@ -85,7 +85,7 @@ domain_factory = lambda: GymIWDomain(gym_env=gym.make(ENV_NAME),
 domain = domain_factory()
 
 if IW.check_domain(domain):
-    solver_factory = lambda: IW(state_features=lambda s, d: d.bee1_features(np.append(s._state, s._context[3].value.reward if s._context[3] is not None else 0)),# exp((s._context[6])))),
+    solver_factory = lambda: IW(state_features=lambda d, s: d.bee1_features(np.append(s._state, s._context[3].value.reward if s._context[3] is not None else 0)),# exp((s._context[6])))),
                                 use_state_feature_hash=False,
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty > b_novelty,
 

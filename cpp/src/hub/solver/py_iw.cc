@@ -51,7 +51,7 @@ class PyIWSolver {
 public :
 
     PyIWSolver(py::object& domain,
-               const std::function<py::object (const py::object&)>& state_features,
+               const std::function<py::object (const py::object&, const py::object&)>& state_features,
                bool use_state_feature_hash = false,
                const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                          const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
@@ -130,7 +130,7 @@ private :
     public :
 
         Implementation(py::object& domain,
-                       const std::function<py::object (const py::object&)>& state_features,
+                       const std::function<py::object (const py::object&, const py::object&)>& state_features,
                        const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                                  const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
                        std::size_t time_budget = 0,
@@ -155,13 +155,18 @@ private :
             _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>>(
                                                                             *_domain,
-                                                                            [this](const typename PyIWDomain<Texecution>::State& s)->std::unique_ptr<PyIWFeatureVector<Texecution>> {
+                                                                            [this](PyIWDomain<Texecution>& d, const typename PyIWDomain<Texecution>::State& s)->std::unique_ptr<PyIWFeatureVector<Texecution>> {
                                                                                 try {
+                                                                                    auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                                                                                        return _state_features(dd, ss);
+                                                                                    };
+                                                                                    return std::make_unique<PyIWFeatureVector<Texecution>>(d.call(-1, fsf, s._state));
+                                                                                } catch (const py::error_already_set* e) {
                                                                                     typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    return std::make_unique<PyIWFeatureVector<Texecution>>(_state_features(s._state));
-                                                                                } catch (const py::error_already_set& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
-                                                                                    throw;
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e->what());
+                                                                                    std::runtime_error err(e->what());
+                                                                                    delete e;
+                                                                                    throw err;
                                                                                 }
                                                                             },
                                                                             pno,
@@ -224,7 +229,7 @@ private :
         std::unique_ptr<PyIWDomain<Texecution>> _domain;
         std::unique_ptr<skdecide::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>> _solver;
         
-        std::function<py::object (const py::object&)> _state_features;
+        std::function<py::object (const py::object&, const py::object&)> _state_features;
         std::function<bool (const double&, const std::size_t&, const std::size_t&,
                             const double&, const std::size_t&, const std::size_t&)> _node_ordering;
 
@@ -240,7 +245,7 @@ void init_pyiw(py::module& m) {
     py::class_<PyIWSolver> py_iw_solver(m, "_IWSolver_");
         py_iw_solver
             .def(py::init<py::object&,
-                          const std::function<py::object (const py::object&)>&,
+                          const std::function<py::object (const py::object&, const py::object&)>&,
                           bool,
                           const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                                     const double&, const std::size_t&, const std::size_t&)>&,
