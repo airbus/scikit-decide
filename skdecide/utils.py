@@ -206,7 +206,7 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
         if render and has_render:
             domain.render()
         if has_goal:
-            logger.info(f'The goal was{"" if observation in domain.get_goals() else " not"} reached '
+            logger.info(f'The goal was{"" if domain.is_goal(observation) else " not"} reached '
                         f'in episode {i_episode + 1}.')
         if save_result_directory is not None:
             if not os.path.exists(save_result_directory):
