@@ -39,8 +39,8 @@ public :
 class PyAOStarSolver {
 public :
     PyAOStarSolver(py::object& domain,
-                   const std::function<bool (const py::object&)>& goal_checker,
-                   const std::function<double (const py::object&)>& heuristic,
+                   const std::function<py::object (const py::object&, const py::object&)>& goal_checker,
+                   const std::function<py::object (const py::object&, const py::object&)>& heuristic,
                    double discount = 1.0,
                    std::size_t max_tip_expansions = 1,
                    bool detect_cycles = false,
@@ -93,8 +93,8 @@ private :
     class Implementation : public BaseImplementation {
     public :
         Implementation(py::object& domain,
-                       const std::function<bool (const py::object&)>& goal_checker,
-                       const std::function<double (const py::object&)>& heuristic,
+                       const std::function<py::object (const py::object&, const py::object&)>& goal_checker,
+                       const std::function<py::object (const py::object&, const py::object&)>& heuristic,
                        double discount = 1.0,
                        std::size_t max_tip_expansions = 1,
                        bool detect_cycles = false,
@@ -103,25 +103,31 @@ private :
             _domain = std::make_unique<PyAOStarDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::AOStarSolver<PyAOStarDomain<Texecution>, Texecution>>(
                                                                             *_domain,
-                                                                            [this](const typename PyAOStarDomain<Texecution>::State& s)->bool {
-                                                                                typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                            [this](PyAOStarDomain<Texecution>& d, const typename PyAOStarDomain<Texecution>::State& s)->bool {
                                                                                 try {
-                                                                                    return _goal_checker(s._state);
+                                                                                    auto fgc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                                                                                        return _goal_checker(dd, ss);
+                                                                                    };
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    return d.call(-1, fgc, s._state).template cast<double>();
                                                                                 } catch (const py::error_already_set* e) {
                                                                                     typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling the goal checker: ") + e->what());
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling goal checker: ") + e->what());
                                                                                     std::runtime_error err(e->what());
                                                                                     delete e;
                                                                                     throw err;
                                                                                 }
                                                                             },
-                                                                            [this](const typename PyAOStarDomain<Texecution>::State& s)->double {
-                                                                                typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                            [this](PyAOStarDomain<Texecution>& d, const typename PyAOStarDomain<Texecution>::State& s)->double {
                                                                                 try {
-                                                                                    return _heuristic(s._state);
+                                                                                    auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                                                                                        return _heuristic(dd, ss);
+                                                                                    };
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    return d.call(-1, fh, s._state).template cast<bool>();
                                                                                 } catch (const py::error_already_set* e) {
                                                                                     typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling the heuristic function: ") + e->what());
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e->what());
                                                                                     std::runtime_error err(e->what());
                                                                                     delete e;
                                                                                     throw err;
@@ -164,8 +170,8 @@ private :
         std::unique_ptr<PyAOStarDomain<Texecution>> _domain;
         std::unique_ptr<skdecide::AOStarSolver<PyAOStarDomain<Texecution>, Texecution>> _solver;
 
-        std::function<bool (const py::object&)> _goal_checker;
-        std::function<double (const py::object&)> _heuristic;
+        std::function<py::object (const py::object&, const py::object&)> _goal_checker;
+        std::function<py::object (const py::object&, const py::object&)> _heuristic;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -179,8 +185,8 @@ void init_pyaostar(py::module& m) {
     py::class_<PyAOStarSolver> py_aostar_solver(m, "_AOStarSolver_");
         py_aostar_solver
             .def(py::init<py::object&,
-                          const std::function<bool (const py::object&)>&,
-                          const std::function<double (const py::object&)>&,
+                          const std::function<py::object (const py::object&, const py::object&)>&,
+                          const std::function<py::object (const py::object&, const py::object&)>&,
                           double,
                           std::size_t,
                           bool,

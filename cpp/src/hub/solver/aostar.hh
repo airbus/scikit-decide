@@ -30,8 +30,8 @@ public :
     typedef Texecution_policy ExecutionPolicy;
 
     AOStarSolver(Domain& domain,
-                 const std::function<bool (const State&)>& goal_checker,
-                 const std::function<double (const State&)>& heuristic,
+                 const std::function<bool (Domain&, const State&)>& goal_checker,
+                 const std::function<double (Domain&, const State&)>& heuristic,
                  double discount = 1.0,
                  std::size_t max_tip_expansions = 1,
                  bool detect_cycles = false,
@@ -59,7 +59,7 @@ public :
             auto start_time = std::chrono::high_resolution_clock::now();
 
             auto si = _graph.emplace(s);
-            if (si.first->solved || _goal_checker(s)) { // problem already solved from this state (was present in _graph and already solved)
+            if (si.first->solved || _goal_checker(_domain, s)) { // problem already solved from this state (was present in _graph and already solved)
                 return;
             }
             StateNode& root_node = const_cast<StateNode&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
@@ -103,11 +103,11 @@ public :
                             });
                             if (_debug_logs) spdlog::debug("Current next state expansion: " + next_node.state.print());
                             if (i.second) { // new node
-                                if (_goal_checker(next_node.state)) {
+                                if (_goal_checker(_domain, next_node.state)) {
                                     next_node.solved = true;
                                     next_node.best_value = 0.0;
                                 } else {
-                                    next_node.best_value = _heuristic(next_node.state);
+                                    next_node.best_value = _heuristic(_domain, next_node.state);
                                 }
                             }
                         }
@@ -213,8 +213,8 @@ public :
 
 private :
     Domain& _domain;
-    std::function<bool (const State&)> _goal_checker;
-    std::function<double (const State&)> _heuristic;
+    std::function<bool (Domain&, const State&)> _goal_checker;
+    std::function<double (Domain&, const State&)> _heuristic;
     double _discount;
     std::size_t _max_tip_expansions;
     bool _detect_cycles;

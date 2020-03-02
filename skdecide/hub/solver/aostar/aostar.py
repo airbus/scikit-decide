@@ -34,7 +34,7 @@ try:
         T_domain = D
         
         def __init__(self,
-                     heuristic: Optional[Callable[[D.T_state, Domain], float]] = None,
+                     heuristic: Optional[Callable[[Domain, D.T_state], float]] = None,
                      discount: float = 1.,
                      max_tip_expanions: int = 1,
                      parallel: bool = True,
@@ -58,9 +58,13 @@ try:
                     self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
             else:
                 self._domain = domain_factory()
+            if self._heuristic is None:
+                heuristic = lambda d, s: 0
+            else:
+                heuristic = self._heuristic
             self._solver = aostar_solver(domain=self._domain,
-                                         goal_checker=lambda o: self._domain.is_goal(o),
-                                         heuristic=(lambda o: self._heuristic(o, self._domain)) if self._heuristic is not None else (lambda o: 0),
+                                         goal_checker=lambda d, s: d.is_goal(s),
+                                         heuristic=lambda d, s: heuristic(d, s) if not self._parallel else d.call(None, heuristic, s),
                                          discount=self._discount,
                                          max_tip_expansions=self._max_tip_expansions,
                                          detect_cycles=self._detect_cycles,
