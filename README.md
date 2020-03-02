@@ -2,8 +2,6 @@
 
 Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.
 
-Open sourcing of the library is due in 2019 on [Github](https://github.com).
-
 ## Installation
 
 ### 1. Make sure to have a Python 3.7+ environment
@@ -17,7 +15,7 @@ The use of a virtual environment for scikit-decide is recommended, e.g. by using
 
 #### a. Full installation (recommended)
 
-Make sure you are in the "scikit-decide for Python" root directory and install with Pip:
+Make sure you are in the "scikit-decide" root directory and install with Pip:
 
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
     pip install .[all]
@@ -28,7 +26,7 @@ Alternatively, if you wish to install only the ones required by domains (resp. s
 
 #### b. Minimal installation (not recommended)
 
-Make sure you are in the "scikit-decide for Python" root directory and install with Pip:
+Make sure you are in the "scikit-decide" root directory and install with Pip:
 
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
     pip install .
@@ -39,7 +37,7 @@ This will only install the core library, which is enough if you intend to create
 
 This extension provides several algorithms implemented in C++ that are directly available in the Python interface.
 Make sure you have a recent C++ compiler with c++-17 support.
-Make sure you are in the "scikit-decide for Python" root directory and install with Pip:
+Make sure you are in the "scikit-decide" root directory and install with Pip:
 
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
     pip install --install-option="--cpp-extension" --install-option="--cxx-compiler=<PATH_TO_YOUR_CPP_COMPILER>" --install-option="--cmake-options="<OPTIONAL_CMAKE_OPTIONS>" .\[all\] -v
@@ -47,31 +45,35 @@ Make sure you are in the "scikit-decide for Python" root directory and install w
 CMake options are useful in case of unusual system configurations, so we recommend to try to build the C++ extension without providing cmake options.
 Should you need to pass cmake options to the installer, use the same format as the standard cmake command.
 
-if you just want to build a dstributable wheel of scikit-decide containing the compiled C++ extension, make sure you are in the "scikit-decide for Python" root directory and build it with setuptools:
+if you just want to build a dstributable wheel of scikit-decide containing the compiled C++ extension, make sure you are in the "scikit-decide" root directory and build it with setuptools:
 
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
     python setup.py bdist_wheel --cpp-extension --cxx-compiler=<PATH_TO_YOUR_CPP_COMPILER> --cmake-options=<OPTIONAL_CMAKE_OPTIONS>
 
-## Documentation (work in progress)
+## Documentation
 
-The documentation is currently being updated for more control and flexibility, using [VuePress](https://v1.vuepress.vuejs.org) to generate an interactive static website.
+### Online
 
-For now, only the new Reference part is (almost) complete - work is still needed for the Guide part (getting started, video tutorials, hosted notebooks and code templates).
+The latest documentation is [available online](https://gheprivate.intra.corp/pages/gerard-dupont/scikit-decide).
 
-The documentation will be hosted online once scikit-decide is open sourced. Until then, follow the steps below to access the documentation locally:
+### Locally
 
-### 1. Install the documentation
+You can also run the documentation locally (e.g. when you are contributing to it or to access an older version).
 
-Get Yarn (package manager) by following [these installation steps](https://yarnpkg.com/en/docs/install).
+#### 1. Install the documentation
 
-Make sure you are in the "scikit-decide for Python" root directory and install documentation dependencies:
+The documentation is using [VuePress](https://v1.vuepress.vuejs.org) to generate an interactive static website.
+
+First, get Yarn (package manager) by following [these installation steps](https://yarnpkg.com/en/docs/install).
+
+Make sure you are in the "scikit-decide" root directory and install documentation dependencies:
 
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
     yarn install
 
-### 2. Access the documentation
+#### 2. Access the documentation
 
-Make sure you are in the "scikit-decide for Python" root directory and start the local documentation server:
+Make sure you are in the "scikit-decide" root directory and start the local documentation server:
 
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
     yarn docs:dev
@@ -80,11 +82,9 @@ Open your web browser to access the documentation (by default on http://localhos
 
 ## Examples
 
-**Warning**: the examples whose filename starts with an underscore are currently being migrated to the new API and might not be working in the meantime (same goes for domains/solvers inside `skdecide/hub`).
-
 The examples can be found in the `/examples` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on scikit-decide Hub, an extensible catalog of domains/solvers.
 
-**Warning**: some content currently in the hub (especially the MasterMind domain and the POMCP/CGP solvers) will require permission from their original authors before entering the public hub when open sourced.
+Some examples are automatically embedded as Python notebooks in the `Examples` section of the documentation.
 
 ### Playground
 
@@ -118,8 +118,17 @@ These combinations are particularly efficient if you want to try them out:
 - Mountain Car continuous -> CGP: Cartesian Genetic Programming
 - ATARI Pacman -> Random walk
 
-**Warning**: some domains/solvers might require extra manual setup steps to work at 100%. In the future, each scikit-decide hub entry should have a dedicated help page to list them, but in the meantime please refer to this:
+**Warning**: some domains/solvers might require extra manual setup steps to work at 100%. In the future, each scikit-decide hub entry might have a dedicated help page to list them, but in the meantime please refer to this:
 
 - [domain] OpenAI Gym ones -> [gym](http://gym.openai.com/docs/#installation) for loading Gym environments not included by default
 - [solver] PPO: Proximal Policy Optimization -> see [Stable Baselines installation](https://stable-baselines.readthedocs.io/en/master/guide/install.html)
-- [solver] IW: Iterated Width search (same for AOstar, Astar, BFWS) -> special C++ compilation (TBD)
+- [solver] IW: Iterated Width search (same for AOstar, Astar, BFWS) -> special C++ compilation (see Installation 2.c. above)
+
+## Unit tests
+
+Pytest is required to run unit tests (`pip install pytest`).
+
+Make sure you are in the "scikit-decide" root directory and run unit tests (the "-v" verbose mode is optional but gives additional details):
+
+    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
+    pytest tests -v
