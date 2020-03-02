@@ -35,7 +35,7 @@ try:
         T_domain = D
 
         def __init__(self,
-                     state_features: Callable[[D.T_state, Domain], Any],
+                     state_features: Callable[[Domain, D.T_state], Any],
                      use_state_feature_hash: bool = False,
                      node_ordering: Callable[[float, int, int, float, int, int], bool] = None,
                      time_budget: int = 0,  # time budget to continue searching for better plans after a goal has been reached
