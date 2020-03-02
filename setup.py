@@ -185,7 +185,9 @@ setup(
     version=__version__,
     packages=find_packages(),
     install_requires=[
-       'simplejson>=3.16.0'
+       'simplejson>=3.16.0',
+       'pynng>=0.5.0',
+       'pathos>=0.2.3'
     ],
     url='www.airbus.com',
     license='MIT',
