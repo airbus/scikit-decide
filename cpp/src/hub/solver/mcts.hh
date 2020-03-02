@@ -21,6 +21,7 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 
 #include "utils/associative_container_deducer.hh"
+#include "utils/string_converter.hh"
 #include "utils/execution.hh"
 
 namespace skdecide {
@@ -633,7 +634,7 @@ public :
             }
 
             if (solver.debug_logs()) { spdlog::debug("UCB1 selection from state " + n.state.print() +
-                                                     ": value=" + std::to_string(best_value) +
+                                                     ": value=" + StringConverter::from(best_value) +
                                                      ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr"))); }
         }, n.mutex);
         
@@ -666,7 +667,7 @@ public :
             }
 
             if (solver.debug_logs()) { spdlog::debug("Best Q-value selection from state " + n.state.print() +
-                                                     ": value=" + std::to_string(best_value) +
+                                                     ": value=" + StringConverter::from(best_value) +
                                                      ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr"))); }
         }, n.mutex);
         
@@ -716,7 +717,7 @@ public :
                 current_depth++;
                 if (solver.debug_logs()) { spdlog::debug("Sampled transition: action=" + action->print() +
                                                          ", next state=" + current_state.print() +
-                                                         ", reward=" + std::to_string(o->reward())); }
+                                                         ", reward=" + StringConverter::from(o->reward())); }
             }
 
             // since we can come to state n after exhausting the depth, n might be already visited
@@ -780,8 +781,8 @@ struct GraphBackup {
             parent_node->visits_count += 1;
             new_frontier.insert(parent_node);
             if (solver.debug_logs()) { spdlog::debug("Updating state " + parent_node->state.print() +
-                                                    ": value=" + std::to_string(parent_node->value) +
-                                                    ", visits=" + std::to_string(parent_node->visits_count)); }
+                                                    ": value=" + StringConverter::from(parent_node->value) +
+                                                    ", visits=" + StringConverter::from(parent_node->visits_count)); }
         }
     }
 
@@ -804,8 +805,8 @@ struct GraphBackup {
                 parent_node->visits_count += 1;
                 new_frontier.insert(parent_node);
                 if (solver.debug_logs()) { spdlog::debug("Updating state " + parent_node->state.print() +
-                                                        ": value=" + std::to_string(parent_node->value) +
-                                                        ", visits=" + std::to_string(parent_node->visits_count)); }
+                                                        ": value=" + StringConverter::from(parent_node->value) +
+                                                        ", visits=" + StringConverter::from(parent_node->visits_count)); }
             }, a->parent->mutex);
         }
     }
@@ -963,8 +964,8 @@ public :
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
             spdlog::info("MCTS finished to solve from state " + s.print() +
-                         " in " + std::to_string((double) duration / (double) 1e9) + " seconds with " +
-                         std::to_string(_nb_rollouts) + " rollouts.");
+                         " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds with " +
+                         StringConverter::from(_nb_rollouts) + " rollouts.");
         } catch (const std::exception& e) {
             spdlog::error("MCTS failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;

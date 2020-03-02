@@ -16,6 +16,7 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 
 #include "utils/associative_container_deducer.hh"
+#include "utils/string_converter.hh"
 #include "utils/execution.hh"
 
 namespace skdecide {
@@ -97,7 +98,7 @@ public :
 
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-                    spdlog::info("A* finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+                    spdlog::info("A* finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
                     return;
                 }
 

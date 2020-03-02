@@ -12,6 +12,7 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 
 #include "utils/associative_container_deducer.hh"
+#include "utils/string_converter.hh"
 
 namespace skdecide {
 
@@ -229,11 +230,11 @@ public :
                     this->clear();
                     this->_current_temperature = - ((double) features->size()) / std::log(1.0 - this->_initial_pruning_probability);
                     if (this->_debug_logs) { spdlog::debug("Initializing the uncached width-based proxy domain (temperature: " +
-                                                           std::to_string(this->_current_temperature) + ")"); }
+                                                           StringConverter::from(this->_current_temperature) + ")"); }
                 } else {
                     this->_current_temperature *= (1.0 + this->_temperature_increase_rate);
                     if (this->_debug_logs) { spdlog::debug("Resetting the uncached width-based proxy domain (temperature: " +
-                                                           std::to_string(this->_current_temperature) + ")"); }
+                                                           StringConverter::from(this->_current_temperature) + ")"); }
                 }
 
                 if (this->_nb_pruned_expansions >= this->_width_increase_resilience) {
@@ -241,7 +242,7 @@ public :
                     this->_feature_tuples = TupleVector(this->_current_width);
                     this->_nb_pruned_expansions = 0;
                     if (this->_debug_logs) { spdlog::debug("Increase the width to " +
-                                                           std::to_string(this->_current_width)); }
+                                                           StringConverter::from(this->_current_width)); }
                 }
 
                 this->novelty(this->_feature_tuples, *features); // force computation of novelty and update of the feature tuples table
@@ -285,11 +286,11 @@ public :
                     outcome->reward(nov * (this->_max_depth - this->_current_depth) * this->_min_reward); // make attractiveness decreases with higher novelties
                     outcome->termination(true); // make pruned observation terminal
                     if (this->_debug_logs) { spdlog::debug("Pruning observation " + Observation(outcome->observation()).print() +
-                                                           " (reward: " + std::to_string(outcome->reward()) +
-                                                           "; probability: " + std::to_string(d.p()) + ")"); }
+                                                           " (reward: " + StringConverter::from(outcome->reward()) +
+                                                           "; probability: " + StringConverter::from(d.p()) + ")"); }
                 } else if (this->_debug_logs) { spdlog::debug("Keeping observation " + Observation(outcome->observation()).print() +
-                                                              " (min_reward: " + std::to_string(this->_min_reward) +
-                                                              "; probability: " + std::to_string(1.0 - d.p()) + ")"); }
+                                                              " (min_reward: " + StringConverter::from(this->_min_reward) +
+                                                              "; probability: " + StringConverter::from(1.0 - d.p()) + ")"); }
 
                 return std::move(outcome);
             } catch (const std::exception& e) {
@@ -324,7 +325,7 @@ public :
                     it.first->second = std::min(it.first->second, this->_current_depth);
                 });
             }
-            if (this->_debug_logs) spdlog::debug("Novelty: " + std::to_string(nov));
+            if (this->_debug_logs) spdlog::debug("Novelty: " + StringConverter::from(nov));
             return nov;
         }
     };
@@ -374,11 +375,11 @@ public :
                     node.novelty = this->novelty(this->_feature_tuples, features);
                     this->_current_temperature = - ((double) features.size()) / std::log(1.0 - this->_initial_pruning_probability);
                     if (this->_debug_logs) { spdlog::debug("Initializing the cached width-based proxy domain (temperature: " +
-                                                           std::to_string(this->_current_temperature) + ")"); }
+                                                           StringConverter::from(this->_current_temperature) + ")"); }
                 } else {
                     this->_current_temperature *= (1.0 + this->_temperature_increase_rate);
                     if (this->_debug_logs) { spdlog::debug("Resetting the cached width-based proxy domain (temperature: " +
-                                                           std::to_string(this->_current_temperature) + ")"); }
+                                                           StringConverter::from(this->_current_temperature) + ")"); }
                 }
 
                 if (node.pruned) { // need for increasing width
@@ -392,7 +393,7 @@ public :
                     }
                     node.novelty = this->novelty(this->_feature_tuples, features);
                     if (this->_debug_logs) { spdlog::debug("Increase the width to " +
-                                                           std::to_string(this->_current_width)); }
+                                                           StringConverter::from(this->_current_width)); }
                 }
 
                 return s;
@@ -478,11 +479,11 @@ public :
                     outcome->reward((next_node->novelty) * (this->_max_depth - (next_node->depth)) * this->_min_reward); // make attractiveness decreases with higher novelties
                     outcome->termination(true); // make pruned observation terminal
                     if (this->_debug_logs) { spdlog::debug("Pruning observation " + Observation(outcome->observation()).print() +
-                                                           " (reward: " + std::to_string(outcome->reward()) +
-                                                           "; probability: " + std::to_string(d.p()) + ")"); }
+                                                           " (reward: " + StringConverter::from(outcome->reward()) +
+                                                           "; probability: " + StringConverter::from(d.p()) + ")"); }
                 } else if (this->_debug_logs) { spdlog::debug("Keeping observation " + Observation(outcome->observation()).print() +
-                                                              " (min_reward: " + std::to_string(this->_min_reward) +
-                                                              "; probability: " + std::to_string(1.0 - d.p()) + ")"); }
+                                                              " (min_reward: " + StringConverter::from(this->_min_reward) +
+                                                              "; probability: " + StringConverter::from(1.0 - d.p()) + ")"); }
 
                 return outcome;
             } catch (const std::exception& e) {
@@ -539,7 +540,7 @@ public :
                     }
                 });
             }
-            if (this->_debug_logs) spdlog::debug("Novelty: " + std::to_string(nov));
+            if (this->_debug_logs) spdlog::debug("Novelty: " + StringConverter::from(nov));
             return nov;
         }
 
@@ -598,7 +599,7 @@ public :
             );
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-            spdlog::info("The width-based proxy domain solver finished to solve in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+            spdlog::info("The width-based proxy domain solver finished to solve in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
         } catch (const std::exception& e) {
             spdlog::error("The width-based proxy domain solver failed. Reason: " + std::string(e.what()));
             throw;

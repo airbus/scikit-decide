@@ -22,6 +22,7 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 
 #include "utils/associative_container_deducer.hh"
+#include "utils/string_converter.hh"
 #include "utils/execution.hh"
 
 namespace skdecide {
@@ -158,9 +159,9 @@ public :
                     continue;
                 }
 
-                if (_debug_logs) spdlog::debug("Current best tip node (h=" + std::to_string(best_tip_node->heuristic) +
-                                                                      ", n=" + std::to_string(best_tip_node->novelty) +
-                                                                      "): " + best_tip_node->state.print());
+                if (_debug_logs) spdlog::debug("Current best tip node (h=" + StringConverter::from(best_tip_node->heuristic) +
+                                                                       ", n=" + StringConverter::from(best_tip_node->novelty) +
+                                                                       "): " + best_tip_node->state.print());
 
                 if (_termination_checker(_domain, best_tip_node->state) || best_tip_node->solved) {
                     if (_debug_logs) spdlog::debug("Found a terminal state: " + best_tip_node->state.print());
@@ -177,7 +178,7 @@ public :
 
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-                    spdlog::info("BFWS finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+                    spdlog::info("BFWS finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
                     return;
                 }
 
@@ -204,18 +205,18 @@ public :
                     double tentative_gscore = best_tip_node->gscore + transition_cost;
 
                     if ((i.second) || (tentative_gscore < neighbor.gscore)) {
-                        if (_debug_logs) spdlog::debug("New gscore: " + std::to_string(best_tip_node->gscore) + "+" +
-                                                        std::to_string(transition_cost) + "=" + std::to_string(tentative_gscore));
+                        if (_debug_logs) spdlog::debug("New gscore: " + StringConverter::from(best_tip_node->gscore) + "+" +
+                                                        StringConverter::from(transition_cost) + "=" + StringConverter::from(tentative_gscore));
                         neighbor.gscore = tentative_gscore;
                         neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
                     }
 
                     neighbor.heuristic = _heuristic(_domain, neighbor.state);
-                    if (_debug_logs) spdlog::debug("Heuristic: " + std::to_string(neighbor.heuristic));
+                    if (_debug_logs) spdlog::debug("Heuristic: " + StringConverter::from(neighbor.heuristic));
                     _execution_policy.protect([this, &heuristic_features_map, &open_queue, &neighbor]{
                         neighbor.novelty = this->novelty(heuristic_features_map, neighbor.heuristic, neighbor);
                         open_queue.push(&neighbor);
-                        if (_debug_logs) spdlog::debug("Novelty: " + std::to_string(neighbor.novelty));
+                        if (_debug_logs) spdlog::debug("Novelty: " + StringConverter::from(neighbor.novelty));
                     });
                 });
             }

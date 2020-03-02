@@ -16,6 +16,7 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 
 #include "utils/associative_container_deducer.hh"
+#include "utils/string_converter.hh"
 #include "utils/execution.hh"
 
 namespace skdecide {
@@ -68,8 +69,8 @@ public :
 
             while (!q.empty()) {
                 if (_debug_logs) {
-                    spdlog::debug("Current number of tip nodes: " + std::to_string(q.size()));
-                    spdlog::debug("Current number of explored nodes: " + std::to_string(_graph.size()));
+                    spdlog::debug("Current number of tip nodes: " + StringConverter::from(q.size()));
+                    spdlog::debug("Current number of explored nodes: " + StringConverter::from(_graph.size()));
                 }
                 std::size_t nb_expansions = std::min(q.size(), _max_tip_expansions);
                 std::unordered_set<StateNode*> frontier;
@@ -179,7 +180,7 @@ public :
 
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-            spdlog::info("AO* finished to solve from state " + s.print() + " in " + std::to_string((double) duration / (double) 1e9) + " seconds.");
+            spdlog::info("AO* finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
         } catch (const std::exception& e) {
             spdlog::error("AO* failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
