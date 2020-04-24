@@ -12,8 +12,8 @@ from skdecide.hub.solver.iw import IW
 # from skdecide.hub.solver.riw import RIW
 from skdecide.utils import rollout
 
-ENV_NAME = 'Pendulum-v0'
-HORIZON = 200
+ENV_NAME = 'MountainCar-v0'
+HORIZON = 500
 
 def simple_rollout(domain, solver, max_steps):
     state = domain.reset()
@@ -78,18 +78,18 @@ class GymIWDomain(D):
 
 
 domain_factory = lambda: GymIWDomain(gym_env=gym.make(ENV_NAME),
-                                     termination_is_goal=False,
+                                     termination_is_goal=True,
                                      continuous_feature_fidelity=1,
-                                     discretization_factor=12,
+                                     discretization_factor=3,
                                      max_depth=HORIZON)
 domain = domain_factory()
 
 if IW.check_domain(domain):
     solver_factory = lambda: IW(state_features=lambda d, s: d.bee1_features(np.append(s._state, s._context[3].value.reward if s._context[3] is not None else 0)),# exp((s._context[6])))),
                                 use_state_feature_hash=False,
-                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty > b_novelty,
+                                node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty > b_novelty,
 
-                                node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_depth < b_depth else False if a_depth > b_depth else a_novelty > b_novelty,
+                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_depth < b_depth else False if a_depth > b_depth else a_novelty > b_novelty,
 
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_depth < b_depth else False if a_depth > b_depth else a_gscore > b_gscore,
 
@@ -100,7 +100,7 @@ if IW.check_domain(domain):
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore > b_gscore else False if a_gscore < b_gscore else a_depth < b_depth,
 
                                 # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore > b_gscore else False if a_gscore < b_gscore else a_novelty > b_novelty,
-                                time_budget=60000,
+                                # time_budget=60000,
                                 parallel=False, debug_logs=False)
 
     # solver_factory = lambda: IW(state_features=lambda s, d: s._state,
