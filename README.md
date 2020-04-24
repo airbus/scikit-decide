@@ -37,9 +37,16 @@ This will only install the core library, which is enough if you intend to create
 
 This extension provides several algorithms implemented in C++ that are directly available in the Python interface.
 Make sure you have a recent C++ compiler with c++-17 support.
-Make sure you are in the "scikit-decide" root directory and install with Pip:
+Make sure you are in the "scikit-decide" root directory:
 
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
+
+Get the git submodules that are required to build the C++ extension:
+
+    git submodule update --init --recursive
+
+Build and install scikit-decide containing the C++ extension with Pip:
+
     pip install --install-option="--cpp-extension" --install-option="--cxx-compiler=<PATH_TO_YOUR_CPP_COMPILER>" --install-option="--cmake-options="<OPTIONAL_CMAKE_OPTIONS>" .\[all\] -v
 
 CMake options are useful in case of unusual system configurations, so we recommend to try to build the C++ extension without providing cmake options.
@@ -47,7 +54,6 @@ Should you need to pass cmake options to the installer, use the same format as t
 
 if you just want to build a dstributable wheel of scikit-decide containing the compiled C++ extension, make sure you are in the "scikit-decide" root directory and build it with setuptools:
 
-    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
     python setup.py bdist_wheel --cpp-extension --cxx-compiler=<PATH_TO_YOUR_CPP_COMPILER> --cmake-options=<OPTIONAL_CMAKE_OPTIONS>
 
 ## Documentation
