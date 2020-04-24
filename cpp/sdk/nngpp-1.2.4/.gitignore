@@ -1,6 +1,0 @@
-bin/
-build/
-
-# Visual Studio stuff
-project/*/.vs
-

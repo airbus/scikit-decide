@@ -50,8 +50,8 @@ TEST_CASE("Serializable space", "[serializable-space]") {
     REQUIRE( tss.contains({true, false}) == true );
     REQUIRE( tss.contains({false, false}) == false );
     
-    REQUIRE( tss.find(tss.to_jsonable({{false, true}, {true, false}})[0].get<std::vector<bool>>()) != tss.end() );
-    REQUIRE( tss.from_jsonable({{true, true}, {false, true}, {true, false}}) == tss );
+    REQUIRE( tss.find(tss.to_jsonable({{false, true}, {true, false}})[0].as<std::vector<bool>>()) != tss.end() );
+    REQUIRE( tss.from_jsonable(std::unordered_set<std::vector<bool>>({{true, true}, {false, true}, {true, false}})) == tss );
 }
 
 

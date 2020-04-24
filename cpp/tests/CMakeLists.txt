@@ -1,6 +1,6 @@
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-                      "${CMAKE_SOURCE_DIR}/sdk/Catch2-${CATCH2_VERSION}/CMake"
-                      "${CMAKE_SOURCE_DIR}/sdk/Catch2-${CATCH2_VERSION}/contrib")
+                      "${CMAKE_SOURCE_DIR}/sdk/Catch2/CMake"
+                      "${CMAKE_SOURCE_DIR}/sdk/Catch2/contrib")
 
 INCLUDE(CTest)
 INCLUDE(Catch)

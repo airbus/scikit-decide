@@ -13,7 +13,7 @@
 #include <unordered_map>
 
 #include <json.hpp>
-using json = nlohmann::json;
+#include <json/contrib/traits.hpp>
 
 namespace skdecide {
 
@@ -107,19 +107,19 @@ public :
     /**
      * Convert a batch of samples from this space to a JSONable data type
      */
-    virtual json to_jsonable(const Container<T>& sample_n) const {
+    virtual tao::json::value to_jsonable(const Container<T>& sample_n) const {
         // By default, assume identity is JSONable
         // See https://github.com/nlohmann/json#arbitrary-types-conversions
-        return json(sample_n);
+        return tao::json::value(sample_n);
     }
 
     /**
      * Convert a JSONable data type to a batch of samples from this space
      */
-    virtual Container<T> from_jsonable(const json& sample_n) const {
+    virtual Container<T> from_jsonable(const tao::json::value& sample_n) const {
         // By default, assume identity is JSONable
         // See https://github.com/nlohmann/json#arbitrary-types-conversions
-        return Container<T>(sample_n.get<Container<T>>());
+        return Container<T>(sample_n.as<Container<T>>());
     }
 };
 
