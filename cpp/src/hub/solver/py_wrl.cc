@@ -42,7 +42,7 @@ class PyWRLDomainFilter {
 public :
 
     PyWRLDomainFilter(py::object& domain,
-                      const std::function<py::object (const py::object&)>& observation_features,
+                      const std::function<py::object (const py::object&, const py::object&)>& observation_features,
                       double initial_pruning_probability = 0.999,
                       double temperature_increase_rate = 0.01,
                       std::size_t width_increase_resilience = 10,
@@ -103,7 +103,7 @@ private :
     class Implementation : public BaseImplementation {
     public :
         Implementation(py::object& domain,
-                       const std::function<py::object (const py::object&)>& observation_features,
+                       const std::function<py::object (const py::object&, const py::object&)>& observation_features,
                        double initial_pruning_probability = 0.999,
                        double temperature_increase_rate = 0.01,
                        std::size_t width_increase_resilience = 10,
@@ -117,9 +117,12 @@ private :
             if (cache_transitions) {
                 _domain_filter = std::make_unique<typename _WRLSolver::WRLCachedDomainFilter>(
                     std::move(wrl_domain),
-                    [this](const typename PyWRLDomain::Observation& s)->std::unique_ptr<PyWRLFeatureVector> {
+                    [this](PyWRLDomain& d, const typename PyWRLDomain::Observation& s)->std::unique_ptr<PyWRLFeatureVector> {
                         try {
-                            return std::make_unique<PyWRLFeatureVector>(_observation_features(s._state));
+                            auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                                return _observation_features(dd, ss);
+                            };
+                            return std::make_unique<PyWRLFeatureVector>(d.call(-1, fsf, s._state));
                         } catch (const py::error_already_set& e) {
                             spdlog::error(std::string("SKDECIDE exception when calling observation features: ") + e.what());
                             throw;
@@ -131,9 +134,12 @@ private :
             } else {
                 _domain_filter = std::make_unique<typename _WRLSolver::WRLUncachedDomainFilter>(
                     std::move(wrl_domain),
-                    [this](const typename PyWRLDomain::Observation& s)->std::unique_ptr<PyWRLFeatureVector> {
+                    [this](PyWRLDomain& d, const typename PyWRLDomain::Observation& s)->std::unique_ptr<PyWRLFeatureVector> {
                         try {
-                            return std::make_unique<PyWRLFeatureVector>(_observation_features(s._state));
+                            auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                                return _observation_features(dd, ss);
+                            };
+                            return std::make_unique<PyWRLFeatureVector>(d.call(-1, fsf, s._state));
                         } catch (const py::error_already_set& e) {
                             spdlog::error(std::string("SKDECIDE exception when calling observation features: ") + e.what());
                             throw;
@@ -179,7 +185,7 @@ private :
         typedef skdecide::WRLSolver<PyWRLDomain, PyWRLUnderlyingSolver, PyWRLFeatureVector, Thashing_policy> _WRLSolver;
         std::unique_ptr<typename _WRLSolver::WRLDomainFilter> _domain_filter;
 
-        std::function<py::object (const py::object&)> _observation_features;
+        std::function<py::object (const py::object&, const py::object&)> _observation_features;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -228,7 +234,7 @@ class PyWRLSolver {
 public :
 
     PyWRLSolver(py::object& solver,
-                const std::function<py::object (const py::object&)>& observation_features,
+                const std::function<py::object (const py::object&, const py::object&)>& observation_features,
                 double initial_pruning_probability = 0.999,
                 double temperature_increase_rate = 0.01,
                 std::size_t width_increase_resilience = 10,
@@ -272,7 +278,7 @@ private :
     public :
 
         Implementation(py::object& solver,
-                       const std::function<py::object (const py::object&)>& observation_features,
+                       const std::function<py::object (const py::object&, const py::object&)>& observation_features,
                        double initial_pruning_probability = 0.999,
                        double temperature_increase_rate = 0.1,
                        std::size_t width_increase_resilience = 10,
@@ -285,10 +291,13 @@ private :
             
             _solver = std::make_unique<skdecide::WRLSolver<PyWRLDomain, PyWRLUnderlyingSolver, PyWRLFeatureVector, Thashing_policy>>(
                 *_underlying_solver,
-                [this](const typename PyWRLDomain::Observation& s)->std::unique_ptr<PyWRLFeatureVector> {
+                [this](PyWRLDomain& d, const typename PyWRLDomain::Observation& s)->std::unique_ptr<PyWRLFeatureVector> {
                     try {
-                        return std::make_unique<PyWRLFeatureVector>(_observation_features(s._state));
-                    } catch (const py::error_already_set& e) {
+                        auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                            return _observation_features(dd, ss);
+                        };
+                        return std::make_unique<PyWRLFeatureVector>(d.call(-1, fsf, s._state));
+                    } catch (const std::exception& e) {
                         spdlog::error(std::string("SKDECIDE exception when calling observation features: ") + e.what());
                         throw;
                     }
@@ -323,7 +332,7 @@ private :
         std::unique_ptr<_WRLSolver> _solver;
         std::unique_ptr<PyWRLUnderlyingSolver> _underlying_solver;
         
-        std::function<py::object (const py::object&)> _observation_features;
+        std::function<py::object (const py::object&, const py::object&)> _observation_features;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -337,7 +346,7 @@ void init_pywrl(py::module& m) {
     py::class_<PyWRLDomainFilter> py_wrl_domain_filter(m, "_WRLDomainFilter_");
         py_wrl_domain_filter
             .def(py::init<py::object&,
-                          const std::function<py::object (const py::object&)>&,
+                          const std::function<py::object (const py::object&, const py::object&)>&,
                           double,
                           double,
                           std::size_t,
@@ -362,7 +371,7 @@ void init_pywrl(py::module& m) {
     py::class_<PyWRLSolver> py_wrl_solver(m, "_WRLSolver_");
         py_wrl_solver
             .def(py::init<py::object&,
-                          const std::function<py::object (const py::object&)>&,
+                          const std::function<py::object (const py::object&, const py::object&)>&,
                           double,
                           double,
                           std::size_t,

@@ -88,7 +88,7 @@ struct StateFeatureHash {
 template <typename Tdomain,
           typename Tfeature_vector,
           template <typename...> class Thashing_policy = DomainStateHash,
-          typename Texecution_policy = ParallelExecution>
+          typename Texecution_policy = SequentialExecution>
 class IWSolver {
 public :
     typedef Tdomain Domain;
@@ -386,7 +386,7 @@ private :
                         auto next_state = _domain.get_next_state(best_tip_node->state, a);
                         std::pair<typename Graph::iterator, bool> i;
                         _execution_policy.protect([this, &i, &next_state]{
-                            i = _graph.emplace(Node(next_state, _domain, _state_features));
+                            i = _graph.emplace(Node(*next_state, _domain, _state_features));
                         });
                         Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                         if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print() +

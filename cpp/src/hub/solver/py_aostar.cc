@@ -44,7 +44,7 @@ public :
                    double discount = 1.0,
                    std::size_t max_tip_expansions = 1,
                    bool detect_cycles = false,
-                   bool parallel = true,
+                   bool parallel = false,
                    bool debug_logs = false) {
         if (parallel) {
             _implementation = std::make_unique<Implementation<skdecide::ParallelExecution>>(
@@ -109,12 +109,9 @@ private :
                                                                                         return _goal_checker(dd, ss);
                                                                                     };
                                                                                     return d.call(-1, fgc, s._state).template cast<double>();
-                                                                                } catch (const py::error_already_set* e) {
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling goal checker: ") + e->what());
-                                                                                    std::runtime_error err(e->what());
-                                                                                    delete e;
-                                                                                    throw err;
+                                                                                } catch (const std::exception& e) {
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
+                                                                                    throw;
                                                                                 }
                                                                             },
                                                                             [this](PyAOStarDomain<Texecution>& d, const typename PyAOStarDomain<Texecution>::State& s)->double {
@@ -123,12 +120,9 @@ private :
                                                                                         return _heuristic(dd, ss);
                                                                                     };
                                                                                     return d.call(-1, fh, s._state).template cast<bool>();
-                                                                                } catch (const py::error_already_set* e) {
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e->what());
-                                                                                    std::runtime_error err(e->what());
-                                                                                    delete e;
-                                                                                    throw err;
+                                                                                } catch (const std::exception& e) {
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
+                                                                                    throw;
                                                                                 }
                                                                             },
                                                                             discount,
@@ -196,7 +190,7 @@ void init_pyaostar(py::module& m) {
                  py::arg("discount")=1.0,
                  py::arg("max_tip_expansions")=1,
                  py::arg("detect_cycles")=false,
-                 py::arg("parallel")=true,
+                 py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
             .def("clear", &PyAOStarSolver::clear)
             .def("solve", &PyAOStarSolver::solve, py::arg("state"))

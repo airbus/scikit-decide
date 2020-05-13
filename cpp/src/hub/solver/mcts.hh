@@ -814,7 +814,7 @@ struct GraphBackup {
 
 
 template <typename Tdomain,
-          typename TexecutionPolicy = ParallelExecution,
+          typename TexecutionPolicy = SequentialExecution,
           template <typename Tsolver> class TtransitionMode = DistributionTransitionMode,
           template <typename Tsolver> class TtreePolicy = DefaultTreePolicy,
           template <typename Tsolver> class Texpander = FullExpand,

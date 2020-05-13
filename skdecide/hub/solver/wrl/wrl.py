@@ -34,7 +34,7 @@ try:
         T_domain = D
 
         def __init__(self, domain: T_domain,
-                           state_features: Callable[[D.T_observation, Domain], Any],
+                           state_features: Callable[[Domain, D.T_observation], Any],
                            initial_pruning_probability: float = 0.999,
                            temperature_increase_rate: float = 0.01,
                            width_increase_resilience: int = 10,
@@ -44,7 +44,7 @@ try:
                            debug_logs: bool = False) -> None:
             self._original_domain = domain
             self._domain = wrl_domain_filter(domain,
-                                             lambda o: state_features(o, domain),
+                                             state_features,
                                              initial_pruning_probability,
                                              temperature_increase_rate,
                                              width_increase_resilience,
@@ -77,7 +77,7 @@ try:
         T_domain = D
 
         def __init__(self, domain: T_domain,
-                           state_features: Callable[[D.T_state, Domain], Any],
+                           state_features: Callable[[Domain, D.T_state], Any],
                            initial_pruning_probability: float = 0.999,
                            temperature_increase_rate: float = 0.01,
                            width_increase_resilience: int = 10,
@@ -87,7 +87,7 @@ try:
                            debug_logs: bool = False) -> None:
             self._original_domain = domain
             self._domain = wrl_domain_filter(domain,
-                                             lambda o: state_features(o, domain),
+                                             state_features,
                                              initial_pruning_probability,
                                              temperature_increase_rate,
                                              width_increase_resilience,
@@ -120,7 +120,7 @@ try:
         T_solver = S
 
         def __init__(self, solver: T_solver,
-                           state_features: Callable[[D.T_state, Domain], Any],
+                           state_features: Callable[[Domain, D.T_state], Any],
                            initial_pruning_probability: float = 0.999,
                            temperature_increase_rate: float = 0.01,
                            width_increase_resilience: int = 10,
@@ -129,7 +129,7 @@ try:
                            cache_transitions: bool = False,
                            debug_logs: bool = False) -> None:
             self._solver = wrl_solver(solver,
-                                      lambda o: state_features(o, domain),
+                                      state_features,
                                       initial_pruning_probability,
                                       temperature_increase_rate,
                                       width_increase_resilience,

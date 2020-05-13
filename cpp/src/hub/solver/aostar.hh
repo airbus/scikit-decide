@@ -22,7 +22,7 @@
 namespace skdecide {
 
 template <typename Tdomain,
-          typename Texecution_policy = ParallelExecution>
+          typename Texecution_policy = SequentialExecution>
 class AOStarSolver {
 public :
     typedef Tdomain Domain;

@@ -57,7 +57,7 @@ public :
                 double exploration = 0.25,
                 double discount = 1.0,
                 bool online_node_garbage = false,
-                bool parallel = true,
+                bool parallel = false,
                 bool debug_logs = false) {
 
         if (parallel) {
@@ -186,12 +186,9 @@ private :
                                                                             [this](PyRIWDomain<Texecution>& d, const typename PyRIWDomain<Texecution>::State& s, const int& thread_id)->std::unique_ptr<PyRIWFeatureVector<Texecution>> {
                                                                                 try {
                                                                                     return std::make_unique<PyRIWFeatureVector<Texecution>>(d.call(thread_id, _state_features, s._state));
-                                                                                } catch (const py::error_already_set* e) {
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e->what());
-                                                                                    std::runtime_error err(e->what());
-                                                                                    delete e;
-                                                                                    throw err;
+                                                                                } catch (const std::exception& e) {
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
+                                                                                    throw;
                                                                                 }
                                                                             },
                                                                             time_budget,
@@ -307,7 +304,7 @@ void init_pyriw(py::module& m) {
                  py::arg("exploration")=0.25,
                  py::arg("discount")=1.0,
                  py::arg("online_node_garbage")=false,
-                 py::arg("parallel")=true,
+                 py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
             .def("clear", &PyRIWSolver::clear)
             .def("solve", &PyRIWSolver::solve, py::arg("state"))

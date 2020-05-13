@@ -22,7 +22,7 @@
 namespace skdecide {
 
 template <typename Tdomain,
-          typename Texecution_policy = ParallelExecution>
+          typename Texecution_policy = SequentialExecution>
 class AStarSolver {
 public :
     typedef Tdomain Domain;
@@ -111,11 +111,15 @@ public :
                     auto next_state = _domain.get_next_state(best_tip_node->state, a);
                     std::pair<typename Graph::iterator, bool> i;
                     _execution_policy.protect([this, &i, &next_state]{
-                        i = _graph.emplace(next_state);
+                        i = _graph.emplace(*next_state);
                     });
                     Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
 
-                    if (closed_set.find(&neighbor) != closed_set.end()) {
+                    bool neighbor_closed = false;
+                    _execution_policy.protect([this, &closed_set, &neighbor, &neighbor_closed]{
+                        neighbor_closed = (closed_set.find(&neighbor) != closed_set.end());
+                    });
+                    if (neighbor_closed) {
                         // Ignore the neighbor which is already evaluated
                         return;
                     }

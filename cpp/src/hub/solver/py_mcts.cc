@@ -119,7 +119,7 @@ public :
                  PyMCTSOptions::ActionSelector action_selector_execution = PyMCTSOptions::ActionSelector::BestQValue,
                  PyMCTSOptions::RolloutPolicy rollout_policy = PyMCTSOptions::RolloutPolicy::Random,
                  PyMCTSOptions::BackPropagator back_propagator = PyMCTSOptions::BackPropagator::Graph,
-                 bool parallel = true,
+                 bool parallel = false,
                  bool debug_logs = false) {
         if (uct_mode) {
             initialize_transition_mode(domain,
@@ -286,7 +286,12 @@ private :
                                                     PyMCTSDomain<Texecution>& d,
                                                     const typename PyMCTSDomain<Texecution>::State& s,
                                                     const int& thread_id) -> std::unique_ptr<typename PyMCTSDomain<Texecution>::Action> {
-                    return std::make_unique<typename PyMCTSDomain<Texecution>::Action>(d.call(thread_id, rollout_policy_functor, s._state));
+                    try {
+                        return std::make_unique<typename PyMCTSDomain<Texecution>::Action>(d.call(thread_id, rollout_policy_functor, s._state));
+                    } catch (const std::exception& e) {
+                        spdlog::error(std::string("SKDECIDE exception when calling the custom rollout policy: ") + e.what());
+                        throw;
+                    }
                 });
             }
         }
@@ -898,7 +903,7 @@ void init_pymcts(py::module& m) {
                  py::arg("action_selector_execution")=PyMCTSOptions::ActionSelector::BestQValue,
                  py::arg("rollout_policy")=PyMCTSOptions::RolloutPolicy::Random,
                  py::arg("back_propagator")=PyMCTSOptions::BackPropagator::Graph,
-                 py::arg("parallel")=true,
+                 py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
             .def("clear", &PyMCTSSolver::clear)
             .def("solve", &PyMCTSSolver::solve, py::arg("state"))

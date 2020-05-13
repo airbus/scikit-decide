@@ -152,7 +152,7 @@ template <typename Tdomain,
           typename Tfeature_vector,
           template <typename...> class Thashing_policy = DomainStateHash,
           template <typename...> class Trollout_policy = EnvironmentRollout,
-          typename Texecution_policy = ParallelExecution>
+          typename Texecution_policy = SequentialExecution>
 class RIWSolver {
 public :
     typedef Tdomain Domain;

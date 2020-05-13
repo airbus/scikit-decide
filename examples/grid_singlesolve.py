@@ -91,7 +91,8 @@ class MyDomain(D):
 class MyShmProxy:
 
     _register_ = [(State, 2), (Action, 1), (EnumSpace, 1), (SingleValueDistribution, 1),
-                  (TransitionValue, 1), (EnvironmentOutcome, 1), (TransitionOutcome, 1), (bool, 1)]
+                  (TransitionValue, 1), (EnvironmentOutcome, 1), (TransitionOutcome, 1),
+                  (bool, 1), (float, 1)]
 
     def __init__(self):
         self._proxies_ = {State: MyShmProxy.StateProxy, Action: MyShmProxy.ActionProxy,
@@ -100,7 +101,8 @@ class MyShmProxy:
                           TransitionValue: MyShmProxy.TransitionValueProxy,
                           EnvironmentOutcome: MyShmProxy.EnvironmentOutcomeProxy,
                           TransitionOutcome: MyShmProxy.TransitionOutcomeProxy,
-                          bool: MyShmProxy.BoolProxy}
+                          bool: MyShmProxy.BoolProxy,
+                          float: MyShmProxy.FloatProxy}
     
     def copy(self):
         p = MyShmProxy()
@@ -138,6 +140,7 @@ class MyShmProxy:
         def initialize():
             return Value('I', 0, lock=True)
         
+        @staticmethod
         def encode(action, shm_action):
             shm_action.value = action.value
         
@@ -150,6 +153,7 @@ class MyShmProxy:
         def initialize():
             return Array('c', b'')
         
+        @staticmethod
         def encode(val, shm_val):
             pass
         
@@ -162,6 +166,7 @@ class MyShmProxy:
         def initialize():
             return MyShmProxy.StateProxy.initialize()
         
+        @staticmethod
         def encode(svd, shm_svd):
             MyShmProxy.StateProxy.encode(svd._value, shm_svd)
         
@@ -175,6 +180,7 @@ class MyShmProxy:
         def initialize():
             return [Value('d', 0), Value('b', False)]
         
+        @staticmethod
         def encode(value, shm_value):
             if value.reward is not None:
                 shm_value[0] = value.reward
@@ -200,6 +206,7 @@ class MyShmProxy:
                    MyShmProxy.TransitionValueProxy.initialize() + \
                    [MyShmProxy.BoolProxy.initialize()]
         
+        @staticmethod
         def encode(outcome, shm_outcome):
             MyShmProxy.StateProxy.encode(outcome.observation, shm_outcome[0])
             MyShmProxy.TransitionValueProxy.encode(outcome.value, shm_outcome[1:3])
@@ -218,6 +225,7 @@ class MyShmProxy:
                    MyShmProxy.TransitionValueProxy.initialize() + \
                    [MyShmProxy.BoolProxy.initialize()]
         
+        @staticmethod
         def encode(outcome, shm_outcome):
             MyShmProxy.StateProxy.encode(outcome.state, shm_outcome[0])
             MyShmProxy.TransitionValueProxy.encode(outcome.value, shm_outcome[1:3])
@@ -234,12 +242,26 @@ class MyShmProxy:
         def initialize():
             return Value('b', False)
         
+        @staticmethod
         def encode(val, shm_val):
             shm_val.value = val
         
         @staticmethod
         def decode(val):
             return bool(val.value)
+    
+    class FloatProxy:
+        @staticmethod
+        def initialize():
+            return Value('d', False)
+        
+        @staticmethod
+        def encode(val, shm_val):
+            shm_val.value = val
+        
+        @staticmethod
+        def decode(val):
+            return float(val.value)
 
 
 if __name__ == '__main__':
@@ -249,10 +271,10 @@ if __name__ == '__main__':
     domain.reset()
 
     if RIW.check_domain(domain):
-        # solver_factory = lambda: Astar(heuristic=lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
-        #                                parallel=False,
-        #                                shared_memory_proxy=MyShmProxy(),
-        #                                debug_logs=False)
+        solver_factory = lambda: Astar(heuristic=lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                                       parallel=True,
+                                       shared_memory_proxy=MyShmProxy(),
+                                       debug_logs=False)
         # solver_factory = lambda: AOstar(heuristic=lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
         #                                 discount=1.0,
         #                                 detect_cycles=True,
@@ -281,12 +303,12 @@ if __name__ == '__main__':
         #                              parallel=True,
         #                              shared_memory_proxy=MyShmProxy(),
         #                              debug_logs=False)
-        solver_factory = lambda: BFWS(state_features=lambda d, s: (s.x, s.y),
-                                      heuristic=lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
-                                      termination_checker=lambda d, s: d.is_goal(s),
-                                      parallel=False,
-                                      shared_memory_proxy=MyShmProxy(),
-                                      debug_logs=False)
+        # solver_factory = lambda: BFWS(state_features=lambda d, s: (s.x, s.y),
+        #                               heuristic=lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+        #                               termination_checker=lambda d, s: d.is_goal(s),
+        #                               parallel=False,
+        #                               shared_memory_proxy=MyShmProxy(),
+        #                               debug_logs=False)
         solver = MyDomain.solve_with(solver_factory, domain_factory)
         rollout(domain, solver, num_episodes=1, max_steps=20, max_framerate=30,
                 outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

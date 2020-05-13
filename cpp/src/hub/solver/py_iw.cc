@@ -56,7 +56,7 @@ public :
                const std::function<bool (const double&, const std::size_t&, const std::size_t&,
                                          const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
                std::size_t time_budget = 0,
-               bool parallel = true,
+               bool parallel = false,
                bool debug_logs = false) {
 
         if (parallel) {
@@ -142,12 +142,14 @@ private :
             if (_node_ordering != nullptr) {
                 pno = [this](const double& a_gscore, const std::size_t& a_novelty, const std::size_t& a_depth,
                              const double& b_gscore, const std::size_t& b_novelty, const std::size_t& b_depth) -> bool {
+                    typename skdecide::GilControl<Texecution>::Acquire acquire;
                     try {
-                        typename skdecide::GilControl<Texecution>::Acquire acquire;
                         return _node_ordering(a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth);
-                    } catch (const py::error_already_set& e) {
-                        spdlog::error(std::string("SKDECIDE exception when calling custom node ordering: ") + e.what());
-                        throw;
+                    } catch (const py::error_already_set* e) {
+                        spdlog::error("SKDECIDE exception when calling custom node ordering: " + std::string(e->what()));
+                        std::runtime_error err(e->what());
+                        delete e;
+                        throw err;
                     }
                 };
             }
@@ -161,12 +163,9 @@ private :
                                                                                         return _state_features(dd, ss);
                                                                                     };
                                                                                     return std::make_unique<PyIWFeatureVector<Texecution>>(d.call(-1, fsf, s._state));
-                                                                                } catch (const py::error_already_set* e) {
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e->what());
-                                                                                    std::runtime_error err(e->what());
-                                                                                    delete e;
-                                                                                    throw err;
+                                                                                } catch (const std::exception& e) {
+                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
+                                                                                    throw;
                                                                                 }
                                                                             },
                                                                             pno,
@@ -257,7 +256,7 @@ void init_pyiw(py::module& m) {
                  py::arg("use_state_feature_hash")=false,
                  py::arg("node_ordering")=nullptr,
                  py::arg("time_budget")=0,
-                 py::arg("parallel")=true,
+                 py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
             .def("clear", &PyIWSolver::clear)
             .def("solve", &PyIWSolver::solve, py::arg("state"))

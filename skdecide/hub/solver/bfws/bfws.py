@@ -38,7 +38,7 @@ try:
                      state_features: Callable[[Domain, D.T_state], Any],
                      heuristic: Callable[[Domain, D.T_state], float],
                      termination_checker: Callable[[Domain, D.T_state], bool],
-                     parallel: bool = True,
+                     parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
             self._solver = None
@@ -51,21 +51,28 @@ try:
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            if self._parallel:
-                if self._shared_memory_proxy is None:
-                    self._domain = PipeParallelDomain(domain_factory)
-                else:
-                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
-            else:
-                self._domain = domain_factory()
             if self._heuristic is None:
                 heuristic = lambda d, s: 0
             else:
                 heuristic = self._heuristic
+            if self._parallel:
+                if self._shared_memory_proxy is None:
+                    self._domain = PipeParallelDomain(domain_factory,
+                                                      lambdas=[self._state_features,
+                                                               heuristic,
+                                                               self._termination_checker])
+                else:
+                    self._domain = ShmParallelDomain(domain_factory,
+                                                     self._shared_memory_proxy,
+                                                     lambdas=[self._state_features,
+                                                              heuristic,
+                                                              self._termination_checker])
+            else:
+                self._domain = domain_factory()
             self._solver = bfws_solver(domain=self._domain,
-                                       state_features=lambda d, s: self._state_features(d, s) if not self._parallel else d.call(None, self._state_features, s),
-                                       heuristic=lambda d, s: heuristic(d, s) if not self._parallel else d.call(None, heuristic, s),
-                                       termination_checker=lambda d, s: self._termination_checker(d, s) if not self._parallel else d.call(None, self._termination_checker, s),
+                                       state_features=lambda d, s: self._state_features(d, s) if not self._parallel else d.call(None, 0, s),
+                                       heuristic=lambda d, s: heuristic(d, s) if not self._parallel else d.call(None, 1, s),
+                                       termination_checker=lambda d, s: self._termination_checker(d, s) if not self._parallel else d.call(None, 2, s),
                                        parallel=self._parallel,
                                        debug_logs=self._debug_logs)
             self._solver.clear()
@@ -75,10 +82,10 @@ try:
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             if self._parallel:
-                self._domain.start_session(ipc_notify=True)
-            self._solver.solve(memory)
-            if self._parallel:
-                self._domain.end_session()
+                with self._domain.session_manager(ipc_notify=True):
+                    self._solver.solve(memory)
+            else:
+                self._solver.solve(memory)
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
             return self._solver.is_solution_defined_for(observation)

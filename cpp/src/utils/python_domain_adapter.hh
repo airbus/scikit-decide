@@ -533,7 +533,7 @@ public :
         return _implementation->sample(s, e, thread_id);
     }
 
-    py::object get_next_state(const State& s, const Event& e, const int& thread_id = -1) {
+    std::unique_ptr<State> get_next_state(const State& s, const Event& e, const int& thread_id = -1) {
         return _implementation->get_next_state(s, e, thread_id);
     }
 
@@ -633,10 +633,10 @@ protected :
             }
         }
 
-        py::object get_next_state(const State& s, const Event& e, [[maybe_unused]] const int& thread_id = -1) {
+        std::unique_ptr<State> get_next_state(const State& s, const Event& e, [[maybe_unused]] const int& thread_id = -1) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return _domain.attr("get_next_state")(s._state, e._event);
+                return std::make_unique<State>(_domain.attr("get_next_state")(s._state, e._event));
             } catch(const py::error_already_set* ex) {
                 spdlog::error(std::string("SKDECIDE exception when getting next state from state ") +
                               s.print() + " and applying action " + e.print() + ": " + ex->what());
@@ -803,33 +803,36 @@ protected :
                     throw err;
                 }
             }
-            while (true) {
-                if (conn) { // positive id returned
-                    try {
-                        conn->recv_msg();
-                    } catch (const nng::exception& e) {
-                        std::string err_msg("SKDECIDE exception when waiting for a response from the python parallel domain: ");
-                        err_msg += e.who() + std::string(": ") + e.what();
-                        spdlog::error(err_msg);
-                        throw std::runtime_error(err_msg);
-                    }
-                }
-                typename GilControl<Texecution>::Acquire acquire;
+            if (conn) { // positive id returned (parallel execution, waiting for python process to return)
                 try {
-                    py::object r = _domain.attr("get_result")(id);
-                    if (!r.is_none()) {
+                    nng::msg msg = conn->recv_msg();
+                    if (msg.body().size() != 1 || msg.body().data<char>()[0] != '0') { // error
+                        typename GilControl<Texecution>::Acquire acquire;
                         id = py::object();
-                        return r;
+                        std::string pyerr(msg.body().data<char>(), msg.body().size());
+                        throw std::runtime_error("SKDECIDE exception: C++ parallel domain received an exception from Python parallel domain: " + pyerr);
                     }
-                } catch(const py::error_already_set* e) {
-                    spdlog::error("SKDECIDE exception when asynchronously calling the domain's get_result() method: " + std::string(e->what()));
-                    std::runtime_error err(e->what());
+                } catch (const nng::exception& e) {
+                    std::string err_msg("SKDECIDE exception when waiting for a response from the python parallel domain: ");
+                    err_msg += e.who() + std::string(": ") + e.what();
+                    spdlog::error(err_msg);
+                    typename GilControl<Texecution>::Acquire acquire;
                     id = py::object();
-                    delete e;
-                    throw err;
+                    throw std::runtime_error(err_msg);
                 }
             }
             typename GilControl<Texecution>::Acquire acquire;
+            try {
+                py::object r = _domain.attr("get_result")(id);
+                id = py::object();
+                return r;
+            } catch(const py::error_already_set* e) {
+                spdlog::error("SKDECIDE exception when asynchronously calling the domain's get_result() method: " + std::string(e->what()));
+                std::runtime_error err(e->what());
+                id = py::object();
+                delete e;
+                throw err;
+            }
             id = py::object();
             return py::none();
         }
@@ -881,9 +884,9 @@ protected :
             }
         }
 
-        py::object get_next_state(const State& s, const Event& e, const int& thread_id = -1) {
+        std::unique_ptr<State> get_next_state(const State& s, const Event& e, const int& thread_id = -1) {
             try {
-                return launch(thread_id, "get_next_state", s._state, e._event);
+                return std::make_unique<State>(launch(thread_id, "get_next_state", s._state, e._event));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when getting next state from state ") +
@@ -968,7 +971,7 @@ protected :
             try {
                 return do_launch(thread_id, func, args...);
             } catch(const std::exception& e) {
-                spdlog::error(std::string("SKDECIDE exception when calling anonymous domain method: " + std::string(e.what())));
+                spdlog::error(std::string("SKDECIDE exception when calling anonymous domain method: ") + e.what());
                 throw;
             }
         }

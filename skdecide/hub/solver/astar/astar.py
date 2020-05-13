@@ -36,7 +36,7 @@ try:
         
         def __init__(self,
                      heuristic: Optional[Callable[[Domain, D.T_state], float]] = None,
-                     parallel: bool = True,
+                     parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
             self._solver = None
@@ -47,20 +47,20 @@ try:
             self._debug_logs = debug_logs
 
         def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
-            if self._parallel:
-                if self._shared_memory_proxy is None:
-                    self._domain = PipeParallelDomain(domain_factory)
-                else:
-                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
-            else:
-                self._domain = domain_factory()
             if self._heuristic is None:
                 heuristic = lambda d, s: 0
             else:
                 heuristic = self._heuristic
+            if self._parallel:
+                if self._shared_memory_proxy is None:
+                    self._domain = PipeParallelDomain(domain_factory, lambdas=[heuristic])
+                else:
+                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy, lambdas=[heuristic])
+            else:
+                self._domain = domain_factory()
             self._solver = astar_solver(domain=self._domain,
                                         goal_checker=lambda d, s: d.is_goal(s),
-                                        heuristic=lambda d, s: heuristic(d, s) if not self._parallel else d.call(None, heuristic, s),
+                                        heuristic=lambda d, s: heuristic(d, s) if not self._parallel else d.call(None, 0, s),
                                         parallel=self._parallel,
                                         debug_logs=self._debug_logs)
             self._solver.clear()
@@ -70,10 +70,10 @@ try:
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             if self._parallel:
-                self._domain.start_session(ipc_notify=True)
-            self._solver.solve(memory)
-            if self._parallel:
-                self._domain.end_session()
+                with self._domain.session_manager(ipc_notify=True):
+                    self._solver.solve(memory)
+            else:
+                self._solver.solve(memory)
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
             return self._solver.is_solution_defined_for(observation)

@@ -44,7 +44,7 @@ try:
                      discount: float = 1.0,
                      online_node_garbage: bool = False,
                      continuous_planning: bool = True,
-                     parallel: bool = True,
+                     parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
             self._solver = None
@@ -67,14 +67,14 @@ try:
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
             if self._parallel:
                 if self._shared_memory_proxy is None:
-                    self._domain = PipeParallelDomain(domain_factory)
+                    self._domain = PipeParallelDomain(domain_factory, lambdas=[self._state_features])
                 else:
-                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy)
+                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy, lambdas=[self._state_features])
             else:
                 self._domain = domain_factory()
             self._domain_factory = domain_factory  # Used for random action sampling
             self._solver = riw_solver(domain=self._domain,
-                                      state_features=lambda d, s, i=None: self._state_features(d, s) if not self._parallel else d.call(i, self._state_features, s),
+                                      state_features=lambda d, s, i=None: self._state_features(d, s) if not self._parallel else d.call(i, 0, s),
                                       use_state_feature_hash=self._use_state_feature_hash,
                                       use_simulation_domain=self._use_simulation_domain,
                                       time_budget=self._time_budget,
@@ -92,10 +92,10 @@ try:
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             if self._parallel:
-                self._domain.start_session(ipc_notify=True)
-            self._solver.solve(memory)
-            if self._parallel:
-                self._domain.end_session()
+                with self._domain.session_manager(ipc_notify=True):
+                    self._solver.solve(memory)
+            else:
+                self._solver.solve(memory)
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
             return self._solver.is_solution_defined_for(observation)
@@ -110,12 +110,11 @@ try:
                 if not self._parallel:
                     return self._domain.get_action_space().sample()
                 else:
-                    self._domain.start_session(ipc_notify=False)
-                    domain_id = self._domain.get_action_space()
-                    self._domain.wait_job(domain_id)
-                    r = self._domain.get_result(domain_id).sample()
-                    self._domain.end_session()
-                    return r
+                    with self._domain.session_manager(ipc_notify=True):
+                        domain_id = self._domain.get_action_space()
+                        self._domain.wait_job(domain_id)
+                        r = self._domain.get_result(domain_id).sample()
+                        return r
             else:
                 return action
         
