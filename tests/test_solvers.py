@@ -15,10 +15,12 @@ from multiprocessing import Value, Array
 from stable_baselines import PPO2
 from stable_baselines.common.policies import MlpPolicy
 
-from skdecide import DeterministicPlanningDomain, TransitionValue, Space, \
-                     EnvironmentOutcome, TransitionOutcome, SingleValueDistribution
+from skdecide import DeterministicPlanningDomain, TransitionValue, \
+                     Space, ImplicitSpace, \
+                     EnvironmentOutcome, TransitionOutcome, \
+                     SingleValueDistribution
 from skdecide.builders.domain import UnrestrictedActions
-from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
+from skdecide.hub.space.gym import EnumSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver
 
 
@@ -28,6 +30,7 @@ from skdecide.utils import load_registered_solver
 class State(NamedTuple):
     x: int
     y: int
+    s: int  # step => to make the domain cycle-free for algorithms like AO*
 
 
 # Must be defined outside the grid_domain() fixture
@@ -61,13 +64,13 @@ def grid_domain():
                             action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
 
             if action == Action.left:
-                next_state = State(max(memory.x - 1, 0), memory.y)
+                next_state = State(max(memory.x - 1, 0), memory.y, memory.s + 1)
             if action == Action.right:
-                next_state = State(min(memory.x + 1, self.num_cols - 1), memory.y)
+                next_state = State(min(memory.x + 1, self.num_cols - 1), memory.y, memory.s + 1)
             if action == Action.up:
-                next_state = State(memory.x, max(memory.y - 1, 0))
+                next_state = State(memory.x, max(memory.y - 1, 0), memory.s + 1)
             if action == Action.down:
-                next_state = State(memory.x, min(memory.y + 1, self.num_rows - 1))
+                next_state = State(memory.x, min(memory.y + 1, self.num_rows - 1), memory.s + 1)
 
             return next_state
 
@@ -88,13 +91,13 @@ def grid_domain():
             return EnumSpace(Action)
 
         def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
-            return ListSpace([State(x=self.num_cols - 1, y=self.num_rows - 1)])
+            return ImplicitSpace(lambda state: state.x == (self.num_cols - 1) and state.y == (self.num_rows - 1))
 
         def _get_initial_state_(self) -> D.T_state:
-            return State(x=0, y=0)
+            return State(x=0, y=0, s=0)
 
         def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
-            return MultiDiscreteSpace([self.num_cols, self.num_rows])
+            return MultiDiscreteSpace([self.num_cols, self.num_rows, 100])
     
     return GridDomain
 
@@ -106,10 +109,10 @@ def grid_domain():
                          'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
                                     'debug_logs': False},
                          'optimal': True},
-                        # {'entry': 'AOstar',
-                        #  'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
-                        #             'debug_logs': False},
-                        #   'optimal': True},
+                        {'entry': 'AOstar',
+                         'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                                    'debug_logs': False},
+                          'optimal': True},
                         {'entry': 'BFWS',
                          'config': {'state_features': lambda d, s: (s.x, s.y),
                                     'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
@@ -213,16 +216,17 @@ class GridShmProxy:
     class StateProxy:
         @staticmethod
         def initialize():
-            return Array('d', [0, 0], lock=True)
+            return Array('d', [0, 0, 0], lock=True)
         
         @staticmethod
         def encode(state, shm_state):
             shm_state[0] = state.x
             shm_state[1] = state.y
+            shm_state[2] = state.s
         
         @staticmethod
         def decode(shm_state):
-            return State(int(shm_state[0]), int(shm_state[1]))
+            return State(int(shm_state[0]), int(shm_state[1]), int(shm_state[2]))
     
     class ActionProxy:
         @staticmethod
