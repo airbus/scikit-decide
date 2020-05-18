@@ -1,0 +1,385 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
+import pytest
+import inspect
+
+from enum import Enum
+from typing import NamedTuple, Optional
+from math import sqrt
+from multiprocessing import Value, Array
+
+from stable_baselines import PPO2
+from stable_baselines.common.policies import MlpPolicy
+
+from skdecide import DeterministicPlanningDomain, TransitionValue, Space, \
+                     EnvironmentOutcome, TransitionOutcome, SingleValueDistribution
+from skdecide.builders.domain import UnrestrictedActions
+from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
+from skdecide.utils import load_registered_solver
+
+
+# Must be defined outside the grid_domain() fixture
+# so that parallel domains can pickle it
+# /!\ Is it worth defining the domain as a fixture?
+class State(NamedTuple):
+    x: int
+    y: int
+
+
+# Must be defined outside the grid_domain() fixture
+# so that parallel domains can pickle it
+# /!\ Is it worth defining the domain as a fixture?
+class Action(Enum):
+    up = 0
+    down = 1
+    left = 2
+    right = 3
+
+# FIXTURES
+
+@pytest.fixture
+def grid_domain():
+    class D(DeterministicPlanningDomain, UnrestrictedActions):
+        T_state = State  # Type of states
+        T_observation = T_state  # Type of observations
+        T_event = Action  # Type of events
+        T_value = float  # Type of transition values (rewards or costs)
+        T_info = None  # Type of additional information given as part of an environment outcome
+
+
+    class GridDomain(D):
+
+        def __init__(self, num_cols=10, num_rows=10):
+            self.num_cols = num_cols
+            self.num_rows = num_rows
+
+        def _get_next_state(self, memory: D.T_memory[D.T_state],
+                            action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+
+            if action == Action.left:
+                next_state = State(max(memory.x - 1, 0), memory.y)
+            if action == Action.right:
+                next_state = State(min(memory.x + 1, self.num_cols - 1), memory.y)
+            if action == Action.up:
+                next_state = State(memory.x, max(memory.y - 1, 0))
+            if action == Action.down:
+                next_state = State(memory.x, min(memory.y + 1, self.num_rows - 1))
+
+            return next_state
+
+        def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
+                                next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
+
+            if next_state.x == memory.x and next_state.y == memory.y:
+                cost = 2  # big penalty when hitting a wall
+            else:
+                cost = abs(next_state.x - memory.x) + abs(next_state.y - memory.y)  # every move costs 1
+
+            return TransitionValue(cost=cost)
+
+        def _is_terminal(self, state: D.T_state) -> bool:
+            return self._is_goal(state)
+
+        def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
+            return EnumSpace(Action)
+
+        def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
+            return ListSpace([State(x=self.num_cols - 1, y=self.num_rows - 1)])
+
+        def _get_initial_state_(self) -> D.T_state:
+            return State(x=0, y=0)
+
+        def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
+            return MultiDiscreteSpace([self.num_cols, self.num_rows])
+    
+    return GridDomain
+
+
+@pytest.fixture(params=[{'entry': 'LazyAstar',
+                         'config': {'verbose': False},
+                         'optimal': True},
+                        {'entry': 'Astar',
+                         'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                                    'debug_logs': False},
+                         'optimal': True},
+                        # {'entry': 'AOstar',
+                        #  'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                        #             'debug_logs': False},
+                        #   'optimal': True},
+                        {'entry': 'BFWS',
+                         'config': {'state_features': lambda d, s: (s.x, s.y),
+                                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                                    'termination_checker': lambda d, s: d.is_goal(s),
+                                    'debug_logs': False},
+                         'optimal': True},
+                        {'entry': 'IW',
+                         'config': {'state_features': lambda d, s: (s.x, s.y),
+                                    'debug_logs': False},
+                         'optimal': True},
+                        {'entry': 'RIW',
+                         'config': {'state_features': lambda d, s: (s.x, s.y),
+                                    'time_budget': 20,
+                                    'rollout_budget': 10,
+                                    'max_depth': 10,
+                                    'exploration': 0.25,
+                                    'use_simulation_domain': True,
+                                    'online_node_garbage': True,
+                                    'continuous_planning': True,
+                                    'debug_logs': False},
+                         'optimal': False},
+                        {'entry': 'UCT',
+                         'config': {'time_budget': 20,
+                                    'rollout_budget': 10,
+                                    'max_depth': 10,
+                                    'continuous_planning': True,
+                                    'debug_logs': False},
+                         'optimal': False},
+                        {'entry': 'StableBaseline',
+                         'config': {'algo_class': PPO2,
+                                    'baselines_policy': MlpPolicy,
+                                    'learn_config': {'total_timesteps': 10},
+                                    'verbose': 1},
+                         'optimal': False}])
+def solver(request):
+    return request.param
+
+
+@pytest.fixture(params=[False, True])
+def parallel(request):
+    return request.param
+
+
+@pytest.fixture(params=[False, True])
+def shared_memory(request):
+    return request.param
+
+
+# HELPER FUNCTION
+
+def get_plan(domain, solver):
+    plan = []
+    cost = 0
+    observation = domain.reset()
+    nb_steps = 0
+    while (not domain.is_goal(observation)) and nb_steps < 20:
+        plan.append(solver.sample_action(observation))
+        outcome = domain.step(plan[-1])
+        cost += outcome.value.cost
+        observation = outcome.observation
+        nb_steps += 1
+    return plan, cost
+
+
+# SHARED MEMORY PROXY FOR PARALLEL TESTS
+
+class GridShmProxy:
+
+    _register_ = [(State, 2), (Action, 1), (EnumSpace, 1), (SingleValueDistribution, 1),
+                  (TransitionValue, 1), (EnvironmentOutcome, 1), (TransitionOutcome, 1),
+                  (bool, 1), (float, 1), (int, 2)]
+
+    def __init__(self):
+        self._proxies_ = {State: GridShmProxy.StateProxy, Action: GridShmProxy.ActionProxy,
+                          EnumSpace: GridShmProxy.EnumSpaceProxy,
+                          SingleValueDistribution: GridShmProxy.SingleValueDistributionProxy,
+                          TransitionValue: GridShmProxy.TransitionValueProxy,
+                          EnvironmentOutcome: GridShmProxy.EnvironmentOutcomeProxy,
+                          TransitionOutcome: GridShmProxy.TransitionOutcomeProxy,
+                          bool: GridShmProxy.BoolProxy,
+                          float: GridShmProxy.FloatProxy,
+                          int: GridShmProxy.IntProxy}
+    
+    def copy(self):
+        p = GridShmProxy()
+        p._proxies_ = dict(self._proxies_)
+        return p
+    
+    def register(self):
+        return GridShmProxy._register_
+
+    def initialize(self, t):
+        return self._proxies_[t].initialize()
+    
+    def encode(self, value, shm_value):
+        self._proxies_[type(value)].encode(value, shm_value)
+    
+    def decode(self, t, shm_value):
+        return self._proxies_[t].decode(shm_value)
+
+    class StateProxy:
+        @staticmethod
+        def initialize():
+            return Array('d', [0, 0], lock=True)
+        
+        @staticmethod
+        def encode(state, shm_state):
+            shm_state[0] = state.x
+            shm_state[1] = state.y
+        
+        @staticmethod
+        def decode(shm_state):
+            return State(int(shm_state[0]), int(shm_state[1]))
+    
+    class ActionProxy:
+        @staticmethod
+        def initialize():
+            return Value('I', 0, lock=True)
+        
+        @staticmethod
+        def encode(action, shm_action):
+            shm_action.value = action.value
+        
+        @staticmethod
+        def decode(shm_action):
+            return Action(shm_action.value)
+    
+    class EnumSpaceProxy:  # Always used with Action as enum class
+        @staticmethod
+        def initialize():
+            return Array('c', b'')
+        
+        @staticmethod
+        def encode(val, shm_val):
+            pass
+        
+        @staticmethod
+        def decode(val):
+            return EnumSpace(Action)
+    
+    class SingleValueDistributionProxy:  # Always used with State
+        @staticmethod
+        def initialize():
+            return GridShmProxy.StateProxy.initialize()
+        
+        @staticmethod
+        def encode(svd, shm_svd):
+            GridShmProxy.StateProxy.encode(svd._value, shm_svd)
+        
+        @staticmethod
+        def decode(svd):
+            return SingleValueDistribution(GridShmProxy.StateProxy.decode(svd))
+    
+    class TransitionValueProxy:
+
+        @staticmethod
+        def initialize():
+            return [Value('d', 0), Value('b', False)]
+        
+        @staticmethod
+        def encode(value, shm_value):
+            if value.reward is not None:
+                shm_value[0] = value.reward
+                shm_value[1] = True
+            elif value.cost is not None:
+                shm_value[0] = value.cost
+                shm_value[1] = False
+            else:
+                shm_value[0] = 0
+                shm_value[1] = True
+        
+        @staticmethod
+        def decode(value):
+            if value[1].value:
+                return TransitionValue(reward=value[0].value)
+            else:
+                return TransitionValue(cost=value[0].value)
+    
+    class EnvironmentOutcomeProxy:
+        @staticmethod
+        def initialize():
+            return [GridShmProxy.StateProxy.initialize()] + \
+                   GridShmProxy.TransitionValueProxy.initialize() + \
+                   [GridShmProxy.BoolProxy.initialize()]
+        
+        @staticmethod
+        def encode(outcome, shm_outcome):
+            GridShmProxy.StateProxy.encode(outcome.observation, shm_outcome[0])
+            GridShmProxy.TransitionValueProxy.encode(outcome.value, shm_outcome[1:3])
+            GridShmProxy.BoolProxy.encode(outcome.termination, shm_outcome[3])
+        
+        @staticmethod
+        def decode(outcome):
+            return EnvironmentOutcome(observation=GridShmProxy.StateProxy.decode(outcome[0]),
+                                      value=GridShmProxy.TransitionValueProxy.decode(outcome[1:3]),
+                                      termination=GridShmProxy.BoolProxy.decode(outcome[3]))
+    
+    class TransitionOutcomeProxy:
+        @staticmethod
+        def initialize():
+            return [GridShmProxy.StateProxy.initialize()] + \
+                   GridShmProxy.TransitionValueProxy.initialize() + \
+                   [GridShmProxy.BoolProxy.initialize()]
+        
+        @staticmethod
+        def encode(outcome, shm_outcome):
+            GridShmProxy.StateProxy.encode(outcome.state, shm_outcome[0])
+            GridShmProxy.TransitionValueProxy.encode(outcome.value, shm_outcome[1:3])
+            GridShmProxy.BoolProxy.encode(outcome.termination, shm_outcome[3])
+        
+        @staticmethod
+        def decode(outcome):
+            return TransitionOutcome(state=GridShmProxy.StateProxy.decode(outcome[0]),
+                                     value=GridShmProxy.TransitionValueProxy.decode(outcome[1:3]),
+                                     termination=GridShmProxy.BoolProxy.decode(outcome[3]))
+    
+    class BoolProxy:
+        @staticmethod
+        def initialize():
+            return Value('b', False)
+        
+        @staticmethod
+        def encode(val, shm_val):
+            shm_val.value = val
+        
+        @staticmethod
+        def decode(val):
+            return bool(val.value)
+    
+    class FloatProxy:
+        @staticmethod
+        def initialize():
+            return Value('d', False)
+        
+        @staticmethod
+        def encode(val, shm_val):
+            shm_val.value = val
+        
+        @staticmethod
+        def decode(val):
+            return float(val.value)
+    
+    class IntProxy:
+        @staticmethod
+        def initialize():
+            return Value('i', False)
+        
+        @staticmethod
+        def encode(val, shm_val):
+            shm_val.value = val
+        
+        @staticmethod
+        def decode(val):
+            return int(val.value)
+
+# TESTS
+
+def test_solve(grid_domain, solver, parallel, shared_memory):
+    dom = grid_domain()
+    solver_type = load_registered_solver(solver['entry'])
+    solver_args = solver['config']
+    if 'parallel' in inspect.signature(solver_type.__init__).parameters:
+        solver_args['parallel'] = parallel
+    if 'shared_memory_proxy' in inspect.signature(solver_type.__init__).parameters and shared_memory:
+        solver_args['shared_memory_proxy'] = GridShmProxy()
+    noexcept = True
+    try:
+        slv = grid_domain.solve_with(lambda: solver_type(**solver_args))
+        plan, cost = get_plan(dom, slv)
+    except:
+        noexcept = False
+    assert solver_type.check_domain(dom) and noexcept and \
+           ((not solver['optimal']) or (cost == 18 and len(plan) == 18))

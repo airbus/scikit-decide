@@ -372,7 +372,7 @@ class ParallelDomain:
         self._temp_connections = [tempfile.NamedTemporaryFile() for i in range(nb_domains)]
         self._ipc_connections = ['ipc://' + f.name + '.ipc' for f in self._temp_connections]
         self._processes = [None] * nb_domains
-        self._ongoing_session = False
+        self._nb_sessions = 0
     
     def start_session(self):
         raise NotImplementedError
@@ -548,6 +548,12 @@ class PipeParallelDomain(ParallelDomain):
         self._waiting_jobs[i].recv()
     
     def launch(self, i, function, *args):
+        if self._nb_sessions == 0:
+            err_msg = '/!\ Please call your parallel domain functions within ' + \
+                      'a PipeParallelDomain.SessionManager context. ' + \
+                      'See the PipeParallelDomain.session_manager() method.'
+            logger.error(rf'{err_msg}')
+            raise RuntimeError(err_msg)
         try:
             mi = self.wake_up_domain(i)
             self._waiting_jobs[mi].send((function, args))
@@ -571,8 +577,8 @@ class PipeParallelDomain(ParallelDomain):
             self._ipc_notify = ipc_notify
 
         def __enter__(self):
-            if not self._d._ongoing_session:
-                self._d._ongoing_session = True
+            self._d._nb_sessions += 1
+            if self._d._nb_sessions == 1:
                 for i in range(len(self._d._job_results)):
                     pparent, pchild = Pipe()
                     self._d._waiting_jobs[i] = pparent
@@ -586,8 +592,8 @@ class PipeParallelDomain(ParallelDomain):
                     continue
         
         def __exit__ (self, type, value, tb):
-            if self._d._ongoing_session:
-                self._d._ongoing_session = False
+            self._d._nb_sessions -= 1
+            if self._d._nb_sessions == 0:
                 for i in range(len(self._d._job_results)):
                     self._d._waiting_jobs[i].send(None)
                     self._d._processes[i].join()
@@ -730,6 +736,12 @@ class ShmParallelDomain(ParallelDomain):
             self._conditions[i].wait()
     
     def launch(self, i, function, *args):
+        if self._nb_sessions == 0:
+            err_msg = '/!\ Please call your parallel domain functions within ' + \
+                      'a ShmParallelDomain.SessionManager context. ' + \
+                      'See the ShmParallelDomain.session_manager() method.'
+            logger.error(rf'{err_msg}')
+            raise RuntimeError(err_msg)
         try:
             mi = self.wake_up_domain(i)
             if isinstance(function, str):  # function is a domain class' method
@@ -790,8 +802,8 @@ class ShmParallelDomain(ParallelDomain):
             self._ipc_notify = ipc_notify
         
         def __enter__(self):
-            if not self._d._ongoing_session:
-                self._d._ongoing_session = True
+            self._d._nb_sessions += 1
+            if self._d._nb_sessions == 1:
                 for i in range(len(self._d._processes)):
                     self._d._processes[i] = mp.Process(target=_shm_launch_domain_server_,
                                                        args=[self._d._domain_factory, self._d._lambdas, i, self._d._active_domains,
@@ -809,8 +821,8 @@ class ShmParallelDomain(ParallelDomain):
                     continue
         
         def __exit__ (self, type, value, tb):
-            if self._d._ongoing_session:
-                self._d._ongoing_session = False
+            self._d._nb_sessions -= 1
+            if self._d._nb_sessions == 0:
                 for i in range(len(self._d._processes)):
                     self._d._shm_lambdas[i].value = -1
                     self._d._shm_names[i][:] = bytearray(len(self._d._shm_names[i]))  # reset with null bytes

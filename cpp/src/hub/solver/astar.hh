@@ -116,7 +116,7 @@ public :
                     Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
 
                     bool neighbor_closed = false;
-                    _execution_policy.protect([this, &closed_set, &neighbor, &neighbor_closed]{
+                    _execution_policy.protect([&closed_set, &neighbor, &neighbor_closed]{
                         neighbor_closed = (closed_set.find(&neighbor) != closed_set.end());
                     });
                     if (neighbor_closed) {

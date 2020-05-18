@@ -820,6 +820,10 @@ protected :
                     id = py::object();
                     throw std::runtime_error(err_msg);
                 }
+            } else {
+                std::string err_msg("Unable to establish a connection with the Python parallel domain");
+                spdlog::error(err_msg);
+                throw std::runtime_error(std::string("SKDECIDE exception: ") + err_msg);
             }
             typename GilControl<Texecution>::Acquire acquire;
             try {

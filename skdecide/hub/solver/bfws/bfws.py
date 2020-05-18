@@ -88,15 +88,29 @@ try:
                 self._solver.solve(memory)
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
-            return self._solver.is_solution_defined_for(observation)
+            if self._parallel:
+                with self._domain.session_manager(ipc_notify=True):
+                    return self._solver.is_solution_defined_for(observation)
+            else:
+                return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            if not self._is_solution_defined_for(observation):
-                self._solve_from(observation)
-            return self._solver.get_next_action(observation)
+            if self._parallel:
+                with self._domain.session_manager(ipc_notify=True):
+                    if not self._is_solution_defined_for(observation):
+                        self._solve_from(observation)
+                    return self._solver.get_next_action(observation)
+            else:
+                if not self._is_solution_defined_for(observation):
+                    self._solve_from(observation)
+                return self._solver.get_next_action(observation)
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
-            return self._solver.get_utility(observation)
+            if self._parallel:
+                with self._domain.session_manager(ipc_notify=True):
+                    return self._solver.get_utility(observation)
+            else:
+                return self._solver.get_utility(observation)
     
 except ImportError:
     sys.path = record_sys_path

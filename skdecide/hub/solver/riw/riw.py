@@ -98,12 +98,22 @@ try:
                 self._solver.solve(memory)
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
-            return self._solver.is_solution_defined_for(observation)
+            if self._parallel:
+                with self._domain.session_manager(ipc_notify=True):
+                    return self._solver.is_solution_defined_for(observation)
+            else:
+                return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            if self._continuous_planning or not self._is_solution_defined_for(observation):
-                self._solve_from(observation)
-            action = self._solver.get_next_action(observation)
+            if self._parallel:
+                with self._domain.session_manager(ipc_notify=True):
+                    if self._continuous_planning or not self._is_solution_defined_for(observation):
+                        self._solve_from(observation)
+                    action = self._solver.get_next_action(observation)
+            else:
+                if self._continuous_planning or not self._is_solution_defined_for(observation):
+                    self._solve_from(observation)
+                action = self._solver.get_next_action(observation)
             if action is None:
                 print('\x1b[3;33;40m' + 'No best action found in observation ' +
                       str(observation) + ', applying random action' + '\x1b[0m')
@@ -113,8 +123,7 @@ try:
                     with self._domain.session_manager(ipc_notify=True):
                         domain_id = self._domain.get_action_space()
                         self._domain.wait_job(domain_id)
-                        r = self._domain.get_result(domain_id).sample()
-                        return r
+                        return self._domain.get_result(domain_id).sample()
             else:
                 return action
         
@@ -122,7 +131,11 @@ try:
             self._solver.clear()
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
-            return self._solver.get_utility(observation)
+            if self._parallel:
+                with self._domain.session_manager(ipc_notify=True):
+                    return self._solver.get_utility(observation)
+            else:
+                return self._solver.get_utility(observation)
         
         def get_nb_of_explored_states(self) -> int:
             return self._solver.get_nb_of_explored_states()

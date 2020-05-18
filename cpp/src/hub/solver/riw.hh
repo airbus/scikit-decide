@@ -737,7 +737,7 @@ private :
                 next_node.depth = std::min((std::size_t) next_node.depth, (std::size_t) node->depth + 1);
                 node = node_child;
                 if (_debug_logs) {
-                    _execution_policy.protect([&node, &thread_id](){
+                    _execution_policy.protect([&node](){
                         spdlog::debug("Exploring known outcome: " + node->state.print() +
                                                 ", depth=" + StringConverter::from(node->depth) +
                                                 ", value=" + StringConverter::from(node->value));

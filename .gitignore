@@ -11,6 +11,10 @@ __pycache__/
 # Temp files
 *.tmp
 
+# Build files
+build/
+dist/
+
 # Web docs
 node_modules/
 npm-debug.log*
