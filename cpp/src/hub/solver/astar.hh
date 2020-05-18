@@ -61,6 +61,7 @@ public :
                 return;
             }
             Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
+            root_node.gscore = 0;
             root_node.fscore = _heuristic(_domain, root_node.state);
 
             // Priority queue used to sort non-goal unsolved tip nodes by increasing cost-to-go values (so-called OPEN container)
@@ -81,7 +82,9 @@ public :
                     continue;
                 }
 
-                if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print());
+                if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print() +
+                                               ", gscore=" + StringConverter::from(best_tip_node->gscore) +
+                                               ", fscore=" + StringConverter::from(best_tip_node->fscore));
 
                 if (_goal_checker(_domain, best_tip_node->state) || best_tip_node->solved) {
                     if (_debug_logs) spdlog::debug("Closing a goal state: " + best_tip_node->state.print());
@@ -134,6 +137,9 @@ public :
                         _execution_policy.protect([&open_queue, &neighbor]{
                             open_queue.push(&neighbor);
                         });
+                        if (_debug_logs) spdlog::debug("Update neighbor node: " + neighbor.state.print() +
+                                                       ", gscore=" + StringConverter::from(neighbor.gscore) +
+                                                       ", fscore=" + StringConverter::from(neighbor.fscore));
                     }
                 });
             }

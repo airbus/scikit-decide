@@ -113,7 +113,7 @@ private :
                                                                                     auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _heuristic(dd, ss);
                                                                                     };
-                                                                                    return d.call(-1, fh, s._state).template cast<bool>();
+                                                                                    return d.call(-1, fh, s._state).template cast<double>();
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
                                                                                     throw;
