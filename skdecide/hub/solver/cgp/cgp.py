@@ -183,13 +183,8 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
         """
         CGP manage all kind of gym types, BOX, DISCRETE and TUPLE as well
         """
-        return isinstance(domain.get_action_space().unwrapped(), gym.spaces.Tuple)
-                and isinstance(domain.get_observation_space.unwrapped(), gym.spaces.Tuple)
-                and isinstance(domain.get_action_space().unwrapped(), gym.spaces.Discrete)
-                and isinstance(domain.get_observation_space.unwrapped(), gym.spaces.Discrete)
-                and isinstance(domain.get_action_space().unwrapped(), gym.spaces.Box)
-                and isinstance(domain.get_observation_space.unwrapped(), gym.spaces.Box)
-
+        return isinstance(domain.get_action_space().unwrapped(), (gym.spaces.Tuple, gym.spaces.Discrete, gym.spaces.Box))
+                and isinstance(domain.get_observation_space.unwrapped(), (gym.spaces.Tuple, gym.spaces.Discrete, gym.spaces.Box))
 
     def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
         domain = domain_factory()
