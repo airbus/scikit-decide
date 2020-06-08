@@ -26,6 +26,12 @@ class D(Domain, SingleAgent, Sequential, Environment, UnrestrictedActions, Initi
 
 
 def change_interval(x, inmin, inmax, outmin, outmax):
+    # redefine interval if min, max are set to +-infinity by the GYM environment
+    # TODO: maybe we could reject those environments in the future.
+    if (inmin == -np.inf):
+        inmin = -1
+    if (inmax == np.inf):
+        inmax = 1
     # making sure x is in the interval
     x = max(inmin, min(inmax, x))
     # normalizing x between 0 and 1
@@ -86,7 +92,6 @@ def norm_and_flatten(vals, types):
             index += 1
         else:
             raise ValueError("Unsupported type ", str(t))
-
     return flat_vals
 
 
@@ -307,7 +312,6 @@ class SkDecideEvaluator(Evaluator):
             states = self.domain.reset()
             step = 0
             while not end and step < self.it_max:
-
                 actions = denorm(cgp.run(norm_and_flatten(states, self.domain.get_observation_space().unwrapped())),
                                  self.domain.get_action_space().unwrapped())
                 states, transition_value, end, _ = self.domain.step(actions).astuple()
