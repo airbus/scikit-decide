@@ -46,15 +46,15 @@ def _load_registered_entry(entry_type: str, entry_name: str) -> Optional[Any]:
         for entry_point in iter_entry_points(entry_type):
             if entry_point.name == entry_name:
                 return entry_point.load()
-        logger.error(rf'/!\ {entry_name} could not be loaded because it is not registered in group "{entry_type}".')
+        logger.warning(rf'/!\ {entry_name} could not be loaded because it is not registered in group "{entry_type}".')
     except DistributionNotFound as e:
-        logger.error(rf'/!\ {entry_name} could not be loaded because of missing dependency ({e}).')
+        logger.warning(rf'/!\ {entry_name} could not be loaded because of missing dependency ({e}).')
         extra_match = re.search(r'\bextra\s*==\s*"(?P<extra>[^"]+)"', str(e))
         if extra_match:
             extra = extra_match.group('extra')
-            logger.error(f'    ==> Try following command in your Python environment: pip install skdecide[{extra}]')
+            logger.warning(f'    ==> Try following command in your Python environment: pip install skdecide[{extra}]')
     except Exception as e:
-        logger.error(rf'/!\ {entry_name} could not be loaded ({e}).')
+        logger.warning(rf'/!\ {entry_name} could not be loaded ({e}).')
 
 
 def get_registered_domains() -> List[str]:
