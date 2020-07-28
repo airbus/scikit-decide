@@ -466,9 +466,7 @@ if __name__ == '__main__':
     for docstr, name, code in sorted_examples:
         examples += f'## {docstr[docstr.index(":")+1:]}\n\n'
         examples += f'<el-link type="primary" icon="el-icon-bottom" :underline="false" style="margin: 10px" href="/notebooks/{name}.ipynb">Download Notebook</el-link>\n'
-        # TODO: replace with correct link address in line below once deployed on Github pages
-        examples += f'<el-link type="warning" icon="el-icon-cloudy" :underline="false" style="margin: 10px" href="https://colab.research.google.com/github/airbus-ai-research/skdecide/gh-pages/notebooks/{name}.ipynb">Run in Google Colab</el-link>\n\n'
-        # examples += f'<skdecide-notebook file="/notebooks/{name}.ipynb"></skdecide-notebook>\n\n'
+        examples += f'<el-link type="warning" icon="el-icon-cloudy" :underline="false" style="margin: 10px" href="https://colab.research.google.com/github/airbus/scikit-decide/blob/gh-pages/notebooks/{name}.ipynb">Run in Google Colab</el-link>\n\n'
         notebook = py2nb(code)
 
         for cell in notebook.get('cells', []):
