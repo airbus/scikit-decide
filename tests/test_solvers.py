@@ -383,7 +383,8 @@ def test_solve(grid_domain, solver, parallel, shared_memory):
     try:
         slv = grid_domain.solve_with(lambda: solver_type(**solver_args))
         plan, cost = get_plan(dom, slv)
-    except:
+    except Exception as e:
+        print(e)
         noexcept = False
     assert solver_type.check_domain(dom) and noexcept and \
            ((not solver['optimal']) or (cost == 18 and len(plan) == 18))
