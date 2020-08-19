@@ -4,9 +4,6 @@
 [submodule "cpp/sdk/backward-cpp"]
 	path = cpp/sdk/backward-cpp
 	url = https://github.com/bombela/backward-cpp.git
-[submodule "cpp/sdk/json"]
-	path = cpp/sdk/json
-	url = https://github.com/taocpp/json.git
 [submodule "cpp/sdk/nng"]
 	path = cpp/sdk/nng
 	url = https://github.com/nanomsg/nng.git
