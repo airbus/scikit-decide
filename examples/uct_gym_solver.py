@@ -9,10 +9,9 @@ from math import exp
 
 from skdecide.hub.domain.gym import DeterministicGymDomain, GymDiscreteActionDomain
 from skdecide.hub.solver.mcts import UCT
-# from skdecide.hub.solver.riw import RIW
 from skdecide.utils import rollout
 
-ENV_NAME = 'Pendulum-v0'
+ENV_NAME = 'CartPole-v0'
 HORIZON = 200
 
 def simple_rollout(domain, solver, max_steps):
@@ -78,10 +77,10 @@ domain_factory = lambda: GymUCTDomain(gym_env=gym.make(ENV_NAME),
 domain = domain_factory()
 
 if UCT.check_domain(domain):
-    solver_factory = lambda: UCT(time_budget=600000,  # 10 minutes,
-                                 rollout_budget=1000000,
+    solver_factory = lambda: UCT(time_budget=200,  # 200 ms,
+                                 rollout_budget=100,
                                  transition_mode=UCT.Options.TransitionMode.Sample,
-                                 continuous_planning=False,
+                                 continuous_planning=True,
                                  parallel=False, debug_logs=False)
 
     solver = GymUCTDomain.solve_with(solver_factory, domain_factory)

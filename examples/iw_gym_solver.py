@@ -9,7 +9,6 @@ from math import exp
 
 from skdecide.hub.domain.gym import GymPlanningDomain, GymWidthDomain, GymDiscreteActionDomain
 from skdecide.hub.solver.iw import IW
-# from skdecide.hub.solver.riw import RIW
 from skdecide.utils import rollout
 
 ENV_NAME = 'MountainCar-v0'
@@ -120,6 +119,8 @@ if IW.check_domain(domain):
     # value, steps = simple_rollout(domain_factory(), solver, HORIZON)
     # print('value:', value)
     # print('steps:', steps)
+    print('explored:', solver.get_nb_of_explored_states())
+    print('pruned:', solver.get_nb_of_pruned_states())
     filter_intermediate_scores = []
     current_score = None
     for score in solver.get_intermediate_scores():
