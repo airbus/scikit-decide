@@ -168,8 +168,9 @@ extras_require = {
         'gym>=0.13.0',
         'numpy>=1.16.4',
         'joblib>=0.13.2',
-        'stable-baselines~=2.6',
-        'ray[rllib,debug]~=0.7.3'
+        'tensorflow>=1.8.0,<2.0.0',
+        'stable-baselines>=2.6',
+        'ray[rllib,debug]>=0.8.6'
     ]
 }
 

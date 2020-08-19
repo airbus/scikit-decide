@@ -9,7 +9,7 @@
     </el-tag>
     
     <!-- Characteristics -->
-    <el-tag v-for="(level, characteristic) in selection[domainOrSolver].characteristics" :key="characteristic" v-if="!selection[domainOrSolver].showFinetunedOnly || isFinetuned(characteristic, level, domainOrSolver)" :effect="isFinetuned(characteristic, level, domainOrSolver) ? 'dark' : 'plain'" class="tag">
+    <el-tag v-for="[characteristic, level] in Object.entries(selection[domainOrSolver].characteristics).filter(([k, v]) => !selection[domainOrSolver].showFinetunedOnly || isFinetuned(k, v, domainOrSolver))" :key="characteristic" :effect="isFinetuned(characteristic, level, domainOrSolver) ? 'dark' : 'plain'" class="tag">
       <el-tag size="mini" class="subtag">{{ characteristic }}</el-tag>
       <strong>{{ level }}</strong>
     </el-tag>

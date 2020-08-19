@@ -26,6 +26,12 @@ class D(Domain, SingleAgent, Sequential, Environment, UnrestrictedActions, Initi
 
 
 def change_interval(x, inmin, inmax, outmin, outmax):
+    # redefine interval if min, max are set to +-infinity by the GYM environment
+    # TODO: maybe we could reject those environments in the future.
+    if (inmin == -np.inf):
+        inmin = -1
+    if (inmax == np.inf):
+        inmax = 1
     # making sure x is in the interval
     x = max(inmin, min(inmax, x))
     # normalizing x between 0 and 1
@@ -86,7 +92,6 @@ def norm_and_flatten(vals, types):
             index += 1
         else:
             raise ValueError("Unsupported type ", str(t))
-
     return flat_vals
 
 
@@ -183,19 +188,46 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
         """
         CGP manage all kind of gym types, BOX, DISCRETE and TUPLE as well
         """
-        return isinstance(domain.get_action_space(), GymSpace) and isinstance(domain.get_observation_space(), GymSpace)
+        action_space = domain.get_action_space().unwrapped()
+        observation_space = domain.get_observation_space().unwrapped()
 
+        if not isinstance(action_space, Iterable) and not isinstance(action_space, gym.spaces.Tuple):
+            action_space = [action_space]
+        if not isinstance(observation_space, Iterable) and not isinstance(observation_space, gym.spaces.Tuple):
+            observation_space = [observation_space]
+
+        flat_action_space = list(flatten(action_space))
+        flat_observation_space = list(flatten(observation_space))
+
+        print(flat_action_space)
+        print(flat_observation_space)
+
+        valide_action_space = True
+        for x in flat_action_space:
+            valide_action_space = isinstance(x,(gym.spaces.Tuple, gym.spaces.Discrete, gym.spaces.Box))
+        
+        validate_observation_space = True
+        for x in flat_observation_space:
+            validate_observation_space = isinstance(x,(gym.spaces.Tuple, gym.spaces.Discrete, gym.spaces.Box))
+        
+        return valide_action_space and validate_observation_space
+        
     def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
         domain = domain_factory()
 
         evaluator = SkDecideEvaluator(domain)
         if self._genome is None:
             a = domain.get_action_space().sample()
+            b = domain.get_observation_space().sample()
             if isinstance(a, Iterable) or isinstance(a, gym.spaces.Tuple):
                 num_outputs = len(a)
             else:
                 num_outputs = 1
-            cgpFather = CGP.random(len(domain.get_observation_space().sample()),
+            if isinstance(b, Iterable) or isinstance(b, gym.spaces.Tuple):
+                num_inputs = len(b)
+            else:
+                num_inputs = 1
+            cgpFather = CGP.random(num_inputs,
                                    num_outputs, self._col, self._row, self._library, 1.0)
         else:
             cgpFather = CGP.load_from_file(self._genome, self._library)
@@ -280,7 +312,6 @@ class SkDecideEvaluator(Evaluator):
             states = self.domain.reset()
             step = 0
             while not end and step < self.it_max:
-
                 actions = denorm(cgp.run(norm_and_flatten(states, self.domain.get_observation_space().unwrapped())),
                                  self.domain.get_action_space().unwrapped())
                 states, transition_value, end, _ = self.domain.step(actions).astuple()

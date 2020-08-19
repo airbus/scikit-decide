@@ -44,8 +44,8 @@
   
   <span class="token keyword">class</span> <template v-if="isSolver"><span class="token class-name">MySolver</span>({{ solverInheritance }}):
       T_domain <span class="token operator">=</span> D</template><template v-else><span class="token class-name">MyDomain</span>(D):</template>
-      <template v-for="(level, characteristic) in {...{'default': domainOrSolver}, ...selection[domainOrSolver].characteristics}" v-if="level != '(none)'"><template v-for="method in methods[domainOrSolver][level]">
-      <span class="token keyword">def</span> <span class="token function">{{method}}</span>(<template v-for="p, i in signatures[method].params">{{p.name}}<template v-if="p.annotation">: {{adaptAnnotation(p.annotation)}}</template><template v-if="p.default"> <span class="token operator">=</span> <span class="token boolean">{{p.default}}</span></template><template v-if="i < signatures[method].params.length - 1">, </template></template>)<template v-if="signatures[method].return"> <span class="token operator">-></span> {{adaptAnnotation(signatures[method].return)}}</template>:
+      <template v-for="[characteristic, level] in Object.entries({...{'default': domainOrSolver}, ...selection[domainOrSolver].characteristics}).filter(([k, v]) => v != '(none)')"><template v-for="method in methods[domainOrSolver][level]">
+      <span class="token keyword">def</span> <span class="token function">{{method}}</span>(<template v-for="p, i in signatures[method].params">{{p.name}}<template v-if="p.annotation">: {{adaptAnnotation(p.annotation)}}</template><span v-show="p.default"> <span class="token operator">=</span> <span class="token boolean">{{p.default}}</span></span><span v-show="i < signatures[method].params.length - 1">, </span></template>)<template v-if="signatures[method].return"> <span class="token operator">-></span> {{adaptAnnotation(signatures[method].return)}}</template>:
           <span class="token keyword">pass</span>
       </template></template>
   </code>

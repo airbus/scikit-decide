@@ -2,6 +2,14 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""Example 6: IW online planning with Gym environment"""
+
+# %%
+'''
+Import modules.
+'''
+
+# %%
 import gym
 import numpy as np
 from typing import Callable
@@ -11,23 +19,21 @@ from skdecide.hub.domain.gym import GymPlanningDomain, GymWidthDomain, GymDiscre
 from skdecide.hub.solver.iw import IW
 from skdecide.utils import rollout
 
+# %%
+'''
+Select a [Gym environment](https://gym.openai.com/envs) and horizon parameter.
+'''
+
+# %%
 ENV_NAME = 'MountainCar-v0'
 HORIZON = 500
 
-def simple_rollout(domain, solver, max_steps):
-    state = domain.reset()
-    value = 0
-    steps = 0
-    while True:
-        outcome = domain.step(solver.get_next_action(state))
-        state = outcome.observation
-        value += outcome.value.reward
-        steps += 1
-        if outcome.termination or steps >= max_steps:
-            break
-    return value, steps
+# %%
+'''
+Define a specific IW domain by combining Gym domain templates.
+'''
 
-
+# %%
 class D(GymPlanningDomain, GymWidthDomain, GymDiscreteActionDomain):
     pass
 
@@ -75,7 +81,12 @@ class GymIWDomain(D):
         GymWidthDomain.__init__(self, continuous_feature_fidelity=continuous_feature_fidelity)
         gym_env._max_episode_steps = max_depth
 
+# %%
+'''
+Solve the domain with IW solver in "realtime".
+'''
 
+# %%
 domain_factory = lambda: GymIWDomain(gym_env=gym.make(ENV_NAME),
                                      termination_is_goal=True,
                                      continuous_feature_fidelity=1,
@@ -87,33 +98,9 @@ if IW.check_domain(domain):
     solver_factory = lambda: IW(state_features=lambda d, s: d.bee1_features(np.append(s._state, s._context[3].value.reward if s._context[3] is not None else 0)),# exp((s._context[6])))),
                                 use_state_feature_hash=False,
                                 node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty > b_novelty,
-
-                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_depth < b_depth else False if a_depth > b_depth else a_novelty > b_novelty,
-
-                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_depth < b_depth else False if a_depth > b_depth else a_gscore > b_gscore,
-
-                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_depth > b_depth,
-
-                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_gscore > b_gscore,
-                                
-                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore > b_gscore else False if a_gscore < b_gscore else a_depth < b_depth,
-
-                                # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore > b_gscore else False if a_gscore < b_gscore else a_novelty > b_novelty,
-                                # time_budget=60000,
                                 parallel=False, debug_logs=False)
 
-    # solver_factory = lambda: IW(state_features=lambda s, d: s._state,
-    #                             use_state_feature_hash=True,
-    #                             # node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_depth < b_depth,
-    #                             node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_gscore > b_gscore,
-    #                             parallel=False, debug_logs=False)
-
     solver = GymIWDomain.solve_with(solver_factory, domain_factory)
-    ### Next lines for elliptical features
-    # x0 = np.array([-0.5, 0.07])
-    # xG = np.array([0.5, 0.0])
-    # solver._domain.init_elliptical_features(x0, xG)
-    ###
     rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
             outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
     # value, steps = simple_rollout(domain_factory(), solver, HORIZON)
