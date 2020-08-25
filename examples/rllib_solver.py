@@ -19,7 +19,7 @@ domain = domain_factory()
 if RayRLlib.check_domain(domain):
 
     # Start solving
-    solver_factory = lambda: RayRLlib(PPOTrainer, train_iterations=5)
+    solver_factory = lambda: RayRLlib(PPOTrainer, train_iterations=5, config={'framework': 'torch'})
     solver = GymDomain.solve_with(solver_factory, domain_factory)
     solver.save('TEMP_RLlib')  # Save results
 

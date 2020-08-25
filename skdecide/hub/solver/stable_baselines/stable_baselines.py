@@ -6,8 +6,7 @@ from __future__ import annotations
 
 from typing import Callable, Any, Dict
 
-from stable_baselines.bench import Monitor
-from stable_baselines.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 from skdecide import Domain, Solver
 from skdecide.builders.domain import SingleAgent, Sequential, UnrestrictedActions, Initializable
@@ -21,10 +20,10 @@ class D(Domain, SingleAgent, Sequential, UnrestrictedActions, Initializable):
 
 
 class StableBaseline(Solver, Policies, Restorable):
-    """This class wraps a stable OpenAI Baselines solver (stable_baselines) as a scikit-decide solver.
+    """This class wraps a stable OpenAI Baselines solver (stable_baselines3) as a scikit-decide solver.
 
     !!! warning
-        Using this class requires Stable Baselines to be installed.
+        Using this class requires Stable Baselines 3 to be installed.
     """
     T_domain = D
 
@@ -32,8 +31,8 @@ class StableBaseline(Solver, Policies, Restorable):
         """Initialize StableBaselines.
 
         # Parameters
-        algo_class: The class of Baselines solver (stable_baselines) to wrap.
-        baselines_policy: The class of Baselines policy network (stable_baselines.common.policies) to use.
+        algo_class: The class of Baselines solver (stable_baselines3) to wrap.
+        baselines_policy: The class of Baselines policy network (stable_baselines3.common.policies or str) to use.
         """
         self._algo_class = algo_class
         self._baselines_policy = baselines_policy
@@ -46,12 +45,11 @@ class StableBaseline(Solver, Policies, Restorable):
 
     def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
         # TODO: improve code for parallelism
-        #  (https://stable-baselines.readthedocs.io/en/master/guide/examples.html
+        #  (https://stable-baselines3.readthedocs.io/en/master/guide/examples.html
         #  #multiprocessing-unleashing-the-power-of-vectorized-environments)?
         if not hasattr(self, '_algo'):  # reuse algo if possible (enables further learning)
             domain = domain_factory()
-            env = Monitor(AsGymEnv(domain), filename=None, allow_early_resets=True)
-            env = DummyVecEnv([lambda: env])  # the algorithms require a vectorized environment to run
+            env = DummyVecEnv([lambda: AsGymEnv(domain)])  # the algorithms require a vectorized environment to run
             self._algo = self._algo_class(self._baselines_policy, env, **self._algo_kwargs)
             self._init_algo(domain)
         self._algo.learn(**self._learn_config)

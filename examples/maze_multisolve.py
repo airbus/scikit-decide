@@ -8,8 +8,7 @@ from typing import NamedTuple, Optional, Any
 from math import sqrt
 
 import matplotlib.pyplot as plt
-from stable_baselines import PPO2
-from stable_baselines.common.policies import MlpPolicy
+from stable_baselines3 import PPO
 
 from skdecide import DeterministicPlanningDomain, TransitionValue, Space
 from skdecide.builders.domain import UnrestrictedActions, Renderable
@@ -204,7 +203,7 @@ if __name__ == '__main__':
         # PPO (deep reinforcement learning)
         {'name': 'PPO (deep reinforcement learning)',
          'entry': 'StableBaseline',
-         'config': {'algo_class': PPO2, 'baselines_policy': MlpPolicy, 'learn_config': {'total_timesteps': 25000},
+         'config': {'algo_class': PPO, 'baselines_policy': 'MlpPolicy', 'learn_config': {'total_timesteps': 30000},
                     'verbose': 1}}
     ]
 

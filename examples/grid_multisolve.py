@@ -6,8 +6,7 @@ from enum import Enum
 from typing import NamedTuple, Optional
 from math import sqrt
 
-from stable_baselines import PPO2
-from stable_baselines.common.policies import MlpPolicy
+from stable_baselines3 import PPO
 
 from skdecide import DeterministicPlanningDomain, TransitionValue, Space
 from skdecide.builders.domain import UnrestrictedActions
@@ -99,7 +98,7 @@ if __name__ == '__main__':
         # PPO: Proximal Policy Optimization (deep reinforcement learning)
         {'name': 'PPO: Proximal Policy Optimization (deep reinforcement learning)',
          'entry': 'StableBaseline',
-         'config': {'algo_class': PPO2, 'baselines_policy': MlpPolicy, 'learn_config': {'total_timesteps': 25000},
+         'config': {'algo_class': PPO, 'baselines_policy': 'MlpPolicy', 'learn_config': {'total_timesteps': 30000},
                     'verbose': 1}},
         
         # Rollout-IW (classical planning)

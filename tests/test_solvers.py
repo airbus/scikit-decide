@@ -12,8 +12,7 @@ from typing import NamedTuple, Optional
 from math import sqrt
 from multiprocessing import Value, Array
 
-from stable_baselines import PPO2
-from stable_baselines.common.policies import MlpPolicy
+from stable_baselines3 import PPO
 
 from skdecide import DeterministicPlanningDomain, TransitionValue, \
                      Space, ImplicitSpace, \
@@ -142,8 +141,8 @@ def grid_domain():
                                     'debug_logs': False},
                          'optimal': False},
                         {'entry': 'StableBaseline',
-                         'config': {'algo_class': PPO2,
-                                    'baselines_policy': MlpPolicy,
+                         'config': {'algo_class': PPO,
+                                    'baselines_policy': 'MlpPolicy',
                                     'learn_config': {'total_timesteps': 10},
                                     'verbose': 1},
                          'optimal': False}])

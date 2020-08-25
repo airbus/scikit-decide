@@ -3,11 +3,9 @@
 # LICENSE file in the root directory of this source tree.
 
 import gym
-# from stable_baselines import PPO2
-# from stable_baselines.common.policies import MlpPolicy
-from stable_baselines.ddpg.policies import MlpPolicy
-from stable_baselines.ddpg.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise, AdaptiveParamNoiseSpec
-from stable_baselines import DDPG
+# from stable_baselines3 import PPO
+from stable_baselines3.common.noise import OrnsteinUhlenbeckActionNoise
+from stable_baselines3 import DDPG
 
 import numpy as np
 from typing import Callable, Any
@@ -36,7 +34,7 @@ class GymWRLDomain(D):
 
 
 proxy_domain_factory = lambda: WidthEnvironmentDomain(domain=GymWRLDomain(gym.make(ENV_NAME)),
-                                                      state_features=lambda s, d: d.bee_features(s),
+                                                      state_features=lambda d, s: d.bee1_features(s),
                                                       initial_pruning_probability=0.999,
                                                       temperature_increase_rate=0.001,
                                                       width_increase_resilience=10,
@@ -52,11 +50,10 @@ domain = domain_factory()
 if StableBaseline.check_domain(proxy_domain.get_original_domain()):
     # the noise objects for DDPG
     n_actions = domain.get_action_space().shape[-1]
-    param_noise = None
     action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(n_actions), sigma=float(0.5) * np.ones(n_actions))
 
-    # solver_factory = lambda: StableBaseline(PPO2, MlpPolicy, learn_config={'total_timesteps': 50000}, verbose=1)
-    solver_factory = lambda: StableBaseline(DDPG, MlpPolicy, learn_config={'total_timesteps': 50000}, param_noise=param_noise, action_noise=action_noise, verbose=1)
+    # solver_factory = lambda: StableBaseline(PPO, 'MlpPolicy', learn_config={'total_timesteps': 50000}, verbose=1)
+    solver_factory = lambda: StableBaseline(DDPG, 'MlpPolicy', learn_config={'total_timesteps': 50000}, action_noise=action_noise, verbose=1)
     solver = WidthEnvironmentDomain.solve_with(solver_factory, proxy_domain_factory)
     solver.save('TEMP_Baselines')
     rollout(proxy_domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30, outcome_formatter=None)

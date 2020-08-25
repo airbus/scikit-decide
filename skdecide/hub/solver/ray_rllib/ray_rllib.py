@@ -164,7 +164,7 @@ if __name__ == '__main__':
     domain_factory = lambda: RockPaperScissors()
     domain = domain_factory()
     if RayRLlib.check_domain(domain):
-        solver_factory = lambda: RayRLlib(PPOTrainer, train_iterations=1)
+        solver_factory = lambda: RayRLlib(PPOTrainer, train_iterations=1, config={'framework': 'torch'})
         solver = RockPaperScissors.solve_with(solver_factory, domain_factory)
         rollout(domain, solver, action_formatter=lambda a: str({k: v.name for k, v in a.items()}),
                 outcome_formatter=lambda o: f'{ {k: v.name for k, v in o.observation.items()} }'
