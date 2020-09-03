@@ -84,7 +84,7 @@ def grid_domain():
             return TransitionValue(cost=cost)
 
         def _is_terminal(self, state: D.T_state) -> bool:
-            return self._is_goal(state)
+            return self._is_goal(state) or state.s >= 100
 
         def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
             return EnumSpace(Action)
