@@ -607,7 +607,7 @@ class PipeParallelDomain(ParallelDomain):
 def _shm_launch_domain_server_(domain_factory, lambdas, i, active_domains,
                                shm_proxy, shm_registers, shm_types, shm_sizes,
                                rsize, shm_arrays, shm_lambdas, shm_names, shm_params,
-                               cond, ipc_conn, logger):
+                               activation, cond, ipc_conn, logger):
     domain = domain_factory()
     if ipc_conn is not None:
         pusher = Push0()
@@ -622,7 +622,8 @@ def _shm_launch_domain_server_(domain_factory, lambdas, i, active_domains,
     while True:
         active_domains[i] = False
         with cond:
-            cond.wait()
+            cond.wait_for(lambda: bool(activation.value) == True)
+            activation.value = False
         active_domains[i] = True
         if int(shm_lambdas[i].value) == -1 and shm_names[i][0] == b'\x00':
             if ipc_conn is not None:
@@ -681,6 +682,7 @@ def _shm_launch_domain_server_(domain_factory, lambdas, i, active_domains,
                     pusher.send(str(e).encode(encoding='UTF-8'))  # send error message
             if ipc_conn is None:  # we communicate on job status only via the condition 'cond'
                 with cond:
+                    activation.value = True
                     cond.notify_all()  # send finished status (no success nor failure information)
 
 class ShmParallelDomain(ParallelDomain):
@@ -692,6 +694,7 @@ class ShmParallelDomain(ParallelDomain):
     """
     def __init__(self, domain_factory, shm_proxy, lambdas=None, nb_domains = os.cpu_count()):
         super().__init__(domain_factory, lambdas, nb_domains)
+        self._activations = [Value('b', False, lock=True) for i in range(nb_domains)]
         self._conditions = [Condition() for i in range(nb_domains)]
         self._shm_proxy = shm_proxy
         self._shm_registers = {}  # Maps from registered method parameter types to vectorized array ranges
@@ -729,11 +732,12 @@ class ShmParallelDomain(ParallelDomain):
         logger.info(rf'Using {nb_domains} parallel shared memory domains')
     
     def get_proc_connections(self):
-        return self._conditions
+        return (self._activations, self._conditions)
     
     def wait_job(self, i):
         with self._conditions[i]:
-            self._conditions[i].wait()
+            self._conditions[i].wait_for(lambda: bool(self._activations[i].value) == True)
+            self._activations[i].value = False
     
     def launch(self, i, function, *args):
         if self._nb_sessions == 0:
@@ -774,6 +778,7 @@ class ShmParallelDomain(ParallelDomain):
                 else:
                     self._shm_proxy.encode(a, self._shm_arrays[(mi * self._rsize) + k])
             with self._conditions[mi]:
+                self._activations[mi].value = True
                 self._conditions[mi].notify_all()
             return mi
         except Exception as e:
@@ -813,7 +818,7 @@ class ShmParallelDomain(ParallelDomain):
                                                              dict(self._d._shm_sizes),
                                                              self._d._rsize, list(self._d._shm_arrays),
                                                              list(self._d._shm_lambdas), list(self._d._shm_names), list(self._d._shm_params),
-                                                             self._d._conditions[i], self._d._ipc_connections[i] if self._ipc_notify else None,
+                                                             self._d._activations[i], self._d._conditions[i], self._d._ipc_connections[i] if self._ipc_notify else None,
                                                              logger])
                     self._d._processes[i].start()
                 # Waits for all jobs to be launched and waiting each for requests
@@ -828,6 +833,7 @@ class ShmParallelDomain(ParallelDomain):
                     self._d._shm_names[i][:] = bytearray(len(self._d._shm_names[i]))  # reset with null bytes
                     self._d._shm_params[i][:] = [-1] * len(self._d._shm_params[i])
                     with self._d._conditions[i]:
+                        self._d._activations[i].value = True
                         self._d._conditions[i].notify_all()
                     self._d._processes[i].join()
                     self._d._processes[i].close()
