@@ -11,6 +11,7 @@ from enum import Enum
 from typing import NamedTuple, Optional
 from math import sqrt
 from multiprocessing import Value, Array
+from pathos.helpers import mp
 
 from stable_baselines3 import PPO
 
@@ -370,7 +371,7 @@ class GridShmProxy:
 
 # TESTS
 
-def test_solve(grid_domain, solver, parallel, shared_memory):
+def do_test(grid_domain, solver, parallel, shared_memory, result):
     dom = grid_domain()
     solver_type = load_registered_solver(solver['entry'])
     solver_args = solver['config']
@@ -385,5 +386,18 @@ def test_solve(grid_domain, solver, parallel, shared_memory):
     except Exception as e:
         print(e)
         noexcept = False
-    assert solver_type.check_domain(dom) and noexcept and \
-           ((not solver['optimal']) or (cost == 18 and len(plan) == 18))
+    result.value = bool(solver_type.check_domain(dom) and noexcept and \
+           ((not solver['optimal']) or (cost == 18 and len(plan) == 18)))
+
+def test_solve(grid_domain, solver, parallel, shared_memory):
+    # We launch each algorithm in a separate process in order to avoid the various
+    # algorithms to initialize different versions of the OpenMP library in the same
+    # process (since our C++ hub algorithms and other algorithms like PPO2 - via torch -
+    # might link against different OpenMP libraries)
+    result = Value('b', False, lock=True)
+    p = mp.Process(target=do_test, args=(grid_domain, solver, parallel, shared_memory, result,))
+    p.start()
+    p.join()
+    r = bool(result.value)
+    p.close()
+    assert r
