@@ -506,6 +506,7 @@ def _launch_domain_server_(domain_factory, lambdas, i, lock, active_domains,
         if job is None:
             if ipc_conn is not None:
                 pusher.close()
+            conn.close()
             break
         else:
             try:
@@ -598,6 +599,7 @@ class PipeParallelDomain(ParallelDomain):
                     self._d._waiting_jobs[i].send(None)
                     self._d._processes[i].join()
                     self._d._processes[i].close()
+                    self._d._waiting_jobs[i].close()
                     self._d._processes[i] = None
     
     def session_manager(self, ipc_notify=False):
