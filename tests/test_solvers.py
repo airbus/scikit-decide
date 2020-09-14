@@ -41,11 +41,7 @@ class Action(Enum):
     left = 2
     right = 3
 
-# FIXTURES
-
-@pytest.fixture
-def grid_domain():
-    class D(DeterministicPlanningDomain, UnrestrictedActions):
+class D(DeterministicPlanningDomain, UnrestrictedActions):
         T_state = State  # Type of states
         T_observation = T_state  # Type of observations
         T_event = Action  # Type of events
@@ -53,53 +49,53 @@ def grid_domain():
         T_info = None  # Type of additional information given as part of an environment outcome
 
 
-    class GridDomain(D):
+class GridDomain(D):
 
-        def __init__(self, num_cols=10, num_rows=10):
-            self.num_cols = num_cols
-            self.num_rows = num_rows
+    def __init__(self, num_cols=10, num_rows=10):
+        self.num_cols = num_cols
+        self.num_rows = num_rows
 
-        def _get_next_state(self, memory: D.T_memory[D.T_state],
-                            action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+    def _get_next_state(self, memory: D.T_memory[D.T_state],
+                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
 
-            if action == Action.left:
-                next_state = State(max(memory.x - 1, 0), memory.y, memory.s + 1)
-            if action == Action.right:
-                next_state = State(min(memory.x + 1, self.num_cols - 1), memory.y, memory.s + 1)
-            if action == Action.up:
-                next_state = State(memory.x, max(memory.y - 1, 0), memory.s + 1)
-            if action == Action.down:
-                next_state = State(memory.x, min(memory.y + 1, self.num_rows - 1), memory.s + 1)
+        if action == Action.left:
+            next_state = State(max(memory.x - 1, 0), memory.y, memory.s + 1)
+        if action == Action.right:
+            next_state = State(min(memory.x + 1, self.num_cols - 1), memory.y, memory.s + 1)
+        if action == Action.up:
+            next_state = State(memory.x, max(memory.y - 1, 0), memory.s + 1)
+        if action == Action.down:
+            next_state = State(memory.x, min(memory.y + 1, self.num_rows - 1), memory.s + 1)
 
-            return next_state
+        return next_state
 
-        def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                                next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
+    def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
+                            next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
 
-            if next_state.x == memory.x and next_state.y == memory.y:
-                cost = 2  # big penalty when hitting a wall
-            else:
-                cost = abs(next_state.x - memory.x) + abs(next_state.y - memory.y)  # every move costs 1
+        if next_state.x == memory.x and next_state.y == memory.y:
+            cost = 2  # big penalty when hitting a wall
+        else:
+            cost = abs(next_state.x - memory.x) + abs(next_state.y - memory.y)  # every move costs 1
 
-            return TransitionValue(cost=cost)
+        return TransitionValue(cost=cost)
 
-        def _is_terminal(self, state: D.T_state) -> bool:
-            return self._is_goal(state) or state.s >= 100
+    def _is_terminal(self, state: D.T_state) -> bool:
+        return self._is_goal(state) or state.s >= 100
 
-        def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
-            return EnumSpace(Action)
+    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
+        return EnumSpace(Action)
 
-        def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
-            return ImplicitSpace(lambda state: state.x == (self.num_cols - 1) and state.y == (self.num_rows - 1))
+    def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
+        return ImplicitSpace(lambda state: state.x == (self.num_cols - 1) and state.y == (self.num_rows - 1))
 
-        def _get_initial_state_(self) -> D.T_state:
-            return State(x=0, y=0, s=0)
+    def _get_initial_state_(self) -> D.T_state:
+        return State(x=0, y=0, s=0)
 
-        def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
-            return MultiDiscreteSpace([self.num_cols, self.num_rows, 100])
-    
-    return GridDomain
+    def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
+        return MultiDiscreteSpace([self.num_cols, self.num_rows, 100])
 
+
+# FIXTURES
 
 @pytest.fixture(params=[{'entry': 'Astar',
                          'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
@@ -374,19 +370,19 @@ class GridShmProxy:
 
 # TESTS
 
-def do_test_cpp(grid_domain, solver_cpp, parallel, shared_memory, result):
-    dom = grid_domain()
+def do_test_cpp(solver_cpp, parallel, shared_memory, result):
+    dom = GridDomain()
     solver_type = load_registered_solver(solver_cpp['entry'])
     solver_args = solver_cpp['config']
     if 'parallel' in inspect.signature(solver_type.__init__).parameters:
         solver_args['parallel'] = parallel
     if 'shared_memory_proxy' in inspect.signature(solver_type.__init__).parameters and shared_memory:
         solver_args['shared_memory_proxy'] = GridShmProxy()
-    solver_args['domain_factory'] = lambda: grid_domain()
+    solver_args['domain_factory'] = lambda: GridDomain()
     noexcept = True
     try:
         with solver_type(**solver_args) as slv:
-            grid_domain.solve_with(slv)
+            GridDomain.solve_with(slv)
             plan, cost = get_plan(dom, slv)
     except Exception as e:
         print(e)
@@ -395,13 +391,13 @@ def do_test_cpp(grid_domain, solver_cpp, parallel, shared_memory, result):
                 ((not solver_cpp['optimal']) or (cost == 18 and len(plan) == 18)))
     result.close()
 
-def test_solve_cpp(grid_domain, solver_cpp, parallel, shared_memory):
+def test_solve_cpp(solver_cpp, parallel, shared_memory):
     # We launch each algorithm in a separate process in order to avoid the various
     # algorithms to initialize different versions of the OpenMP library in the same
     # process (since our C++ hub algorithms and other algorithms like PPO2 - via torch -
     # might link against different OpenMP libraries)
     pparent, pchild = mp.Pipe(duplex=False)
-    p = mp.Process(target=do_test_cpp, args=(grid_domain, solver_cpp, parallel, shared_memory, pchild,))
+    p = mp.Process(target=do_test_cpp, args=(solver_cpp, parallel, shared_memory, pchild,))
     p.start()
     r = pparent.recv()
     p.join()
@@ -410,14 +406,14 @@ def test_solve_cpp(grid_domain, solver_cpp, parallel, shared_memory):
     assert r
 
 
-def do_test_python(grid_domain, solver_python, result):
-    dom = grid_domain()
+def do_test_python(solver_python, result):
+    dom = GridDomain()
     solver_type = load_registered_solver(solver_python['entry'])
     solver_args = solver_python['config']
     noexcept = True
     try:
         with solver_type(**solver_args) as slv:
-            grid_domain.solve_with(slv)
+            GridDomain.solve_with(slv)
             plan, cost = get_plan(dom, slv)
     except Exception as e:
         print(e)
@@ -426,13 +422,13 @@ def do_test_python(grid_domain, solver_python, result):
                 ((not solver_python['optimal']) or (cost == 18 and len(plan) == 18)))
     result.close()
 
-def test_solve_python(grid_domain, solver_python):
+def test_solve_python(solver_python):
     # We launch each algorithm in a separate process in order to avoid the various
     # algorithms to initialize different versions of the OpenMP library in the same
     # process (since our C++ hub algorithms and other algorithms like PPO2 - via torch -
     # might link against different OpenMP libraries)
     pparent, pchild = mp.Pipe(duplex=False)
-    p = mp.Process(target=do_test_python, args=(grid_domain, solver_python, pchild,))
+    p = mp.Process(target=do_test_python, args=(solver_python, pchild,))
     p.start()
     r = pparent.recv()
     p.join()
