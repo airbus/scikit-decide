@@ -151,8 +151,8 @@ domain = domain_factory()
 domain.reset()
 
 if GreedyPlanner.check_domain(domain):
-    solver_factory = lambda: GreedyPlanner()
-    solver = GymGreedyDomain.solve_with(solver_factory, domain_factory)
-    initial_state = solver._domain.reset()
-    rollout(domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON, max_framerate=30,
-            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    with GreedyPlanner() as solver:
+        GymGreedyDomain.solve_with(solver, domain_factory)
+        initial_state = solver._domain.reset()
+        rollout(domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON, max_framerate=30,
+                outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

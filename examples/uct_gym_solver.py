@@ -91,6 +91,7 @@ if UCT.check_domain(domain):
                                  continuous_planning=True,
                                  parallel=False, debug_logs=False)
 
-    solver = GymUCTDomain.solve_with(solver_factory, domain_factory)
-    rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
-            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    with solver_factory() as solver:
+        GymUCTDomain.solve_with(solver, domain_factory)
+        rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
+                outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

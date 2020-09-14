@@ -10,7 +10,6 @@ import inspect
 from enum import Enum
 from typing import NamedTuple, Optional
 from math import sqrt
-from multiprocessing import Value, Array, Pipe
 from pathos.helpers import mp
 
 from stable_baselines3 import PPO
@@ -220,7 +219,7 @@ class GridShmProxy:
     class StateProxy:
         @staticmethod
         def initialize():
-            return Array('d', [0, 0, 0], lock=True)
+            return mp.Array('d', [0, 0, 0], lock=True)
         
         @staticmethod
         def encode(state, shm_state):
@@ -235,7 +234,7 @@ class GridShmProxy:
     class ActionProxy:
         @staticmethod
         def initialize():
-            return Value('I', 0, lock=True)
+            return mp.Value('I', 0, lock=True)
         
         @staticmethod
         def encode(action, shm_action):
@@ -248,7 +247,7 @@ class GridShmProxy:
     class EnumSpaceProxy:  # Always used with Action as enum class
         @staticmethod
         def initialize():
-            return Array('c', b'')
+            return mp.Array('c', b'')
         
         @staticmethod
         def encode(val, shm_val):
@@ -275,7 +274,7 @@ class GridShmProxy:
 
         @staticmethod
         def initialize():
-            return [Value('d', 0), Value('b', False)]
+            return [mp.Value('d', 0), mp.Value('b', False)]
         
         @staticmethod
         def encode(value, shm_value):
@@ -337,7 +336,7 @@ class GridShmProxy:
     class BoolProxy:
         @staticmethod
         def initialize():
-            return Value('b', False)
+            return mp.Value('b', False)
         
         @staticmethod
         def encode(val, shm_val):
@@ -350,7 +349,7 @@ class GridShmProxy:
     class FloatProxy:
         @staticmethod
         def initialize():
-            return Value('d', False)
+            return mp.Value('d', False)
         
         @staticmethod
         def encode(val, shm_val):
@@ -363,7 +362,7 @@ class GridShmProxy:
     class IntProxy:
         @staticmethod
         def initialize():
-            return Value('i', False)
+            return mp.Value('i', False)
         
         @staticmethod
         def encode(val, shm_val):
@@ -383,10 +382,12 @@ def do_test_cpp(grid_domain, solver_cpp, parallel, shared_memory, result):
         solver_args['parallel'] = parallel
     if 'shared_memory_proxy' in inspect.signature(solver_type.__init__).parameters and shared_memory:
         solver_args['shared_memory_proxy'] = GridShmProxy()
+    solver_args['domain_factory'] = lambda: grid_domain()
     noexcept = True
     try:
-        slv = grid_domain.solve_with(lambda: solver_type(**solver_args))
-        plan, cost = get_plan(dom, slv)
+        with solver_type(**solver_args) as slv:
+            grid_domain.solve_with(slv)
+            plan, cost = get_plan(dom, slv)
     except Exception as e:
         print(e)
         noexcept = False
@@ -399,7 +400,7 @@ def test_solve_cpp(grid_domain, solver_cpp, parallel, shared_memory):
     # algorithms to initialize different versions of the OpenMP library in the same
     # process (since our C++ hub algorithms and other algorithms like PPO2 - via torch -
     # might link against different OpenMP libraries)
-    pparent, pchild = Pipe(duplex=False)
+    pparent, pchild = mp.Pipe(duplex=False)
     p = mp.Process(target=do_test_cpp, args=(grid_domain, solver_cpp, parallel, shared_memory, pchild,))
     p.start()
     r = pparent.recv()
@@ -415,8 +416,9 @@ def do_test_python(grid_domain, solver_python, result):
     solver_args = solver_python['config']
     noexcept = True
     try:
-        slv = grid_domain.solve_with(lambda: solver_type(**solver_args))
-        plan, cost = get_plan(dom, slv)
+        with solver_type(**solver_args) as slv:
+            grid_domain.solve_with(slv)
+            plan, cost = get_plan(dom, slv)
     except Exception as e:
         print(e)
         noexcept = False
@@ -429,7 +431,7 @@ def test_solve_python(grid_domain, solver_python):
     # algorithms to initialize different versions of the OpenMP library in the same
     # process (since our C++ hub algorithms and other algorithms like PPO2 - via torch -
     # might link against different OpenMP libraries)
-    pparent, pchild = Pipe(duplex=False)
+    pparent, pchild = mp.Pipe(duplex=False)
     p = mp.Process(target=do_test_python, args=(grid_domain, solver_python, pchild,))
     p.start()
     r = pparent.recv()

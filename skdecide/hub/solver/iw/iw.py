@@ -14,7 +14,7 @@ from skdecide import hub
 from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
 from skdecide.hub.space.gym import ListSpace
 
 record_sys_path = sys.path
@@ -31,10 +31,11 @@ try:
         pass
 
 
-    class IW(Solver, DeterministicPolicies, Utilities):
+    class IW(ParallelSolver, Solver, DeterministicPolicies, Utilities):
         T_domain = D
 
         def __init__(self,
+                     domain_factory: Callable[[], Domain],
                      state_features: Callable[[Domain, D.T_state], Any],
                      use_state_feature_hash: bool = False,
                      node_ordering: Callable[[float, int, int, float, int, int], bool] = None,
@@ -42,25 +43,23 @@ try:
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
+            ParallelSolver.__init__(self,
+                                    domain_factory=domain_factory,
+                                    parallel=parallel,
+                                    shared_memory_proxy=shared_memory_proxy)
             self._solver = None
             self._domain = None
             self._state_features = state_features
             self._use_state_feature_hash = use_state_feature_hash
             self._node_ordering = node_ordering
             self._time_budget = time_budget
-            self._parallel = parallel
-            self._shared_memory_proxy = shared_memory_proxy
             self._debug_logs = debug_logs
-
+            self._lambdas = [self._state_features]
+            self._ipc_notify = True
+        
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            if self._parallel:
-                if self._shared_memory_proxy is None:
-                    self._domain = PipeParallelDomain(domain_factory, lambdas=[self._state_features])
-                else:
-                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy, lambdas=[self._state_features])
-            else:
-                self._domain = domain_factory()
-            self._solver = iw_solver(domain=self._domain,
+            self._domain_factory = domain_factory
+            self._solver = iw_solver(domain=self.get_domain(),
                                      state_features=lambda d, s: self._state_features(d, s) if not self._parallel else d.call(None, 0, s),
                                      use_state_feature_hash=self._use_state_feature_hash,
                                      node_ordering=self._node_ordering,
@@ -73,36 +72,18 @@ try:
             self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    self._solver.solve(memory)
-            else:
-                self._solver.solve(memory)
+            self._solver.solve(memory)
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    return self._solver.is_solution_defined_for(observation)
-            else:
-                return self._solver.is_solution_defined_for(observation)
+            return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    if not self._is_solution_defined_for(observation):
-                        self._solve_from(observation)
-                    return self._solver.get_next_action(observation)
-            else:
-                if not self._is_solution_defined_for(observation):
-                    self._solve_from(observation)
-                return self._solver.get_next_action(observation)
+            if not self._is_solution_defined_for(observation):
+                self._solve_from(observation)
+            return self._solver.get_next_action(observation)
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    return self._solver.get_utility(observation)
-            else:
-                return self._solver.get_utility(observation)
+            return self._solver.get_utility(observation)
         
         def _reset(self) -> None:
             self._solver.clear()

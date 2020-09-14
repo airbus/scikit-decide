@@ -208,8 +208,9 @@ if IW.check_domain(domain_factory()):
                                 #    node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore < b_gscore else False if a_gscore > b_gscore else a_novelty > b_novelty,
                                    parallel=False,
                                    debug_logs=False)
-    solver = GymIWDomain.solve_with(solver_factory, domain_factory)
-    evaluation_domain = EvaluationDomain(solver._domain)
-    evaluation_domain.reset()
-    rollout(evaluation_domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
-            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    with solver_factory() as solver:
+        GymIWDomain.solve_with(solver, domain_factory)
+        evaluation_domain = EvaluationDomain(solver._domain)
+        evaluation_domain.reset()
+        rollout(evaluation_domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
+                outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

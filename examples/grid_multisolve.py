@@ -133,15 +133,17 @@ if __name__ == '__main__':
         else:
             selected_solver = solvers[choice - 1]
             solver_type = selected_solver['entry']
+            # Test solver solution on domain
+            print('==================== TEST SOLVER ====================')
             # Check if Random Walk selected or other
             if solver_type is None:
-                solver = None
+                rollout(domain, solver=None, max_steps=1000,
+                        outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
             else:
                 # Check that the solver is compatible with the domain
                 assert solver_type.check_domain(domain)
                 # Solve with selected solver
-                solver = MyDomain.solve_with(lambda: solver_type(**selected_solver['config']))  # ,lambda:MyDomain(5,5))
-            # Test solver solution on domain
-            print('==================== TEST SOLVER ====================')
-            rollout(domain, solver, max_steps=1000,
-                    outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                with solver_type(**selected_solver['config']) as solver:
+                    MyDomain.solve_with(solver)  # ,lambda:MyDomain(5,5))
+                    rollout(domain, solver, max_steps=1000,
+                            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

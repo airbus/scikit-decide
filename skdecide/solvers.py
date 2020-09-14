@@ -228,6 +228,35 @@ class Solver:
             #policy and #assessibility.
         """
         pass
+    
+    def _initialize(self):
+        """Runs long-lasting initialization code here, or code to be executed at the
+        entering of a 'with' context statement.
+        """
+        pass
+
+    def _cleanup(self):
+        """Runs cleanup code here, or code to be executed at the exit of a
+        'with' context statement.
+        """
+        pass
+    
+    def __enter__(self):
+        """Allow for calling the solver within a 'with' context statement.
+        Note that some solvers require such context statements to properly
+        clean their status before exiting the Python interpreter, thus it
+        is a good habit to always call solvers within a 'with' statement.
+        """
+        self._initialize()
+        return self
+    
+    def __exit__(self, type, value, tb):
+        """Allow for calling the solver within a 'with' context statement.
+        Note that some solvers require such context statements to properly
+        clean their status before exiting the Python interpreter, thus it
+        is a good habit to always call solvers within a 'with' statement.
+        """
+        self._cleanup()
 
 
 # ALTERNATE BASE CLASSES (for typical combinations)

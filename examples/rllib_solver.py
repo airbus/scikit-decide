@@ -20,16 +20,17 @@ if RayRLlib.check_domain(domain):
 
     # Start solving
     solver_factory = lambda: RayRLlib(PPOTrainer, train_iterations=5, config={'framework': 'torch'})
-    solver = GymDomain.solve_with(solver_factory, domain_factory)
-    solver.save('TEMP_RLlib')  # Save results
+    with solver_factory() as solver:
+        GymDomain.solve_with(solver, domain_factory)
+        solver.save('TEMP_RLlib')  # Save results
 
-    # Continue solving (just to demonstrate the capability to learn further)
-    solver.solve(domain_factory)
-    solver.save('TEMP_RLlib')  # Save updated results
+        # Continue solving (just to demonstrate the capability to learn further)
+        solver.solve(domain_factory)
+        solver.save('TEMP_RLlib')  # Save updated results
 
-    # Test solution
-    rollout(domain, solver, num_episodes=1, max_steps=1000, max_framerate=30, outcome_formatter=None)
+        # Test solution
+        rollout(domain, solver, num_episodes=1, max_steps=1000, max_framerate=30, outcome_formatter=None)
 
-    # Restore (latest results) from scratch and re-run
-    solver = GymDomain.solve_with(solver_factory, domain_factory, load_path='TEMP_RLlib')
-    rollout(domain, solver, num_episodes=1, max_steps=1000, max_framerate=30, outcome_formatter=None)
+        # Restore (latest results) from scratch and re-run
+        GymDomain.solve_with(solver, domain_factory, load_path='TEMP_RLlib')
+        rollout(domain, solver, num_episodes=1, max_steps=1000, max_framerate=30, outcome_formatter=None)

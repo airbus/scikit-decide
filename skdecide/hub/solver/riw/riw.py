@@ -14,7 +14,7 @@ from skdecide import hub
 from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
 
 record_sys_path = sys.path
 skdecide_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
@@ -30,10 +30,11 @@ try:
         pass
 
 
-    class RIW(Solver, DeterministicPolicies, Utilities):
+    class RIW(ParallelSolver, Solver, DeterministicPolicies, Utilities):
         T_domain = D
 
         def __init__(self,
+                     domain_factory: Callable[[], Domain],
                      state_features: Callable[[Domain, D.T_state], Any],
                      use_state_feature_hash: bool = False,
                      use_simulation_domain: bool = False,
@@ -47,9 +48,12 @@ try:
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
+            ParallelSolver.__init__(self,
+                                    domain_factory=domain_factory,
+                                    parallel=parallel,
+                                    shared_memory_proxy=shared_memory_proxy)
             self._solver = None
             self._domain = None
-            self._domain_factory = None  # Used for random action sampling
             self._state_features = state_features
             self._use_state_feature_hash = use_state_feature_hash
             self._use_simulation_domain = use_simulation_domain
@@ -60,20 +64,13 @@ try:
             self._discount = discount
             self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
-            self._parallel = parallel
-            self._shared_memory_proxy = shared_memory_proxy
             self._debug_logs = debug_logs
-
+            self._lambdas = [self._state_features]
+            self._ipc_notify = True
+        
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            if self._parallel:
-                if self._shared_memory_proxy is None:
-                    self._domain = PipeParallelDomain(domain_factory, lambdas=[self._state_features])
-                else:
-                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy, lambdas=[self._state_features])
-            else:
-                self._domain = domain_factory()
-            self._domain_factory = domain_factory  # Used for random action sampling
-            self._solver = riw_solver(domain=self._domain,
+            self._domain_factory = domain_factory
+            self._solver = riw_solver(domain=self.get_domain(),
                                       state_features=lambda d, s, i=None: self._state_features(d, s) if not self._parallel else d.call(i, 0, s),
                                       use_state_feature_hash=self._use_state_feature_hash,
                                       use_simulation_domain=self._use_simulation_domain,
@@ -91,39 +88,19 @@ try:
             self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    self._solver.solve(memory)
-            else:
-                self._solver.solve(memory)
+            self._solver.solve(memory)
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    return self._solver.is_solution_defined_for(observation)
-            else:
-                return self._solver.is_solution_defined_for(observation)
+            return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    if self._continuous_planning or not self._is_solution_defined_for(observation):
-                        self._solve_from(observation)
-                    action = self._solver.get_next_action(observation)
-            else:
-                if self._continuous_planning or not self._is_solution_defined_for(observation):
-                    self._solve_from(observation)
-                action = self._solver.get_next_action(observation)
+            if self._continuous_planning or not self._is_solution_defined_for(observation):
+                self._solve_from(observation)
+            action = self._solver.get_next_action(observation)
             if action is None:
                 print('\x1b[3;33;40m' + 'No best action found in observation ' +
                       str(observation) + ', applying random action' + '\x1b[0m')
-                if not self._parallel:
-                    return self._domain.get_action_space().sample()
-                else:
-                    with self._domain.session_manager(ipc_notify=True):
-                        domain_id = self._domain.get_action_space()
-                        self._domain.wait_job(domain_id)
-                        return self._domain.get_result(domain_id).sample()
+                return self.call_domain_method('get_action_space').sample()
             else:
                 return action
         
@@ -131,11 +108,7 @@ try:
             self._solver.clear()
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    return self._solver.get_utility(observation)
-            else:
-                return self._solver.get_utility(observation)
+            return self._solver.get_utility(observation)
         
         def get_nb_of_explored_states(self) -> int:
             return self._solver.get_nb_of_explored_states()

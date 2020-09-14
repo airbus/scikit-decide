@@ -5,3 +5,4 @@
 from skdecide.builders.solver.assessability import *
 from skdecide.builders.solver.policy import *
 from skdecide.builders.solver.restorability import *
+from skdecide.builders.solver.parallelability import *

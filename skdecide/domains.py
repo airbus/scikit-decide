@@ -10,10 +10,13 @@ import logging
 from typing import NewType, Optional, Callable
 
 from pathos.helpers import mp
-from multiprocessing import Manager, Lock, Pipe, Process, Condition
-from multiprocessing.sharedctypes import Value, Array
 import tempfile
 from pynng import Push0
+
+# Following import is required to make Enum objects serializable
+# (useful when multiprocessing and pickling domains that use Enum classes)
+import dill
+dill.settings['byref'] = True
 
 from skdecide.core import autocast_all
 from skdecide.builders.domain.agent import MultiAgent, SingleAgent
@@ -80,7 +83,7 @@ class Domain(MultiAgent, Parallel, Environment, Events, History, PartiallyObserv
     T_info = NewType('T_info', object)
 
     @classmethod
-    def solve_with(cls, solver_factory: Callable[[], Solver],
+    def solve_with(cls, solver: Solver,
                    domain_factory: Optional[Callable[[], Domain]] = None, load_path: Optional[str] = None) -> Solver:
         """Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -90,7 +93,7 @@ class Domain(MultiAgent, Parallel, Environment, Events, History, PartiallyObserv
         domain requirements are met.
 
         # Parameters
-        solver_factory: A callable with no argument returning the new solver (can be just a solver class).
+        solver: The solver.
         domain_factory: A callable with no argument returning the domain to solve (factory is the domain class if None).
         load_path: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -99,7 +102,6 @@ class Domain(MultiAgent, Parallel, Environment, Events, History, PartiallyObserv
         """
         if domain_factory is None:
             domain_factory = cls
-        solver = solver_factory()
         if load_path is not None:
 
             # TODO: avoid repeating this code somehow (identical in solver.solve(...))? Is factory necessary (vs cls)?
@@ -365,25 +367,41 @@ class ParallelDomain:
     Each request can indicate which domain should serve it, otherwise the first available
     domain i is chosen and its id is returned to the incoming request.
     """
-    def __init__(self, domain_factory, lambdas=None, nb_domains = os.cpu_count()):
+    def __init__(self,
+                 domain_factory,
+                 lambdas=None,
+                 nb_domains=os.cpu_count(),
+                 ipc_notify=False):
         self._domain_factory = domain_factory
         self._lambdas = lambdas
-        self._active_domains = Array('b', [True for i in range(nb_domains)], lock=True)
-        self._temp_connections = [tempfile.NamedTemporaryFile() for i in range(nb_domains)]
-        self._ipc_connections = ['ipc://' + f.name + '.ipc' for f in self._temp_connections]
+        self._active_domains = mp.Array('b', [True for i in range(nb_domains)], lock=True)
+        self._temp_connections = [None] * nb_domains
+        self._ipc_connections = [None] * nb_domains
         self._processes = [None] * nb_domains
-        self._nb_sessions = 0
+        self._ipc_notify = ipc_notify
     
-    def start_session(self):
+    def open_ipc_connection(self, i):
+        self._temp_connections[i] = tempfile.NamedTemporaryFile()
+        self._ipc_connections[i] = 'ipc://' + self._temp_connections[i].name + '.ipc'
+    
+    def close_ipc_connection(self, i):
+        self._temp_connections[i].close()
+        self._ipc_connections[i] = None
+    
+    def _launch_processes(self):
+        raise NotImplementedError
+    
+    def close(self):
         raise NotImplementedError
 
-    def end_session(self):
-        raise NotImplementedError
+    def __enter__(self):
+        self._launch_processes()
+        return self
+        
+    def __exit__ (self, type, value, tb):
+        self.close()
 
     def launch(self, i, name, *args):
-        raise NotImplementedError
-
-    def wait_job(self, i):  # using process connections (see below)
         raise NotImplementedError
 
     def get_proc_connections(self):  # process connections for use in python
@@ -488,7 +506,19 @@ class ParallelDomain:
         def method(*args, i=None):
             return self.launch(i, name, *args)
         return method
+    
+    # Bypass __getattr_.method() when serializing the class.
+    # Required on Windows when spawning the main process.
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        del d['_temp_connections']  # we cannot serialize a file
+        return d
 
+    # Bypass __getattr_.method() when serializing the class.
+    # Required on Windows when spawning the main process.
+    def __setstate__(self, state):
+        self.__dict__ = state
+        # TODO: reopen the temp connection from _ipc_connections
 
 def _launch_domain_server_(domain_factory, lambdas, i, lock, active_domains,
                            job_results, conn, ipc_conn, logger):
@@ -519,8 +549,7 @@ def _launch_domain_server_(domain_factory, lambdas, i, lock, active_domains,
                 lock.release()
                 if ipc_conn is not None:
                     pusher.send(b'0')  # send success
-                else:
-                    conn.send('0')  # send success
+                conn.send('0')  # send success
             except Exception as e:
                 logger.error(rf'/!\ Unable to perform job {job[0]}: {e}')
                 if ipc_conn is not None:
@@ -534,27 +563,24 @@ class PipeParallelDomain(ParallelDomain):
     Each request can indicate which domain should serve it, otherwise the first available
     domain i is chosen and its id is returned to the incoming request.
     """
-    def __init__(self, domain_factory, lambdas=None, nb_domains = os.cpu_count()):
-        super().__init__(domain_factory, lambdas, nb_domains)
-        self._manager = Manager()
+    def __init__(self,
+                 domain_factory,
+                 lambdas=None,
+                 nb_domains=os.cpu_count(),
+                 ipc_notify=False):
+        super().__init__(domain_factory, lambdas, nb_domains, ipc_notify)
+        self._manager = mp.Manager()
         self._waiting_jobs = [None] * nb_domains
         self._job_results = self._manager.list([None for i in range(nb_domains)])
-        self._lock = Lock()
+        self._locks = [mp.Lock() for i in range(nb_domains)]
         logger.info(rf'Using {nb_domains} parallel piped domains')
     
     def get_proc_connections(self):
         return self._waiting_jobs
     
-    def wait_job(self, i):
-        self._waiting_jobs[i].recv()
-    
     def launch(self, i, function, *args):
-        if self._nb_sessions == 0:
-            err_msg = '/!\ Please call your parallel domain functions within ' + \
-                      'a PipeParallelDomain.SessionManager context. ' + \
-                      'See the PipeParallelDomain.session_manager() method.'
-            logger.error(rf'{err_msg}')
-            raise RuntimeError(err_msg)
+        if not any(self._processes):
+            self._launch_processes()
         try:
             mi = self.wake_up_domain(i)
             self._waiting_jobs[mi].send((function, args))
@@ -566,50 +592,41 @@ class PipeParallelDomain(ParallelDomain):
                 logger.error(rf'/!\ Unable to launch job lambdas[{function}]: {e}')
     
     def get_result(self, i):
-        self._lock.acquire()
+        self._waiting_jobs[i].recv()
+        self._locks[i].acquire()
         r = self._job_results[i]
         self._job_results[i] = None
-        self._lock.release()
+        self._locks[i].release()
         return r
     
-    class SessionManager:
-        def __init__(self, d, ipc_notify=False):
-            self._d = d
-            self._ipc_notify = ipc_notify
-
-        def __enter__(self):
-            self._d._nb_sessions += 1
-            if self._d._nb_sessions == 1:
-                for i in range(len(self._d._job_results)):
-                    pparent, pchild = Pipe()
-                    self._d._waiting_jobs[i] = pparent
-                    self._d._processes[i] = mp.Process(target=_launch_domain_server_,
-                                                       args=[self._d._domain_factory, self._d._lambdas, i, self._d._lock,
-                                                             self._d._active_domains, self._d._job_results, pchild,
-                                                             self._d._ipc_connections[i] if self._ipc_notify else None, logger])
-                    self._d._processes[i].start()
-                # Waits for all jobs to be launched and waiting each for requests
-                while True in set(self._d._active_domains):
-                    continue
-        
-        def __exit__ (self, type, value, tb):
-            self._d._nb_sessions -= 1
-            if self._d._nb_sessions == 0:
-                for i in range(len(self._d._job_results)):
-                    self._d._waiting_jobs[i].send(None)
-                    self._d._processes[i].join()
-                    self._d._processes[i].close()
-                    self._d._waiting_jobs[i].close()
-                    self._d._processes[i] = None
+    def _launch_processes(self):
+        for i in range(len(self._job_results)):
+            self.open_ipc_connection(i)
+            pparent, pchild = mp.Pipe()
+            self._waiting_jobs[i] = pparent
+            self._processes[i] = mp.Process(target=_launch_domain_server_,
+                                            args=[self._domain_factory, self._lambdas, i, self._locks[i],
+                                                    self._active_domains, self._job_results, pchild,
+                                                    self._ipc_connections[i] if self._ipc_notify else None, logger])
+            self._processes[i].start()
+        # Waits for all jobs to be launched and waiting each for requests
+        while True in set(self._active_domains):
+            continue
     
-    def session_manager(self, ipc_notify=False):
-        return PipeParallelDomain.SessionManager(self, ipc_notify)
+    def close(self):
+        for i in range(len(self._job_results)):
+            self._waiting_jobs[i].send(None)
+            self._processes[i].join()
+            self._processes[i].close()
+            self._waiting_jobs[i].close()
+            self._processes[i] = None
+            self.close_ipc_connection(i)
 
 
 def _shm_launch_domain_server_(domain_factory, lambdas, i, active_domains,
                                shm_proxy, shm_registers, shm_types, shm_sizes,
                                rsize, shm_arrays, shm_lambdas, shm_names, shm_params,
-                               activation, cond, ipc_conn, logger):
+                               activation, done, cond, ipc_conn, logger):
     domain = domain_factory()
     if ipc_conn is not None:
         pusher = Push0()
@@ -682,10 +699,10 @@ def _shm_launch_domain_server_(domain_factory, lambdas, i, active_domains,
                     logger.error(rf'/!\ Unable to perform job {int(shm_lambdas[i].value)}: {e}')
                 if ipc_conn is not None:
                     pusher.send(str(e).encode(encoding='UTF-8'))  # send error message
-            if ipc_conn is None:  # we communicate on job status only via the condition 'cond'
-                with cond:
-                    activation.value = True
-                    cond.notify_all()  # send finished status (no success nor failure information)
+            with cond:
+                done.value = True
+                cond.notify_all()  # send finished status (no success nor failure information)
+                
 
 class ShmParallelDomain(ParallelDomain):
     """This class can be used to create and launch n domains in separate processes
@@ -694,10 +711,16 @@ class ShmParallelDomain(ParallelDomain):
     Each request can indicate which domain should serve it, otherwise the first available
     domain is chosen and its id is returned to the incoming request.
     """
-    def __init__(self, domain_factory, shm_proxy, lambdas=None, nb_domains = os.cpu_count()):
-        super().__init__(domain_factory, lambdas, nb_domains)
-        self._activations = [Value('b', False, lock=True) for i in range(nb_domains)]
-        self._conditions = [Condition() for i in range(nb_domains)]
+    def __init__(self,
+                 domain_factory,
+                 shm_proxy,
+                 lambdas=None,
+                 nb_domains=os.cpu_count(),
+                 ipc_notify=False):
+        super().__init__(domain_factory, lambdas, nb_domains, ipc_notify)
+        self._activations = [mp.Value('b', False, lock=True) for i in range(nb_domains)]
+        self._dones = [mp.Value('b', False, lock=True) for i in range(nb_domains)]
+        self._conditions = [mp.Condition() for i in range(nb_domains)]
         self._shm_proxy = shm_proxy
         self._shm_registers = {}  # Maps from registered method parameter types to vectorized array ranges
         self._shm_types = {}  # Maps from register index to type
@@ -728,26 +751,17 @@ class ShmParallelDomain(ParallelDomain):
                             self._rsize += r[1]
                         self._shm_arrays.append(m)
                         j += 1
-            self._shm_lambdas[i] = Value('i', -1, lock=True)
-            self._shm_names[i] = Array('c', bytearray(100))
-            self._shm_params[i] = Array('i', [-1] * sum(r[1] for r in shm_proxy.register()))
+            self._shm_lambdas[i] = mp.Value('i', -1, lock=True)
+            self._shm_names[i] = mp.Array('c', bytearray(100))
+            self._shm_params[i] = mp.Array('i', [-1] * sum(r[1] for r in shm_proxy.register()))
         logger.info(rf'Using {nb_domains} parallel shared memory domains')
     
     def get_proc_connections(self):
         return (self._activations, self._conditions)
     
-    def wait_job(self, i):
-        with self._conditions[i]:
-            self._conditions[i].wait_for(lambda: bool(self._activations[i].value) == True)
-            self._activations[i].value = False
-    
     def launch(self, i, function, *args):
-        if self._nb_sessions == 0:
-            err_msg = '/!\ Please call your parallel domain functions within ' + \
-                      'a ShmParallelDomain.SessionManager context. ' + \
-                      'See the ShmParallelDomain.session_manager() method.'
-            logger.error(rf'{err_msg}')
-            raise RuntimeError(err_msg)
+        if not any(self._processes):
+            self._launch_processes()
         try:
             mi = self.wake_up_domain(i)
             if isinstance(function, str):  # function is a domain class' method
@@ -790,6 +804,9 @@ class ShmParallelDomain(ParallelDomain):
                 logger.error(rf'/!\ Unable to launch job lambdas[{function}]: {e}')
     
     def get_result(self, i):
+        with self._conditions[i]:
+            self._conditions[i].wait_for(lambda: bool(self._dones[i].value) == True)
+            self._dones[i].value = False
         results = []
         for r in self._shm_params[i]:
             if r >= 0:
@@ -803,43 +820,34 @@ class ShmParallelDomain(ParallelDomain):
                 break  # no more params
         return results if len(results) > 1 else results[0] if len(results) > 0 else None
     
-    class SessionManager:
-        def __init__(self, d, ipc_notify=False):
-            self._d = d
-            self._ipc_notify = ipc_notify
-        
-        def __enter__(self):
-            self._d._nb_sessions += 1
-            if self._d._nb_sessions == 1:
-                for i in range(len(self._d._processes)):
-                    self._d._processes[i] = mp.Process(target=_shm_launch_domain_server_,
-                                                       args=[self._d._domain_factory, self._d._lambdas, i, self._d._active_domains,
-                                                             self._d._shm_proxy.copy(),
-                                                             dict(self._d._shm_registers),
-                                                             dict(self._d._shm_types),
-                                                             dict(self._d._shm_sizes),
-                                                             self._d._rsize, list(self._d._shm_arrays),
-                                                             list(self._d._shm_lambdas), list(self._d._shm_names), list(self._d._shm_params),
-                                                             self._d._activations[i], self._d._conditions[i], self._d._ipc_connections[i] if self._ipc_notify else None,
-                                                             logger])
-                    self._d._processes[i].start()
-                # Waits for all jobs to be launched and waiting each for requests
-                while True in set(self._d._active_domains):
-                    continue
-        
-        def __exit__ (self, type, value, tb):
-            self._d._nb_sessions -= 1
-            if self._d._nb_sessions == 0:
-                for i in range(len(self._d._processes)):
-                    self._d._shm_lambdas[i].value = -1
-                    self._d._shm_names[i][:] = bytearray(len(self._d._shm_names[i]))  # reset with null bytes
-                    self._d._shm_params[i][:] = [-1] * len(self._d._shm_params[i])
-                    with self._d._conditions[i]:
-                        self._d._activations[i].value = True
-                        self._d._conditions[i].notify_all()
-                    self._d._processes[i].join()
-                    self._d._processes[i].close()
-                    self._d._processes[i] = None
+    def _launch_processes(self):
+        for i in range(len(self._processes)):
+            self.open_ipc_connection(i)
+            self._processes[i] = mp.Process(target=_shm_launch_domain_server_,
+                                            args=[self._domain_factory, self._lambdas, i, self._active_domains,
+                                                    self._shm_proxy.copy(),
+                                                    dict(self._shm_registers),
+                                                    dict(self._shm_types),
+                                                    dict(self._shm_sizes),
+                                                    self._rsize, list(self._shm_arrays),
+                                                    list(self._shm_lambdas), list(self._shm_names), list(self._shm_params),
+                                                    self._activations[i], self._dones[i], self._conditions[i],
+                                                    self._ipc_connections[i] if self._ipc_notify else None,
+                                                    logger])
+            self._processes[i].start()
+        # Waits for all jobs to be launched and waiting each for requests
+        while True in set(self._active_domains):
+            continue
     
-    def session_manager(self, ipc_notify=False):
-        return ShmParallelDomain.SessionManager(self, ipc_notify)
+    def close(self):
+        for i in range(len(self._processes)):
+            self._shm_lambdas[i].value = -1
+            self._shm_names[i][:] = bytearray(len(self._shm_names[i]))  # reset with null bytes
+            self._shm_params[i][:] = [-1] * len(self._shm_params[i])
+            with self._conditions[i]:
+                self._activations[i].value = True
+                self._conditions[i].notify_all()
+            self._processes[i].join()
+            self._processes[i].close()
+            self._processes[i] = None
+            self.close_ipc_connection(i)

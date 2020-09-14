@@ -276,7 +276,8 @@ if __name__ == '__main__':
                                    parallel=True,
                                    shared_memory_proxy=MyShmProxy(),
                                    debug_logs=False)
-    solver = Maze.solve_with(solver_factory, domain_factory)
-    rollout(domain, solver, num_episodes=1, max_framerate=30,
-            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    with solver_factory() as solver:
+        Maze.solve_with(solver, domain_factory)
+        rollout(domain, solver, num_episodes=1, max_framerate=30,
+                outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
     

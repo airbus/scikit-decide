@@ -14,7 +14,7 @@ from skdecide import hub
 from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, Goals, Markovian, \
     FullyObservable, PositiveCosts
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
 
 record_sys_path = sys.path
 skdecide_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
@@ -31,36 +31,33 @@ try:
         pass
 
 
-    class Astar(Solver, DeterministicPolicies, Utilities):
+    class Astar(ParallelSolver, Solver, DeterministicPolicies, Utilities):
         T_domain = D
         
         def __init__(self,
+                     domain_factory: Callable[[], Domain] = None,
                      heuristic: Optional[Callable[[Domain, D.T_state], float]] = None,
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
+            ParallelSolver.__init__(self,
+                                    domain_factory=domain_factory,
+                                    parallel=parallel,
+                                    shared_memory_proxy=shared_memory_proxy)
             self._solver = None
-            self._domain = None
-            self._heuristic = heuristic
-            self._parallel = parallel
-            self._shared_memory_proxy = shared_memory_proxy
             self._debug_logs = debug_logs
+            if heuristic is None:
+                self._heuristic = lambda d, s: 0
+            else:
+                self._heuristic = heuristic
+            self._lambdas = [self._heuristic]
+            self._ipc_notify = True
 
         def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
-            if self._heuristic is None:
-                heuristic = lambda d, s: 0
-            else:
-                heuristic = self._heuristic
-            if self._parallel:
-                if self._shared_memory_proxy is None:
-                    self._domain = PipeParallelDomain(domain_factory, lambdas=[heuristic])
-                else:
-                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy, lambdas=[heuristic])
-            else:
-                self._domain = domain_factory()
-            self._solver = astar_solver(domain=self._domain,
+            self._domain_factory = domain_factory
+            self._solver = astar_solver(domain=self.get_domain(),
                                         goal_checker=lambda d, s: d.is_goal(s),
-                                        heuristic=lambda d, s: heuristic(d, s) if not self._parallel else d.call(None, 0, s),
+                                        heuristic=lambda d, s: self._heuristic(d, s) if not self._parallel else d.call(None, 0, s),
                                         parallel=self._parallel,
                                         debug_logs=self._debug_logs)
             self._solver.clear()
@@ -69,11 +66,7 @@ try:
             self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    self._solver.solve(memory)
-            else:
-                self._solver.solve(memory)
+            self._solver.solve(memory)
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
             return self._solver.is_solution_defined_for(observation)

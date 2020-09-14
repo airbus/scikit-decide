@@ -14,7 +14,7 @@ from skdecide import hub
 from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
 
 record_sys_path = sys.path
 skdecide_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
@@ -31,47 +31,38 @@ try:
         pass
 
 
-    class BFWS(Solver, DeterministicPolicies, Utilities):
+    class BFWS(ParallelSolver, Solver, DeterministicPolicies, Utilities):
         T_domain = D
 
         def __init__(self,
+                     domain_factory: Callable[[], Domain],
                      state_features: Callable[[Domain, D.T_state], Any],
                      heuristic: Callable[[Domain, D.T_state], float],
                      termination_checker: Callable[[Domain, D.T_state], bool],
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
+            ParallelSolver.__init__(self,
+                                    domain_factory=domain_factory,
+                                    parallel=parallel,
+                                    shared_memory_proxy=shared_memory_proxy)
             self._solver = None
             self._domain = None
             self._state_features = state_features
-            self._heuristic = heuristic
             self._termination_checker = termination_checker
-            self._parallel = parallel
-            self._shared_memory_proxy = shared_memory_proxy
             self._debug_logs = debug_logs
-
+            if heuristic is None:
+                self._heuristic = lambda d, s: 0
+            else:
+                self._heuristic = heuristic
+            self._lambdas = [self._state_features, self._heuristic, self._termination_checker]
+            self._ipc_notify = True
+        
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            if self._heuristic is None:
-                heuristic = lambda d, s: 0
-            else:
-                heuristic = self._heuristic
-            if self._parallel:
-                if self._shared_memory_proxy is None:
-                    self._domain = PipeParallelDomain(domain_factory,
-                                                      lambdas=[self._state_features,
-                                                               heuristic,
-                                                               self._termination_checker])
-                else:
-                    self._domain = ShmParallelDomain(domain_factory,
-                                                     self._shared_memory_proxy,
-                                                     lambdas=[self._state_features,
-                                                              heuristic,
-                                                              self._termination_checker])
-            else:
-                self._domain = domain_factory()
-            self._solver = bfws_solver(domain=self._domain,
+            self._domain_factory = domain_factory
+            self._solver = bfws_solver(domain=self.get_domain(),
                                        state_features=lambda d, s: self._state_features(d, s) if not self._parallel else d.call(None, 0, s),
-                                       heuristic=lambda d, s: heuristic(d, s) if not self._parallel else d.call(None, 1, s),
+                                       heuristic=lambda d, s: self._heuristic(d, s) if not self._parallel else d.call(None, 1, s),
                                        termination_checker=lambda d, s: self._termination_checker(d, s) if not self._parallel else d.call(None, 2, s),
                                        parallel=self._parallel,
                                        debug_logs=self._debug_logs)
@@ -81,36 +72,18 @@ try:
             self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    self._solver.solve(memory)
-            else:
-                self._solver.solve(memory)
+            self._solver.solve(memory)
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    return self._solver.is_solution_defined_for(observation)
-            else:
-                return self._solver.is_solution_defined_for(observation)
+            return self._solver.is_solution_defined_for(observation)
         
         def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    if not self._is_solution_defined_for(observation):
-                        self._solve_from(observation)
-                    return self._solver.get_next_action(observation)
-            else:
-                if not self._is_solution_defined_for(observation):
-                    self._solve_from(observation)
-                return self._solver.get_next_action(observation)
+            if not self._is_solution_defined_for(observation):
+                self._solve_from(observation)
+            return self._solver.get_next_action(observation)
         
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    return self._solver.get_utility(observation)
-            else:
-                return self._solver.get_utility(observation)
+            return self._solver.get_utility(observation)
     
 except ImportError:
     sys.path = record_sys_path

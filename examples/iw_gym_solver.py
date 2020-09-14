@@ -100,18 +100,19 @@ if IW.check_domain(domain):
                                 node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty > b_novelty,
                                 parallel=False, debug_logs=False)
 
-    solver = GymIWDomain.solve_with(solver_factory, domain_factory)
-    rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
-            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
-    # value, steps = simple_rollout(domain_factory(), solver, HORIZON)
-    # print('value:', value)
-    # print('steps:', steps)
-    print('explored:', solver.get_nb_of_explored_states())
-    print('pruned:', solver.get_nb_of_pruned_states())
-    filter_intermediate_scores = []
-    current_score = None
-    for score in solver.get_intermediate_scores():
-        if current_score is None or current_score != score[2]:
-            current_score = score[2]
-            filter_intermediate_scores.append(score)
-    print('Intermediate scores:' + str(filter_intermediate_scores))
+    with solver_factory() as solver:
+        GymIWDomain.solve_with(solver, domain_factory)
+        rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30,
+                outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+        # value, steps = simple_rollout(domain_factory(), solver, HORIZON)
+        # print('value:', value)
+        # print('steps:', steps)
+        print('explored:', solver.get_nb_of_explored_states())
+        print('pruned:', solver.get_nb_of_pruned_states())
+        filter_intermediate_scores = []
+        current_score = None
+        for score in solver.get_intermediate_scores():
+            if current_score is None or current_score != score[2]:
+                current_score = score[2]
+                filter_intermediate_scores.append(score)
+        print('Intermediate scores:' + str(filter_intermediate_scores))

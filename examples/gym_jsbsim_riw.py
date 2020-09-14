@@ -254,16 +254,17 @@ if True:#RIW.check_domain(domain):
                                     use_simulation_domain=False,
                                     continuous_planning=True,
                                     online_node_garbage=True,
-                                    time_budget=60000,
+                                    time_budget=10000,
                                     rollout_budget=30,
                                     max_depth=100,
                                     exploration=0.5,
                                     parallel=False,
                                     debug_logs=False)
-    solver = GymRIWDomain.solve_with(solver_factory, domain_factory)
-    rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30, verbose=True,
-            outcome_formatter=lambda o: f'{o.observation} - reward: {o.value.reward:.2f}',
-            action_formatter=lambda a: f'{a}')
-    with open('gym_jsbsim_riw.json', 'w') as myfile:
-        mydict = solver.get_policy()
-        json.dump({str(s): (str(v[0]), v[1]) for s, v in mydict.items()}, myfile)
+    with solver_factory() as solver:
+        GymRIWDomain.solve_with(solver, domain_factory)
+        rollout(domain, solver, num_episodes=1, max_steps=HORIZON, max_framerate=30, verbose=True,
+                outcome_formatter=lambda o: f'{o.observation} - reward: {o.value.reward:.2f}',
+                action_formatter=lambda a: f'{a}')
+        with open('gym_jsbsim_riw.json', 'w') as myfile:
+            mydict = solver.get_policy()
+            json.dump({str(s): (str(v[0]), v[1]) for s, v in mydict.items()}, myfile)

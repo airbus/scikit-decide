@@ -82,10 +82,11 @@ if __name__ == '__main__':
 
         solver_factory = lambda: ars.AugmentedRandomSearch(n_epochs=n_epochs, epoch_size=epoch_size, directions=directions,
                                                               top_directions=top_directions, learning_rate=learning_rate, policy_noise=policy_noise, reward_maximization=reward_maximization)
-        solver = GymDomain.solve_with(solver_factory, lambda: domain_type(**selected_domain['config']))
-        # Test solver solution on domain
-        print('==================== TEST SOLVER ====================')
-        print(domain.get_observation_space().unwrapped(), '===>', domain.get_action_space().unwrapped())
-        rollout(domain, solver, **selected_domain['rollout'])
+        with solver_factory() as solver:
+            GymDomain.solve_with(solver, lambda: domain_type(**selected_domain['config']))
+            # Test solver solution on domain
+            print('==================== TEST SOLVER ====================')
+            print(domain.get_observation_space().unwrapped(), '===>', domain.get_action_space().unwrapped())
+            rollout(domain, solver, **selected_domain['rollout'])
         if hasattr(domain, 'close'):
             domain.close()

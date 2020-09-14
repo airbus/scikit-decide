@@ -193,8 +193,9 @@ if __name__ == '__main__':
             # Check that the solver is compatible with the domain
             assert solver_type.check_domain(domain)
             # Solve with selected solver
-            solver = MyDomain.solve_with(lambda: solver_type(**selected_solver['config']))
-            # Test solver solution on domain
-            print('==================== TEST SOLVER ====================')
-            rollout(domain, solver, max_steps=1000, max_framerate=30,
-                    outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+            with solver_type(**selected_solver['config']) as solver:
+                MyDomain.solve_with(solver)
+                # Test solver solution on domain
+                print('==================== TEST SOLVER ====================')
+                rollout(domain, solver, max_steps=1000, max_framerate=30,
+                        outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')

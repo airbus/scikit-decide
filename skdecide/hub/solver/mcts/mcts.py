@@ -14,7 +14,7 @@ from skdecide import hub
 from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
 
 record_sys_path = sys.path
 skdecide_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
@@ -31,12 +31,13 @@ try:
         pass
     
     
-    class MCTS(Solver, DeterministicPolicies, Utilities):
+    class MCTS(ParallelSolver, Solver, DeterministicPolicies, Utilities):
         T_domain = D
 
         Options = mcts_options
 
         def __init__(self,
+                     domain_factory: Callable[[], Domain],
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
@@ -55,6 +56,10 @@ try:
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
+            ParallelSolver.__init__(self,
+                                    domain_factory=domain_factory,
+                                    parallel=parallel,
+                                    shared_memory_proxy=shared_memory_proxy)
             self._solver = None
             self._domain = None
             self._time_budget = time_budget
@@ -72,19 +77,13 @@ try:
             self._rollout_policy = rollout_policy
             self._back_propagator = back_propagator
             self._continuous_planning = continuous_planning
-            self._parallel = parallel
-            self._shared_memory_proxy = shared_memory_proxy
             self._debug_logs = debug_logs
-
+            self._lambdas = [self._rollout_policy_functor]
+            self._ipc_notify = True
+        
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            if self._parallel:
-                if self._shared_memory_proxy is None:
-                    self._domain = PipeParallelDomain(domain_factory, lambdas=[self._rollout_policy_functor])
-                else:
-                    self._domain = ShmParallelDomain(domain_factory, self._shared_memory_proxy, lambdas=[self._rollout_policy_functor])
-            else:
-                self._domain = domain_factory()
-            self._solver = mcts_solver(domain=self._domain,
+            self._domain_factory = domain_factory
+            self._solver = mcts_solver(domain=self.get_domain(),
                                        time_budget=self._time_budget,
                                        rollout_budget=self._rollout_budget,
                                        max_depth=self._max_depth,
@@ -107,11 +106,7 @@ try:
             self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-            if self._parallel:
-                with self._domain.session_manager(ipc_notify=True):
-                    self._solver.solve(memory)
-            else:
-                self._solver.solve(memory)
+            self._solver.solve(memory)
         
         def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
             return self._solver.is_solution_defined_for(observation)
@@ -123,14 +118,7 @@ try:
             if action is None:
                 print('\x1b[3;33;40m' + 'No best action found in observation ' +
                       str(observation) + ', applying random action' + '\x1b[0m')
-                if not self._parallel:
-                    return self._domain.get_action_space().sample()
-                else:
-                    with self._domain.session_manager(ipc_notify=True):
-                        domain_id = self._domain.get_action_space()
-                        self._domain.wait_job(domain_id)
-                        r = self._domain.get_result(domain_id).sample()
-                        return r
+                return self.call_domain_method('get_action_space').sample()
             else:
                 return action
         
@@ -155,6 +143,7 @@ try:
 
     class UCT(MCTS):
         def __init__(self,
+                     domain_factory: Callable[[], Domain],
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
@@ -167,7 +156,8 @@ try:
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:
-            super().__init__(time_budget=time_budget,
+            super().__init__(domain_factory=domain_factory,
+                             time_budget=time_budget,
                              rollout_budget=rollout_budget,
                              max_depth=max_depth,
                              discount=discount,

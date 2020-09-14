@@ -118,15 +118,15 @@ if __name__ == '__main__':
             else:
                 selected_solver = solvers[solver_choice - 1]
                 solver_type = selected_solver['entry']
-                # Check if Random Walk selected or other
-                if solver_type is None:
-                    solver = None
-                else:
-                    # Solve with selected solver
-                    solver = domain_type.solve_with(lambda: solver_type(**selected_solver['config']),
-                                                    lambda: domain_type(**selected_domain['config']))
                 # Test solver solution on domain
                 print('==================== TEST SOLVER ====================')
-                rollout(domain, solver, **selected_domain['rollout'])
+                # Check if Random Walk selected or other
+                if solver_type is None:
+                    rollout(domain, solver=None, **selected_domain['rollout'])
+                else:
+                    # Solve with selected solver
+                    with solver_type(**selected_solver['config']) as solver:
+                        domain_type.solve_with(solver, lambda: domain_type(**selected_domain['config']))
+                        rollout(domain, solver, **selected_domain['rollout'])
                 if hasattr(domain, 'close'):
                     domain.close()

@@ -75,7 +75,8 @@ if RIW.check_domain(domain):
                                  exploration=0.25,
                                  parallel=False,
                                  debug_logs=False)
-    solver = GymRIWDomain.solve_with(solver_factory, domain_factory)
-    initial_state = solver._domain.reset()
-    rollout(domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON-1, max_framerate=30,
-            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    with solver_factory() as solver:
+        GymRIWDomain.solve_with(solver, domain_factory)
+        initial_state = solver._domain.reset()
+        rollout(domain, solver, from_memory=initial_state, num_episodes=1, max_steps=HORIZON-1, max_framerate=30,
+                outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
