@@ -1,0 +1,17 @@
+name: Publish Conda Package
+
+on: 
+  release:
+    types: [published, edited]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: publish-to-conda
+      uses: galleon/conda-publish-action@master
+      with:
+        subdir: 'conda'
+        anacondatoken: ${{ secrets.anaconda_token }}
+        platforms: 'win osx linux'

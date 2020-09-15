@@ -1,0 +1,139 @@
+name: Runner CI
+
+on:
+  push:
+    branches:
+    - master
+    - releases/*
+    paths-ignore:
+    - '**.md'    
+  pull_request:
+    branches:
+    - '*'
+    paths-ignore:
+    - '**.md'
+
+jobs:
+  build-unix:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build manylinux Python wheels
+        uses: galleon/manylinux-build-action@master
+        with:
+          python-versions: 'cp37-cp37m cp38-cp38'
+      - name: Upload artifact
+        uses: actions/upload-artifact@v1.0.0
+        with:
+          name: wh_unix
+          path: wheelhouse
+  build-macos:
+    strategy:
+      matrix:
+        os: [macos-latest]
+        python-version: [3.7, 3.8]
+        compiler: [gnu]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install boost package
+        run: brew install boost
+      - name: Install libomp package
+        run: brew install libomp
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+        shell: bash
+      - name: Build using setup.py
+        run: python setup.py sdist bdist_wheel --cpp-extension
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 10.13
+      - name: Test with pytest
+        run: |
+          pip install --find-links ./dist/ scikit-decide[all] 
+          pip list
+          ulimit -n 2048
+          ulimit -u 2048
+          ulimit -a
+          pytest -v -s tests
+          ls -lRt
+      - name: Upload artifact
+        uses: actions/upload-artifact@v1.0.0
+        with:
+          name: wh_macos
+          path: dist
+  build-windows:
+    strategy:
+      matrix:
+        os: [windows-latest]
+        python-version: [3.7, 3.8]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install torch>=1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+        shell: pwsh
+      - name: Set BOOST_ROOT variable
+        run: echo "::set-env name=BOOST_ROOT::$env:BOOST_ROOT_1_72_0"
+      - name: Build using setup.py
+        run: python setup.py sdist bdist_wheel --cpp-extension
+      - name: Test with pytest
+        run: |
+          pip install --find-links ./dist/ scikit-decide[all] 
+          pytest tests
+      - name: Upload artifact
+        uses: actions/upload-artifact@v1.0.0
+        with:
+          name: wh_windows
+          path: dist
+  build-docs:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.8]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: generate documentation
+        run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
+          BRANCH: gh-pages # The branch the action should deploy to.
+          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
+          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
+          COMMIT_MESSAGE: publish documentation
+          CLEAN: true
+          SINGLE_COMMIT: true

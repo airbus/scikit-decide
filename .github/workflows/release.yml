@@ -1,0 +1,116 @@
+name: Runner CD
+
+on:
+  push:
+    paths:
+    - releaseVersion
+
+jobs:
+  check:
+    if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    # Make sure ./releaseVersion match ./src/runnerversion 
+    # Query GitHub release ensure version is not used 
+    - name: Check version
+      uses: actions/github-script@0.3.0
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const core = require('@actions/core')
+          const fs = require('fs');
+          const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
+          const releaseVersion = fs.readFileSync('${{ github.workspace }}/releaseVersion', 'utf8').replace(/\n$/g, '')
+          if (runnerVersion != releaseVersion) {
+            console.log('Request Release Version: ' + releaseVersion + '\nCurrent Runner Version: ' + runnerVersion)
+            core.setFailed('Version mismatch! Make sure ./releaseVersion match ./src/runnerVersion')
+            return
+          }
+          try {
+            const release = await github.repos.getReleaseByTag({
+              owner: '${{ github.event.repository.owner.name }}',
+              repo: '${{ github.event.repository.name }}',
+              tag: 'v' + runnerVersion
+            })
+            core.setFailed('Release with same tag already created: ' + release.data.html_url)
+          } catch (e) {
+            // We are good to create the release if release with same tag doesn't exists
+            if (e.status != 404) {
+              throw e
+            }
+          }
+        
+  build:
+    needs: check
+    strategy:
+      matrix:
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        include:
+        - runtime: linux-x64
+          os: ubuntu-latest
+          devScript: ./dev.sh
+
+        - runtime: linux-arm64
+          os: ubuntu-latest
+          devScript: ./dev.sh
+
+        - runtime: linux-arm
+          os: ubuntu-latest
+          devScript: ./dev.sh
+
+        - runtime: osx-x64
+          os: macOS-latest
+          devScript: ./dev.sh
+
+        - runtime: win-x64
+          os: windows-latest
+          devScript: ./dev
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v1
+
+    # Build runner layout
+    - name: Build & Layout Release
+      run: |
+        ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
+      working-directory: src
+      
+  release:
+    needs: [build]
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.8]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Download Unix artifact
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wh_unix
+      - name: Download MacOS artifact
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wh_macos
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wh_windows
+      - name: Move everything in wheelhouse
+        run: mkdir wheelhouse && mv wh_*/*.whl wheelhouse/ && mv wh_windows/*.tar.gz wheelhouse/
+      - name: Publish distribution 📦 to Test PyPI
+        if: startsWith(github.event.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.test_pypi_password }}
+          packages_dir: wheelhouse/
+          repository_url: https://test.pypi.org/legacy/
+      - name: Publish distribution 📦 to PyPI
+        if: startsWith(github.event.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.pypi_password }}
+          packages_dir: wheelhouse/
