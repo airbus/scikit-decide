@@ -110,7 +110,7 @@ jobs:
       - name: Test with pytest
         run: |
           pip install --find-links ./dist/ scikit-decide[all] 
-          pytest tests
+          pytest -v -s tests
       - name: Upload artifact
         uses: actions/upload-artifact@v1.0.0
         with:
