@@ -1,0 +1,21 @@
+[submodule "cpp/sdk/Catch2"]
+	path = cpp/sdk/Catch2
+	url = https://github.com/catchorg/Catch2.git
+[submodule "cpp/sdk/backward-cpp"]
+	path = cpp/sdk/backward-cpp
+	url = https://github.com/bombela/backward-cpp.git
+[submodule "cpp/sdk/json"]
+	path = cpp/sdk/json
+	url = https://github.com/nlohmann/json.git
+[submodule "cpp/sdk/nng"]
+	path = cpp/sdk/nng
+	url = https://github.com/nanomsg/nng.git
+[submodule "cpp/sdk/nngpp"]
+	path = cpp/sdk/nngpp
+	url = https://github.com/cwzx/nngpp.git
+[submodule "cpp/sdk/pybind11"]
+	path = cpp/sdk/pybind11
+	url = https://github.com/pybind/pybind11.git
+[submodule "cpp/sdk/spdlog"]
+	path = cpp/sdk/spdlog
+	url = https://github.com/gabime/spdlog.git

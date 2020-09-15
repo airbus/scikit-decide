@@ -1,0 +1,2 @@
+#cmakedefine HAS_EXECUTION
+#cmakedefine HAS_OPENMP
