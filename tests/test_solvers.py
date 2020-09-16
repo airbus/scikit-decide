@@ -406,7 +406,7 @@ def test_solve_cpp(solver_cpp, parallel, shared_memory):
     p.close()
     pparent.close()
     if exception != None:
-        raise exception[1], None, exception[2]
+        raise exception
     assert success
 
 
