@@ -1,6 +1,6 @@
 title: 'Scikit-decide'
 description: 'Scikit-decide: AI framework for Reinforcement Learning, Automated Planning and Scheduling'
-base: '/pages/gerard-dupont/scikit-decide/'
+base: '/scikit-decide/'
 themeConfig:
   nav:
   - text: 'Home'
