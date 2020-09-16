@@ -37,6 +37,9 @@ try:
         # Use add_dll_directory to specify dll resolution path
         if sys.version_info[:2] >= (3, 8):
             print(os.listdir(skdecide_cpp_extension_lib_path))
+            print(os.listdir(skdecide_cpp_extension_lib_path+os.sep+"solver")
+            print(os.listdir(skdecide_cpp_extension_lib_path+os.sep+"domain")
+            print(os.listdir(skdecide_cpp_extension_lib_path+os.sep+"space")
             print("Adding '", skdecide_cpp_extension_lib_path, "'to os.add_dll_directory")
             os.add_dll_directory(skdecide_cpp_extension_lib_path)
 
