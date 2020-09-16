@@ -391,7 +391,8 @@ def do_test_cpp(solver_cpp, parallel, shared_memory, result):
         
     success = solver_type != None and solver_type.check_domain(dom) and \
                 ((not solver_cpp['optimal']) or (cost == 18 and len(plan) == 18))
-    result.send((success, exception))
+    result.send(success)
+    result.send(exception)
     result.close()
 
 def test_solve_cpp(solver_cpp, parallel, shared_memory):
@@ -402,10 +403,12 @@ def test_solve_cpp(solver_cpp, parallel, shared_memory):
     pparent, pchild = mp.Pipe(duplex=False)
     p = mp.Process(target=do_test_cpp, args=(solver_cpp, parallel, shared_memory, pchild,))
     p.start()
-    success, exception = pparent.recv()
+    success = pparent.recv()
+    exception = pparent.recv()
     p.join()
     p.close()
     pparent.close()
+    print(success, exception)
     if exception != None:
         raise exception
     assert success
