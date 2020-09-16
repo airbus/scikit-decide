@@ -372,7 +372,7 @@ class GridShmProxy:
 
 def do_test_cpp(solver_cpp, parallel, shared_memory, result):
     dom = GridDomain()
-    solver_type = load_registered_solver(solver_cpp['entry'])
+    solver_type = load_registered_solver(solver_cpp['entry'])    
     solver_args = solver_cpp['config']
     if 'parallel' in inspect.signature(solver_type.__init__).parameters:
         solver_args['parallel'] = parallel
@@ -389,7 +389,8 @@ def do_test_cpp(solver_cpp, parallel, shared_memory, result):
         import sys
         exception = sys.exc_info()
         
-    success = solver_type.check_domain(dom) and ((not solver_cpp['optimal']) or (cost == 18 and len(plan) == 18))
+    success = solver_type != None and solver_type.check_domain(dom) and \
+                ((not solver_cpp['optimal']) or (cost == 18 and len(plan) == 18))
     result.send((success, exception))
     result.close()
 
@@ -413,6 +414,9 @@ def test_solve_cpp(solver_cpp, parallel, shared_memory):
 def do_test_python(solver_python, result):
     dom = GridDomain()
     solver_type = load_registered_solver(solver_python['entry'])
+    
+    assert solver_type != None
+    
     solver_args = solver_python['config']
     noexcept = True
     try:
