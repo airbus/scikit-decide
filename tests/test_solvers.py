@@ -410,7 +410,7 @@ def test_solve_cpp(solver_cpp, parallel, shared_memory):
     pparent.close()
     print(success, exception)
     if exception != None:
-        raise exception
+        raise Exception(str(exception))
     assert success
 
 
