@@ -380,7 +380,7 @@ def do_test_cpp(solver_cpp, parallel, shared_memory, result):
         solver_args['shared_memory_proxy'] = GridShmProxy()
     solver_args['domain_factory'] = lambda: GridDomain()
     exception = None
-    success = False
+    noexecpt = True
     try:
         with solver_type(**solver_args) as slv:
             GridDomain.solve_with(slv)
@@ -388,11 +388,12 @@ def do_test_cpp(solver_cpp, parallel, shared_memory, result):
     except Exception as e:
         import sys
         exception = sys.exc_info()
+        print(exception)
+        noexcept = False
         
-    success = solver_type != None and solver_type.check_domain(dom) and \
+    success = solver_type != None and solver_type.check_domain(dom) and noexcept and \
                 ((not solver_cpp['optimal']) or (cost == 18 and len(plan) == 18))
     result.send(success)
-    result.send(exception)
     result.close()
 
 def test_solve_cpp(solver_cpp, parallel, shared_memory):
@@ -404,13 +405,9 @@ def test_solve_cpp(solver_cpp, parallel, shared_memory):
     p = mp.Process(target=do_test_cpp, args=(solver_cpp, parallel, shared_memory, pchild,))
     p.start()
     success = pparent.recv()
-    exception = pparent.recv()
-    p.join()
+    p.join(30)
     p.close()
     pparent.close()
-    print(success, exception)
-    if exception != None:
-        raise Exception(str(exception))
     assert success
 
 
