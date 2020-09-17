@@ -371,16 +371,18 @@ class GridShmProxy:
 # TESTS
 
 def do_test_cpp(solver_cpp, parallel, shared_memory, result):
-    dom = GridDomain()
-    solver_type = load_registered_solver(solver_cpp['entry'])
-    solver_args = solver_cpp['config']
-    if 'parallel' in inspect.signature(solver_type.__init__).parameters:
-        solver_args['parallel'] = parallel
-    if 'shared_memory_proxy' in inspect.signature(solver_type.__init__).parameters and shared_memory:
-        solver_args['shared_memory_proxy'] = GridShmProxy()
-    solver_args['domain_factory'] = lambda: GridDomain()
     noexcept = True
+    
     try:
+        dom = GridDomain()
+        solver_type = load_registered_solver(solver_cpp['entry'])
+        solver_args = solver_cpp['config']
+        if 'parallel' in inspect.signature(solver_type.__init__).parameters:
+            solver_args['parallel'] = parallel
+        if 'shared_memory_proxy' in inspect.signature(solver_type.__init__).parameters and shared_memory:
+            solver_args['shared_memory_proxy'] = GridShmProxy()
+        solver_args['domain_factory'] = lambda: GridDomain()
+
         with solver_type(**solver_args) as slv:
             GridDomain.solve_with(slv)
             plan, cost = get_plan(dom, slv)
@@ -407,11 +409,13 @@ def test_solve_cpp(solver_cpp, parallel, shared_memory):
 
 
 def do_test_python(solver_python, result):
-    dom = GridDomain()
-    solver_type = load_registered_solver(solver_python['entry'])
-    solver_args = solver_python['config']
     noexcept = True
+
     try:
+        dom = GridDomain()
+        solver_type = load_registered_solver(solver_python['entry'])
+        solver_args = solver_python['config']
+    
         with solver_type(**solver_args) as slv:
             GridDomain.solve_with(slv)
             plan, cost = get_plan(dom, slv)
