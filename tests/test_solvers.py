@@ -371,29 +371,26 @@ class GridShmProxy:
 # TESTS
 
 def do_test_cpp(solver_cpp, parallel, shared_memory, result):
-    dom = GridDomain()
-    solver_type = load_registered_solver(solver_cpp['entry'])    
-    solver_args = solver_cpp['config']
-    if 'parallel' in inspect.signature(solver_type.__init__).parameters:
-        solver_args['parallel'] = parallel
-    if 'shared_memory_proxy' in inspect.signature(solver_type.__init__).parameters and shared_memory:
-        solver_args['shared_memory_proxy'] = GridShmProxy()
-    solver_args['domain_factory'] = lambda: GridDomain()
-    exception = None
-    noexecpt = True
+    noexcept = True
+    
     try:
+        dom = GridDomain()
+        solver_type = load_registered_solver(solver_cpp['entry'])
+        solver_args = solver_cpp['config']
+        if 'parallel' in inspect.signature(solver_type.__init__).parameters:
+            solver_args['parallel'] = parallel
+        if 'shared_memory_proxy' in inspect.signature(solver_type.__init__).parameters and shared_memory:
+            solver_args['shared_memory_proxy'] = GridShmProxy()
+        solver_args['domain_factory'] = lambda: GridDomain()
+
         with solver_type(**solver_args) as slv:
             GridDomain.solve_with(slv)
             plan, cost = get_plan(dom, slv)
     except Exception as e:
-        import sys
-        exception = sys.exc_info()
-        print(exception)
+        print(e)
         noexcept = False
-        
-    success = solver_type != None and solver_type.check_domain(dom) and noexcept and \
-                ((not solver_cpp['optimal']) or (cost == 18 and len(plan) == 18))
-    result.send(success)
+    result.send(solver_type.check_domain(dom) and noexcept and \
+                ((not solver_cpp['optimal']) or (cost == 18 and len(plan) == 18)))
     result.close()
 
 def test_solve_cpp(solver_cpp, parallel, shared_memory):
@@ -404,22 +401,21 @@ def test_solve_cpp(solver_cpp, parallel, shared_memory):
     pparent, pchild = mp.Pipe(duplex=False)
     p = mp.Process(target=do_test_cpp, args=(solver_cpp, parallel, shared_memory, pchild,))
     p.start()
-    success = pparent.recv()
-    p.join(30)
+    r = pparent.recv()
+    p.join()
     p.close()
     pparent.close()
-    assert success
+    assert r
 
 
 def do_test_python(solver_python, result):
-    dom = GridDomain()
-    solver_type = load_registered_solver(solver_python['entry'])
-    
-    assert solver_type != None
-    
-    solver_args = solver_python['config']
     noexcept = True
+
     try:
+        dom = GridDomain()
+        solver_type = load_registered_solver(solver_python['entry'])
+        solver_args = solver_python['config']
+    
         with solver_type(**solver_args) as slv:
             GridDomain.solve_with(slv)
             plan, cost = get_plan(dom, slv)

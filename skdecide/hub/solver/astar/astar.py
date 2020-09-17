@@ -21,47 +21,6 @@ skdecide_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
 if skdecide_cpp_extension_lib_path not in sys.path:
     sys.path.append(skdecide_cpp_extension_lib_path)
     
-# GAL
-current_path = os.path.abspath(os.path.dirname(__file__))
-
-try:
-    if os.name == 'nt':
-        print("current path: ", current_path)
-        print("skdecide_cpp_extension_lib_path: ", skdecide_cpp_extension_lib_path)
-
-        os.environ['path'] = skdecide_cpp_extension_lib_path + ';' + os.environ['path']
-        sys.path.insert(0, skdecide_cpp_extension_lib_path)
-        
-        # Note: from python3.8, PATH will not take effect
-        # https://github.com/python/cpython/pull/12302
-        # Use add_dll_directory to specify dll resolution path
-        if sys.version_info[:2] >= (3, 8):
-            print(os.listdir(skdecide_cpp_extension_lib_path))
-            print(os.listdir(skdecide_cpp_extension_lib_path+os.sep+"solver")
-            print(os.listdir(skdecide_cpp_extension_lib_path+os.sep+"domain")
-            print(os.listdir(skdecide_cpp_extension_lib_path+os.sep+"space")
-            print("Adding '", skdecide_cpp_extension_lib_path, "'to os.add_dll_directory")
-            os.add_dll_directory(skdecide_cpp_extension_lib_path)
-
-except ImportError as e:
-    from __skdecide_hub_cpp import _AStarSolver_ as astar_solver
-    if os.name == 'nt':
-        executable_path = os.path.abspath(os.path.dirname(sys.executable))
-        raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
-        if you encounters \"DLL load failed\" errors. If you have python
-        installed in other directory, replace \"%s\" with your own
-        directory. The original error is: \n %s""" %
-            (executable_path, executable_path, astar_solver.get_exception_message(e)))
-    else:
-        raise ImportError(
-            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
-        if you encounters \"libmkldnn.so not found\" errors. If you have python
-        installed in other directory, replace \"/usr/local/lib\" with your own
-        directory. The original error is: \n""" + astar_solver.get_exception_message(e))
-except Exception as e:
-    raise e
-
 try:
 
     from __skdecide_hub_cpp import _AStarSolver_ as astar_solver
