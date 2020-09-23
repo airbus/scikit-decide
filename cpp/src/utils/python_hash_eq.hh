@@ -25,9 +25,9 @@ struct PythonHash {
     std::size_t operator()(const py::object& o) const {
         typename GilControl<Texecution>::Acquire acquire;
         try {
-            py::object not_implemented_object = py::globals()["__builtins__"]["NotImplemented"];
-            std::size_t python_sys_maxsize = py::module::import("sys").attr("maxsize").template cast<std::size_t>();
-            std::function<bool (const py::object&, std::size_t&)> compute_hash = [&not_implemented_object, &python_sys_maxsize](const py::object& ho, std::size_t& hash_val) {
+            static py::object not_implemented_object = py::globals()["__builtins__"]["NotImplemented"];
+            static std::size_t python_sys_maxsize = py::module::import("sys").attr("maxsize").template cast<std::size_t>();
+            std::function<bool (const py::object&, std::size_t&)> compute_hash = [](const py::object& ho, std::size_t& hash_val) {
                 py::object res = ho.attr("__hash__")();
                 if (!res.is(not_implemented_object)) {
                     // python __hash__ can return negative integers but c++ expects positive integers only
@@ -71,8 +71,8 @@ struct PythonEqual {
     bool operator()(const py::object& o1, const py::object& o2) const {
         typename GilControl<Texecution>::Acquire acquire;
         try {
-            py::object not_implemented_object = py::globals()["__builtins__"]["NotImplemented"];
-            std::function<bool (const py::object&, const py::object&, bool&)> compute_equal = [&not_implemented_object](const py::object& eo1, const py::object& eo2, bool& eq_test) {
+            static py::object not_implemented_object = py::globals()["__builtins__"]["NotImplemented"];
+            std::function<bool (const py::object&, const py::object&, bool&)> compute_equal = [](const py::object& eo1, const py::object& eo2, bool& eq_test) {
                 py::object res = eo1.attr("__eq__")(eo2);
                 if (!res.is(not_implemented_object)) {
                     eq_test = res.template cast<bool>();
