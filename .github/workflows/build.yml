@@ -21,15 +21,15 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: airbus/checkout@v2
+      - uses: actions/checkout@v2
         with:
           submodules: true
       - name: Set up Python
-        uses: airbus/setup-python@v1
+        uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
       - name: Build manylinux Python wheels
-        uses: airbus/manylinux-build-action@master
+        uses: actions/manylinux-build-action@master
         with:
           python-versions: 'cp37-cp37m cp38-cp38'
       - name: Upload artifact
