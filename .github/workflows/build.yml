@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Build manylinux Python wheels
-        uses: actions/manylinux-build-action@master
+        uses: galleon/manylinux-build-action@master
         with:
           python-versions: 'cp37-cp37m cp38-cp38'
       - name: Upload artifact
@@ -72,7 +72,7 @@ jobs:
           pip install --find-links ./dist/ scikit-decide[all] 
           pytest -v -s tests
       - name: Upload artifact
-        uses: airbus/upload-artifact@v1.0.0
+        uses: actions/upload-artifact@v1.0.0
         with:
           name: wh_macos
           path: dist
@@ -84,11 +84,11 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: airbus/checkout@v2
+      - uses: actions/checkout@v2
         with:
           submodules: true
       - name: Set up Python
-        uses: airbus/setup-python@v1
+        uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -107,7 +107,7 @@ jobs:
           pip install --find-links ./dist/ scikit-decide[all] 
           pytest -v -s tests
       - name: Upload artifact
-        uses: airbus/upload-artifact@v1.0.0
+        uses: actions/upload-artifact@v1.0.0
         with:
           name: wh_windows
           path: dist
@@ -119,11 +119,11 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: airbus/checkout@v2
+      - uses: actions/checkout@v2
       - name: generate documentation
         run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
       - name: Deploy 🚀
-        uses: airbus/github-pages-deploy-action@releases/v3
+        uses: JamesIves/github-pages-deploy-action@releases/v3
         with:
           ACCESS_TOKEN: ${{ secrets.gh_access_token }}
           BRANCH: gh-pages # The branch the action should deploy to.
