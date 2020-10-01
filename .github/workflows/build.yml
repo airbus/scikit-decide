@@ -33,7 +33,7 @@ jobs:
         with:
           python-versions: 'cp37-cp37m cp38-cp38'
       - name: Upload artifact
-        uses: airbus/upload-artifact@v1.0.0
+        uses: actions/upload-artifact@v1.0.0
         with:
           name: wh_unix
           path: wheelhouse
@@ -46,11 +46,11 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: airbus/checkout@v2
+      - uses: actions/checkout@v2
         with:
           submodules: true
       - name: Set up Python
-        uses: airbus/setup-python@v2
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install boost package
