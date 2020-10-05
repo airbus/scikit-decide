@@ -147,7 +147,7 @@ private :
                                                                                     auto ftc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _termination_checker(dd, ss);
                                                                                     };
-                                                                                    return d.call(-1, ftc, s._state).template cast<double>();
+                                                                                    return d.call(-1, ftc, s._state).template cast<bool>();
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling termination checker: ") + e.what());
                                                                                     throw;
