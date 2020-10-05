@@ -217,6 +217,8 @@ setup(
             'CGP = skdecide.hub.solver.cgp:CGP [solvers]',
             'IW = skdecide.hub.solver.iw:IW',
             'RIW = skdecide.hub.solver.riw:RIW',
+            'LRTDP = skdecide.hub.solver.lrtdp:LRTDP',
+            'ILAOstar = skdecide.hub.solver.ilaostar:ILAOstar',
             'LazyAstar = skdecide.hub.solver.lazy_astar:LazyAstar',
             'MaxentIRL = skdecide.hub.solver.maxent_irl:MaxentIRL [solvers]',
             'POMCP = skdecide.hub.solver.pomcp:POMCP',
