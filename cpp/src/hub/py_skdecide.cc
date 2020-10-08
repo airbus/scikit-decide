@@ -12,6 +12,8 @@ void init_pymcts(py::module& m);
 void init_pyiw(py::module& m);
 void init_pyriw(py::module& m);
 void init_pybfws(py::module& m);
+void init_pylrtpd(py::module& m);
+void init_pyilaostar(py::module& m);
 
 PYBIND11_MODULE(__skdecide_hub_cpp, m) {
     init_pyastar(m);
@@ -20,4 +22,6 @@ PYBIND11_MODULE(__skdecide_hub_cpp, m) {
     init_pyiw(m);
     init_pyriw(m);
     init_pybfws(m);
+    init_pylrtpd(m);
+    init_pyilaostar(m);
 }

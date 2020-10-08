@@ -132,7 +132,25 @@ class GridDomain(D):
                                     'max_depth': 10,
                                     'continuous_planning': True,
                                     'debug_logs': False},
-                         'optimal': False}])
+                         'optimal': False},
+                         {'entry': 'LRTDP',
+                          'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                                     'use_labels': True,
+                                     'time_budget': 60000,
+                                     'rollout_budget': 10000,
+                                     'max_depth': 500,
+                                     'discount': 1.0,
+                                     'epsilon': 0.001,
+                                     'online_node_garbage': True,
+                                     'continuous_planning': False,
+                                     'debug_logs': False},
+                          'optimal': True},
+                          {'entry': 'ILAOstar',
+                           'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                                      'discount': 1.0,
+                                      'epsilon': 0.001,
+                                      'debug_logs': False},
+                            'optimal': True}])
 def solver_cpp(request):
     return request.param
 

@@ -6,7 +6,7 @@
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
 
-#include "astar.hh"
+#include "ilaostar.hh"
 #include "core.hh"
 
 #include "utils/python_gil_control.hh"
@@ -17,39 +17,41 @@ namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyAStarDomain : public skdecide::PythonDomainAdapter<Texecution> {
+class PyILAOStarDomain : public skdecide::PythonDomainAdapter<Texecution> {
 public :
 
-    PyAStarDomain(const py::object& domain)
+    PyILAOStarDomain(const py::object& domain)
     : skdecide::PythonDomainAdapter<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("SKDECIDE exception: A* algorithm needs python domain for implementing get_applicable_actions()");
+            throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_applicable_actions()");
         }
-        if (!py::hasattr(domain, "get_next_state")) {
-            throw std::invalid_argument("SKDECIDE exception: A* algorithm needs python domain for implementing get_next_state()");
+        if (!py::hasattr(domain, "get_next_state_distribution")) {
+            throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_next_state_distribution()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("SKDECIDE exception: A* algorithm needs python domain for implementing get_transition_value()");
+            throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_transition_value()");
         }
     }
 
 };
 
 
-class PyAStarSolver {
+class PyILAOStarSolver {
 public :
-    PyAStarSolver(py::object& domain,
-                  const std::function<py::object (const py::object&, const py::object&)>& goal_checker,
-                  const std::function<py::object (const py::object&, const py::object&)>& heuristic,
-                  bool parallel = false,
-                  bool debug_logs = false) {
+    PyILAOStarSolver(py::object& domain,
+                   const std::function<py::object (const py::object&, const py::object&)>& goal_checker,
+                   const std::function<py::object (const py::object&, const py::object&)>& heuristic,
+                   double discount = 1.0,
+                   double epsilon = 0.001,
+                   bool parallel = false,
+                   bool debug_logs = false) {
         if (parallel) {
             _implementation = std::make_unique<Implementation<skdecide::ParallelExecution>>(
-                domain, goal_checker, heuristic, debug_logs
+                domain, goal_checker, heuristic, discount, epsilon, debug_logs
             );
         } else {
             _implementation = std::make_unique<Implementation<skdecide::SequentialExecution>>(
-                domain, goal_checker, heuristic, debug_logs
+                domain, goal_checker, heuristic, discount, epsilon, debug_logs
             );
         }
     }
@@ -74,6 +76,18 @@ public :
         return _implementation->get_utility(s);
     }
 
+    py::int_ get_nb_of_explored_states() {
+        return _implementation->get_nb_of_explored_states();
+    }
+
+    py::int_ best_solution_graph_size() {
+        return _implementation->best_solution_graph_size();
+    }
+
+    py::dict get_policy() {
+        return _implementation->get_policy();
+    }
+
 private :
 
     class BaseImplementation {
@@ -84,6 +98,9 @@ private :
         virtual py::bool_ is_solution_defined_for(const py::object& s) =0;
         virtual py::object get_next_action(const py::object& s) =0;
         virtual py::float_ get_utility(const py::object& s) =0;
+        virtual py::int_ get_nb_of_explored_states() =0;
+        virtual py::int_ best_solution_graph_size() =0;
+        virtual py::dict get_policy() =0;
     };
 
     template <typename Texecution>
@@ -92,12 +109,14 @@ private :
         Implementation(py::object& domain,
                        const std::function<py::object (const py::object&, const py::object&)>& goal_checker,
                        const std::function<py::object (const py::object&, const py::object&)>& heuristic,
+                       double discount = 1.0,
+                       double epsilon = 0.001,
                        bool debug_logs = false)
         : _goal_checker(goal_checker), _heuristic(heuristic) {
-            _domain = std::make_unique<PyAStarDomain<Texecution>>(domain);
-            _solver = std::make_unique<skdecide::AStarSolver<PyAStarDomain<Texecution>, Texecution>>(
+            _domain = std::make_unique<PyILAOStarDomain<Texecution>>(domain);
+            _solver = std::make_unique<skdecide::ILAOStarSolver<PyILAOStarDomain<Texecution>, Texecution>>(
                                                                             *_domain,
-                                                                            [this](PyAStarDomain<Texecution>& d, const typename PyAStarDomain<Texecution>::State& s)->bool {
+                                                                            [this](PyILAOStarDomain<Texecution>& d, const typename PyILAOStarDomain<Texecution>::State& s)->bool {
                                                                                 try {
                                                                                     auto fgc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _goal_checker(dd, ss);
@@ -108,7 +127,7 @@ private :
                                                                                     throw;
                                                                                 }
                                                                             },
-                                                                            [this](PyAStarDomain<Texecution>& d, const typename PyAStarDomain<Texecution>::State& s)->double {
+                                                                            [this](PyILAOStarDomain<Texecution>& d, const typename PyILAOStarDomain<Texecution>::State& s)->double {
                                                                                 try {
                                                                                     auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _heuristic(dd, ss);
@@ -119,6 +138,8 @@ private :
                                                                                     throw;
                                                                                 }
                                                                             },
+                                                                            discount,
+                                                                            epsilon,
                                                                             debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
@@ -142,16 +163,41 @@ private :
         }
 
         virtual py::object get_next_action(const py::object& s) {
-            return _solver->get_best_action(s).get();
+            try {
+                return _solver->get_best_action(s).get();
+            } catch (const std::runtime_error&) {
+                return py::none();
+            }
         }
 
         virtual py::float_ get_utility(const py::object& s) {
-            return _solver->get_best_value(s);
+            try {
+                return _solver->get_best_value(s);
+            } catch (const std::runtime_error&) {
+                return py::none();
+            }
+        }
+
+        virtual py::int_ get_nb_of_explored_states() {
+            return _solver->get_nb_of_explored_states();
+        }
+
+        virtual py::int_ best_solution_graph_size() {
+            return _solver->best_solution_graph_size();
+        }
+
+        virtual py::dict get_policy() {
+            py::dict d;
+            auto&& p = _solver->policy();
+            for (auto& e : p) {
+                d[e.first._state] = py::make_tuple(e.second.first._event, e.second.second);
+            }
+            return d;
         }
 
     private :
-        std::unique_ptr<PyAStarDomain<Texecution>> _domain;
-        std::unique_ptr<skdecide::AStarSolver<PyAStarDomain<Texecution>, Texecution>> _solver;
+        std::unique_ptr<PyILAOStarDomain<Texecution>> _domain;
+        std::unique_ptr<skdecide::ILAOStarSolver<PyILAOStarDomain<Texecution>, Texecution>> _solver;
 
         std::function<py::object (const py::object&, const py::object&)> _goal_checker;
         std::function<py::object (const py::object&, const py::object&)> _heuristic;
@@ -164,23 +210,30 @@ private :
 };
 
 
-void init_pyastar(py::module& m) {
-    py::class_<PyAStarSolver> py_astar_solver(m, "_AStarSolver_");
-        py_astar_solver
+void init_pyilaostar(py::module& m) {
+    py::class_<PyILAOStarSolver> py_ilaostar_solver(m, "_ILAOStarSolver_");
+        py_ilaostar_solver
             .def(py::init<py::object&,
                           const std::function<py::object (const py::object&, const py::object&)>&,
                           const std::function<py::object (const py::object&, const py::object&)>&,
+                          double,
+                          double,
                           bool,
                           bool>(),
                  py::arg("domain"),
                  py::arg("goal_checker"),
                  py::arg("heuristic"),
+                 py::arg("discount")=1.0,
+                 py::arg("epsilon")=0.001,
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
-            .def("clear", &PyAStarSolver::clear)
-            .def("solve", &PyAStarSolver::solve, py::arg("state"))
-            .def("is_solution_defined_for", &PyAStarSolver::is_solution_defined_for, py::arg("state"))
-            .def("get_next_action", &PyAStarSolver::get_next_action, py::arg("state"))
-            .def("get_utility", &PyAStarSolver::get_utility, py::arg("state"))
+            .def("clear", &PyILAOStarSolver::clear)
+            .def("solve", &PyILAOStarSolver::solve, py::arg("state"))
+            .def("is_solution_defined_for", &PyILAOStarSolver::is_solution_defined_for, py::arg("state"))
+            .def("get_next_action", &PyILAOStarSolver::get_next_action, py::arg("state"))
+            .def("get_utility", &PyILAOStarSolver::get_utility, py::arg("state"))
+            .def("get_nb_of_explored_states", &PyILAOStarSolver::get_nb_of_explored_states)
+            .def("best_solution_graph_size", &PyILAOStarSolver::best_solution_graph_size)
+            .def("get_policy", &PyILAOStarSolver::get_policy)
         ;
 }
