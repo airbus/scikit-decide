@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "docs:dev": "vuepress dev docs",
+    "docs:build": "vuepress build docs"
+  },
+  "devDependencies": {
+    "vuepress": "^1.0.2"
+  },
+  "dependencies": {
+    "element-ui": "^2.10.1",
+    "vuepress-plugin-mathjax": "^1.2.8",
+    "vuex": "^3.1.1"
+  }
+}

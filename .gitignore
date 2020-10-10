@@ -1,0 +1,22 @@
+# Mac
+.DS_Store
+
+# IDE
+.*/
+!.vuepress/
+
+# Python
+__pycache__/
+
+# Temp files
+*.tmp
+
+# Build files
+build/
+dist/
+
+# Web docs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
