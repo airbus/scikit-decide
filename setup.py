@@ -22,7 +22,7 @@ from distutils.version import LooseVersion
 def _get_version_hash():
     """Talk to git and find out the tag/hash of our latest commit"""
     try:
-        p = check_output(["git", "describe", "--tags", "--always"], encoding="utf-8")
+        ver = check_output(["git", "describe", "--tags", "--always"], encoding="utf-8")
     except EnvironmentError:
         print("Couldn't run git to get a version number for setup.py")
         return
