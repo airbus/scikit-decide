@@ -34,7 +34,7 @@ version = _get_version_hash()
 if version[:1] == 'v':
     version = version[1:]
 
-print("version" {}".format(version))
+print("version: {}".format(version))
 
 cpp_extension = False
 cxx_compiler = None
