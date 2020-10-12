@@ -20,8 +20,8 @@ from distutils.version import LooseVersion
 #version = open('version.txt', 'r').read().strip()
 
 def _get_version_hash():
-  """Talk to git and find out the tag/hash of our latest commit"""
-  try:
+    """Talk to git and find out the tag/hash of our latest commit"""
+    try:
         p = subprocess.Popen(["git", "describe", "--tags", "--always"], stdout=subprocess.PIPE)
     except EnvironmentError:
         print("Couldn't run git to get a version number for setup.py")
@@ -29,8 +29,12 @@ def _get_version_hash():
     ver = p.communicate()[0]
     return ver.strip()
 
-
 version = _get_version_hash()
+
+if version[:1] == 'v':
+    version = version[1:]
+
+print("version" {}".format(version))
 
 cpp_extension = False
 cxx_compiler = None
