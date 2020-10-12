@@ -17,7 +17,14 @@ from distutils.version import LooseVersion
 ################################################################################
 # Version, create_version_file, and package_name
 ################################################################################
-version = open('version.txt', 'r').read().strip()
+#version = open('version.txt', 'r').read().strip()
+version = '0.0.0'
+
+try:
+    sha = subprocess.check_output(['git', 'describe', '--tags'], cwd=cwd).decode('ascii').strip()
+except Exception:
+    pass
+
 sha = 'Unknown'
 
 try:
