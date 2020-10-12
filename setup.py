@@ -6,7 +6,7 @@ import os
 import re
 import sys
 import platform
-from subprocess import check_output
+import subprocess
 
 from setuptools import setup, find_packages, Extension
 from setuptools.command.install import install
@@ -22,8 +22,8 @@ from distutils.version import LooseVersion
 def _get_version_hash():
     """Talk to git and find out the tag/hash of our latest commit"""
     try:
-        p = check_output(["git", "describe", "--tags", "--always"], encoding="utf-8")
-    except EnvironmentError:
+        ver = subprocess.check_output(["git", "describe", "--tags", "--always"], encoding="utf-8")
+    except OSError:
         print("Couldn't run git to get a version number for setup.py")
         return
     return ver.strip()
