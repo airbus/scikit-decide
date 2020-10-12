@@ -18,12 +18,12 @@ from distutils.version import LooseVersion
 # Version, create_version_file, and package_name
 ################################################################################
 #version = open('version.txt', 'r').read().strip()
-version = '0.0.0'
+version = '0.8.0'
 
 try:
     version = subprocess.check_output(['git', 'describe', '--tags'], cwd=cwd).decode('ascii').strip()
-except Exception:
-    pass
+except Exception as err:
+    print("Exception: {}".format(err))
 
 if version[:1] == 'v':
     version = version[1:]
@@ -38,7 +38,7 @@ except Exception:
 if sha != 'Unknown':
     version += '+' + sha[:7]
 
-print("version: {}", version)
+print("version: {}".format(version))
 
 cpp_extension = False
 cxx_compiler = None
