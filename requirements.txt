@@ -1,0 +1,10 @@
+gym>=0.13.0
+joblib>=0.13.2
+numpy>=1.16.4
+matplotlib>=3.1.0
+pathos>=0.2.3
+pynng>=0.5.0
+ray[rllib,debug]>=0.8.6
+stable-baselines3[extra]>=0.8.0
+torch>=1.6.0; sys_platform == 'darwin'
+torch>=1.6.0+cpu; sys_platform == 'win32' or sys_platform == 'linux' -f https://download.pytorch.org/whl/torch_stable.html

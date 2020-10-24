@@ -2,17 +2,19 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+from tqdm import tqdm
 from enum import Enum
 from typing import NamedTuple, Optional
 from math import sqrt
 from pathos.helpers import mp
 from collections import namedtuple
 
-from skdecide import GoalMDPDomain, TransitionValue, Space, \
-                     DiscreteDistribution, EnvironmentOutcome, TransitionOutcome
+from skdecide import DeterministicPlanningDomain, TransitionValue, \
+                     Space, EnvironmentOutcome, TransitionOutcome
 from skdecide.builders.domain import Actions
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver, rollout
+from skdecide.hub.solver.mcts.mcts import MCTS
 
 
 class State(NamedTuple):
@@ -27,7 +29,7 @@ class Action(Enum):
     right = 3
 
 
-class D(GoalMDPDomain, Actions):
+class D(DeterministicPlanningDomain, Actions):
     T_state = State  # Type of states
     T_observation = T_state  # Type of observations
     T_event = Action  # Type of events
@@ -53,30 +55,19 @@ class MyDomain(D):
             applicable_actions.append(Action.right)
         return ListSpace(applicable_actions)
 
-    def _get_next_state_distribution(self, memory: D.T_memory[D.T_state],
-                                     action: D.T_agent[D.T_concurrency[D.T_event]]) -> DiscreteDistribution[D.T_state]:
+    def _get_next_state(self, memory: D.T_memory[D.T_state],
+                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_memory[D.T_state]:
 
         if action == Action.left:
-            next_state_1 = State(max(memory.x - 1, 0), memory.y)
-            next_state_2 = State(max(memory.x - 1, 0), max(memory.y - 1, 0))
-            next_state_3 = State(max(memory.x - 1, 0), min(memory.y + 1, self.num_rows - 1))
+            next_state = State(max(memory.x - 1, 0), memory.y)
         if action == Action.right:
-            next_state_1 = State(min(memory.x + 1, self.num_cols - 1), memory.y)
-            next_state_2 = State(min(memory.x + 1, self.num_cols - 1), min(memory.y + 1, self.num_rows - 1))
-            next_state_3 = State(min(memory.x + 1, self.num_cols - 1), max(memory.y - 1, 0))
+            next_state = State(min(memory.x + 1, self.num_cols - 1), memory.y)
         if action == Action.up:
-            next_state_1 = State(memory.x, max(memory.y - 1, 0))
-            next_state_2 = State(max(memory.x - 1, 0), max(memory.y - 1, 0))
-            next_state_3 = State(min(memory.x + 1, self.num_cols - 1), max(memory.y - 1, 0))
+            next_state = State(memory.x, max(memory.y - 1, 0))
         if action == Action.down:
-            next_state_1 = State(memory.x, min(memory.y + 1, self.num_rows - 1))
-            next_state_2 = State(min(memory.x + 1, self.num_cols - 1), min(memory.y + 1, self.num_rows - 1))
-            next_state_3 = State(max(memory.x - 1, 0), min(memory.y + 1, self.num_rows - 1))
+            next_state = State(memory.x, min(memory.y + 1, self.num_rows - 1))
 
-        return DiscreteDistribution([(memory, 0.2),
-                                     (next_state_1, 0.4),
-                                     (next_state_2, 0.2),
-                                     (next_state_3, 0.2)])
+        return next_state
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
                               next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
@@ -99,27 +90,24 @@ class MyDomain(D):
         return MultiDiscreteSpace([self.num_cols, self.num_rows])
 
 
-# Shared memory proxy for use with parallel algorithms only
-# Not efficient on this tiny domain but provided for illustration
-# To activate parallelism, set parallel=True in the algotihms below
 class GridShmProxy:
 
-    _register_ = [(State, 2), (Action, 1), (EnumSpace, 1), (ListSpace, 1),
-                  (DiscreteDistribution, 1), (TransitionValue, 1),
+    _register_ = [(State, 2), (Action, 1), (EnumSpace, 1),
+                  (ListSpace, 1), (TransitionValue, 1),
                   (EnvironmentOutcome, 1), (TransitionOutcome, 1),
-                  (bool, 1), (float, 1), (int, 2)]
+                  (bool, 1), (float, 1), (int, 2), (list, 2)]
 
     def __init__(self):
         self._proxies_ = {State: GridShmProxy.StateProxy, Action: GridShmProxy.ActionProxy,
                           EnumSpace: GridShmProxy.EnumSpaceProxy,
                           ListSpace: GridShmProxy.ListSpaceProxy,
-                          DiscreteDistribution: GridShmProxy.DiscreteDistributionProxy,
                           TransitionValue: GridShmProxy.TransitionValueProxy,
                           EnvironmentOutcome: GridShmProxy.EnvironmentOutcomeProxy,
                           TransitionOutcome: GridShmProxy.TransitionOutcomeProxy,
                           bool: GridShmProxy.BoolProxy,
                           float: GridShmProxy.FloatProxy,
-                          int: GridShmProxy.IntProxy}
+                          int: GridShmProxy.IntProxy,
+                          list: GridShmProxy.ListProxy}
     
     def copy(self):
         p = GridShmProxy()
@@ -209,29 +197,6 @@ class GridShmProxy:
             if val[3]:
                 aa.append(Action.right)
             return ListSpace(aa)
-    
-    class DiscreteDistributionProxy:
-        @staticmethod
-        def initialize():
-            # Don't use "[] * 4" operator since it does not deep copy the pairs but rather
-            # copy 4 times the pointers to the same object!
-            return [[GridShmProxy.StateProxy.initialize(), mp.Value('d', 0, lock=True)],
-                    [GridShmProxy.StateProxy.initialize(), mp.Value('d', 0, lock=True)],
-                    [GridShmProxy.StateProxy.initialize(), mp.Value('d', 0, lock=True)],
-                    [GridShmProxy.StateProxy.initialize(), mp.Value('d', 0, lock=True)]]
-        
-        @staticmethod
-        def encode(dd, shm_dd):
-            for i, o in enumerate(dd.get_values()):
-                GridShmProxy.StateProxy.encode(o[0], shm_dd[i][0])
-                shm_dd[i][1].value = o[1]
-            for i in range(len(dd.get_values()), 4):
-                shm_dd[i][1].value = -1
-        
-        @staticmethod
-        def decode(dd):
-            return DiscreteDistribution(
-                [(GridShmProxy.StateProxy.decode(o[0]), o[1].value) for o in dd if o[1].value > -0.5])
     
     class TransitionValueProxy:
         @staticmethod
@@ -333,68 +298,104 @@ class GridShmProxy:
         @staticmethod
         def decode(val):
             return int(val.value)
+    
+    class ListProxy:  # Always used to encode (R)IW state feature vector
+        @staticmethod
+        def initialize():
+            return mp.Array('i', [0, 0], lock=True)
+        
+        @staticmethod
+        def encode(val, shm_val):
+            shm_val[0] = val[0]
+            shm_val[1] = val[1]
+        
+        @staticmethod
+        def decode(val):
+            return [val[0], val[1]]
 
 
 if __name__ == '__main__':
 
     try_solvers = [
 
-        # LRTDP
-        {'name': 'LRTDP',
-         'entry': 'LRTDP',
+        # A* (planning)
+        {'name': 'A* (planning)',
+         'entry': 'Astar',
          'config': {'domain_factory': lambda: MyDomain(),
                     'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
-                    'use_labels': True, 'time_budget': 1000, 'rollout_budget': 100,
-                    'max_depth': 50, 'discount': 1.0, 'epsilon': 0.001,
-                    'online_node_garbage': True, 'continuous_planning': False,
-                    'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
-        
-        # ILAO*
-        {'name': 'Improved-LAO*',
-         'entry': 'ILAOstar',
-         'config': {'domain_factory': lambda: MyDomain(),
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
-                    'discount': 1.0, 'epsilon': 0.001,
-                    'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
+                    'parallel': True, 'debug_logs': False}},
 
-        # UCT (reinforcement learning / search)
+        # IW (planning)
+        {'name': 'IW (planning)',
+         'entry': 'IW',
+         'config': {'domain_factory': lambda: MyDomain(),
+                    'state_features': lambda d, s: [s.x, s.y],
+                    'use_state_feature_hash': False,
+                    'parallel': True, 'debug_logs': False}},
+        
+        # Rollout-IW (classical planning)
+        {'name': 'Rollout-IW (classical planning)',
+         'entry': 'RIW',
+         'config': {'domain_factory': lambda: MyDomain(),
+                    'state_features': lambda d, s: [s.x, s.y],
+                    'time_budget': 1000, 'rollout_budget': 100,
+                    'max_depth': 50, 'exploration': 0.25,
+                    'use_simulation_domain': True, 'online_node_garbage': True,
+                    'continuous_planning': False, 'parallel': True, 'debug_logs': False}},
+
+        # BFWS (planning)
+        {'name': 'BFWS (planning) - (num_rows * num_cols) binary encoding (1 binary variable <=> 1 cell)',
+         'entry': 'BFWS',
+         'config': {'domain_factory': lambda: MyDomain(),
+                    'state_features': lambda d, s: [s.x, s.y],
+                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                    'termination_checker': lambda d, s: d.is_goal(s),
+                    'parallel': True, 'debug_logs': False}},
+        
+        # UCT-Step (reinforcement learning / search)
         {'name': 'UCT (reinforcement learning / search)',
          'entry': 'UCT',
          'config': {'domain_factory': lambda: MyDomain(),
                     'time_budget': 1000, 'rollout_budget': 100,
                     'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
+                    'transition_mode': MCTS.Options.TransitionMode.Step,
                     'online_node_garbage': True, 'continuous_planning': False,
                     'heuristic': lambda d, s: (-sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2), 10000),
-                    'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}}
+                    'parallel': True, 'debug_logs': False}},
+        
+        # UCT-Sample (reinforcement learning / search)
+        {'name': 'UCT (reinforcement learning / search)',
+         'entry': 'UCT',
+         'config': {'domain_factory': lambda: MyDomain(),
+                    'time_budget': 1000, 'rollout_budget': 100,
+                    'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
+                    'transition_mode': MCTS.Options.TransitionMode.Sample,
+                    'online_node_garbage': True, 'continuous_planning': False,
+                    'heuristic': lambda d, s: (-sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2), 10000),
+                    'parallel': True, 'debug_logs': False}}
     ]
 
     # Load solvers (filtering out badly installed ones)
     solvers = map(lambda s: dict(s, entry=load_registered_solver(s['entry'])), try_solvers)
     solvers = list(filter(lambda s: s['entry'] is not None, solvers))
-    solvers.insert(0, {'name': 'Random Walk', 'entry': None})  # Add Random Walk as option
 
     # Run loop to ask user input
     domain = MyDomain()  # MyDomain(5,5)
-    while True:
-        # Ask user input to select solver
-        choice = int(input('\nChoose a solver:\n{solvers}\n'.format(
-            solvers='\n'.join(['0. Quit'] + [f'{i + 1}. {s["name"]}' for i, s in enumerate(solvers)]))))
-        if choice == 0:  # the user wants to quit
-            break
-        else:
-            selected_solver = solvers[choice - 1]
-            solver_type = selected_solver['entry']
-            # Test solver solution on domain
-            print('==================== TEST SOLVER ====================')
-            # Check if Random Walk selected or other
-            if solver_type is None:
-                rollout(domain, solver=None, max_steps=1000,
-                        outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
-            else:
-                # Check that the solver is compatible with the domain
-                assert solver_type.check_domain(domain)
-                # Solve with selected solver
-                with solver_type(**selected_solver['config']) as solver:
+
+    with tqdm(total=len(solvers)*100) as pbar:
+        for s in solvers:
+            solver_type = s['entry']
+            for i in range(50):
+                s['config']['shared_memory_proxy'] = None
+                with solver_type(**s['config']) as solver:
                     MyDomain.solve_with(solver)  # ,lambda:MyDomain(5,5))
-                    rollout(domain, solver, max_steps=1000,
+                    rollout(domain, solver, max_steps=50,
                             outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                pbar.update(1)
+            for i in range(50):
+                s['config']['shared_memory_proxy'] =  GridShmProxy()
+                with solver_type(**s['config']) as solver:
+                    MyDomain.solve_with(solver)  # ,lambda:MyDomain(5,5))
+                    rollout(domain, solver, max_steps=50,
+                            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                pbar.update(1)

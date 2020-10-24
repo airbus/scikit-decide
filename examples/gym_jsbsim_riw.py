@@ -7,29 +7,27 @@ import gym_jsbsim
 import numpy as np
 import folium
 import bisect
-import sys
 import math
 import json
 
 from typing import Callable, Any
 
-from skdecide import TransitionOutcome, TransitionValue, EnvironmentOutcome, Domain
-from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
-    DeterministicInitialized, Markovian, FullyObservable, Rewards
-from skdecide.hub.domain.gym import DeterministicGymDomain, GymWidthDomain, \
-    GymDiscreteActionDomain, GymDomainStateProxy, GymDomain, GymDomainHashable
+from skdecide import TransitionOutcome, TransitionValue, Domain
+from skdecide.builders.domain import DeterministicInitialized
+from skdecide.hub.domain.gym import GymWidthDomain, \
+    GymDiscreteActionDomain, GymDomainStateProxy, GymDomainHashable
 from skdecide.hub.solver.riw import RIW
 from skdecide.utils import rollout
 
 from gym_jsbsim.catalogs.catalog import Catalog as prp
-from gym_jsbsim.envs.taxi_utils2 import *
+from gym_jsbsim.envs.taxi_utils import *
 
 # ENV_NAME = 'GymJsbsim-HeadingControlTask-v0'
 ENV_NAME = 'GymJsbsim-TaxiapControlTask-v0'
 HORIZON = 1000
 
 
-class D(GymDomainHashable, GymDiscreteActionDomain, GymWidthDomain):
+class D(GymDomainHashable, GymDiscreteActionDomain, GymWidthDomain, DeterministicInitialized):
     pass
 
 
@@ -204,7 +202,8 @@ class GymRIWDomain(D):
 
 class GymRIW(RIW):
     def __init__(self,
-                 state_features: Callable[[D.T_state, Domain], Any],
+                 domain_factory: Callable[[], Domain],
+                 state_features: Callable[[Domain, D.T_state], Any],
                  use_state_feature_hash: bool = False,
                  use_simulation_domain = False,
                  time_budget: int = 3600000,
@@ -215,7 +214,8 @@ class GymRIW(RIW):
                  continuous_planning: bool = True,
                  parallel: bool = True,
                  debug_logs: bool = False) -> None:
-        super().__init__(state_features=state_features,
+        super().__init__(domain_factory=domain_factory,
+                         state_features=state_features,
                          use_state_feature_hash=use_state_feature_hash,
                          use_simulation_domain=use_simulation_domain,
                          time_budget=time_budget,
@@ -248,8 +248,9 @@ domain_factory = lambda: GymRIWDomain(gym_env=gym.make(ENV_NAME),
                                       max_depth=HORIZON)
 domain = domain_factory()
 
-if True:#RIW.check_domain(domain):
-    solver_factory = lambda: GymRIW(state_features=lambda d, s: d.bee1_features(s),
+if RIW.check_domain(domain):
+    solver_factory = lambda: GymRIW(domain_factory=domain_factory,
+                                    state_features=lambda d, s: d.bee1_features(s),
                                     use_state_feature_hash=False,
                                     use_simulation_domain=False,
                                     continuous_planning=True,

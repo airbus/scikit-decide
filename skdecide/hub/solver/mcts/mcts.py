@@ -7,7 +7,7 @@ from __future__ import annotations
 import os
 import sys
 from math import sqrt
-from typing import Callable, Dict, Tuple, Any
+from typing import Callable, Dict, Tuple, List
 
 from skdecide import Domain, Solver
 from skdecide import hub
@@ -44,7 +44,9 @@ try:
                      discount: float = 1.0,
                      uct_mode: bool = True,
                      ucb_constant: float = 1.0 / sqrt(2.0),
-                     rollout_policy_functor: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
+                     online_node_garbage: bool = False,
+                     custom_policy: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
+                     heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[float, int]] = None,
                      transition_mode: Options.TransitionMode = Options.TransitionMode.Distribution,
                      tree_policy: Options.TreePolicy = Options.TreePolicy.Default,
                      expander: Options.Expander = Options.Expander.Full,
@@ -68,7 +70,9 @@ try:
             self._discount = discount
             self._uct_mode = uct_mode
             self._ucb_constant = ucb_constant
-            self._rollout_policy_functor = rollout_policy_functor
+            self._online_node_garbage = online_node_garbage
+            self._custom_policy = custom_policy
+            self._heuristic = heuristic
             self._transition_mode = transition_mode
             self._tree_policy = tree_policy
             self._expander = expander
@@ -78,7 +82,7 @@ try:
             self._back_propagator = back_propagator
             self._continuous_planning = continuous_planning
             self._debug_logs = debug_logs
-            self._lambdas = [self._rollout_policy_functor]
+            self._lambdas = [self._custom_policy, self._heuristic]
             self._ipc_notify = True
         
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
@@ -90,7 +94,15 @@ try:
                                        discount=self._discount,
                                        uct_mode=self._uct_mode,
                                        ucb_constant=self._ucb_constant,
-                                       rollout_policy_functor=lambda d, s, i=None: self._rollout_policy_functor(d, s) if not self._parallel else d.call(i, 0, s),
+                                       online_node_garbage=self._online_node_garbage,
+                                       custom_policy=None if self._custom_policy is None \
+                                                          else lambda d, s, i= \
+                                                               None: self._custom_policy(d, s) if not self._parallel \
+                                                                                               else d.call(i, 0, s),
+                                       heuristic=None if self._heuristic is None \
+                                                      else lambda d, s, i= \
+                                                           None: self._heuristic(d, s) if not self._parallel \
+                                                                                       else d.call(i, 1, s),
                                        transition_mode=self._transition_mode,
                                        tree_policy=self._tree_policy,
                                        expander=self._expander,
@@ -149,9 +161,11 @@ try:
                      max_depth: int = 1000,
                      discount: float = 1.0,
                      ucb_constant: float = 1.0 / sqrt(2.0),
-                     rollout_policy_functor: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
+                     online_node_garbage: float = False,
+                     custom_policy: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
+                     heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[float, int]] = None,
                      transition_mode: mcts_options.TransitionMode = mcts_options.TransitionMode.Distribution,
-                     rollout_policy: Options.RolloutPolicy = mcts_options.RolloutPolicy.Random,
+                     rollout_policy: mcts_options.RolloutPolicy = mcts_options.RolloutPolicy.Random,
                      continuous_planning: bool = True,
                      parallel: bool = False,
                      shared_memory_proxy = None,
@@ -163,7 +177,9 @@ try:
                              discount=discount,
                              uct_mode=True,
                              ucb_constant=ucb_constant,
-                             rollout_policy_functor=rollout_policy_functor,
+                             online_node_garbage=online_node_garbage,
+                             custom_policy=custom_policy,
+                             heuristic=heuristic,
                              transition_mode=transition_mode,
                              rollout_policy=rollout_policy,
                              continuous_planning=continuous_planning,

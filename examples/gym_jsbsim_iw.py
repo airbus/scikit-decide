@@ -18,7 +18,7 @@ from skdecide.hub.solver.iw import IW
 from skdecide.utils import rollout
 
 from gym_jsbsim.catalogs.catalog import Catalog as prp
-from gym_jsbsim.envs.taxi_utils2 import *
+from gym_jsbsim.envs.taxi_utils import *
 
 # ENV_NAME = 'GymJsbsim-HeadingControlTask-v0'
 ENV_NAME = 'GymJsbsim-TaxiapControlTask-v0'
@@ -170,12 +170,14 @@ class D(Domain, SingleAgent, Sequential, Environment, Actions, DeterministicInit
 
 class GymIW(IW):
     def __init__(self,
-                 state_features: Callable[[D.T_state, Domain], Any],
+                 domain_factory: Callable[[], Domain],
+                 state_features: Callable[[Domain, D.T_state], Any],
                  use_state_feature_hash: bool = False,
                  node_ordering: Callable[[float, int, int, float, int, int], bool] = None,
                  parallel: bool = True,
                  debug_logs: bool = False) -> None:
-        super().__init__(state_features=state_features,
+        super().__init__(domain_factory=domain_factory,
+                         state_features=state_features,
                          use_state_feature_hash=use_state_feature_hash,
                          node_ordering=node_ordering,
                          parallel=parallel,
@@ -202,7 +204,8 @@ domain_factory = lambda: GymIWDomain(gym_env=gym.make(ENV_NAME),
                                       max_depth=50)
 
 if IW.check_domain(domain_factory()):
-    solver_factory = lambda: GymIW(state_features=lambda d, s: d.bee1_features(s),
+    solver_factory = lambda: GymIW(domain_factory=domain_factory,
+                                   state_features=lambda d, s: d.bee1_features(s),
                                    use_state_feature_hash=False,
                                 #    node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_gscore < b_gscore,
                                 #    node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore < b_gscore else False if a_gscore > b_gscore else a_novelty > b_novelty,

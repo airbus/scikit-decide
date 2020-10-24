@@ -162,7 +162,11 @@ private :
                                                                                     auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _state_features(dd, ss);
                                                                                     };
-                                                                                    return std::make_unique<PyIWFeatureVector<Texecution>>(d.call(-1, fsf, s._state));
+                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, fsf, s.pyobj());
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    std::unique_ptr<PyIWFeatureVector<Texecution>> rr = std::make_unique<PyIWFeatureVector<Texecution>>(*r);
+                                                                                    r.reset();
+                                                                                    return rr;
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
                                                                                     throw;
@@ -194,7 +198,7 @@ private :
 
         virtual py::object get_next_action(const py::object& s) {
             try {
-                return _solver->get_best_action(s).get();
+                return _solver->get_best_action(s).pyobj();
             } catch (const std::runtime_error&) {
                 return py::none();
             }

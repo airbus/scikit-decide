@@ -125,7 +125,11 @@ private :
                                                                                     auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _state_features(dd, ss);
                                                                                     };
-                                                                                    return std::make_unique<PyBFWSFeatureVector<Texecution>>(d.call(-1, fsf, s._state));
+                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, fsf, s.pyobj());
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    std::unique_ptr<PyBFWSFeatureVector<Texecution>> rr = std::make_unique<PyBFWSFeatureVector<Texecution>>(*r);
+                                                                                    r.reset();
+                                                                                    return rr;
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
                                                                                     throw;
@@ -136,7 +140,11 @@ private :
                                                                                     auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _heuristic(dd, ss);
                                                                                     };
-                                                                                    return d.call(-1, fh, s._state).template cast<double>();
+                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, fh, s.pyobj());
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    double rr = r->template cast<double>();
+                                                                                    r.reset();
+                                                                                    return  rr;
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
                                                                                     throw;
@@ -147,7 +155,11 @@ private :
                                                                                     auto ftc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _termination_checker(dd, ss);
                                                                                     };
-                                                                                    return d.call(-1, ftc, s._state).template cast<bool>();
+                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, ftc, s.pyobj());
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    bool rr = r->template cast<bool>();
+                                                                                    r.reset();
+                                                                                    return  rr;
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling termination checker: ") + e.what());
                                                                                     throw;
@@ -176,7 +188,7 @@ private :
         }
 
         virtual py::object get_next_action(const py::object& s) {
-            return _solver->get_best_action(s).get();
+            return _solver->get_best_action(s).pyobj();
         }
 
         virtual py::float_ get_utility(const py::object& s) {

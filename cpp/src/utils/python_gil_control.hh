@@ -23,8 +23,25 @@ struct GilControl<skdecide::SequentialExecution> {
 
 template <>
 struct GilControl<skdecide::ParallelExecution> {
-    typedef py::gil_scoped_acquire Acquire;
-    typedef py::gil_scoped_release Release;
+    
+    template <typename GilScopedType>
+    struct GilManager {
+        std::unique_ptr<GilScopedType> _gil;
+        inline static skdecide::ParallelExecution::RecursiveMutex _mutex;
+
+        GilManager() {
+            _mutex.lock();
+            _gil = std::make_unique<GilScopedType>();
+        }
+
+        ~GilManager() {
+            _gil.reset();
+            _mutex.unlock();
+        }
+    };
+
+    typedef GilManager<py::gil_scoped_release> Release;
+    typedef GilManager<py::gil_scoped_acquire> Acquire;
 };
 
 } // namespace skdecide

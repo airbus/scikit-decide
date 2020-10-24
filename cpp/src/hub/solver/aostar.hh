@@ -56,7 +56,7 @@ public :
     // solves from state s using heuristic function h
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print() + " AO* solver from state " + s.print());
+            spdlog::info("Running " + ExecutionPolicy::print_type() + " AO* solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
 
             auto si = _graph.emplace(s);
@@ -82,33 +82,35 @@ public :
                     if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print());
 
                     // Expand best tip node
-                    auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state)->get_elements();
-                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node](const auto& a){
-                        if (_debug_logs) spdlog::debug("Current expanded action: " + Action(a).print());
+                    auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state).get_elements();
+                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node](auto a){
+                        if (_debug_logs) spdlog::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
                         _execution_policy.protect([&best_tip_node, &a]{
                             best_tip_node->actions.push_back(std::make_unique<ActionNode>(a));
                         });
                         ActionNode& an = *(best_tip_node->actions.back());
                         an.parent = best_tip_node;
-                        auto next_states = _domain.get_next_state_distribution(best_tip_node->state, a)->get_values();
-                        for (const auto& ns : next_states) {
-                            typename Domain::OutcomeExtractor oe(ns);
+                        auto next_states = _domain.get_next_state_distribution(best_tip_node->state, a).get_values();
+                        for (auto ns : next_states) {
+                            if (_debug_logs) spdlog::debug("Current next state expansion: " + ns.state().print() + ExecutionPolicy::print_thread());
                             std::pair<typename Graph::iterator, bool> i;
-                            _execution_policy.protect([this, &i, &oe]{
-                                i = _graph.emplace(oe.state());
+                            _execution_policy.protect([this, &i, &ns]{
+                                i = _graph.emplace(ns.state());
                             });
                             StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                            an.outcomes.push_back(std::make_tuple(oe.probability(), _domain.get_transition_cost(best_tip_node->state, a, next_node.state), &next_node));
+                            an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_cost(best_tip_node->state, a, next_node.state), &next_node));
                             _execution_policy.protect([&next_node, &an]{
                                 next_node.parents.push_back(&an);
                             });
-                            if (_debug_logs) spdlog::debug("Current next state expansion: " + next_node.state.print());
                             if (i.second) { // new node
                                 if (_goal_checker(_domain, next_node.state)) {
+                                    spdlog::debug("Found goal state " + next_node.state.print() + ExecutionPolicy::print_thread());
                                     next_node.solved = true;
                                     next_node.best_value = 0.0;
                                 } else {
                                     next_node.best_value = _heuristic(_domain, next_node.state);
+                                    if (_debug_logs) spdlog::debug("New state " + next_node.state.print() + " with heuristic value " +
+                                                                   StringConverter::from(next_node.best_value) + ExecutionPolicy::print_thread());
                                 }
                             }
                         }

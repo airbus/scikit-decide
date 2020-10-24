@@ -14,8 +14,26 @@ from setuptools.command.build_ext import build_ext
 from wheel.bdist_wheel import bdist_wheel
 from distutils.version import LooseVersion
 
-__version__ = '0.3.4'
+################################################################################
+# Version, create_version_file, and package_name
+################################################################################
+#version = open('version.txt', 'r').read().strip()
 
+def _get_version_hash():
+    """Talk to git and find out the tag/hash of our latest commit"""
+    try:
+        ver = subprocess.check_output(["git", "describe", "--tags", "--always"], encoding="utf-8")
+    except OSError:
+        print("Couldn't run git to get a version number for setup.py")
+        return
+    return ver.strip()
+
+version = _get_version_hash()
+
+if version[:1] == 'v':
+    version = version[1:]
+
+print("version: {}".format(version))
 
 cpp_extension = False
 cxx_compiler = None
@@ -158,39 +176,73 @@ def find_version(*filepath):
         raise RuntimeError("Unable to find version string.")
 
 
-extras_require = {
-    'domains': [
-        'gym>=0.13.0',
-        'numpy>=1.16.4',
-        'matplotlib>=3.1.0'
-    ],
-    'solvers': [
-        'gym>=0.13.0',
-        'numpy>=1.16.4',
-        'joblib>=0.13.2',
-        'torch>=1.6.0',
-        'stable-baselines3[extra]>=0.8.0',
-        'ray[rllib,debug]>=0.8.6'
-    ]
-}
-
 # Add 'all' to extras_require to install them all at once
+
+print(sys.platform)
+
+if sys.platform == "win32":
+    extras_require = {
+        'domains': [
+            'gym>=0.13.0',
+            'numpy>=1.16.4',
+            'matplotlib>=3.1.0'
+        ],
+        'solvers': [
+            'gym>=0.13.0',
+            'numpy>=1.16.4',
+            'joblib>=0.13.2',
+            'ray[rllib,debug]>=0.8.6',
+            'stable-baselines3>=0.8.0'
+        ]
+    }
+else:
+    extras_require = {
+        'domains': [
+            'gym>=0.13.0',
+            'numpy>=1.16.4',
+            'matplotlib>=3.1.0'
+        ],
+        'solvers': [
+            'gym>=0.13.0',
+            'numpy>=1.16.4',
+            'joblib>=0.13.2',
+            'ray[rllib,debug]>=0.8.6',
+            'torch>=1.6.0',
+            'stable-baselines3>=0.8.0'
+        ]
+    }
+
 all_extra = []
 for extra in extras_require.values():
     all_extra += extra
 extras_require['all'] = all_extra
 
+with open('requirements.txt') as f:
+    INSTALL_REQUIRES = []
+    for l in f:
+        if l:
+            l = l.strip()
+            i = l.find('-f')
+            if i != -1:
+                l = l[:i]
+            else:
+                INSTALL_REQUIRES.append(l)
+
+with open('requirements-dev.txt') as f:
+    TEST_REQUIRES = [l.strip() for l in f.readlines() if l]
+
+print(platform.system(), INSTALL_REQUIRES)
+print(platform.system(), TEST_REQUIRES)
+print(platform.system(), extras_require)
 
 setup(
-    name='skdecide',
-    version=__version__,
+    name='scikit-decide',
+    version=version,
     packages=find_packages(),
-    install_requires=[
-       'simplejson>=3.16.0',
-       'pynng>=0.5.0',
-       'pathos>=0.2.3'
-    ],
-    url='www.airbus.com',
+    install_requires=INSTALL_REQUIRES,
+    setup_requires=[],
+    tests_require=TEST_REQUIRES,
+    url='https://github.com/airbus/scikit-decide',
     license='MIT',
     author='Airbus',
     description='Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.',

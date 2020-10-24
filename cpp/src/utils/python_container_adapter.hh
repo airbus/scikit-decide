@@ -93,33 +93,33 @@ public :
         public :
             ObjectType(const py::object& value) {
                 typename GilControl<Texecution>::Acquire acquire;
-                this->_value = value;
+                this->_value = std::make_unique<py::object>(value);
             }
 
             ObjectType(const ObjectType& other) {
                 typename GilControl<Texecution>::Acquire acquire;
-                this->_value = other.value;
+                this->_value = std::make_unique<py::object>(*other.value);
             }
 
             ObjectType& operator=(const ObjectType& other) {
                 typename GilControl<Texecution>::Acquire acquire;
-                this->_value = other.value;
+                this->_value = std::make_unique<py::object>(*other.value);
                 return *this;
             }
 
             virtual ~ObjectType() {
                 typename GilControl<Texecution>::Acquire acquire;
-                _value = py::object();
+                _value.reset();
             }
 
             virtual void copy(std::unique_ptr<BaseType>& other) const {
-                other = std::make_unique<ObjectType>(_value);
+                other = std::make_unique<ObjectType>(*_value);
             }
 
             virtual std::size_t hash() const {
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
-                    return skdecide::PythonHash<Texecution>()(_value);
+                    return skdecide::PythonHash<Texecution>()(*_value);
                 } catch(const py::error_already_set* e) {
                     spdlog::error(std::string("SKDECIDE exception when hashing state feature items: ") + e->what());
                     std::runtime_error err(e->what());
@@ -132,7 +132,7 @@ public :
                 typename GilControl<Texecution>::Acquire acquire;
                 try {
                     const ObjectType* o = dynamic_cast<const ObjectType*>(&other);
-                    return  ((o != nullptr) && skdecide::PythonEqual<Texecution>()(_value, o->_value));
+                    return  ((o != nullptr) && skdecide::PythonEqual<Texecution>()(*_value, *(o->_value)));
                 } catch(const py::error_already_set* e) {
                     spdlog::error(std::string("SKDECIDE exception when testing state feature items equality: ") + e->what());
                     std::runtime_error err(e->what());
@@ -142,7 +142,7 @@ public :
             }
 
         private :
-            py::object _value;
+            std::unique_ptr<py::object> _value;
         };
 
         std::unique_ptr<BaseType> _value;
@@ -253,36 +253,33 @@ private :
     public :
         SequenceImplementation(const py::object& vector) {
             typename GilControl<Texecution>::Acquire acquire;
-            this->_vector = Tsequence(vector);
+            this->_vector = std::make_unique<Tsequence>(vector);
         }
 
         SequenceImplementation(const SequenceImplementation& other) {
             typename GilControl<Texecution>::Acquire acquire;
-            this->_vector = other._vector;
+            this->_vector = std::make_unique<Tsequence>(*other._vector);
         }
 
         SequenceImplementation& operator=(const SequenceImplementation& other) {
             typename GilControl<Texecution>::Acquire acquire;
-            this->_vector = other._vector;
+            this->_vector = std::make_unique<Tsequence>(*other._vector);
             return *this;
         }
 
         virtual ~SequenceImplementation() {
-            // Assigning to Tsequence() is in sufficient
-            // because it does not create a null object!
             typename GilControl<Texecution>::Acquire acquire;
-            _vector.dec_ref();
-            _vector.release();
+            _vector.reset();
         }
 
         virtual std::size_t size() const {
             typename GilControl<Texecution>::Acquire acquire;
-            return _vector.size();
+            return _vector->size();
         }
 
         virtual value_type at(std::size_t index) const {
             typename GilControl<Texecution>::Acquire acquire;
-            return value_type(_vector[index]);
+            return value_type((*_vector)[index]);
         }
 
         virtual bool same_type(const BaseImplementation& other) const {
@@ -290,7 +287,7 @@ private :
         }
 
     private :
-        Tsequence _vector;
+        std::unique_ptr<Tsequence> _vector;
     };
 
     template <typename T>
@@ -298,39 +295,37 @@ private :
     public :
         NumpyImplementation(const py::object& vector) {
             typename GilControl<Texecution>::Acquire acquire;
-            _vector = py::array_t<T>(vector);
-            _buffer = _vector.request();
+            _vector = std::make_unique<py::array_t<T>>(vector);
+            _buffer = std::make_unique<py::buffer_info>(_vector->request());
         }
 
         NumpyImplementation(const NumpyImplementation& other) {
             typename GilControl<Texecution>::Acquire acquire;
-            this->_vector = other._vector;
-            this->_buffer = other._buffer;
+            this->_vector = std::make_unique<py::array_t<T>>(*other._vector);
+            this->_buffer = std::make_unique<py::buffer_info>(*other._buffer);
         }
 
         NumpyImplementation& operator=(const NumpyImplementation& other) {
             typename GilControl<Texecution>::Acquire acquire;
-            this->_vector = other._vector;
-            this->_buffer = other._buffer;
+            this->_vector = std::make_unique<py::array_t<T>>(*other._vector);
+            this->_buffer = std::make_unique<py::buffer_info>(*other._buffer);
             return *this;
         }
 
         virtual ~NumpyImplementation() {
-            // Assigning to py::array_t<T>() is in sufficient
-            // because it does not create a null object!
             typename GilControl<Texecution>::Acquire acquire;
-            _vector.dec_ref();
-            _vector.release();
+            _buffer.reset();
+            _vector.reset();
         }
 
         virtual std::size_t size() const {
             typename GilControl<Texecution>::Acquire acquire;
-            return _vector.size();
+            return _vector->size();
         }
 
         virtual value_type at(std::size_t index) const {
             typename GilControl<Texecution>::Acquire acquire;
-            return value_type(((T*) _buffer.ptr)[index]);
+            return value_type(((T*) _buffer->ptr)[index]);
         }
 
         virtual bool same_type(const BaseImplementation& other) const {
@@ -338,8 +333,8 @@ private :
         }
     
     private :
-        py::array_t<T> _vector;
-        py::buffer_info _buffer;
+        std::unique_ptr<py::array_t<T>> _vector;
+        std::unique_ptr<py::buffer_info> _buffer;
     };
 
     std::unique_ptr<BaseImplementation> _implementation;

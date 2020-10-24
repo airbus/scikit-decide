@@ -2,6 +2,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+from tqdm import tqdm
 from enum import Enum
 from typing import NamedTuple, Optional
 from math import sqrt
@@ -13,6 +14,7 @@ from skdecide import GoalMDPDomain, TransitionValue, Space, \
 from skdecide.builders.domain import Actions
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver, rollout
+from skdecide.hub.solver.mcts.mcts import MCTS
 
 
 class State(NamedTuple):
@@ -99,9 +101,6 @@ class MyDomain(D):
         return MultiDiscreteSpace([self.num_cols, self.num_rows])
 
 
-# Shared memory proxy for use with parallel algorithms only
-# Not efficient on this tiny domain but provided for illustration
-# To activate parallelism, set parallel=True in the algotihms below
 class GridShmProxy:
 
     _register_ = [(State, 2), (Action, 1), (EnumSpace, 1), (ListSpace, 1),
@@ -344,10 +343,10 @@ if __name__ == '__main__':
          'entry': 'LRTDP',
          'config': {'domain_factory': lambda: MyDomain(),
                     'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
-                    'use_labels': True, 'time_budget': 1000, 'rollout_budget': 100,
+                    'use_labels': True, 'time_budget': 60000, 'rollout_budget': 10000,
                     'max_depth': 50, 'discount': 1.0, 'epsilon': 0.001,
                     'online_node_garbage': True, 'continuous_planning': False,
-                    'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
+                    'parallel': True, 'debug_logs': False}},
         
         # ILAO*
         {'name': 'Improved-LAO*',
@@ -355,46 +354,41 @@ if __name__ == '__main__':
          'config': {'domain_factory': lambda: MyDomain(),
                     'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
                     'discount': 1.0, 'epsilon': 0.001,
-                    'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
-
-        # UCT (reinforcement learning / search)
+                    'parallel': True, 'debug_logs': False}},
+        
+        # UCT-Distribution (reinforcement learning / search)
         {'name': 'UCT (reinforcement learning / search)',
          'entry': 'UCT',
          'config': {'domain_factory': lambda: MyDomain(),
                     'time_budget': 1000, 'rollout_budget': 100,
                     'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
+                    'transition_mode': MCTS.Options.TransitionMode.Distribution,
                     'online_node_garbage': True, 'continuous_planning': False,
                     'heuristic': lambda d, s: (-sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2), 10000),
-                    'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}}
+                    'parallel': True, 'debug_logs': False}}
     ]
 
     # Load solvers (filtering out badly installed ones)
     solvers = map(lambda s: dict(s, entry=load_registered_solver(s['entry'])), try_solvers)
     solvers = list(filter(lambda s: s['entry'] is not None, solvers))
-    solvers.insert(0, {'name': 'Random Walk', 'entry': None})  # Add Random Walk as option
 
     # Run loop to ask user input
     domain = MyDomain()  # MyDomain(5,5)
-    while True:
-        # Ask user input to select solver
-        choice = int(input('\nChoose a solver:\n{solvers}\n'.format(
-            solvers='\n'.join(['0. Quit'] + [f'{i + 1}. {s["name"]}' for i, s in enumerate(solvers)]))))
-        if choice == 0:  # the user wants to quit
-            break
-        else:
-            selected_solver = solvers[choice - 1]
-            solver_type = selected_solver['entry']
-            # Test solver solution on domain
-            print('==================== TEST SOLVER ====================')
-            # Check if Random Walk selected or other
-            if solver_type is None:
-                rollout(domain, solver=None, max_steps=1000,
-                        outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
-            else:
-                # Check that the solver is compatible with the domain
-                assert solver_type.check_domain(domain)
-                # Solve with selected solver
-                with solver_type(**selected_solver['config']) as solver:
+
+    with tqdm(total=len(solvers)*100) as pbar:
+        for s in solvers:
+            solver_type = s['entry']
+            for i in range(50):
+                s['config']['shared_memory_proxy'] = None
+                with solver_type(**s['config']) as solver:
                     MyDomain.solve_with(solver)  # ,lambda:MyDomain(5,5))
-                    rollout(domain, solver, max_steps=1000,
+                    rollout(domain, solver, max_steps=50,
                             outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                pbar.update(1)
+            for i in range(50):
+                s['config']['shared_memory_proxy'] =  GridShmProxy()
+                with solver_type(**s['config']) as solver:
+                    MyDomain.solve_with(solver)  # ,lambda:MyDomain(5,5))
+                    rollout(domain, solver, max_steps=50,
+                            outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                pbar.update(1)

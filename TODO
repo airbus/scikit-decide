@@ -1,0 +1,22 @@
+- MCTS:
+   - spdlog's default logger is multi-threaded so remove unnecessary debug logs protections
+   - add custom mutexes for time reporting and random generator calls
+   - add node garbage on action progression
+
+- RIW:
+   - spdlog's default logger is multi-threaded so remove unnecessary debug logs protections
+   - add custom mutexes for time reporting and random generator calls
+
+- A* and AO*:
+   - _goal_checker called only once zhen expanding the state
+
+- AO*:
+   - catch exception of python solver's get_next_action() and get_utility()
+
+- LRTDP and LAO*:
+   - check SSP?
+
+- examples:
+   - check order of domain and state in all C++-based solver lambdas
+   - add all compatible algorithms to grid_multisolve (for instance A* is missing)
+   - add domain factory argument in C++-based solvers in all examples

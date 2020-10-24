@@ -123,7 +123,7 @@ public :
     // solves from state s
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print() + " BFWS solver from state " + s.print());
+            spdlog::info("Running " + ExecutionPolicy::print_type() + " BFWS solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
 
             // Map from heuristic values to set of state features with that given heuristic value
@@ -185,16 +185,16 @@ public :
                 closed_set.insert(best_tip_node);
 
                 // Expand best tip node
-                auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state)->get_elements();
-                std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &closed_set, &heuristic_features_map](const auto& a) {
-                    if (_debug_logs) spdlog::debug("Current expanded action: " + Action(a).print());
+                auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state).get_elements();
+                std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &closed_set, &heuristic_features_map](auto a) {
+                    if (_debug_logs) spdlog::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
                     auto next_state = _domain.get_next_state(best_tip_node->state, a);
+                    if (_debug_logs) spdlog::debug("Exploring next state " + next_state.print() + ExecutionPolicy::print_thread());
                     std::pair<typename Graph::iterator, bool> i;
                     _execution_policy.protect([this, &i, &next_state]{
-                        i = _graph.emplace(Node(*next_state, _domain, _state_features));
+                        i = _graph.emplace(Node(next_state, _domain, _state_features));
                     });
                     Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                    if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print());
 
                     if (closed_set.find(&neighbor) != closed_set.end()) {
                         // Ignore the neighbor which is already evaluated
@@ -205,18 +205,23 @@ public :
                     double tentative_gscore = best_tip_node->gscore + transition_cost;
 
                     if ((i.second) || (tentative_gscore < neighbor.gscore)) {
-                        if (_debug_logs) spdlog::debug("New gscore: " + StringConverter::from(best_tip_node->gscore) + "+" +
-                                                        StringConverter::from(transition_cost) + "=" + StringConverter::from(tentative_gscore));
+                        if (_debug_logs) spdlog::debug("New gscore: " +
+                                                       StringConverter::from(best_tip_node->gscore) + "+" +
+                                                       StringConverter::from(transition_cost) + "=" +
+                                                       StringConverter::from(tentative_gscore) +
+                                                       ExecutionPolicy::print_thread());
                         neighbor.gscore = tentative_gscore;
                         neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
                     }
 
                     neighbor.heuristic = _heuristic(_domain, neighbor.state);
-                    if (_debug_logs) spdlog::debug("Heuristic: " + StringConverter::from(neighbor.heuristic));
+                    if (_debug_logs) spdlog::debug("Heuristic: " + StringConverter::from(neighbor.heuristic) +
+                                                   ExecutionPolicy::print_thread());
                     _execution_policy.protect([this, &heuristic_features_map, &open_queue, &neighbor]{
                         neighbor.novelty = this->novelty(heuristic_features_map, neighbor.heuristic, neighbor);
                         open_queue.push(&neighbor);
-                        if (_debug_logs) spdlog::debug("Novelty: " + StringConverter::from(neighbor.novelty));
+                        if (_debug_logs) spdlog::debug("Novelty: " + StringConverter::from(neighbor.novelty) +
+                                                       ExecutionPolicy::print_thread());
                     });
                 });
             }

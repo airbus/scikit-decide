@@ -4,6 +4,8 @@
  */
 #include <pybind11/pybind11.h>
 
+#include "utils/python_globals.hh"
+
 namespace py = pybind11;
 
 void init_pyastar(py::module& m);
@@ -16,6 +18,7 @@ void init_pylrtdp(py::module& m);
 void init_pyilaostar(py::module& m);
 
 PYBIND11_MODULE(__skdecide_hub_cpp, m) {
+    skdecide::Globals::init();
     init_pyastar(m);
     init_pyaostar(m);
     init_pymcts(m);

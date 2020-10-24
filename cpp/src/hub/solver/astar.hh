@@ -52,7 +52,7 @@ public :
     // solves from state s using heuristic function h
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print() + " A* solver from state " + s.print());
+            spdlog::info("Running " + ExecutionPolicy::print_type() + " A* solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
 
             // Create the root node containing the given state s
@@ -108,13 +108,14 @@ public :
                 closed_set.insert(best_tip_node);
 
                 // Expand best tip node
-                auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state)->get_elements();
-                std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &closed_set](const auto& a){
-                    if (_debug_logs) spdlog::debug("Current expanded action: " + Action(a).print());
+                auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state).get_elements();
+                std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &closed_set](auto a){
+                    if (_debug_logs) spdlog::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
                     auto next_state = _domain.get_next_state(best_tip_node->state, a);
+                    if (_debug_logs) spdlog::debug("Exploring next state " + next_state.print() + ExecutionPolicy::print_thread());
                     std::pair<typename Graph::iterator, bool> i;
                     _execution_policy.protect([this, &i, &next_state]{
-                        i = _graph.emplace(*next_state);
+                        i = _graph.emplace(next_state);
                     });
                     Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
 
@@ -139,7 +140,8 @@ public :
                         });
                         if (_debug_logs) spdlog::debug("Update neighbor node: " + neighbor.state.print() +
                                                        ", gscore=" + StringConverter::from(neighbor.gscore) +
-                                                       ", fscore=" + StringConverter::from(neighbor.fscore));
+                                                       ", fscore=" + StringConverter::from(neighbor.fscore) +
+                                                       ExecutionPolicy::print_thread());
                     }
                 });
             }
