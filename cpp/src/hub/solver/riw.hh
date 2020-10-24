@@ -93,16 +93,16 @@ template <typename Tdomain>
 struct EnvironmentRollout {
     std::list<typename Tdomain::Event> _action_prefix;
 
-    void init_rollout(Tdomain& domain, const int& thread_id) {
+    void init_rollout(Tdomain& domain, const std::size_t* thread_id) {
         domain.reset(thread_id);
         std::for_each(_action_prefix.begin(), _action_prefix.end(),
                       [&domain, &thread_id](const typename Tdomain::Event& a){domain.step(a, thread_id);});
     }
 
-    std::unique_ptr<typename Tdomain::TransitionOutcome> progress(Tdomain& domain,
-                                                                  const typename Tdomain::State& state,
-                                                                  const typename Tdomain::Event& action,
-                                                                  const int& thread_id) {
+    typename Tdomain::TransitionOutcome progress(Tdomain& domain,
+                                                 const typename Tdomain::State& state,
+                                                 const typename Tdomain::Event& action,
+                                                 const std::size_t* thread_id) {
         return domain.step(action, thread_id);
     }
 
@@ -110,7 +110,7 @@ struct EnvironmentRollout {
                  const typename Tdomain::State& state,
                  const typename Tdomain::Event& action,
                  bool record_action,
-                 const int& thread_id) {
+                 const std::size_t* thread_id) {
         if (record_action) {
             _action_prefix.push_back(action);
         } else {
@@ -127,12 +127,12 @@ struct EnvironmentRollout {
 /** Use Simulation domain knowledge for rollouts */
 template <typename Tdomain>
 struct SimulationRollout {
-    void init_rollout([[maybe_unused]] Tdomain& domain, [[maybe_unused]] const int& thread_id) {}
+    void init_rollout([[maybe_unused]] Tdomain& domain, [[maybe_unused]] const std::size_t* thread_id) {}
 
-    std::unique_ptr<typename Tdomain::TransitionOutcome> progress(Tdomain& domain,
-                                                                  const typename Tdomain::State& state,
-                                                                  const typename Tdomain::Event& action,
-                                                                  const int& thread_id) {
+    typename Tdomain::TransitionOutcome progress(Tdomain& domain,
+                                                 const typename Tdomain::State& state,
+                                                 const typename Tdomain::Event& action,
+                                                 const std::size_t* thread_id) {
         return domain.sample(state, action, thread_id);
     }
 
@@ -140,7 +140,7 @@ struct SimulationRollout {
                  [[maybe_unused]] const typename Tdomain::State& state,
                  [[maybe_unused]] const typename Tdomain::Event& action,
                  [[maybe_unused]] bool record_action,
-                 [[maybe_unused]] const int& thread_id) {}
+                 [[maybe_unused]] const std::size_t* thread_id) {}
     
     std::list<typename Tdomain::Event> action_prefix() const {
         return std::list<typename Tdomain::Event>();
@@ -164,7 +164,7 @@ public :
     typedef Texecution_policy ExecutionPolicy;
 
     RIWSolver(Domain& domain,
-              const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& state_features,
+              const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const std::size_t* thread_id)>& state_features,
               std::size_t time_budget = 3600000,
               std::size_t rollout_budget = 100000,
               std::size_t max_depth = 1000,
@@ -183,6 +183,9 @@ public :
         } else {
             spdlog::set_level(spdlog::level::info);
         }
+
+        std::random_device rd;
+        _gen = std::make_unique<std::mt19937>(rd());
     }
 
     // clears the solver (clears the search graph, thus preventing from reusing
@@ -195,10 +198,10 @@ public :
     // solves from state s
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print() + " RIW solver from state " + s.print());
+            spdlog::info("Running " + ExecutionPolicy::print_type() + " RIW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             _nb_rollouts = 0;
-            std::size_t nb_of_binary_features = _state_features(_domain, s, -1)->size();
+            std::size_t nb_of_binary_features = _state_features(_domain, s, nullptr)->size();
 
             TupleVector feature_tuples;
             bool found_solution = false;
@@ -208,7 +211,8 @@ public :
                                _time_budget, _rollout_budget,
                                _max_depth, _exploration, _discount,
                                _min_reward, w, _graph, _rollout_policy,
-                               _execution_policy, _debug_logs).solve(s, start_time, _nb_rollouts, feature_tuples)) {
+                               _execution_policy, *_gen, _gen_mutex, _time_mutex,
+                               _debug_logs).solve(s, start_time, _nb_rollouts, feature_tuples)) {
                     found_solution = true;
                     break;
                 }
@@ -230,7 +234,7 @@ public :
     }
 
     bool is_solution_defined_for(const State& s) const {
-        auto si = _graph.find(Node(s, _domain, _state_features, -1));
+        auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {// || (si->solved == false)) {
             return false;
         } else {
@@ -239,12 +243,12 @@ public :
     }
 
     Action get_best_action(const State& s) {
-        auto si = _graph.find(Node(s, _domain, _state_features, -1));
+        auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
             spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
             throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
-        _rollout_policy.advance(_domain, s, *(si->best_action), true, -1);
+        _rollout_policy.advance(_domain, s, *(si->best_action), true, nullptr);
         Action best_action = *(si->best_action);
         std::unordered_set<Node*> root_subgraph;
         compute_reachable_subgraph(const_cast<Node&>(*si), root_subgraph); // we won't change the real key (Node::state) so we are safe
@@ -270,7 +274,7 @@ public :
     }
 
     double get_best_value(const State& s) const {
-        auto si = _graph.find(Node(s, _domain, _state_features, -1));
+        auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
         if (si == _graph.end()) {
             spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
             throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
@@ -329,7 +333,7 @@ private :
     typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
 
     Domain& _domain;
-    std::function<std::unique_ptr<FeatureVector> (Domain&, const State& s, const int& thread_id)> _state_features;
+    std::function<std::unique_ptr<FeatureVector> (Domain&, const State& s, const std::size_t* thread_id)> _state_features;
     atomic_size_t _time_budget;
     atomic_size_t _rollout_budget;
     atomic_size_t _max_depth;
@@ -340,6 +344,9 @@ private :
     atomic_size_t _nb_rollouts;
     RolloutPolicy _rollout_policy;
     ExecutionPolicy _execution_policy;
+    std::unique_ptr<std::mt19937> _gen;
+    typename ExecutionPolicy::Mutex _gen_mutex;
+    typename ExecutionPolicy::Mutex _time_mutex;
     atomic_bool _debug_logs;
 
     struct Node {
@@ -357,8 +364,8 @@ private :
         mutable typename ExecutionPolicy::Mutex mutex;
 
         Node(const State& s, Domain& d,
-             const std::function<std::unique_ptr<FeatureVector> (Domain&, const State&, const int&)>& state_features,
-             const int& thread_id)
+             const std::function<std::unique_ptr<FeatureVector> (Domain&, const State&, const std::size_t*)>& state_features,
+             const std::size_t* thread_id)
             : state(s),
               value(-std::numeric_limits<double>::max()),
               depth(std::numeric_limits<std::size_t>::max()),
@@ -400,7 +407,7 @@ private :
         typedef Texecution_policy ExecutionPolicy;
 
         WidthSolver(RIWSolver& parent_solver, Domain& domain,
-                    const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& state_features,
+                    const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const std::size_t* thread_id)>& state_features,
                     const atomic_size_t& time_budget,
                     const atomic_size_t& rollout_budget,
                     const atomic_size_t& max_depth,
@@ -411,13 +418,17 @@ private :
                     Graph& graph,
                     RolloutPolicy& rollout_policy,
                     ExecutionPolicy& execution_policy,
+                    std::mt19937& gen,
+                    typename ExecutionPolicy::Mutex& gen_mutex,
+                    typename ExecutionPolicy::Mutex& time_mutex,
                     const atomic_bool& debug_logs)
             : _parent_solver(parent_solver), _domain(domain), _state_features(state_features),
               _time_budget(time_budget), _rollout_budget(rollout_budget),
               _max_depth(max_depth), _exploration(exploration),
               _discount(discount), _min_reward(min_reward), _min_reward_changed(false),
               _width(width), _graph(graph), _rollout_policy(rollout_policy),
-              _execution_policy(execution_policy), _debug_logs(debug_logs) {}
+              _execution_policy(execution_policy), _gen(gen), _gen_mutex(gen_mutex),
+              _time_mutex(time_mutex), _debug_logs(debug_logs) {}
         
         // solves from state s
         // return true iff no state has been pruned or time or rollout budgets are consumed
@@ -426,10 +437,8 @@ private :
                    atomic_size_t& nb_rollouts,
                    TupleVector& feature_tuples) {
             try {
-                spdlog::info("Running " + ExecutionPolicy::print() + " RIW(" + StringConverter::from(_width) + ") solver from state " + s.print());
+                spdlog::info("Running " + ExecutionPolicy::print_type() + " RIW(" + StringConverter::from(_width) + ") solver from state " + s.print());
                 auto local_start_time = std::chrono::high_resolution_clock::now();
-                std::random_device rd;
-                std::mt19937 gen(rd());
 
                 // Clear the solved bits
                 // /!\ 'solved' bit set to 1 in RIW even if no solution found with previous width so we need to clear all the bits
@@ -440,7 +449,7 @@ private :
                 });
 
                 // Create the root node containing the given state s
-                auto si = _graph.emplace(Node(s, _domain, _state_features, -1));
+                auto si = _graph.emplace(Node(s, _domain, _state_features, nullptr));
                 Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
                 root_node.depth = 0;
                 atomic_bool states_pruned(false);
@@ -456,12 +465,12 @@ private :
 
                 std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(),
                               [this, &start_time, &root_node, &feature_tuples, &nb_rollouts, &states_pruned,
-                               &reached_end_of_trajectory_once, &gen] (const int& thread_id) {
+                               &reached_end_of_trajectory_once] (const std::size_t& thread_id) {
                     // Start rollouts
                     while (!root_node.solved && elapsed_time(start_time) < _time_budget && nb_rollouts < _rollout_budget) {
                         rollout(root_node, feature_tuples, nb_rollouts,
                                 states_pruned, reached_end_of_trajectory_once,
-                                start_time, gen, thread_id);
+                                start_time, &thread_id);
                     }
                 });
 
@@ -494,7 +503,7 @@ private :
 
         RIWSolver& _parent_solver;
         Domain& _domain;
-        const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const int& thread_id)>& _state_features;
+        const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const std::size_t* thread_id)>& _state_features;
         const atomic_size_t& _time_budget;
         const atomic_size_t& _rollout_budget;
         const atomic_size_t& _max_depth;
@@ -506,19 +515,24 @@ private :
         Graph& _graph;
         RolloutPolicy& _rollout_policy;
         ExecutionPolicy& _execution_policy;
+        std::mt19937& _gen;
+        typename ExecutionPolicy::Mutex& _gen_mutex;
+        typename ExecutionPolicy::Mutex& _time_mutex;
         const atomic_bool& _debug_logs;
 
         void rollout(Node& root_node, TupleVector& feature_tuples, atomic_size_t& nb_rollouts,
                      atomic_bool& states_pruned, atomic_bool& reached_end_of_trajectory_once,
                      const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
-                     std::mt19937& gen, const int& thread_id) {
+                     const std::size_t* thread_id) {
             // Start new rollout
             nb_rollouts += 1;
             Node* current_node = &root_node;
 
-            if (_debug_logs) spdlog::debug("New rollout from state: " + current_node->state.print() +
+            if (_debug_logs) spdlog::debug("New rollout" + ExecutionPolicy::print_thread() +
+                                           " from state: " + current_node->state.print() +
                                            ", depth=" + StringConverter::from(current_node->depth) +
-                                           ", value=" + StringConverter::from(current_node->value));
+                                           ", value=" + StringConverter::from(current_node->value) +
+                                           ExecutionPolicy::print_thread());
             _rollout_policy.init_rollout(_domain, thread_id);
             bool break_loop = false;
 
@@ -528,14 +542,16 @@ private :
                 std::vector<double> probabilities;
 
                 _execution_policy.protect([this, &current_node, &unsolved_children, &probabilities, &thread_id](){
-                    if (_debug_logs) spdlog::debug("Current state: " + current_node->state.print() +
+                    if (_debug_logs) spdlog::debug("Current state" + ExecutionPolicy::print_thread() + ": " +
+                                                   current_node->state.print() +
                                                    ", depth=" + StringConverter::from(current_node->depth) +
-                                                   ", value=" + StringConverter::from(current_node->value));
+                                                   ", value=" + StringConverter::from(current_node->value) +
+                                                   ExecutionPolicy::print_thread());
 
                     if (current_node->children.empty()) {
                         // Generate applicable actions
-                        auto applicable_actions = _domain.get_applicable_actions(current_node->state, thread_id)->get_elements();
-                        std::for_each(applicable_actions.begin(), applicable_actions.end(), [&current_node](const auto& a){
+                        auto applicable_actions = _domain.get_applicable_actions(current_node->state, thread_id).get_elements();
+                        std::for_each(applicable_actions.begin(), applicable_actions.end(), [&current_node](auto a){
                             current_node->children.push_back(std::make_tuple(a, 0, nullptr));
                         });
                     }
@@ -546,25 +562,37 @@ private :
                         if (!n) {
                             unsolved_children.push_back(i);
                             probabilities.push_back(_exploration);
-                        } else if (!n->solved) {
+                        } else if (!(n->solved)) {
                             unsolved_children.push_back(i);
                             probabilities.push_back((1.0 - _exploration) / ((double) n->novelty));
                         }
                     }
                 }, current_node->mutex);
 
+                // In parallel execution mode, child nodes can have been solved since we have checked
+                // for this current node's solve bit
+                if (unsolved_children.empty()) {
+                    if(std::is_same<ExecutionPolicy, SequentialExecution>::value) {
+                        throw std::runtime_error("In sequential mode, nodes labelled as unsolved must have unsolved children.");
+                    }
+                    current_node->solved = true;
+                    break;
+                }
+
                 std::size_t pick = 0;
-                _execution_policy.protect([&pick, &unsolved_children, &probabilities, &gen](){
-                    pick = unsolved_children[std::discrete_distribution<>(probabilities.begin(), probabilities.end())(gen)];
-                });
+                _execution_policy.protect([this, &pick, &unsolved_children, &probabilities](){
+                    pick = unsolved_children[std::discrete_distribution<>(probabilities.begin(), probabilities.end())(_gen)];
+                }, _gen_mutex);
                 bool new_node = false;
 
                 if (fill_child_node(current_node, pick, new_node, thread_id)) { // terminal state
                     if (_debug_logs) {
                         _execution_policy.protect([&current_node](){
-                            spdlog::debug("Found a terminal state: " + current_node->state.print() +
+                            spdlog::debug("Found" + ExecutionPolicy::print_thread() +
+                                          " a terminal state: " + current_node->state.print() +
                                           ", depth=" + StringConverter::from(current_node->depth) +
-                                          ", value=" + StringConverter::from(current_node->value));
+                                          ", value=" + StringConverter::from(current_node->value) +
+                                          ExecutionPolicy::print_thread());
                         }, current_node->mutex);
                     }
                     update_node(*current_node, true);
@@ -573,9 +601,11 @@ private :
                 } else if (!novelty(feature_tuples, *current_node, new_node)) { // no new tuple or not reached with lower depth => terminal node
                     if (_debug_logs) {
                         _execution_policy.protect([&current_node](){
-                            spdlog::debug("Pruning state: " + current_node->state.print() +
+                            spdlog::debug("Pruning" + ExecutionPolicy::print_thread() +
+                                          " state: " + current_node->state.print() +
                                           ", depth=" + StringConverter::from(current_node->depth) +
-                                          ", value=" + StringConverter::from(current_node->value));
+                                          ", value=" + StringConverter::from(current_node->value) +
+                                          ExecutionPolicy::print_thread());
                         }, current_node->mutex);
                     }
                     states_pruned = true;
@@ -587,9 +617,11 @@ private :
                 } else if (current_node->depth >= _max_depth) {
                     if (_debug_logs) {
                         _execution_policy.protect([&current_node](){
-                            spdlog::debug("Max depth reached in state: " + current_node->state.print() +
+                            spdlog::debug("Max depth reached" + ExecutionPolicy::print_thread() +
+                                          "in state: " + current_node->state.print() +
                                           ", depth=" + StringConverter::from(current_node->depth) +
-                                          ", value=" + StringConverter::from(current_node->value));
+                                          ", value=" + StringConverter::from(current_node->value) +
+                                          ExecutionPolicy::print_thread());
                         }, current_node->mutex);
                     }
                     update_node(*current_node, true);
@@ -598,14 +630,20 @@ private :
                 } else if (elapsed_time(start_time) >= _time_budget) {
                     if (_debug_logs) {
                         _execution_policy.protect([&current_node](){
-                            spdlog::debug("Time budget consumed in state: " + current_node->state.print() +
+                            spdlog::debug("Time budget consumed" + ExecutionPolicy::print_thread() +
+                                          " in state: " + current_node->state.print() +
                                           ", depth=" + StringConverter::from(current_node->depth) +
-                                          ", value=" + StringConverter::from(current_node->value));
+                                          ", value=" + StringConverter::from(current_node->value) +
+                                          ExecutionPolicy::print_thread());
                         }, current_node->mutex);
                     }
                     // next test: unexpanded node considered as a temporary (i.e. not solved) terminal node
                     // don't backup expanded node at this point otherwise the fscore initialization in update_node is wrong!
-                    if (current_node->children.empty()) {
+                    bool current_node_no_children = false;
+                    _execution_policy.protect([&current_node_no_children, &current_node](){
+                        current_node_no_children = current_node->children.empty();
+                    }, current_node->mutex);
+                    if (current_node_no_children) {
                         update_node(*current_node, false);
                     }
                     break_loop = true;
@@ -676,53 +714,59 @@ private :
 
         // Get the state reachable by calling the simulator from given node by applying given action number
         // Sets given node to the next one and returns whether the next one is terminal or not
-        bool fill_child_node(Node*& node, std::size_t action_number, bool& new_node, const int& thread_id) {
+        bool fill_child_node(Node*& node, std::size_t action_number, bool& new_node, const std::size_t* thread_id) {
             Node* node_child = nullptr;
 
             _execution_policy.protect([this, &node, &node_child, &action_number](){
-                if (_debug_logs) spdlog::debug("Applying action: " + std::get<0>(node->children[action_number]).print());
+                if (_debug_logs) spdlog::debug("Applying " + ExecutionPolicy::print_thread() +
+                                               " action: " + std::get<0>(node->children[action_number]).print() +
+                                               ExecutionPolicy::print_thread());
                 node_child = std::get<2>(node->children[action_number]);
             }, node->mutex);
 
             if (!node_child) { // first visit
                 // Sampled child has not been visited so far, so generate it
-                std::unique_ptr<typename Domain::TransitionOutcome> outcome;
+                typename Domain::TransitionOutcome outcome;
                 _execution_policy.protect([this, &node, &outcome, &action_number, &thread_id](){
                     outcome = _rollout_policy.progress(_domain, node->state, std::get<0>(node->children[action_number]), thread_id);
                 }, node->mutex);
                 
                 _execution_policy.protect([this, &node_child, &thread_id, &new_node, &outcome](){
-                    auto i = _graph.emplace(Node(outcome->state(), _domain, _state_features, thread_id));
+                    auto i = _graph.emplace(Node(outcome.state(), _domain, _state_features, thread_id));
                     new_node = i.second;
                     node_child = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 });
                 Node& next_node = *node_child;
                 _execution_policy.protect([&node, &action_number, &outcome, &node_child](){
-                    std::get<1>(node->children[action_number]) = outcome->reward();
+                    std::get<1>(node->children[action_number]) = outcome.reward();
                     std::get<2>(node->children[action_number]) = node_child;
                 }, node->mutex);
-                if (outcome->reward() < _min_reward) {
-                    _min_reward = outcome->reward();
+                if (outcome.reward() < _min_reward) {
+                    _min_reward = outcome.reward();
                     _min_reward_changed = true;
                 }
                 
                 _execution_policy.protect([this, &node, &next_node, &new_node, &outcome](){
                     next_node.parents.insert(node);
                     if (new_node) {
-                        if (_debug_logs) spdlog::debug("Exploring new outcome: " + next_node.state.print() +
+                        if (_debug_logs) spdlog::debug("Exploring" + ExecutionPolicy::print_thread() +
+                                                       " new outcome: " + next_node.state.print() +
                                                        ", depth=" + StringConverter::from(next_node.depth) +
-                                                       ", value=" + StringConverter::from(next_node.value));
+                                                       ", value=" + StringConverter::from(next_node.value) +
+                                                       ExecutionPolicy::print_thread());
                         next_node.depth = node->depth + 1;
                         node = &next_node;
-                        node->terminal = outcome->terminal();
+                        node->terminal = outcome.terminal();
                         if (node->terminal && _min_reward > 0.0) {
                             _min_reward = 0.0;
                             _min_reward_changed = true;
                         }
                     } else { // outcome already explored
-                        if (_debug_logs) spdlog::debug("Exploring known outcome: " + next_node.state.print() +
+                        if (_debug_logs) spdlog::debug("Exploring" + ExecutionPolicy::print_thread() +
+                                                       " known outcome: " + next_node.state.print() +
                                                        ", depth=" + StringConverter::from(next_node.depth) +
-                                                       ", value=" + StringConverter::from(next_node.value));
+                                                       ", value=" + StringConverter::from(next_node.value) +
+                                                       ExecutionPolicy::print_thread());
                         next_node.depth = std::min((std::size_t) next_node.depth, (std::size_t) node->depth + 1);
                         node = &next_node;
                     }
@@ -738,9 +782,11 @@ private :
                 node = node_child;
                 if (_debug_logs) {
                     _execution_policy.protect([&node](){
-                        spdlog::debug("Exploring known outcome: " + node->state.print() +
-                                                ", depth=" + StringConverter::from(node->depth) +
-                                                ", value=" + StringConverter::from(node->value));
+                        spdlog::debug("Exploring" + ExecutionPolicy::print_thread() +
+                                      " known outcome: " + node->state.print() +
+                                      ", depth=" + StringConverter::from(node->depth) +
+                                      ", value=" + StringConverter::from(node->value) +
+                                      ExecutionPolicy::print_thread());
                     }, next_node.mutex);
                 }
             }
@@ -753,13 +799,15 @@ private :
             std::unordered_set<Node*> frontier;
             if (_min_reward_changed) {
                 // need for backtracking all leaf nodes in the graph
-                for (auto& n : _graph) {
-                    _execution_policy.protect([&n, &frontier](){
-                        if (n.children.empty()) {
-                            frontier.insert(&const_cast<Node&>(n)); // we won't change the real key (Node::state) so we are safe
-                        }
-                    }, n.mutex);
-                }
+                _execution_policy.protect([this, &frontier](){
+                    for (auto& n : _graph) {
+                        _execution_policy.protect([&n, &frontier](){
+                            if (n.children.empty()) {
+                                frontier.insert(&const_cast<Node&>(n)); // we won't change the real key (Node::state) so we are safe
+                            }
+                        }, n.mutex);
+                    }
+                });
                 _min_reward_changed = false;
             } else {
                 frontier.insert(&node);
@@ -775,7 +823,7 @@ private :
                         std::chrono::high_resolution_clock::now() - start_time
                     ).count()
                 );
-            });
+            }, _time_mutex);
             return milliseconds_duration;
         }
     }; // WidthSolver class
@@ -829,7 +877,7 @@ private :
         }
         // Second pass: actually remove nodes in root_subgraph but not in child_subgraph
         for (auto& n : removed_subgraph) {
-            _graph.erase(Node(n->state, _domain, _state_features, -1));
+            _graph.erase(Node(n->state, _domain, _state_features, nullptr));
         }
         // Third pass: recompute fscores
         backup_values(frontier);
@@ -891,18 +939,18 @@ private :
             p->solved = true;
             p->value = -std::numeric_limits<double>::max();
             p->best_action = nullptr;
-            for (auto& nn : p->children) {
-                p->solved = p->solved && std::get<2>(nn) && std::get<2>(nn)->solved;
-                if (std::get<2>(nn)) {
-                    _execution_policy.protect([this, &p, &nn](){
+            _execution_policy.protect([this, &p](){
+                for (auto& nn : p->children) {
+                    p->solved = p->solved && std::get<2>(nn) && std::get<2>(nn)->solved;
+                    if (std::get<2>(nn)) {
                         double tentative_value = std::get<1>(nn) + (_discount * std::get<2>(nn)->value);
                         if (p->value < tentative_value) {
                             p->value = tentative_value;
                             p->best_action = &std::get<0>(nn);
                         }
-                    }, std::get<2>(nn)->mutex);
+                    }
                 }
-            }
+            }, p->mutex);
             new_frontier.insert(p);
         }
     }

@@ -374,7 +374,7 @@ class ParallelDomain:
                  ipc_notify=False):
         self._domain_factory = domain_factory
         self._lambdas = lambdas
-        self._active_domains = mp.Array('b', [True for i in range(nb_domains)], lock=True)
+        self._active_domains = mp.Array('b', [False for i in range(nb_domains)], lock=True)
         self._temp_connections = [None] * nb_domains
         self._ipc_connections = [None] * nb_domains
         self._processes = [None] * nb_domains
@@ -421,8 +421,10 @@ class ParallelDomain:
             while True:
                 for j, v in enumerate(self._active_domains):
                     if not v:
+                        self._active_domains[j] = True
                         return j
         else:
+            self._active_domains[i] = True
             return i
     
     def reset(self, i=None):
@@ -520,19 +522,15 @@ class ParallelDomain:
         self.__dict__ = state
         # TODO: reopen the temp connection from _ipc_connections
 
-def _launch_domain_server_(domain_factory, lambdas, i, lock, active_domains,
+def _launch_domain_server_(domain_factory, lambdas, i,
                            job_results, conn, ipc_conn, logger):
     domain = domain_factory()
     if ipc_conn is not None:
         pusher = Push0()
         pusher.dial(ipc_conn)
     while True:
-        active_domains[i] = False
         job = conn.recv()
-        lock.acquire()
-        active_domains[i] = True
         job_results[i] = None
-        lock.release()
         if job is None:
             if ipc_conn is not None:
                 pusher.close()
@@ -544,9 +542,7 @@ def _launch_domain_server_(domain_factory, lambdas, i, lock, active_domains,
                     r = getattr(domain, job[0])(*job[1])
                 else:  # job[0] is a lambda function
                     r = lambdas[job[0]](domain, *job[1])
-                lock.acquire()
                 job_results[i] = r
-                lock.release()
                 if ipc_conn is not None:
                     pusher.send(b'0')  # send success
                 conn.send('0')  # send success
@@ -572,7 +568,6 @@ class PipeParallelDomain(ParallelDomain):
         self._manager = mp.Manager()
         self._waiting_jobs = [None] * nb_domains
         self._job_results = self._manager.list([None for i in range(nb_domains)])
-        self._locks = [mp.Lock() for i in range(nb_domains)]
         logger.info(rf'Using {nb_domains} parallel piped domains')
     
     def get_proc_connections(self):
@@ -593,10 +588,9 @@ class PipeParallelDomain(ParallelDomain):
     
     def get_result(self, i):
         self._waiting_jobs[i].recv()
-        self._locks[i].acquire()
         r = self._job_results[i]
         self._job_results[i] = None
-        self._locks[i].release()
+        self._active_domains[i] = False
         return r
     
     def _launch_processes(self):
@@ -605,8 +599,8 @@ class PipeParallelDomain(ParallelDomain):
             pparent, pchild = mp.Pipe()
             self._waiting_jobs[i] = pparent
             self._processes[i] = mp.Process(target=_launch_domain_server_,
-                                            args=[self._domain_factory, self._lambdas, i, self._locks[i],
-                                                    self._active_domains, self._job_results, pchild,
+                                            args=[self._domain_factory, self._lambdas, i,
+                                                    self._job_results, pchild,
                                                     self._ipc_connections[i] if self._ipc_notify else None, logger])
             self._processes[i].start()
         # Waits for all jobs to be launched and waiting each for requests
@@ -623,7 +617,7 @@ class PipeParallelDomain(ParallelDomain):
             self.close_ipc_connection(i)
 
 
-def _shm_launch_domain_server_(domain_factory, lambdas, i, active_domains,
+def _shm_launch_domain_server_(domain_factory, lambdas, i,
                                shm_proxy, shm_registers, shm_types, shm_sizes,
                                rsize, shm_arrays, shm_lambdas, shm_names, shm_params,
                                activation, done, cond, ipc_conn, logger):
@@ -639,11 +633,9 @@ def _shm_launch_domain_server_(domain_factory, lambdas, i, active_domains,
         return s.decode()
 
     while True:
-        active_domains[i] = False
         with cond:
             cond.wait_for(lambda: bool(activation.value) == True)
             activation.value = False
-        active_domains[i] = True
         if int(shm_lambdas[i].value) == -1 and shm_names[i][0] == b'\x00':
             if ipc_conn is not None:
                 pusher.close()
@@ -818,13 +810,14 @@ class ShmParallelDomain(ParallelDomain):
                     results.append(self._shm_proxy.decode(self._shm_types[r], self._shm_arrays[(i * self._rsize) + r]))
             else:
                 break  # no more params
+        self._active_domains[i] = False
         return results if len(results) > 1 else results[0] if len(results) > 0 else None
     
     def _launch_processes(self):
         for i in range(len(self._processes)):
             self.open_ipc_connection(i)
             self._processes[i] = mp.Process(target=_shm_launch_domain_server_,
-                                            args=[self._domain_factory, self._lambdas, i, self._active_domains,
+                                            args=[self._domain_factory, self._lambdas, i,
                                                     self._shm_proxy.copy(),
                                                     dict(self._shm_registers),
                                                     dict(self._shm_types),

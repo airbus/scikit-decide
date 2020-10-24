@@ -129,7 +129,7 @@ public :
     // solves from state s
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print() + " IW solver from state " + s.print());
+            spdlog::info("Running " + ExecutionPolicy::print_type() + " IW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             std::size_t nb_of_binary_features = _state_features(_domain, s)->size();
             bool found_goal = false;
@@ -283,7 +283,7 @@ private :
         // returned pair p: p.first==true iff solvable, p.second==true iff states have been pruned
         std::pair<bool, bool> solve(const State& s, const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time, bool& found_goal) {
             try {
-                spdlog::info("Running " + ExecutionPolicy::print() + " IW(" + StringConverter::from(_width) + ") solver from state " + s.print());
+                spdlog::info("Running " + ExecutionPolicy::print_type() + " IW(" + StringConverter::from(_width) + ") solver from state " + s.print());
                 auto local_start_time = std::chrono::high_resolution_clock::now();
 
                 // Create the root node containing the given state s
@@ -380,42 +380,51 @@ private :
                     }
 
                     // Expand best tip node
-                    auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state)->get_elements();
-                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &feature_tuples, &states_pruned](const auto& a){
-                        if (_debug_logs) spdlog::debug("Current expanded action: " + Action(a).print());
+                    auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state).get_elements();
+                    std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &feature_tuples, &states_pruned](auto a){
+                        if (_debug_logs) spdlog::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
                         auto next_state = _domain.get_next_state(best_tip_node->state, a);
                         std::pair<typename Graph::iterator, bool> i;
                         _execution_policy.protect([this, &i, &next_state]{
-                            i = _graph.emplace(Node(*next_state, _domain, _state_features));
+                            i = _graph.emplace(Node(next_state, _domain, _state_features));
                         });
                         Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                        if (_debug_logs) spdlog::debug("Exploring next state: " + neighbor.state.print() +
-                                                       " (among " + StringConverter::from(_graph.size()) + ")");
+                        if (_debug_logs) spdlog::debug("Exploring next state (among " +
+                                                       StringConverter::from(_graph.size()) + ")" +
+                                                       ExecutionPolicy::print_thread());
 
                         double transition_cost = _domain.get_transition_cost(best_tip_node->state, a, neighbor.state);
                         double tentative_gscore = best_tip_node->gscore + transition_cost;
                         std::size_t tentative_depth = best_tip_node->depth + 1;
 
                         if ((i.second) || (tentative_gscore < neighbor.gscore)) {
-                            if (_debug_logs) spdlog::debug("New gscore: " + StringConverter::from(best_tip_node->gscore) + "+" +
-                                                           StringConverter::from(transition_cost) + "=" + StringConverter::from(tentative_gscore));
+                            if (_debug_logs) spdlog::debug("New gscore: " +
+                                                           StringConverter::from(best_tip_node->gscore) + "+" +
+                                                           StringConverter::from(transition_cost) + "=" +
+                                                           StringConverter::from(tentative_gscore) +
+                                                           ExecutionPolicy::print_thread());
                             neighbor.gscore = tentative_gscore;
                             neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
                         }
 
                         if ((i.second) || (tentative_depth < neighbor.depth)) {
-                            if (_debug_logs) spdlog::debug("New depth: " + StringConverter::from(best_tip_node->depth) + "+" +
-                                                           StringConverter::from(1) + "=" + StringConverter::from(tentative_depth));
+                            if (_debug_logs) spdlog::debug("New depth: " +
+                                                           StringConverter::from(best_tip_node->depth) + "+" +
+                                                           StringConverter::from(1) + "=" +
+                                                           StringConverter::from(tentative_depth) +
+                                                           ExecutionPolicy::print_thread());
                             neighbor.depth = tentative_depth;
                         }
 
                         _execution_policy.protect([this, &feature_tuples, &open_queue, &neighbor, &states_pruned]{
                             if (this->novelty(feature_tuples, neighbor) > _width) {
-                                if (_debug_logs) spdlog::debug("Pruning state");
+                                if (_debug_logs) spdlog::debug("Pruning state " + neighbor.state.print() + ExecutionPolicy::print_thread());
                                 states_pruned = true;
                                 neighbor.pruned = true;
                             } else {
-                                if (_debug_logs) spdlog::debug("Adding state to open queue (among " + StringConverter::from(open_queue.size()) + ")");
+                                if (_debug_logs) spdlog::debug("Adding state to open queue (among " +
+                                                               StringConverter::from(open_queue.size()) + ")" +
+                                                               ExecutionPolicy::print_thread());
                                 open_queue.push(&neighbor);
                             }
                         });

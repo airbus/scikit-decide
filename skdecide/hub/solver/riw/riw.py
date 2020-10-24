@@ -7,7 +7,7 @@ from __future__ import annotations
 import multiprocessing
 import os
 import sys
-from typing import Callable, Any
+from typing import Callable, Dict, List, Any
 
 from skdecide import Domain, Solver
 from skdecide import hub

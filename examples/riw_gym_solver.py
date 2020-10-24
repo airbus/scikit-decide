@@ -66,7 +66,8 @@ domain = domain_factory()
 domain.reset()
 
 if RIW.check_domain(domain):
-    solver_factory = lambda: RIW(state_features=lambda d, s: d.bee2_features(s),
+    solver_factory = lambda: RIW(domain_factory=domain_factory,
+                                 state_features=lambda d, s: d.bee2_features(s),
                                  use_state_feature_hash=False,
                                  use_simulation_domain=True,
                                  time_budget=200,

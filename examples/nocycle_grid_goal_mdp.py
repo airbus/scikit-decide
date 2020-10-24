@@ -164,15 +164,18 @@ if __name__ == '__main__':
             debug_logs = True if arg == 'yes' else False
         elif opt in ('-p', '--parallel'):
             parallel = True if arg == 'yes' else False
+
+    domain_factory = lambda: MyDomain(rows, columns, budget)
     
     try_solvers = [
 
         # AO* (planning)
         {'name': 'AO* (planning)',
          'entry': 'AOstar',
-         'config': {'parallel': True, 'discount': 1.0, 'max_tip_expanions': 1,
+         'config': {'domain_factory': domain_factory,
+                    'parallel': False, 'discount': 1.0, 'max_tip_expanions': 1,
                     'detect_cycles': False, 'debug_logs': False,
-                    'heuristic': lambda s, d: sqrt((s.x-(rows-1))*(s.x-(rows-1))+(s.y-(columns-1))*(s.y-(columns-1)))}}
+                    'heuristic': lambda d, s: sqrt((s.x-(rows-1))*(s.x-(rows-1))+(s.y-(columns-1))*(s.y-(columns-1)))}}
     ]
 
     # Load solvers (filtering out badly installed ones)
@@ -180,7 +183,7 @@ if __name__ == '__main__':
     solvers = list(filter(lambda s: s['entry'] is not None, solvers))
     
     # Run loop to ask user input
-    domain = MyDomain(rows, columns, budget)
+    domain = domain_factory()
     while True:
         # Ask user input to select solver
         choice = int(input('\nChoose a solver:\n{solvers}\n'.format(

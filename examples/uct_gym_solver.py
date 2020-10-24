@@ -13,7 +13,6 @@ Import modules.
 import gym
 import numpy as np
 from typing import Callable
-from math import exp
 
 from skdecide.hub.domain.gym import DeterministicGymDomain, GymDiscreteActionDomain
 from skdecide.hub.solver.mcts import UCT
@@ -85,7 +84,8 @@ domain_factory = lambda: GymUCTDomain(gym_env=gym.make(ENV_NAME),
 domain = domain_factory()
 
 if UCT.check_domain(domain):
-    solver_factory = lambda: UCT(time_budget=200,  # 200 ms,
+    solver_factory = lambda: UCT(domain_factory=domain_factory,
+                                 time_budget=200,  # 200 ms,
                                  rollout_budget=100,
                                  transition_mode=UCT.Options.TransitionMode.Sample,
                                  continuous_planning=True,

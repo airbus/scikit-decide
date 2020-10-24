@@ -135,17 +135,25 @@ private :
             _domain = std::make_unique<PyLRTDPDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>>(
                                                                             *_domain,
-                                                                            [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const int& thread_id)->bool {
+                                                                            [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id)->bool {
                                                                                 try {
-                                                                                    return d.call(thread_id, _goal_checker, s._state).template cast<bool>();
+                                                                                    std::unique_ptr<py::object> r = d.call(thread_id, _goal_checker, s.pyobj());
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    bool rr = r->template cast<bool>();
+                                                                                    r.reset();
+                                                                                    return  rr;
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },
-                                                                            [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const int& thread_id)->double {
+                                                                            [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id)->double {
                                                                                 try {
-                                                                                    return d.call(thread_id, _heuristic, s._state).template cast<double>();
+                                                                                    std::unique_ptr<py::object> r = d.call(thread_id, _heuristic, s.pyobj());
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    double rr = r->template cast<double>();
+                                                                                    r.reset();
+                                                                                    return  rr;
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling heuristic: ") + e.what());
                                                                                     throw;
@@ -182,7 +190,7 @@ private :
 
         virtual py::object get_next_action(const py::object& s) {
             try {
-                return _solver->get_best_action(s).get();
+                return _solver->get_best_action(s).pyobj();
             } catch (const std::runtime_error&) {
                 return py::none();
             }
@@ -208,7 +216,7 @@ private :
             py::dict d;
             auto&& p = _solver->policy();
             for (auto& e : p) {
-                d[e.first._state] = py::make_tuple(e.second.first._event, e.second.second);
+                d[e.first.pyobj()] = py::make_tuple(e.second.first.pyobj(), e.second.second);
             }
             return d;
         }

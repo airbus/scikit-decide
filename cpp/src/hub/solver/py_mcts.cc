@@ -102,7 +102,8 @@ public :
 class PyMCTSSolver {
 public :
 
-    typedef std::function<py::object (py::object&, const py::object&, const py::object&)> RolloutPolicyFunctor;
+    typedef std::function<py::object (py::object&, const py::object&, const py::object&)> CustomPolicyFunctor;
+    typedef std::function<py::object (py::object&, const py::object&, const py::object&)> HeuristicFunctor;
 
     PyMCTSSolver(py::object& domain,
                  std::size_t time_budget = 3600000,
@@ -111,7 +112,9 @@ public :
                  double discount = 1.0,
                  bool uct_mode = true,
                  double ucb_constant = 1.0 / std::sqrt(2.0),
-                 const RolloutPolicyFunctor& rollout_policy_functor = nullptr,
+                 bool online_node_garbage = false,
+                 const CustomPolicyFunctor& custom_policy = nullptr,
+                 const HeuristicFunctor& heuristic = nullptr,
                  PyMCTSOptions::TransitionMode transition_mode = PyMCTSOptions::TransitionMode::Distribution,
                  PyMCTSOptions::TreePolicy tree_policy = PyMCTSOptions::TreePolicy::Default,
                  PyMCTSOptions::Expander expander = PyMCTSOptions::Expander::Full,
@@ -128,7 +131,9 @@ public :
                                        max_depth,
                                        discount,
                                        ucb_constant,
-                                       rollout_policy_functor,
+                                       online_node_garbage,
+                                       custom_policy,
+                                       heuristic,
                                        transition_mode,
                                        PyMCTSOptions::TreePolicy::Default,
                                        expander,
@@ -145,7 +150,9 @@ public :
                                        max_depth,
                                        discount,
                                        ucb_constant,
-                                       rollout_policy_functor,
+                                       online_node_garbage,
+                                       custom_policy,
+                                       heuristic,
                                        transition_mode,
                                        tree_policy,
                                        expander,
@@ -232,9 +239,12 @@ private :
                        std::size_t max_depth,
                        double discount,
                        double ucb_constant,
-                       const RolloutPolicyFunctor& rollout_policy_functor,
+                       bool online_node_garbage,
+                       const CustomPolicyFunctor& custom_policy,
+                       const HeuristicFunctor& heuristic,
                        bool debug_logs)
-            : _rollout_policy_functor(rollout_policy_functor) {
+            : _custom_policy(custom_policy),
+              _heuristic(heuristic) {
 
             _domain = std::make_unique<PyMCTSDomain<Texecution>>(domain, (PyMCTSSolver*) nullptr, (TtransitionMode<PyMCTSSolver>*) nullptr);
             _solver = std::make_unique<PyMCTSSolver>(
@@ -243,12 +253,13 @@ private :
                         rollout_budget,
                         max_depth,
                         discount,
+                        online_node_garbage,
                         debug_logs,
                         init_tree_policy(),
-                        init_expander(),
+                        init_expander(_heuristic),
                         init_action_selector((TactionSelectorOptimization<PyMCTSSolver>*) nullptr, ucb_constant),
                         init_action_selector((TactionSelectorExecution<PyMCTSSolver>*) nullptr, ucb_constant),
-                        init_rollout_policy(_rollout_policy_functor),
+                        init_rollout_policy(_custom_policy),
                         init_back_propagator());
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                              py::module::import("sys").attr("stdout"));
@@ -262,8 +273,26 @@ private :
             return std::make_unique<TtreePolicy<PyMCTSSolver>>();
         }
 
-        std::unique_ptr<Texpander<PyMCTSSolver>> init_expander() {
-            return std::make_unique<Texpander<PyMCTSSolver>>();
+        std::unique_ptr<Texpander<PyMCTSSolver>> init_expander(const HeuristicFunctor& heuristic) {
+            if (!heuristic) { // initialize new nodes with 0 value and 0 visits count
+                return std::make_unique<Texpander<PyMCTSSolver>>();
+            } else {
+                return std::make_unique<Texpander<PyMCTSSolver>>([&heuristic](
+                                                    PyMCTSDomain<Texecution>& d,
+                                                    const typename PyMCTSDomain<Texecution>::State& s,
+                                                    const std::size_t* thread_id) -> std::pair<double, std::size_t> {
+                    try {
+                        std::unique_ptr<py::object> r = d.call(thread_id, heuristic, s.pyobj());
+                        typename skdecide::GilControl<Texecution>::Acquire acquire;
+                        std::pair<double, std::size_t> rr = r->template cast<std::pair<double, std::size_t>>();
+                        r.reset();
+                        return  rr;
+                    } catch (const std::exception& e) {
+                        spdlog::error(std::string("SKDECIDE exception when calling the custom heuristic: ") + e.what());
+                        throw;
+                    }
+                });
+            }
         }
 
         template <typename TactionSelector,
@@ -278,16 +307,16 @@ private :
             return std::make_unique<skdecide::BestQValueActionSelector<PyMCTSSolver>>();
         }
 
-        std::unique_ptr<TrolloutPolicy<PyMCTSSolver>> init_rollout_policy(const RolloutPolicyFunctor& rollout_policy_functor) {
-            if (!rollout_policy_functor) { // use random rollout policy
+        std::unique_ptr<TrolloutPolicy<PyMCTSSolver>> init_rollout_policy(const CustomPolicyFunctor& custom_policy) {
+            if (!custom_policy) { // use random rollout policy
                 return std::make_unique<TrolloutPolicy<PyMCTSSolver>>();
             } else {
-                return std::make_unique<TrolloutPolicy<PyMCTSSolver>>([&rollout_policy_functor](
+                return std::make_unique<TrolloutPolicy<PyMCTSSolver>>([&custom_policy](
                                                     PyMCTSDomain<Texecution>& d,
                                                     const typename PyMCTSDomain<Texecution>::State& s,
-                                                    const int& thread_id) -> std::unique_ptr<typename PyMCTSDomain<Texecution>::Action> {
+                                                    const std::size_t* thread_id) -> typename PyMCTSDomain<Texecution>::Action {
                     try {
-                        return std::make_unique<typename PyMCTSDomain<Texecution>::Action>(d.call(thread_id, rollout_policy_functor, s._state));
+                        return typename PyMCTSDomain<Texecution>::Action(d.call(thread_id, custom_policy, s.pyobj()));
                     } catch (const std::exception& e) {
                         spdlog::error(std::string("SKDECIDE exception when calling the custom rollout policy: ") + e.what());
                         throw;
@@ -314,7 +343,7 @@ private :
         }
 
         virtual py::object get_next_action(const py::object& s) {
-            return _solver->get_best_action(s).get();
+            return _solver->get_best_action(s).pyobj();
         }
 
         virtual py::float_ get_utility(const py::object& s) {
@@ -333,7 +362,7 @@ private :
             py::dict d;
             auto&& p = _solver->policy();
             for (auto& e : p) {
-                d[e.first._state] = py::make_tuple(e.second.first._event, e.second.second);
+                d[e.first.pyobj()] = py::make_tuple(e.second.first.pyobj(), e.second.second);
             }
             return d;
         }
@@ -351,7 +380,8 @@ private :
         std::unique_ptr<PyMCTSDomain<Texecution>> _domain;
         std::unique_ptr<PyMCTSSolver> _solver;
 
-        RolloutPolicyFunctor _rollout_policy_functor;
+        CustomPolicyFunctor _custom_policy;
+        HeuristicFunctor _heuristic;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -366,7 +396,9 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
-                const RolloutPolicyFunctor& rollout_policy_functor,
+                bool online_node_garbage,
+                const CustomPolicyFunctor& custom_policy,
+                const HeuristicFunctor& heuristic,
                 PyMCTSOptions::TransitionMode transition_mode,
                 PyMCTSOptions::TreePolicy tree_policy,
                 PyMCTSOptions::Expander expander,
@@ -385,7 +417,9 @@ private :
                                             max_depth,
                                             discount,
                                             ucb_constant,
-                                            rollout_policy_functor,
+                                            online_node_garbage,
+                                            custom_policy,
+                                            heuristic,
                                             tree_policy,
                                             expander,
                                             action_selector_optimization,
@@ -404,7 +438,9 @@ private :
                                             max_depth,
                                             discount,
                                             ucb_constant,
-                                            rollout_policy_functor,
+                                            online_node_garbage,
+                                            custom_policy,
+                                            heuristic,
                                             tree_policy,
                                             expander,
                                             action_selector_optimization,
@@ -423,7 +459,9 @@ private :
                                             max_depth,
                                             discount,
                                             ucb_constant,
-                                            rollout_policy_functor,
+                                            online_node_garbage,
+                                            custom_policy,
+                                            heuristic,
                                             tree_policy,
                                             expander,
                                             action_selector_optimization,
@@ -448,7 +486,9 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
-                const RolloutPolicyFunctor& rollout_policy_functor,
+                bool online_node_garbage,
+                const CustomPolicyFunctor& custom_policy,
+                const HeuristicFunctor& heuristic,
                 PyMCTSOptions::TreePolicy tree_policy,
                 PyMCTSOptions::Expander expander,
                 PyMCTSOptions::ActionSelector action_selector_optimization,
@@ -467,7 +507,9 @@ private :
                                         max_depth,
                                         discount,
                                         ucb_constant,
-                                        rollout_policy_functor,
+                                        online_node_garbage,
+                                        custom_policy,
+                                        heuristic,
                                         expander,
                                         action_selector_optimization,
                                         action_selector_execution,
@@ -492,7 +534,9 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
-                const RolloutPolicyFunctor& rollout_policy_functor,
+                bool online_node_garbage,
+                const CustomPolicyFunctor& custom_policy,
+                const HeuristicFunctor& heuristic,
                 PyMCTSOptions::Expander expander,
                 PyMCTSOptions::ActionSelector action_selector_optimization,
                 PyMCTSOptions::ActionSelector action_selector_execution,
@@ -511,7 +555,9 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
-                                rollout_policy_functor,
+                                online_node_garbage,
+                                custom_policy,
+                                heuristic,
                                 action_selector_optimization,
                                 action_selector_execution,
                                 rollout_policy,
@@ -536,7 +582,9 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
-                const RolloutPolicyFunctor& rollout_policy_functor,
+                bool online_node_garbage,
+                const CustomPolicyFunctor& custom_policy,
+                const HeuristicFunctor& heuristic,
                 PyMCTSOptions::ActionSelector action_selector_optimization,
                 PyMCTSOptions::ActionSelector action_selector_execution,
                 PyMCTSOptions::RolloutPolicy rollout_policy,
@@ -555,7 +603,9 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
-                                rollout_policy_functor,
+                                online_node_garbage,
+                                custom_policy,
+                                heuristic,
                                 action_selector_execution,
                                 rollout_policy,
                                 back_propagator,
@@ -574,7 +624,9 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
-                                rollout_policy_functor,
+                                online_node_garbage,
+                                custom_policy,
+                                heuristic,
                                 action_selector_execution,
                                 rollout_policy,
                                 back_propagator,
@@ -599,7 +651,9 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
-                const RolloutPolicyFunctor& rollout_policy_functor,
+                bool online_node_garbage,
+                const CustomPolicyFunctor& custom_policy,
+                const HeuristicFunctor& heuristic,
                 PyMCTSOptions::ActionSelector action_selector_execution,
                 PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
@@ -618,7 +672,9 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
-                                rollout_policy_functor,
+                                online_node_garbage,
+                                custom_policy,
+                                heuristic,
                                 rollout_policy,
                                 back_propagator,
                                 parallel,
@@ -637,7 +693,9 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
-                                rollout_policy_functor,
+                                online_node_garbage,
+                                custom_policy,
+                                heuristic,
                                 rollout_policy,
                                 back_propagator,
                                 parallel,
@@ -662,7 +720,9 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
-                const RolloutPolicyFunctor& rollout_policy_functor,
+                bool online_node_garbage,
+                const CustomPolicyFunctor& custom_policy,
+                const HeuristicFunctor& heuristic,
                 PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
@@ -681,7 +741,9 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
+                                online_node_garbage,
                                 nullptr,
+                                heuristic,
                                 back_propagator,
                                 parallel,
                                 debug_logs);
@@ -700,7 +762,9 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
-                                rollout_policy_functor,
+                                online_node_garbage,
+                                custom_policy,
+                                heuristic,
                                 back_propagator,
                                 parallel,
                                 debug_logs);
@@ -725,7 +789,9 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
-                const RolloutPolicyFunctor& rollout_policy_functor,
+                bool online_node_garbage,
+                const CustomPolicyFunctor& custom_policy,
+                const HeuristicFunctor& heuristic,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
                 bool debug_logs) {
@@ -744,7 +810,9 @@ private :
                                 max_depth,
                                 discount,
                                 ucb_constant,
-                                rollout_policy_functor,
+                                online_node_garbage,
+                                custom_policy,
+                                heuristic,
                                 parallel,
                                 debug_logs);
                 break;
@@ -769,7 +837,9 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
-                const RolloutPolicyFunctor& rollout_policy_functor,
+                bool online_node_garbage,
+                const CustomPolicyFunctor& custom_policy,
+                const HeuristicFunctor& heuristic,
                 bool parallel ,
                 bool debug_logs) {
         if (parallel) {
@@ -786,7 +856,9 @@ private :
                                         max_depth,
                                         discount,
                                         ucb_constant,
-                                        rollout_policy_functor,
+                                        online_node_garbage,
+                                        custom_policy,
+                                        heuristic,
                                         debug_logs);
         } else {
             initialize<skdecide::SequentialExecution,
@@ -802,7 +874,9 @@ private :
                                         max_depth,
                                         discount,
                                         ucb_constant,
-                                        rollout_policy_functor,
+                                        online_node_garbage,
+                                        custom_policy,
+                                        heuristic,
                                         debug_logs);
         }
     }
@@ -822,7 +896,9 @@ private :
                 std::size_t max_depth,
                 double discount,
                 double ucb_constant,
-                const RolloutPolicyFunctor& rollout_policy_functor,
+                bool online_node_garbage,
+                const CustomPolicyFunctor& custom_policy,
+                const HeuristicFunctor& heuristic,
                 bool debug_logs = false) {
         _implementation = std::make_unique<Implementation<Texecution,
                                                           TtransitionMode,
@@ -838,7 +914,9 @@ private :
                                     max_depth,
                                     discount,
                                     ucb_constant,
-                                    rollout_policy_functor,
+                                    online_node_garbage,
+                                    custom_policy,
+                                    heuristic,
                                     debug_logs);
     }
 };
@@ -878,6 +956,8 @@ void init_pymcts(py::module& m) {
                           double,
                           bool,
                           double,
+                          bool,
+                          const std::function<py::object (const py::object&, const py::object&, const py::object&)>&,
                           const std::function<py::object (const py::object&, const py::object&, const py::object&)>&,
                           PyMCTSOptions::TransitionMode,
                           PyMCTSOptions::TreePolicy,
@@ -895,7 +975,9 @@ void init_pymcts(py::module& m) {
                  py::arg("discount")=1.0,
                  py::arg("uct_mode")=true,
                  py::arg("ucb_constant")=1.0/std::sqrt(2.0),
-                 py::arg("rollout_policy_functor")=nullptr,
+                 py::arg("online_node_garbage")=false,
+                 py::arg("custom_policy")=nullptr,
+                 py::arg("heuristic")=nullptr,
                  py::arg("transition_mode")=PyMCTSOptions::TransitionMode::Distribution,
                  py::arg("tree_policy")=PyMCTSOptions::TreePolicy::Default,
                  py::arg("expander")=PyMCTSOptions::Expander::Full,

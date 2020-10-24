@@ -81,8 +81,8 @@ class MyDomain(D):
 
 
 if __name__ == '__main__':
-    def heuristic(st: State, domain: MyDomain):
-        return abs(st.x-domain._num_cols+1)+abs(st.y-domain._num_rows+1)
+    def heuristic(domain: MyDomain, st: State):
+        return abs(st.x - domain._num_cols+1)+abs(st.y - domain._num_rows+1)
 
     try_solvers = [
 
@@ -91,7 +91,7 @@ if __name__ == '__main__':
          'entry': 'LazyAstar',
          'config': {'verbose': True, "heuristic": heuristic}},
 
-        # PPO: Proximal Policy Optimization (deep reinforcement learning)
+        # LRTA* (classical planning)
         {'name': 'LRTAStar',
          'entry': 'LRTAstar',
          'config': {'verbose': True, "max_depth": 200, "max_iter": 1000, "heuristic": heuristic}},

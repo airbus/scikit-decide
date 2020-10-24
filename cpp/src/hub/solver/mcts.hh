@@ -1,6 +1,16 @@
 /* Copyright (c) AIRBUS and its affiliates.
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
+ * This is the scikit-decide implementation of MCTS and UCT from
+ * "A Survey of Monte Carlo Tree Search Methods" by Browne et al
+ * (IEEE Transactions on Computational Intelligence  and AI in games,
+ * 2012). We additionnally implement a heuristic value estimate as in
+ * "Monte-Carlo tree search and rapid action value estimation in 
+ * computer Go" by Gelly and Silver (Artificial Intelligence, 2011)
+ * except that the heuristic estimate is called on states but not
+ * on state-action pairs to be more in line with heuristic search
+ * algorithms in the literature and other implementations of
+ * heuristic search algorithms in scikit-decide.
  */
 #ifndef SKDECIDE_MCTS_HH
 #define SKDECIDE_MCTS_HH
@@ -29,15 +39,15 @@ namespace skdecide {
 /** Use Environment domain knowledge for transitions */
 template <typename Tsolver>
 struct StepTransitionMode {
-    void init_rollout(Tsolver& solver, const int& thread_id) const {
+    void init_rollout(Tsolver& solver, const std::size_t* thread_id) const {
         solver.domain().reset(thread_id);
         std::for_each(solver.action_prefix().begin(), solver.action_prefix().end(),
                       [&solver, &thread_id](const typename Tsolver::Domain::Event& a){solver.domain().step(a, thread_id);});
     }
 
-    std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
+    typename Tsolver::Domain::TransitionOutcome random_next_outcome(
             Tsolver& solver,
-            const int& thread_id,
+            const std::size_t* thread_id,
             const typename Tsolver::Domain::State& state,
             const typename Tsolver::Domain::Event& action) const {
         return solver.domain().step(action, thread_id);
@@ -45,13 +55,13 @@ struct StepTransitionMode {
 
     typename Tsolver::StateNode* random_next_node(
             Tsolver& solver,
-            const int& thread_id,
+            const std::size_t* thread_id,
             typename Tsolver::ActionNode& action) const {
         auto outcome = solver.domain().step(action.action, thread_id);
         typename Tsolver::StateNode* n = nullptr;
 
         solver.execution_policy().protect([&n, &solver, &outcome](){
-            auto si = solver.graph().find(typename Tsolver::StateNode(outcome->state()));
+            auto si = solver.graph().find(typename Tsolver::StateNode(outcome.state()));
             if (si != solver.graph().end()) {
                 // we won't change the real key (ActionNode::action) so we are safe
                 n = &const_cast<typename Tsolver::StateNode&>(*si);
@@ -66,11 +76,11 @@ struct StepTransitionMode {
 /** Use Simulation domain knowledge for transitions */
 template <typename Tsolver>
 struct SampleTransitionMode {
-    void init_rollout(Tsolver& solver, const int& thread_id) const {}
+    void init_rollout(Tsolver& solver, const std::size_t* thread_id) const {}
 
-    std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
+    typename Tsolver::Domain::TransitionOutcome random_next_outcome(
             Tsolver& solver,
-            const int& thread_id,
+            const std::size_t* thread_id,
             const typename Tsolver::Domain::State& state,
             const typename Tsolver::Domain::Event& action) const {
         return solver.domain().sample(state, action, thread_id);
@@ -78,14 +88,14 @@ struct SampleTransitionMode {
 
     typename Tsolver::StateNode* random_next_node(
             Tsolver& solver,
-            const int& thread_id,
+            const std::size_t* thread_id,
             typename Tsolver::ActionNode& action) const {
         typename Tsolver::StateNode* n = nullptr;
 
         solver.execution_policy().protect([&n, &action, &solver](){
             solver.execution_policy().protect([&n, &action, &solver](){
                 n = action.dist_to_outcome[action.dist(solver.gen())]->first;
-            });
+            }, solver.gen_mutex());
         }, action.parent->mutex);
 
         return n;
@@ -96,11 +106,11 @@ struct SampleTransitionMode {
 /** Use uncertain transitions domain knowledge for transitions */
 template <typename Tsolver>
 struct DistributionTransitionMode {
-    void init_rollout(Tsolver& solver, const int& thread_id) const {}
+    void init_rollout(Tsolver& solver, const std::size_t* thread_id) const {}
 
-    std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> random_next_outcome(
+    typename Tsolver::Domain::TransitionOutcome random_next_outcome(
             Tsolver& solver,
-            const int& thread_id,
+            const std::size_t* thread_id,
             const typename Tsolver::Domain::State& state,
             const typename Tsolver::Domain::Event& action) const {
         return solver.domain().sample(state, action, thread_id);
@@ -108,14 +118,14 @@ struct DistributionTransitionMode {
 
     typename Tsolver::StateNode* random_next_node(
             Tsolver& solver,
-            const int& thread_id,
+            const std::size_t* thread_id,
             typename Tsolver::ActionNode& action) const {
         typename Tsolver::StateNode* n = nullptr;
 
         solver.execution_policy().protect([&n, &action, &solver](){
             solver.execution_policy().protect([&n, &action, &solver](){
                 n = action.dist_to_outcome[action.dist(solver.gen())]->first;
-            });
+            }, solver.gen_mutex());
         }, action.parent->mutex);
 
         return n;
@@ -128,7 +138,7 @@ template <typename Tsolver>
 class DefaultTreePolicy {
 public :
     typename Tsolver::StateNode* operator()(Tsolver& solver,
-                                            const int& thread_id, // for parallelisation
+                                            const std::size_t* thread_id, // for parallelisation
                                             const typename Tsolver::Expander& expander,
                                             const typename Tsolver::ActionSelectorOptimization& action_selector,
                                             typename Tsolver::StateNode& n,
@@ -136,7 +146,8 @@ public :
         try {
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&n](){
-                    spdlog::debug("Launching default tree policy from state " + n.state.print());
+                    spdlog::debug("Launching default tree policy from state " + n.state.print() +
+                                  typename Tsolver::ExecutionPolicy::print_thread());
                 }, n.mutex);
             }
 
@@ -151,7 +162,12 @@ public :
                     typename Tsolver::ActionNode* action = action_selector(solver, thread_id, *current_node);
                     
                     if (action == nullptr) {
-                        throw std::runtime_error("SKDECIDE exception: no best action found in state " + current_node->state.print());
+                        // It might happen in parallel execution mode when the current node's actions are all being
+                        // expanded by concurrent threads that claim the node is expanded but not yet backpropagated
+                        // and a new thread meantime comes and sees the node as expanded, thus all action visits counts
+                        // are still equal to zero (implying action_selector to return nullptr).
+                        // This shall NOT happen in sequential execution mode.
+                        break;
                     } else {
                         next_node = solver.transition_mode().random_next_node(solver, thread_id, *action);
 
@@ -170,7 +186,8 @@ public :
             return current_node;
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&n, &e](){
-                spdlog::error("SKDECIDE exception in MCTS when simulating the tree policy from state " + n.state.print() + ": " + e.what());
+                spdlog::error("SKDECIDE exception in MCTS when simulating the tree policy from state " + n.state.print() + ": " + e.what() +
+                              typename Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
             throw;
         }
@@ -187,32 +204,42 @@ public :
 template <typename Tsolver>
 class FullExpand {
 public :
-    FullExpand()
-    : _checked_transition_mode(false) {}
+    typedef std::function<std::pair<double, std::size_t>
+                          (typename Tsolver::Domain&, const typename Tsolver::Domain::State&, const std::size_t*)> HeuristicFunctor;
+
+    FullExpand(const HeuristicFunctor& heuristic = [](typename Tsolver::Domain& domain,
+                                                      const typename Tsolver::Domain::State& state,
+                                                      const std::size_t* thread_id) {
+        return std::make_pair(0.0, 0);
+    })
+    : _heuristic(heuristic), _checked_transition_mode(false) {}
 
     FullExpand(const FullExpand& other)
-    : _checked_transition_mode(false) {}
+    : _heuristic(other._heuristic), _checked_transition_mode(false) {}
 
     typename Tsolver::StateNode* operator()(Tsolver& solver,
-                                            const int& thread_id,
+                                            const std::size_t* thread_id,
                                             typename Tsolver::StateNode& n) const {
         try {
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&n](){
-                    spdlog::debug("Testing expansion of state " + n.state.print());
+                    spdlog::debug("Testing expansion of state " + n.state.print() +
+                                  typename Tsolver::ExecutionPolicy::print_thread());
                 }, n.mutex);
             }
 
             if (n.expanded) {
-                if (solver.debug_logs()) { spdlog::debug("State already fully expanded"); }
+                if (solver.debug_logs()) { spdlog::debug("State already fully expanded" +
+                                                         typename Tsolver::ExecutionPolicy::print_thread()); }
                 return nullptr;
             }
 
             // Generate applicable actions if not already done
             solver.execution_policy().protect([&n, &solver, &thread_id](){
                 if (n.actions.empty()) {
-                    if (solver.debug_logs()) { spdlog::debug("State never expanded, generating all next actions"); }
-                    auto applicable_actions = solver.domain().get_applicable_actions(n.state, thread_id)->get_elements();
+                    if (solver.debug_logs()) { spdlog::debug("State never expanded, generating all next actions" +
+                                                             typename Tsolver::ExecutionPolicy::print_thread()); }
+                    auto applicable_actions = solver.domain().get_applicable_actions(n.state, thread_id).get_elements();
 
                     for (const auto& a : applicable_actions) {
                         auto i = n.actions.emplace(typename Tsolver::ActionNode(a));
@@ -226,7 +253,8 @@ public :
             }, n.mutex);
 
             // Check for untried outcomes
-            if (solver.debug_logs()) { spdlog::debug("Checking for untried outcomes..."); }
+            if (solver.debug_logs()) { spdlog::debug("Checking for untried outcomes" +
+                                                     typename Tsolver::ExecutionPolicy::print_thread()); }
             std::vector<std::pair<typename Tsolver::ActionNode*, typename Tsolver::StateNode*>> untried_outcomes;
             std::vector<double> weights;
 
@@ -256,7 +284,8 @@ public :
             }, n.mutex);
 
             if (untried_outcomes.empty()) { // nothing to expand
-                if (solver.debug_logs()) { spdlog::debug("All outcomes already tried"); }
+                if (solver.debug_logs()) { spdlog::debug("All outcomes already tried" +
+                                                         typename Tsolver::ExecutionPolicy::print_thread()); }
                 n.expanded = true;
                 return nullptr;
             } else {
@@ -264,17 +293,19 @@ public :
                 std::size_t outcome_id = 0;
                 solver.execution_policy().protect([&outcome_id, &odist, &solver](){
                     outcome_id = odist(solver.gen());
-                });
+                }, solver.gen_mutex());
                 auto& uo = untried_outcomes[outcome_id];
 
                 if (uo.second == nullptr) { // unexpanded action
-                    if (solver.debug_logs()) { spdlog::debug("Found one unexpanded action: " + uo.first->action.print()); }
+                    if (solver.debug_logs()) { spdlog::debug("Found one unexpanded action: " + uo.first->action.print() +
+                                                             typename Tsolver::ExecutionPolicy::print_thread()); }
                     return expand_action(solver, thread_id, solver.transition_mode(), n, *(uo.first));
                 } else { // expanded action, just return the selected next state
                     if (solver.debug_logs()) {
                         solver.execution_policy().protect([&uo](){
                             spdlog::debug("Found one untried outcome: action " + uo.first->action.print() +
-                                          " and next state " + uo.second->state.print());
+                                          " and next state " + uo.second->state.print() +
+                                          typename Tsolver::ExecutionPolicy::print_thread());
                         }, uo.second->mutex);
                     }
                     return uo.second;
@@ -282,7 +313,8 @@ public :
             }
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&n, &e](){
-                spdlog::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what());
+                spdlog::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what() +
+                              typename Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
             throw;
         }
@@ -291,23 +323,22 @@ public :
     template <typename Ttransition_mode,
               std::enable_if_t<std::is_same<Ttransition_mode, DistributionTransitionMode<Tsolver>>::value, int> = 0>
     typename Tsolver::StateNode* expand_action(Tsolver& solver,
-                                               const int& thread_id,
+                                               const std::size_t* thread_id,
                                                const Ttransition_mode& transition_mode,
                                                typename Tsolver::StateNode& state,
                                                typename Tsolver::ActionNode& action) const {
         try {
             // Generate the next states of this action
-            auto next_states = solver.domain().get_next_state_distribution(state.state, action.action, thread_id)->get_values();
+            auto next_states = solver.domain().get_next_state_distribution(state.state, action.action, thread_id).get_values();
             std::vector<typename Tsolver::StateNode*> untried_outcomes;
             std::vector<double> weights;
             std::vector<double> outcome_weights;
 
-            for (const auto& ns : next_states) {
-                typename Tsolver::Domain::OutcomeExtractor oe(ns);
+            for (auto ns : next_states) {
                 std::pair<typename Tsolver::Graph::iterator, bool> i;
 
-                solver.execution_policy().protect([&i, &solver, &oe](){
-                    i = solver.graph().emplace(oe.state());
+                solver.execution_policy().protect([&i, &solver, &ns](){
+                    i = solver.graph().emplace(ns.state());
                 });
 
                 typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
@@ -317,18 +348,18 @@ public :
                     reward = solver.domain().get_transition_reward(state.state, action.action, next_node.state, thread_id);
                 }, next_node.mutex);
 
-                solver.execution_policy().protect([&action, &next_node, &outcome_weights, &reward, &oe](){
+                solver.execution_policy().protect([&action, &next_node, &outcome_weights, &reward, &ns](){
                     auto ii = action.outcomes.insert(std::make_pair(&next_node, std::make_pair(reward, 1)));
 
                     if (ii.second) { // new outcome
                         action.dist_to_outcome.push_back(ii.first);
-                        outcome_weights.push_back(oe.probability());
+                        outcome_weights.push_back(ns.probability());
                     } else { // existing outcome (following code not efficient but hopefully very rare case if domain is well defined)
                         for (unsigned int oid = 0 ; oid < outcome_weights.size() ; oid++) {
                             if (action.dist_to_outcome[oid]->first == ii.first->first) { // found my outcome!
                                 std::pair<double, std::size_t>& mp = ii.first->second;
-                                mp.first = ((double) (outcome_weights[oid] * mp.first) + (reward * oe.probability())) / ((double) (outcome_weights[oid] + oe.probability()));
-                                outcome_weights[oid] += oe.probability();
+                                mp.first = ((double) (outcome_weights[oid] * mp.first) + (reward * ns.probability())) / ((double) (outcome_weights[oid] + ns.probability()));
+                                outcome_weights[oid] += ns.probability();
                                 mp.second += 1; // useless in this mode a priori, but just keep track for coherency
                                 break;
                             }
@@ -336,17 +367,21 @@ public :
                     }
                 }, action.parent->mutex);
 
-                solver.execution_policy().protect([&next_node, &action, &i, &solver, &thread_id, &untried_outcomes, &weights, &oe](){
-                    next_node.parents.push_back(&action);
+                solver.execution_policy().protect([this, &next_node, &action, &i, &solver, &thread_id, &untried_outcomes, &weights, &ns](){
+                    next_node.parents.insert(&action);
 
                     if (i.second) { // new node
                         next_node.terminal = solver.domain().is_terminal(next_node.state, thread_id);
+                        std::pair<double, std::size_t> h = _heuristic(solver.domain(), next_node.state, thread_id);
+                        next_node.value = h.first;
+                        next_node.visits_count = h.second;
                     }
 
                     if (next_node.actions.empty()) {
-                        if (solver.debug_logs()) spdlog::debug("Candidate next state: " + next_node.state.print());
+                        if (solver.debug_logs()) spdlog::debug("Candidate next state: " + next_node.state.print() +
+                                                               typename Tsolver::ExecutionPolicy::print_thread());
                         untried_outcomes.push_back(&next_node);
-                        weights.push_back(oe.probability());
+                        weights.push_back(ns.probability());
                     }
                 }, next_node.mutex);
             }
@@ -363,7 +398,7 @@ public :
 
                 solver.execution_policy().protect([&outcome_id, &action, &solver](){
                     outcome_id = action.dist(solver.gen());
-                });
+                }, solver.gen_mutex());
 
                 typename Tsolver::StateNode* outcome = nullptr;
 
@@ -379,13 +414,14 @@ public :
 
                 solver.execution_policy().protect([&outcome_id, &odist, &solver](){
                     outcome_id = odist(solver.gen());
-                });
+                }, solver.gen_mutex());
 
                 return untried_outcomes[outcome_id];
             }
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&action, &e](){
-                spdlog::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what());
+                spdlog::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what() +
+                              typename Tsolver::ExecutionPolicy::print_thread());
             }, action.parent->mutex);
             throw;
         }
@@ -395,7 +431,7 @@ public :
               std::enable_if_t<std::is_same<Ttransition_mode, StepTransitionMode<Tsolver>>::value ||
                                std::is_same<Ttransition_mode, SampleTransitionMode<Tsolver>>::value, int> = 0>
     typename Tsolver::StateNode* expand_action(Tsolver& solver,
-                                               const int& thread_id,
+                                               const std::size_t* thread_id,
                                                const Ttransition_mode& transition_mode,
                                                typename Tsolver::StateNode& state,
                                                typename Tsolver::ActionNode& action) const {
@@ -405,27 +441,30 @@ public :
                 _checked_transition_mode = true;
             }
             // Generate the next state of this action
-            std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = transition_mode.random_next_outcome(solver, thread_id, state.state, action.action);
+            typename Tsolver::Domain::TransitionOutcome to = transition_mode.random_next_outcome(solver, thread_id, state.state, action.action);
             std::pair<typename Tsolver::Graph::iterator, bool> i;
 
             solver.execution_policy().protect([&i, &solver, &to](){
-                i = solver.graph().emplace(to->state());
+                i = solver.graph().emplace(to.state());
             });
             
             typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
             
             solver.execution_policy().protect([&action, &next_node, &to](){
-                auto ii = action.outcomes.insert(std::make_pair(&next_node, std::make_pair(to->reward(), 1)));
+                auto ii = action.outcomes.insert(std::make_pair(&next_node, std::make_pair(to.reward(), 1)));
                 action.dist_to_outcome.push_back(ii.first);
             }, action.parent->mutex);
 
-            solver.execution_policy().protect([&next_node, &action](){
-                next_node.parents.push_back(&action);
-            }, next_node.mutex);
+            solver.execution_policy().protect([this, &next_node, &action, &i, &to, &solver, &thread_id](){
+                next_node.parents.insert(&action);
 
-            if (i.second) { // new node
-                next_node.terminal = to->terminal();
-            }
+                if (i.second) { // new node
+                    next_node.terminal = to.terminal();
+                    std::pair<double, std::size_t> h = _heuristic(solver.domain(), next_node.state, thread_id);
+                    next_node.value = h.first;
+                    next_node.visits_count = h.second;
+                }
+            }, next_node.mutex);
 
             // Record the action's outcomes distribution
             solver.execution_policy().protect([&action](){
@@ -434,20 +473,23 @@ public :
 
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&next_node](){
-                    spdlog::debug("Candidate next state: " + next_node.state.print());
+                    spdlog::debug("Candidate next state: " + next_node.state.print() +
+                                  typename Tsolver::ExecutionPolicy::print_thread());
                 }, next_node.mutex);
             }
             
             return &next_node;
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&action, &e](){
-                spdlog::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what());
+                spdlog::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what() +
+                              typename Tsolver::ExecutionPolicy::print_thread());
             }, action.parent->mutex);
             throw;
         }
     }
 
 private :
+    HeuristicFunctor _heuristic;
     mutable typename Tsolver::ExecutionPolicy::template atomic<bool> _checked_transition_mode;
 };
 
@@ -462,13 +504,27 @@ private :
 template <typename Tsolver>
 class PartialExpand {
 public :
+    typedef std::function<std::pair<double, std::size_t>
+                          (typename Tsolver::Domain&, const typename Tsolver::Domain::State&, const std::size_t*)> HeuristicFunctor;
+
+    PartialExpand(const HeuristicFunctor& heuristic = [](typename Tsolver::Domain& domain,
+                                                         const typename Tsolver::Domain::State& state,
+                                                         const std::size_t* thread_id) {
+        return std::make_pair(0.0, 0);
+    })
+    : _heuristic(heuristic) {}
+
+    PartialExpand(const PartialExpand& other)
+    : _heuristic(other._heuristic) {}
+
     typename Tsolver::StateNode* operator()(Tsolver& solver,
-                                            const int& thread_id,
+                                            const std::size_t* thread_id,
                                             typename Tsolver::StateNode& n) const {
         try {
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&n](){
-                    spdlog::debug("Test expansion of state " + n.state.print());
+                    spdlog::debug("Test expansion of state " + n.state.print() +
+                                  typename Tsolver::ExecutionPolicy::print_thread());
                 }, n.mutex);
             }
 
@@ -481,7 +537,7 @@ public :
 
             solver.execution_policy().protect([&dist_res, &solver, &dist_state_expansion](){
                 dist_res = dist_state_expansion(solver.gen());
-            });
+            }, solver.gen_mutex());
 
             if (dist_res) {
                 typename Tsolver::Domain::Action action = solver.domain().get_applicable_actions(n.state, thread_id).sample();
@@ -493,7 +549,8 @@ public :
                     }
 
                     action_node = &const_cast<typename Tsolver::ActionNode&>(*(a.first)); // we won't change the real key (ActionNode::action) so we are safe
-                    if (solver.debug_logs()) { spdlog::debug("Tried to sample a new action: " + action_node->action.print()); }
+                    if (solver.debug_logs()) { spdlog::debug("Tried to sample a new action: " + action_node->action.print() +
+                                                             typename Tsolver::ExecutionPolicy::print_thread()); }
                 }, n.mutex);
             } else {
                 std::vector<typename Tsolver::ActionNode*> actions;
@@ -509,12 +566,13 @@ public :
 
                 solver.execution_policy().protect([&action_id, &solver, &dist_known_actions](){
                     action_id = dist_known_actions(solver.gen());
-                });
+                }, solver.gen_mutex());
 
                 action_node = actions[action_id];
                 if (solver.debug_logs()) {
                     solver.execution_policy().protect([&action_node](){
-                        spdlog::debug("Sampled among known actions: " + action_node->action.print());
+                        spdlog::debug("Sampled among known actions: " + action_node->action.print() +
+                                      typename Tsolver::ExecutionPolicy::print_thread());
                     }, action_node->parent.mutex);
                 }
             }
@@ -527,7 +585,7 @@ public :
             
             solver.execution_policy().protect([&dist_res, &solver, &dist_action_expansion](){
                 dist_res = dist_action_expansion(solver.gen());
-            });
+            }, solver.gen_mutex());
 
             if (dist_res) {
                 std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = solver.transition_mode().random_next_outcome(solver, thread_id, n.state, action_node->action);
@@ -540,7 +598,12 @@ public :
                 ns = &const_cast<typename Tsolver::StateNode&>(*(s.first)); // we won't change the real key (StateNode::state) so we are safe
 
                 if (s.second) { // new state
-                    ns->terminal = to->termination();
+                    solver.execution_policy().protect([this, &ns, &to, &solver, &thread_id](){
+                        ns->terminal = to->termination();
+                        std::pair<double, std::size_t> h = _heuristic(solver.domain(), ns->state, thread_id);
+                        ns->value = h.first;
+                        ns->visits_count = h.second;
+                    }, ns->mutex);
                 }
 
                 std::pair<typename Tsolver::ActionNode::OutcomeMap::iterator, bool> ins;
@@ -556,7 +619,7 @@ public :
                     }, action_node->parent->mutex);
 
                     solver.execution_policy().protect([&ns, &action_node](){
-                        ns->parents.push_back(action_node);
+                        ns->parents.insert(action_node);
                     }, ns->mutex);
                 } else { // known outcome
                     solver.execution_policy().protect([&ins, &to, &ns](){
@@ -580,7 +643,8 @@ public :
 
                 if (solver.debug_logs()) {
                     solver.execution_policy().protect([&ns](){
-                        spdlog::debug("Tried to sample a new outcome: " + ns->state.print());
+                        spdlog::debug("Tried to sample a new outcome: " + ns->state.print() +
+                                      typename Tsolver::ExecutionPolicy::print_thread());
                     });
                 }
             } else {
@@ -588,7 +652,8 @@ public :
 
                 if (solver.debug_logs()) {
                     solver.execution_policy().protect([&ns](){
-                        spdlog::debug("Sampled among known outcomes: " + ns->state.print());
+                        spdlog::debug("Sampled among known outcomes: " + ns->state.print() +
+                                      typename Tsolver::ExecutionPolicy::print_thread());
                     });
                 }
             }
@@ -596,11 +661,15 @@ public :
             return ns;
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&n, &e](){
-                spdlog::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what());
+                spdlog::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what() +
+                              typename Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
             throw;
         }
     }
+
+private :
+    HeuristicFunctor _heuristic;
 };
 
 
@@ -616,7 +685,7 @@ public :
     : _ucb_constant((double) other._ucb_constant) {}
 
     typename Tsolver::ActionNode* operator()(Tsolver& solver,
-                                             const int& thread_id,
+                                             const std::size_t* thread_id,
                                              const typename Tsolver::StateNode& n) const {
         double best_value = -std::numeric_limits<double>::max();
         typename Tsolver::ActionNode* best_action = nullptr;
@@ -635,7 +704,8 @@ public :
 
             if (solver.debug_logs()) { spdlog::debug("UCB1 selection from state " + n.state.print() +
                                                      ": value=" + StringConverter::from(best_value) +
-                                                     ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr"))); }
+                                                     ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr")) +
+                                                     typename Tsolver::ExecutionPolicy::print_thread()); }
         }, n.mutex);
         
         return best_action;
@@ -651,7 +721,7 @@ template <typename Tsolver>
 class BestQValueActionSelector {
 public :
     typename Tsolver::ActionNode* operator()(Tsolver& solver,
-                                             const int& thread_id,
+                                             const std::size_t* thread_id,
                                              const typename Tsolver::StateNode& n) const {
         double best_value = -std::numeric_limits<double>::max();
         typename Tsolver::ActionNode* best_action = nullptr;
@@ -668,7 +738,8 @@ public :
 
             if (solver.debug_logs()) { spdlog::debug("Best Q-value selection from state " + n.state.print() +
                                                      ": value=" + StringConverter::from(best_value) +
-                                                     ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr"))); }
+                                                     ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr")) +
+                                                     typename Tsolver::ExecutionPolicy::print_thread()); }
         }, n.mutex);
         
         return best_action;
@@ -680,25 +751,26 @@ public :
 template <typename Tsolver>
 class DefaultRolloutPolicy {
 public :
-    typedef std::function<std::unique_ptr<typename Tsolver::Domain::Action>
-                          (typename Tsolver::Domain&, const typename Tsolver::Domain::State&, const int&)> PolicyFunctor;
+    typedef std::function<typename Tsolver::Domain::Action
+                          (typename Tsolver::Domain&, const typename Tsolver::Domain::State&, const std::size_t*)> PolicyFunctor;
 
     DefaultRolloutPolicy(const PolicyFunctor& policy = [](typename Tsolver::Domain& domain,
                                                           const typename Tsolver::Domain::State& state,
-                                                          const int& thread_id) {
-        return domain.get_applicable_actions(state, thread_id)->sample();
+                                                          const std::size_t* thread_id) {
+        return domain.get_applicable_actions(state, thread_id).sample();
     })
     : _policy(policy) {}
 
     void operator()(Tsolver& solver,
-                    const int& thread_id,
+                    const std::size_t* thread_id,
                     typename Tsolver::StateNode& n,
                     std::size_t d) const {
         try {
             typename Tsolver::Domain::State current_state;
 
             solver.execution_policy().protect([&solver, &n, &current_state](){
-                if (solver.debug_logs()) { spdlog::debug("Launching default rollout policy from state " + n.state.print()); }
+                if (solver.debug_logs()) { spdlog::debug("Launching default rollout policy from state " + n.state.print() +
+                                                         typename Tsolver::ExecutionPolicy::print_thread()); }
                 current_state = n.state;
             }, n.mutex);
 
@@ -708,16 +780,17 @@ public :
             double gamma_n = 1.0;
 
             while(!termination && current_depth < solver.max_depth()) {
-                std::unique_ptr<typename Tsolver::Domain::Action> action = _policy(solver.domain(), current_state, thread_id);
-                std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> o = solver.transition_mode().random_next_outcome(solver, thread_id, current_state, *action);
-                reward += gamma_n * (o->reward());
+                typename Tsolver::Domain::Action action = _policy(solver.domain(), current_state, thread_id);
+                typename Tsolver::Domain::TransitionOutcome o = solver.transition_mode().random_next_outcome(solver, thread_id, current_state, action);
+                reward += gamma_n * (o.reward());
                 gamma_n *= solver.discount();
-                current_state = o->state();
-                termination = o->terminal();
+                current_state = o.state();
+                termination = o.terminal();
                 current_depth++;
-                if (solver.debug_logs()) { spdlog::debug("Sampled transition: action=" + action->print() +
+                if (solver.debug_logs()) { spdlog::debug("Sampled transition: action=" + action.print() +
                                                          ", next state=" + current_state.print() +
-                                                         ", reward=" + StringConverter::from(o->reward())); }
+                                                         ", reward=" + StringConverter::from(o.reward()) +
+                                                         typename Tsolver::ExecutionPolicy::print_thread()); }
             }
 
             // since we can come to state n after exhausting the depth, n might be already visited
@@ -728,7 +801,8 @@ public :
             }, n.mutex);
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&n, &e](){
-                spdlog::error("SKDECIDE exception in MCTS when simulating the random default policy from state " + n.state.print() + ": " + e.what());
+                spdlog::error("SKDECIDE exception in MCTS when simulating the random default policy from state " + n.state.print() + ": " + e.what() +
+                              typename Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
             throw;
         }
@@ -743,11 +817,12 @@ private :
 template <typename Tsolver>
 struct GraphBackup {
     void operator()(Tsolver& solver,
-                    const int& thread_id,
+                    const std::size_t* thread_id,
                     typename Tsolver::StateNode& n) const {
         if (solver.debug_logs()) {
             solver.execution_policy().protect([&n](){
-                spdlog::debug("Back-propagating values from state " + n.state.print());
+                spdlog::debug("Back-propagating values from state " + n.state.print() +
+                              typename Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
         }
 
@@ -782,7 +857,8 @@ struct GraphBackup {
             new_frontier.insert(parent_node);
             if (solver.debug_logs()) { spdlog::debug("Updating state " + parent_node->state.print() +
                                                     ": value=" + StringConverter::from(parent_node->value) +
-                                                    ", visits=" + StringConverter::from(parent_node->visits_count)); }
+                                                    ", visits=" + StringConverter::from(parent_node->visits_count) +
+                                                    typename Tsolver::ExecutionPolicy::print_thread()); }
         }
     }
 
@@ -793,7 +869,7 @@ struct GraphBackup {
                                 [[maybe_unused]] Texecution_policy* execution_policy) {
         std::list<typename Tsolver::ActionNode*> parents;
         solver.execution_policy().protect([&f, &parents](){
-            std::copy(f->parents.begin(), f->parents.end(), std::back_inserter(parents));
+            std::copy(f->parents.begin(), f->parents.end(), std::inserter(parents, parents.end()));
         }, f->mutex);
         for (auto& a : parents) {
             solver.execution_policy().protect([&a, &solver, &f, &new_frontier](){
@@ -806,7 +882,8 @@ struct GraphBackup {
                 new_frontier.insert(parent_node);
                 if (solver.debug_logs()) { spdlog::debug("Updating state " + parent_node->state.print() +
                                                         ": value=" + StringConverter::from(parent_node->value) +
-                                                        ", visits=" + StringConverter::from(parent_node->visits_count)); }
+                                                        ", visits=" + StringConverter::from(parent_node->visits_count) +
+                                                        typename Tsolver::ExecutionPolicy::print_thread()); }
             }, a->parent->mutex);
         }
     }
@@ -882,7 +959,7 @@ public :
         ActionSet actions;
         atomic_double value;
         atomic_size_t visits_count;
-        std::list<ActionNode*> parents;
+        std::unordered_set<ActionNode*> parents;
         mutable typename ExecutionPolicy::Mutex mutex;
 
         StateNode(const State& s)
@@ -907,6 +984,7 @@ public :
                std::size_t rollout_budget = 100000,
                std::size_t max_depth = 1000,
                double discount = 1.0,
+               bool online_node_garbage = false,
                bool debug_logs = false,
                std::unique_ptr<TreePolicy> tree_policy = std::make_unique<TreePolicy>(),
                std::unique_ptr<Expander> expander = std::make_unique<Expander>(),
@@ -917,7 +995,9 @@ public :
     : _domain(domain),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _discount(discount), _nb_rollouts(0),
-      _debug_logs(debug_logs), _tree_policy(std::move(tree_policy)), _expander(std::move(expander)),
+      _online_node_garbage(online_node_garbage),
+      _debug_logs(debug_logs), _current_state(nullptr),
+      _tree_policy(std::move(tree_policy)), _expander(std::move(expander)),
       _action_selector_optimization(std::move(action_selector_optimization)),
       _action_selector_execution(std::move(action_selector_execution)),
       _rollout_policy(std::move(rollout_policy)), _back_propagator(std::move(back_propagator)) {
@@ -940,7 +1020,7 @@ public :
     // solves from state s
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print() + " MCTS solver from state " + s.print());
+            spdlog::info("Running " + ExecutionPolicy::print_type() + " MCTS solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             _nb_rollouts = 0;
 
@@ -949,16 +1029,19 @@ public :
             StateNode& root_node = const_cast<StateNode&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
 
             boost::integer_range<std::size_t> parallel_rollouts(0, _domain.get_parallel_capacity());
-            std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(), [this, &start_time, &root_node] (const int& thread_id) {
-                 while (elapsed_time(start_time) < _time_budget && _nb_rollouts < _rollout_budget) {
+
+            std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(), [this, &start_time, &root_node] (const std::size_t& thread_id) {
+                
+                while (elapsed_time(start_time) < _time_budget && _nb_rollouts < _rollout_budget) {
                 
                     std::size_t depth = 0;
-                    StateNode* sn = (*_tree_policy)(*this, thread_id, *_expander, *_action_selector_optimization, root_node, depth);
-                    (*_rollout_policy)(*this, thread_id, *sn, depth);
-                    (*_back_propagator)(*this, thread_id, *sn);
+                    StateNode* sn = (*_tree_policy)(*this, &thread_id, *_expander, *_action_selector_optimization, root_node, depth);
+                    (*_rollout_policy)(*this, &thread_id, *sn, depth);
+                    (*_back_propagator)(*this, &thread_id, *sn);
                     _nb_rollouts++;
 
                 }
+                
             });
 
             auto end_time = std::chrono::high_resolution_clock::now();
@@ -977,7 +1060,7 @@ public :
         if (si == _graph.end()) {
             return false;
         } else {
-            return (*_action_selector_execution)(*this, -1, *si) != nullptr;
+            return (*_action_selector_execution)(*this, nullptr, *si) != nullptr;
         }
     }
 
@@ -985,7 +1068,7 @@ public :
         auto si = _graph.find(s);
         ActionNode* action = nullptr;
         if (si != _graph.end()) {
-            action = (*_action_selector_execution)(*this, -1, *si);
+            action = (*_action_selector_execution)(*this, nullptr, *si);
         }
         if (action == nullptr) {
             spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
@@ -999,6 +1082,13 @@ public :
                 str += "\n)";
                 spdlog::debug("Best action's known outcomes:\n" + str);
             }
+            if (_online_node_garbage && _current_state) {
+                std::unordered_set<StateNode*> root_subgraph, child_subgraph;
+                compute_reachable_subgraph(_current_state, root_subgraph);
+                compute_reachable_subgraph(const_cast<StateNode*>(&(*si)), child_subgraph); // we won't change the real key (StateNode::state) so we are safe
+                remove_subgraph(root_subgraph, child_subgraph);
+            }
+            _current_state = const_cast<StateNode*>(&(*si)); // we won't change the real key (StateNode::state) so we are safe
             _action_prefix.push_back(action->action);
             return action->action;
         }
@@ -1008,7 +1098,7 @@ public :
         auto si = _graph.find(StateNode(s));
         ActionNode* action = nullptr;
         if (si != _graph.end()) {
-            action = (*_action_selector_execution)(*this, -1, *si);
+            action = (*_action_selector_execution)(*this, nullptr, *si);
         }
         if (action == nullptr) {
             spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
@@ -1029,7 +1119,7 @@ public :
     typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() {
         typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
         for (auto& n : _graph) {
-            ActionNode* action = (*_action_selector_execution)(*this, -1, n);
+            ActionNode* action = (*_action_selector_execution)(*this, nullptr, n);
             if (action != nullptr) {
                 p.insert(std::make_pair(n.state, std::make_pair(action->action, (double) action->value)));
             }
@@ -1069,6 +1159,8 @@ public :
 
     std::mt19937& gen() { return *_gen; }
 
+    typename ExecutionPolicy::Mutex& gen_mutex() { return _gen_mutex; }
+
     bool debug_logs() const { return _debug_logs; }
 
 private :
@@ -1079,6 +1171,7 @@ private :
     atomic_size_t _max_depth;
     atomic_double _discount;
     atomic_size_t _nb_rollouts;
+    bool _online_node_garbage;
     atomic_bool _debug_logs;
 
     ExecutionPolicy _execution_policy;
@@ -1092,9 +1185,55 @@ private :
     std::unique_ptr<BackPropagator> _back_propagator;
 
     Graph _graph;
+    StateNode* _current_state;
     std::list<Action> _action_prefix;
 
     std::unique_ptr<std::mt19937> _gen;
+    typename ExecutionPolicy::Mutex _gen_mutex;
+    typename ExecutionPolicy::Mutex _time_mutex;
+
+    void compute_reachable_subgraph(StateNode* node, std::unordered_set<StateNode*>& subgraph) {
+        std::unordered_set<StateNode*> frontier;
+        frontier.insert(node);
+        subgraph.insert(node);
+        while(!frontier.empty()) {
+            std::unordered_set<StateNode*> new_frontier;
+            for (auto& n : frontier) {
+                for (auto& action : n->actions) {
+                    for (auto& outcome : action.outcomes) {
+                        if (subgraph.find(outcome.first) == subgraph.end()) {
+                            new_frontier.insert(outcome.first);
+                            subgraph.insert(outcome.first);
+                        }
+                    }
+                }
+            }
+            frontier = new_frontier;
+        }
+    }
+
+    void remove_subgraph(std::unordered_set<StateNode*>& root_subgraph, std::unordered_set<StateNode*>& child_subgraph) {
+        std::unordered_set<StateNode*> removed_subgraph;
+        // First pass: look for nodes in root_subgraph but not child_subgraph and remove
+        // those nodes from their children's parents
+        // Don't actually remove those nodes in the first pass otherwise some children to remove
+        // won't exist anymore when looking for their parents
+        for (auto& n : root_subgraph) {
+            if (child_subgraph.find(n) == child_subgraph.end()) {
+                for (auto& action : n->actions) {
+                    for (auto& outcome : action.outcomes) {
+                        // we won't change the real key (ActionNode::action) so we are safe
+                        outcome.first->parents.erase(&const_cast<ActionNode&>(action));
+                    }
+                }
+                removed_subgraph.insert(n);
+            }
+        }
+        // Second pass: actually remove nodes in root_subgraph but not in child_subgraph
+        for (auto& n : removed_subgraph) {
+            _graph.erase(StateNode(n->state));
+        }
+    }
 
     std::size_t elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time) {
         std::size_t milliseconds_duration;
@@ -1104,7 +1243,7 @@ private :
                     std::chrono::high_resolution_clock::now() - start_time
                 ).count()
             );
-        });
+        }, _time_mutex);
         return milliseconds_duration;
     }
 }; // MCTSSolver class

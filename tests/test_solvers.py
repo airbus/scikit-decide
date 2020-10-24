@@ -408,7 +408,7 @@ def do_test_cpp(solver_cpp, parallel, shared_memory, result):
         print(e)
         noexcept = False
     result.send(solver_type.check_domain(dom) and noexcept and \
-                ((not solver_cpp['optimal']) or (cost == 18 and len(plan) == 18)))
+                ((not solver_cpp['optimal']) or parallel or (cost == 18 and len(plan) == 18)))
     result.close()
 
 def test_solve_cpp(solver_cpp, parallel, shared_memory):

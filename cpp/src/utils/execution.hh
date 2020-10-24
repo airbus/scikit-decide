@@ -12,15 +12,26 @@
 #include <omp.h>
 #endif
 #include <atomic>
+#include <sstream>
 
 namespace skdecide {
     
 #if defined(HAS_EXECUTION)
     struct SequentialExecution {
         static constexpr std::execution::sequenced_policy policy = std::execution::seq;
+        static constexpr char class_name[] = "sequential";
 
-        struct Mutex { Mutex() {} };
-        struct RecursiveMutex { RecursiveMutex() {} };
+        struct Mutex {
+            Mutex() {}
+            void lock() {}
+            void unlock() {}
+        };
+
+        struct RecursiveMutex {
+            RecursiveMutex() {}
+            void lock() {}
+            void unlock() {}
+        };
 
         template <typename Tmutex>
         inline void protect(const std::function<void ()>& f, [[maybe_unused]] Tmutex& m) {
@@ -31,8 +42,12 @@ namespace skdecide {
             f();
         }
 
-        inline static std::string print() {
-            return "sequential";
+        inline static std::string print_type() {
+            return class_name;
+        }
+
+        inline static std::string print_thread() {
+            return std::string();
         }
 
         template <typename T>
@@ -41,6 +56,7 @@ namespace skdecide {
 
     struct ParallelExecution {
         static constexpr std::execution::parallel_policy policy = std::execution::par;
+        static constexpr char class_name[] = "parallel (C++-17/TBB)";
 
         typedef std::mutex Mutex;
         typedef std::recursive_mutex RecursiveMutex;
@@ -57,8 +73,14 @@ namespace skdecide {
             protect(f, _mutex);
         }
 
-        inline static std::string print() {
-            return "parallel (C++-17/TBB)";
+        inline static std::string print_type() {
+            return class_name;
+        }
+
+        inline static std::string print_thread() {
+            std::ostringstream s;
+            s << " [thread " << std::this_thread::get_id() << "]";
+            return s.str();
         }
 
         template <typename T>
@@ -67,9 +89,19 @@ namespace skdecide {
 #elif defined(HAS_OPENMP)
     struct SequentialExecution {
         static constexpr char policy = 0; // only useful for c++-17 thread support
+        static constexpr char class_name[] = "sequential";
 
-        struct Mutex { Mutex() {} };
-        struct RecursiveMutex { RecursiveMutex() {} };
+        struct Mutex {
+            Mutex() {}
+            void lock() {}
+            void unlock() {}
+        };
+
+        struct RecursiveMutex {
+            RecursiveMutex() {}
+            void lock() {}
+            void unlock() {}
+        };
 
         template <typename Tmutex>
         inline void protect(const std::function<void ()>& f, [[maybe_unused]] Tmutex& m) {
@@ -80,8 +112,12 @@ namespace skdecide {
             f();
         }
 
-        inline static std::string print() {
-            return "sequential";
+        inline static std::string print_type() {
+            return class_name;
+        }
+
+        inline static std::string print_thread() {
+            return std::string();
         }
 
         template <typename T>
@@ -90,6 +126,7 @@ namespace skdecide {
 
     struct ParallelExecution {
         static constexpr int policy = 0;
+        static constexpr char class_name[] = "parallel (OpenMP)";
 
         struct Mutex {
             Mutex() {
@@ -98,6 +135,14 @@ namespace skdecide {
 
             ~Mutex() {
                 omp_destroy_lock(&_lock);
+            }
+
+            void lock() {
+                omp_set_lock(&_lock);
+            }
+
+            void unlock() {
+                omp_unset_lock(&_lock);
             }
 
             omp_lock_t _lock;
@@ -112,19 +157,22 @@ namespace skdecide {
                 omp_destroy_nest_lock(&_lock);
             }
 
+            void lock() {
+                omp_set_nest_lock(&_lock);
+            }
+
+            void unlock() {
+                omp_unset_nest_lock(&_lock);
+            }
+
             omp_nest_lock_t _lock;
         };
 
-        inline void protect(const std::function<void ()>& f, Mutex& m) {
-            omp_set_lock(&(m._lock));
+        template <typename Tmutex>
+        inline void protect(const std::function<void ()>& f, Tmutex& m) {
+            m.lock();
             f();
-            omp_unset_lock(&(m._lock));
-        }
-
-        inline void protect(const std::function<void ()>& f, RecursiveMutex& m) {
-            omp_set_nest_lock(&(m._lock));
-            f();
-            omp_unset_nest_lock(&(m._lock));
+            m.unlock();
         }
 
         inline void protect(const std::function<void ()>& f) {
@@ -132,8 +180,14 @@ namespace skdecide {
             f();
         }
 
-        inline static std::string print() {
-            return "parallel (OpenMP)";
+        inline static std::string print_type() {
+            return class_name;
+        }
+
+        inline static std::string print_thread() {
+            std::ostringstream s;
+            s << " [thread " << std::this_thread::get_id() << "]";
+            return s.str();
         }
 
         template <typename T>
@@ -142,9 +196,19 @@ namespace skdecide {
 #else
     struct SequentialExecution {
         static constexpr char policy = 0;
+        static constexpr char class_name[] = "sequential";
 
-        struct Mutex { Mutex() {} };
-        struct RecursiveMutex { RecursiveMutex() {} };
+        struct Mutex {
+            Mutex() {}
+            void lock() {}
+            void unlock() {}
+        };
+
+        struct RecursiveMutex {
+            RecursiveMutex() {}
+            void lock() {}
+            void unlock() {}
+        };
 
         template <typename Tmutex>
         inline void protect(const std::function<void ()>& f, [[maybe_unused]] Tmutex& m) {
@@ -155,8 +219,12 @@ namespace skdecide {
             f();
         }
 
-        inline static std::string print() {
-            return "sequential";
+        inline static std::string print_type() {
+            return class_name;
+        }
+
+        inline static std::string print_thread() {
+            return std::string();
         }
 
         template <typename T>
@@ -165,9 +233,19 @@ namespace skdecide {
 
     struct ParallelExecution {
         static constexpr int policy = 0;
+        static constexpr char class_name[] = "sequential (no parallelization support - compile with c++-17 parallelization feature or with openmp)";
 
-        struct Mutex { Mutex() {} };
-        struct RecursiveMutex { RecursiveMutex() {} };
+        struct Mutex {
+            Mutex() {}
+            void lock() {}
+            void unlock() {}
+        };
+
+        struct RecursiveMutex {
+            RecursiveMutex() {}
+            void lock() {}
+            void unlock() {}
+        };
 
         template <typename Tmutex>
         inline void protect(const std::function<void ()>& f, [[maybe_unused]] Tmutex& m) {
@@ -178,8 +256,12 @@ namespace skdecide {
             f();
         }
 
-        inline static std::string print() {
-            return "sequential (no parallelization support - compile with c++-17 parallelization feature or with openmp)";
+        inline static std::string print_type() {
+            return class_name;
+        }
+
+        inline static std::string print_thread() {
+            return std::string();
         }
 
         template <typename T>
@@ -200,10 +282,15 @@ namespace std {
 #if defined(HAS_OPENMP)
     // mimic parallel std::for_each using openmp
     template <typename ForwardIt, typename UnaryFunction2>
-    void for_each(int&& policy, ForwardIt first, ForwardIt last, UnaryFunction2 f) {
-        #pragma omp parallel for
+    void for_each(int policy, ForwardIt first, ForwardIt last, UnaryFunction2 f) {
+        // openMP handles random access iterators from version 3.0 only (thus not all container iterators)
+        std::vector<ForwardIt> v;
         for (ForwardIt i = first ; i != last ; i++) {
-            f(*i);
+            v.push_back(i);
+        }
+        #pragma omp parallel for
+        for (int i = 0 ; i < v.size() ; i++) {
+            f(*v[i]);
         }
     }
 #endif // defined(HAS_OPENMP)
