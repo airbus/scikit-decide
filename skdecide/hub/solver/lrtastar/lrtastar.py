@@ -30,12 +30,12 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities):
 
     def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
         if observation not in self.values:
-            return self._heuristic(observation, self._domain)
+            return self._heuristic(self._domain, observation)
         return self.values[observation]
 
     def __init__(self,
                  from_state: Optional[D.T_state] = None,
-                 heuristic: Optional[Callable[[D.T_state, Domain], float]] = None,
+                 heuristic: Optional[Callable[[Domain, D.T_state], float]] = None,
                  weight: float = 1.,
                  verbose: bool = False,
                  max_iter=5000,
@@ -103,8 +103,7 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities):
                 if st in current_roll:
                     continue
                 if st not in self.values:
-                    self.values[st] = self._heuristic(st,
-                                                      self._domain)
+                    self.values[st] = self._heuristic(self._domain, st)
                 if r + self.values[st] < best_estimated_cost:
                     next_state = st
                     next_action = action
@@ -119,7 +118,7 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities):
                     self.heuristic_changed = True
                     self.values[current_state] = best_estimated_cost
             cumulated_reward += best_estimated_cost - (self.values[next_state] if next_state in self.values else
-                                                       self._heuristic(next_state, self._domain))
+                                                       self._heuristic(self._domain, next_state))
             list_action.append(next_action)
             current_roll_and_action.append((current_state,
                                             {"action": next_action}))

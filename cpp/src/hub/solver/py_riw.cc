@@ -183,9 +183,13 @@ private :
                 std::is_same<Trollout_policy<PyRIWDomain<Texecution>>, skdecide::SimulationRollout<PyRIWDomain<Texecution>>>::value);
             _solver = std::make_unique<skdecide::RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>>(
                                                                             *_domain,
-                                                                            [this](PyRIWDomain<Texecution>& d, const typename PyRIWDomain<Texecution>::State& s, const int& thread_id)->std::unique_ptr<PyRIWFeatureVector<Texecution>> {
+                                                                            [this](PyRIWDomain<Texecution>& d, const typename PyRIWDomain<Texecution>::State& s, const std::size_t* thread_id)->std::unique_ptr<PyRIWFeatureVector<Texecution>> {
                                                                                 try {
-                                                                                    return std::make_unique<PyRIWFeatureVector<Texecution>>(d.call(thread_id, _state_features, s._state));
+                                                                                    std::unique_ptr<py::object> r = d.call(thread_id, _state_features, s.pyobj());
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    std::unique_ptr<PyRIWFeatureVector<Texecution>> rr = std::make_unique<PyRIWFeatureVector<Texecution>>(*r);
+                                                                                    r.reset();
+                                                                                    return rr;
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
                                                                                     throw;
@@ -221,7 +225,7 @@ private :
 
         virtual py::object get_next_action(const py::object& s) {
             try {
-                return _solver->get_best_action(s).get();
+                return _solver->get_best_action(s).pyobj();
             } catch (const std::runtime_error&) {
                 return py::none();
             }
@@ -251,7 +255,7 @@ private :
             py::dict d;
             auto&& p = _solver->policy();
             for (auto& e : p) {
-                d[e.first._state] = py::make_tuple(e.second.first._event, e.second.second);
+                d[e.first.pyobj()] = py::make_tuple(e.second.first.pyobj(), e.second.second);
             }
             return d;
         }

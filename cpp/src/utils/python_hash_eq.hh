@@ -11,6 +11,7 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
+#include "utils/python_globals.hh"
 #include "utils/python_gil_control.hh"
 #include "utils/python_container_adapter.hh"
 
@@ -25,14 +26,12 @@ struct PythonHash {
     std::size_t operator()(const py::object& o) const {
         typename GilControl<Texecution>::Acquire acquire;
         try {
-            static py::object not_implemented_object = py::globals()["__builtins__"]["NotImplemented"];
-            static std::size_t python_sys_maxsize = py::module::import("sys").attr("maxsize").template cast<std::size_t>();
             std::function<bool (const py::object&, std::size_t&)> compute_hash = [](const py::object& ho, std::size_t& hash_val) {
                 py::object res = ho.attr("__hash__")();
-                if (!res.is(not_implemented_object)) {
+                if (!res.is(skdecide::Globals::not_implemented_object())) {
                     // python __hash__ can return negative integers but c++ expects positive integers only
-                    // return  (ho.attr("__hash__")().template cast<std::size_t>()) % ((python_sys_maxsize + 1) * 2);
-                    hash_val = (res.template cast<long long>()) + python_sys_maxsize;
+                    // return  (ho.attr("__hash__")().template cast<std::size_t>()) % ((skdecide::Globals::python_sys_maxsize() + 1) * 2);
+                    hash_val = (res.template cast<long long>()) + skdecide::Globals::python_sys_maxsize();
                     return true;
                 } else {
                     return false;
@@ -71,10 +70,9 @@ struct PythonEqual {
     bool operator()(const py::object& o1, const py::object& o2) const {
         typename GilControl<Texecution>::Acquire acquire;
         try {
-            static py::object not_implemented_object = py::globals()["__builtins__"]["NotImplemented"];
             std::function<bool (const py::object&, const py::object&, bool&)> compute_equal = [](const py::object& eo1, const py::object& eo2, bool& eq_test) {
                 py::object res = eo1.attr("__eq__")(eo2);
-                if (!res.is(not_implemented_object)) {
+                if (!res.is(skdecide::Globals::not_implemented_object())) {
                     eq_test = res.template cast<bool>();
                     return true;
                 } else {

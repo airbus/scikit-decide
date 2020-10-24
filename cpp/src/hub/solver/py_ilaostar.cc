@@ -121,7 +121,11 @@ private :
                                                                                     auto fgc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _goal_checker(dd, ss);
                                                                                     };
-                                                                                    return d.call(-1, fgc, s._state).template cast<bool>();
+                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, fgc, s.pyobj());
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    bool rr = r->template cast<bool>();
+                                                                                    r.reset();
+                                                                                    return  rr;
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
                                                                                     throw;
@@ -132,7 +136,11 @@ private :
                                                                                     auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _heuristic(dd, ss);
                                                                                     };
-                                                                                    return d.call(-1, fh, s._state).template cast<double>();
+                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, fh, s.pyobj());
+                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                                                                    double rr = r->template cast<double>();
+                                                                                    r.reset();
+                                                                                    return  rr;
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
                                                                                     throw;
@@ -164,7 +172,7 @@ private :
 
         virtual py::object get_next_action(const py::object& s) {
             try {
-                return _solver->get_best_action(s).get();
+                return _solver->get_best_action(s).pyobj();
             } catch (const std::runtime_error&) {
                 return py::none();
             }
@@ -190,7 +198,7 @@ private :
             py::dict d;
             auto&& p = _solver->policy();
             for (auto& e : p) {
-                d[e.first._state] = py::make_tuple(e.second.first._event, e.second.second);
+                d[e.first.pyobj()] = py::make_tuple(e.second.first.pyobj(), e.second.second);
             }
             return d;
         }

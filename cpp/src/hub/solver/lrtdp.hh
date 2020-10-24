@@ -39,8 +39,8 @@ public :
     typedef Texecution_policy ExecutionPolicy;
 
     LRTDPSolver(Domain& domain,
-                const std::function<bool (Domain&, const State&, const int&)>& goal_checker,
-                const std::function<double (Domain&, const State&, const int&)>& heuristic,
+                const std::function<bool (Domain&, const State&, const std::size_t*)>& goal_checker,
+                const std::function<double (Domain&, const State&, const std::size_t*)>& heuristic,
                 bool use_labels = true,
                 std::size_t time_budget = 3600000,
                 std::size_t rollout_budget = 100000,
@@ -60,7 +60,7 @@ public :
               }
 
               std::random_device rd;
-             _gen = std::make_unique<std::mt19937>(rd());
+              _gen = std::make_unique<std::mt19937>(rd());
           }
 
     // clears the solver (clears the search graph, thus preventing from reusing
@@ -72,17 +72,17 @@ public :
     // solves from state s using heuristic function h
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print() + " LRTDP solver from state " + s.print());
+            spdlog::info("Running " + ExecutionPolicy::print_type() + " LRTDP solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             
             auto si = _graph.emplace(s);
             StateNode& root_node = const_cast<StateNode&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
 
             if (si.second) {
-                root_node.best_value = _heuristic(_domain, s, -1);
+                root_node.best_value = _heuristic(_domain, s, nullptr);
             }
 
-            if (root_node.solved || _goal_checker(_domain, s, -1)) { // problem already solved from this state (was present in _graph and already solved)
+            if (root_node.solved || _goal_checker(_domain, s, nullptr)) { // problem already solved from this state (was present in _graph and already solved)
                 if (_debug_logs) spdlog::debug("Found goal state " + s.print());
                 return;
             }
@@ -91,14 +91,14 @@ public :
             boost::integer_range<std::size_t> parallel_rollouts(0, _domain.get_parallel_capacity());
 
             std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(),
-                            [this, &start_time, &root_node] (const int& thread_id) {
+                            [this, &start_time, &root_node] (const std::size_t& thread_id) {
                 
                 while ((!_use_labels || !root_node.solved) &&
                        (elapsed_time(start_time) < _time_budget) &&
                        (_nb_rollouts < _rollout_budget)) {
-                    if (_debug_logs) spdlog::debug("Starting rollout " + StringConverter::from(_nb_rollouts) + " on thread " + StringConverter::from(thread_id));
+                    if (_debug_logs) spdlog::debug("Starting rollout " + StringConverter::from(_nb_rollouts) + ExecutionPolicy::print_thread());
                     _nb_rollouts++;
-                    trial(&root_node, start_time, thread_id);
+                    trial(&root_node, start_time, &thread_id);
                 }
             });
 
@@ -128,15 +128,24 @@ public :
         auto si = _graph.find(s);
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
             throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
+        } else {
+            if (_debug_logs) {
+                    std::string str = "(";
+                    for (const auto& o : si->best_action->outcomes) {
+                        str += "\n    " + std::get<2>(o)->state.print();
+                    }
+                    str += "\n)";
+                    spdlog::debug("Best action's outcomes:\n" + str);
+                }
+            if (_online_node_garbage && _current_state) {
+                std::unordered_set<StateNode*> root_subgraph, child_subgraph;
+                compute_reachable_subgraph(_current_state, root_subgraph);
+                compute_reachable_subgraph(const_cast<StateNode*>(&(*si)), child_subgraph); // we won't change the real key (StateNode::state) so we are safe
+                remove_subgraph(root_subgraph, child_subgraph);
+            }
+            _current_state = const_cast<StateNode*>(&(*si)); // we won't change the real key (StateNode::state) so we are safe
+            return si->best_action->action;
         }
-        if (_online_node_garbage && _current_state) {
-            std::unordered_set<StateNode*> root_subgraph, child_subgraph;
-            compute_reachable_subgraph(_current_state, root_subgraph);
-            compute_reachable_subgraph(const_cast<StateNode*>(&(*si)), child_subgraph); // we won't change the real key (StateNode::state) so we are safe
-            remove_subgraph(root_subgraph, child_subgraph);
-        }
-        _current_state = const_cast<StateNode*>(&(*si)); // we won't change the real key (StateNode::state) so we are safe
-        return si->best_action->action;
     }
 
     double get_best_value(const State& s) const {
@@ -173,8 +182,8 @@ private :
     typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
     
     Domain& _domain;
-    std::function<bool (Domain&, const State&, const int&)> _goal_checker;
-    std::function<double (Domain&, const State&, const int&)> _heuristic;
+    std::function<bool (Domain&, const State&, const std::size_t*)> _goal_checker;
+    std::function<double (Domain&, const State&, const std::size_t*)> _heuristic;
     bool _use_labels;
     atomic_size_t _time_budget;
     atomic_size_t _rollout_budget;
@@ -214,7 +223,6 @@ private :
         std::vector<std::tuple<double, double, StateNode*>> outcomes; // next state nodes owned by _graph
         std::discrete_distribution<> dist;
         atomic_double value;
-        typename ExecutionPolicy::Mutex mutex;
 
         ActionNode(const Action& a)
             : action(a), value(std::numeric_limits<double>::infinity()) {}
@@ -237,34 +245,38 @@ private :
         return milliseconds_duration;
     }
 
-    void expand(StateNode* s, const int& thread_id) {
-        if (_debug_logs) spdlog::debug("Expanding state " + s->state.print());
-        auto applicable_actions = _domain.get_applicable_actions(s->state, thread_id)->get_elements();
+    void expand(StateNode* s, const std::size_t* thread_id) {
+        if (_debug_logs) spdlog::debug("Expanding state " + s->state.print() + ExecutionPolicy::print_thread());
+        auto applicable_actions = _domain.get_applicable_actions(s->state, thread_id).get_elements();
 
-        for (const auto& a : applicable_actions) {
-            if (_debug_logs) spdlog::debug("Current expanded action: " + Action(a).print());
+        for (auto a : applicable_actions) {
+            if (_debug_logs) spdlog::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
             s->actions.push_back(std::make_unique<ActionNode>(a));
             ActionNode& an = *(s->actions.back());
-            auto next_states = _domain.get_next_state_distribution(s->state, a, thread_id)->get_values();
+            auto next_states = _domain.get_next_state_distribution(s->state, a, thread_id).get_values();
             std::vector<double> outcome_weights;
 
-            for (const auto& ns : next_states) {
-                typename Domain::OutcomeExtractor oe(ns);
-                std::pair<typename Graph::iterator, bool> i = _graph.emplace(oe.state());
+            for (auto ns : next_states) {
+                std::pair<typename Graph::iterator, bool> i;
+                _execution_policy.protect([this, &i, &ns]{
+                    i = _graph.emplace(ns.state());
+                });
                 StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                an.outcomes.push_back(std::make_tuple(oe.probability(), _domain.get_transition_cost(s->state, a, next_node.state, thread_id), &next_node));
+                an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_cost(s->state, a, next_node.state, thread_id), &next_node));
                 outcome_weights.push_back(std::get<0>(an.outcomes.back()));
-                if (_debug_logs) spdlog::debug("Current next state expansion: " + next_node.state.print());
+                if (_debug_logs) spdlog::debug("Current next state expansion: " + next_node.state.print() + ExecutionPolicy::print_thread());
 
                 if (i.second) { // new node
                     if (_goal_checker(_domain, next_node.state, thread_id)) {
-                        if (_debug_logs) spdlog::debug("Found goal state " + next_node.state.print());
+                        if (_debug_logs) spdlog::debug("Found goal state " + next_node.state.print() + ExecutionPolicy::print_thread());
                         next_node.goal = true;
                         next_node.solved = true;
                         next_node.best_value = 0.0;
                     } else {
                         next_node.best_value = _heuristic(_domain, next_node.state, thread_id);
-                        if (_debug_logs) spdlog::debug("New state " + next_node.state.print() + " with heuristic value " + StringConverter::from(next_node.best_value));
+                        if (_debug_logs) spdlog::debug("New state " + next_node.state.print() +
+                                                       " with heuristic value " + StringConverter::from(next_node.best_value) +
+                                                       ExecutionPolicy::print_thread());
                     }
                 }
             }
@@ -275,48 +287,42 @@ private :
 
     double q_value(ActionNode* a) {
         a->value = 0;
-        _execution_policy.protect([&a, this]{
-            for (const auto& o : a->outcomes) {
-                a->value = a->value + (std::get<0>(o) * (std::get<1>(o) + (_discount * std::get<2>(o)->best_value)));
-            }
-            if (_debug_logs) spdlog::debug("Updated Q-value of action " + a->action.print() + " with value " + StringConverter::from(a->value));
-        }, a->mutex);
+        for (const auto& o : a->outcomes) {
+            a->value = a->value + (std::get<0>(o) * (std::get<1>(o) + (_discount * std::get<2>(o)->best_value)));
+        }
+        if (_debug_logs) spdlog::debug("Updated Q-value of action " + a->action.print() +
+                                        " with value " + StringConverter::from(a->value) +
+                                        ExecutionPolicy::print_thread());
         return a->value;
     }
 
-    ActionNode* greedy_action(StateNode* s, const int& thread_id) {
+    ActionNode* greedy_action(StateNode* s, const std::size_t* thread_id) {
         double best_value = std::numeric_limits<double>::infinity();
         ActionNode* best_action = nullptr;
 
-        _execution_policy.protect([&s, &thread_id, &best_value, &best_action, this]{
-            if (s->actions.empty()) {
-                expand(s, thread_id);
-            }
+        if (s->actions.empty()) {
+            expand(s, thread_id);
+        }
 
-            for (auto& a : s->actions) {
-                if (q_value(a.get()) < best_value) {
-                    best_value = a->value;
-                    best_action = a.get();
-                }
+        for (auto& a : s->actions) {
+            if (q_value(a.get()) < best_value) {
+                best_value = a->value;
+                best_action = a.get();
             }
+        }
 
-            if (_debug_logs) {
-                _execution_policy.protect([&s, &best_action, &best_value](){
-                    spdlog::debug("Greedy action of state " + s->state.print() + " : " +
-                                  best_action->action.print() + " with value " + StringConverter::from(best_value));
-                }, best_action->mutex);
-            }
-        }, s->mutex);
+        if (_debug_logs) {
+            spdlog::debug("Greedy action of state " + s->state.print() + ": " +
+                            best_action->action.print() + " with value " + StringConverter::from(best_value) +
+                            ExecutionPolicy::print_thread());
+        }
 
         return best_action;
     }
 
-    void update(StateNode* s, const int& thread_id) {
-        if (_debug_logs) {
-            _execution_policy.protect([&s](){
-                spdlog::debug("Updating state " + s->state.print());
-            }, s->mutex);
-        }
+    void update(StateNode* s, const std::size_t* thread_id) {
+        if (_debug_logs) spdlog::debug("Updating state " + s->state.print() +
+                                       ExecutionPolicy::print_thread());
         s->best_action = greedy_action(s, thread_id);
         s->best_value = (double) s->best_action->value;
     }
@@ -324,36 +330,30 @@ private :
     StateNode* pick_next_state(ActionNode* a) {
         StateNode* s = nullptr;
         _execution_policy.protect([&a, &s, this](){
-            _execution_policy.protect([&a, &s, this](){
                 s = std::get<2>(a->outcomes[a->dist(*_gen)]);
-                if (_debug_logs) {
-                    _execution_policy.protect([&a, &s](){
-                        spdlog::debug("Picked next state " + s->state.print() +
-                                      " from action " + a->action.print());
-                    }, s->mutex);
-                }
-            }, a->mutex);
+                if (_debug_logs) spdlog::debug("Picked next state " + s->state.print() +
+                                               " from action " + a->action.print() +
+                                               ExecutionPolicy::print_thread());
         }, _gen_mutex);
         return s;
     }
 
-    double residual(StateNode* s, const int& thread_id) {
+    double residual(StateNode* s, const std::size_t* thread_id) {
         s->best_action = greedy_action(s, thread_id);
         double res = std::fabs(s->best_value - s->best_action->value);
-        if (_debug_logs) {
-            _execution_policy.protect([&s, &res](){
-                spdlog::debug("State " + s->state.print() + " has residual " + StringConverter::from(res));
-            }, s->mutex);
-        }
+        if (_debug_logs) spdlog::debug("State " + s->state.print() +
+                                       " has residual " + StringConverter::from(res) +
+                                       ExecutionPolicy::print_thread());
         return res;
     }
 
     bool check_solved(StateNode* s,
                       const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
-                      const int& thread_id) {
+                      const std::size_t* thread_id) {
         if (_debug_logs) {
             _execution_policy.protect([&s](){
-                spdlog::debug("Checking solved status of State " + s->state.print());
+                spdlog::debug("Checking solved status of State " + s->state.print() +
+                              ExecutionPolicy::print_thread());
             }, s->mutex);
         }
 
@@ -377,24 +377,20 @@ private :
             closed.push(cs);
             visited.insert(cs);
 
-            if (residual(cs, thread_id) > _epsilon) {
-                rv = false;
-                continue;
-            }
+            _execution_policy.protect([this, &cs, &rv, &open, &visited, &thread_id](){
+                if (residual(cs, thread_id) > _epsilon) {
+                    rv = false;
+                    return;
+                }
 
-            ActionNode* a = nullptr;
-            _execution_policy.protect([&cs, &a](){
-                a = cs->best_action; // best action updated when calling residual(cs, thread_id)
-            }, cs->mutex);
-
-            _execution_policy.protect([&a, &visited, &open](){
+                ActionNode* a = cs->best_action; // best action updated when calling residual(cs, thread_id)
                 for (const auto& o : a->outcomes) {
                     StateNode* ns = std::get<2>(o);
                     if (!(ns->solved) && (visited.find(ns) == visited.end())) {
                         open.push(ns);
                     }
                 }
-            }, a->mutex);
+            }, cs->mutex);
         }
 
         auto e_time = elapsed_time(start_time);
@@ -408,14 +404,17 @@ private :
             }
         } else {
             while (!closed.empty() && (elapsed_time(start_time) < _time_budget)) {
-                update(closed.top(), thread_id);
+                _execution_policy.protect([this, &closed, &thread_id](){
+                    update(closed.top(), thread_id);
+                }, closed.top()->mutex);
                 closed.pop();
             }
         }
 
         if (_debug_logs) {
             _execution_policy.protect([&s, &rv](){
-                spdlog::debug("State " + s->state.print() + " is " + (rv?(""):("not")) + " solved.");
+                spdlog::debug("State " + s->state.print() + " is " + (rv?(""):("not")) + " solved." +
+                              ExecutionPolicy::print_thread());
             }, s->mutex);
         }
 
@@ -424,28 +423,28 @@ private :
 
     void trial(StateNode* s,
                const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
-               const int& thread_id) {
+               const std::size_t* thread_id) {
         std::stack<StateNode*> visited;
         StateNode* cs = s;
         std::size_t depth = 0;
+        bool found_goal = false;
 
         while ((!_use_labels || !(cs->solved)) &&
-               (elapsed_time(start_time) < _time_budget),
+               !found_goal &&
+               (elapsed_time(start_time) < _time_budget) &&
                (depth < _max_depth)) {
             depth++;
             visited.push(cs);
-
-            if (cs->goal) {
-                if (_debug_logs) {
-                    _execution_policy.protect([&cs](){
-                        spdlog::debug("Found goal state " + cs->state.print());
-                    }, cs->mutex);
+            _execution_policy.protect([this, &cs, &found_goal, &thread_id](){
+                if (cs->goal) {
+                    if (_debug_logs) spdlog::debug("Found goal state " + cs->state.print() +
+                                                   ExecutionPolicy::print_thread());
+                    found_goal = true;
                 }
-                break;
-            }
 
-            update(cs, thread_id);
-            cs = pick_next_state(cs->best_action);
+                update(cs, thread_id);
+                cs = pick_next_state(cs->best_action);
+            }, cs->mutex);
         }
 
         while (_use_labels && !visited.empty() && (elapsed_time(start_time) < _time_budget)) {
@@ -465,13 +464,11 @@ private :
         while(!frontier.empty()) {
             std::unordered_set<StateNode*> new_frontier;
             for (auto& n : frontier) {
-                if (n) {
-                    for (auto& action : n->actions) {
-                        for (auto& outcome : action->outcomes) {
-                            if (subgraph.find(std::get<2>(outcome)) == subgraph.end()) {
-                                new_frontier.insert(std::get<2>(outcome));
-                                subgraph.insert(std::get<2>(outcome));
-                            }
+                for (auto& action : n->actions) {
+                    for (auto& outcome : action->outcomes) {
+                        if (subgraph.find(std::get<2>(outcome)) == subgraph.end()) {
+                            new_frontier.insert(std::get<2>(outcome));
+                            subgraph.insert(std::get<2>(outcome));
                         }
                     }
                 }
