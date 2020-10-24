@@ -8,8 +8,6 @@ from math import sqrt
 from pathos.helpers import mp
 from collections import namedtuple
 
-from stable_baselines3 import PPO
-
 from skdecide import GoalMDPDomain, TransitionValue, Space, \
                      DiscreteDistribution, EnvironmentOutcome, TransitionOutcome
 from skdecide.builders.domain import Actions
@@ -101,6 +99,9 @@ class MyDomain(D):
         return MultiDiscreteSpace([self.num_cols, self.num_rows])
 
 
+# Shared memory proxy for use with parallel algorithms only
+# Not efficient on this tiny domain but provided for illustration
+# To activate parallelism, set parallel=True in the algotihms below
 class GridShmProxy:
 
     _register_ = [(State, 2), (Action, 1), (EnumSpace, 1), (ListSpace, 1),
@@ -343,10 +344,10 @@ if __name__ == '__main__':
          'entry': 'LRTDP',
          'config': {'domain_factory': lambda: MyDomain(),
                     'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
-                    'use_labels': True, 'time_budget': 60000, 'rollout_budget': 10000,
-                    'max_depth': 500, 'discount': 1.0, 'epsilon': 0.001,
+                    'use_labels': True, 'time_budget': 1000, 'rollout_budget': 100,
+                    'max_depth': 50, 'discount': 1.0, 'epsilon': 0.001,
                     'online_node_garbage': True, 'continuous_planning': False,
-                    'parallel': True, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
+                    'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
         
         # ILAO*
         {'name': 'Improved-LAO*',
@@ -354,22 +355,17 @@ if __name__ == '__main__':
          'config': {'domain_factory': lambda: MyDomain(),
                     'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
                     'discount': 1.0, 'epsilon': 0.001,
-                    'parallel': True, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
+                    'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
 
         # UCT (reinforcement learning / search)
         {'name': 'UCT (reinforcement learning / search)',
          'entry': 'UCT',
          'config': {'domain_factory': lambda: MyDomain(),
-                    'time_budget': 10000, 'rollout_budget': 10000,
-                    'max_depth': 500, 'ucb_constant': 1.0 / sqrt(2.0),
-                    'continuous_planning': False,
-                    'parallel': True, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
-
-        # PPO: Proximal Policy Optimization (deep reinforcement learning)
-        {'name': 'PPO: Proximal Policy Optimization (deep reinforcement learning)',
-         'entry': 'StableBaseline',
-         'config': {'algo_class': PPO, 'baselines_policy': 'MlpPolicy', 'learn_config': {'total_timesteps': 30000},
-                    'verbose': 1}}
+                    'time_budget': 1000, 'rollout_budget': 100,
+                    'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
+                    'online_node_garbage': True, 'continuous_planning': False,
+                    'heuristic': lambda d, s: (-sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2), 10000),
+                    'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}}
     ]
 
     # Load solvers (filtering out badly installed ones)

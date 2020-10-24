@@ -17,7 +17,7 @@ from skdecide.hub.space.gym import GymSpace
 from skdecide.utils import rollout
 
 from gym_jsbsim.catalogs.catalog import Catalog as prp
-from gym_jsbsim.envs.taxi_utils2 import *
+from gym_jsbsim.envs.taxi_utils import *
 
 # ENV_NAME = 'GymJsbsim-HeadingControlTask-v0'
 ENV_NAME = 'GymJsbsim-TaxiapControlTask-v0'

@@ -10,19 +10,18 @@ import json
 import sys
 
 from math import sqrt
-from typing import Callable, Any, Optional
+from typing import Any
 
-from skdecide import TransitionOutcome, TransitionValue, EnvironmentOutcome, Domain
+from skdecide import EnvironmentOutcome
 from skdecide.core import DiscreteDistribution
-from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
-    DeterministicInitialized, Markovian, FullyObservable, Rewards
+from skdecide.builders.domain import  DeterministicInitialized
 from skdecide.hub.domain.gym import GymDomain, GymDomainHashable, \
     GymDiscreteActionDomain, GymDomainStateProxy
 from skdecide.hub.solver.mcts import UCT
 from skdecide.utils import rollout
 
 from gym_jsbsim.catalogs.catalog import Catalog as prp
-from gym_jsbsim.envs.taxi_utils2 import *
+from gym_jsbsim.envs.taxi_utils import *
 
 # ENV_NAME = 'GymJsbsim-HeadingControlTask-v0'
 ENV_NAME = 'GymJsbsim-TaxiapControlTask-v0'
@@ -38,7 +37,7 @@ def normalize_and_round(state):
     return ns
 
 
-class D(GymDomainHashable, GymDiscreteActionDomain):
+class D(GymDomainHashable, GymDiscreteActionDomain, DeterministicInitialized):
     pass
 
 class GymUCTRawDomain(D):
@@ -293,13 +292,16 @@ domain_factory = lambda: GymUCTRawDomain(gym_env=gym.make(ENV_NAME),
                                             discretization_factor=9,
                                             max_depth=HORIZON)
 
-if True:#UCT.check_domain(domain_factory()):
-    solver_factory = lambda: UCT(time_budget = 1000,
+if UCT.check_domain(domain_factory()):
+    solver_factory = lambda: UCT(domain_factory=domain_factory,
+                                 time_budget = 1000,
                                  rollout_budget = 10,
                                  max_depth = 500,#HORIZON+1,
                                  discount = 1.0,
                                  ucb_constant = 1.0 / sqrt(2.0),
                                  transition_mode=UCT.Options.TransitionMode.Step,
+                                 continuous_planning=True,
+                                 online_node_garbage=True,
                                  parallel=False,
                                  debug_logs=False)
     with solver_factory() as solver:
