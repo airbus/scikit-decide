@@ -66,7 +66,7 @@ public :
                     return skdecide::PythonHash<Texecution>()(*o._pyobj);
                 } catch(const std::exception& e) {
                     spdlog::error(std::string("SKDECIDE exception when hashing ") +
-                                  typename Derived::class_name + "s: " + e.what());
+                                  Derived::class_name + "s: " + e.what());
                     throw;
                 }
             }
@@ -78,7 +78,7 @@ public :
                     return skdecide::PythonEqual<Texecution>()(*o1._pyobj, *o2._pyobj);
                 } catch(const std::exception& e) {
                     spdlog::error(std::string("SKDECIDE exception when testing ") +
-                                  typename Derived::class_name + "s equality: " + e.what());
+                                  Derived::class_name + "s equality: " + e.what());
                     throw;
                 }
             }
@@ -113,7 +113,7 @@ public :
     struct PyIter {
         std::unique_ptr<py::iterator> _iterator;
 
-        PyIter(std::unique_ptr<py::iterator>&& iterator) : _iterator(iterator) {}
+        PyIter(std::unique_ptr<py::iterator>&& iterator) : _iterator(std::move(iterator)) {}
 
         PyIter(const py::iterator& iterator) {
             typename GilControl<Texecution>::Acquire acquire;
@@ -186,7 +186,7 @@ public :
         
          void construct() {
                 typename GilControl<Texecution>::Acquire acquire;
-                if (!py::hasattr(*_pyobj, "get_elements")) {
+                if (!py::hasattr(*(this->_pyobj), "get_elements")) {
                     throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement get_elements()");
                 }
             }
@@ -224,19 +224,19 @@ public :
 
             PyIter<Action> begin() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<Action>(_pyobj->begin());
+                return PyIter<Action>(this->_pyobj->begin());
             }
 
             PyIter<Action> end() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<Action>(_pyobj->end());
+                return PyIter<Action>(this->_pyobj->end());
             }
         };
 
         ApplicableActionSpaceElements get_elements() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return ApplicableActionSpaceElements(_pyobj->attr("get_elements")());
+                return ApplicableActionSpaceElements(this->_pyobj->attr("get_elements")());
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting applicable action space's elements: ") + e->what());
                 std::runtime_error err(e->what());
@@ -247,10 +247,10 @@ public :
 
         Event sample() const {
             typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(*_pyobj, "sample")) {
+            if (!py::hasattr(*(this->_pyobj), "sample")) {
                 throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement sample()");
             } else {
-                return Event(_pyobj->attr("sample")());
+                return Event(this->_pyobj->attr("sample")());
             }
         }
     };
@@ -276,20 +276,20 @@ public :
 
         void construct() {
             typename GilControl<Texecution>::Acquire acquire;
-            if (py::hasattr(*_pyobj, "state")) {
-                _state = std::make_unique<py::object>(_pyobj->attr("state"));
-            } else if (py::hasattr(*_pyobj, "observation")) {
-                _state = std::make_unique<py::object>(_pyobj->attr("observation"));
+            if (py::hasattr(*(this->_pyobj), "state")) {
+                _state = std::make_unique<py::object>(this->_pyobj->attr("state"));
+            } else if (py::hasattr(*(this->_pyobj), "observation")) {
+                _state = std::make_unique<py::object>(this->_pyobj->attr("observation"));
             } else {
                 throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'state' or 'observation'");
             }
-            if (!py::hasattr(*_pyobj, "value")) {
+            if (!py::hasattr(*(this->_pyobj), "value")) {
                 throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'value'");
             }
-            if (!py::hasattr(*_pyobj, "termination")) {
+            if (!py::hasattr(*(this->_pyobj), "termination")) {
                 throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'termination'");
             }
-            if (!py::hasattr(*_pyobj, "info")) {
+            if (!py::hasattr(*(this->_pyobj), "info")) {
                 throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'info'");
             }
         }
@@ -322,10 +322,10 @@ public :
         void state(const py::object& s) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                if (py::hasattr(*_pyobj, "state")) {
-                    _pyobj->attr("state") = s;
+                if (py::hasattr(*(this->_pyobj), "state")) {
+                    this->_pyobj->attr("state") = s;
                 } else {
-                    _pyobj->attr("observation") = s;
+                    this->_pyobj->attr("observation") = s;
                 }
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when setting outcome's state: ") + e->what());
@@ -342,7 +342,7 @@ public :
         double cost() {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return py::cast<double>(_pyobj->attr("value").attr("cost"));
+                return py::cast<double>(this->_pyobj->attr("value").attr("cost"));
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting outcome's cost: ") + e->what());
                 std::runtime_error err(e->what());
@@ -354,7 +354,7 @@ public :
         void cost(double c) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                _pyobj->attr("value").attr("cost") = py::float_(c);
+                this->_pyobj->attr("value").attr("cost") = py::float_(c);
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when setting outcome's cost: ") + e->what());
                 std::runtime_error err(e->what());
@@ -366,7 +366,7 @@ public :
         double reward() {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return py::cast<double>(_pyobj->attr("value").attr("reward"));
+                return py::cast<double>(this->_pyobj->attr("value").attr("reward"));
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting outcome's reward: ") + e->what());
                 std::runtime_error err(e->what());
@@ -378,7 +378,7 @@ public :
         void reward(double r) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                _pyobj->attr("value").attr("reward") = py::float_(r);
+                this->_pyobj->attr("value").attr("reward") = py::float_(r);
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when setting outcome's reward: ") + e->what());
                 std::runtime_error err(e->what());
@@ -390,7 +390,7 @@ public :
         bool terminal() {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return py::cast<bool>(_pyobj->attr("termination"));
+                return py::cast<bool>(this->_pyobj->attr("termination"));
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting outcome's state: ") + e->what());
                 std::runtime_error err(e->what());
@@ -402,7 +402,7 @@ public :
         void termination(bool t) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                _pyobj->attr("termination") = py::bool_(t);
+                this->_pyobj->attr("termination") = py::bool_(t);
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when setting outcome's observation: ") + e->what());
                 std::runtime_error err(e->what());
@@ -414,7 +414,7 @@ public :
         std::unique_ptr<py::object> info() {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return std::make_unique<py::object>(_pyobj.attr("info"));
+                return std::make_unique<py::object>(this->_pyobj.attr("info"));
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting outcome's info: ") + e->what());
                 std::runtime_error err(e->what());
@@ -426,7 +426,7 @@ public :
         void info(const py::object& i) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                _pyobj->attr("info") = i;
+                this->_pyobj->attr("info") = i;
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when setting outcome's info: ") + e->what());
                 std::runtime_error err(e->what());
@@ -464,7 +464,7 @@ public :
 
         void construct() {
             typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(*_pyobj, "get_values")) {
+            if (!py::hasattr(*(this->_pyobj), "get_values")) {
                 throw std::invalid_argument("SKDECIDE exception: python next state distribution object must implement get_values()");
             }
         }
@@ -534,19 +534,19 @@ public :
 
             PyIter<DistributionValue> begin() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<DistributionValue>(_pyobj->begin());
+                return PyIter<DistributionValue>(this->_pyobj->begin());
             }
 
             PyIter<DistributionValue> end() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<DistributionValue>(_pyobj->end());
+                return PyIter<DistributionValue>(this->_pyobj->end());
             }
         };
 
         NextStateDistributionValues get_values() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return NextStateDistributionValues(_pyobj->attr("get_values")());
+                return NextStateDistributionValues(this->_pyobj->attr("get_values")());
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting next state's distribution values: ") + e->what());
                 std::runtime_error err(e->what());

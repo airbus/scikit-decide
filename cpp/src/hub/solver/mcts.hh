@@ -147,7 +147,7 @@ public :
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&n](){
                     spdlog::debug("Launching default tree policy from state " + n.state.print() +
-                                  typename Tsolver::ExecutionPolicy::print_thread());
+                                  Tsolver::ExecutionPolicy::print_thread());
                 }, n.mutex);
             }
 
@@ -187,7 +187,7 @@ public :
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&n, &e](){
                 spdlog::error("SKDECIDE exception in MCTS when simulating the tree policy from state " + n.state.print() + ": " + e.what() +
-                              typename Tsolver::ExecutionPolicy::print_thread());
+                              Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
             throw;
         }
@@ -224,13 +224,13 @@ public :
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&n](){
                     spdlog::debug("Testing expansion of state " + n.state.print() +
-                                  typename Tsolver::ExecutionPolicy::print_thread());
+                                  Tsolver::ExecutionPolicy::print_thread());
                 }, n.mutex);
             }
 
             if (n.expanded) {
                 if (solver.debug_logs()) { spdlog::debug("State already fully expanded" +
-                                                         typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                         Tsolver::ExecutionPolicy::print_thread()); }
                 return nullptr;
             }
 
@@ -238,7 +238,7 @@ public :
             solver.execution_policy().protect([&n, &solver, &thread_id](){
                 if (n.actions.empty()) {
                     if (solver.debug_logs()) { spdlog::debug("State never expanded, generating all next actions" +
-                                                             typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                             Tsolver::ExecutionPolicy::print_thread()); }
                     auto applicable_actions = solver.domain().get_applicable_actions(n.state, thread_id).get_elements();
 
                     for (const auto& a : applicable_actions) {
@@ -254,7 +254,7 @@ public :
 
             // Check for untried outcomes
             if (solver.debug_logs()) { spdlog::debug("Checking for untried outcomes" +
-                                                     typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                     Tsolver::ExecutionPolicy::print_thread()); }
             std::vector<std::pair<typename Tsolver::ActionNode*, typename Tsolver::StateNode*>> untried_outcomes;
             std::vector<double> weights;
 
@@ -285,7 +285,7 @@ public :
 
             if (untried_outcomes.empty()) { // nothing to expand
                 if (solver.debug_logs()) { spdlog::debug("All outcomes already tried" +
-                                                         typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                         Tsolver::ExecutionPolicy::print_thread()); }
                 n.expanded = true;
                 return nullptr;
             } else {
@@ -298,14 +298,14 @@ public :
 
                 if (uo.second == nullptr) { // unexpanded action
                     if (solver.debug_logs()) { spdlog::debug("Found one unexpanded action: " + uo.first->action.print() +
-                                                             typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                             Tsolver::ExecutionPolicy::print_thread()); }
                     return expand_action(solver, thread_id, solver.transition_mode(), n, *(uo.first));
                 } else { // expanded action, just return the selected next state
                     if (solver.debug_logs()) {
                         solver.execution_policy().protect([&uo](){
                             spdlog::debug("Found one untried outcome: action " + uo.first->action.print() +
                                           " and next state " + uo.second->state.print() +
-                                          typename Tsolver::ExecutionPolicy::print_thread());
+                                          Tsolver::ExecutionPolicy::print_thread());
                         }, uo.second->mutex);
                     }
                     return uo.second;
@@ -314,7 +314,7 @@ public :
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&n, &e](){
                 spdlog::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what() +
-                              typename Tsolver::ExecutionPolicy::print_thread());
+                              Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
             throw;
         }
@@ -379,7 +379,7 @@ public :
 
                     if (next_node.actions.empty()) {
                         if (solver.debug_logs()) spdlog::debug("Candidate next state: " + next_node.state.print() +
-                                                               typename Tsolver::ExecutionPolicy::print_thread());
+                                                               Tsolver::ExecutionPolicy::print_thread());
                         untried_outcomes.push_back(&next_node);
                         weights.push_back(ns.probability());
                     }
@@ -421,7 +421,7 @@ public :
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&action, &e](){
                 spdlog::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what() +
-                              typename Tsolver::ExecutionPolicy::print_thread());
+                              Tsolver::ExecutionPolicy::print_thread());
             }, action.parent->mutex);
             throw;
         }
@@ -474,7 +474,7 @@ public :
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&next_node](){
                     spdlog::debug("Candidate next state: " + next_node.state.print() +
-                                  typename Tsolver::ExecutionPolicy::print_thread());
+                                  Tsolver::ExecutionPolicy::print_thread());
                 }, next_node.mutex);
             }
             
@@ -482,7 +482,7 @@ public :
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&action, &e](){
                 spdlog::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what() +
-                              typename Tsolver::ExecutionPolicy::print_thread());
+                              Tsolver::ExecutionPolicy::print_thread());
             }, action.parent->mutex);
             throw;
         }
@@ -524,7 +524,7 @@ public :
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&n](){
                     spdlog::debug("Test expansion of state " + n.state.print() +
-                                  typename Tsolver::ExecutionPolicy::print_thread());
+                                  Tsolver::ExecutionPolicy::print_thread());
                 }, n.mutex);
             }
 
@@ -550,7 +550,7 @@ public :
 
                     action_node = &const_cast<typename Tsolver::ActionNode&>(*(a.first)); // we won't change the real key (ActionNode::action) so we are safe
                     if (solver.debug_logs()) { spdlog::debug("Tried to sample a new action: " + action_node->action.print() +
-                                                             typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                             Tsolver::ExecutionPolicy::print_thread()); }
                 }, n.mutex);
             } else {
                 std::vector<typename Tsolver::ActionNode*> actions;
@@ -572,7 +572,7 @@ public :
                 if (solver.debug_logs()) {
                     solver.execution_policy().protect([&action_node](){
                         spdlog::debug("Sampled among known actions: " + action_node->action.print() +
-                                      typename Tsolver::ExecutionPolicy::print_thread());
+                                      Tsolver::ExecutionPolicy::print_thread());
                     }, action_node->parent.mutex);
                 }
             }
@@ -644,7 +644,7 @@ public :
                 if (solver.debug_logs()) {
                     solver.execution_policy().protect([&ns](){
                         spdlog::debug("Tried to sample a new outcome: " + ns->state.print() +
-                                      typename Tsolver::ExecutionPolicy::print_thread());
+                                      Tsolver::ExecutionPolicy::print_thread());
                     });
                 }
             } else {
@@ -653,7 +653,7 @@ public :
                 if (solver.debug_logs()) {
                     solver.execution_policy().protect([&ns](){
                         spdlog::debug("Sampled among known outcomes: " + ns->state.print() +
-                                      typename Tsolver::ExecutionPolicy::print_thread());
+                                      Tsolver::ExecutionPolicy::print_thread());
                     });
                 }
             }
@@ -662,7 +662,7 @@ public :
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&n, &e](){
                 spdlog::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what() +
-                              typename Tsolver::ExecutionPolicy::print_thread());
+                              Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
             throw;
         }
@@ -705,7 +705,7 @@ public :
             if (solver.debug_logs()) { spdlog::debug("UCB1 selection from state " + n.state.print() +
                                                      ": value=" + StringConverter::from(best_value) +
                                                      ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr")) +
-                                                     typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                     Tsolver::ExecutionPolicy::print_thread()); }
         }, n.mutex);
         
         return best_action;
@@ -739,7 +739,7 @@ public :
             if (solver.debug_logs()) { spdlog::debug("Best Q-value selection from state " + n.state.print() +
                                                      ": value=" + StringConverter::from(best_value) +
                                                      ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr")) +
-                                                     typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                     Tsolver::ExecutionPolicy::print_thread()); }
         }, n.mutex);
         
         return best_action;
@@ -770,7 +770,7 @@ public :
 
             solver.execution_policy().protect([&solver, &n, &current_state](){
                 if (solver.debug_logs()) { spdlog::debug("Launching default rollout policy from state " + n.state.print() +
-                                                         typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                         Tsolver::ExecutionPolicy::print_thread()); }
                 current_state = n.state;
             }, n.mutex);
 
@@ -790,7 +790,7 @@ public :
                 if (solver.debug_logs()) { spdlog::debug("Sampled transition: action=" + action.print() +
                                                          ", next state=" + current_state.print() +
                                                          ", reward=" + StringConverter::from(o.reward()) +
-                                                         typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                         Tsolver::ExecutionPolicy::print_thread()); }
             }
 
             // since we can come to state n after exhausting the depth, n might be already visited
@@ -802,7 +802,7 @@ public :
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&n, &e](){
                 spdlog::error("SKDECIDE exception in MCTS when simulating the random default policy from state " + n.state.print() + ": " + e.what() +
-                              typename Tsolver::ExecutionPolicy::print_thread());
+                              Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
             throw;
         }
@@ -822,7 +822,7 @@ struct GraphBackup {
         if (solver.debug_logs()) {
             solver.execution_policy().protect([&n](){
                 spdlog::debug("Back-propagating values from state " + n.state.print() +
-                              typename Tsolver::ExecutionPolicy::print_thread());
+                              Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
         }
 
@@ -858,7 +858,7 @@ struct GraphBackup {
             if (solver.debug_logs()) { spdlog::debug("Updating state " + parent_node->state.print() +
                                                     ": value=" + StringConverter::from(parent_node->value) +
                                                     ", visits=" + StringConverter::from(parent_node->visits_count) +
-                                                    typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                    Tsolver::ExecutionPolicy::print_thread()); }
         }
     }
 
@@ -883,7 +883,7 @@ struct GraphBackup {
                 if (solver.debug_logs()) { spdlog::debug("Updating state " + parent_node->state.print() +
                                                         ": value=" + StringConverter::from(parent_node->value) +
                                                         ", visits=" + StringConverter::from(parent_node->visits_count) +
-                                                        typename Tsolver::ExecutionPolicy::print_thread()); }
+                                                        Tsolver::ExecutionPolicy::print_thread()); }
             }, a->parent->mutex);
         }
     }
@@ -996,11 +996,14 @@ public :
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _discount(discount), _nb_rollouts(0),
       _online_node_garbage(online_node_garbage),
-      _debug_logs(debug_logs), _current_state(nullptr),
-      _tree_policy(std::move(tree_policy)), _expander(std::move(expander)),
+      _debug_logs(debug_logs),
+      _tree_policy(std::move(tree_policy)),
+      _expander(std::move(expander)),
       _action_selector_optimization(std::move(action_selector_optimization)),
       _action_selector_execution(std::move(action_selector_execution)),
-      _rollout_policy(std::move(rollout_policy)), _back_propagator(std::move(back_propagator)) {
+      _rollout_policy(std::move(rollout_policy)),
+      _back_propagator(std::move(back_propagator)),
+      _current_state(nullptr) {
         if (debug_logs) {
             spdlog::set_level(spdlog::level::debug);
         } else {
