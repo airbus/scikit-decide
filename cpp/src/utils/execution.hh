@@ -12,6 +12,7 @@
 #include <omp.h>
 #endif
 #include <atomic>
+#include <thread>
 #include <sstream>
 
 namespace skdecide {
