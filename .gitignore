@@ -3,6 +3,7 @@
 
 # IDE
 .*/
+!.github/
 !.vuepress/
 
 # Python
