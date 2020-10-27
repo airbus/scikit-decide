@@ -459,7 +459,7 @@ public :
                 next_node.parents.insert(&action);
 
                 if (i.second) { // new node
-                    next_node.terminal = to.terminal();
+                    next_node.terminal = to.termination();
                     std::pair<double, std::size_t> h = _heuristic(solver.domain(), next_node.state, thread_id);
                     next_node.value = h.first;
                     next_node.visits_count = h.second;
@@ -507,15 +507,20 @@ public :
     typedef std::function<std::pair<double, std::size_t>
                           (typename Tsolver::Domain&, const typename Tsolver::Domain::State&, const std::size_t*)> HeuristicFunctor;
 
-    PartialExpand(const HeuristicFunctor& heuristic = [](typename Tsolver::Domain& domain,
+    PartialExpand(const double& state_expansion_rate = 0.1, const double& action_expansion_rate = 0.1,
+                  const HeuristicFunctor& heuristic = [](typename Tsolver::Domain& domain,
                                                          const typename Tsolver::Domain::State& state,
                                                          const std::size_t* thread_id) {
-        return std::make_pair(0.0, 0);
-    })
-    : _heuristic(heuristic) {}
+                        return std::make_pair(0.0, 0);
+                  })
+    : _heuristic(heuristic),
+      _state_expansion_rate(state_expansion_rate),
+      _action_expansion_rate(action_expansion_rate) {}
 
     PartialExpand(const PartialExpand& other)
-    : _heuristic(other._heuristic) {}
+    : _heuristic(other._heuristic),
+      _state_expansion_rate(other._state_expansion_rate),
+      _action_expansion_rate(other._action_expansion_rate) {}
 
     typename Tsolver::StateNode* operator()(Tsolver& solver,
                                             const std::size_t* thread_id,
@@ -523,15 +528,13 @@ public :
         try {
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&n](){
-                    spdlog::debug("Test expansion of state " + n.state.print() +
+                    spdlog::debug("Testing expansion of state " + n.state.print() +
                                   Tsolver::ExecutionPolicy::print_thread());
                 }, n.mutex);
             }
 
             // Sample an action
-            std::bernoulli_distribution dist_state_expansion((n.visits_count > 0)?
-                                                             (((double) n.expansions_count) / ((double) n.visits_count)):
-                                                             1.0);
+            std::bernoulli_distribution dist_state_expansion(std::exp(- _state_expansion_rate * n.expansions_count));
             typename Tsolver::ActionNode* action_node = nullptr;
             bool dist_res = false;
 
@@ -543,13 +546,14 @@ public :
                 typename Tsolver::Domain::Action action = solver.domain().get_applicable_actions(n.state, thread_id).sample();
                 solver.execution_policy().protect([&n, &action, &action_node, &solver](){
                     auto a = n.actions.emplace(typename Tsolver::ActionNode(action));
+                    action_node = &const_cast<typename Tsolver::ActionNode&>(*(a.first)); // we won't change the real key (ActionNode::action) so we are safe
 
                     if (a.second) { // new action
                         n.expansions_count += 1;
+                        action_node->parent = &n;
                     }
 
-                    action_node = &const_cast<typename Tsolver::ActionNode&>(*(a.first)); // we won't change the real key (ActionNode::action) so we are safe
-                    if (solver.debug_logs()) { spdlog::debug("Tried to sample a new action: " + action_node->action.print() +
+                    if (solver.debug_logs()) { spdlog::debug("Sampled a new action: " + action_node->action.print() +
                                                              Tsolver::ExecutionPolicy::print_thread()); }
                 }, n.mutex);
             } else {
@@ -557,7 +561,7 @@ public :
 
                 solver.execution_policy().protect([&n, &actions](){
                     for (auto& a : n.actions) {
-                        actions.push_back(&a);
+                        actions.push_back(&const_cast<typename Tsolver::ActionNode&>(a)); // we won't change the real key (ActionNode::action) so we are safe
                     }
                 }, n.mutex);
 
@@ -573,14 +577,12 @@ public :
                     solver.execution_policy().protect([&action_node](){
                         spdlog::debug("Sampled among known actions: " + action_node->action.print() +
                                       Tsolver::ExecutionPolicy::print_thread());
-                    }, action_node->parent.mutex);
+                    }, action_node->parent->mutex);
                 }
             }
 
             // Sample an outcome
-            std::bernoulli_distribution dist_action_expansion((action_node->visits_count > 0)?
-                                                              (((double) action_node->expansions_count) / ((double) action_node->visits_count)):
-                                                              1.0);
+            std::bernoulli_distribution dist_action_expansion(std::exp(- _action_expansion_rate * (action_node->expansions_count)));
             typename Tsolver::StateNode* ns = nullptr;
             
             solver.execution_policy().protect([&dist_res, &solver, &dist_action_expansion](){
@@ -588,18 +590,18 @@ public :
             }, solver.gen_mutex());
 
             if (dist_res) {
-                std::unique_ptr<typename Tsolver::Domain::TransitionOutcome> to = solver.transition_mode().random_next_outcome(solver, thread_id, n.state, action_node->action);
+                typename Tsolver::Domain::TransitionOutcome to = solver.transition_mode().random_next_outcome(solver, thread_id, n.state, action_node->action);
                 std::pair<typename Tsolver::Graph::iterator, bool> s;
 
                 solver.execution_policy().protect([&s, &solver, &to](){
-                    s = solver.graph().emplace(to->state());
+                    s = solver.graph().emplace(to.state());
                 });
                 
                 ns = &const_cast<typename Tsolver::StateNode&>(*(s.first)); // we won't change the real key (StateNode::state) so we are safe
 
                 if (s.second) { // new state
                     solver.execution_policy().protect([this, &ns, &to, &solver, &thread_id](){
-                        ns->terminal = to->termination();
+                        ns->terminal = to.termination();
                         std::pair<double, std::size_t> h = _heuristic(solver.domain(), ns->state, thread_id);
                         ns->value = h.first;
                         ns->visits_count = h.second;
@@ -607,8 +609,8 @@ public :
                 }
 
                 std::pair<typename Tsolver::ActionNode::OutcomeMap::iterator, bool> ins;
-                solver.execution_policy().protect([&action_node, &ns, &to, ins](){
-                    ins = action_node->outcomes.emplace(std::make_pair(ns, std::make_pair(to->reward(), 1)));
+                solver.execution_policy().protect([&action_node, &ns, &to, &ins](){
+                    ins = action_node->outcomes.emplace(std::make_pair(ns, std::make_pair(to.reward(), 1)));
                 }, action_node->parent->mutex);
 
                 // Update the outcome's reward and visits count
@@ -624,7 +626,7 @@ public :
                 } else { // known outcome
                     solver.execution_policy().protect([&ins, &to, &ns](){
                         std::pair<double, std::size_t>& mp = ins.first->second;
-                        mp.first = ((double) (mp.second * mp.first) + to->reward()) / ((double) (mp.second + 1));
+                        mp.first = ((double) (mp.second * mp.first) + to.reward()) / ((double) (mp.second + 1));
                         mp.second += 1;
                         ns = nullptr; // we have not discovered anything new
                     }, action_node->parent->mutex);
@@ -640,21 +642,21 @@ public :
 
                     action_node->dist = std::discrete_distribution<>(weights.begin(), weights.end());
                 }, action_node->parent->mutex);
-
-                if (solver.debug_logs()) {
-                    solver.execution_policy().protect([&ns](){
-                        spdlog::debug("Tried to sample a new outcome: " + ns->state.print() +
-                                      Tsolver::ExecutionPolicy::print_thread());
-                    });
-                }
             } else {
                 ns = nullptr; // we have not discovered anything new
+            }
 
-                if (solver.debug_logs()) {
+            if (solver.debug_logs()) {
+                if (ns) {
                     solver.execution_policy().protect([&ns](){
-                        spdlog::debug("Sampled among known outcomes: " + ns->state.print() +
-                                      Tsolver::ExecutionPolicy::print_thread());
-                    });
+                            spdlog::debug("Sampled a new outcome: " + ns->state.print() +
+                                        Tsolver::ExecutionPolicy::print_thread());
+                    }, ns->mutex);
+                } else {
+                    solver.execution_policy().protect([&n](){
+                        spdlog::debug("Not expanding state: " + n.state.print() +
+                                    Tsolver::ExecutionPolicy::print_thread());
+                    }, n.mutex);
                 }
             }
 
@@ -670,6 +672,8 @@ public :
 
 private :
     HeuristicFunctor _heuristic;
+    double _state_expansion_rate;
+    double _action_expansion_rate;
 };
 
 
@@ -785,7 +789,7 @@ public :
                 reward += gamma_n * (o.reward());
                 gamma_n *= solver.discount();
                 current_state = o.state();
-                termination = o.terminal();
+                termination = o.termination();
                 current_depth++;
                 if (solver.debug_logs()) { spdlog::debug("Sampled transition: action=" + action.print() +
                                                          ", next state=" + current_state.print() +

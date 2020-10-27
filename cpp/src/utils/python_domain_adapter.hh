@@ -387,7 +387,7 @@ public :
             }
         }
 
-        bool terminal() {
+        bool termination() {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return py::cast<bool>(this->_pyobj->attr("termination"));

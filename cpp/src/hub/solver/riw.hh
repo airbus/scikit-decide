@@ -756,7 +756,7 @@ private :
                                                        ExecutionPolicy::print_thread());
                         next_node.depth = node->depth + 1;
                         node = &next_node;
-                        node->terminal = outcome.terminal();
+                        node->terminal = outcome.termination();
                         if (node->terminal && _min_reward > 0.0) {
                             _min_reward = 0.0;
                             _min_reward_changed = true;
