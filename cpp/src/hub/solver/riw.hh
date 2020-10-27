@@ -91,24 +91,24 @@ struct StateFeatureHash {
 /** Use Environment domain knowledge for rollouts */
 template <typename Tdomain>
 struct EnvironmentRollout {
-    std::list<typename Tdomain::Event> _action_prefix;
+    std::list<typename Tdomain::Action> _action_prefix;
 
     void init_rollout(Tdomain& domain, const std::size_t* thread_id) {
         domain.reset(thread_id);
         std::for_each(_action_prefix.begin(), _action_prefix.end(),
-                      [&domain, &thread_id](const typename Tdomain::Event& a){domain.step(a, thread_id);});
+                      [&domain, &thread_id](const typename Tdomain::Action& a){domain.step(a, thread_id);});
     }
 
-    typename Tdomain::TransitionOutcome progress(Tdomain& domain,
-                                                 const typename Tdomain::State& state,
-                                                 const typename Tdomain::Event& action,
-                                                 const std::size_t* thread_id) {
+    typename Tdomain::EnvironmentOutcome progress(Tdomain& domain,
+                                                  const typename Tdomain::State& state,
+                                                  const typename Tdomain::Action& action,
+                                                  const std::size_t* thread_id) {
         return domain.step(action, thread_id);
     }
 
     void advance(Tdomain& domain,
                  const typename Tdomain::State& state,
-                 const typename Tdomain::Event& action,
+                 const typename Tdomain::Action& action,
                  bool record_action,
                  const std::size_t* thread_id) {
         if (record_action) {
@@ -118,7 +118,7 @@ struct EnvironmentRollout {
         }
     }
 
-    std::list<typename Tdomain::Event> action_prefix() const {
+    std::list<typename Tdomain::Action> action_prefix() const {
         return _action_prefix;
     }
 };
@@ -129,21 +129,21 @@ template <typename Tdomain>
 struct SimulationRollout {
     void init_rollout([[maybe_unused]] Tdomain& domain, [[maybe_unused]] const std::size_t* thread_id) {}
 
-    typename Tdomain::TransitionOutcome progress(Tdomain& domain,
-                                                 const typename Tdomain::State& state,
-                                                 const typename Tdomain::Event& action,
-                                                 const std::size_t* thread_id) {
+    typename Tdomain::EnvironmentOutcome progress(Tdomain& domain,
+                                                  const typename Tdomain::State& state,
+                                                  const typename Tdomain::Action& action,
+                                                  const std::size_t* thread_id) {
         return domain.sample(state, action, thread_id);
     }
 
     void advance([[maybe_unused]] Tdomain& domain,
                  [[maybe_unused]] const typename Tdomain::State& state,
-                 [[maybe_unused]] const typename Tdomain::Event& action,
+                 [[maybe_unused]] const typename Tdomain::Action& action,
                  [[maybe_unused]] bool record_action,
                  [[maybe_unused]] const std::size_t* thread_id) {}
     
-    std::list<typename Tdomain::Event> action_prefix() const {
-        return std::list<typename Tdomain::Event>();
+    std::list<typename Tdomain::Action> action_prefix() const {
+        return std::list<typename Tdomain::Action>();
     }
 };
 
@@ -157,7 +157,7 @@ class RIWSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
-    typedef typename Domain::Event Action;
+    typedef typename Domain::Action Action;
     typedef Tfeature_vector FeatureVector;
     typedef Thashing_policy<Domain, FeatureVector> HashingPolicy;
     typedef Trollout_policy<Domain> RolloutPolicy;
@@ -400,7 +400,7 @@ private :
     public :
         typedef Tdomain Domain;
         typedef typename Domain::State State;
-        typedef typename Domain::Event Action;
+        typedef typename Domain::Action Action;
         typedef Tfeature_vector FeatureVector;
         typedef Thashing_policy<Domain, FeatureVector> HashingPolicy;
         typedef Trollout_policy<Domain> RolloutPolicy;
@@ -726,23 +726,24 @@ private :
 
             if (!node_child) { // first visit
                 // Sampled child has not been visited so far, so generate it
-                typename Domain::TransitionOutcome outcome;
+                typename Domain::EnvironmentOutcome outcome;
                 _execution_policy.protect([this, &node, &outcome, &action_number, &thread_id](){
                     outcome = _rollout_policy.progress(_domain, node->state, std::get<0>(node->children[action_number]), thread_id);
                 }, node->mutex);
                 
                 _execution_policy.protect([this, &node_child, &thread_id, &new_node, &outcome](){
-                    auto i = _graph.emplace(Node(outcome.state(), _domain, _state_features, thread_id));
+                    auto i = _graph.emplace(Node(outcome.observation(), _domain, _state_features, thread_id));
                     new_node = i.second;
                     node_child = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 });
                 Node& next_node = *node_child;
-                _execution_policy.protect([&node, &action_number, &outcome, &node_child](){
-                    std::get<1>(node->children[action_number]) = outcome.reward();
+                double reward = outcome.transition_value().reward();
+                _execution_policy.protect([&node, &action_number, &reward, &node_child](){
+                    std::get<1>(node->children[action_number]) = reward;
                     std::get<2>(node->children[action_number]) = node_child;
                 }, node->mutex);
-                if (outcome.reward() < _min_reward) {
-                    _min_reward = outcome.reward();
+                if (reward < _min_reward) {
+                    _min_reward = reward;
                     _min_reward_changed = true;
                 }
                 

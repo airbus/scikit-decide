@@ -35,7 +35,7 @@ class LRTDPSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
-    typedef typename Domain::Event Action;
+    typedef typename Domain::Action Action;
     typedef Texecution_policy ExecutionPolicy;
 
     LRTDPSolver(Domain& domain,
@@ -262,7 +262,7 @@ private :
                     i = _graph.emplace(ns.state());
                 });
                 StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_cost(s->state, a, next_node.state, thread_id), &next_node));
+                an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_value(s->state, a, next_node.state, thread_id).cost(), &next_node));
                 outcome_weights.push_back(std::get<0>(an.outcomes.back()));
                 if (_debug_logs) spdlog::debug("Current next state expansion: " + next_node.state.print() + ExecutionPolicy::print_thread());
 

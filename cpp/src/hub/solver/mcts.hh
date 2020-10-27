@@ -42,14 +42,14 @@ struct StepTransitionMode {
     void init_rollout(Tsolver& solver, const std::size_t* thread_id) const {
         solver.domain().reset(thread_id);
         std::for_each(solver.action_prefix().begin(), solver.action_prefix().end(),
-                      [&solver, &thread_id](const typename Tsolver::Domain::Event& a){solver.domain().step(a, thread_id);});
+                      [&solver, &thread_id](const typename Tsolver::Domain::Action& a){solver.domain().step(a, thread_id);});
     }
 
-    typename Tsolver::Domain::TransitionOutcome random_next_outcome(
+    typename Tsolver::Domain::EnvironmentOutcome random_next_outcome(
             Tsolver& solver,
             const std::size_t* thread_id,
             const typename Tsolver::Domain::State& state,
-            const typename Tsolver::Domain::Event& action) const {
+            const typename Tsolver::Domain::Action& action) const {
         return solver.domain().step(action, thread_id);
     }
 
@@ -61,7 +61,7 @@ struct StepTransitionMode {
         typename Tsolver::StateNode* n = nullptr;
 
         solver.execution_policy().protect([&n, &solver, &outcome](){
-            auto si = solver.graph().find(typename Tsolver::StateNode(outcome.state()));
+            auto si = solver.graph().find(typename Tsolver::StateNode(outcome.observation()));
             if (si != solver.graph().end()) {
                 // we won't change the real key (ActionNode::action) so we are safe
                 n = &const_cast<typename Tsolver::StateNode&>(*si);
@@ -78,11 +78,11 @@ template <typename Tsolver>
 struct SampleTransitionMode {
     void init_rollout(Tsolver& solver, const std::size_t* thread_id) const {}
 
-    typename Tsolver::Domain::TransitionOutcome random_next_outcome(
+    typename Tsolver::Domain::EnvironmentOutcome random_next_outcome(
             Tsolver& solver,
             const std::size_t* thread_id,
             const typename Tsolver::Domain::State& state,
-            const typename Tsolver::Domain::Event& action) const {
+            const typename Tsolver::Domain::Action& action) const {
         return solver.domain().sample(state, action, thread_id);
     }
 
@@ -108,11 +108,11 @@ template <typename Tsolver>
 struct DistributionTransitionMode {
     void init_rollout(Tsolver& solver, const std::size_t* thread_id) const {}
 
-    typename Tsolver::Domain::TransitionOutcome random_next_outcome(
+    typename Tsolver::Domain::EnvironmentOutcome random_next_outcome(
             Tsolver& solver,
             const std::size_t* thread_id,
             const typename Tsolver::Domain::State& state,
-            const typename Tsolver::Domain::Event& action) const {
+            const typename Tsolver::Domain::Action& action) const {
         return solver.domain().sample(state, action, thread_id);
     }
 
@@ -345,7 +345,7 @@ public :
                 double reward = 0.0;
 
                 solver.execution_policy().protect([&reward, &solver, &state, &action, &next_node, &thread_id](){
-                    reward = solver.domain().get_transition_reward(state.state, action.action, next_node.state, thread_id);
+                    reward = solver.domain().get_transition_value(state.state, action.action, next_node.state, thread_id).reward();
                 }, next_node.mutex);
 
                 solver.execution_policy().protect([&action, &next_node, &outcome_weights, &reward, &ns](){
@@ -441,17 +441,17 @@ public :
                 _checked_transition_mode = true;
             }
             // Generate the next state of this action
-            typename Tsolver::Domain::TransitionOutcome to = transition_mode.random_next_outcome(solver, thread_id, state.state, action.action);
+            typename Tsolver::Domain::EnvironmentOutcome to = transition_mode.random_next_outcome(solver, thread_id, state.state, action.action);
             std::pair<typename Tsolver::Graph::iterator, bool> i;
 
             solver.execution_policy().protect([&i, &solver, &to](){
-                i = solver.graph().emplace(to.state());
+                i = solver.graph().emplace(to.observation());
             });
             
             typename Tsolver::StateNode& next_node = const_cast<typename Tsolver::StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
             
             solver.execution_policy().protect([&action, &next_node, &to](){
-                auto ii = action.outcomes.insert(std::make_pair(&next_node, std::make_pair(to.reward(), 1)));
+                auto ii = action.outcomes.insert(std::make_pair(&next_node, std::make_pair(to.transition_value().reward(), 1)));
                 action.dist_to_outcome.push_back(ii.first);
             }, action.parent->mutex);
 
@@ -590,11 +590,11 @@ public :
             }, solver.gen_mutex());
 
             if (dist_res) {
-                typename Tsolver::Domain::TransitionOutcome to = solver.transition_mode().random_next_outcome(solver, thread_id, n.state, action_node->action);
+                typename Tsolver::Domain::EnvironmentOutcome to = solver.transition_mode().random_next_outcome(solver, thread_id, n.state, action_node->action);
                 std::pair<typename Tsolver::Graph::iterator, bool> s;
 
                 solver.execution_policy().protect([&s, &solver, &to](){
-                    s = solver.graph().emplace(to.state());
+                    s = solver.graph().emplace(to.observation());
                 });
                 
                 ns = &const_cast<typename Tsolver::StateNode&>(*(s.first)); // we won't change the real key (StateNode::state) so we are safe
@@ -610,7 +610,7 @@ public :
 
                 std::pair<typename Tsolver::ActionNode::OutcomeMap::iterator, bool> ins;
                 solver.execution_policy().protect([&action_node, &ns, &to, &ins](){
-                    ins = action_node->outcomes.emplace(std::make_pair(ns, std::make_pair(to.reward(), 1)));
+                    ins = action_node->outcomes.emplace(std::make_pair(ns, std::make_pair(to.transition_value().reward(), 1)));
                 }, action_node->parent->mutex);
 
                 // Update the outcome's reward and visits count
@@ -626,7 +626,7 @@ public :
                 } else { // known outcome
                     solver.execution_policy().protect([&ins, &to, &ns](){
                         std::pair<double, std::size_t>& mp = ins.first->second;
-                        mp.first = ((double) (mp.second * mp.first) + to.reward()) / ((double) (mp.second + 1));
+                        mp.first = ((double) (mp.second * mp.first) + to.transition_value().reward()) / ((double) (mp.second + 1));
                         mp.second += 1;
                         ns = nullptr; // we have not discovered anything new
                     }, action_node->parent->mutex);
@@ -785,15 +785,15 @@ public :
 
             while(!termination && current_depth < solver.max_depth()) {
                 typename Tsolver::Domain::Action action = _policy(solver.domain(), current_state, thread_id);
-                typename Tsolver::Domain::TransitionOutcome o = solver.transition_mode().random_next_outcome(solver, thread_id, current_state, action);
-                reward += gamma_n * (o.reward());
+                typename Tsolver::Domain::EnvironmentOutcome o = solver.transition_mode().random_next_outcome(solver, thread_id, current_state, action);
+                reward += gamma_n * (o.transition_value().reward());
                 gamma_n *= solver.discount();
-                current_state = o.state();
+                current_state = o.observation();
                 termination = o.termination();
                 current_depth++;
                 if (solver.debug_logs()) { spdlog::debug("Sampled transition: action=" + action.print() +
                                                          ", next state=" + current_state.print() +
-                                                         ", reward=" + StringConverter::from(o.reward()) +
+                                                         ", reward=" + StringConverter::from(o.transition_value().reward()) +
                                                          Tsolver::ExecutionPolicy::print_thread()); }
             }
 
@@ -912,7 +912,7 @@ public :
 
     typedef Tdomain Domain;
     typedef typename Domain::State State;
-    typedef typename Domain::Event Action;
+    typedef typename Domain::Action Action;
     typedef TexecutionPolicy ExecutionPolicy;
     typedef TtransitionMode<Solver> TransitionMode;
     typedef TtreePolicy<Solver> TreePolicy;

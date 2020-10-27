@@ -31,7 +31,7 @@ class ILAOStarSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
-    typedef typename Domain::Event Action;
+    typedef typename Domain::Action Action;
     typedef Texecution_policy ExecutionPolicy;
 
     ILAOStarSolver(Domain& domain,
@@ -228,7 +228,7 @@ private :
                     i = _graph.emplace(ns.state());
                 });
                 StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_cost(s.state, a, next_node.state), &next_node));
+                an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_value(s.state, a, next_node.state).cost(), &next_node));
 
                 if (i.second) { // new node
                     if (_goal_checker(_domain, next_node.state)) {

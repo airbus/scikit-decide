@@ -95,7 +95,7 @@ class BFWSSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
-    typedef typename Domain::Event Action;
+    typedef typename Domain::Action Action;
     typedef Tfeature_vector FeatureVector;
     typedef Thashing_policy<Domain, FeatureVector> HashingPolicy;
     typedef Texecution_policy ExecutionPolicy;
@@ -201,7 +201,7 @@ public :
                         return;
                     }
 
-                    double transition_cost = _domain.get_transition_cost(best_tip_node->state, a, neighbor.state);
+                    double transition_cost = _domain.get_transition_value(best_tip_node->state, a, neighbor.state).cost();
                     double tentative_gscore = best_tip_node->gscore + transition_cost;
 
                     if ((i.second) || (tentative_gscore < neighbor.gscore)) {

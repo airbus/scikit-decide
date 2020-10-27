@@ -93,7 +93,7 @@ class IWSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
-    typedef typename Domain::Event Action;
+    typedef typename Domain::Action Action;
     typedef Tfeature_vector FeatureVector;
     typedef Thashing_policy<Domain, FeatureVector> HashingPolicy;
     typedef Texecution_policy ExecutionPolicy;
@@ -261,7 +261,7 @@ private :
     public :
         typedef Tdomain Domain;
         typedef typename Domain::State State;
-        typedef typename Domain::Event Action;
+        typedef typename Domain::Action Action;
         typedef Tfeature_vector FeatureVector;
         typedef Thashing_policy<Domain, FeatureVector> HashingPolicy;
         typedef Texecution_policy ExecutionPolicy;
@@ -393,7 +393,7 @@ private :
                                                        StringConverter::from(_graph.size()) + ")" +
                                                        ExecutionPolicy::print_thread());
 
-                        double transition_cost = _domain.get_transition_cost(best_tip_node->state, a, neighbor.state);
+                        double transition_cost = _domain.get_transition_value(best_tip_node->state, a, neighbor.state).cost();
                         double tentative_gscore = best_tip_node->gscore + transition_cost;
                         std::size_t tentative_depth = best_tip_node->depth + 1;
 
