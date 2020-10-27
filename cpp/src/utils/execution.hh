@@ -290,7 +290,7 @@ namespace std {
             v.push_back(i);
         }
         #pragma omp parallel for
-        for (int i = 0 ; i < v.size() ; i++) {
+        for (std::size_t i = 0 ; i < v.size() ; i++) {
             f(*v[i]);
         }
     }
