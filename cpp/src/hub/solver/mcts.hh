@@ -565,7 +565,7 @@ public :
                     }
                 }, n.mutex);
 
-                std::uniform_int_distribution<> dist_known_actions(0, actions.size()-1);
+                std::uniform_int_distribution<std::size_t> dist_known_actions(0, actions.size()-1);
                 std::size_t action_id = 0;
 
                 solver.execution_policy().protect([&action_id, &solver, &dist_known_actions](){
@@ -637,7 +637,7 @@ public :
                     std::vector<double> weights(action_node->dist_to_outcome.size());
 
                     for (unsigned int oid = 0 ; oid < weights.size() ; oid++) {
-                        weights[oid] = action_node->dist_to_outcome[oid]->second.second;
+                        weights[oid] = (double) action_node->dist_to_outcome[oid]->second.second;
                     }
 
                     action_node->dist = std::discrete_distribution<>(weights.begin(), weights.end());

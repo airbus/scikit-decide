@@ -612,7 +612,7 @@ public :
 protected :
 
     template <typename TexecutionPolicy, typename Enable = void>
-    struct Implementation;
+    struct Implementation {};
 
     template <typename TexecutionPolicy>
     struct Implementation<TexecutionPolicy,
