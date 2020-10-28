@@ -247,18 +247,18 @@ public :
     };
     typedef AgentData<ActionBase, Tagent> Action;
 
-    struct ApplicableActionSpace : public PyObj<ApplicableActionSpace> { // don't inherit from skdecide::EnumerableSpace since otherwise we would need to copy the applicable action python object into a c++ iterable object
+    struct ApplicableActionSpaceBase : public PyObj<ApplicableActionSpaceBase> {
         static constexpr char class_name[] = "applicable action space";
 
-        ApplicableActionSpace() : PyObj<ApplicableActionSpace>() {}
+        ApplicableActionSpaceBase() : PyObj<ApplicableActionSpaceBase>() {}
 
-        ApplicableActionSpace(std::unique_ptr<py::object>&& applicable_action_space)
-        : PyObj<ApplicableActionSpace>(std::move(applicable_action_space)) {
+        ApplicableActionSpaceBase(std::unique_ptr<py::object>&& applicable_action_space)
+        : PyObj<ApplicableActionSpaceBase>(std::move(applicable_action_space)) {
             construct();
         }
         
-        ApplicableActionSpace(const py::object& applicable_action_space)
-        : PyObj<ApplicableActionSpace>(applicable_action_space) {
+        ApplicableActionSpaceBase(const py::object& applicable_action_space)
+        : PyObj<ApplicableActionSpaceBase>(applicable_action_space) {
             construct();
         }
         
@@ -269,15 +269,15 @@ public :
             }
         }
 
-        ApplicableActionSpace(const ApplicableActionSpace& other)
-        : PyObj<ApplicableActionSpace>(other) {}
+        ApplicableActionSpaceBase(const ApplicableActionSpaceBase& other)
+        : PyObj<ApplicableActionSpaceBase>(other) {}
 
-        ApplicableActionSpace& operator=(const ApplicableActionSpace& other) {
-            dynamic_cast<PyObj<ApplicableActionSpace>&>(*this) = other;
+        ApplicableActionSpaceBase& operator=(const ApplicableActionSpaceBase& other) {
+            dynamic_cast<PyObj<ApplicableActionSpaceBase>&>(*this) = other;
             return *this;
         }
 
-        virtual ~ApplicableActionSpace() {}
+        virtual ~ApplicableActionSpaceBase() {}
 
         struct ApplicableActionSpaceElements : public PyObj<ApplicableActionSpaceElements> {
             static constexpr char class_name[] = "applicable action space elements";
@@ -332,6 +332,7 @@ public :
             }
         }
     };
+    typedef AgentData<ApplicableActionSpaceBase, Tagent> ApplicableActionSpace;
 
     struct TransitionValueBase : public PyObj<TransitionValueBase> {
         static constexpr char class_name[] = "transition value";
