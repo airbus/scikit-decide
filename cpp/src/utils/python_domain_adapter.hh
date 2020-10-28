@@ -414,9 +414,9 @@ public :
 
         void construct() {
             typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(*(this->_pyobj), Situation::class_name)) {
+            if (!py::hasattr(*(this->_pyobj), Derived::situation_name)) {
                 throw std::invalid_argument(std::string("SKDECIDE exception: python transition outcome object must provide '") +
-                                            Situation::class_name + "'");
+                                            Derived::situation_name + "'");
             }
             if (!py::hasattr(*(this->_pyobj), "value")) {
                 throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'value'");
@@ -442,10 +442,10 @@ public :
         Situation situation() {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return Situation(this->_pyobj->attr(Situation::class_name));
+                return Situation(this->_pyobj->attr(Derived::situation_name));
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting outcome's ") +
-                              Situation::class_name + ": " + e->what());
+                              Derived::situation_name + ": " + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -455,10 +455,10 @@ public :
         void situation(const Situation& s) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                this->_pyobj->attr(Situation::class_name) = s.pyobj();
+                this->_pyobj->attr(Derived::situation_name) = s.pyobj();
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when setting outcome's ") +
-                              Situation::class_name + ": " + e->what());
+                              Derived::situation_name + ": " + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -540,6 +540,7 @@ public :
 
     struct TransitionOutcome : public Outcome<TransitionOutcome, State> {
         static constexpr char class_name[] = "transition outcome";
+        static constexpr char situation_name[] = "state"; // mandatory since State == Observation in fully observable domains
 
         TransitionOutcome() : Outcome<TransitionOutcome, State>() {}
 
@@ -565,6 +566,7 @@ public :
 
     struct EnvironmentOutcome : public Outcome<EnvironmentOutcome, Observation> {
         static constexpr char class_name[] = "environment outcome";
+        static constexpr char situation_name[] = "observation"; // mandatory since State == Observation in fully observable domains
 
         EnvironmentOutcome() : Outcome<EnvironmentOutcome, Observation>() {}
 
