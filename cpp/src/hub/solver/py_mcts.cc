@@ -11,7 +11,7 @@
 
 #include "utils/python_gil_control.hh"
 #include "utils/python_hash_eq.hh"
-#include "utils/python_domain_adapter.hh"
+#include "utils/python_domain_proxy.hh"
 
 namespace py = pybind11;
 
@@ -49,13 +49,13 @@ struct PyMCTSOptions {
 
 
 template <typename Texecution>
-class PyMCTSDomain : public skdecide::PythonDomainAdapter<Texecution> {
+class PyMCTSDomain : public skdecide::PythonDomainProxy<Texecution> {
 public :
 
     template <typename Tsolver, typename TtransitionMode,
               std::enable_if_t<std::is_same<TtransitionMode, skdecide::StepTransitionMode<Tsolver>>::value, int> = 0>
     PyMCTSDomain(const py::object& domain, [[maybe_unused]] Tsolver* dummy_solver, [[maybe_unused]] TtransitionMode* dummy_transition_mode)
-    : skdecide::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
         }
@@ -67,7 +67,7 @@ public :
     template <typename Tsolver, typename TtransitionMode,
               std::enable_if_t<std::is_same<TtransitionMode, skdecide::SampleTransitionMode<Tsolver>>::value, int> = 0>
     PyMCTSDomain(const py::object& domain, [[maybe_unused]] Tsolver* dummy_solver, [[maybe_unused]] TtransitionMode* dummy_transition_mode)
-    : skdecide::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
         }
@@ -79,7 +79,7 @@ public :
     template <typename Tsolver, typename TtransitionMode,
               std::enable_if_t<std::is_same<TtransitionMode, skdecide::DistributionTransitionMode<Tsolver>>::value, int> = 0>
     PyMCTSDomain(const py::object& domain, [[maybe_unused]] Tsolver* dummy_solver, [[maybe_unused]] TtransitionMode* dummy_transition_mode)
-    : skdecide::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
         }

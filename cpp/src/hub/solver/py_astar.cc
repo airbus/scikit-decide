@@ -11,17 +11,17 @@
 
 #include "utils/python_gil_control.hh"
 #include "utils/python_hash_eq.hh"
-#include "utils/python_domain_adapter.hh"
+#include "utils/python_domain_proxy.hh"
 
 namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyAStarDomain : public skdecide::PythonDomainAdapter<Texecution> {
+class PyAStarDomain : public skdecide::PythonDomainProxy<Texecution> {
 public :
 
     PyAStarDomain(const py::object& domain)
-    : skdecide::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: A* algorithm needs python domain for implementing get_applicable_actions()");
         }

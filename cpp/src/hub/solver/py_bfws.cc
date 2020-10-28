@@ -12,17 +12,17 @@
 
 #include "utils/python_gil_control.hh"
 #include "utils/python_hash_eq.hh"
-#include "utils/python_domain_adapter.hh"
+#include "utils/python_domain_proxy.hh"
 
 namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyBFWSDomain : public skdecide::PythonDomainAdapter<Texecution> {
+class PyBFWSDomain : public skdecide::PythonDomainProxy<Texecution> {
 public :
 
     PyBFWSDomain(const py::object& domain)
-    : skdecide::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_applicable_actions()");
         }
@@ -41,7 +41,7 @@ public :
 
 
 template <typename Texecution>
-using PyBFWSFeatureVector = skdecide::PythonContainerAdapter<Texecution>;
+using PyBFWSFeatureVector = skdecide::PythonContainerProxy<Texecution>;
 
 
 class PyBFWSSolver {

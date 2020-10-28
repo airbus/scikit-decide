@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef SKDECIDE_PYTHON_DOMAIN_ADAPTER_HH
-#define SKDECIDE_PYTHON_DOMAIN_ADAPTER_HH
+#ifndef SKDECIDE_PYTHON_DOMAIN_PROXY_HH
+#define SKDECIDE_PYTHON_DOMAIN_PROXY_HH
 
 #include <pybind11/pybind11.h>
 
@@ -35,7 +35,7 @@ template <typename Texecution,
           typename Tobservability = FullyObservable,
           typename Tcontrollability = FullyControllable,
           typename Tmemory = Markovian>
-class PythonDomainAdapter {
+class PythonDomainProxy {
 public :
     template <typename Derived>
     struct PyObj {
@@ -773,7 +773,7 @@ public :
         }
     };
 
-    PythonDomainAdapter(const py::object& domain) {
+    PythonDomainProxy(const py::object& domain) {
         _implementation = std::make_unique<Implementation<Texecution>>(domain);
     }
 
@@ -1184,4 +1184,4 @@ protected :
 
 } // namespace skdecide
 
-#endif // SKDECIDE_PYTHON_DOMAIN_ADAPTER_HH
+#endif // SKDECIDE_PYTHON_DOMAIN_PROXY_HH
