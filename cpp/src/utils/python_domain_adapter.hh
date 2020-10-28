@@ -27,10 +27,14 @@ struct FullyObservable { FullyObservable() {} };
 struct PartiallyControllable { PartiallyControllable() {} };
 struct FullyControllable { FullyControllable() {} };
 
+struct Markovian { Markovian() {} };
+struct History { History() {} };
+
 template <typename Texecution,
           typename Tagent = SingleAgent,
           typename Tobservability = FullyObservable,
-          typename Tcontrollability = FullyControllable>
+          typename Tcontrollability = FullyControllable,
+          typename Tmemory = Markovian>
 class PythonDomainAdapter {
 public :
     template <typename Derived>
@@ -231,6 +235,57 @@ public :
                                                                     void
                                                                  >::type
                                      >::type Observation;
+    
+    struct MemoryState : PyObj<MemoryState> {
+        static constexpr char class_name[] = "memory";
+
+        MemoryState() {
+            typename GilControl<Texecution>::Acquire acquire;
+            this->_pyobj = std::make_unique<py::list>();
+        }
+
+        MemoryState(std::unique_ptr<py::list>&& m) {
+            typename GilControl<Texecution>::Acquire acquire;
+            this->_pyobj = std::make_unique<py::list>(std::move(m));
+        }
+
+        MemoryState(const py::list& m) {
+            typename GilControl<Texecution>::Acquire acquire;
+            this->_pyobj = std::make_unique<py::list>(m);
+        }
+
+        MemoryState(const MemoryState& other) : PyObj<MemoryState>(other) {}
+
+        MemoryState& operator=(const MemoryState& other) {
+            dynamic_cast<PyObj<MemoryState>&>(*this) = other;
+            return *this;
+        }
+
+        virtual ~MemoryState() {}
+
+        void push_state(const State& s) {
+            typename GilControl<Texecution>::Acquire acquire;
+            static_cast<py::list&>(*(this->_pyobj)).append(s.pyobj());
+        }
+
+        State last_state() {
+            typename GilControl<Texecution>::Acquire acquire;
+            py::list& l = static_cast<py::list&>(*(this->_pyobj));
+            if (l.empty()) {
+                throw std::runtime_error("Cannot get last state of empty memory state " + this->print());
+            } else {
+                return State(l[l.size() - 1]);
+            }
+        }
+    };
+
+    typedef typename std::conditional<std::is_same<Tmemory, Markovian>::value,
+                                        State,
+                                        typename std::conditional<std::is_same<Tmemory, History>::value,
+                                                                    MemoryState,
+                                                                    void
+                                                                 >::type
+                                     >::type Memory;
 
     struct EventBase : public PyObj<EventBase> {
         static constexpr char class_name[] = "event";
@@ -726,11 +781,11 @@ public :
         return _implementation->get_parallel_capacity();
     }
 
-    ApplicableActionSpace get_applicable_actions(const State& s, const std::size_t* thread_id = nullptr) {
-        return _implementation->get_applicable_actions(s, thread_id);
+    ApplicableActionSpace get_applicable_actions(const Memory& m, const std::size_t* thread_id = nullptr) {
+        return _implementation->get_applicable_actions(m, thread_id);
     }
 
-    State reset(const std::size_t* thread_id = nullptr) {
+    Observation reset(const std::size_t* thread_id = nullptr) {
         return _implementation->reset(thread_id);
     }
 
@@ -738,20 +793,20 @@ public :
         return _implementation->step(e, thread_id);
     }
 
-    EnvironmentOutcome sample(const State& s, const Event& e, const std::size_t* thread_id = nullptr) {
-        return _implementation->sample(s, e, thread_id);
+    EnvironmentOutcome sample(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
+        return _implementation->sample(m, e, thread_id);
     }
 
-    State get_next_state(const State& s, const Event& e, const std::size_t* thread_id = nullptr) {
-        return _implementation->get_next_state(s, e, thread_id);
+    State get_next_state(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
+        return _implementation->get_next_state(m, e, thread_id);
     }
 
-    NextStateDistribution get_next_state_distribution(const State& s, const Event& e, const std::size_t* thread_id = nullptr) {
-        return _implementation->get_next_state_distribution(s, e, thread_id);
+    NextStateDistribution get_next_state_distribution(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
+        return _implementation->get_next_state_distribution(m, e, thread_id);
     }
 
-    TransitionValue get_transition_value(const State& s, const Event& e, const State& sp, const std::size_t* thread_id = nullptr) {
-        return _implementation->get_transition_value(s, e, sp, thread_id);
+    TransitionValue get_transition_value(const Memory& m, const Event& e, const State& sp, const std::size_t* thread_id = nullptr) {
+        return _implementation->get_transition_value(m, e, sp, thread_id);
     }
 
     bool is_goal(const State& s, const std::size_t* thread_id = nullptr) {
@@ -792,9 +847,9 @@ protected :
             }
         }
 
-        State reset([[maybe_unused]] const std::size_t* thread_id = nullptr) {
+        Observation reset([[maybe_unused]] const std::size_t* thread_id = nullptr) {
             try {
-                return State(_domain.attr("reset")());
+                return Observation(_domain.attr("reset")());
             } catch(const py::error_already_set* ex) {
                 spdlog::error(std::string("SKDECIDE exception when resetting the domain: ") + ex->what());
                 std::runtime_error err(ex->what());
@@ -815,48 +870,48 @@ protected :
             }
         }
 
-        EnvironmentOutcome sample(const State& s, const Event& e, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+        EnvironmentOutcome sample(const Memory& m, const Event& e, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
             try {
-                return EnvironmentOutcome(_domain.attr("sample")(s.pyobj(), e.pyobj()));
+                return EnvironmentOutcome(_domain.attr("sample")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when sampling from state ") + s.print() +
-                              " with action " + e.print() + ": " + ex->what());
+                spdlog::error(std::string("SKDECIDE exception when sampling from ") + Memory::class_name + " " +
+                              m.print() + " with action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
             }
         }
 
-        State get_next_state(const State& s, const Event&e, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+        State get_next_state(const Memory& m, const Event&e, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
             try {
-                return State(_domain.attr("get_next_state")(s.pyobj(), e.pyobj()));
+                return State(_domain.attr("get_next_state")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when getting next state from state ") +
-                              s.print() + " and applying action " + e.print() + ": " + ex->what());
+                spdlog::error(std::string("SKDECIDE exception when getting next state from ") + Memory::class_name + " " +
+                              m.print() + " and applying action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
             }
         }
 
-        NextStateDistribution get_next_state_distribution(const State& s, const Event& e, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+        NextStateDistribution get_next_state_distribution(const Memory& m, const Event& e, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
             try {
-                return NextStateDistribution(_domain.attr("get_next_state_distribution")(s.pyobj(), e.pyobj()));
+                return NextStateDistribution(_domain.attr("get_next_state_distribution")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from state ") +
-                              s.print() + " and applying action " + e.print() + ": " + ex->what());
+                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") + Memory::class_name + " " +
+                              m.print() + " and applying action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
             }
         }
 
-        TransitionValue get_transition_value(const State& s, const Event& e, const State& sp, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+        TransitionValue get_transition_value(const Memory& m, const Event& e, const State& sp, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
             try {
-                return TransitionValue(_domain.attr("get_transition_value")(s.pyobj(), e.pyobj(), sp.pyobj()));
+                return TransitionValue(_domain.attr("get_transition_value")(m.pyobj(), e.pyobj(), sp.pyobj()));
             } catch(const py::error_already_set* ex) {
                 spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
-                            s.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex->what());
+                            m.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
@@ -1005,19 +1060,20 @@ protected :
             }, args...);
         }
 
-        ApplicableActionSpace get_applicable_actions(const State& s, const std::size_t* thread_id = nullptr) {
+        ApplicableActionSpace get_applicable_actions(const Memory& m, const std::size_t* thread_id = nullptr) {
             try {
-                return ApplicableActionSpace(launch(thread_id, "get_applicable_actions", s.pyobj()));
+                return ApplicableActionSpace(launch(thread_id, "get_applicable_actions", m.pyobj()));
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting applicable actions in state ") + s.print() + ": " + e.what());
+                spdlog::error(std::string("SKDECIDE exception when getting applicable actions in ") + Memory::class_name + " " +
+                              m.print() + ": " + e.what());
                 throw;
             }
         }
 
-        State reset(const std::size_t* thread_id = nullptr) {
+        Observation reset(const std::size_t* thread_id = nullptr) {
             try {
-                return State(launch(thread_id, "reset"));
+                return Observation(launch(thread_id, "reset"));
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when resetting the domain: ") + e.what());
@@ -1036,46 +1092,46 @@ protected :
             }
         }
 
-        EnvironmentOutcome sample(const State& s, const Event& e, const std::size_t* thread_id = nullptr) {
+        EnvironmentOutcome sample(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
             try {
-                return EnvironmentOutcome(launch(thread_id, "sample", s.pyobj(), e.pyobj()));
+                return EnvironmentOutcome(launch(thread_id, "sample", m.pyobj(), e.pyobj()));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when sampling from state ") + s.print() +
-                            " with action " + e.print() + ": " + ex.what());
+                spdlog::error(std::string("SKDECIDE exception when sampling from ") + Memory::class_name +
+                              m.print() + " " + " with action " + e.print() + ": " + ex.what());
                 throw;
             }
         }
 
-        State get_next_state(const State& s, const Event& e, const std::size_t* thread_id = nullptr) {
+        State get_next_state(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
             try {
-                return State(launch(thread_id, "get_next_state", s.pyobj(), e.pyobj()));
+                return State(launch(thread_id, "get_next_state", m.pyobj(), e.pyobj()));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting next state from state ") +
-                            s.print() + " and applying action " + e.print() + ": " + ex.what());
+                spdlog::error(std::string("SKDECIDE exception when getting next state from ") + Memory::class_name + " " +
+                              m.print() + " and applying action " + e.print() + ": " + ex.what());
                 throw;
             }
         }
 
-        NextStateDistribution get_next_state_distribution(const State& s, const Event& e, const std::size_t* thread_id = nullptr) {
+        NextStateDistribution get_next_state_distribution(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
             try {
-                return NextStateDistribution(launch(thread_id, "get_next_state_distribution", s.pyobj(), e.pyobj()));
+                return NextStateDistribution(launch(thread_id, "get_next_state_distribution", m.pyobj(), e.pyobj()));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from state ") +
-                            s.print() + " and applying action " + e.print() + ": " + ex.what());
+                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") + Memory::class_name + " " +
+                              m.print() + " and applying action " + e.print() + ": " + ex.what());
                 throw;
             }
         }
 
-        TransitionValue get_transition_value(const State& s, const Event& e, const State& sp, const std::size_t* thread_id = nullptr) {
+        TransitionValue get_transition_value(const Memory& m, const Event& e, const State& sp, const std::size_t* thread_id = nullptr) {
             try {
-                return TransitionValue(launch(thread_id, "get_transition_value", s.pyobj(), e.pyobj(), sp.pyobj()));
+                return TransitionValue(launch(thread_id, "get_transition_value", m.pyobj(), e.pyobj(), sp.pyobj()));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
-                              s.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex.what());
+                              m.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex.what());
                 throw;
             }
         }
