@@ -8,6 +8,7 @@ from stable_baselines3 import PPO
 from typing import Any, Callable
 from math import sqrt
 
+from skdecide import StateValue
 from skdecide.utils import load_registered_domain, load_registered_solver, match_solvers, rollout
 from skdecide.hub.domain.gym import GymPlanningDomain, GymWidthDomain, GymDiscreteActionDomain
 
@@ -111,7 +112,7 @@ if __name__ == '__main__':
          'entry': 'UCT',
          'need_domain_factory': True,
          'config': {'time_budget': 1000, 'rollout_budget': 100,
-                    'heuristic': lambda d, s: (-d.heuristic(s), 10000),
+                    'heuristic': lambda d, s: (d.heuristic(s), 10000),
                     'online_node_garbage': True,
                     'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
                     'parallel': False, 'debug_logs': False}},
@@ -208,13 +209,13 @@ if __name__ == '__main__':
                 # Set the domain-dependent heuristic for search algorithms
                 if selected_domain['name'] == 'Simple Grid World':
                     setattr(domain_type, 'heuristic',
-                            lambda self, s: sqrt((self.num_cols - 1 - s.x)**2 + (self.num_rows - 1 - s.y)**2))
+                            lambda self, s: StateValue(cost=sqrt((self.num_cols - 1 - s.x)**2 + (self.num_rows - 1 - s.y)**2)))
                 elif selected_domain['name'] == 'Maze':
                     setattr(domain_type, 'heuristic',
-                            lambda self, s: sqrt((self._goal.x - s.x)**2 + (self._goal.y - s.y)**2))
+                            lambda self, s: StateValue(cost=sqrt((self._goal.x - s.x)**2 + (self._goal.y - s.y)**2)))
                 else:
                     setattr(domain_type, 'heuristic',
-                            lambda self, s: 0)
+                            lambda self, s: StateValue(cost=0))
                 # Set the domain-dependent stat features for width-based algorithms
                 if selected_domain['name'] == 'Simple Grid World':
                     setattr(domain_type, 'state_features',

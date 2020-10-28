@@ -9,7 +9,7 @@ from math import sqrt
 from pathos.helpers import mp
 from collections import namedtuple
 
-from skdecide import DeterministicPlanningDomain, TransitionValue, \
+from skdecide import DeterministicPlanningDomain, StateValue, TransitionValue, \
                      Space, EnvironmentOutcome, TransitionOutcome
 from skdecide.builders.domain import Actions
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
@@ -322,7 +322,7 @@ if __name__ == '__main__':
         {'name': 'A* (planning)',
          'entry': 'Astar',
          'config': {'domain_factory': lambda: MyDomain(),
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                     'parallel': True, 'debug_logs': False}},
 
         # IW (planning)
@@ -348,7 +348,7 @@ if __name__ == '__main__':
          'entry': 'BFWS',
          'config': {'domain_factory': lambda: MyDomain(),
                     'state_features': lambda d, s: [s.x, s.y],
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                     'termination_checker': lambda d, s: d.is_goal(s),
                     'parallel': True, 'debug_logs': False}},
         
@@ -360,7 +360,7 @@ if __name__ == '__main__':
                     'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
                     'transition_mode': MCTS.Options.TransitionMode.Step,
                     'online_node_garbage': True, 'continuous_planning': False,
-                    'heuristic': lambda d, s: (-sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2), 10000),
+                    'heuristic': lambda d, s: (StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)), 10000),
                     'parallel': True, 'debug_logs': False}},
         
         # UCT-Sample (reinforcement learning / search)
@@ -371,7 +371,7 @@ if __name__ == '__main__':
                     'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
                     'transition_mode': MCTS.Options.TransitionMode.Sample,
                     'online_node_garbage': True, 'continuous_planning': False,
-                    'heuristic': lambda d, s: (-sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2), 10000),
+                    'heuristic': lambda d, s: (StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)), 10000),
                     'parallel': True, 'debug_logs': False}}
     ]
 

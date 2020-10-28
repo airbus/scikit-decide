@@ -8,7 +8,7 @@ from heapq import heappush, heappop
 from itertools import count
 from typing import Optional, Callable
 
-from skdecide import Domain, Solver
+from skdecide import Domain, Solver, StateValue
 from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, Goals, Markovian, \
     FullyObservable, PositiveCosts
 from skdecide.builders.solver import DeterministicPolicies, Utilities
@@ -24,11 +24,11 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
     T_domain = D
 
     def __init__(self, from_state: Optional[D.T_state] = None,
-                 heuristic: Optional[Callable[[Domain, D.T_state], float]] = None, weight: float = 1.,
+                 heuristic: Optional[Callable[[Domain, D.T_state], D.T_agent[StateValue[D.T_value]]]] = None, weight: float = 1.,
                  verbose: bool = False, render: bool = False) -> None:
 
         self._from_state = from_state
-        self._heuristic = (lambda _, __: 0.) if heuristic is None else heuristic
+        self._heuristic = (lambda _, __: StateValue(cost=0.)) if heuristic is None else heuristic
         self._weight = weight
         self._verbose = verbose
         self._render = render
@@ -68,8 +68,8 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
         # Maps enqueued nodes to distance of discovered paths and the
         # computed heuristics to target. We avoid computing the heuristics
         # more than once and inserting the node into the queue too many times.
-        enqueued = {source: (0, self._weight * self._heuristic(self._domain, source)) for source in sources}
-        # enqueued = {source: min([(0, self._weight * self._heuristic(source, target, initial_label[source]))
+        enqueued = {source: (0, self._weight * self._heuristic(self._domain, source).cost) for source in sources}
+        # enqueued = {source: min([(0, self._weight * self._heuristic(source, target, initial_label[source]).cost)
         # for target in targets], key=lambda x: x[1]) for source in sources}
         queue = [(enqueued[source][1], next(c), source, 0, None, initial_label[source]) for source in sources]
         # The explored dict is the CLOSED list.
@@ -110,8 +110,8 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
                     if qcost <= ncost:
                         continue
                 else:
-                    # h = min([self._heuristic(neighbor, target, lbl) for target in targets])
-                    h = self._heuristic(self._domain, neighbor)
+                    # h = min([self._heuristic(neighbor, target, lbl).cost for target in targets])
+                    h = self._heuristic(self._domain, neighbor).cost
                 enqueued[neighbor] = ncost, h
                 push(queue, (ncost + (self._weight * h), next(c), neighbor, ncost, curnode, lbl))
         self._policy = {}
@@ -130,5 +130,5 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
 
     def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
         if observation not in self._values:
-            return self._heuristic(self._domain, observation)
+            return self._heuristic(self._domain, observation).cost
         return self._values[observation]

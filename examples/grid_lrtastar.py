@@ -5,7 +5,7 @@
 from enum import Enum
 from typing import NamedTuple, Optional
 
-from skdecide import DeterministicPlanningDomain, TransitionValue, Space
+from skdecide import DeterministicPlanningDomain, StateValue, TransitionValue, Space
 from skdecide.builders.domain import UnrestrictedActions
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver, rollout, load_registered_domain
@@ -82,7 +82,7 @@ class MyDomain(D):
 
 if __name__ == '__main__':
     def heuristic(domain: MyDomain, st: State):
-        return abs(st.x - domain._num_cols+1)+abs(st.y - domain._num_rows+1)
+        return StateValue(cost=abs(st.x - domain._num_cols+1)+abs(st.y - domain._num_rows+1))
 
     try_solvers = [
 

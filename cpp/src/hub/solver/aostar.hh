@@ -28,11 +28,12 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Action Action;
+    typedef typename Domain::StateValue StateValue;
     typedef Texecution_policy ExecutionPolicy;
 
     AOStarSolver(Domain& domain,
                  const std::function<bool (Domain&, const State&)>& goal_checker,
-                 const std::function<double (Domain&, const State&)>& heuristic,
+                 const std::function<StateValue (Domain&, const State&)>& heuristic,
                  double discount = 1.0,
                  std::size_t max_tip_expansions = 1,
                  bool detect_cycles = false,
@@ -108,7 +109,7 @@ public :
                                     next_node.solved = true;
                                     next_node.best_value = 0.0;
                                 } else {
-                                    next_node.best_value = _heuristic(_domain, next_node.state);
+                                    next_node.best_value = _heuristic(_domain, next_node.state).cost();
                                     if (_debug_logs) spdlog::debug("New state " + next_node.state.print() + " with heuristic value " +
                                                                    StringConverter::from(next_node.best_value) + ExecutionPolicy::print_thread());
                                 }
@@ -217,7 +218,7 @@ public :
 private :
     Domain& _domain;
     std::function<bool (Domain&, const State&)> _goal_checker;
-    std::function<double (Domain&, const State&)> _heuristic;
+    std::function<StateValue (Domain&, const State&)> _heuristic;
     double _discount;
     std::size_t _max_tip_expansions;
     bool _detect_cycles;

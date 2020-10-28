@@ -96,13 +96,14 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Action Action;
+    typedef typename Domain::StateValue StateValue;
     typedef Tfeature_vector FeatureVector;
     typedef Thashing_policy<Domain, FeatureVector> HashingPolicy;
     typedef Texecution_policy ExecutionPolicy;
 
     BFWSSolver(Domain& domain,
                const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)>& state_features,
-               const std::function<double (Domain&, const State&)>& heuristic,
+               const std::function<StateValue (Domain&, const State&)>& heuristic,
                const std::function<bool (Domain&, const State&)>& termination_checker,
                bool debug_logs = false)
         : _domain(domain), _state_features(state_features), _heuristic(heuristic), _termination_checker(termination_checker),
@@ -138,7 +139,7 @@ public :
             }
             Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
             root_node.gscore = 0;
-            root_node.heuristic = _heuristic(_domain, root_node.state);
+            root_node.heuristic = _heuristic(_domain, root_node.state).cost();
             root_node.novelty = novelty(heuristic_features_map, root_node.heuristic, root_node);
 
             // Priority queue used to sort non-goal unsolved tip nodes by increasing cost-to-go values (so-called OPEN container)
@@ -214,7 +215,7 @@ public :
                         neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
                     }
 
-                    neighbor.heuristic = _heuristic(_domain, neighbor.state);
+                    neighbor.heuristic = _heuristic(_domain, neighbor.state).cost();
                     if (_debug_logs) spdlog::debug("Heuristic: " + StringConverter::from(neighbor.heuristic) +
                                                    ExecutionPolicy::print_thread());
                     _execution_policy.protect([this, &heuristic_features_map, &open_queue, &neighbor]{
@@ -261,7 +262,7 @@ public :
 private :
     Domain& _domain;
     std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)> _state_features;
-    std::function<double (Domain&, const State&)> _heuristic;
+    std::function<StateValue (Domain&, const State&)> _heuristic;
     std::function<bool (Domain&, const State&)> _termination_checker;
     bool _debug_logs;
     ExecutionPolicy _execution_policy;

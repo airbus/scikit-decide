@@ -8,7 +8,7 @@ from math import sqrt
 from pathos.helpers import mp
 from collections import namedtuple
 
-from skdecide import GoalMDPDomain, TransitionValue, Space, \
+from skdecide import GoalMDPDomain, StateValue, TransitionValue, Space, \
                      DiscreteDistribution, EnvironmentOutcome, TransitionOutcome
 from skdecide.builders.domain import Actions
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
@@ -99,15 +99,15 @@ class MyDomain(D):
         return MultiDiscreteSpace([self.num_cols, self.num_rows])
 
 
-# Shared memory proxy for use with parallel algorithms only
-# Not efficient on this tiny domain but provided for illustration
-# To activate parallelism, set parallel=True in the algotihms below
+# Shared memory proxy for use with parallel algorithms only.
+# Not efficient on this tiny domain but provided for illustration.
+# To activate parallelism, set parallel=True in the algotihms below.
 class GridShmProxy:
 
     _register_ = [(State, 2), (Action, 1), (EnumSpace, 1), (ListSpace, 1),
                   (DiscreteDistribution, 1), (TransitionValue, 1),
                   (EnvironmentOutcome, 1), (TransitionOutcome, 1),
-                  (bool, 1), (float, 1), (int, 2)]
+                  (StateValue, 1), (bool, 1), (int, 2)]
 
     def __init__(self):
         self._proxies_ = {State: GridShmProxy.StateProxy, Action: GridShmProxy.ActionProxy,
@@ -117,8 +117,8 @@ class GridShmProxy:
                           TransitionValue: GridShmProxy.TransitionValueProxy,
                           EnvironmentOutcome: GridShmProxy.EnvironmentOutcomeProxy,
                           TransitionOutcome: GridShmProxy.TransitionOutcomeProxy,
+                          StateValue: GridShmProxy.StateValueProxy,
                           bool: GridShmProxy.BoolProxy,
-                          float: GridShmProxy.FloatProxy,
                           int: GridShmProxy.IntProxy}
     
     def copy(self):
@@ -233,6 +233,30 @@ class GridShmProxy:
             return DiscreteDistribution(
                 [(GridShmProxy.StateProxy.decode(o[0]), o[1].value) for o in dd if o[1].value > -0.5])
     
+    class StateValueProxy:
+        @staticmethod
+        def initialize():
+            return [mp.Value('d', 0), mp.Value('b', False)]
+        
+        @staticmethod
+        def encode(value, shm_value):
+            if value.reward is not None:
+                shm_value[0] = value.reward
+                shm_value[1] = True
+            elif value.cost is not None:
+                shm_value[0] = value.cost
+                shm_value[1] = False
+            else:
+                shm_value[0] = 0
+                shm_value[1] = True
+        
+        @staticmethod
+        def decode(value):
+            if value[1].value:
+                return StateValue(reward=value[0].value)
+            else:
+                return StateValue(cost=value[0].value)
+    
     class TransitionValueProxy:
         @staticmethod
         def initialize():
@@ -343,7 +367,7 @@ if __name__ == '__main__':
         {'name': 'LRTDP',
          'entry': 'LRTDP',
          'config': {'domain_factory': lambda: MyDomain(),
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                     'use_labels': True, 'time_budget': 1000, 'rollout_budget': 100,
                     'max_depth': 50, 'discount': 1.0, 'epsilon': 0.001,
                     'online_node_garbage': True, 'continuous_planning': False,
@@ -353,7 +377,7 @@ if __name__ == '__main__':
         {'name': 'Improved-LAO*',
          'entry': 'ILAOstar',
          'config': {'domain_factory': lambda: MyDomain(),
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                     'discount': 1.0, 'epsilon': 0.001,
                     'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
 
@@ -364,7 +388,7 @@ if __name__ == '__main__':
                     'time_budget': 1000, 'rollout_budget': 100,
                     'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
                     'online_node_garbage': True, 'continuous_planning': False,
-                    'heuristic': lambda d, s: (-sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2), 10000),
+                    'heuristic': lambda d, s: (StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)), 10000),
                     'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}}
     ]
 

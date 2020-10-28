@@ -147,13 +147,9 @@ private :
                                                                                     throw;
                                                                                 }
                                                                             },
-                                                                            [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id)->double {
+                                                                            [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id) -> typename PyLRTDPDomain<Texecution>::StateValue {
                                                                                 try {
-                                                                                    std::unique_ptr<py::object> r = d.call(thread_id, _heuristic, s.pyobj());
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    double rr = r->template cast<double>();
-                                                                                    r.reset();
-                                                                                    return  rr;
+                                                                                    return typename PyLRTDPDomain<Texecution>::StateValue(d.call(thread_id, _heuristic, s.pyobj()));
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling heuristic: ") + e.what());
                                                                                     throw;

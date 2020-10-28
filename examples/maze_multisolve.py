@@ -4,8 +4,6 @@
 
 from copy import deepcopy
 from enum import Enum
-from skdecide.hub.solver.mcts.mcts import MCTS
-from skdecide.hub.solver import mcts
 from typing import NamedTuple, Optional, Any
 from pathos.helpers import mp
 from math import sqrt
@@ -13,7 +11,7 @@ from math import sqrt
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 
-from skdecide import DeterministicPlanningDomain, TransitionValue, Space, \
+from skdecide import DeterministicPlanningDomain, StateValue, TransitionValue, Space, \
                      EnvironmentOutcome, TransitionOutcome, SingleValueDistribution
 from skdecide.builders.domain import UnrestrictedActions, Renderable
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
@@ -364,14 +362,14 @@ if __name__ == '__main__':
         # Lazy A* (planning)
         {'name': 'Lazy A* (planning)',
          'entry': 'LazyAstar',
-         'config': {'heuristic': lambda d, s: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
+         'config': {'heuristic': lambda d, s: StateValue(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)),
                     'verbose': True}},
         
         # A* (planning)
         {'name': 'A* (planning)',
          'entry': 'Astar',
          'config': {'domain_factory': lambda: Maze(),
-                    'heuristic': lambda d, s: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)),
                     'parallel': False, 'shared_memory_proxy': MyShmProxy(),
                     'debug_logs': False}},
         
@@ -381,7 +379,7 @@ if __name__ == '__main__':
          'config': {'domain_factory': lambda: Maze(),
                     'time_budget': 1000, 'rollout_budget': 100,
                     'max_depth': 50, 'discount': 1.0, 'ucb_constant': 1.0 / sqrt(2.0),
-                    'heuristic': lambda d, s: (-sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2), 10000),
+                    'heuristic': lambda d, s: (StateValue(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)), 10000),
                     'continuous_planning': True, 'online_node_garbage': True,
                     'parallel': False, 'shared_memory_proxy': MyShmProxy(),
                     'debug_logs': False}},
@@ -412,7 +410,7 @@ if __name__ == '__main__':
          'entry': 'BFWS',
          'config': {'domain_factory': lambda: Maze(),
                     'state_features': lambda d, s: [s.x, s.y],
-                    'heuristic': lambda d, s: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)),
                     'termination_checker': lambda d, s: d.is_goal(s),
                     'parallel': False, 'shared_memory_proxy': MyShmProxy(),
                     'debug_logs': False}},

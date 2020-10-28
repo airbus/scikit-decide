@@ -9,7 +9,7 @@ from math import sqrt
 from pathos.helpers import mp
 from collections import namedtuple
 
-from skdecide import GoalMDPDomain, TransitionValue, Space, \
+from skdecide import GoalMDPDomain, StateValue, TransitionValue, Space, \
                      DiscreteDistribution, EnvironmentOutcome, TransitionOutcome
 from skdecide.builders.domain import Actions
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
@@ -342,7 +342,7 @@ if __name__ == '__main__':
         {'name': 'LRTDP',
          'entry': 'LRTDP',
          'config': {'domain_factory': lambda: MyDomain(),
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                     'use_labels': True, 'time_budget': 60000, 'rollout_budget': 10000,
                     'max_depth': 50, 'discount': 1.0, 'epsilon': 0.001,
                     'online_node_garbage': True, 'continuous_planning': False,
@@ -352,7 +352,7 @@ if __name__ == '__main__':
         {'name': 'Improved-LAO*',
          'entry': 'ILAOstar',
          'config': {'domain_factory': lambda: MyDomain(),
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                     'discount': 1.0, 'epsilon': 0.001,
                     'parallel': True, 'debug_logs': False}},
         
@@ -364,7 +364,7 @@ if __name__ == '__main__':
                     'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
                     'transition_mode': MCTS.Options.TransitionMode.Distribution,
                     'online_node_garbage': True, 'continuous_planning': False,
-                    'heuristic': lambda d, s: (-sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2), 10000),
+                    'heuristic': lambda d, s: (StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)), 10000),
                     'parallel': True, 'debug_logs': False}}
     ]
 

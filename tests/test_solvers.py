@@ -15,7 +15,7 @@ from pathos.helpers import mp
 from stable_baselines3 import PPO
 
 from skdecide import DeterministicPlanningDomain, TransitionValue, \
-                     Space, ImplicitSpace, \
+                     StateValue, Space, ImplicitSpace, \
                      EnvironmentOutcome, TransitionOutcome, \
                      SingleValueDistribution
 from skdecide.builders.domain import UnrestrictedActions
@@ -98,16 +98,16 @@ class GridDomain(D):
 # FIXTURES
 
 @pytest.fixture(params=[{'entry': 'Astar',
-                         'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                         'config': {'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                                     'debug_logs': False},
                          'optimal': True},
                         {'entry': 'AOstar',
-                         'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                         'config': {'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                                     'debug_logs': False},
                           'optimal': True},
                         {'entry': 'BFWS',
                          'config': {'state_features': lambda d, s: (s.x, s.y),
-                                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                                    'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                                     'termination_checker': lambda d, s: d.is_goal(s),
                                     'debug_logs': False},
                          'optimal': True},
@@ -134,7 +134,7 @@ class GridDomain(D):
                                     'debug_logs': False},
                          'optimal': False},
                          {'entry': 'LRTDP',
-                          'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                          'config': {'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                                      'use_labels': True,
                                      'time_budget': 60000,
                                      'rollout_budget': 10000,
@@ -146,7 +146,7 @@ class GridDomain(D):
                                      'debug_logs': False},
                           'optimal': True},
                           {'entry': 'ILAOstar',
-                           'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                           'config': {'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                                       'discount': 1.0,
                                       'epsilon': 0.001,
                                       'debug_logs': False},

@@ -7,7 +7,8 @@ from typing import NamedTuple, Optional, Iterable
 from math import sqrt
 import getopt, sys
 
-from skdecide import GoalMDPDomain, TransitionValue, Space, EnumerableSpace, ImplicitSpace, DiscreteDistribution
+from skdecide import GoalMDPDomain, StateValue, TransitionValue, Space, \
+                     EnumerableSpace, ImplicitSpace, DiscreteDistribution
 from skdecide.builders.domain import Actions
 from skdecide.hub.space.gym import MultiDiscreteSpace
 from skdecide.utils import load_registered_solver, rollout
@@ -175,7 +176,7 @@ if __name__ == '__main__':
          'config': {'domain_factory': domain_factory,
                     'parallel': False, 'discount': 1.0, 'max_tip_expanions': 1,
                     'detect_cycles': False, 'debug_logs': False,
-                    'heuristic': lambda d, s: sqrt((s.x-(rows-1))*(s.x-(rows-1))+(s.y-(columns-1))*(s.y-(columns-1)))}}
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((s.x-(rows-1))*(s.x-(rows-1))+(s.y-(columns-1))*(s.y-(columns-1))))}}
     ]
 
     # Load solvers (filtering out badly installed ones)

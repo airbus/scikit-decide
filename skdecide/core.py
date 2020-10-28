@@ -12,9 +12,9 @@ from dataclasses import dataclass, asdict, astuple, replace
 from typing import TypeVar, Generic, Union, Optional, Iterable, Sequence, List, Tuple, Dict, Deque, Callable
 
 __all__ = ['T', 'D', 'Space', 'ImplicitSpace', 'EnumerableSpace', 'EmptySpace', 'SamplableSpace', 'SerializableSpace',
-           'Distribution', 'ImplicitDistribution', 'DiscreteDistribution', 'SingleValueDistribution', 'TransitionValue',
-           'EnvironmentOutcome', 'TransitionOutcome', 'Memory', 'StrDict', 'Constraint', 'ImplicitConstraint',
-           'BoundConstraint', 'autocast_all', 'autocastable', 'nocopy']
+           'Distribution', 'ImplicitDistribution', 'DiscreteDistribution', 'SingleValueDistribution', 'StateValue',
+           'TransitionValue', 'EnvironmentOutcome', 'TransitionOutcome', 'Memory', 'StrDict', 'Constraint',
+           'ImplicitConstraint', 'BoundConstraint', 'autocast_all', 'autocastable', 'nocopy']
 
 T = TypeVar('T')  # Any type
 
@@ -275,10 +275,10 @@ class ExtendedDataclass:
         return replace(self, **changes)
 
 
-# TransitionValue
+# Value
 @dataclass
-class TransitionValue(Generic[D.T_value]):
-    """A transition value (reward or cost).
+class Value:
+    """A value (reward or cost).
 
     !!! warning
         It is recommended to use either the reward or the cost parameter. If no one is used, a reward/cost of 0 is
@@ -292,8 +292,8 @@ class TransitionValue(Generic[D.T_value]):
     # Example
     ```python
     # These two lines are equivalent, use the one you prefer
-    value_1 = TransitionValue(reward=-5)
-    value_2 = TransitionValue(cost=5)
+    value_1 = Value(reward=-5)
+    value_2 = Value(cost=5)
 
     assert value_1.reward == value_2.reward == -5  # True
     assert value_1.cost == value_2.cost == 5  # True
@@ -316,6 +316,18 @@ class TransitionValue(Generic[D.T_value]):
 
     def _reward_to_cost(self, reward: D.T_value) -> D.T_value:
         return -reward
+
+
+@dataclass
+class StateValue(Generic[D.T_value], Value):
+    """A state value (reward or cost)."""
+    pass
+
+
+@dataclass
+class TransitionValue(Generic[D.T_value], Value):
+    """A transition value (reward or cost)."""
+    pass
 
 
 # EnvironmentOutcome

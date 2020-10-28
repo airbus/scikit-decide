@@ -135,16 +135,12 @@ private :
                                                                                     throw;
                                                                                 }
                                                                             },
-                                                                            [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s)->double {
+                                                                            [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s) -> typename PyBFWSDomain<Texecution>::StateValue {
                                                                                 try {
                                                                                     auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _heuristic(dd, ss);
                                                                                     };
-                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, fh, s.pyobj());
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    double rr = r->template cast<double>();
-                                                                                    r.reset();
-                                                                                    return  rr;
+                                                                                    return typename PyBFWSDomain<Texecution>::StateValue(d.call(nullptr, fh, s.pyobj()));
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
                                                                                     throw;

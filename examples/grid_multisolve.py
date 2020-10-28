@@ -9,7 +9,7 @@ from math import sqrt
 
 from stable_baselines3 import PPO
 
-from skdecide import DeterministicPlanningDomain, TransitionValue, Space, \
+from skdecide import DeterministicPlanningDomain, StateValue, TransitionValue, Space, \
                      EnvironmentOutcome, TransitionOutcome, SingleValueDistribution
 from skdecide.builders.domain import UnrestrictedActions
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
@@ -297,25 +297,25 @@ if __name__ == '__main__':
         # Lazy A* (classical planning)
         {'name': 'Lazy A* (classical planning)',
          'entry': 'LazyAstar',
-         'config': {'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+         'config': {'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                     'verbose': False}},
         
         # A* (planning)
         {'name': 'A* (planning)',
          'entry': 'Astar',
          'config': {'domain_factory': lambda: MyDomain(),
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
-                    'parallel': False, 'shared_memory_proxy': MyShmProxy(), 'debug_logs': False}},
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
+                    'parallel': True, 'shared_memory_proxy': MyShmProxy(), 'debug_logs': False}},
 
         # UCT (reinforcement learning / search)
         {'name': 'UCT (reinforcement learning / search)',
          'entry': 'UCT',
          'config': {'domain_factory': lambda: MyDomain(),
                     'time_budget': 1000, 'rollout_budget': 100,
-                    'heuristic': lambda d, s: (-sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2), 10000),
+                    'heuristic': lambda d, s: (StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)), 10000),
                     'online_node_garbage': True,
                     'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
-                    'parallel': False, 'shared_memory_proxy': MyShmProxy()}},
+                    'parallel': True, 'shared_memory_proxy': MyShmProxy()}},
 
         # PPO: Proximal Policy Optimization (deep reinforcement learning)
         {'name': 'PPO: Proximal Policy Optimization (deep reinforcement learning)',
@@ -346,7 +346,7 @@ if __name__ == '__main__':
          'entry': 'BFWS',
          'config': {'domain_factory': lambda: MyDomain(),
                     'state_features': lambda d, s: [s.x, s.y],
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                    'heuristic': lambda d, s: StateValue(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                     'termination_checker': lambda d, s: d.is_goal(s),
                     'parallel': False, 'shared_memory_proxy': MyShmProxy(),
                     'debug_logs': False}},

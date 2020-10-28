@@ -28,11 +28,12 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Action Action;
+    typedef typename Domain::StateValue StateValue;
     typedef Texecution_policy ExecutionPolicy;
 
     AStarSolver(Domain& domain,
                 const std::function<bool (Domain&, const State&)>& goal_checker,
-                const std::function<double (Domain&, const State&)>& heuristic,
+                const std::function<StateValue (Domain&, const State&)>& heuristic,
                 bool debug_logs = false)
         : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
           _debug_logs(debug_logs) {
@@ -62,7 +63,7 @@ public :
             }
             Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (Node::state) so we are safe
             root_node.gscore = 0;
-            root_node.fscore = _heuristic(_domain, root_node.state);
+            root_node.fscore = _heuristic(_domain, root_node.state).cost();
 
             // Priority queue used to sort non-goal unsolved tip nodes by increasing cost-to-go values (so-called OPEN container)
             std::priority_queue<Node*, std::vector<Node*>, NodeCompare> open_queue;
@@ -133,7 +134,7 @@ public :
 
                     if ((i.second) || (tentative_gscore < neighbor.gscore)) {
                         neighbor.gscore = tentative_gscore;
-                        neighbor.fscore = tentative_gscore + _heuristic(_domain, neighbor.state);
+                        neighbor.fscore = tentative_gscore + _heuristic(_domain, neighbor.state).cost();
                         neighbor.best_parent = std::make_tuple(best_tip_node, a, transition_cost);
                         _execution_policy.protect([&open_queue, &neighbor]{
                             open_queue.push(&neighbor);
@@ -181,7 +182,7 @@ public :
 private :
     Domain& _domain;
     std::function<bool (Domain&, const State&)> _goal_checker;
-    std::function<double (Domain&, const State&)> _heuristic;
+    std::function<StateValue (Domain&, const State&)> _heuristic;
     bool _debug_logs;
     ExecutionPolicy _execution_policy;
 

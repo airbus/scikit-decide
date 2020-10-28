@@ -407,31 +407,52 @@ public :
     };
     typedef AgentData<ApplicableActionSpaceBase, Tagent> ApplicableActionSpace;
 
-    struct TransitionValueBase : public PyObj<TransitionValueBase> {
-        static constexpr char class_name[] = "transition value";
-        TransitionValueBase() : PyObj<TransitionValueBase>() {}
-        TransitionValueBase(std::unique_ptr<py::object>&& tv) : PyObj<TransitionValueBase>(std::move(tv)) { construct(); }
-        TransitionValueBase(const py::object& tv) : PyObj<TransitionValueBase>(tv) { construct(); }
-        TransitionValueBase(const TransitionValueBase& other) : PyObj<TransitionValueBase>(other) {}
-        TransitionValueBase& operator=(const TransitionValueBase& other) { dynamic_cast<PyObj<TransitionValueBase>&>(*this) = other; return *this; }
-        virtual ~TransitionValueBase() {}
+    template <typename Derived>
+    struct ValueBase : public PyObj<Derived> {
+        ValueBase() : PyObj<Derived>() {}
+        ValueBase(std::unique_ptr<py::object>&& tv) : PyObj<Derived>(std::move(tv)) { construct(); }
+        ValueBase(const py::object& tv) : PyObj<Derived>(tv) { construct(); }
+        ValueBase(const ValueBase& other) : PyObj<Derived>(other) {}
+        ValueBase& operator=(const ValueBase& other) { dynamic_cast<PyObj<Derived>&>(*this) = other; return *this; }
+        virtual ~ValueBase() {}
 
         void construct() {
             typename GilControl<Texecution>::Acquire acquire;
             if (!py::hasattr(*(this->_pyobj), "cost")) {
-                throw std::invalid_argument("SKDECIDE exception: python transition value object must implement cost()");
+                throw std::invalid_argument(std::string("SKDECIDE exception: python ") +
+                                            Derived::class_name + " object must implement cost()");
             }
             if (!py::hasattr(*(this->_pyobj), "reward")) {
-                throw std::invalid_argument("SKDECIDE exception: python transition value object must implement reward()");
+                throw std::invalid_argument(std::string("SKDECIDE exception: python ") +
+                                            Derived::class_name + " object must implement reward()");
             }
         }
 
         double cost() {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return py::cast<double>(this->_pyobj->attr("cost"));
+                if (this->_pyobj->is_none()) {
+                    return 0.0; // useful for algorithms initializing the value to the default empty object
+                } else {
+                    return py::cast<double>(this->_pyobj->attr("cost"));
+                }
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting transition value's cost: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting ") +
+                              Derived::class_name + "'s cost: " + e->what());
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
+            }
+        }
+
+        void cost(const double& c) {
+            typename GilControl<Texecution>::Acquire acquire;
+            try {
+                this->_pyobj->attr("cost") = py::float_(c);
+                this->_pyobj->attr("reward") = py::float_(-c);
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when setting ") +
+                              Derived::class_name + "'s cost: " + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -441,14 +462,54 @@ public :
         double reward() {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return py::cast<double>(this->_pyobj->attr("reward"));
+                if (this->_pyobj->is_none()) {
+                    return 0.0; // useful for algorithms initializing the value to the default empty object
+                } else {
+                    return py::cast<double>(this->_pyobj->attr("reward"));
+                }
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting transition value's reward: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting ") +
+                              Derived::class_name + "'s reward: " + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
             }
         }
+
+        void reward(const double& r) {
+            typename GilControl<Texecution>::Acquire acquire;
+            try {
+                this->_pyobj->attr("reward") = py::float_(r);
+                this->_pyobj->attr("cost") = py::float_(-r);
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when setting ") +
+                              Derived::class_name + "'s reward: " + e->what());
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
+            }
+        }
+    };
+
+    struct StateValueBase : public ValueBase<StateValueBase> {
+        static constexpr char class_name[] = "state value";
+        StateValueBase() : ValueBase<StateValueBase>() {}
+        StateValueBase(std::unique_ptr<py::object>&& tv) : ValueBase<StateValueBase>(std::move(tv)) {}
+        StateValueBase(const py::object& tv) : ValueBase<StateValueBase>(tv) {}
+        StateValueBase(const StateValueBase& other) : ValueBase<StateValueBase>(other) {}
+        StateValueBase& operator=(const StateValueBase& other) { dynamic_cast<ValueBase<StateValueBase>&>(*this) = other; return *this; }
+        virtual ~StateValueBase() {}
+    };
+    typedef AgentData<StateValueBase, Tagent> StateValue;
+
+    struct TransitionValueBase : public ValueBase<TransitionValueBase> {
+        static constexpr char class_name[] = "transition value";
+        TransitionValueBase() : ValueBase<TransitionValueBase>() {}
+        TransitionValueBase(std::unique_ptr<py::object>&& tv) : ValueBase<TransitionValueBase>(std::move(tv)) {}
+        TransitionValueBase(const py::object& tv) : ValueBase<TransitionValueBase>(tv) {}
+        TransitionValueBase(const TransitionValueBase& other) : ValueBase<TransitionValueBase>(other) {}
+        TransitionValueBase& operator=(const TransitionValueBase& other) { dynamic_cast<ValueBase<TransitionValueBase>&>(*this) = other; return *this; }
+        virtual ~TransitionValueBase() {}
     };
     typedef AgentData<TransitionValueBase, Tagent> TransitionValue;
 

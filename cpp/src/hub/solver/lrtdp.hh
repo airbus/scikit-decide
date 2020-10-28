@@ -36,11 +36,12 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Action Action;
+    typedef typename Domain::StateValue StateValue;
     typedef Texecution_policy ExecutionPolicy;
 
     LRTDPSolver(Domain& domain,
                 const std::function<bool (Domain&, const State&, const std::size_t*)>& goal_checker,
-                const std::function<double (Domain&, const State&, const std::size_t*)>& heuristic,
+                const std::function<StateValue (Domain&, const State&, const std::size_t*)>& heuristic,
                 bool use_labels = true,
                 std::size_t time_budget = 3600000,
                 std::size_t rollout_budget = 100000,
@@ -79,7 +80,7 @@ public :
             StateNode& root_node = const_cast<StateNode&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
 
             if (si.second) {
-                root_node.best_value = _heuristic(_domain, s, nullptr);
+                root_node.best_value = _heuristic(_domain, s, nullptr).cost();
             }
 
             if (root_node.solved || _goal_checker(_domain, s, nullptr)) { // problem already solved from this state (was present in _graph and already solved)
@@ -183,7 +184,7 @@ private :
     
     Domain& _domain;
     std::function<bool (Domain&, const State&, const std::size_t*)> _goal_checker;
-    std::function<double (Domain&, const State&, const std::size_t*)> _heuristic;
+    std::function<StateValue (Domain&, const State&, const std::size_t*)> _heuristic;
     bool _use_labels;
     atomic_size_t _time_budget;
     atomic_size_t _rollout_budget;
@@ -273,7 +274,7 @@ private :
                         next_node.solved = true;
                         next_node.best_value = 0.0;
                     } else {
-                        next_node.best_value = _heuristic(_domain, next_node.state, thread_id);
+                        next_node.best_value = _heuristic(_domain, next_node.state, thread_id).cost();
                         if (_debug_logs) spdlog::debug("New state " + next_node.state.print() +
                                                        " with heuristic value " + StringConverter::from(next_node.best_value) +
                                                        ExecutionPolicy::print_thread());
