@@ -177,17 +177,17 @@ public :
 
     template <typename Inherited, typename TTagent>
     struct AgentData<Inherited, TTagent,
-                     typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type> : public PyObj<AgentData<Inherited, TTagent>> {
-        static constexpr char class_name[] = Inherited::class_name;
-        AgentData() : PyObj<AgentData<Inherited, TTagent>>() {}
-        AgentData(std::unique_ptr<py::object>&& s) : PyObj<AgentData<Inherited, TTagent>>(std::move(s)) {}
-        AgentData(const py::object& s) : PyObj<AgentData<Inherited, TTagent>>(s) {}
-        AgentData(const AgentData& other) : PyObj<AgentData<Inherited, TTagent>>(other) {}
-        AgentData& operator=(const AgentData& other) { dynamic_cast<PyObj<AgentData<Inherited, TTagent>>&>(*this) = other; return *this; }
+                     typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type> : public PyObj<Inherited> {
+        // AgentData inherits from pyObj<> to manage its python object but Inherited is passed to
+        // PyObj as template parameter to print Inherited::class_name when managing AgentData objects
+        AgentData() : PyObj<Inherited>() {}
+        AgentData(std::unique_ptr<py::object>&& s) : PyObj<Inherited>(std::move(s)) {}
+        AgentData(const py::object& s) : PyObj<Inherited>(s) {}
+        AgentData(const AgentData& other) : PyObj<Inherited>(other) {}
+        AgentData& operator=(const AgentData& other) { dynamic_cast<PyObj<Inherited>&>(*this) = other; return *this; }
         virtual ~AgentData() {}
 
         struct Element : public Inherited {
-            static constexpr char class_name[] = std::string("agent ") + Inherited::class_name;
             Element() : Inherited() {}
             Element(std::unique_ptr<py::object>&& s) : Inherited(std::move(s)) {}
             Element(const py::object& s) : Inherited(s) {}
