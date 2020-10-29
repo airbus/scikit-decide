@@ -8,10 +8,7 @@
 #include <pybind11/iostream.h>
 
 #include "riw.hh"
-#include "core.hh"
 
-#include "utils/python_gil_control.hh"
-#include "utils/python_hash_eq.hh"
 #include "utils/python_domain_proxy.hh"
 
 namespace py = pybind11;

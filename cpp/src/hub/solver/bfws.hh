@@ -96,14 +96,14 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Action Action;
-    typedef typename Domain::StateValue StateValue;
+    typedef typename Domain::Value Value;
     typedef Tfeature_vector FeatureVector;
     typedef Thashing_policy<Domain, FeatureVector> HashingPolicy;
     typedef Texecution_policy ExecutionPolicy;
 
     BFWSSolver(Domain& domain,
                const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)>& state_features,
-               const std::function<StateValue (Domain&, const State&)>& heuristic,
+               const std::function<Value (Domain&, const State&)>& heuristic,
                const std::function<bool (Domain&, const State&)>& termination_checker,
                bool debug_logs = false)
         : _domain(domain), _state_features(state_features), _heuristic(heuristic), _termination_checker(termination_checker),
@@ -262,7 +262,7 @@ public :
 private :
     Domain& _domain;
     std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s)> _state_features;
-    std::function<StateValue (Domain&, const State&)> _heuristic;
+    std::function<Value (Domain&, const State&)> _heuristic;
     std::function<bool (Domain&, const State&)> _termination_checker;
     bool _debug_logs;
     ExecutionPolicy _execution_policy;

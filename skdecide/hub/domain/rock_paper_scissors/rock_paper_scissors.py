@@ -7,7 +7,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import NamedTuple, Optional
 
-from skdecide import Domain, TransitionValue, Space, TransitionOutcome
+from skdecide import Domain, Value, Space, TransitionOutcome
 from skdecide.builders.domain import *
 from skdecide.hub.space.gym import EnumSpace
 
@@ -36,7 +36,7 @@ class RockPaperScissors(D):
         self._max_moves = max_moves
 
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]:
 
         # Get players' moves
         move1, move2 = action['player1'], action['player2']
@@ -59,7 +59,7 @@ class RockPaperScissors(D):
         num_move = last_state.num_move + 1
 
         return TransitionOutcome(state=State(num_move=num_move),
-                                 value={'player1': TransitionValue(reward=r1), 'player2': TransitionValue(reward=r2)},
+                                 value={'player1': Value(reward=r1), 'player2': Value(reward=r2)},
                                  termination=(num_move >= self._max_moves))
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:

@@ -7,10 +7,7 @@
 #include <pybind11/iostream.h>
 
 #include "mcts.hh"
-#include "core.hh"
 
-#include "utils/python_gil_control.hh"
-#include "utils/python_hash_eq.hh"
 #include "utils/python_domain_proxy.hh"
 
 namespace py = pybind11;
@@ -282,22 +279,22 @@ private :
             return std::make_unique<TtreePolicy<PyMCTSSolver>>();
         }
 
-        std::function<std::pair<typename PyMCTSDomain<Texecution>::StateValue, std::size_t>
+        std::function<std::pair<typename PyMCTSDomain<Texecution>::Value, std::size_t>
                                     (PyMCTSDomain<Texecution>&,
                                      const typename PyMCTSDomain<Texecution>::State&,
                                      const std::size_t*)>
         construct_heuristic(const HeuristicFunctor& heuristic) {
             return [&heuristic](PyMCTSDomain<Texecution>& d,
                                 const typename PyMCTSDomain<Texecution>::State& s,
-                                const std::size_t* thread_id) -> std::pair<typename PyMCTSDomain<Texecution>::StateValue, std::size_t> {
+                                const std::size_t* thread_id) -> std::pair<typename PyMCTSDomain<Texecution>::Value, std::size_t> {
                 try {
                     std::unique_ptr<py::object> r = d.call(thread_id, heuristic, s.pyobj());
                     typename skdecide::GilControl<Texecution>::Acquire acquire;
-                    std::pair<typename PyMCTSDomain<Texecution>::StateValue, std::size_t> rr;
+                    std::pair<typename PyMCTSDomain<Texecution>::Value, std::size_t> rr;
                     {
                         py::tuple t = py::cast<py::tuple>(*r);
                         rr = std::make_pair(
-                            typename PyMCTSDomain<Texecution>::StateValue(t[0]),
+                            typename PyMCTSDomain<Texecution>::Value(t[0]),
                             t[1].template cast<std::size_t>()
                         );
                     } // we want tuple t to be deleted here while we are un GIL acquisition protection

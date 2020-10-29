@@ -7,10 +7,7 @@
 #include <pybind11/iostream.h>
 
 #include "aostar.hh"
-#include "core.hh"
 
-#include "utils/python_gil_control.hh"
-#include "utils/python_hash_eq.hh"
 #include "utils/python_domain_proxy.hh"
 
 namespace py = pybind11;
@@ -118,12 +115,12 @@ private :
                                                                                     throw;
                                                                                 }
                                                                             },
-                                                                            [this](PyAOStarDomain<Texecution>& d, const typename PyAOStarDomain<Texecution>::State& s) -> typename PyAOStarDomain<Texecution>::StateValue {
+                                                                            [this](PyAOStarDomain<Texecution>& d, const typename PyAOStarDomain<Texecution>::State& s) -> typename PyAOStarDomain<Texecution>::Value {
                                                                                 try {
                                                                                     auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _heuristic(dd, ss);
                                                                                     };
-                                                                                    return typename PyAOStarDomain<Texecution>::StateValue(d.call(nullptr, fh, s.pyobj()));
+                                                                                    return typename PyAOStarDomain<Texecution>::Value(d.call(nullptr, fh, s.pyobj()));
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
                                                                                     throw;

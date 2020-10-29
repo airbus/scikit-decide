@@ -32,12 +32,12 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Action Action;
-    typedef typename Domain::StateValue StateValue;
+    typedef typename Domain::Value Value;
     typedef Texecution_policy ExecutionPolicy;
 
     ILAOStarSolver(Domain& domain,
                    const std::function<bool (Domain&, const State&)>& goal_checker,
-                   const std::function<StateValue (Domain&, const State&)>& heuristic,
+                   const std::function<Value (Domain&, const State&)>& heuristic,
                    double discount = 1.0,
                    double epsilon = 0.001,
                    bool debug_logs = false)
@@ -166,7 +166,7 @@ private :
 
     Domain& _domain;
     std::function<bool (Domain&, const State&)> _goal_checker;
-    std::function<StateValue (Domain&, const State&)> _heuristic;
+    std::function<Value (Domain&, const State&)> _heuristic;
     atomic_double _discount;
     atomic_double _epsilon;
     bool _debug_logs;

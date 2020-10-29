@@ -3,15 +3,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 #include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
 
 #include "lrtdp.hh"
-#include "core.hh"
 
-#include "utils/python_gil_control.hh"
-#include "utils/python_hash_eq.hh"
 #include "utils/python_domain_proxy.hh"
 
 namespace py = pybind11;
@@ -147,9 +143,9 @@ private :
                                                                                     throw;
                                                                                 }
                                                                             },
-                                                                            [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id) -> typename PyLRTDPDomain<Texecution>::StateValue {
+                                                                            [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id) -> typename PyLRTDPDomain<Texecution>::Value {
                                                                                 try {
-                                                                                    return typename PyLRTDPDomain<Texecution>::StateValue(d.call(thread_id, _heuristic, s.pyobj()));
+                                                                                    return typename PyLRTDPDomain<Texecution>::Value(d.call(thread_id, _heuristic, s.pyobj()));
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling heuristic: ") + e.what());
                                                                                     throw;

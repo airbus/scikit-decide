@@ -8,7 +8,7 @@ from stable_baselines3 import PPO
 from typing import Any, Callable
 from math import sqrt
 
-from skdecide import StateValue
+from skdecide import Value
 from skdecide.utils import load_registered_domain, load_registered_solver, match_solvers, rollout
 from skdecide.hub.domain.gym import GymPlanningDomain, GymWidthDomain, GymDiscreteActionDomain
 
@@ -209,13 +209,13 @@ if __name__ == '__main__':
                 # Set the domain-dependent heuristic for search algorithms
                 if selected_domain['name'] == 'Simple Grid World':
                     setattr(domain_type, 'heuristic',
-                            lambda self, s: StateValue(cost=sqrt((self.num_cols - 1 - s.x)**2 + (self.num_rows - 1 - s.y)**2)))
+                            lambda self, s: Value(cost=sqrt((self.num_cols - 1 - s.x)**2 + (self.num_rows - 1 - s.y)**2)))
                 elif selected_domain['name'] == 'Maze':
                     setattr(domain_type, 'heuristic',
-                            lambda self, s: StateValue(cost=sqrt((self._goal.x - s.x)**2 + (self._goal.y - s.y)**2)))
+                            lambda self, s: Value(cost=sqrt((self._goal.x - s.x)**2 + (self._goal.y - s.y)**2)))
                 else:
                     setattr(domain_type, 'heuristic',
-                            lambda self, s: StateValue(cost=0))
+                            lambda self, s: Value(cost=0))
                 # Set the domain-dependent stat features for width-based algorithms
                 if selected_domain['name'] == 'Simple Grid World':
                     setattr(domain_type, 'state_features',

@@ -25,19 +25,19 @@ Initialize GymDomain.
 
 ### check\_value <Badge text="Rewards" type="warn"/>
 
-<skdecide-signature name= "check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'TransitionValue[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
+<skdecide-signature name= "check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'Value[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
 
-Check that a transition value is compliant with its reward specification.
+Check that a value is compliant with its reward specification.
 
 ::: tip
 This function returns always True by default because any kind of reward should be accepted at this level.
 :::
 
 #### Parameters
-- **value**: The transition value to check.
+- **value**: The value to check.
 
 #### Returns
-True if the transition value is compliant (False otherwise).
+True if the value is compliant (False otherwise).
 
 ### get\_action\_space <Badge text="Events" type="warn"/>
 
@@ -247,7 +247,7 @@ The new solver (auto-cast to the level of the domain).
 
 ### step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Run one step of the environment's dynamics.
 
@@ -283,19 +283,19 @@ The original Gym environment.
 
 ### \_check\_value <Badge text="Rewards" type="warn"/>
 
-<skdecide-signature name= "_check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'TransitionValue[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
+<skdecide-signature name= "_check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'Value[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
 
-Check that a transition value is compliant with its reward specification.
+Check that a value is compliant with its reward specification.
 
 ::: tip
 This function returns always True by default because any kind of reward should be accepted at this level.
 :::
 
 #### Parameters
-- **value**: The transition value to check.
+- **value**: The value to check.
 
 #### Returns
-True if the transition value is compliant (False otherwise).
+True if the value is compliant (False otherwise).
 
 ### \_get\_action\_space <Badge text="Events" type="warn"/>
 
@@ -665,7 +665,7 @@ An initial state.
 
 ### \_state\_step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "_state_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_state_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Compute one step of the transition's dynamics.
 
@@ -680,7 +680,7 @@ The transition outcome of this step.
 
 ### \_step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Run one step of the environment's dynamics.
 
@@ -730,19 +730,19 @@ Initialize GymDomain.
 
 ### check\_value <Badge text="Rewards" type="warn"/>
 
-<skdecide-signature name= "check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'TransitionValue[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
+<skdecide-signature name= "check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'Value[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
 
-Check that a transition value is compliant with its reward specification.
+Check that a value is compliant with its reward specification.
 
 ::: tip
 This function returns always True by default because any kind of reward should be accepted at this level.
 :::
 
 #### Parameters
-- **value**: The transition value to check.
+- **value**: The value to check.
 
 #### Returns
-True if the transition value is compliant (False otherwise).
+True if the value is compliant (False otherwise).
 
 ### get\_action\_space <Badge text="Events" type="warn"/>
 
@@ -978,7 +978,7 @@ The new solver (auto-cast to the level of the domain).
 
 ### step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Run one step of the environment's dynamics.
 
@@ -1014,19 +1014,19 @@ The original Gym environment.
 
 ### \_check\_value <Badge text="Rewards" type="warn"/>
 
-<skdecide-signature name= "_check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'TransitionValue[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
+<skdecide-signature name= "_check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'Value[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
 
-Check that a transition value is compliant with its reward specification.
+Check that a value is compliant with its reward specification.
 
 ::: tip
 This function returns always True by default because any kind of reward should be accepted at this level.
 :::
 
 #### Parameters
-- **value**: The transition value to check.
+- **value**: The value to check.
 
 #### Returns
-True if the transition value is compliant (False otherwise).
+True if the value is compliant (False otherwise).
 
 ### \_get\_action\_space <Badge text="Events" type="warn"/>
 
@@ -1451,7 +1451,7 @@ An initial state.
 
 ### \_state\_step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "_state_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_state_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Compute one step of the transition's dynamics.
 
@@ -1466,7 +1466,7 @@ The transition outcome of this step.
 
 ### \_step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Run one step of the environment's dynamics.
 
@@ -1862,19 +1862,19 @@ Initialize DeterministicGymDomain.
 
 ### check\_value <Badge text="Rewards" type="warn"/>
 
-<skdecide-signature name= "check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'TransitionValue[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
+<skdecide-signature name= "check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'Value[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
 
-Check that a transition value is compliant with its reward specification.
+Check that a value is compliant with its reward specification.
 
 ::: tip
 This function returns always True by default because any kind of reward should be accepted at this level.
 :::
 
 #### Parameters
-- **value**: The transition value to check.
+- **value**: The value to check.
 
 #### Returns
-True if the transition value is compliant (False otherwise).
+True if the value is compliant (False otherwise).
 
 ### get\_action\_space <Badge text="Events" type="warn"/>
 
@@ -2024,7 +2024,7 @@ The observation space.
 
 ### get\_transition\_value <Badge text="UncertainTransitions" type="warn"/>
 
-<skdecide-signature name= "get_transition_value" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}, {'name': 'next_state', 'default': 'None', 'annotation': 'Optional[D.T_state]'}], 'return': 'D.T_agent[TransitionValue[D.T_value]]'}"></skdecide-signature>
+<skdecide-signature name= "get_transition_value" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}, {'name': 'next_state', 'default': 'None', 'annotation': 'Optional[D.T_state]'}], 'return': 'D.T_agent[Value[D.T_value]]'}"></skdecide-signature>
 
 Get the value (reward or cost) of a transition.
 
@@ -2172,7 +2172,7 @@ An initial observation.
 
 ### sample <Badge text="Simulation" type="warn"/>
 
-<skdecide-signature name= "sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Sample one transition of the simulator's dynamics.
 
@@ -2236,7 +2236,7 @@ The new solver (auto-cast to the level of the domain).
 
 ### step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Run one step of the environment's dynamics.
 
@@ -2272,19 +2272,19 @@ The original Gym environment.
 
 ### \_check\_value <Badge text="Rewards" type="warn"/>
 
-<skdecide-signature name= "_check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'TransitionValue[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
+<skdecide-signature name= "_check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'Value[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
 
-Check that a transition value is compliant with its reward specification.
+Check that a value is compliant with its reward specification.
 
 ::: tip
 This function returns always True by default because any kind of reward should be accepted at this level.
 :::
 
 #### Parameters
-- **value**: The transition value to check.
+- **value**: The value to check.
 
 #### Returns
-True if the transition value is compliant (False otherwise).
+True if the value is compliant (False otherwise).
 
 ### \_get\_action\_space <Badge text="Events" type="warn"/>
 
@@ -2558,7 +2558,7 @@ The observation space.
 
 ### \_get\_transition\_value <Badge text="UncertainTransitions" type="warn"/>
 
-<skdecide-signature name= "_get_transition_value" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}, {'name': 'next_state', 'default': 'None', 'annotation': 'Optional[D.T_state]'}], 'return': 'D.T_agent[TransitionValue[D.T_value]]'}"></skdecide-signature>
+<skdecide-signature name= "_get_transition_value" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}, {'name': 'next_state', 'default': 'None', 'annotation': 'Optional[D.T_state]'}], 'return': 'D.T_agent[Value[D.T_value]]'}"></skdecide-signature>
 
 Get the value (reward or cost) of a transition.
 
@@ -2796,7 +2796,7 @@ An initial observation.
 
 ### \_sample <Badge text="Simulation" type="warn"/>
 
-<skdecide-signature name= "_sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Sample one transition of the simulator's dynamics.
 
@@ -2853,7 +2853,7 @@ An initial state.
 
 ### \_state\_sample <Badge text="Simulation" type="warn"/>
 
-<skdecide-signature name= "_state_sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_state_sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Compute one sample of the transition's dynamics.
 
@@ -2869,7 +2869,7 @@ The transition outcome of the sampled transition.
 
 ### \_state\_step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "_state_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_state_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Compute one step of the transition's dynamics.
 
@@ -2884,7 +2884,7 @@ The transition outcome of this step.
 
 ### \_step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Run one step of the environment's dynamics.
 
@@ -2935,19 +2935,19 @@ Initialize GymPlanningDomain.
 
 ### check\_value <Badge text="Rewards" type="warn"/>
 
-<skdecide-signature name= "check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'TransitionValue[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
+<skdecide-signature name= "check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'Value[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
 
-Check that a transition value is compliant with its reward specification.
+Check that a value is compliant with its reward specification.
 
 ::: tip
 This function returns always True by default because any kind of reward should be accepted at this level.
 :::
 
 #### Parameters
-- **value**: The transition value to check.
+- **value**: The value to check.
 
 #### Returns
-True if the transition value is compliant (False otherwise).
+True if the value is compliant (False otherwise).
 
 ### get\_action\_space <Badge text="Events" type="warn"/>
 
@@ -3116,7 +3116,7 @@ The observation space.
 
 ### get\_transition\_value <Badge text="UncertainTransitions" type="warn"/>
 
-<skdecide-signature name= "get_transition_value" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}, {'name': 'next_state', 'default': 'None', 'annotation': 'Optional[D.T_state]'}], 'return': 'D.T_agent[TransitionValue[D.T_value]]'}"></skdecide-signature>
+<skdecide-signature name= "get_transition_value" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}, {'name': 'next_state', 'default': 'None', 'annotation': 'Optional[D.T_state]'}], 'return': 'D.T_agent[Value[D.T_value]]'}"></skdecide-signature>
 
 Get the value (reward or cost) of a transition.
 
@@ -3281,7 +3281,7 @@ An initial observation.
 
 ### sample <Badge text="Simulation" type="warn"/>
 
-<skdecide-signature name= "sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Sample one transition of the simulator's dynamics.
 
@@ -3345,7 +3345,7 @@ The new solver (auto-cast to the level of the domain).
 
 ### step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Run one step of the environment's dynamics.
 
@@ -3381,9 +3381,9 @@ The original Gym environment.
 
 ### \_check\_value <Badge text="Rewards" type="warn"/>
 
-<skdecide-signature name= "_check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'TransitionValue[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
+<skdecide-signature name= "_check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'Value[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
 
-Check that a transition value is compliant with its cost specification (must be positive).
+Check that a value is compliant with its cost specification (must be positive).
 
 ::: tip
 This function calls `PositiveCost._is_positive()` to determine if a value is positive (can be overridden for
@@ -3391,10 +3391,10 @@ advanced value types).
 :::
 
 #### Parameters
-- **value**: The transition value to check.
+- **value**: The value to check.
 
 #### Returns
-True if the transition value is compliant (False otherwise).
+True if the value is compliant (False otherwise).
 
 ### \_get\_action\_space <Badge text="Events" type="warn"/>
 
@@ -3704,7 +3704,7 @@ The observation space.
 
 ### \_get\_transition\_value <Badge text="UncertainTransitions" type="warn"/>
 
-<skdecide-signature name= "_get_transition_value" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}, {'name': 'next_state', 'default': 'None', 'annotation': 'Optional[D.T_state]'}], 'return': 'D.T_agent[TransitionValue[D.T_value]]'}"></skdecide-signature>
+<skdecide-signature name= "_get_transition_value" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}, {'name': 'next_state', 'default': 'None', 'annotation': 'Optional[D.T_state]'}], 'return': 'D.T_agent[Value[D.T_value]]'}"></skdecide-signature>
 
 Get the value (reward or cost) of a transition.
 
@@ -3971,7 +3971,7 @@ An initial observation.
 
 ### \_sample <Badge text="Simulation" type="warn"/>
 
-<skdecide-signature name= "_sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Sample one transition of the simulator's dynamics.
 
@@ -4028,7 +4028,7 @@ An initial state.
 
 ### \_state\_sample <Badge text="Simulation" type="warn"/>
 
-<skdecide-signature name= "_state_sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_state_sample" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Compute one sample of the transition's dynamics.
 
@@ -4044,7 +4044,7 @@ The transition outcome of the sampled transition.
 
 ### \_state\_step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "_state_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_state_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Compute one step of the transition's dynamics.
 
@@ -4059,7 +4059,7 @@ The transition outcome of this step.
 
 ### \_step <Badge text="Environment" type="warn"/>
 
-<skdecide-signature name= "_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+<skdecide-signature name= "_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
 
 Run one step of the environment's dynamics.
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Optional, Callable
 
-from skdecide import Domain, Solver, StateValue
+from skdecide import Domain, Solver, Value
 from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, \
                                      Actions, Goals, Markovian, \
                                      FullyObservable, PositiveCosts
@@ -35,13 +35,13 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities):
 
     def __init__(self,
                  from_state: Optional[D.T_state] = None,
-                 heuristic: Optional[Callable[[Domain, D.T_state], D.T_agent[StateValue[D.T_value]]]] = None,
+                 heuristic: Optional[Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]] = None,
                  weight: float = 1.,
                  verbose: bool = False,
                  max_iter=5000,
                  max_depth=200) -> None:
         self._from_state = from_state
-        self._heuristic = (lambda _, __: StateValue(cost=0.)) if heuristic is None else heuristic
+        self._heuristic = (lambda _, __: Value(cost=0.)) if heuristic is None else heuristic
         self._weight = weight
         self.max_iter = max_iter
         self.max_depth = max_depth

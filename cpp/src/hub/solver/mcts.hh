@@ -204,14 +204,17 @@ public :
 template <typename Tsolver>
 class FullExpand {
 public :
-    typedef std::function<std::pair<typename Tsolver::Domain::StateValue, std::size_t>
+    typedef std::function<std::pair<typename Tsolver::Domain::Value, std::size_t>
                           (typename Tsolver::Domain&, const typename Tsolver::Domain::State&, const std::size_t*)> HeuristicFunctor;
 
     FullExpand(const HeuristicFunctor& heuristic = [](typename Tsolver::Domain& domain,
                                                       const typename Tsolver::Domain::State& state,
                                                       const std::size_t* thread_id) {
-        return std::make_pair(typename Tsolver::Domain::StateValue(), 0);
-    })
+                    // MSVC cannot catch Tsolver::Domain::Value inside the lambda function but can only catch types through
+                    // FullExpand<Tsolver> thus we must get the state value type from FullExpand<Tsolver>::HeuristicFunctor
+                    typedef typename FullExpand<Tsolver>::HeuristicFunctor::result_type::first_type StateValue;
+                    return std::make_pair(StateValue(), 0);
+               })
     : _heuristic(heuristic), _checked_transition_mode(false) {}
 
     FullExpand(const FullExpand& other)
@@ -372,7 +375,7 @@ public :
 
                     if (i.second) { // new node
                         next_node.terminal = solver.domain().is_terminal(next_node.state, thread_id);
-                        std::pair<typename Tsolver::Domain::StateValue, std::size_t> h = _heuristic(solver.domain(), next_node.state, thread_id);
+                        std::pair<typename Tsolver::Domain::Value, std::size_t> h = _heuristic(solver.domain(), next_node.state, thread_id);
                         next_node.value = h.first.reward();
                         next_node.visits_count = h.second;
                     }
@@ -460,7 +463,7 @@ public :
 
                 if (i.second) { // new node
                     next_node.terminal = to.termination();
-                    std::pair<typename Tsolver::Domain::StateValue, std::size_t> h = _heuristic(solver.domain(), next_node.state, thread_id);
+                    std::pair<typename Tsolver::Domain::Value, std::size_t> h = _heuristic(solver.domain(), next_node.state, thread_id);
                     next_node.value = h.first.reward();
                     next_node.visits_count = h.second;
                 }
@@ -504,14 +507,17 @@ private :
 template <typename Tsolver>
 class PartialExpand {
 public :
-    typedef std::function<std::pair<typename Tsolver::Domain::StateValue, std::size_t>
+    typedef std::function<std::pair<typename Tsolver::Domain::Value, std::size_t>
                           (typename Tsolver::Domain&, const typename Tsolver::Domain::State&, const std::size_t*)> HeuristicFunctor;
 
     PartialExpand(const double& state_expansion_rate = 0.1, const double& action_expansion_rate = 0.1,
                   const HeuristicFunctor& heuristic = [](typename Tsolver::Domain& domain,
                                                          const typename Tsolver::Domain::State& state,
                                                          const std::size_t* thread_id) {
-                        return std::make_pair(typename Tsolver::Domain::StateValue(), 0);
+                        // MSVC cannot catch Tsolver::Domain::Value inside the lambda function but can only catch types through
+                        // PartialExpand<Tsolver> thus we must get the state value type from PartialExpand<Tsolver>::HeuristicFunctor
+                        typedef typename PartialExpand<Tsolver>::HeuristicFunctor::result_type::first_type StateValue;
+                        return std::make_pair(StateValue(), 0);
                   })
     : _heuristic(heuristic),
       _state_expansion_rate(state_expansion_rate),
@@ -602,7 +608,7 @@ public :
                 if (s.second) { // new state
                     solver.execution_policy().protect([this, &ns, &to, &solver, &thread_id](){
                         ns->terminal = to.termination();
-                        std::pair<typename Tsolver::Domain::StateValue, std::size_t> h = _heuristic(solver.domain(), ns->state, thread_id);
+                        std::pair<typename Tsolver::Domain::Value, std::size_t> h = _heuristic(solver.domain(), ns->state, thread_id);
                         ns->value = h.first.reward();
                         ns->visits_count = h.second;
                     }, ns->mutex);

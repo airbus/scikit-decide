@@ -11,7 +11,7 @@ from typing import Callable, Dict, Tuple, List
 
 from skdecide import Domain, Solver
 from skdecide import hub
-from skdecide.core import StateValue
+from skdecide.core import Value
 from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
@@ -46,7 +46,7 @@ try:
                      ucb_constant: float = 1.0 / sqrt(2.0),
                      online_node_garbage: bool = False,
                      custom_policy: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
-                     heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[StateValue[D.T_value]], int]] = None,
+                     heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int]] = None,
                      state_expansion_rate: float = 0.1,
                      action_expansion_rate: float = 0.1,
                      transition_mode: Options.TransitionMode = Options.TransitionMode.Distribution,
@@ -169,7 +169,7 @@ try:
                      ucb_constant: float = 1.0 / sqrt(2.0),
                      online_node_garbage: float = False,
                      custom_policy: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
-                     heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[StateValue[D.T_value]], int]] = None,
+                     heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int]] = None,
                      state_expansion_rate: float = 0.1,
                      action_expansion_rate: float = 0.1,
                      transition_mode: mcts_options.TransitionMode = mcts_options.TransitionMode.Distribution,

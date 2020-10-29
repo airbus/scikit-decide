@@ -7,7 +7,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import NamedTuple, Optional
 
-from skdecide import DeterministicPlanningDomain, TransitionValue, Space
+from skdecide import DeterministicPlanningDomain, Value, Space
 from skdecide.builders.domain import UnrestrictedActions
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
 
@@ -53,14 +53,14 @@ class SimpleGridWorld(D):
         return next_state
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
+                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
 
         if next_state.x == memory.x and next_state.y == memory.y:
             cost = 2  # big penalty when hitting a wall
         else:
             cost = abs(next_state.x - memory.x) + abs(next_state.y - memory.y)  # every move costs 1
 
-        return TransitionValue(cost=cost)
+        return Value(cost=cost)
 
     def _is_terminal(self, state: D.T_state) -> bool:
         return self._is_goal(state)

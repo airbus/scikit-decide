@@ -77,9 +77,9 @@ class MyDomain(D):
         return State(next_x, next_y) if self.maze[next_x][next_y] != '.' else memory
 
     def _get_transition_value(self, memory: D.T_state, action: D.T_event, next_state: Optional[D.T_state] = None) -> \
-            TransitionValue[D.T_value]:
+            Value[D.T_value]:
         # Set cost to 1 when moving (energy cost) and to 2 when bumping into a wall (damage cost)
-        return TransitionValue(cost=1 if next_state != memory else 2)
+        return Value(cost=1 if next_state != memory else 2)
 
     def _get_initial_state_(self) -> D.T_state:
         # Set the start position as initial state

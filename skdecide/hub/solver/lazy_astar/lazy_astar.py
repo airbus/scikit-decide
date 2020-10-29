@@ -8,7 +8,7 @@ from heapq import heappush, heappop
 from itertools import count
 from typing import Optional, Callable
 
-from skdecide import Domain, Solver, StateValue
+from skdecide import Domain, Solver, Value
 from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, Goals, Markovian, \
     FullyObservable, PositiveCosts
 from skdecide.builders.solver import DeterministicPolicies, Utilities
@@ -24,11 +24,11 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
     T_domain = D
 
     def __init__(self, from_state: Optional[D.T_state] = None,
-                 heuristic: Optional[Callable[[Domain, D.T_state], D.T_agent[StateValue[D.T_value]]]] = None, weight: float = 1.,
+                 heuristic: Optional[Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]] = None, weight: float = 1.,
                  verbose: bool = False, render: bool = False) -> None:
 
         self._from_state = from_state
-        self._heuristic = (lambda _, __: StateValue(cost=0.)) if heuristic is None else heuristic
+        self._heuristic = (lambda _, __: Value(cost=0.)) if heuristic is None else heuristic
         self._weight = weight
         self._verbose = verbose
         self._render = render

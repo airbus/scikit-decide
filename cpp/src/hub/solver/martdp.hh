@@ -33,12 +33,12 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Event Action;
-    typedef typename Domain::StateValue StateValue;
+    typedef typename Domain::Value Value;
     typedef Texecution_policy ExecutionPolicy;
 
     MARTPRTDPSolver(Domain& domain,
                     const std::function<bool (Domain&, const State&, const std::size_t*)>& goal_checker,
-                    const std::function<StateValue (Domain&, const State&, const std::size_t*)>& heuristic,
+                    const std::function<Value (Domain&, const State&, const std::size_t*)>& heuristic,
                     std::size_t time_budget = 3600000,
                     std::size_t rollout_budget = 100000,
                     std::size_t max_depth = 1000,
@@ -180,7 +180,7 @@ private :
     
     Domain& _domain;
     std::function<bool (Domain&, const State&, const std::size_t*)> _goal_checker;
-    std::function<StateValue (Domain&, const State&, const std::size_t*)> _heuristic;
+    std::function<Value (Domain&, const State&, const std::size_t*)> _heuristic;
     atomic_size_t _time_budget;
     atomic_size_t _rollout_budget;
     atomic_size_t _max_depth;
