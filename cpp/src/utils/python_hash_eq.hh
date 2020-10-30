@@ -13,13 +13,13 @@
 
 #include "utils/python_globals.hh"
 #include "utils/python_gil_control.hh"
-#include "utils/python_container_adapter.hh"
+#include "utils/python_container_proxy.hh"
 
 namespace py = pybind11;
 
 namespace skdecide {
 
-template <typename Texecution> class PythonContainerAdapter;
+template <typename Texecution> class PythonContainerProxy;
 
 template <typename Texecution>
 struct PythonHash {
@@ -38,7 +38,7 @@ struct PythonHash {
                 }
             };
             if (py::isinstance<py::array>(o)) {
-                return PythonContainerAdapter<Texecution>(o).hash();
+                return PythonContainerProxy<Texecution>(o).hash();
             } else {
                 std::size_t hash_val = 0;
                 if (!py::hasattr(o, "__hash__") || o.attr("__hash__").is_none() || !compute_hash(o, hash_val)) {

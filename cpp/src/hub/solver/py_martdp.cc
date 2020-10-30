@@ -6,7 +6,7 @@
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
 
-#include "lrtdp.hh"
+#include "martdp.hh"
 
 #include "utils/python_domain_proxy.hh"
 
@@ -14,50 +14,49 @@ namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyLRTDPDomain : public skdecide::PythonDomainProxy<Texecution> {
+class PyMARTDPDomain : public skdecide::PythonDomainProxy<Texecution> {
 public :
     
-    PyLRTDPDomain(const py::object& domain)
+    PyMARTDPDomain(const py::object& domain)
     : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("SKDECIDE exception: LRTDP algorithm needs python domain for implementing get_applicable_actions()");
+            throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing get_applicable_actions()");
         }
         if (!py::hasattr(domain, "get_next_state_distribution")) {
-            throw std::invalid_argument("SKDECIDE exception: LRTDP algorithm needs python domain for implementing get_next_state_distribution()");
+            throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing get_next_state_distribution()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("SKDECIDE exception: LRTDP algorithm needs python domain for implementing get_transition_value()");
+            throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing get_transition_value()");
         }
     }
 
 };
 
 
-class PyLRTDPSolver {
+class PyMARTDPSolver {
 public :
 
-    PyLRTDPSolver(py::object& domain,
-                 const std::function<py::object (py::object&, const py::object&, const py::object&)>& goal_checker,  // last arg used for optional thread_id
-                 const std::function<py::object (py::object&, const py::object&, const py::object&)>& heuristic,  // last arg used for optional thread_id
-                 bool use_labels = true,
-                 std::size_t time_budget = 3600000,
-                 std::size_t rollout_budget = 100000,
-                 std::size_t max_depth = 1000,
-                 double discount = 1.0,
-                 double epsilon = 0.001,
-                 bool online_node_garbage = false,
-                 bool parallel = false,
-                 bool debug_logs = false) {
+    PyMARTDPSolver(py::object& domain,
+                  const std::function<py::object (py::object&, const py::object&, const py::object&)>& goal_checker,  // last arg used for optional thread_id
+                  const std::function<py::object (py::object&, const py::object&, const py::object&)>& heuristic,  // last arg used for optional thread_id
+                  std::size_t time_budget = 3600000,
+                  std::size_t rollout_budget = 100000,
+                  std::size_t max_depth = 1000,
+                  double discount = 1.0,
+                  double epsilon = 0.001,
+                  bool online_node_garbage = false,
+                  bool parallel = false,
+                  bool debug_logs = false) {
 
         if (parallel) {
             _implementation = std::make_unique<Implementation<skdecide::ParallelExecution>>(
-                domain, goal_checker, heuristic, use_labels,
+                domain, goal_checker, heuristic,
                 time_budget, rollout_budget, max_depth,
                 discount, epsilon, online_node_garbage, debug_logs
             );
         } else {
             _implementation = std::make_unique<Implementation<skdecide::SequentialExecution>>(
-                domain, goal_checker, heuristic, use_labels,
+                domain, goal_checker, heuristic,
                 time_budget, rollout_budget, max_depth,
                 discount, epsilon, online_node_garbage, debug_logs
             );
@@ -118,7 +117,6 @@ private :
         Implementation(py::object& domain,
                        const std::function<py::object (py::object&, const py::object&, const py::object&)>& goal_checker,  // last arg used for optional thread_id
                        const std::function<py::object (py::object&, const py::object&, const py::object&)>& heuristic,  // last arg used for optional thread_id
-                       bool use_labels = true,
                        std::size_t time_budget = 3600000,
                        std::size_t rollout_budget = 100000,
                        std::size_t max_depth = 1000,
@@ -128,10 +126,10 @@ private :
                        bool debug_logs = false)
         : _goal_checker(goal_checker), _heuristic(heuristic) {
             
-            _domain = std::make_unique<PyLRTDPDomain<Texecution>>(domain);
-            _solver = std::make_unique<skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>>(
+            _domain = std::make_unique<PyMARTDPDomain<Texecution>>(domain);
+            _solver = std::make_unique<skdecide::MARTDPSolver<PyMARTDPDomain<Texecution>, Texecution>>(
                                                                             *_domain,
-                                                                            [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id)->bool {
+                                                                            [this](PyMARTDPDomain<Texecution>& d, const typename PyMARTDPDomain<Texecution>::State& s, const std::size_t* thread_id)->bool {
                                                                                 try {
                                                                                     std::unique_ptr<py::object> r = d.call(thread_id, _goal_checker, s.pyobj());
                                                                                     typename skdecide::GilControl<Texecution>::Acquire acquire;
@@ -143,15 +141,14 @@ private :
                                                                                     throw;
                                                                                 }
                                                                             },
-                                                                            [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id) -> typename PyLRTDPDomain<Texecution>::Value {
+                                                                            [this](PyMARTDPDomain<Texecution>& d, const typename PyMARTDPDomain<Texecution>::State& s, const std::size_t* thread_id) -> PyMARTDPDomain<Texecution>::Value {
                                                                                 try {
-                                                                                    return typename PyLRTDPDomain<Texecution>::Value(d.call(thread_id, _heuristic, s.pyobj()));
+                                                                                    return PyMARTDPDomain<Texecution>::Value(d.call(thread_id, _heuristic, s.pyobj()));
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling heuristic: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },
-                                                                            use_labels,
                                                                             time_budget,
                                                                             rollout_budget,
                                                                             max_depth,
@@ -214,8 +211,8 @@ private :
         }
 
     private :
-        std::unique_ptr<PyLRTDPDomain<Texecution>> _domain;
-        std::unique_ptr<skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>> _solver;
+        std::unique_ptr<PyMARTDPDomain<Texecution>> _domain;
+        std::unique_ptr<skdecide::MARTDPSolver<PyMARTDPDomain<Texecution>, Texecution>> _solver;
         
         std::function<py::object (py::object&, const py::object&, const py::object&)> _goal_checker;  // last arg used for optional thread_id
         std::function<py::object (py::object&, const py::object&, const py::object&)> _heuristic;  // last arg used for optional thread_id
@@ -228,13 +225,12 @@ private :
 };
 
 
-void init_pylrtdp(py::module& m) {
-    py::class_<PyLRTDPSolver> py_lrtdp_solver(m, "_LRTDPSolver_");
-        py_lrtdp_solver
+void init_pymartdp(py::module& m) {
+    py::class_<PyMARTDPSolver> py_martdp_solver(m, "_MARTDPSolver_");
+        py_martdp_solver
             .def(py::init<py::object&,
                           const std::function<py::object (py::object&, const py::object&, const py::object&)>&,  // last arg used for optional thread_id
                           const std::function<py::object (py::object&, const py::object&, const py::object&)>&,  // last arg used for optional thread_id
-                          bool,
                           std::size_t,
                           std::size_t,
                           std::size_t,
@@ -246,7 +242,6 @@ void init_pylrtdp(py::module& m) {
                  py::arg("domain"),
                  py::arg("goal_checker"),
                  py::arg("heuristic"),
-                 py::arg("use_labels")=false,
                  py::arg("time_budget")=3600000,
                  py::arg("rollout_budget")=100000,
                  py::arg("max_depth")=1000,
@@ -255,13 +250,13 @@ void init_pylrtdp(py::module& m) {
                  py::arg("online_node_garbage")=false,
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
-            .def("clear", &PyLRTDPSolver::clear)
-            .def("solve", &PyLRTDPSolver::solve, py::arg("state"))
-            .def("is_solution_defined_for", &PyLRTDPSolver::is_solution_defined_for, py::arg("state"))
-            .def("get_next_action", &PyLRTDPSolver::get_next_action, py::arg("state"))
-            .def("get_utility", &PyLRTDPSolver::get_utility, py::arg("state"))
-            .def("get_nb_of_explored_states", &PyLRTDPSolver::get_nb_of_explored_states)
-            .def("get_nb_rollouts", &PyLRTDPSolver::get_nb_rollouts)
-            .def("get_policy", &PyLRTDPSolver::get_policy)
+            .def("clear", &PyMARTDPSolver::clear)
+            .def("solve", &PyMARTDPSolver::solve, py::arg("state"))
+            .def("is_solution_defined_for", &PyMARTDPSolver::is_solution_defined_for, py::arg("state"))
+            .def("get_next_action", &PyMARTDPSolver::get_next_action, py::arg("state"))
+            .def("get_utility", &PyMARTDPSolver::get_utility, py::arg("state"))
+            .def("get_nb_of_explored_states", &PyMARTDPSolver::get_nb_of_explored_states)
+            .def("get_nb_rollouts", &PyMARTDPSolver::get_nb_rollouts)
+            .def("get_policy", &PyMARTDPSolver::get_policy)
         ;
 }

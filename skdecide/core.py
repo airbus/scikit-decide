@@ -12,7 +12,7 @@ from dataclasses import dataclass, asdict, astuple, replace
 from typing import TypeVar, Generic, Union, Optional, Iterable, Sequence, List, Tuple, Dict, Deque, Callable
 
 __all__ = ['T', 'D', 'Space', 'ImplicitSpace', 'EnumerableSpace', 'EmptySpace', 'SamplableSpace', 'SerializableSpace',
-           'Distribution', 'ImplicitDistribution', 'DiscreteDistribution', 'SingleValueDistribution', 'TransitionValue',
+           'Distribution', 'ImplicitDistribution', 'DiscreteDistribution', 'SingleValueDistribution', 'Value',
            'EnvironmentOutcome', 'TransitionOutcome', 'Memory', 'StrDict', 'Constraint', 'ImplicitConstraint',
            'BoundConstraint', 'autocast_all', 'autocastable', 'nocopy']
 
@@ -275,10 +275,10 @@ class ExtendedDataclass:
         return replace(self, **changes)
 
 
-# TransitionValue
+# Value
 @dataclass
-class TransitionValue(Generic[D.T_value]):
-    """A transition value (reward or cost).
+class Value(Generic[D.T_value]):
+    """A value (reward or cost).
 
     !!! warning
         It is recommended to use either the reward or the cost parameter. If no one is used, a reward/cost of 0 is
@@ -292,8 +292,8 @@ class TransitionValue(Generic[D.T_value]):
     # Example
     ```python
     # These two lines are equivalent, use the one you prefer
-    value_1 = TransitionValue(reward=-5)
-    value_2 = TransitionValue(cost=5)
+    value_1 = Value(reward=-5)
+    value_2 = Value(cost=5)
 
     assert value_1.reward == value_2.reward == -5  # True
     assert value_1.cost == value_2.cost == 5  # True
@@ -336,8 +336,8 @@ class EnvironmentOutcome(Generic[D.T_observation, D.T_value, D.T_info], Castable
 
     def __post_init__(self) -> None:
         if self.value is None:
-            self.value = {k: TransitionValue() for k in self.observation} if isinstance(self.observation,
-                                                                                        dict) else TransitionValue()
+            self.value = {k: Value() for k in self.observation} if isinstance(self.observation,
+                                                                                        dict) else Value()
         if self.info is None:
             self.info = {k: None for k in self.observation} if isinstance(self.observation, dict) else None
 
@@ -365,8 +365,8 @@ class TransitionOutcome(Generic[D.T_state, D.T_value, D.T_info], Castable, Exten
 
     def __post_init__(self) -> None:
         if self.value is None:
-            self.value = {k: TransitionValue() for k in self.state} if isinstance(self.state,
-                                                                                  dict) else TransitionValue()
+            self.value = {k: Value() for k in self.state} if isinstance(self.state,
+                                                                                  dict) else Value()
         if self.info is None:
             self.info = {k: None for k in self.state} if isinstance(self.state, dict) else None
 

@@ -8,7 +8,7 @@ from math import sqrt
 from pathos.helpers import mp
 from collections import namedtuple
 
-from skdecide import GoalMDPDomain, TransitionValue, Space, \
+from skdecide import GoalMDPDomain, Value, Value, Space, \
                      DiscreteDistribution, EnvironmentOutcome, TransitionOutcome
 from skdecide.builders.domain import Actions
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
@@ -79,9 +79,9 @@ class MyDomain(D):
                                      (next_state_3, 0.2)])
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
+                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
         # every move costs 1
-        return TransitionValue(cost=abs(next_state.x - memory.x) + abs(next_state.y - memory.y))
+        return Value(cost=abs(next_state.x - memory.x) + abs(next_state.y - memory.y))
 
     def _is_terminal(self, state: D.T_state) -> bool:
         return self._is_goal(state)
@@ -99,26 +99,26 @@ class MyDomain(D):
         return MultiDiscreteSpace([self.num_cols, self.num_rows])
 
 
-# Shared memory proxy for use with parallel algorithms only
-# Not efficient on this tiny domain but provided for illustration
-# To activate parallelism, set parallel=True in the algotihms below
+# Shared memory proxy for use with parallel algorithms only.
+# Not efficient on this tiny domain but provided for illustration.
+# To activate parallelism, set parallel=True in the algotihms below.
 class GridShmProxy:
 
     _register_ = [(State, 2), (Action, 1), (EnumSpace, 1), (ListSpace, 1),
-                  (DiscreteDistribution, 1), (TransitionValue, 1),
+                  (DiscreteDistribution, 1), (Value, 1),
                   (EnvironmentOutcome, 1), (TransitionOutcome, 1),
-                  (bool, 1), (float, 1), (int, 2)]
+                  (Value, 1), (bool, 1), (int, 2)]
 
     def __init__(self):
         self._proxies_ = {State: GridShmProxy.StateProxy, Action: GridShmProxy.ActionProxy,
                           EnumSpace: GridShmProxy.EnumSpaceProxy,
                           ListSpace: GridShmProxy.ListSpaceProxy,
                           DiscreteDistribution: GridShmProxy.DiscreteDistributionProxy,
-                          TransitionValue: GridShmProxy.TransitionValueProxy,
+                          Value: GridShmProxy.ValueProxy,
                           EnvironmentOutcome: GridShmProxy.EnvironmentOutcomeProxy,
                           TransitionOutcome: GridShmProxy.TransitionOutcomeProxy,
+                          Value: GridShmProxy.StateValueProxy,
                           bool: GridShmProxy.BoolProxy,
-                          float: GridShmProxy.FloatProxy,
                           int: GridShmProxy.IntProxy}
     
     def copy(self):
@@ -233,7 +233,7 @@ class GridShmProxy:
             return DiscreteDistribution(
                 [(GridShmProxy.StateProxy.decode(o[0]), o[1].value) for o in dd if o[1].value > -0.5])
     
-    class TransitionValueProxy:
+    class StateValueProxy:
         @staticmethod
         def initialize():
             return [mp.Value('d', 0), mp.Value('b', False)]
@@ -253,46 +253,70 @@ class GridShmProxy:
         @staticmethod
         def decode(value):
             if value[1].value:
-                return TransitionValue(reward=value[0].value)
+                return Value(reward=value[0].value)
             else:
-                return TransitionValue(cost=value[0].value)
+                return Value(cost=value[0].value)
+    
+    class ValueProxy:
+        @staticmethod
+        def initialize():
+            return [mp.Value('d', 0), mp.Value('b', False)]
+        
+        @staticmethod
+        def encode(value, shm_value):
+            if value.reward is not None:
+                shm_value[0].value = value.reward
+                shm_value[1].value = True
+            elif value.cost is not None:
+                shm_value[0].value = value.cost
+                shm_value[1].value = False
+            else:
+                shm_value[0].value = 0
+                shm_value[1].value = True
+        
+        @staticmethod
+        def decode(value):
+            if value[1].value:
+                return Value(reward=value[0].value)
+            else:
+                return Value(cost=value[0].value)
     
     class EnvironmentOutcomeProxy:
         @staticmethod
         def initialize():
             return [GridShmProxy.StateProxy.initialize()] + \
-                   GridShmProxy.TransitionValueProxy.initialize() + \
+                   GridShmProxy.ValueProxy.initialize() + \
                    [GridShmProxy.BoolProxy.initialize()]
         
         @staticmethod
         def encode(outcome, shm_outcome):
             GridShmProxy.StateProxy.encode(outcome.observation, shm_outcome[0])
-            GridShmProxy.TransitionValueProxy.encode(outcome.value, shm_outcome[1:3])
+            GridShmProxy.ValueProxy.encode(outcome.value, shm_outcome[1:3])
             GridShmProxy.BoolProxy.encode(outcome.termination, shm_outcome[3])
         
         @staticmethod
         def decode(outcome):
             return EnvironmentOutcome(observation=GridShmProxy.StateProxy.decode(outcome[0]),
-                                      value=GridShmProxy.TransitionValueProxy.decode(outcome[1:3]),
+                                      value=GridShmProxy.ValueProxy.decode(outcome[1:3]),
                                       termination=GridShmProxy.BoolProxy.decode(outcome[3]))
     
     class TransitionOutcomeProxy:
         @staticmethod
         def initialize():
             return [GridShmProxy.StateProxy.initialize()] + \
-                   GridShmProxy.TransitionValueProxy.initialize() + \
+                   GridShmProxy.ValueProxy.initialize() + \
                    [GridShmProxy.BoolProxy.initialize()]
         
         @staticmethod
         def encode(outcome, shm_outcome):
             GridShmProxy.StateProxy.encode(outcome.state, shm_outcome[0])
-            GridShmProxy.TransitionValueProxy.encode(outcome.value, shm_outcome[1:3])
+            GridShmProxy.ValueProxy.encode(outcome.value, shm_outcome[1:3])
             GridShmProxy.BoolProxy.encode(outcome.termination, shm_outcome[3])
         
         @staticmethod
         def decode(outcome):
             return TransitionOutcome(state=GridShmProxy.StateProxy.decode(outcome[0]),
-                                     value=GridShmProxy.TransitionValueProxy.decode(outcome[1:3]),
+                                     value=GridShmProxy.ValueProxy.decode(outcome[1:3]),
                                      termination=GridShmProxy.BoolProxy.decode(outcome[3]))
     
     class BoolProxy:
@@ -343,7 +367,7 @@ if __name__ == '__main__':
         {'name': 'LRTDP',
          'entry': 'LRTDP',
          'config': {'domain_factory': lambda: MyDomain(),
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                    'heuristic': lambda d, s: Value(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                     'use_labels': True, 'time_budget': 1000, 'rollout_budget': 100,
                     'max_depth': 50, 'discount': 1.0, 'epsilon': 0.001,
                     'online_node_garbage': True, 'continuous_planning': False,
@@ -353,7 +377,7 @@ if __name__ == '__main__':
         {'name': 'Improved-LAO*',
          'entry': 'ILAOstar',
          'config': {'domain_factory': lambda: MyDomain(),
-                    'heuristic': lambda d, s: sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2),
+                    'heuristic': lambda d, s: Value(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)),
                     'discount': 1.0, 'epsilon': 0.001,
                     'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}},
 
@@ -364,7 +388,7 @@ if __name__ == '__main__':
                     'time_budget': 1000, 'rollout_budget': 100,
                     'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
                     'online_node_garbage': True, 'continuous_planning': False,
-                    'heuristic': lambda d, s: (-sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2), 10000),
+                    'heuristic': lambda d, s: (Value(cost=sqrt((d.num_cols - 1 - s.x)**2 + (d.num_rows - 1 - s.y)**2)), 10000),
                     'parallel': False, 'shared_memory_proxy': GridShmProxy(), 'debug_logs': False}}
     ]
 

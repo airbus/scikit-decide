@@ -4,14 +4,13 @@
 
 from __future__ import annotations
 
-import multiprocessing
 import os
 import sys
 from typing import Optional, Callable
 
 from skdecide import Domain, Solver
 from skdecide import hub
-from skdecide.domains import PipeParallelDomain, ShmParallelDomain
+from skdecide.core import Value
 from skdecide.builders.domain import SingleAgent, Sequential, EnumerableTransitions, Actions, Goals, Markovian, \
     FullyObservable, PositiveCosts
 from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
@@ -35,7 +34,7 @@ try:
         
         def __init__(self,
                      domain_factory: Callable[[], Domain],
-                     heuristic: Optional[Callable[[Domain, D.T_state], float]] = None,
+                     heuristic: Optional[Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]] = None,
                      discount: float = 1.,
                      max_tip_expanions: int = 1,
                      parallel: bool = False,
@@ -52,7 +51,7 @@ try:
             self._detect_cycles = detect_cycles
             self._debug_logs = debug_logs
             if heuristic is None:
-                self._heuristic = lambda d, s: 0
+                self._heuristic = lambda d, s: Value(cost=0)
             else:
                 self._heuristic = heuristic
             self._lambdas = [self._heuristic]

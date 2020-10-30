@@ -4,8 +4,6 @@
 
 from copy import deepcopy
 from enum import Enum
-from skdecide.hub.solver.mcts.mcts import MCTS
-from skdecide.hub.solver import mcts
 from typing import NamedTuple, Optional, Any
 from pathos.helpers import mp
 from math import sqrt
@@ -13,7 +11,7 @@ from math import sqrt
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 
-from skdecide import DeterministicPlanningDomain, TransitionValue, Space, \
+from skdecide import DeterministicPlanningDomain, Value, Value, Space, \
                      EnvironmentOutcome, TransitionOutcome, SingleValueDistribution
 from skdecide.builders.domain import UnrestrictedActions, Renderable
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
@@ -107,14 +105,14 @@ class Maze(D):
             return memory
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
+                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
 
         if next_state.x == memory.x and next_state.y == memory.y:
             cost = 2  # big penalty when hitting a wall
         else:
             cost = abs(next_state.x - memory.x) + abs(next_state.y - memory.y)  # every move costs 1
 
-        return TransitionValue(cost=cost)
+        return Value(cost=cost)
 
     def _is_terminal(self, state: D.T_state) -> bool:
         return self._is_goal(state)
@@ -155,14 +153,14 @@ class Maze(D):
 class MyShmProxy:
 
     _register_ = [(State, 2), (Action, 1), (EnumSpace, 1), (SingleValueDistribution, 1),
-                  (TransitionValue, 1), (EnvironmentOutcome, 1), (TransitionOutcome, 1),
+                  (Value, 1), (EnvironmentOutcome, 1), (TransitionOutcome, 1),
                   (bool, 1), (int, 2), (float, 1), (list, 2)]
 
     def __init__(self):
         self._proxies_ = {State: MyShmProxy.StateProxy, Action: MyShmProxy.ActionProxy,
                           EnumSpace: MyShmProxy.EnumSpaceProxy,
                           SingleValueDistribution: MyShmProxy.SingleValueDistributionProxy,
-                          TransitionValue: MyShmProxy.TransitionValueProxy,
+                          Value: MyShmProxy.ValueProxy,
                           EnvironmentOutcome: MyShmProxy.EnvironmentOutcomeProxy,
                           TransitionOutcome: MyShmProxy.TransitionOutcomeProxy,
                           bool: MyShmProxy.BoolProxy,
@@ -240,7 +238,7 @@ class MyShmProxy:
         def decode(svd):
             return SingleValueDistribution(MyShmProxy.StateProxy.decode(svd))
     
-    class TransitionValueProxy:
+    class ValueProxy:
 
         @staticmethod
         def initialize():
@@ -249,58 +247,58 @@ class MyShmProxy:
         @staticmethod
         def encode(value, shm_value):
             if value.reward is not None:
-                shm_value[0] = value.reward
-                shm_value[1] = True
+                shm_value[0].value = value.reward
+                shm_value[1].value = True
             elif value.cost is not None:
-                shm_value[0] = value.cost
-                shm_value[1] = False
+                shm_value[0].value = value.cost
+                shm_value[1].value = False
             else:
-                shm_value[0] = 0
-                shm_value[1] = True
+                shm_value[0].value = 0
+                shm_value[1].value = True
         
         @staticmethod
         def decode(value):
             if value[1].value:
-                return TransitionValue(reward=value[0].value)
+                return Value(reward=value[0].value)
             else:
-                return TransitionValue(cost=value[0].value)
+                return Value(cost=value[0].value)
     
     class EnvironmentOutcomeProxy:
         @staticmethod
         def initialize():
             return [MyShmProxy.StateProxy.initialize()] + \
-                   MyShmProxy.TransitionValueProxy.initialize() + \
+                   MyShmProxy.ValueProxy.initialize() + \
                    [MyShmProxy.BoolProxy.initialize()]
         
         @staticmethod
         def encode(outcome, shm_outcome):
             MyShmProxy.StateProxy.encode(outcome.observation, shm_outcome[0])
-            MyShmProxy.TransitionValueProxy.encode(outcome.value, shm_outcome[1:3])
+            MyShmProxy.ValueProxy.encode(outcome.value, shm_outcome[1:3])
             MyShmProxy.BoolProxy.encode(outcome.termination, shm_outcome[3])
         
         @staticmethod
         def decode(outcome):
             return EnvironmentOutcome(observation=MyShmProxy.StateProxy.decode(outcome[0]),
-                                      value=MyShmProxy.TransitionValueProxy.decode(outcome[1:3]),
+                                      value=MyShmProxy.ValueProxy.decode(outcome[1:3]),
                                       termination=MyShmProxy.BoolProxy.decode(outcome[3]))
     
     class TransitionOutcomeProxy:
         @staticmethod
         def initialize():
             return [MyShmProxy.StateProxy.initialize()] + \
-                   MyShmProxy.TransitionValueProxy.initialize() + \
+                   MyShmProxy.ValueProxy.initialize() + \
                    [MyShmProxy.BoolProxy.initialize()]
         
         @staticmethod
         def encode(outcome, shm_outcome):
             MyShmProxy.StateProxy.encode(outcome.state, shm_outcome[0])
-            MyShmProxy.TransitionValueProxy.encode(outcome.value, shm_outcome[1:3])
+            MyShmProxy.ValueProxy.encode(outcome.value, shm_outcome[1:3])
             MyShmProxy.BoolProxy.encode(outcome.termination, shm_outcome[3])
         
         @staticmethod
         def decode(outcome):
             return TransitionOutcome(state=MyShmProxy.StateProxy.decode(outcome[0]),
-                                     value=MyShmProxy.TransitionValueProxy.decode(outcome[1:3]),
+                                     value=MyShmProxy.ValueProxy.decode(outcome[1:3]),
                                      termination=MyShmProxy.BoolProxy.decode(outcome[3]))
     
     class BoolProxy:
@@ -364,14 +362,14 @@ if __name__ == '__main__':
         # Lazy A* (planning)
         {'name': 'Lazy A* (planning)',
          'entry': 'LazyAstar',
-         'config': {'heuristic': lambda d, s: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
+         'config': {'heuristic': lambda d, s: Value(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)),
                     'verbose': True}},
         
         # A* (planning)
         {'name': 'A* (planning)',
          'entry': 'Astar',
          'config': {'domain_factory': lambda: Maze(),
-                    'heuristic': lambda d, s: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
+                    'heuristic': lambda d, s: Value(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)),
                     'parallel': False, 'shared_memory_proxy': MyShmProxy(),
                     'debug_logs': False}},
         
@@ -381,7 +379,7 @@ if __name__ == '__main__':
          'config': {'domain_factory': lambda: Maze(),
                     'time_budget': 1000, 'rollout_budget': 100,
                     'max_depth': 50, 'discount': 1.0, 'ucb_constant': 1.0 / sqrt(2.0),
-                    'heuristic': lambda d, s: (-sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2), 10000),
+                    'heuristic': lambda d, s: (Value(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)), 10000),
                     'continuous_planning': True, 'online_node_garbage': True,
                     'parallel': False, 'shared_memory_proxy': MyShmProxy(),
                     'debug_logs': False}},
@@ -412,7 +410,7 @@ if __name__ == '__main__':
          'entry': 'BFWS',
          'config': {'domain_factory': lambda: Maze(),
                     'state_features': lambda d, s: [s.x, s.y],
-                    'heuristic': lambda d, s: sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2),
+                    'heuristic': lambda d, s: Value(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)),
                     'termination_checker': lambda d, s: d.is_goal(s),
                     'parallel': False, 'shared_memory_proxy': MyShmProxy(),
                     'debug_logs': False}},

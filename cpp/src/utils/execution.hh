@@ -289,8 +289,11 @@ namespace std {
         for (ForwardIt i = first ; i != last ; i++) {
             v.push_back(i);
         }
+        if (v.size() > std::numeric_limits<int>::max()) {
+            throw std::runtime_error("Exceeding OpenMP concurrent threads capacity!");
+        }
         #pragma omp parallel for
-        for (int i = 0 ; i < v.size() ; i++) {
+        for (int i = 0 ; i < (int) v.size() ; i++) { // MSVC requires signed integers for openmp loops
             f(*v[i]);
         }
     }

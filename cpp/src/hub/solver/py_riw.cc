@@ -8,21 +8,18 @@
 #include <pybind11/iostream.h>
 
 #include "riw.hh"
-#include "core.hh"
 
-#include "utils/python_gil_control.hh"
-#include "utils/python_hash_eq.hh"
-#include "utils/python_domain_adapter.hh"
+#include "utils/python_domain_proxy.hh"
 
 namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyRIWDomain : public skdecide::PythonDomainAdapter<Texecution> {
+class PyRIWDomain : public skdecide::PythonDomainProxy<Texecution> {
 public :
     
     PyRIWDomain(const py::object& domain, bool use_simulation_domain)
-    : skdecide::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing get_applicable_actions()");
         }
@@ -41,7 +38,7 @@ public :
 
 
 template <typename Texecution>
-using PyRIWFeatureVector = skdecide::PythonContainerAdapter<Texecution>;
+using PyRIWFeatureVector = skdecide::PythonContainerProxy<Texecution>;
 
 
 class PyRIWSolver {

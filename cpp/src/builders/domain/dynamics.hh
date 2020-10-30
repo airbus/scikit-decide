@@ -108,7 +108,7 @@ public :
     typedef TsmartPointer<NextStateDistribution> NextStateDistributionPtr;
     typedef Tvalue Value;
     typedef Tinfo Info;
-    typedef TransitionValue<TT, Value> TransitionValueReturn;
+    typedef Value<TT, Value> TransitionValueReturn;
     typedef TransitionOutcome<State, TT, Value, Info> TransitionOutcomeReturn;
     typedef TsmartPointer<TransitionOutcomeReturn> TransitionOutcomePtr;
 

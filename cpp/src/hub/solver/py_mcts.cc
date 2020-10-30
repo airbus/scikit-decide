@@ -7,11 +7,8 @@
 #include <pybind11/iostream.h>
 
 #include "mcts.hh"
-#include "core.hh"
 
-#include "utils/python_gil_control.hh"
-#include "utils/python_hash_eq.hh"
-#include "utils/python_domain_adapter.hh"
+#include "utils/python_domain_proxy.hh"
 
 namespace py = pybind11;
 
@@ -28,7 +25,8 @@ struct PyMCTSOptions {
     };
 
     enum class Expander {
-        Full
+        Full,
+        Partial
     };
 
     enum class ActionSelector {
@@ -48,13 +46,13 @@ struct PyMCTSOptions {
 
 
 template <typename Texecution>
-class PyMCTSDomain : public skdecide::PythonDomainAdapter<Texecution> {
+class PyMCTSDomain : public skdecide::PythonDomainProxy<Texecution> {
 public :
 
     template <typename Tsolver, typename TtransitionMode,
               std::enable_if_t<std::is_same<TtransitionMode, skdecide::StepTransitionMode<Tsolver>>::value, int> = 0>
     PyMCTSDomain(const py::object& domain, [[maybe_unused]] Tsolver* dummy_solver, [[maybe_unused]] TtransitionMode* dummy_transition_mode)
-    : skdecide::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
         }
@@ -66,7 +64,7 @@ public :
     template <typename Tsolver, typename TtransitionMode,
               std::enable_if_t<std::is_same<TtransitionMode, skdecide::SampleTransitionMode<Tsolver>>::value, int> = 0>
     PyMCTSDomain(const py::object& domain, [[maybe_unused]] Tsolver* dummy_solver, [[maybe_unused]] TtransitionMode* dummy_transition_mode)
-    : skdecide::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
         }
@@ -78,7 +76,7 @@ public :
     template <typename Tsolver, typename TtransitionMode,
               std::enable_if_t<std::is_same<TtransitionMode, skdecide::DistributionTransitionMode<Tsolver>>::value, int> = 0>
     PyMCTSDomain(const py::object& domain, [[maybe_unused]] Tsolver* dummy_solver, [[maybe_unused]] TtransitionMode* dummy_transition_mode)
-    : skdecide::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
         }
@@ -115,6 +113,8 @@ public :
                  bool online_node_garbage = false,
                  const CustomPolicyFunctor& custom_policy = nullptr,
                  const HeuristicFunctor& heuristic = nullptr,
+                 double state_expansion_rate = 0.1,
+                 double action_expansion_rate = 0.1,
                  PyMCTSOptions::TransitionMode transition_mode = PyMCTSOptions::TransitionMode::Distribution,
                  PyMCTSOptions::TreePolicy tree_policy = PyMCTSOptions::TreePolicy::Default,
                  PyMCTSOptions::Expander expander = PyMCTSOptions::Expander::Full,
@@ -134,6 +134,8 @@ public :
                                        online_node_garbage,
                                        custom_policy,
                                        heuristic,
+                                       state_expansion_rate,
+                                       action_expansion_rate,
                                        transition_mode,
                                        PyMCTSOptions::TreePolicy::Default,
                                        expander,
@@ -153,6 +155,8 @@ public :
                                        online_node_garbage,
                                        custom_policy,
                                        heuristic,
+                                       state_expansion_rate,
+                                       action_expansion_rate,
                                        transition_mode,
                                        tree_policy,
                                        expander,
@@ -242,6 +246,8 @@ private :
                        bool online_node_garbage,
                        const CustomPolicyFunctor& custom_policy,
                        const HeuristicFunctor& heuristic,
+                       double state_expansion_rate,
+                       double action_expansion_rate,
                        bool debug_logs)
             : _custom_policy(custom_policy),
               _heuristic(heuristic) {
@@ -256,9 +262,9 @@ private :
                         online_node_garbage,
                         debug_logs,
                         init_tree_policy(),
-                        init_expander(_heuristic),
-                        init_action_selector((TactionSelectorOptimization<PyMCTSSolver>*) nullptr, ucb_constant),
-                        init_action_selector((TactionSelectorExecution<PyMCTSSolver>*) nullptr, ucb_constant),
+                        init_expander(_heuristic, state_expansion_rate, action_expansion_rate),
+                        init_action_selector<TactionSelectorOptimization<PyMCTSSolver>>(ucb_constant),
+                        init_action_selector<TactionSelectorExecution<PyMCTSSolver>>(ucb_constant),
                         init_rollout_policy(_custom_policy),
                         init_back_propagator());
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
@@ -273,37 +279,70 @@ private :
             return std::make_unique<TtreePolicy<PyMCTSSolver>>();
         }
 
-        std::unique_ptr<Texpander<PyMCTSSolver>> init_expander(const HeuristicFunctor& heuristic) {
-            if (!heuristic) { // initialize new nodes with 0 value and 0 visits count
-                return std::make_unique<Texpander<PyMCTSSolver>>();
+        std::function<std::pair<typename PyMCTSDomain<Texecution>::Value, std::size_t>
+                                    (PyMCTSDomain<Texecution>&,
+                                     const typename PyMCTSDomain<Texecution>::State&,
+                                     const std::size_t*)>
+        construct_heuristic(const HeuristicFunctor& heuristic) {
+            return [&heuristic](PyMCTSDomain<Texecution>& d,
+                                const typename PyMCTSDomain<Texecution>::State& s,
+                                const std::size_t* thread_id) -> std::pair<typename PyMCTSDomain<Texecution>::Value, std::size_t> {
+                try {
+                    std::unique_ptr<py::object> r = d.call(thread_id, heuristic, s.pyobj());
+                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                    std::pair<typename PyMCTSDomain<Texecution>::Value, std::size_t> rr;
+                    {
+                        py::tuple t = py::cast<py::tuple>(*r);
+                        rr = std::make_pair(
+                            typename PyMCTSDomain<Texecution>::Value(t[0]),
+                            t[1].template cast<std::size_t>()
+                        );
+                    } // we want tuple t to be deleted here while we are un GIL acquisition protection
+                    r.reset();
+                    return  rr;
+                } catch (const std::exception& e) {
+                    spdlog::error(std::string("SKDECIDE exception when calling the custom heuristic: ") + e.what());
+                    throw;
+                }
+            };
+        }
+
+        template <typename TExpander = Texpander<PyMCTSSolver>,
+                  std::enable_if_t<std::is_same<TExpander, skdecide::FullExpand<PyMCTSSolver>>::value, int> = 0>
+        std::unique_ptr<Texpander<PyMCTSSolver>> init_expander(const HeuristicFunctor& heuristic,
+                                                               double state_expansion_rate,
+                                                               double action_expansion_rate) {
+            if (!heuristic) { // use (0.0, 0) heuristic
+                return std::make_unique<skdecide::FullExpand<PyMCTSSolver>>();
             } else {
-                return std::make_unique<Texpander<PyMCTSSolver>>([&heuristic](
-                                                    PyMCTSDomain<Texecution>& d,
-                                                    const typename PyMCTSDomain<Texecution>::State& s,
-                                                    const std::size_t* thread_id) -> std::pair<double, std::size_t> {
-                    try {
-                        std::unique_ptr<py::object> r = d.call(thread_id, heuristic, s.pyobj());
-                        typename skdecide::GilControl<Texecution>::Acquire acquire;
-                        std::pair<double, std::size_t> rr = r->template cast<std::pair<double, std::size_t>>();
-                        r.reset();
-                        return  rr;
-                    } catch (const std::exception& e) {
-                        spdlog::error(std::string("SKDECIDE exception when calling the custom heuristic: ") + e.what());
-                        throw;
-                    }
-                });
+                return std::make_unique<skdecide::FullExpand<PyMCTSSolver>>(construct_heuristic(heuristic));
+            }
+        }
+
+        template <typename TExpander = Texpander<PyMCTSSolver>,
+                  std::enable_if_t<std::is_same<TExpander, skdecide::PartialExpand<PyMCTSSolver>>::value, int> = 0>
+        std::unique_ptr<Texpander<PyMCTSSolver>> init_expander(const HeuristicFunctor& heuristic,
+                                                               double state_expansion_rate,
+                                                               double action_expansion_rate) {
+            if (!heuristic) { // use (0.0, 0) heuristic
+                return std::make_unique<skdecide::PartialExpand<PyMCTSSolver>>(state_expansion_rate,
+                                                                               action_expansion_rate);
+            } else {
+                return std::make_unique<skdecide::PartialExpand<PyMCTSSolver>>(state_expansion_rate,
+                                                                               action_expansion_rate,
+                                                                               construct_heuristic(heuristic));
             }
         }
 
         template <typename TactionSelector,
                   std::enable_if_t<std::is_same<TactionSelector, skdecide::UCB1ActionSelector<PyMCTSSolver>>::value, int> = 0>
-        std::unique_ptr<TactionSelector> init_action_selector(TactionSelector* dummy, double ucb_constant) {
+        std::unique_ptr<TactionSelector> init_action_selector(double ucb_constant) {
             return std::make_unique<skdecide::UCB1ActionSelector<PyMCTSSolver>>(ucb_constant);
         }
 
         template <typename TactionSelector,
                   std::enable_if_t<std::is_same<TactionSelector, skdecide::BestQValueActionSelector<PyMCTSSolver>>::value, int> = 0>
-        std::unique_ptr<TactionSelector> init_action_selector(TactionSelector* dummy, double ucb_constant) {
+        std::unique_ptr<TactionSelector> init_action_selector(double ucb_constant) {
             return std::make_unique<skdecide::BestQValueActionSelector<PyMCTSSolver>>();
         }
 
@@ -399,6 +438,8 @@ private :
                 bool online_node_garbage,
                 const CustomPolicyFunctor& custom_policy,
                 const HeuristicFunctor& heuristic,
+                double state_expansion_rate,
+                double action_expansion_rate,
                 PyMCTSOptions::TransitionMode transition_mode,
                 PyMCTSOptions::TreePolicy tree_policy,
                 PyMCTSOptions::Expander expander,
@@ -420,6 +461,8 @@ private :
                                             online_node_garbage,
                                             custom_policy,
                                             heuristic,
+                                            state_expansion_rate,
+                                            action_expansion_rate,
                                             tree_policy,
                                             expander,
                                             action_selector_optimization,
@@ -441,6 +484,8 @@ private :
                                             online_node_garbage,
                                             custom_policy,
                                             heuristic,
+                                            state_expansion_rate,
+                                            action_expansion_rate,
                                             tree_policy,
                                             expander,
                                             action_selector_optimization,
@@ -462,6 +507,8 @@ private :
                                             online_node_garbage,
                                             custom_policy,
                                             heuristic,
+                                            state_expansion_rate,
+                                            action_expansion_rate,
                                             tree_policy,
                                             expander,
                                             action_selector_optimization,
@@ -489,6 +536,8 @@ private :
                 bool online_node_garbage,
                 const CustomPolicyFunctor& custom_policy,
                 const HeuristicFunctor& heuristic,
+                double state_expansion_rate,
+                double action_expansion_rate,
                 PyMCTSOptions::TreePolicy tree_policy,
                 PyMCTSOptions::Expander expander,
                 PyMCTSOptions::ActionSelector action_selector_optimization,
@@ -510,6 +559,8 @@ private :
                                         online_node_garbage,
                                         custom_policy,
                                         heuristic,
+                                        state_expansion_rate,
+                                        action_expansion_rate,
                                         expander,
                                         action_selector_optimization,
                                         action_selector_execution,
@@ -537,6 +588,8 @@ private :
                 bool online_node_garbage,
                 const CustomPolicyFunctor& custom_policy,
                 const HeuristicFunctor& heuristic,
+                double state_expansion_rate,
+                double action_expansion_rate,
                 PyMCTSOptions::Expander expander,
                 PyMCTSOptions::ActionSelector action_selector_optimization,
                 PyMCTSOptions::ActionSelector action_selector_execution,
@@ -558,6 +611,31 @@ private :
                                 online_node_garbage,
                                 custom_policy,
                                 heuristic,
+                                state_expansion_rate,
+                                action_expansion_rate,
+                                action_selector_optimization,
+                                action_selector_execution,
+                                rollout_policy,
+                                back_propagator,
+                                parallel,
+                                debug_logs);
+                break;
+            
+            case PyMCTSOptions::Expander::Partial:
+                initialize_action_selector_optimization<TtransitionMode,
+                                                        TtreePolicy,
+                                                        skdecide::PartialExpand>(
+                                domain,
+                                time_budget,
+                                rollout_budget,
+                                max_depth,
+                                discount,
+                                ucb_constant,
+                                online_node_garbage,
+                                custom_policy,
+                                heuristic,
+                                state_expansion_rate,
+                                action_expansion_rate,
                                 action_selector_optimization,
                                 action_selector_execution,
                                 rollout_policy,
@@ -568,7 +646,7 @@ private :
             
             default:
                 spdlog::error("Available expanders: Expander.Full");
-                throw std::runtime_error("Available expanders: Expander.Full");
+                throw std::runtime_error("Available expanders: Expander.Full, Expander.Partial");
         }
     }
 
@@ -585,6 +663,8 @@ private :
                 bool online_node_garbage,
                 const CustomPolicyFunctor& custom_policy,
                 const HeuristicFunctor& heuristic,
+                double state_expansion_rate,
+                double action_expansion_rate,
                 PyMCTSOptions::ActionSelector action_selector_optimization,
                 PyMCTSOptions::ActionSelector action_selector_execution,
                 PyMCTSOptions::RolloutPolicy rollout_policy,
@@ -606,6 +686,8 @@ private :
                                 online_node_garbage,
                                 custom_policy,
                                 heuristic,
+                                state_expansion_rate,
+                                action_expansion_rate,
                                 action_selector_execution,
                                 rollout_policy,
                                 back_propagator,
@@ -627,6 +709,8 @@ private :
                                 online_node_garbage,
                                 custom_policy,
                                 heuristic,
+                                state_expansion_rate,
+                                action_expansion_rate,
                                 action_selector_execution,
                                 rollout_policy,
                                 back_propagator,
@@ -654,6 +738,8 @@ private :
                 bool online_node_garbage,
                 const CustomPolicyFunctor& custom_policy,
                 const HeuristicFunctor& heuristic,
+                double state_expansion_rate,
+                double action_expansion_rate,
                 PyMCTSOptions::ActionSelector action_selector_execution,
                 PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
@@ -675,6 +761,8 @@ private :
                                 online_node_garbage,
                                 custom_policy,
                                 heuristic,
+                                state_expansion_rate,
+                                action_expansion_rate,
                                 rollout_policy,
                                 back_propagator,
                                 parallel,
@@ -696,6 +784,8 @@ private :
                                 online_node_garbage,
                                 custom_policy,
                                 heuristic,
+                                state_expansion_rate,
+                                action_expansion_rate,
                                 rollout_policy,
                                 back_propagator,
                                 parallel,
@@ -723,6 +813,8 @@ private :
                 bool online_node_garbage,
                 const CustomPolicyFunctor& custom_policy,
                 const HeuristicFunctor& heuristic,
+                double state_expansion_rate,
+                double action_expansion_rate,
                 PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
@@ -744,6 +836,8 @@ private :
                                 online_node_garbage,
                                 nullptr,
                                 heuristic,
+                                state_expansion_rate,
+                                action_expansion_rate,
                                 back_propagator,
                                 parallel,
                                 debug_logs);
@@ -765,6 +859,8 @@ private :
                                 online_node_garbage,
                                 custom_policy,
                                 heuristic,
+                                state_expansion_rate,
+                                action_expansion_rate,
                                 back_propagator,
                                 parallel,
                                 debug_logs);
@@ -792,6 +888,8 @@ private :
                 bool online_node_garbage,
                 const CustomPolicyFunctor& custom_policy,
                 const HeuristicFunctor& heuristic,
+                double state_expansion_rate,
+                double action_expansion_rate,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
                 bool debug_logs) {
@@ -813,6 +911,8 @@ private :
                                 online_node_garbage,
                                 custom_policy,
                                 heuristic,
+                                state_expansion_rate,
+                                action_expansion_rate,
                                 parallel,
                                 debug_logs);
                 break;
@@ -840,6 +940,8 @@ private :
                 bool online_node_garbage,
                 const CustomPolicyFunctor& custom_policy,
                 const HeuristicFunctor& heuristic,
+                double state_expansion_rate,
+                double action_expansion_rate,
                 bool parallel ,
                 bool debug_logs) {
         if (parallel) {
@@ -859,6 +961,8 @@ private :
                                         online_node_garbage,
                                         custom_policy,
                                         heuristic,
+                                        state_expansion_rate,
+                                        action_expansion_rate,
                                         debug_logs);
         } else {
             initialize<skdecide::SequentialExecution,
@@ -877,6 +981,8 @@ private :
                                         online_node_garbage,
                                         custom_policy,
                                         heuristic,
+                                        state_expansion_rate,
+                                        action_expansion_rate,
                                         debug_logs);
         }
     }
@@ -899,6 +1005,8 @@ private :
                 bool online_node_garbage,
                 const CustomPolicyFunctor& custom_policy,
                 const HeuristicFunctor& heuristic,
+                double state_expansion_rate,
+                double action_expansion_rate,
                 bool debug_logs = false) {
         _implementation = std::make_unique<Implementation<Texecution,
                                                           TtransitionMode,
@@ -917,6 +1025,8 @@ private :
                                     online_node_garbage,
                                     custom_policy,
                                     heuristic,
+                                    state_expansion_rate,
+                                    action_expansion_rate,
                                     debug_logs);
     }
 };
@@ -934,7 +1044,8 @@ void init_pymcts(py::module& m) {
         .value("Default", PyMCTSOptions::TreePolicy::Default);
     
     py::enum_<PyMCTSOptions::Expander>(py_mcts_options, "Expander")
-        .value("Full", PyMCTSOptions::Expander::Full);
+        .value("Full", PyMCTSOptions::Expander::Full)
+        .value("Partial", PyMCTSOptions::Expander::Partial);
     
     py::enum_<PyMCTSOptions::ActionSelector>(py_mcts_options, "ActionSelector")
         .value("UCB1", PyMCTSOptions::ActionSelector::UCB1)
@@ -959,6 +1070,8 @@ void init_pymcts(py::module& m) {
                           bool,
                           const std::function<py::object (const py::object&, const py::object&, const py::object&)>&,
                           const std::function<py::object (const py::object&, const py::object&, const py::object&)>&,
+                          double,
+                          double,
                           PyMCTSOptions::TransitionMode,
                           PyMCTSOptions::TreePolicy,
                           PyMCTSOptions::Expander,
@@ -978,6 +1091,8 @@ void init_pymcts(py::module& m) {
                  py::arg("online_node_garbage")=false,
                  py::arg("custom_policy")=nullptr,
                  py::arg("heuristic")=nullptr,
+                 py::arg("state_expansion_rate")=0.1,
+                 py::arg("action_expansion_rate")=0.1,
                  py::arg("transition_mode")=PyMCTSOptions::TransitionMode::Distribution,
                  py::arg("tree_policy")=PyMCTSOptions::TreePolicy::Default,
                  py::arg("expander")=PyMCTSOptions::Expander::Full,

@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef SKDECIDE_PYTHON_CONTAINER_ADAPTER_HH
-#define SKDECIDE_PYTHON_CONTAINER_ADAPTER_HH
+#ifndef SKDECIDE_PYTHON_CONTAINER_PROXY_HH
+#define SKDECIDE_PYTHON_CONTAINER_PROXY_HH
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -23,7 +23,7 @@ template <typename Texecution> struct PythonHash;
 template <typename Texecution> struct PythonEqual;
 
 template <typename Texecution>
-class PythonContainerAdapter {
+class PythonContainerProxy {
 public :
 
     class value_type {
@@ -148,9 +148,9 @@ public :
         std::unique_ptr<BaseType> _value;
     };
 
-    PythonContainerAdapter() {}
+    PythonContainerProxy() {}
 
-    PythonContainerAdapter(const py::object& vector) {
+    PythonContainerProxy(const py::object& vector) {
         typename GilControl<Texecution>::Acquire acquire;
         if (py::isinstance<py::list>(vector)) {
             _implementation = std::make_unique<SequenceImplementation<py::list>>(vector);
@@ -341,14 +341,14 @@ private :
 };
 
 
-inline std::size_t hash_value(const PythonContainerAdapter<skdecide::SequentialExecution>::value_type& o) {
+inline std::size_t hash_value(const PythonContainerProxy<skdecide::SequentialExecution>::value_type& o) {
     return o.hash();
 }
 
-inline std::size_t hash_value(const PythonContainerAdapter<skdecide::ParallelExecution>::value_type& o) {
+inline std::size_t hash_value(const PythonContainerProxy<skdecide::ParallelExecution>::value_type& o) {
     return o.hash();
 }
 
 } // namespace skdecide
 
-#endif // SKDECIDE_PYTHON_CONTAINER_ADAPTER_HH
+#endif // SKDECIDE_PYTHON_CONTAINER_PROXY_HH

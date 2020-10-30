@@ -31,12 +31,13 @@ class ILAOStarSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
-    typedef typename Domain::Event Action;
+    typedef typename Domain::Action Action;
+    typedef typename Domain::Value Value;
     typedef Texecution_policy ExecutionPolicy;
 
     ILAOStarSolver(Domain& domain,
                    const std::function<bool (Domain&, const State&)>& goal_checker,
-                   const std::function<double (Domain&, const State&)>& heuristic,
+                   const std::function<Value (Domain&, const State&)>& heuristic,
                    double discount = 1.0,
                    double epsilon = 0.001,
                    bool debug_logs = false)
@@ -65,7 +66,7 @@ public :
             StateNode& root_node = const_cast<StateNode&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
 
             if (si.second) {
-                root_node.best_value = _heuristic(_domain, s);
+                root_node.best_value = _heuristic(_domain, s).cost();
             }
 
             if (root_node.solved || _goal_checker(_domain, s)) { // problem already solved from this state (was present in _graph and already solved)
@@ -165,7 +166,7 @@ private :
 
     Domain& _domain;
     std::function<bool (Domain&, const State&)> _goal_checker;
-    std::function<double (Domain&, const State&)> _heuristic;
+    std::function<Value (Domain&, const State&)> _heuristic;
     atomic_double _discount;
     atomic_double _epsilon;
     bool _debug_logs;
@@ -228,7 +229,7 @@ private :
                     i = _graph.emplace(ns.state());
                 });
                 StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_cost(s.state, a, next_node.state), &next_node));
+                an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_value(s.state, a, next_node.state).cost(), &next_node));
 
                 if (i.second) { // new node
                     if (_goal_checker(_domain, next_node.state)) {
@@ -237,7 +238,7 @@ private :
                         next_node.solved = true;
                         next_node.best_value = 0.0;
                     } else {
-                        next_node.best_value = _heuristic(_domain, next_node.state);
+                        next_node.best_value = _heuristic(_domain, next_node.state).cost();
                         if (_debug_logs) spdlog::debug("New state " + next_node.state.print() + " with heuristic value " +
                                                        StringConverter::from(next_node.best_value) + ExecutionPolicy::print_thread());
                     }

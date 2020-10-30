@@ -1,12 +1,9 @@
 /* Copyright (c) AIRBUS and its affiliates.
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
- * This is the skdecide implementation of LRTDP from the paper
- * "Labeled RTDP: Improving the Convergence of Real-Time Dynamic
- * Programming" from Bonet and Geffner (ICAPS 2003)
  */
-#ifndef SKDECIDE_LRTDP_HH
-#define SKDECIDE_LRTDP_HH
+#ifndef SKDECIDE_MARTDP_HH
+#define SKDECIDE_MARTDP_HH
 
 #include <functional>
 #include <memory>
@@ -31,26 +28,25 @@ namespace skdecide {
 
 template <typename Tdomain,
           typename Texecution_policy = SequentialExecution>
-class LRTDPSolver {
+class MARTDPSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
-    typedef typename Domain::Action Action;
+    typedef typename Domain::Event Action;
     typedef typename Domain::Value Value;
     typedef Texecution_policy ExecutionPolicy;
 
-    LRTDPSolver(Domain& domain,
-                const std::function<bool (Domain&, const State&, const std::size_t*)>& goal_checker,
-                const std::function<Value (Domain&, const State&, const std::size_t*)>& heuristic,
-                bool use_labels = true,
-                std::size_t time_budget = 3600000,
-                std::size_t rollout_budget = 100000,
-                std::size_t max_depth = 1000,
-                double discount = 1.0,
-                double epsilon = 0.001,
-                bool online_node_garbage = false,
-                bool debug_logs = false)
-        : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic), _use_labels(use_labels),
+    MARTPRTDPSolver(Domain& domain,
+                    const std::function<bool (Domain&, const State&, const std::size_t*)>& goal_checker,
+                    const std::function<Value (Domain&, const State&, const std::size_t*)>& heuristic,
+                    std::size_t time_budget = 3600000,
+                    std::size_t rollout_budget = 100000,
+                    std::size_t max_depth = 1000,
+                    double discount = 1.0,
+                    double epsilon = 0.001,
+                    bool online_node_garbage = false,
+                    bool debug_logs = false)
+        : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
           _time_budget(time_budget), _rollout_budget(rollout_budget), _max_depth(max_depth),
           _discount(discount), _epsilon(epsilon), _online_node_garbage(online_node_garbage),
           _debug_logs(debug_logs), _current_state(nullptr), _nb_rollouts(0) {
@@ -73,7 +69,7 @@ public :
     // solves from state s using heuristic function h
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print_type() + " LRTDP solver from state " + s.print());
+            spdlog::info("Running " + ExecutionPolicy::print_type() + " MARTDP solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             
             auto si = _graph.emplace(s);
@@ -105,12 +101,12 @@ public :
 
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-            spdlog::info("LRTDP finished to solve from state " + s.print() +
+            spdlog::info("MARTDP finished to solve from state " + s.print() +
                          " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds with " +
                          StringConverter::from(_nb_rollouts) + " rollouts and visited " +
                          StringConverter::from(_graph.size()) + " states. ");
         } catch (const std::exception& e) {
-            spdlog::error("LRTDP failed solving from state " + s.print() + ". Reason: " + e.what());
+            spdlog::error("MARTDP failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
         }
     }
@@ -185,7 +181,6 @@ private :
     Domain& _domain;
     std::function<bool (Domain&, const State&, const std::size_t*)> _goal_checker;
     std::function<Value (Domain&, const State&, const std::size_t*)> _heuristic;
-    bool _use_labels;
     atomic_size_t _time_budget;
     atomic_size_t _rollout_budget;
     atomic_size_t _max_depth;
@@ -263,7 +258,7 @@ private :
                     i = _graph.emplace(ns.state());
                 });
                 StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_value(s->state, a, next_node.state, thread_id).cost(), &next_node));
+                an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_cost(s->state, a, next_node.state, thread_id), &next_node));
                 outcome_weights.push_back(std::get<0>(an.outcomes.back()));
                 if (_debug_logs) spdlog::debug("Current next state expansion: " + next_node.state.print() + ExecutionPolicy::print_thread());
 
@@ -348,80 +343,6 @@ private :
         return res;
     }
 
-    bool check_solved(StateNode* s,
-                      const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
-                      const std::size_t* thread_id) {
-        if (_debug_logs) {
-            _execution_policy.protect([&s](){
-                spdlog::debug("Checking solved status of State " + s->state.print() +
-                              ExecutionPolicy::print_thread());
-            }, s->mutex);
-        }
-
-        bool rv = true;
-        std::stack<StateNode*> open;
-        std::stack<StateNode*> closed;
-        std::unordered_set<StateNode*> visited;
-        std::size_t depth = 0;
-
-        if (!(s->solved)) {
-            open.push(s);
-            visited.insert(s);
-        }
-
-        while (!open.empty() &&
-               (elapsed_time(start_time) < _time_budget) &&
-               (depth < _max_depth)) {
-            depth++;
-            StateNode* cs = open.top();
-            open.pop();
-            closed.push(cs);
-            visited.insert(cs);
-
-            _execution_policy.protect([this, &cs, &rv, &open, &visited, &thread_id](){
-                if (residual(cs, thread_id) > _epsilon) {
-                    rv = false;
-                    return;
-                }
-
-                ActionNode* a = cs->best_action; // best action updated when calling residual(cs, thread_id)
-                for (const auto& o : a->outcomes) {
-                    StateNode* ns = std::get<2>(o);
-                    if (!(ns->solved) && (visited.find(ns) == visited.end())) {
-                        open.push(ns);
-                    }
-                }
-            }, cs->mutex);
-        }
-
-        auto e_time = elapsed_time(start_time);
-        rv = rv && ((e_time < _time_budget) ||
-                    ((e_time >= _time_budget) && open.empty()));
-
-        if (rv) {
-            while (!closed.empty()) {
-                closed.top()->solved = true;
-                closed.pop();
-            }
-        } else {
-            while (!closed.empty() && (elapsed_time(start_time) < _time_budget)) {
-                _execution_policy.protect([this, &closed, &thread_id](){
-                    update(closed.top(), thread_id);
-                }, closed.top()->mutex);
-                closed.pop();
-            }
-        }
-
-        if (_debug_logs) {
-            _execution_policy.protect([&s, &rv](){
-                spdlog::debug("State " + s->state.print() + " is " + (rv?(""):("not")) + " solved." +
-                              ExecutionPolicy::print_thread());
-            }, s->mutex);
-        }
-
-        return rv;
-    }
-
     void trial(StateNode* s,
                const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time,
                const std::size_t* thread_id) {
@@ -430,8 +351,7 @@ private :
         std::size_t depth = 0;
         bool found_goal = false;
 
-        while ((!_use_labels || !(cs->solved)) &&
-               !found_goal &&
+        while (!found_goal &&
                (elapsed_time(start_time) < _time_budget) &&
                (depth < _max_depth)) {
             depth++;
@@ -446,15 +366,6 @@ private :
                 update(cs, thread_id);
                 cs = pick_next_state(cs->best_action);
             }, cs->mutex);
-        }
-
-        while (_use_labels && !visited.empty() && (elapsed_time(start_time) < _time_budget)) {
-            cs = visited.top();
-            visited.pop();
-
-            if (!check_solved(cs, start_time, thread_id)) {
-                break;
-            }
         }
     }
 
@@ -489,4 +400,4 @@ private :
 
 } // namespace skdecide
 
-#endif // SKDECIDE_LRTDP_HH
+#endif // SKDECIDE_MA_RTDP_HH

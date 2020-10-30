@@ -4,14 +4,12 @@
 
 from __future__ import annotations
 
-import multiprocessing
 import os
 import sys
 from typing import Callable, Any, List, Tuple
 
 from skdecide import Domain, Solver
 from skdecide import hub
-from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities

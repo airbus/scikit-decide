@@ -7,21 +7,18 @@
 #include <pybind11/iostream.h>
 
 #include "ilaostar.hh"
-#include "core.hh"
 
-#include "utils/python_gil_control.hh"
-#include "utils/python_hash_eq.hh"
-#include "utils/python_domain_adapter.hh"
+#include "utils/python_domain_proxy.hh"
 
 namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyILAOStarDomain : public skdecide::PythonDomainAdapter<Texecution> {
+class PyILAOStarDomain : public skdecide::PythonDomainProxy<Texecution> {
 public :
     
     PyILAOStarDomain(const py::object& domain)
-    : skdecide::PythonDomainAdapter<Texecution>(domain) {
+    : skdecide::PythonDomainProxy<Texecution>(domain) {
         if (!py::hasattr(domain, "get_applicable_actions")) {
             throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_applicable_actions()");
         }
@@ -131,16 +128,12 @@ private :
                                                                                     throw;
                                                                                 }
                                                                             },
-                                                                            [this](PyILAOStarDomain<Texecution>& d, const typename PyILAOStarDomain<Texecution>::State& s)->double {
+                                                                            [this](PyILAOStarDomain<Texecution>& d, const typename PyILAOStarDomain<Texecution>::State& s) -> typename PyILAOStarDomain<Texecution>::Value {
                                                                                 try {
                                                                                     auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                                                                         return _heuristic(dd, ss);
                                                                                     };
-                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, fh, s.pyobj());
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    double rr = r->template cast<double>();
-                                                                                    r.reset();
-                                                                                    return  rr;
+                                                                                    return typename PyILAOStarDomain<Texecution>::Value(d.call(nullptr, fh, s.pyobj()));
                                                                                 } catch (const std::exception& e) {
                                                                                     spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
                                                                                     throw;

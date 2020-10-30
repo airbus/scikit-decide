@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import NamedTuple, Tuple, Optional
 
-from skdecide import GoalPOMDPDomain, TransitionValue, Space, DiscreteDistribution, Distribution
+from skdecide import GoalPOMDPDomain, Value, Space, DiscreteDistribution, Distribution
 from skdecide.builders.domain import DeterministicTransitions, UnrestrictedActions, TransformedObservable
 from skdecide.hub.space.gym import ListSpace, MultiDiscreteSpace
 
@@ -49,8 +49,8 @@ class MasterMind(D):
             return State(memory.solution, self._calc_score(memory, action))
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
-        return TransitionValue(cost=1)
+                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
+        return Value(cost=1)
 
     # Overridden to help some solvers compute more efficiently (not mandatory, but good practice)
     def _is_transition_value_dependent_on_next_state_(self) -> bool:

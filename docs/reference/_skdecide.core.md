@@ -284,9 +284,9 @@ Sample from this distribution.
 #### Returns
 The sampled element.
 
-## TransitionValue
+## Value
 
-A transition value (reward or cost).
+A value (reward or cost).
 
 ::: warning
 It is recommended to use either the reward or the cost parameter. If no one is used, a reward/cost of 0 is
@@ -301,8 +301,8 @@ attributes will be defined after initialization.
 #### Example
 ```python
 # These two lines are equivalent, use the one you prefer
-value_1 = TransitionValue(reward=-5)
-value_2 = TransitionValue(cost=5)
+value_1 = Value(reward=-5)
+value_2 = Value(cost=5)
 
 assert value_1.reward == value_2.reward == -5  # True
 assert value_1.cost == value_2.cost == 5  # True

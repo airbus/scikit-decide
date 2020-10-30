@@ -11,7 +11,7 @@ from typing import Callable, Dict, Tuple, List
 
 from skdecide import Domain, Solver
 from skdecide import hub
-from skdecide.domains import PipeParallelDomain, ShmParallelDomain
+from skdecide.core import Value
 from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
@@ -46,7 +46,9 @@ try:
                      ucb_constant: float = 1.0 / sqrt(2.0),
                      online_node_garbage: bool = False,
                      custom_policy: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
-                     heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[float, int]] = None,
+                     heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int]] = None,
+                     state_expansion_rate: float = 0.1,
+                     action_expansion_rate: float = 0.1,
                      transition_mode: Options.TransitionMode = Options.TransitionMode.Distribution,
                      tree_policy: Options.TreePolicy = Options.TreePolicy.Default,
                      expander: Options.Expander = Options.Expander.Full,
@@ -73,6 +75,8 @@ try:
             self._online_node_garbage = online_node_garbage
             self._custom_policy = custom_policy
             self._heuristic = heuristic
+            self._state_expansion_rate = state_expansion_rate
+            self._action_expansion_rate = action_expansion_rate
             self._transition_mode = transition_mode
             self._tree_policy = tree_policy
             self._expander = expander
@@ -103,6 +107,8 @@ try:
                                                       else lambda d, s, i= \
                                                            None: self._heuristic(d, s) if not self._parallel \
                                                                                        else d.call(i, 1, s),
+                                       state_expansion_rate=self._state_expansion_rate,
+                                       action_expansion_rate=self._action_expansion_rate,
                                        transition_mode=self._transition_mode,
                                        tree_policy=self._tree_policy,
                                        expander=self._expander,
@@ -163,7 +169,9 @@ try:
                      ucb_constant: float = 1.0 / sqrt(2.0),
                      online_node_garbage: float = False,
                      custom_policy: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
-                     heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[float, int]] = None,
+                     heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int]] = None,
+                     state_expansion_rate: float = 0.1,
+                     action_expansion_rate: float = 0.1,
                      transition_mode: mcts_options.TransitionMode = mcts_options.TransitionMode.Distribution,
                      rollout_policy: mcts_options.RolloutPolicy = mcts_options.RolloutPolicy.Random,
                      continuous_planning: bool = True,
@@ -180,6 +188,8 @@ try:
                              online_node_garbage=online_node_garbage,
                              custom_policy=custom_policy,
                              heuristic=heuristic,
+                             state_expansion_rate=state_expansion_rate,
+                             action_expansion_rate=action_expansion_rate,
                              transition_mode=transition_mode,
                              rollout_policy=rollout_policy,
                              continuous_planning=continuous_planning,
