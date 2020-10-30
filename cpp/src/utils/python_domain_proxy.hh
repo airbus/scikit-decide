@@ -411,8 +411,8 @@ public :
         static constexpr char class_name[] = "value";
 
         ValueBase() : PyObj<ValueBase>() {}
-        ValueBase(std::unique_ptr<py::object>&& tv) : PyObj<ValueBase>(std::move(tv)) { construct(); }
-        ValueBase(const py::object& tv) : PyObj<ValueBase>(tv) { construct(); }
+        ValueBase(std::unique_ptr<py::object>&& v) : PyObj<ValueBase>(std::move(v)) { construct(); }
+        ValueBase(const py::object& v) : PyObj<ValueBase>(v) { construct(); }
         ValueBase(const ValueBase& other) : PyObj<ValueBase>(other) {}
         ValueBase& operator=(const ValueBase& other) { dynamic_cast<PyObj<ValueBase>&>(*this) = other; return *this; }
         virtual ~ValueBase() {}

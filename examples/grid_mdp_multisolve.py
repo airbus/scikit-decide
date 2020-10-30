@@ -265,14 +265,14 @@ class GridShmProxy:
         @staticmethod
         def encode(value, shm_value):
             if value.reward is not None:
-                shm_value[0] = value.reward
-                shm_value[1] = True
+                shm_value[0].value = value.reward
+                shm_value[1].value = True
             elif value.cost is not None:
-                shm_value[0] = value.cost
-                shm_value[1] = False
+                shm_value[0].value = value.cost
+                shm_value[1].value = False
             else:
-                shm_value[0] = 0
-                shm_value[1] = True
+                shm_value[0].value = 0
+                shm_value[1].value = True
         
         @staticmethod
         def decode(value):
