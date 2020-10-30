@@ -11,6 +11,7 @@
 #include <nngpp/protocol/pull0.h>
 
 #include "utils/python_gil_control.hh"
+#include "utils/python_globals.hh"
 #include "utils/python_hash_eq.hh"
 #include "utils/execution.hh"
 
@@ -43,14 +44,21 @@ public :
 
         PyObj() {
             typename GilControl<Texecution>::Acquire acquire;
-            _pyobj = std::make_unique<py::object>();
+            _pyobj = std::make_unique<py::object>(py::none());
         }
 
-        PyObj(std::unique_ptr<py::object>&& o) : _pyobj(std::move(o)) {}
+        PyObj(std::unique_ptr<py::object>&& o) : _pyobj(std::move(o)) {
+            if (!_pyobj || !(*_pyobj)) {
+                throw std::runtime_error("Unitialized python object!");
+            }
+        }
 
         PyObj(const py::object& o) {
             typename GilControl<Texecution>::Acquire acquire;
             this->_pyobj = std::make_unique<py::object>(o);
+            if (!(*_pyobj)) {
+                throw std::runtime_error("Unitialized python object!");
+            }
         }
 
         PyObj(const PyObj& other) {
@@ -323,7 +331,9 @@ public :
     struct ApplicableActionSpaceBase : public PyObj<ApplicableActionSpaceBase> {
         static constexpr char class_name[] = "applicable action space";
 
-        ApplicableActionSpaceBase() : PyObj<ApplicableActionSpaceBase>() {}
+        ApplicableActionSpaceBase() : PyObj<ApplicableActionSpaceBase>() {
+            construct();
+        }
 
         ApplicableActionSpaceBase(std::unique_ptr<py::object>&& applicable_action_space)
         : PyObj<ApplicableActionSpaceBase>(std::move(applicable_action_space)) {
@@ -337,7 +347,9 @@ public :
         
         void construct() {
             typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(*(this->_pyobj), "get_elements")) {
+            if (this->_pyobj->is_none()) {
+                this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("EmptySpace")());
+            } else if (!py::hasattr(*(this->_pyobj), "get_elements")) {
                 throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement get_elements()");
             }
         }
@@ -410,7 +422,7 @@ public :
     struct ValueBase : public PyObj<ValueBase> {
         static constexpr char class_name[] = "value";
 
-        ValueBase() : PyObj<ValueBase>() {}
+        ValueBase() : PyObj<ValueBase>() { construct(); }
         ValueBase(std::unique_ptr<py::object>&& v) : PyObj<ValueBase>(std::move(v)) { construct(); }
         ValueBase(const py::object& v) : PyObj<ValueBase>(v) { construct(); }
         ValueBase(const ValueBase& other) : PyObj<ValueBase>(other) {}
@@ -419,22 +431,22 @@ public :
 
         void construct() {
             typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(*(this->_pyobj), "cost")) {
-                throw std::invalid_argument("SKDECIDE exception: python value object must provide the 'cost' attribute");
-            }
-            if (!py::hasattr(*(this->_pyobj), "reward")) {
-                throw std::invalid_argument("SKDECIDE exception: python value object must provide the 'reward' attribute");
+            if (this->_pyobj->is_none()) {
+                this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("Value")());
+            } else {
+                if (!py::hasattr(*(this->_pyobj), "cost")) {
+                    throw std::invalid_argument("SKDECIDE exception: python value object must provide the 'cost' attribute");
+                }
+                if (!py::hasattr(*(this->_pyobj), "reward")) {
+                    throw std::invalid_argument("SKDECIDE exception: python value object must provide the 'reward' attribute");
+                }
             }
         }
 
         double cost() {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                if (this->_pyobj->is_none()) {
-                    return 0.0; // useful for algorithms initializing the value to the default empty object
-                } else {
-                    return py::cast<double>(this->_pyobj->attr("cost"));
-                }
+                return py::cast<double>(this->_pyobj->attr("cost"));
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting value's cost: ") + e->what());
                 std::runtime_error err(e->what());
@@ -459,11 +471,7 @@ public :
         double reward() {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                if (this->_pyobj->is_none()) {
-                    return 0.0; // useful for algorithms initializing the value to the default empty object
-                } else {
-                    return py::cast<double>(this->_pyobj->attr("reward"));
-                }
+                return this->_pyobj->attr("reward").template cast<double>();
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting value's reward: ") + e->what());
                 std::runtime_error err(e->what());
@@ -509,7 +517,7 @@ public :
         };
         typedef AgentData<InfoBase, Tagent> Info;
 
-        Outcome() : PyObj<Derived>() {}
+        Outcome() : PyObj<Derived>() { construct(); }
 
         Outcome(std::unique_ptr<py::object>&& outcome)
         : PyObj<Derived>(std::move(outcome)) {
@@ -523,18 +531,22 @@ public :
 
         void construct() {
             typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(*(this->_pyobj), Derived::situation_name)) {
-                throw std::invalid_argument(std::string("SKDECIDE exception: python transition outcome object must provide '") +
-                                            Derived::situation_name + "'");
-            }
-            if (!py::hasattr(*(this->_pyobj), "value")) {
-                throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'value'");
-            }
-            if (!py::hasattr(*(this->_pyobj), "termination")) {
-                throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'termination'");
-            }
-            if (!py::hasattr(*(this->_pyobj), "info")) {
-                throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'info'");
+            if (this->_pyobj->is_none()) {
+                this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr(Derived::pyclass)(py::none()));
+            } else {
+                if (!py::hasattr(*(this->_pyobj), Derived::situation_name)) {
+                    throw std::invalid_argument(std::string("SKDECIDE exception: python transition outcome object must provide '") +
+                                                Derived::situation_name + "'");
+                }
+                if (!py::hasattr(*(this->_pyobj), "value")) {
+                    throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'value'");
+                }
+                if (!py::hasattr(*(this->_pyobj), "termination")) {
+                    throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'termination'");
+                }
+                if (!py::hasattr(*(this->_pyobj), "info")) {
+                    throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'info'");
+                }
             }
         }
 
@@ -648,6 +660,7 @@ public :
     };
 
     struct TransitionOutcome : public Outcome<TransitionOutcome, State> {
+        static constexpr char pyclass[] = "TransitionOutcome";
         static constexpr char class_name[] = "transition outcome";
         static constexpr char situation_name[] = "state"; // mandatory since State == Observation in fully observable domains
 
@@ -674,6 +687,7 @@ public :
     };
 
     struct EnvironmentOutcome : public Outcome<EnvironmentOutcome, Observation> {
+        static constexpr char pyclass[] = "EnvironmentOutcome";
         static constexpr char class_name[] = "environment outcome";
         static constexpr char situation_name[] = "observation"; // mandatory since State == Observation in fully observable domains
 
@@ -702,7 +716,7 @@ public :
     struct NextStateDistribution : public PyObj<NextStateDistribution> {
         static constexpr char class_name[] = "next state distribution";
 
-        NextStateDistribution() : PyObj<NextStateDistribution>() {}
+        NextStateDistribution() : PyObj<NextStateDistribution>() { construct(); }
 
         NextStateDistribution(std::unique_ptr<py::object>&& next_state_distribution)
         : PyObj<NextStateDistribution>(std::move(next_state_distribution)) {
@@ -716,7 +730,9 @@ public :
 
         void construct() {
             typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(*(this->_pyobj), "get_values")) {
+            if (this->_pyobj->is_none()) {
+                this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("DiscreteDistribution")(py::list()));
+            } else if (!py::hasattr(*(this->_pyobj), "get_values")) {
                 throw std::invalid_argument("SKDECIDE exception: python next state distribution object must implement get_values()");
             }
         }

@@ -726,18 +726,19 @@ private :
 
             if (!node_child) { // first visit
                 // Sampled child has not been visited so far, so generate it
-                typename Domain::EnvironmentOutcome outcome;
+                std::unique_ptr<typename Domain::EnvironmentOutcome> outcome;
                 _execution_policy.protect([this, &node, &outcome, &action_number, &thread_id](){
-                    outcome = _rollout_policy.progress(_domain, node->state, std::get<0>(node->children[action_number]), thread_id);
+                    outcome = std::make_unique<typename Domain::EnvironmentOutcome>(
+                        _rollout_policy.progress(_domain, node->state, std::get<0>(node->children[action_number]), thread_id));
                 }, node->mutex);
                 
                 _execution_policy.protect([this, &node_child, &thread_id, &new_node, &outcome](){
-                    auto i = _graph.emplace(Node(outcome.observation(), _domain, _state_features, thread_id));
+                    auto i = _graph.emplace(Node(outcome->observation(), _domain, _state_features, thread_id));
                     new_node = i.second;
                     node_child = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 });
                 Node& next_node = *node_child;
-                double reward = outcome.transition_value().reward();
+                double reward = outcome->transition_value().reward();
                 _execution_policy.protect([&node, &action_number, &reward, &node_child](){
                     std::get<1>(node->children[action_number]) = reward;
                     std::get<2>(node->children[action_number]) = node_child;
@@ -757,7 +758,7 @@ private :
                                                        ExecutionPolicy::print_thread());
                         next_node.depth = node->depth + 1;
                         node = &next_node;
-                        node->terminal = outcome.termination();
+                        node->terminal = outcome->termination();
                         if (node->terminal && _min_reward > 0.0) {
                             _min_reward = 0.0;
                             _min_reward_changed = true;

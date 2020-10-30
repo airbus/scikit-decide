@@ -21,6 +21,7 @@ public :
         if (!_initialized) {
             _not_implemented_object = py::globals()["__builtins__"]["NotImplemented"];
             _python_sys_maxsize = py::module::import("sys").attr("maxsize").template cast<std::size_t>();
+            _skdecide = py::module::import("skdecide");
             _initialized = true;
         }
     }
@@ -35,6 +36,11 @@ public :
         return _python_sys_maxsize;
     }
 
+    static const py::object& skdecide() {
+        check_initialized();
+        return _skdecide;
+    }
+
 private :
     // Initializing python objects here (in their declaration) by calling
     // python functions crashes the python interpreter (unable to load the
@@ -42,6 +48,7 @@ private :
     // Thus we enforce calling the Globals::init() method in PYBIND11_MODULE
     inline static py::object _not_implemented_object = py::object();
     inline static std::size_t _python_sys_maxsize = 0;
+    inline static py::object _skdecide = py::object();
     inline static bool _initialized = false;
 
     static void check_initialized() {
