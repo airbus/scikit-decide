@@ -313,7 +313,7 @@ public :
                 return Element((*(this->_pyobj))[a.pyobj()]);
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting ") +
-                              Inherited::class_name : " of agent " + a.print() +
+                              Inherited::class_name + " of agent " + a.print() +
                               ": " + e->what());
                 std::runtime_error err(e->what());
                 delete e;
