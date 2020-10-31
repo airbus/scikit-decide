@@ -121,7 +121,7 @@ public :
                 try {
                     return skdecide::PythonHash<Texecution>()(*_value);
                 } catch(const py::error_already_set* e) {
-                    spdlog::error(std::string("SKDECIDE exception when hashing state feature items: ") + e->what());
+                    spdlog::error(std::string("SKDECIDE exception when hashing container item: ") + e->what());
                     std::runtime_error err(e->what());
                     delete e;
                     throw err;
@@ -134,7 +134,7 @@ public :
                     const ObjectType* o = dynamic_cast<const ObjectType*>(&other);
                     return  ((o != nullptr) && skdecide::PythonEqual<Texecution>()(*_value, *(o->_value)));
                 } catch(const py::error_already_set* e) {
-                    spdlog::error(std::string("SKDECIDE exception when testing state feature items equality: ") + e->what());
+                    spdlog::error(std::string("SKDECIDE exception when testing container item equality: ") + e->what());
                     std::runtime_error err(e->what());
                     delete e;
                     throw err;
@@ -191,12 +191,12 @@ public :
             } else {
                 spdlog::error("Unhandled array dtype '" + dtype + "' when parsing python sequence as numpy array");
                 throw std::invalid_argument("SKDECIDE exception: Unhandled array dtype '" + dtype +
-                                            "' when parsing state features as numpy array");
+                                            "' when parsing container as numpy array");
             }
         } else {
-            spdlog::error("Unhandled state feature type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
+            spdlog::error("Unhandled container type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
                            " (expecting list, tuple or numpy array)");
-            throw std::invalid_argument("Unhandled state feature type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
+            throw std::invalid_argument("Unhandled container type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
                                         " (expecting list, tuple or numpy array)");
         }
     }

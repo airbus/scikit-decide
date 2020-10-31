@@ -20,6 +20,7 @@ public :
     static void init() {
         if (!_initialized) {
             _not_implemented_object = py::globals()["__builtins__"]["NotImplemented"];
+            _sorted = py::globals()["__builtins__"]["sorted"];
             _python_sys_maxsize = py::module::import("sys").attr("maxsize").template cast<std::size_t>();
             _skdecide = py::module::import("skdecide");
             _initialized = true;
@@ -29,6 +30,11 @@ public :
     static const py::object& not_implemented_object() {
         check_initialized();
         return _not_implemented_object;
+    }
+
+    static const py::object& sorted() {
+        check_initialized();
+        return _sorted;
     }
 
     static const std::size_t& python_sys_maxsize() {
@@ -47,6 +53,7 @@ private :
     // C++ extension library) on some platforms and some version of Python.
     // Thus we enforce calling the Globals::init() method in PYBIND11_MODULE
     inline static py::object _not_implemented_object = py::object();
+    inline static py::object _sorted = py::object();
     inline static std::size_t _python_sys_maxsize = 0;
     inline static py::object _skdecide = py::object();
     inline static bool _initialized = false;

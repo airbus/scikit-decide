@@ -8,6 +8,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
+#include <boost/container_hash/hash.hpp>
+
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
@@ -37,9 +39,34 @@ struct PythonHash {
                     return false;
                 }
             };
+            // special cases
             if (py::isinstance<py::array>(o)) {
                 return PythonContainerProxy<Texecution>(o).hash();
-            } else {
+            }
+            else if (py::isinstance<py::list>(o) || py::isinstance<py::tuple>(o)) {
+                // we could use PythonContainerProxy<Texecution>(o).hash() but it involves copies and redirections...
+                std::size_t seed = 0;
+                for (auto e : o) {
+                    boost::hash_combine(seed, ItemHasher(py::reinterpret_borrow<py::object>(e)));
+                }
+                return seed;
+            }
+            else if (py::isinstance<py::set>(o)) {
+                std::size_t seed = 0;
+                py::list keys = py::cast<py::list>(skdecide::Globals::sorted()(o));
+                for (auto k : keys) {
+                    boost::hash_combine(seed, ItemHasher(py::reinterpret_borrow<py::object>(k)));
+                }
+                return seed;
+            } else if (py::isinstance<py::dict>(o)) {
+                std::size_t seed = 0;
+                py::list keys = py::cast<py::list>(skdecide::Globals::sorted()(o));
+                for (auto k : keys) {
+                    boost::hash_combine(seed, ItemHasher(py::reinterpret_borrow<py::object>(k)));
+                    boost::hash_combine(seed, ItemHasher(o[k]));
+                }
+                return seed;
+            } else { // normal cases
                 std::size_t hash_val = 0;
                 if (!py::hasattr(o, "__hash__") || o.attr("__hash__").is_none() || !compute_hash(o, hash_val)) {
                     // Try to hash using __repr__
@@ -62,7 +89,25 @@ struct PythonHash {
             throw err;
         }
     }
+
+    struct ItemHasher {
+        const py::object& _pyobj;
+
+        ItemHasher(const py::object& o) : _pyobj(o) {}
+
+        std::size_t hash() const {
+            return PythonHash<Texecution>()(_pyobj);
+        }
+    };
 };
+
+inline std::size_t hash_value(const PythonHash<skdecide::SequentialExecution>::ItemHasher& ih) {
+    return ih.hash();
+}
+
+inline std::size_t hash_value(const PythonHash<skdecide::ParallelExecution>::ItemHasher& ih) {
+    return ih.hash();
+}
 
 
 template <typename Texecution>

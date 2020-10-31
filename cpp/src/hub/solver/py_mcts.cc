@@ -290,14 +290,11 @@ private :
                 try {
                     std::unique_ptr<py::object> r = d.call(thread_id, heuristic, s.pyobj());
                     typename skdecide::GilControl<Texecution>::Acquire acquire;
-                    std::pair<typename PyMCTSDomain<Texecution>::Value, std::size_t> rr;
-                    {
-                        py::tuple t = py::cast<py::tuple>(*r);
-                        rr = std::make_pair(
-                            typename PyMCTSDomain<Texecution>::Value(t[0]),
-                            t[1].template cast<std::size_t>()
-                        );
-                    } // we want tuple t to be deleted here while we are un GIL acquisition protection
+                    py::tuple t = py::cast<py::tuple>(*r);
+                    std::pair<typename PyMCTSDomain<Texecution>::Value, std::size_t> rr = std::make_pair(
+                        typename PyMCTSDomain<Texecution>::Value(t[0]),
+                        t[1].template cast<std::size_t>()
+                    );
                     r.reset();
                     return  rr;
                 } catch (const std::exception& e) {

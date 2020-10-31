@@ -38,37 +38,99 @@ template <typename Texecution,
           typename Tmemory = Markovian>
 class PythonDomainProxy {
 public :
-    template <typename Derived>
+    template <typename Derived, typename Tpyobj = py::object>
     struct PyObj {
-        std::unique_ptr<py::object> _pyobj;
+        std::unique_ptr<Tpyobj> _pyobj;
 
+        template <typename TTpyobj = Tpyobj,
+                  std::enable_if_t<std::is_same<TTpyobj, py::object>::value, int> = 0>
         PyObj() {
             typename GilControl<Texecution>::Acquire acquire;
-            _pyobj = std::make_unique<py::object>(py::none());
+            _pyobj = std::make_unique<Tpyobj>(py::none());
         }
 
-        PyObj(std::unique_ptr<py::object>&& o) : _pyobj(std::move(o)) {
-            if (!_pyobj || !(*_pyobj)) {
-                throw std::runtime_error("Unitialized python object!");
+        template <typename TTpyobj = Tpyobj,
+                  std::enable_if_t<!std::is_same<TTpyobj, py::object>::value &&
+                                   std::is_base_of<py::object, TTpyobj>::value, int> = 0>
+        PyObj() {
+            typename GilControl<Texecution>::Acquire acquire;
+            _pyobj = std::make_unique<Tpyobj>(Tpyobj());
+        }
+
+        template <typename TTpyobj = Tpyobj,
+                  std::enable_if_t<std::is_same<TTpyobj, py::object>::value, int> = 0>
+        PyObj(std::unique_ptr<py::object>&& o, bool check = true) : _pyobj(std::move(o)) {
+            if (check && (!_pyobj || !(*_pyobj))) {
+                throw std::runtime_error(std::string("Unitialized python ") +
+                                         Derived::class_name + " object!");
             }
         }
 
-        PyObj(const py::object& o) {
+        template <typename TTpyobj = Tpyobj,
+                  std::enable_if_t<!std::is_same<TTpyobj, py::object>::value &&
+                                   std::is_base_of<py::object, TTpyobj>::value, int> = 0>
+        PyObj(std::unique_ptr<py::object>&& o, bool check = true) {
             typename GilControl<Texecution>::Acquire acquire;
-            this->_pyobj = std::make_unique<py::object>(o);
-            if (!(*_pyobj)) {
-                throw std::runtime_error("Unitialized python object!");
+            if (check && (!o || !(*o) || !py::isinstance<Tpyobj>(*o))) {
+                throw std::runtime_error(std::string("Python ") + Derived::class_name + " object not initialized as a " +
+                                         std::string(py::str(Tpyobj().attr("__class__").attr("__name__"))));
+            }
+            _pyobj = std::make_unique<Tpyobj>(o->template cast<Tpyobj>());
+            o.reset();
+        }
+
+        template <typename TTpyobj = Tpyobj,
+                  std::enable_if_t<!std::is_same<TTpyobj, py::object>::value &&
+                                   std::is_base_of<py::object, TTpyobj>::value, int> = 0>
+        PyObj(std::unique_ptr<TTpyobj>&& o, bool check = true) {
+            if (check && (!_pyobj || !(*_pyobj))) {
+                throw std::runtime_error(std::string("Unitialized python ") +
+                                         Derived::class_name + " object!");
+            }
+        }
+
+        template <typename TTpyobj = Tpyobj,
+                  std::enable_if_t<std::is_same<TTpyobj, py::object>::value, int> = 0>
+        PyObj(const py::object& o, bool check = true) {
+            typename GilControl<Texecution>::Acquire acquire;
+            _pyobj = std::make_unique<py::object>(o);
+            if (check && !(*_pyobj)) {
+                throw std::runtime_error(std::string("Unitialized python ") +
+                                         Derived::class_name + " object!");
+            }
+        }
+
+        template <typename TTpyobj = Tpyobj,
+                  std::enable_if_t<!std::is_same<TTpyobj, py::object>::value &&
+                                   std::is_base_of<py::object, TTpyobj>::value, int> = 0>
+        PyObj(const py::object& o, bool check = true) {
+            if (check && (!o || !py::isinstance<Tpyobj>(o))) {
+                throw std::runtime_error(std::string("Python ") + Derived::class_name + " object not initialized as a " +
+                                         std::string(py::str(Tpyobj().attr("__class__").attr("__name__"))));
+            }
+            _pyobj = std::make_unique<Tpyobj>(o.template cast<Tpyobj>());
+        }
+
+        template <typename TTpyobj = Tpyobj,
+                  std::enable_if_t<!std::is_same<TTpyobj, py::object>::value &&
+                                   std::is_base_of<py::object, TTpyobj>::value, int> = 0>
+        PyObj(const TTpyobj& o, bool check = true) {
+            typename GilControl<Texecution>::Acquire acquire;
+            _pyobj = std::make_unique<Tpyobj>(o);
+            if (check && !(*_pyobj)) {
+                throw std::runtime_error(std::string("Unitialized python ") +
+                                         Derived::class_name + " object!");
             }
         }
 
         PyObj(const PyObj& other) {
             typename GilControl<Texecution>::Acquire acquire;
-            this->_pyobj = std::make_unique<py::object>(*other._pyobj);
+            this->_pyobj = std::make_unique<Tpyobj>(*other._pyobj);
         }
 
         PyObj& operator=(const PyObj& other) {
             typename GilControl<Texecution>::Acquire acquire;
-            this->_pyobj = std::make_unique<py::object>(*other._pyobj);
+            this->_pyobj = std::make_unique<Tpyobj>(*other._pyobj);
             return *this;
         }
 
@@ -77,7 +139,7 @@ public :
             _pyobj.reset();
         }
 
-        const py::object& pyobj() const { return *_pyobj; }
+        const Tpyobj& pyobj() const { return *_pyobj; }
 
         std::string print() const {
             typename GilControl<Texecution>::Acquire acquire;
@@ -110,62 +172,52 @@ public :
     };
 
     template<typename T>
-    struct PyIter {
-        std::unique_ptr<py::iterator> _iterator;
+    struct PyIter : PyObj<PyIter<T>, py::iterator> {
+        static constexpr char class_name[] = "iterator";
 
-        PyIter(std::unique_ptr<py::iterator>&& iterator) : _iterator(std::move(iterator)) {}
+       PyIter(const py::iterator& iterator)
+        : PyObj<PyIter<T>, py::iterator>(iterator, false) {}
 
-        PyIter(const py::iterator& iterator) {
-            typename GilControl<Texecution>::Acquire acquire;
-            _iterator = std::make_unique<py::iterator>(iterator);
-        }
-
-        PyIter(const PyIter& other) {
-            typename GilControl<Texecution>::Acquire acquire;
-            _iterator = std::make_unique<py::iterator>(*other._iterator);
-        }
+        PyIter(const PyIter& other)
+        : PyObj<PyIter<T>, py::iterator>(other) {}
 
         PyIter& operator=(const PyIter& other) {
-            typename GilControl<Texecution>::Acquire acquire;
-            _iterator = std::make_unique<py::iterator>(*other._iterator);
+            dynamic_cast<PyObj<PyIter<T>, py::iterator>&>(*this) = other;
             return *this;
         }
 
-        ~PyIter() {
-            typename GilControl<Texecution>::Acquire acquire;
-            this->_iterator.reset();
-        }
+        virtual ~PyIter() {}
 
         PyIter<T>& operator++() {
             typename GilControl<Texecution>::Acquire acquire;
-            ++(*(this->_iterator));
+            ++(*(this->_pyobj));
             return *this;
         }
 
         PyIter<T> operator++(int) {
             typename GilControl<Texecution>::Acquire acquire;
-            py::iterator rv = (*(this->_iterator))++;
+            py::iterator rv = (*(this->_pyobj))++;
             return PyIter<T>(rv);
         }
 
         T operator*() const {
             typename GilControl<Texecution>::Acquire acquire;
-            return T(py::reinterpret_borrow<py::object>(**(this->_iterator)));
+            return T(py::reinterpret_borrow<py::object>(**(this->_pyobj)));
         }
 
         std::unique_ptr<T> operator->() const {
             typename GilControl<Texecution>::Acquire acquire;
-            return std::make_unique<T>(py::reinterpret_borrow<py::object>(**(this->_iterator)));
+            return std::make_unique<T>(py::reinterpret_borrow<py::object>(**(this->_pyobj)));
         }
 
         bool operator==(const PyIter<T>& other) const {
             typename GilControl<Texecution>::Acquire acquire;
-            return *(this->_iterator) == *(other._iterator);
+            return *(this->_pyobj) == *(other._pyobj);
         }
 
         bool operator!=(const PyIter<T>& other) const {
             typename GilControl<Texecution>::Acquire acquire;
-            return *(this->_iterator) != *(other._iterator);
+            return *(this->_pyobj) != *(other._pyobj);
         }
     };
 
@@ -176,8 +228,8 @@ public :
     struct AgentData<Inherited, TTagent,
                      typename std::enable_if<std::is_same<TTagent, SingleAgent>::value>::type> : public Inherited {
         AgentData() : Inherited() {}
-        AgentData(std::unique_ptr<py::object>&& s) : Inherited(std::move(s)) {}
-        AgentData(const py::object& s) : Inherited(s) {}
+        AgentData(std::unique_ptr<py::object>&& ad) : Inherited(std::move(ad)) {}
+        AgentData(const py::object& ad) : Inherited(ad) {}
         AgentData(const AgentData& other) : Inherited(other) {}
         AgentData& operator=(const AgentData& other) { dynamic_cast<Inherited&>(*this) = other; return *this; }
         virtual ~AgentData() {}
@@ -185,33 +237,98 @@ public :
 
     template <typename Inherited, typename TTagent>
     struct AgentData<Inherited, TTagent,
-                     typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type> : public PyObj<Inherited> {
+                     typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type> : PyObj<Inherited, py::dict> {
         // AgentData inherits from pyObj<> to manage its python object but Inherited is passed to
         // PyObj as template parameter to print Inherited::class_name when managing AgentData objects
-        AgentData() : PyObj<Inherited>() {}
-        AgentData(std::unique_ptr<py::object>&& s) : PyObj<Inherited>(std::move(s)) {}
-        AgentData(const py::object& s) : PyObj<Inherited>(s) {}
-        AgentData(const AgentData& other) : PyObj<Inherited>(other) {}
-        AgentData& operator=(const AgentData& other) { dynamic_cast<PyObj<Inherited>&>(*this) = other; return *this; }
+
+        AgentData() : PyObj<Inherited, py::dict>() {}
+
+        AgentData(std::unique_ptr<py::object>&& ad)
+        : PyObj<Inherited, py::dict>(std::move(ad)) {}
+
+        AgentData(const py::object& ad)
+        : PyObj<Inherited, py::dict>(ad) {}
+        
+        AgentData(const AgentData& other)
+        : PyObj<Inherited, py::dict>(other) {}
+
+        AgentData& operator=(const AgentData& other) {
+            dynamic_cast<PyObj<Inherited, py::dict>&>(*this) = other;
+            return *this;
+        }
+
         virtual ~AgentData() {}
 
+        std::size_t size() {
+            typename GilControl<Texecution>::Acquire acquire;
+            return this->_pyobj->size();
+        }
+
+        // Agents are dict keys
+        struct Agent : public PyObj<Agent> {
+            static constexpr char class_name[] = "agent";
+            Agent() : PyObj<Agent>() {}
+            Agent(std::unique_ptr<py::object>&& a) : PyObj<Agent>(std::move(a)) {}
+            Agent(const py::object& a) : PyObj<Agent>(a) {}
+            Agent(const Agent& other) : PyObj<Agent>(other) {}
+            Agent& operator=(const Agent& other) { dynamic_cast<PyObj<PyObj<Agent>>&>(*this) = other; return *this; }
+            virtual ~Agent() {}
+        };
+
+        // Elements are dict values
         struct Element : public Inherited {
             Element() : Inherited() {}
-            Element(std::unique_ptr<py::object>&& s) : Inherited(std::move(s)) {}
-            Element(const py::object& s) : Inherited(s) {}
+            Element(std::unique_ptr<py::object>&& e) : Inherited(std::move(e)) {}
+            Element(const py::object& e) : Inherited(e) {}
             Element(const Element& other) : Inherited(other) {}
             Element& operator=(const Element& other) { dynamic_cast<PyObj<Inherited>&>(*this) = other; return *this; }
             virtual ~Element() {}
         };
 
-        PyIter<Element> begin() const {
+        // Dict items
+        struct Item : public PyObj<Item, py::tuple> {
+            static constexpr char class_name[] = "dictionary item";
+
+            Item() : PyObj<Item>() {}
+            Item(std::unique_ptr<py::object>&& a) : PyObj<Item>(std::move(a)) {}
+            Item(const py::object& a) : PyObj<Item>(a) {}
+            Item(const Item& other) : PyObj<Item>(other) {}
+            Item& operator=(const Item& other) { dynamic_cast<PyObj<PyObj<Item>>&>(*this) = other; return *this; }
+            virtual ~Item() {}
+
+            Agent agent() {
+                typename GilControl<Texecution>::Acquire acquire;
+                return Agent((*(this->_pyobj))[0]);
+            }
+
+            Element element() {
+                typename GilControl<Texecution>::Acquire acquire;
+                return Element((*(this->_pyobj))[1]);
+            }
+        };
+
+        Element operator[](const Agent& a) {
             typename GilControl<Texecution>::Acquire acquire;
-            return PyIter<Element>(this->_pyobj->begin());
+            try {
+                return Element((*(this->_pyobj))[a.pyobj()]);
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when getting ") +
+                              Inherited::class_name : " of agent " + a.print() +
+                              ": " + e->what());
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
+            }
         }
 
-        PyIter<Element> end() const {
+        PyIter<Item> begin() const {
             typename GilControl<Texecution>::Acquire acquire;
-            return PyIter<Element>(this->_pyobj->end());
+            return PyIter<Item>(this->_pyobj->begin());
+        }
+
+        PyIter<Item> end() const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return PyIter<Item>(this->_pyobj->end());
         }
     };
 
@@ -244,23 +361,15 @@ public :
                                                                  >::type
                                      >::type Observation;
     
-    struct MemoryState : PyObj<MemoryState> {
+    struct MemoryState : PyObj<MemoryState, py::list> {
         static constexpr char class_name[] = "memory";
 
-        MemoryState() {
-            typename GilControl<Texecution>::Acquire acquire;
-            this->_pyobj = std::make_unique<py::list>();
-        }
+        MemoryState() : PyObj<MemoryState, py::list>() {}
 
-        MemoryState(std::unique_ptr<py::list>&& m) {
-            typename GilControl<Texecution>::Acquire acquire;
-            this->_pyobj = std::make_unique<py::list>(std::move(m));
-        }
+        MemoryState(std::unique_ptr<py::object>&& m)
+        : PyObj<MemoryState, py::list>(std::move(m)) {}
 
-        MemoryState(const py::list& m) {
-            typename GilControl<Texecution>::Acquire acquire;
-            this->_pyobj = std::make_unique<py::list>(m);
-        }
+        MemoryState(const py::object& m) : PyObj<MemoryState, py::list>(m) {}
 
         MemoryState(const MemoryState& other) : PyObj<MemoryState>(other) {}
 
