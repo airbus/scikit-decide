@@ -151,7 +151,7 @@ private :
                             }
                         },
                         [this](PyMARTDPDomain<Texecution>& d, const typename PyMARTDPDomain<Texecution>::State& s)
-                                    -> std::pair<PyMARTDPDomain<Texecution>::Value, PyMARTDPDomain<Texecution>::Action> {
+                                    -> std::pair<typename PyMARTDPDomain<Texecution>::Value, typename PyMARTDPDomain<Texecution>::Action> {
                             try {
                                 auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                     return _heuristic(dd, ss);
