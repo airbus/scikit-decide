@@ -14,16 +14,16 @@ namespace py = pybind11;
 
 
 template <typename Texecution>
-class PyMARTDPDomain : public skdecide::PythonDomainProxy<Texecution> {
+class PyMARTDPDomain : public skdecide::PythonDomainProxy<Texecution, skdecide::MultiAgent> {
 public :
     
     PyMARTDPDomain(const py::object& domain)
-    : skdecide::PythonDomainProxy<Texecution>(domain) {
-        if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing get_applicable_actions()");
+    : skdecide::PythonDomainProxy<Texecution, skdecide::MultiAgent>(domain) {
+        if (!py::hasattr(domain, "get_agent_applicable_actions")) {
+            throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing get_agent_applicable_actions()");
         }
-        if (!py::hasattr(domain, "get_next_state_distribution")) {
-            throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing get_next_state_distribution()");
+        if (!py::hasattr(domain, "sample")) {
+            throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing sample()");
         }
         if (!py::hasattr(domain, "get_transition_value")) {
             throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing get_transition_value()");
@@ -37,14 +37,16 @@ class PyMARTDPSolver {
 public :
 
     PyMARTDPSolver(py::object& domain,
-                  const std::function<py::object (py::object&, const py::object&, const py::object&)>& goal_checker,  // last arg used for optional thread_id
-                  const std::function<py::object (py::object&, const py::object&, const py::object&)>& heuristic,  // last arg used for optional thread_id
+                  const std::function<py::object (const py::object&, const py::object&)>& goal_checker,
+                  const std::function<py::object (const py::object&, const py::object&)>& heuristic,
                   std::size_t time_budget = 3600000,
                   std::size_t rollout_budget = 100000,
                   std::size_t max_depth = 1000,
+                  std::size_t max_feasibility_trials = std::numeric_limits<std::size_t>::infinity(),
+                  std::size_t nb_transition_samples = std::numeric_limits<std::size_t>::infinity(),
                   double discount = 1.0,
-                  double epsilon = 0.001,
-                  bool online_node_garbage = false,
+                  double action_choice_noise = 0.1,
+                  double dead_end_cost = 10e4,
                   bool parallel = false,
                   bool debug_logs = false) {
 
@@ -52,13 +54,15 @@ public :
             _implementation = std::make_unique<Implementation<skdecide::ParallelExecution>>(
                 domain, goal_checker, heuristic,
                 time_budget, rollout_budget, max_depth,
-                discount, epsilon, online_node_garbage, debug_logs
+                max_feasibility_trials, nb_transition_samples, discount,
+                action_choice_noise, dead_end_cost, debug_logs
             );
         } else {
             _implementation = std::make_unique<Implementation<skdecide::SequentialExecution>>(
                 domain, goal_checker, heuristic,
                 time_budget, rollout_budget, max_depth,
-                discount, epsilon, online_node_garbage, debug_logs
+                max_feasibility_trials, nb_transition_samples, discount,
+                action_choice_noise, dead_end_cost, debug_logs
             );
         }
     }
@@ -115,47 +119,66 @@ private :
     public :
 
         Implementation(py::object& domain,
-                       const std::function<py::object (py::object&, const py::object&, const py::object&)>& goal_checker,  // last arg used for optional thread_id
-                       const std::function<py::object (py::object&, const py::object&, const py::object&)>& heuristic,  // last arg used for optional thread_id
+                       const std::function<py::object (const py::object&, const py::object&)>& goal_checker,
+                       const std::function<py::object (const py::object&, const py::object&)>& heuristic,
                        std::size_t time_budget = 3600000,
                        std::size_t rollout_budget = 100000,
                        std::size_t max_depth = 1000,
+                       std::size_t max_feasibility_trials = std::numeric_limits<std::size_t>::infinity(),
+                       std::size_t nb_transition_samples = std::numeric_limits<std::size_t>::infinity(),
                        double discount = 1.0,
-                       double epsilon = 0.001,
-                       bool online_node_garbage = false,
+                       double action_choice_noise = 0.1,
+                       double dead_end_cost = 10e4,
                        bool debug_logs = false)
         : _goal_checker(goal_checker), _heuristic(heuristic) {
             
             _domain = std::make_unique<PyMARTDPDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::MARTDPSolver<PyMARTDPDomain<Texecution>, Texecution>>(
-                                                                            *_domain,
-                                                                            [this](PyMARTDPDomain<Texecution>& d, const typename PyMARTDPDomain<Texecution>::State& s, const std::size_t* thread_id)->bool {
-                                                                                try {
-                                                                                    std::unique_ptr<py::object> r = d.call(thread_id, _goal_checker, s.pyobj());
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    bool rr = r->template cast<bool>();
-                                                                                    r.reset();
-                                                                                    return  rr;
-                                                                                } catch (const std::exception& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
-                                                                                    throw;
-                                                                                }
-                                                                            },
-                                                                            [this](PyMARTDPDomain<Texecution>& d, const typename PyMARTDPDomain<Texecution>::State& s, const std::size_t* thread_id) -> PyMARTDPDomain<Texecution>::Value {
-                                                                                try {
-                                                                                    return PyMARTDPDomain<Texecution>::Value(d.call(thread_id, _heuristic, s.pyobj()));
-                                                                                } catch (const std::exception& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling heuristic: ") + e.what());
-                                                                                    throw;
-                                                                                }
-                                                                            },
-                                                                            time_budget,
-                                                                            rollout_budget,
-                                                                            max_depth,
-                                                                            discount,
-                                                                            epsilon,
-                                                                            online_node_garbage,
-                                                                            debug_logs);
+                        *_domain,
+                        [this](PyMARTDPDomain<Texecution>& d, const typename PyMARTDPDomain<Texecution>::State& s)->bool {
+                            try {
+                                auto fgc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                                    return _goal_checker(dd, ss);
+                                };
+                                std::unique_ptr<py::object> r = d.call(nullptr, fgc, s.pyobj());
+                                typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                bool rr = r->template cast<bool>();
+                                r.reset();
+                                return  rr;
+                            } catch (const std::exception& e) {
+                                spdlog::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
+                                throw;
+                            }
+                        },
+                        [this](PyMARTDPDomain<Texecution>& d, const typename PyMARTDPDomain<Texecution>::State& s)
+                                    -> std::pair<PyMARTDPDomain<Texecution>::Value, PyMARTDPDomain<Texecution>::Action> {
+                            try {
+                                auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                                    return _heuristic(dd, ss);
+                                };
+                                std::unique_ptr<py::object> r = d.call(nullptr, fh, s.pyobj());
+                                typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                py::tuple t = py::cast<py::tuple>(*r);
+                                auto rr = std::make_pair(
+                                    typename PyMARTDPDomain<Texecution>::Value(t[0]),
+                                    typename PyMARTDPDomain<Texecution>::Action(t[1])
+                                );
+                                r.reset();
+                                return  rr;
+                            } catch (const std::exception& e) {
+                                spdlog::error(std::string("SKDECIDE exception when calling heuristic: ") + e.what());
+                                throw;
+                            }
+                        },
+                        time_budget,
+                        rollout_budget,
+                        max_depth,
+                        max_feasibility_trials,
+                        nb_transition_samples,
+                        discount,
+                        action_choice_noise,
+                        dead_end_cost,
+                        debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
@@ -214,8 +237,8 @@ private :
         std::unique_ptr<PyMARTDPDomain<Texecution>> _domain;
         std::unique_ptr<skdecide::MARTDPSolver<PyMARTDPDomain<Texecution>, Texecution>> _solver;
         
-        std::function<py::object (py::object&, const py::object&, const py::object&)> _goal_checker;  // last arg used for optional thread_id
-        std::function<py::object (py::object&, const py::object&, const py::object&)> _heuristic;  // last arg used for optional thread_id
+        std::function<py::object (const py::object&, const py::object&)> _goal_checker;
+        std::function<py::object (const py::object&, const py::object&)> _heuristic;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -229,14 +252,16 @@ void init_pymartdp(py::module& m) {
     py::class_<PyMARTDPSolver> py_martdp_solver(m, "_MARTDPSolver_");
         py_martdp_solver
             .def(py::init<py::object&,
-                          const std::function<py::object (py::object&, const py::object&, const py::object&)>&,  // last arg used for optional thread_id
-                          const std::function<py::object (py::object&, const py::object&, const py::object&)>&,  // last arg used for optional thread_id
+                          const std::function<py::object (const py::object&, const py::object&)>&,
+                          const std::function<py::object (const py::object&, const py::object&)>&,
+                          std::size_t,
+                          std::size_t,
                           std::size_t,
                           std::size_t,
                           std::size_t,
                           double,
                           double,
-                          bool,
+                          double,
                           bool,
                           bool>(),
                  py::arg("domain"),
@@ -245,9 +270,11 @@ void init_pymartdp(py::module& m) {
                  py::arg("time_budget")=3600000,
                  py::arg("rollout_budget")=100000,
                  py::arg("max_depth")=1000,
+                 py::arg("max_feasibility_trials")=std::numeric_limits<std::size_t>::infinity(),
+                 py::arg("nb_transition_samples")=std::numeric_limits<std::size_t>::infinity(),
                  py::arg("discount")=1.0,
-                 py::arg("epsilon")=0.001,
-                 py::arg("online_node_garbage")=false,
+                 py::arg("action_choise_noise")=0.1,
+                 py::arg("dead_end_cost")=10e4,
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
             .def("clear", &PyMARTDPSolver::clear)

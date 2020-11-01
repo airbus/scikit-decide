@@ -90,6 +90,15 @@ public :
         }
 
         template <typename TTpyobj = Tpyobj,
+                  std::enable_if_t<!std::is_base_of<py::object, TTpyobj>::value, int> = 0>
+        PyObj(std::unique_ptr<TTpyobj>&& o, bool check = true) {
+            if (check && !_pyobj) {
+                throw std::runtime_error(std::string("Unitialized python ") +
+                                         Derived::class_name + " object!");
+            }
+        }
+
+        template <typename TTpyobj = Tpyobj,
                   std::enable_if_t<std::is_same<TTpyobj, py::object>::value, int> = 0>
         PyObj(const py::object& o, bool check = true) {
             typename GilControl<Texecution>::Acquire acquire;
@@ -111,7 +120,7 @@ public :
             _pyobj = std::make_unique<Tpyobj>(o.template cast<Tpyobj>());
         }
 
-        template <typename TTpyobj = Tpyobj,
+        template <typename TTpyobj,
                   std::enable_if_t<!std::is_same<TTpyobj, py::object>::value &&
                                    std::is_base_of<py::object, TTpyobj>::value, int> = 0>
         PyObj(const TTpyobj& o, bool check = true) {
@@ -123,6 +132,14 @@ public :
             }
         }
 
+        template <typename TTpyobj,
+                  std::enable_if_t<!std::is_base_of<py::object, TTpyobj>::value &&
+                                   !std::is_base_of<PyObj<Derived, Tpyobj>, TTpyobj>::value, int> = 0>
+        PyObj(const TTpyobj& o, [[maybe_unused]] bool check = true) {
+            typename GilControl<Texecution>::Acquire acquire;
+            _pyobj = std::make_unique<Tpyobj>(o);
+        }
+
         PyObj(const PyObj& other) {
             typename GilControl<Texecution>::Acquire acquire;
             this->_pyobj = std::make_unique<Tpyobj>(*other._pyobj);
@@ -130,6 +147,7 @@ public :
 
         PyObj& operator=(const PyObj& other) {
             typename GilControl<Texecution>::Acquire acquire;
+            *(this->_pyobj) = *other._pyobj;
             this->_pyobj = std::make_unique<Tpyobj>(*other._pyobj);
             return *this;
         }
@@ -147,7 +165,7 @@ public :
         }
 
         struct Hash {
-            std::size_t operator()(const PyObj<Derived>& o) const {
+            std::size_t operator()(const PyObj<Derived, Tpyobj>& o) const {
                 try {
                     return skdecide::PythonHash<Texecution>()(*o._pyobj);
                 } catch(const std::exception& e) {
@@ -159,7 +177,7 @@ public :
         };
 
         struct Equal {
-            bool operator()(const PyObj<Derived>& o1, const PyObj<Derived>& o2) const {
+            bool operator()(const PyObj<Derived, Tpyobj>& o1, const PyObj<Derived, Tpyobj>& o2) const {
                 try {
                     return skdecide::PythonEqual<Texecution>()(*o1._pyobj, *o2._pyobj);
                 } catch(const std::exception& e) {
@@ -171,51 +189,71 @@ public :
         };
     };
 
-    template<typename T>
-    struct PyIter : PyObj<PyIter<T>, py::iterator> {
+    template<typename T, typename Titerator = py::iterator>
+    struct PyIter : PyObj<PyIter<T, Titerator>, Titerator> {
         static constexpr char class_name[] = "iterator";
 
-       PyIter(const py::iterator& iterator)
-        : PyObj<PyIter<T>, py::iterator>(iterator, false) {}
+       PyIter(const Titerator& iterator)
+        : PyObj<PyIter<T, Titerator>, Titerator>(iterator, false) {}
 
-        PyIter(const PyIter& other)
-        : PyObj<PyIter<T>, py::iterator>(other) {}
+        PyIter(const PyIter<T, Titerator>& other)
+        : PyObj<PyIter<T, Titerator>, Titerator>(other) {}
 
-        PyIter& operator=(const PyIter& other) {
-            dynamic_cast<PyObj<PyIter<T>, py::iterator>&>(*this) = other;
+        PyIter<T, Titerator>& operator=(const PyIter<T, Titerator>& other) {
+            dynamic_cast<PyObj<PyIter<T, Titerator>, Titerator>&>(*this) = other;
             return *this;
         }
 
         virtual ~PyIter() {}
 
-        PyIter<T>& operator++() {
+        PyIter<T, Titerator>& operator++() {
             typename GilControl<Texecution>::Acquire acquire;
             ++(*(this->_pyobj));
             return *this;
         }
 
-        PyIter<T> operator++(int) {
+        PyIter<T, Titerator> operator++(int) {
             typename GilControl<Texecution>::Acquire acquire;
-            py::iterator rv = (*(this->_pyobj))++;
-            return PyIter<T>(rv);
+            Titerator rv = (*(this->_pyobj))++;
+            return PyIter<T, Titerator>(rv);
         }
 
+        template <typename TTiterator = Titerator,
+                  std::enable_if_t<!std::is_same<TTiterator, py::detail::dict_iterator>::value, int> = 0>
         T operator*() const {
             typename GilControl<Texecution>::Acquire acquire;
             return T(py::reinterpret_borrow<py::object>(**(this->_pyobj)));
         }
 
+        template <typename TTiterator = Titerator,
+                  std::enable_if_t<std::is_same<TTiterator, py::detail::dict_iterator>::value, int> = 0>
+        T operator*() const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return T(py::make_tuple(py::reinterpret_borrow<py::object>((*(this->_pyobj))->first),
+                                    py::reinterpret_borrow<py::object>((*(this->_pyobj))->second)));
+        }
+
+        template <typename TTiterator = Titerator,
+                  std::enable_if_t<!std::is_same<TTiterator, py::detail::dict_iterator>::value, int> = 0>
         std::unique_ptr<T> operator->() const {
             typename GilControl<Texecution>::Acquire acquire;
             return std::make_unique<T>(py::reinterpret_borrow<py::object>(**(this->_pyobj)));
         }
 
-        bool operator==(const PyIter<T>& other) const {
+        template <typename TTiterator = Titerator,
+                  std::enable_if_t<std::is_same<TTiterator, py::detail::dict_iterator>::value, int> = 0>
+        std::unique_ptr<T> operator->() const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return std::make_unique<T>(py::make_tuple(py::reinterpret_borrow<py::object>((*(this->_pyobj))->first),
+                                                      py::reinterpret_borrow<py::object>((*(this->_pyobj))->second)));
+        }
+
+        bool operator==(const PyIter<T, Titerator>& other) const {
             typename GilControl<Texecution>::Acquire acquire;
             return *(this->_pyobj) == *(other._pyobj);
         }
 
-        bool operator!=(const PyIter<T>& other) const {
+        bool operator!=(const PyIter<T, Titerator>& other) const {
             typename GilControl<Texecution>::Acquire acquire;
             return *(this->_pyobj) != *(other._pyobj);
         }
@@ -227,6 +265,7 @@ public :
     template <typename Inherited, typename TTagent>
     struct AgentData<Inherited, TTagent,
                      typename std::enable_if<std::is_same<TTagent, SingleAgent>::value>::type> : public Inherited {
+        typedef AgentData<Inherited, TTagent> Element;
         AgentData() : Inherited() {}
         AgentData(std::unique_ptr<py::object>&& ad) : Inherited(std::move(ad)) {}
         AgentData(const py::object& ad) : Inherited(ad) {}
@@ -259,7 +298,7 @@ public :
 
         virtual ~AgentData() {}
 
-        std::size_t size() {
+        std::size_t size() const {
             typename GilControl<Texecution>::Acquire acquire;
             return this->_pyobj->size();
         }
@@ -273,6 +312,11 @@ public :
             Agent(const Agent& other) : PyObj<Agent>(other) {}
             Agent& operator=(const Agent& other) { dynamic_cast<PyObj<PyObj<Agent>>&>(*this) = other; return *this; }
             virtual ~Agent() {}
+
+            template <typename Tother,
+                      std::enable_if_t<!std::is_base_of<py::object, Tother>::value &&
+                                       !std::is_base_of<Agent, Tother>::value, int> = 0>
+            Agent(const Tother& other) : Agent(other.pyobj()) {}
         };
 
         // Elements are dict values
@@ -289,21 +333,21 @@ public :
         struct Item : public PyObj<Item, py::tuple> {
             static constexpr char class_name[] = "dictionary item";
 
-            Item() : PyObj<Item>() {}
-            Item(std::unique_ptr<py::object>&& a) : PyObj<Item>(std::move(a)) {}
-            Item(const py::object& a) : PyObj<Item>(a) {}
-            Item(const Item& other) : PyObj<Item>(other) {}
+            Item() : PyObj<Item, py::tuple>() {}
+            Item(std::unique_ptr<py::object>&& a) : PyObj<Item, py::tuple>(std::move(a)) {}
+            Item(const py::object& a) : PyObj<Item, py::tuple>(a) {}
+            Item(const Item& other) : PyObj<Item, py::tuple>(other) {}
             Item& operator=(const Item& other) { dynamic_cast<PyObj<PyObj<Item>>&>(*this) = other; return *this; }
             virtual ~Item() {}
 
             Agent agent() {
                 typename GilControl<Texecution>::Acquire acquire;
-                return Agent((*(this->_pyobj))[0]);
+                return Agent(py::cast<py::object>((*(this->_pyobj))[0]));
             }
 
             Element element() {
                 typename GilControl<Texecution>::Acquire acquire;
-                return Element((*(this->_pyobj))[1]);
+                return Element(py::cast<py::object>((*(this->_pyobj))[1]));
             }
         };
 
@@ -321,14 +365,14 @@ public :
             }
         }
 
-        PyIter<Item> begin() const {
+        PyIter<Item, py::detail::dict_iterator> begin() const {
             typename GilControl<Texecution>::Acquire acquire;
-            return PyIter<Item>(this->_pyobj->begin());
+            return PyIter<Item, py::detail::dict_iterator>(this->_pyobj->begin());
         }
 
-        PyIter<Item> end() const {
+        PyIter<Item, py::detail::dict_iterator> end() const {
             typename GilControl<Texecution>::Acquire acquire;
-            return PyIter<Item>(this->_pyobj->end());
+            return PyIter<Item, py::detail::dict_iterator>(this->_pyobj->end());
         }
     };
 
@@ -458,7 +502,8 @@ public :
             typename GilControl<Texecution>::Acquire acquire;
             if (this->_pyobj->is_none()) {
                 this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("EmptySpace")());
-            } else if (!py::hasattr(*(this->_pyobj), "get_elements")) {
+            } else if (!py::isinstance(*(this->_pyobj), skdecide::Globals::skdecide().attr("EmptySpace")) &&
+                       !py::hasattr(*(this->_pyobj), "get_elements")) {
                 throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement get_elements()");
             }
         }
@@ -494,14 +539,38 @@ public :
 
             virtual ~ApplicableActionSpaceElements() {}
 
-            PyIter<Action> begin() const {
+            PyIter<typename Action::Element> begin() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<Action>(this->_pyobj->begin());
+                return PyIter<Action::Element>(this->_pyobj->begin());
             }
 
-            PyIter<Action> end() const {
+            PyIter<typename Action::Element> end() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<Action>(this->_pyobj->end());
+                return PyIter<Action::Element> (this->_pyobj->end());
+            }
+
+            bool empty() const {
+                typename GilControl<Texecution>::Acquire acquire;
+                try {
+                    if (py::isinstance<py::list>(*(this->_pyobj))) {
+                        return py::cast<py::list>(*(this->_pyobj)).empty();
+                    } else if (py::isinstance<py::tuple>(*(this->_pyobj))) {
+                        return py::cast<py::tuple>(*(this->_pyobj)).empty();
+                    } else if (py::isinstance<py::dict>(*(this->_pyobj))) {
+                        return py::cast<py::dict>(*(this->_pyobj)).empty();
+                    } else if (py::isinstance<py::set>(*(this->_pyobj))) {
+                        return py::cast<py::set>(*(this->_pyobj)).empty();
+                    } else if (py::isinstance<py::sequence>(*(this->_pyobj))) {
+                        return py::cast<py::sequence>(*(this->_pyobj)).empty();
+                    } else {
+                        throw std::runtime_error("SKDECIDE exception: applicable action space elements must be iterable.");
+                    }
+                } catch(const py::error_already_set* e) {
+                    spdlog::error(std::string("SKDECIDE exception when checking emptiness of applicable action space's elements: ") + e->what());
+                    std::runtime_error err(e->what());
+                    delete e;
+                    throw err;
+                }
             }
         };
 
@@ -517,12 +586,48 @@ public :
             }
         }
 
-        Action sample() const {
+        bool empty() const {
             typename GilControl<Texecution>::Acquire acquire;
-            if (!py::hasattr(*(this->_pyobj), "sample")) {
-                throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement sample()");
-            } else {
-                return Action(this->_pyobj->attr("sample")());
+            try {
+                return py::isinstance(*(this->_pyobj), skdecide::Globals::skdecide().attr("EmptySpace")) ||
+                    this->get_elements().empty();
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when checking emptyness of applicable action space's elements: ") + e->what());
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
+            }
+        }
+
+        typename Action::Element sample() const {
+            typename GilControl<Texecution>::Acquire acquire;
+            try {
+                if (!py::hasattr(*(this->_pyobj), "sample")) {
+                    throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement sample()");
+                } else {
+                    return typename Action::Element(this->_pyobj->attr("sample")());
+                }
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when sampling action element: ") + e->what());
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
+            }
+        }
+
+        bool contains(const typename Action::Element& action) {
+            typename GilControl<Texecution>::Acquire acquire;
+            try {
+                if (!py::hasattr(*(this->_pyobj), "contains")) {
+                    throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement contains()");
+                } else {
+                    return this->_pyobj->attr("contains")(action.pyobj()).template cast<bool>();
+                }
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when checking inclusion of action element: ") + e->what());
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
             }
         }
     };
@@ -945,6 +1050,17 @@ public :
         return _implementation->get_applicable_actions(m, thread_id);
     }
 
+    template <typename TTagent = Tagent,
+              typename TactionAgent = typename Action::Agent,
+              typename TagentApplicableActions = typename ApplicableActionSpace::Element>
+    std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
+    get_agent_applicable_actions(const Memory& m,
+                                 const Action& other_agents_actions,
+                                 const TactionAgent& agent,
+                                 const std::size_t* thread_id = nullptr) {
+        return _implementation->get_agent_applicable_actions(m, other_agents_actions, agent, thread_id);
+    }
+
     Observation reset(const std::size_t* thread_id = nullptr) {
         return _implementation->reset(thread_id);
     }
@@ -1007,6 +1123,27 @@ protected :
             }
         }
 
+        template <typename TTagent = Tagent,
+                  typename TactionAgent = typename Action::Agent,
+                  typename TagentApplicableActions = typename ApplicableActionSpace::Element>
+        std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
+        get_agent_applicable_actions(const State& s,
+                                     const Action& other_agents_actions,
+                                     const TactionAgent& agent,
+                                     [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+            try {
+                return TagentApplicableActions(_domain.attr("get_agent_applicable_actions")(
+                                                    s.pyobj(),
+                                                    other_agents_actions.pyobj(),
+                                                    agent.pyobj()));
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when getting agent applicable actions in state ") + s.print() + ": " + e->what());
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
+            }
+        }
+
         Observation reset([[maybe_unused]] const std::size_t* thread_id = nullptr) {
             try {
                 return Observation(_domain.attr("reset")());
@@ -1034,7 +1171,8 @@ protected :
             try {
                 return EnvironmentOutcome(_domain.attr("sample")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when sampling from ") + Memory::class_name + " " +
+                spdlog::error(std::string("SKDECIDE exception when sampling from ") +
+                              typename Memory::Element::class_name + " " +
                               m.print() + " with action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -1046,7 +1184,8 @@ protected :
             try {
                 return State(_domain.attr("get_next_state")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when getting next state from ") + Memory::class_name + " " +
+                spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
+                              typename Memory::Element::class_name + " " +
                               m.print() + " and applying action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -1058,7 +1197,8 @@ protected :
             try {
                 return NextStateDistribution(_domain.attr("get_next_state_distribution")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") + Memory::class_name + " " +
+                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
+                              typename Memory::Element::class_name + " " +
                               m.print() + " and applying action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -1225,7 +1365,30 @@ protected :
                 return ApplicableActionSpace(launch(thread_id, "get_applicable_actions", m.pyobj()));
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting applicable actions in ") + Memory::class_name + " " +
+                spdlog::error(std::string("SKDECIDE exception when getting applicable actions in ") +
+                              typename Memory::Element::class_name + " " +
+                              m.print() + ": " + e.what());
+                throw;
+            }
+        }
+
+        template <typename TTagent = Tagent,
+                  typename TactionAgent = typename Action::Agent,
+                  typename TagentApplicableActions = typename ApplicableActionSpace::Element>
+        std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
+        get_agent_applicable_actions(const Memory& m,
+                                     const Action& other_agents_actions,
+                                     const TactionAgent& agent,
+                                     const std::size_t* thread_id = nullptr) {
+            try {
+                return TagentApplicableActions(launch(thread_id, "get_agent_applicable_actions",
+                                                                        m.pyobj(),
+                                                                        other_agents_actions.pyobj(),
+                                                                        agent.pyobj()));
+            } catch(const std::exception& e) {
+                typename GilControl<Texecution>::Acquire acquire;
+                spdlog::error(std::string("SKDECIDE exception when getting agent applicable actions in ") +
+                              typename Memory::Element::class_name + " " +
                               m.print() + ": " + e.what());
                 throw;
             }
@@ -1257,7 +1420,8 @@ protected :
                 return EnvironmentOutcome(launch(thread_id, "sample", m.pyobj(), e.pyobj()));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when sampling from ") + Memory::class_name +
+                spdlog::error(std::string("SKDECIDE exception when sampling from ") +
+                              typename Memory::Element::class_name +
                               m.print() + " " + " with action " + e.print() + ": " + ex.what());
                 throw;
             }
@@ -1268,7 +1432,8 @@ protected :
                 return State(launch(thread_id, "get_next_state", m.pyobj(), e.pyobj()));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting next state from ") + Memory::class_name + " " +
+                spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
+                              typename Memory::Element::class_name + " " +
                               m.print() + " and applying action " + e.print() + ": " + ex.what());
                 throw;
             }
@@ -1279,7 +1444,8 @@ protected :
                 return NextStateDistribution(launch(thread_id, "get_next_state_distribution", m.pyobj(), e.pyobj()));
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") + Memory::class_name + " " +
+                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
+                              typename Memory::Element::class_name + " " +
                               m.print() + " and applying action " + e.print() + ": " + ex.what());
                 throw;
             }
