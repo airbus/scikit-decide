@@ -47,8 +47,8 @@ public :
                  std::size_t time_budget = 3600000,
                  std::size_t rollout_budget = 100000,
                  std::size_t max_depth = 1000,
-                 std::size_t max_feasibility_trials = std::numeric_limits<std::size_t>::infinity(), // will then choose nb_agents
-                 std::size_t nb_transition_smaples = std::numeric_limits<std::size_t>::infinity(), // will then choose 10*nb_agents
+                 std::size_t max_feasibility_trials = 0, // will then choose nb_agents
+                 std::size_t nb_transition_smaples = 0, // will then choose 10*nb_agents
                  double discount = 1.0,
                  double action_choice_noise = 0.1,
                  double dead_end_cost = 10e4,
@@ -106,11 +106,11 @@ public :
                     _agents.push_back(a.agent());
                 }
 
-                if (_max_feasibility_trials == std::numeric_limits<std::size_t>::infinity()) {
+                if (_max_feasibility_trials == 0) {
                     _max_feasibility_trials = _nb_agents;
                 }
 
-                if (_nb_transition_samples == std::numeric_limits<std::size_t>::infinity()) {
+                if (_nb_transition_samples == 0) {
                     _nb_transition_samples = 10 * _nb_agents;
                 }
             }
