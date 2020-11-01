@@ -541,12 +541,12 @@ public :
 
             PyIter<typename Action::Element> begin() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<Action::Element>(this->_pyobj->begin());
+                return PyIter<typename Action::Element>(this->_pyobj->begin());
             }
 
             PyIter<typename Action::Element> end() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<Action::Element> (this->_pyobj->end());
+                return PyIter<typename Action::Element> (this->_pyobj->end());
             }
 
             bool empty() const {
@@ -1172,7 +1172,7 @@ protected :
                 return EnvironmentOutcome(_domain.attr("sample")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
                 spdlog::error(std::string("SKDECIDE exception when sampling from ") +
-                              typename Memory::Element::class_name + " " +
+                              Memory::Element::class_name + " " +
                               m.print() + " with action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -1185,7 +1185,7 @@ protected :
                 return State(_domain.attr("get_next_state")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
                 spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
-                              typename Memory::Element::class_name + " " +
+                              Memory::Element::class_name + " " +
                               m.print() + " and applying action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -1198,7 +1198,7 @@ protected :
                 return NextStateDistribution(_domain.attr("get_next_state_distribution")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
                 spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
-                              typename Memory::Element::class_name + " " +
+                              Memory::Element::class_name + " " +
                               m.print() + " and applying action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
@@ -1366,7 +1366,7 @@ protected :
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when getting applicable actions in ") +
-                              typename Memory::Element::class_name + " " +
+                              Memory::Element::class_name + " " +
                               m.print() + ": " + e.what());
                 throw;
             }
@@ -1388,7 +1388,7 @@ protected :
             } catch(const std::exception& e) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when getting agent applicable actions in ") +
-                              typename Memory::Element::class_name + " " +
+                              Memory::Element::class_name + " " +
                               m.print() + ": " + e.what());
                 throw;
             }
@@ -1421,7 +1421,7 @@ protected :
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when sampling from ") +
-                              typename Memory::Element::class_name +
+                              Memory::Element::class_name +
                               m.print() + " " + " with action " + e.print() + ": " + ex.what());
                 throw;
             }
@@ -1433,7 +1433,7 @@ protected :
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
-                              typename Memory::Element::class_name + " " +
+                              Memory::Element::class_name + " " +
                               m.print() + " and applying action " + e.print() + ": " + ex.what());
                 throw;
             }
@@ -1445,7 +1445,7 @@ protected :
             } catch(const std::exception& ex) {
                 typename GilControl<Texecution>::Acquire acquire;
                 spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
-                              typename Memory::Element::class_name + " " +
+                              Memory::Element::class_name + " " +
                               m.print() + " and applying action " + e.print() + ": " + ex.what());
                 throw;
             }
