@@ -265,6 +265,7 @@ public :
     template <typename Inherited, typename TTagent>
     struct AgentData<Inherited, TTagent,
                      typename std::enable_if<std::is_same<TTagent, SingleAgent>::value>::type> : public Inherited {
+        typedef void Agent;
         typedef AgentData<Inherited, TTagent> Element;
         AgentData() : Inherited() {}
         AgentData(std::unique_ptr<py::object>&& ad) : Inherited(std::move(ad)) {}
