@@ -148,7 +148,6 @@ public :
         PyObj& operator=(const PyObj& other) {
             typename GilControl<Texecution>::Acquire acquire;
             *(this->_pyobj) = *other._pyobj;
-            this->_pyobj = std::make_unique<Tpyobj>(*other._pyobj);
             return *this;
         }
 
@@ -326,8 +325,36 @@ public :
             Element(std::unique_ptr<py::object>&& e) : Inherited(std::move(e)) {}
             Element(const py::object& e) : Inherited(e) {}
             Element(const Element& other) : Inherited(other) {}
-            Element& operator=(const Element& other) { dynamic_cast<PyObj<Inherited>&>(*this) = other; return *this; }
+            Element& operator=(const Element& other) { dynamic_cast<Inherited&>(*this) = other; return *this; }
             virtual ~Element() {}
+        };
+
+        // To access elements with dict operator []
+        // Objective #1: access Element's methods
+        // Objective #2: modify internal Python object with operator =
+        struct ElementAccessor : public PyObj<ElementAccessor, py::detail::item_accessor>,
+                                 public Element {
+            ElementAccessor(const py::detail::item_accessor& e)
+            : PyObj<ElementAccessor, py::detail::item_accessor>(e),
+              Element(e) {}
+            
+            ElementAccessor(const ElementAccessor& other)
+            : PyObj<ElementAccessor, py::detail::item_accessor>(other),
+              Element(other) {}
+            
+            ElementAccessor& operator=(const ElementAccessor& other) {
+                dynamic_cast<PyObj<ElementAccessor, py::detail::item_accessor>&>(*this) = other;
+                dynamic_cast<Element&>(*this) = Element(other);
+                return *this;
+            }
+
+            void operator=(const Element& other) {
+                *PyObj<ElementAccessor, py::detail::item_accessor>::_pyobj = *other._pyobj; // calls py::detail::item_accessor's operator=
+            }
+            
+            virtual ~ElementAccessor() {}
+            
+            operator Element() const { return Element(*(this->_pyobj)); }
         };
 
         // Dict items
@@ -352,10 +379,10 @@ public :
             }
         };
 
-        Element operator[](const Agent& a) {
+        ElementAccessor operator[](const Agent& a) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return Element((*(this->_pyobj))[a.pyobj()]);
+                return ElementAccessor((*(this->_pyobj))[a.pyobj()]);
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting ") +
                               Inherited::class_name + " of agent " + a.print() +
