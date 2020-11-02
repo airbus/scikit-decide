@@ -44,7 +44,6 @@ try:
                      discount: float = 1.0,
                      action_choice_noise: float = 0.1,
                      dead_end_cost: float = 10000,
-                     online_node_garbage: bool = False,
                      continuous_planning: bool = True,
                      parallel: bool = False,
                      shared_memory_proxy = None,
@@ -67,7 +66,6 @@ try:
             self._discount = discount
             self._action_choice_noise = action_choice_noise
             self._dead_end_cost = dead_end_cost
-            self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
             self._debug_logs = debug_logs
             self._ipc_notify = True
@@ -85,7 +83,6 @@ try:
                                          discount=self._discount,
                                          action_choice_noise=self._action_choice_noise,
                                          dead_end_cost=self._dead_end_cost,
-                                         online_node_garbage=self._online_node_garbage,
                                          parallel=self._parallel,
                                          debug_logs=self._debug_logs)
             self._solver.clear()
