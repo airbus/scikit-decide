@@ -353,8 +353,6 @@ public :
             }
             
             virtual ~ElementAccessor() {}
-            
-            operator Element() const { return Element(*(this->_pyobj)); }
         };
 
         // Dict items
