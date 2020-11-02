@@ -42,16 +42,14 @@ struct PythonHash {
             // special cases
             if (py::isinstance<py::array>(o)) {
                 return PythonContainerProxy<Texecution>(o).hash();
-            }
-            else if (py::isinstance<py::list>(o) || py::isinstance<py::tuple>(o)) {
+            } else if (py::isinstance<py::list>(o) || py::isinstance<py::tuple>(o)) {
                 // we could use PythonContainerProxy<Texecution>(o).hash() but it involves copies and redirections...
                 std::size_t seed = 0;
                 for (auto e : o) {
                     boost::hash_combine(seed, ItemHasher(py::reinterpret_borrow<py::object>(e)));
                 }
                 return seed;
-            }
-            else if (py::isinstance<py::set>(o)) {
+            } else if (py::isinstance<py::set>(o)) {
                 std::size_t seed = 0;
                 py::list keys = py::cast<py::list>(skdecide::Globals::sorted()(o));
                 for (auto k : keys) {
