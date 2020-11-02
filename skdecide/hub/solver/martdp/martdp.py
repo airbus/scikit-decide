@@ -22,7 +22,7 @@ if skdecide_cpp_extension_lib_path not in sys.path:
 
 try:
 
-    from __skdecide_hub_cpp import _LRTDPSolver_ as lrtdp_solver
+    from __skdecide_hub_cpp import _MARTDPSolver_ as martdp_solver
 
     # TODO: remove Markovian req?
     class D(Domain, MultiAgent, Sequential, Simulation, Actions, Goals, Markovian, FullyObservable,

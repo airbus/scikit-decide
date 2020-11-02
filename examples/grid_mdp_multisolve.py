@@ -117,7 +117,6 @@ class GridShmProxy:
                           Value: GridShmProxy.ValueProxy,
                           EnvironmentOutcome: GridShmProxy.EnvironmentOutcomeProxy,
                           TransitionOutcome: GridShmProxy.TransitionOutcomeProxy,
-                          Value: GridShmProxy.StateValueProxy,
                           bool: GridShmProxy.BoolProxy,
                           int: GridShmProxy.IntProxy}
     
@@ -232,30 +231,6 @@ class GridShmProxy:
         def decode(dd):
             return DiscreteDistribution(
                 [(GridShmProxy.StateProxy.decode(o[0]), o[1].value) for o in dd if o[1].value > -0.5])
-    
-    class StateValueProxy:
-        @staticmethod
-        def initialize():
-            return [mp.Value('d', 0), mp.Value('b', False)]
-        
-        @staticmethod
-        def encode(value, shm_value):
-            if value.reward is not None:
-                shm_value[0] = value.reward
-                shm_value[1] = True
-            elif value.cost is not None:
-                shm_value[0] = value.cost
-                shm_value[1] = False
-            else:
-                shm_value[0] = 0
-                shm_value[1] = True
-        
-        @staticmethod
-        def decode(value):
-            if value[1].value:
-                return Value(reward=value[0].value)
-            else:
-                return Value(cost=value[0].value)
     
     class ValueProxy:
         @staticmethod

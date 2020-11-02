@@ -25,8 +25,8 @@ public :
         if (!py::hasattr(domain, "sample")) {
             throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing sample()");
         }
-        if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing get_transition_value()");
+        if (!py::hasattr(domain, "get_agent_applicable_actions")) {
+            throw std::invalid_argument("SKDECIDE exception: MARTDP algorithm needs python domain for implementing get_agent_applicable_actions()");
         }
     }
 
