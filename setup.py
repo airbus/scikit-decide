@@ -192,7 +192,7 @@ if sys.platform == "win32":
             'gym>=0.13.0',
             'numpy>=1.16.4',
             'joblib>=0.13.2',
-            'ray[rllib,debug]>=0.8.6',
+            'ray[rllib,debug]==0.8.5',
             'stable-baselines3==0.9.0'
         ]
     }
@@ -208,7 +208,7 @@ else:
             'gym>=0.13.0',
             'numpy>=1.16.4',
             'joblib>=0.13.2',
-            'ray[rllib,debug]>=0.8.6',
+            'ray[rllib,debug]==0.8.5',
             'torch==1.6.0',
             'stable-baselines3==0.9.0'
         ]
