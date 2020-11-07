@@ -91,7 +91,7 @@ jobs:
           pip install torch>=1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
         shell: pwsh
       - name: Set BOOST_ROOT variable
-        run: echo "::set-env name=BOOST_ROOT::$env:BOOST_ROOT_1_72_0"
+        run: echo "BOOST_ROOT=BOOST_ROOT_1_72_0" >> $GITHUB_ENV
       - name: Build using setup.py
         run: python setup.py sdist bdist_wheel --cpp-extension
       - name: Test with pytest
