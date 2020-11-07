@@ -185,14 +185,15 @@ if sys.platform == "win32":
         'domains': [
             'gym>=0.13.0',
             'numpy>=1.16.4',
-            'matplotlib>=3.1.0'
+            'matplotlib>=3.1.0',
+            'simplejson>=3.16.0'
         ],
         'solvers': [
             'gym>=0.13.0',
             'numpy>=1.16.4',
             'joblib>=0.13.2',
             'ray[rllib,debug]>=0.8.6',
-            'stable-baselines3>=0.8.0'
+            'stable-baselines3==0.9.0'
         ]
     }
 else:
@@ -200,15 +201,16 @@ else:
         'domains': [
             'gym>=0.13.0',
             'numpy>=1.16.4',
-            'matplotlib>=3.1.0'
+            'matplotlib>=3.1.0',
+            'simplejson>=3.16.0'
         ],
         'solvers': [
             'gym>=0.13.0',
             'numpy>=1.16.4',
             'joblib>=0.13.2',
             'ray[rllib,debug]>=0.8.6',
-            'torch>=1.6.0',
-            'stable-baselines3>=0.8.0'
+            'torch==1.6.0',
+            'stable-baselines3==0.9.0'
         ]
     }
 
