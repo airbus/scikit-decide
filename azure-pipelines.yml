@@ -23,6 +23,8 @@ stages:
         Python37:
           python.version: '3.7'
       maxParallel: 2
+    variables:
+      BOOST_ROOT: '$(BOOST_ROOT_1_72_0)'
     steps:
     - checkout: self
       submodules: true
@@ -36,7 +38,8 @@ stages:
         pip install torch>=1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
       displayName: 'Install requirements'
     - script: |
-        echo Add other tasks to build, test, and deploy your project.
+        echo $(BOOST_ROOT)
+        echo $(BOOST_ROOT_1_72_0)
       displayName: 'Set BOOST_ROOT variable'
     - script: |
         python setup.py sdist bdist_wheel --cpp-extension
