@@ -40,6 +40,7 @@ stages:
     - script: |
         echo $(BOOST_ROOT)
         echo $(BOOST_ROOT_1_72_0)
+        set BOOST_ROOT=%BOOST_ROOT_1_72_0%
       displayName: 'Set BOOST_ROOT variable'
     - script: |
         python setup.py sdist bdist_wheel --cpp-extension
