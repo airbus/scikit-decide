@@ -18,9 +18,9 @@ stages:
       vmImage: 'windows-2019'
     strategy:
       matrix:
-        Python36:
-          python.version: '3.7'
         Python37:
+          python.version: '3.7'
+        Python38:
           python.version: '3.8'
       maxParallel: 2
     variables:
@@ -52,6 +52,9 @@ stages:
   jobs:
   - job: TestOnWindows
     steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.8'
     - task: DownloadBuildArtifacts@0
       inputs:
         buildType: 'current'
@@ -63,7 +66,7 @@ stages:
         dir
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
-        pip install --find-links ./dist/ scikit-decide[all]
+        pip install --find-links ./dist/wh_windows scikit-decide[all]
         pytest -v -s tests
 - stage: Deploy
   jobs:
