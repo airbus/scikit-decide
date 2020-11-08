@@ -44,8 +44,18 @@ stages:
     - script: |
         python setup.py sdist bdist_wheel --cpp-extension
       displayName: 'Build using setup.py'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: '(Build.SourcesDirectory)/dist'
+        artifactName: windows_wh
 - stage: Test
   jobs:
+  - task: DownloadBuildArtifacts@0
+    inputs:
+      buildType: 'current'
+      downloadType: 'single'
+      artifactName: windows_wh
+      downloadPath: '$(Build.ArtifactStagingDirectory)'
   - job: TestOnWindows
     steps:
     - script: |
