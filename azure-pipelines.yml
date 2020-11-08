@@ -19,9 +19,9 @@ stages:
     strategy:
       matrix:
         Python36:
-          python.version: '3.6'
-        Python37:
           python.version: '3.7'
+        Python37:
+          python.version: '3.8'
       maxParallel: 2
     variables:
       BOOST_ROOT: 'C:\hostedtoolcache\windows\Boost\1.72.0\x86_64'
@@ -35,7 +35,7 @@ stages:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-        pip install torch>=1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+        pip install torch==1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
       displayName: 'Install requirements'
     - script: |
         echo $(BOOST_ROOT)
@@ -48,9 +48,11 @@ stages:
   jobs:
   - job: TestOnWindows
     steps:
-    - script: echo Testing on Windows
+    - script: |
+        pip install --find-links ./dist/ scikit-decide[all]
+        pytest -v -s tests
 - stage: Deploy
   jobs:
-  - job: Deplo
+  - job: Deploy to PyPI
     steps:
     - script: echo Deploying the wheel
