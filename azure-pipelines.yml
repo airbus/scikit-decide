@@ -2,18 +2,52 @@
 # Start with a minimal pipeline that you can customize to build and deploy your code.
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
+# vmImage: 'vs2017-win2016'
 
 trigger:
 - master
+- galleon/azure-pipelines
 
-pool:
-  vmImage: 'ubuntu-latest'
-
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    displayName: Build
+    continueOnError: false
+    pool:
+      vmImage: 'windows-2019'
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+        Python37:
+          python.version: '3.7'
+      maxParallel: 2
+    steps:
+    - checkout: self
+      submodules: true
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(python.version)'
+    - script: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+      pip install -r requirements-dev.txt
+      pip install torch>=1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+      displayName: 'Install requirements'
+    - script: |
+        echo Add other tasks to build, test, and deploy your project.
+      displayName: 'Set BOOST_ROOT variable'
+    - script: |
+        python setup.py sdist bdist_wheel --cpp-extension
+      displayName: 'Build using setup.py'
+- stage: Test
+  jobs:
+  - job: TestOnWindows
+    steps:
+    - script: echo Testing on Windows
+- stage: Deploy
+  jobs:
+  - job: Deplo
+    steps:
+    - script: echo Deploying the wheel
