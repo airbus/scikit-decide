@@ -46,8 +46,8 @@ stages:
       displayName: 'Build using setup.py'
     - task: PublishBuildArtifacts@1
       inputs:
-        pathToPublish: '(Build.SourcesDirectory)/dist'
-        artifactName: windows_wh
+        pathToPublish: 'dist'
+        artifactName: wh_windows
 - stage: Test
   jobs:
   - job: TestOnWindows
@@ -56,9 +56,10 @@ stages:
       inputs:
         buildType: 'current'
         downloadType: 'single'
-        artifactName: windows_wh
+        artifactName: wh_windows
         downloadPath: '$(Build.ArtifactStagingDirectory)'
     - script: |
+        echo $(Build.ArtifactStagingDirectory)
         dir
         pip install --find-links ./dist/ scikit-decide[all]
         pytest -v -s tests
