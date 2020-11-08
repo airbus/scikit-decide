@@ -57,10 +57,12 @@ stages:
         buildType: 'current'
         downloadType: 'single'
         artifactName: wh_windows
-        downloadPath: '$(Build.ArtifactStagingDirectory)'
+        downloadPath: 'dist'
     - script: |
         echo $(Build.ArtifactStagingDirectory)
         dir
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
         pip install --find-links ./dist/ scikit-decide[all]
         pytest -v -s tests
 - stage: Deploy
