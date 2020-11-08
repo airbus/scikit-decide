@@ -49,6 +49,7 @@ stages:
   - job: TestOnWindows
     steps:
     - script: |
+        dir
         pip install --find-links ./dist/ scikit-decide[all]
         pytest -v -s tests
 - stage: Deploy
