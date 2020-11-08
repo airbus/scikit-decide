@@ -30,10 +30,10 @@ stages:
       inputs:
         versionSpec: '$(python.version)'
     - script: |
-      python -m pip install --upgrade pip
-      pip install -r requirements.txt
-      pip install -r requirements-dev.txt
-      pip install torch>=1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install torch>=1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
       displayName: 'Install requirements'
     - script: |
         echo Add other tasks to build, test, and deploy your project.
