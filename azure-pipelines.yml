@@ -50,14 +50,14 @@ stages:
         artifactName: windows_wh
 - stage: Test
   jobs:
-  - task: DownloadBuildArtifacts@0
-    inputs:
-      buildType: 'current'
-      downloadType: 'single'
-      artifactName: windows_wh
-      downloadPath: '$(Build.ArtifactStagingDirectory)'
   - job: TestOnWindows
     steps:
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: windows_wh
+        downloadPath: '$(Build.ArtifactStagingDirectory)'
     - script: |
         dir
         pip install --find-links ./dist/ scikit-decide[all]
