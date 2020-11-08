@@ -53,6 +53,6 @@ stages:
         pytest -v -s tests
 - stage: Deploy
   jobs:
-  - job: Deploy to PyPI
+  - job: DeployToPyPI
     steps:
     - script: echo Deploying the wheel
