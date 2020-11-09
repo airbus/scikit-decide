@@ -68,8 +68,3 @@ stages:
         pip install -r requirements-dev.txt
         pip install --find-links ./dist/wh_windows scikit-decide[all]
         pytest -v -s tests
-- stage: Deploy
-  jobs:
-  - job: DeployToPyPI
-    steps:
-    - script: echo Deploying the wheel
