@@ -103,8 +103,28 @@ jobs:
         with:
           name: wh_windows
           path: dist
+  build-windows-on-azure:
+    runs-on: ubuntu-latest
+    steps:
+      -name: 'Trigger an Azure Pipeline to build scikit-decide'
+       uses: Azure/pipelines@releases/v1
+       with:
+         azure-devops-project-url: 'https://https://dev.azure.com/guillaumealleon/scikit-decide'
+         azure-pipeline-name: 'galleon.scikit-decide'
+         azure-devops-token: '${{ secrets.AZURE_DEVOPS_TOKEN }}
+      -name: 'Download artifacts from Azure devops build pipeline' 
+       uses: anishsat/ado-download-artifact@v1
+       with:
+         buildDefinitionId: 'latest'
+         pattoken: ${{ secrets.AZURE_DEVOPS_TOKEN }}
+         artifactName: 'wh_windows'
+         orgName: 'guillaumealleon'
+         projectId: 'galleon.scikit-decide'
+      - name: List directory
+        run: |
+          ls -lRt
   deploy:
-    needs: [build-unix, build-macos, build-windows]
+    needs: [build-unix, build-macos, build-windows, build-windows-on-azure]
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -112,6 +132,9 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
+      - name: List directory
+        run: |
+          ls -lRt
       - name: Download Unix artifact
         uses: actions/download-artifact@v1.0.0
         with:
