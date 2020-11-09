@@ -111,7 +111,7 @@ jobs:
         with:
           azure-devops-project-url: 'https://https://dev.azure.com/guillaumealleon/scikit-decide'
           azure-pipeline-name: 'galleon.scikit-decide'
-          azure-devops-token: '${{ secrets.AZURE_DEVOPS_TOKEN }}
+          azure-devops-token: '${{ secrets.AZURE_DEVOPS_TOKEN }}'
       - name: 'Download artifacts from Azure devops build pipeline' 
         uses: anishsat/ado-download-artifact@v1
         with:
