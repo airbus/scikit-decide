@@ -1,4 +1,4 @@
-name: CI
+name: build_test_deply
 
 on:
   push:
@@ -99,8 +99,8 @@ jobs:
         with:
           name: wh_windows
           path: dist
-  test-linux:
-    needs: [build-unix]
+  test-unix:
+    needs: build-unix
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -130,7 +130,7 @@ jobs:
           pip install --find-links ./wh_unix/ scikit-decide[all] 
           pytest -v -s tests
   test-macos:
-    needs: [build-macos]
+    needs: build-macos
     strategy:
       matrix:
         os: [macos-latest]
@@ -164,7 +164,7 @@ jobs:
           pip install --find-links ./wh_macos/ scikit-decide[all] 
           pytest -v -s tests
   test-windows:
-    needs: [build-windows]
+    needs: build-windows
     strategy:
       matrix:
         os: [macos-latest]
