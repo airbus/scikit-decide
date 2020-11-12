@@ -1,0 +1,70 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+# vmImage: 'vs2017-win2016'
+
+trigger:
+- master
+- galleon/azure-pipelines
+
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    displayName: Build
+    continueOnError: false
+    pool:
+      vmImage: 'windows-2019'
+    strategy:
+      matrix:
+        Python37:
+          python.version: '3.7'
+        Python38:
+          python.version: '3.8'
+      maxParallel: 2
+    variables:
+      BOOST_ROOT: 'C:\hostedtoolcache\windows\Boost\1.72.0\x86_64'
+    steps:
+    - checkout: self
+      submodules: true
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(python.version)'
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install torch==1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+      displayName: 'Install requirements'
+    - script: |
+        echo $(BOOST_ROOT)
+        echo $(BOOST_ROOT_1_72_0)
+      displayName: 'Set BOOST_ROOT variable'
+    - script: |
+        python setup.py sdist bdist_wheel --cpp-extension
+      displayName: 'Build using setup.py'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: 'dist'
+        artifactName: wh_windows
+- stage: Test
+  jobs:
+  - job: TestOnWindows
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.8'
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: wh_windows
+        downloadPath: 'dist'
+    - script: |
+        echo $(Build.ArtifactStagingDirectory)
+        dir
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+        pip install --find-links ./dist/wh_windows scikit-decide[all]
+        pytest -v -s tests

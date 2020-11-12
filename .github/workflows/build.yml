@@ -199,6 +199,9 @@ jobs:
       fail-fast: true
     runs-on: ${{ matrix.os }}
     steps:
+      - name: List directory
+        run: |
+          ls -lRt
       - name: Download Unix artifact
         uses: actions/download-artifact@v1.0.0
         with:
