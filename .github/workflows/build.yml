@@ -84,16 +84,15 @@ jobs:
         shell: pwsh
       - name: Set BOOST_ROOT variable
         run: |
-          echo %GITHUB_ENV%
-          echo BOOST_ROOT=%BOOST_ROOT_1_72_0% >> $GITHUB_ENV
-          echo %BOOST_ROOT_1_72_0%
-          echo %BOOST_ROOT%
+          echo $env:GITHUB_ENV
+          gci env:* | sort-object name
+          echo BOOST_ROOT=$env:BOOST_ROOT_1_72_0 >> $GITHUB_ENV
+          echo $env:BOOST_ROOT_1_72_0
+          echo $env:BOOST_ROOT
       - name: Check BOOST_ROOT variable
         run: |
-          echo %BOOST_ROOT_1_72_0%
-          echo %BOOST_ROOT%
-          echo {{ env.BOOST_ROOT_1_72_0 }}
-          echo {{ env.BOOST_ROOT }}
+          echo $env.BOOST_ROOT_1_72_0
+          echo $env.BOOST_ROOT
         shell: pwsh
       - name: Build using setup.py
         run: python setup.py sdist bdist_wheel --cpp-extension
