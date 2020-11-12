@@ -85,9 +85,13 @@ jobs:
       - name: Set BOOST_ROOT variable
         run: |
           echo %GITHUB_ENV%
-          set
+          echo BOOST_ROOT=%BOOST_ROOT_1_72_0% >> $GITHUB_ENV
+          echo %BOOST_ROOT_1_72_0%
+          echo %BOOST_ROOT%
       - name: Check BOOST_ROOT variable
         run: |
+          echo %BOOST_ROOT_1_72_0%
+          echo %BOOST_ROOT%
           echo {{ env.BOOST_ROOT_1_72_0 }}
           echo {{ env.BOOST_ROOT }}
         shell: pwsh
