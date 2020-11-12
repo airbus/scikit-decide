@@ -7,11 +7,7 @@ on:
 
 jobs:
   build-unix:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
@@ -103,8 +99,103 @@ jobs:
         with:
           name: wh_windows
           path: dist
+  test-linux:
+    needs: [build-unix]
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.7, 3.8]
+        compiler: [gnu]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+        shell: bash
+      - name: Download Unix artifact
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wh_unix
+      - name: Test with pytest
+        run: |
+          pip install --find-links ./wh_unix/ scikit-decide[all] 
+          pytest -v -s tests
+  test-macos:
+    needs: [build-macos]
+    strategy:
+      matrix:
+        os: [macos-latest]
+        python-version: [3.7, 3.8]
+        compiler: [gnu]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Install boost package
+        run: brew install boost
+      - name: Install libomp package
+        run: brew install libomp
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+        shell: bash
+      - name: Download MacOS artifact
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wh_macos
+      - name: Test with pytest
+        run: |
+          pip install --find-links ./wh_macos/ scikit-decide[all] 
+          pytest -v -s tests
+  test-windows:
+    needs: [build-windows]
+    strategy:
+      matrix:
+        os: [macos-latest]
+        python-version: [3.7, 3.8]
+        compiler: [gnu]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install torch==1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+        shell: pwsh
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wh_windows
+      - name: Test with pytest
+        run: |
+          pip install --find-links ./wh_windows/ scikit-decide[all] 
+          pytest -v -s tests
   deploy:
-    needs: [build-unix, build-macos, build-windows]
+    needs: [test-unix, test-macos, test-windows]
     strategy:
       matrix:
         os: [ubuntu-latest]
