@@ -84,11 +84,9 @@ jobs:
         shell: pwsh
       - name: Set BOOST_ROOT variable
         run: |
-          echo $env:GITHUB_ENV
           gci env:* | sort-object name
           echo BOOST_ROOT=$env:BOOST_ROOT_1_72_0 | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           echo BOOST_ROOT_1_72_0=$env:BOOST_ROOT_1_72_0
-          echo $env:BOOST_ROOT
       - name: Check BOOST_ROOT variable
         run: |
           echo $env.BOOST_ROOT_1_72_0
