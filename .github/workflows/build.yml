@@ -1,4 +1,4 @@
-name: build_test_deply
+name: build_test_deploy
 
 on:
   push:
@@ -87,7 +87,15 @@ jobs:
           pip install torch==1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
         shell: pwsh
       - name: Set BOOST_ROOT variable
-        run: echo BOOST_ROOT=%BOOST_ROOT_1_72_0% | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        run: |
+          echo BOOST_ROOT=%BOOST_ROOT_1_72_0% | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo %BOOST_ROOT_1_72_0%
+          echo %BOOST_ROOT%
+      - name: Check BOOST_ROOT variable
+        run: |
+          echo %BOOST_ROOT_1_72_0%
+          echo %BOOST_ROOT%
+        shell: pwsh
       - name: Build using setup.py
         run: python setup.py sdist bdist_wheel --cpp-extension
       - name: Test with pytest
@@ -106,12 +114,10 @@ jobs:
         os: [ubuntu-latest]
         python-version: [3.7, 3.8]
         compiler: [gnu]
-      fail-fast: false
+      fail-fast: true
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
@@ -136,12 +142,10 @@ jobs:
         os: [macos-latest]
         python-version: [3.7, 3.8]
         compiler: [gnu]
-      fail-fast: false
+      fail-fast: true
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
       - name: Install boost package
         run: brew install boost
       - name: Install libomp package
@@ -167,10 +171,10 @@ jobs:
     needs: build-windows
     strategy:
       matrix:
-        os: [macos-latest]
+        os: [windows-latest]
         python-version: [3.7, 3.8]
         compiler: [gnu]
-      fail-fast: false
+      fail-fast: true
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -200,7 +204,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: [3.8]
-      fail-fast: false
+      fail-fast: true
     runs-on: ${{ matrix.os }}
     steps:
       - name: Download Unix artifact
