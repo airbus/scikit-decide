@@ -1,5 +1,4 @@
-[![PyPI download total](https://img.shields.io/pypi/dt/scikit-decide.svg)](https://pypi.python.org/pypi/scikit-decide/)
-
+[![PyPI version](https://badge.fury.io/py/gym-jsbsim.svg)](https://badge.fury.io/py/gym-jsbsim) [![HitCount](http://hits.dwyl.com/galleon/gym-jsbsim.svg)](http://hits.dwyl.com/galleon/gym-jsbsim)
 # Scikit-decide for Python
 
 Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.
