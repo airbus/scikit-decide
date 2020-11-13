@@ -1,4 +1,4 @@
-![build_test_deploy](https://github.com/galleon/scikit-decide/workflows/build_test_deploy/badge.svg)
+[![PyPI download total](https://img.shields.io/pypi/dt/scikit-decide.svg)](https://pypi.python.org/pypi/scikit-decide/)
 
 # Scikit-decide for Python
 
