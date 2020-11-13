@@ -209,7 +209,7 @@ else:
             'numpy>=1.16.4',
             'joblib>=0.13.2',
             'ray[rllib,debug]>=1.0.0',
-            'torch>=1.6.0',
+            'torch==1.6.0',
             'stable-baselines3>=0.9.0'
         ]
     }
