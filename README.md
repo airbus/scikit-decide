@@ -1,3 +1,5 @@
+![build_test_deploy](https://github.com/galleon/scikit-decide/workflows/build_test_deploy/badge.svg)
+
 # Scikit-decide for Python
 
 Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.
