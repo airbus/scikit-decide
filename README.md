@@ -1,4 +1,4 @@
-[![PyPI version](https://badge.fury.io/py/scikit-decide.svg)](https://badge.fury.io/py/scikit-decide) [![HitCount](http://hits.dwyl.com/airbus/scikit-decide.svg)](http://hits.dwyl.com/airbus/scikit-decide)![PyPI - Downloads](https://img.shields.io/pypi/dm/scikit-decide)
+[![PyPI version](https://badge.fury.io/py/scikit-decide.svg)](https://badge.fury.io/py/scikit-decide) https://img.shields.io/pypi/l/scikit-decide ![PyPI - Downloads](https://img.shields.io/pypi/dm/scikit-decide)
 # Scikit-decide for Python
 
 Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.
