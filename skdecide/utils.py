@@ -21,7 +21,7 @@ from skdecide.builders.domain import Goals, Markovian, Renderable, FullyObservab
 from skdecide.builders.solver import Policies
 
 __all__ = ['get_registered_domains', 'get_registered_solvers', 'load_registered_domain', 'load_registered_solver',
-           'match_solvers', 'rollout']
+           'match_solvers', 'rollout', 'rollout_episode']
 
 logger = logging.getLogger('skdecide.utils')
 
@@ -235,3 +235,121 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                 logger.error("Observation is not serializable")
 
             return directory
+
+
+def rollout_episode(domain: Domain, solver: Optional[Union[Solver, Policies]] = None,
+                    from_memory: Optional[D.T_memory[D.T_state]] = None,
+                    from_action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None, num_episodes: int = 1,
+                    max_steps: Optional[int] = None, render: bool = True, max_framerate: Optional[float] = None,
+                    verbose: bool = True,
+                    action_formatter: Optional[Callable[[D.T_event], str]] = None,
+                    outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = None,
+                    save_result_directory: str = None) -> Tuple[List[D.T_observation], List[D.T_event], List[D.T_value]]:
+    """This method will run one or more episodes in a domain according to the policy of a solver.
+
+    # Parameters
+    domain: The domain in which the episode(s) will be run.
+    solver: The solver whose policy will select actions to take (if None, a random policy is used).
+    from_memory: The memory or state to consider as rollout starting point (if None, the domain is reset first).
+    from_action: The last applied action when from_memory is used (if necessary for initial observation computation).
+    num_episodes: The number of episodes to run.
+    max_steps: The maximum number of steps for each episode (if None, no limit is set).
+    render: Whether to render the episode(s) during rollout if the domain is renderable.
+    max_framerate: The maximum number of steps/renders per second (if None, steps/renders are never slowed down).
+    verbose: Whether to print information to the console during rollout.
+    action_formatter: The function transforming actions in the string to print (if None, no print).
+    outcome_formatter: The function transforming EnvironmentOutcome objects in the string to print (if None, no print).
+    save_result: Directory in which state visited, actions applied and Transition Value are saved to json.
+    """
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+        logger.debug('Logger is in verbose mode: all debug messages will be there for you to enjoy （〜^∇^ )〜')
+
+    if solver is None:
+        # Create solver-like random walker that works for any domain
+        class RandomWalk(Policies):
+            T_domain = Domain
+            T_agent = Domain.T_agent
+            T_event = Domain.T_event
+
+            def __init__(self):
+                class CastDomain:  # trick to autocast domain's get_applicable_actions() without mutating domain
+                    T_agent = domain.T_agent
+                    T_event = domain.T_event
+
+                    @autocastable
+                    def get_applicable_actions(self) -> D.T_agent[Space[D.T_event]]:
+                        return domain.get_applicable_actions()
+
+                self._domain = CastDomain()
+                autocast_all(self._domain, self._domain, self)
+
+            @autocastable
+            def reset(self) -> None:
+                pass
+
+            @autocastable
+            def sample_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+                return {agent: [space.sample()] for agent, space in self._domain.get_applicable_actions().items()}
+
+            @autocastable
+            def is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
+                return True
+
+        solver = RandomWalk()
+        autocast_all(solver, solver.T_domain, domain)
+
+    has_render = isinstance(domain, Renderable)
+    has_goal = isinstance(domain, Goals)
+    has_memory = not isinstance(domain, Markovian)
+    for i_episode in range(num_episodes):
+        # Initialize episode
+        solver.reset()
+        if from_memory is None:
+            #observation = domain.reset()
+            pass
+        else:
+            domain.set_memory(from_memory)
+            last_state = from_memory[-1] if has_memory else from_memory
+            observation = domain.get_observation_distribution(last_state, from_action).sample()
+        if verbose:
+            logger.debug(f'Episode {i_episode + 1} started with following observation:')
+            logger.debug(observation)
+        # Run episode
+        step = 1
+
+        observations = []
+        actions = []
+        values = []
+        # save the initial observation
+        observations.append(observation)
+
+        while max_steps is None or step <= max_steps:
+            old_time = time.perf_counter()
+            if render and has_render:
+                domain.render()
+            action = solver.sample_action(observation)
+            if action_formatter is not None:
+                logger.debug('Action: {}'.format(action_formatter(action)))
+            domain.set_memory(observations[-1])
+            outcome = domain.step(action)
+            observation = outcome.observation
+            observations.append(observation)
+            actions.append(action)
+            values.append(outcome.value)
+            if outcome_formatter is not None:
+                logger.debug('Result: {}'.format(outcome_formatter(outcome)))
+            if outcome.termination:
+                logger.debug(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
+                break
+            if max_framerate is not None:
+                wait = 1 / max_framerate - (time.perf_counter() - old_time)
+                if wait > 0:
+                    time.sleep(wait)
+            step += 1
+        if render and has_render:
+            domain.render()
+        if has_goal and verbose:
+            logger.info(f'The goal was{"" if domain.is_goal(observation) else " not"} reached '
+                        f'in episode {i_episode + 1}.')
+        return observations, actions, values

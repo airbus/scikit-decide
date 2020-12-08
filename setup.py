@@ -176,6 +176,36 @@ def find_version(*filepath):
         raise RuntimeError("Unable to find version string.")
 
 
+extras_require = {
+    'domains': [
+        'gym>=0.13.0',
+        'numpy>=1.16.4',
+        'matplotlib>=3.1.0'
+    ],
+    'solvers': [
+        'gym>=0.13.0',
+        'numpy>=1.16.4',
+        'joblib>=0.13.2',
+        'tensorflow>=1.8.0,<2.0.0',
+        'stable-baselines>=2.6',
+        'ray[rllib,debug]>=0.8.6'
+    ],
+    # TODO add do dependancies
+    'discrete_optimization':
+    [
+        'shapely>=1.7',
+        'mip==1.9',
+        'minizinc>=0.3',
+        'deap>=1.3',
+        'networkx>=2.4',
+        'numba>=0.50',
+        'matplotlib>=3.1',
+        "seaborn>=0.10.1",
+        "pymzn>=0.18.3",
+        "ortools>=8.0"
+    ]
+}
+
 # Add 'all' to extras_require to install them all at once
 
 print(sys.platform)
@@ -194,7 +224,20 @@ if sys.platform == "win32":
             'joblib>=0.13.2',
             'ray[rllib,debug]>=1.0.0',
             'stable-baselines3>=0.9.0'
-        ]
+        ],
+        'discrete_optimization':
+            [
+                'shapely>=1.7',
+                'mip==1.9',
+                'minizinc>=0.3',
+                'deap>=1.3',
+                'networkx>=2.4',
+                'numba>=0.50',
+                'matplotlib>=3.1',
+                "seaborn>=0.10.1",
+                "pymzn>=0.18.3",
+                "ortools>=8.0"
+            ]
     }
 else:
     extras_require = {
@@ -211,13 +254,30 @@ else:
             'ray[rllib,debug]>=1.0.0',
             'torch==1.6.0',
             'stable-baselines3>=0.9.0'
-        ]
+        ],
+        'discrete_optimization':
+            [
+                'shapely>=1.7',
+                'mip==1.9',
+                'minizinc>=0.3',
+                'deap>=1.3',
+                'networkx>=2.4',
+                'numba>=0.50',
+                'matplotlib>=3.1',
+                "seaborn>=0.10.1",
+                "pymzn>=0.18.3",
+                "ortools>=8.0"
+            ]
     }
 
 all_extra = []
 for extra in extras_require.values():
     all_extra += extra
 extras_require['all'] = all_extra
+from pathlib import Path
+data_packages = ['{}'.format(p).replace('/', '.')
+                 for p in list(Path('skdecide/builders/discrete_optimization/data').glob('**'))
+                 + list(Path('skdecide/builders/discrete_optimization/').glob('**/minizinc'))]
 
 with open('requirements.txt') as f:
     INSTALL_REQUIRES = []
@@ -237,10 +297,11 @@ print(platform.system(), INSTALL_REQUIRES)
 print(platform.system(), TEST_REQUIRES)
 print(platform.system(), extras_require)
 
+
 setup(
     name='scikit-decide',
     version=version,
-    packages=find_packages(),
+    packages=find_packages()+data_packages,
     install_requires=INSTALL_REQUIRES,
     setup_requires=[],
     tests_require=TEST_REQUIRES,

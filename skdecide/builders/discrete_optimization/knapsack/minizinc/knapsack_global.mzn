@@ -1,0 +1,15 @@
+include "fzn_knapsack.mzn";
+include "fzn_knapsack_reif.mzn";
+int: max_capacity;
+int: nb_items;
+set of int: ITEMS = 1..nb_items;
+set of int: TAKEN = 0..1;
+include "knapsack.mzn";
+array[ITEMS] of int: values;
+array[ITEMS] of int: weights;
+var int: weight;
+var int: value;
+array[ITEMS] of var TAKEN: taken;
+constraint weight<=max_capacity;
+constraint knapsack(weights, values, taken, weight, value);
+solve maximize(value);
