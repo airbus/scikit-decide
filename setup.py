@@ -302,6 +302,8 @@ setup(
     name='scikit-decide',
     version=version,
     packages=find_packages()+data_packages,
+    include_package_data=True,
+    package_data = {'': ['*']},
     install_requires=INSTALL_REQUIRES,
     setup_requires=[],
     tests_require=TEST_REQUIRES,
