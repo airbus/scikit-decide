@@ -395,7 +395,7 @@ def run_do():
     solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
                                                               delta_index_freedom=0,
                                                               delta_time_freedom=0),
-                      method=SolvingMethod.CP)
+                      method=SolvingMethod.LNS_CP_CALENDAR)
     solver.solve(domain_factory=lambda: domain)
     states, actions, values = rollout_episode(domain=domain,
                                               max_steps=1000,
@@ -413,9 +413,6 @@ def run_do():
     plot_ressource_view(do_sol.problem, do_sol)
     plot_resource_individual_gantt(do_sol.problem, do_sol)
     plt.show()
-
-
-
 
 
 def run_graph_exploration():

@@ -13,6 +13,7 @@ from skdecide.builders.discrete_optimization.rcpsp_multiskill.solvers.ms_rcpsp_c
 from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPModel, MS_RCPSPModel_Variant
 from skdecide.builders.discrete_optimization.generic_tools.ea.ga_tools import ParametersAltGa
 from skdecide.builders.discrete_optimization.rcpsp_multiskill.solvers.ms_rcpsp_ga_solver import GA_MSRCPSP_Solver
+from skdecide.builders.discrete_optimization.rcpsp_multiskill.solvers.calendar_solver_iterative import SolverWithCalendarIterative
 
 solvers = {"lp": [(LP_Solver_MRSCPSP, {"lp_solver": MilpSolverName.CBC, "parameters_milp": ParametersMilp.default()})],
            "cp": [(CP_MS_MRCPSP_MZN, {"cp_solver_name": CPSolverName.CHUFFED,
@@ -23,7 +24,11 @@ solvers = {"lp": [(LP_Solver_MRSCPSP, {"lp_solver": MilpSolverName.CBC, "paramet
                                                 "option_neighbor": OptionNeighbor.MIX_LARGE_NEIGH})],
            "ls": [(LS_RCPSP_Solver, {"ls_solver": LS_SOLVER.SA,
                                      "nb_iteration_max": 20})],
-           "ga": [(GA_MSRCPSP_Solver, {"parameters_ga": ParametersAltGa.default_msrcpsp()})]
+           "ga": [(GA_MSRCPSP_Solver, {"parameters_ga": ParametersAltGa.default_msrcpsp()})],
+           "lns-cp-calendar": [(SolverWithCalendarIterative, {"option_neighbor": OptionNeighbor.MIX_LARGE_NEIGH,
+                                                              "parameters_cp": ParametersCP.default(),
+                                                              "nb_iteration_lns": 20,
+                                                              "skip_first_iteration": False})]
            }
 
 solvers_map = {}
@@ -32,6 +37,7 @@ for key in solvers:
         solvers_map[solver] = (key, param)
 
 solvers_compatibility = {LP_Solver_MRSCPSP: [MS_RCPSPModel, MS_RCPSPModel_Variant],
+                         SolverWithCalendarIterative: [MS_RCPSPModel, MS_RCPSPModel_Variant],
                          CP_MS_MRCPSP_MZN: [MS_RCPSPModel, MS_RCPSPModel_Variant],
                          LNS_CP_MS_RCPSP_SOLVER: [MS_RCPSPModel, MS_RCPSPModel_Variant],
                          LS_RCPSP_Solver: [MS_RCPSPModel, MS_RCPSPModel_Variant],

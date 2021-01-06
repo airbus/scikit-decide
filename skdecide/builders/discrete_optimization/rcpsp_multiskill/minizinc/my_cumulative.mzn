@@ -15,5 +15,6 @@ include "fzn_my_cumulative_reif.mzn";
 predicate my_cumulative(array[int] of var int: s,
                         array[int] of var int: d,
                         array[int] of var int: r,
-                        array[int] of int: b) =
-    fzn_my_cumulative(s, d, r, b);
+                        array[int] of int: b,
+                        int: max_time) =
+    fzn_my_cumulative(s, d, r, b, max_time);

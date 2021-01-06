@@ -3,7 +3,7 @@ from typing import Union
 from skdecide.builders.scheduling.scheduling_domains import SchedulingDomain, \
     SingleModeRCPSP, SingleModeRCPSPCalendar, MultiModeRCPSP, MultiModeRCPSPCalendar,\
     MultiModeMultiSkillRCPSPCalendar, MultiModeMultiSkillRCPSP, MultiModeRCPSPWithCost, State
-from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, MSRCPSP
+from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, MSRCPSP, MRCPSPCalendar, MSRCPSPCalendar, RCPSPCalendar
 from skdecide.solvers import Solver, DeterministicPolicies
 from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, SingleModeRCPSPModel, \
     MultiModeRCPSPModel, RCPSPModelCalendar, RCPSPSolution
@@ -90,7 +90,7 @@ def build_do_domain(scheduling_domain: Union[SingleModeRCPSP,
                                   successors=scheduling_domain.get_successors(),
                                   horizon=scheduling_domain.get_max_horizon(),
                                   horizon_multiplier=1)
-    if isinstance(scheduling_domain, (MultiModeMultiSkillRCPSP, MultiModeRCPSPCalendar)):
+    if isinstance(scheduling_domain, (MultiModeMultiSkillRCPSP, MultiModeMultiSkillRCPSPCalendar)):
         modes_details = scheduling_domain.get_tasks_modes().copy()
         skills_set = set()
         mode_details_do = {}
@@ -144,7 +144,35 @@ def build_do_domain(scheduling_domain: Union[SingleModeRCPSP,
         # TODO : for imopse this should be True
 
 
-def build_sk_domain(rcpsp_do_domain: Union[MS_RCPSPModel, SingleModeRCPSPModel, MultiModeRCPSP, RCPSPModelCalendar]):
+def build_sk_domain(rcpsp_do_domain: Union[MS_RCPSPModel,
+                                           SingleModeRCPSPModel,
+                                           MultiModeRCPSP,
+                                           RCPSPModelCalendar],
+                    varying_ressource: bool=False):
+    if isinstance(rcpsp_do_domain, RCPSPModelCalendar):
+        if varying_ressource:
+            my_domain = MRCPSPCalendar(resource_names=rcpsp_do_domain.resources_list,
+                                       task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
+                                       tasks_mode=rcpsp_do_domain.mode_details,
+                                       successors=rcpsp_do_domain.successors,
+                                       max_horizon=rcpsp_do_domain.horizon,
+                                       resource_availability=rcpsp_do_domain.resources,
+                                       resource_renewable={r: r not in rcpsp_do_domain.non_renewable_resources
+                                                           for r in rcpsp_do_domain.resources_list})
+            return my_domain
+        # Even if the DO domain is a calendar one... ignore it.
+        else:
+            my_domain = MRCPSP(resource_names=rcpsp_do_domain.resources_list,
+                               task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
+                               tasks_mode=rcpsp_do_domain.mode_details,
+                               successors=rcpsp_do_domain.successors,
+                               max_horizon=rcpsp_do_domain.horizon,
+                               resource_availability={r: max(rcpsp_do_domain.resources[r])
+                                                      for r in rcpsp_do_domain.resources},
+                               resource_renewable={r: r not in rcpsp_do_domain.non_renewable_resources
+                                                   for r in rcpsp_do_domain.resources_list})
+        return my_domain
+
     if isinstance(rcpsp_do_domain, SingleModeRCPSPModel):
         my_domain = RCPSP(resource_names=rcpsp_do_domain.resources_list,
                           task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
@@ -155,6 +183,7 @@ def build_sk_domain(rcpsp_do_domain: Union[MS_RCPSPModel, SingleModeRCPSPModel, 
                           resource_renewable={r: r not in rcpsp_do_domain.non_renewable_resources
                                               for r in rcpsp_do_domain.resources_list})
         return my_domain
+
     elif isinstance(rcpsp_do_domain, (MultiModeRCPSPModel, RCPSPModel)):
          my_domain = MRCPSP(resource_names=rcpsp_do_domain.resources_list,
                             task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
@@ -165,32 +194,63 @@ def build_sk_domain(rcpsp_do_domain: Union[MS_RCPSPModel, SingleModeRCPSPModel, 
                             resource_renewable={r: r not in rcpsp_do_domain.non_renewable_resources
                                                 for r in rcpsp_do_domain.resources_list})
          return my_domain
-    elif isinstance(rcpsp_do_domain, MS_RCPSPModel):
-        resource_type_names = list(rcpsp_do_domain.resources_list)
-        resource_skills = {r: {} for r in resource_type_names}
-        resource_availability = {r: rcpsp_do_domain.resources_availability[r][0]
-                                 for r in rcpsp_do_domain.resources_availability}
-        resource_renewable = {r: r not in rcpsp_do_domain.non_renewable_resources
-                              for r in rcpsp_do_domain.resources_list}
-        resource_unit_names = []
-        for employee in rcpsp_do_domain.employees:
-            resource_unit_names += ["employee-" + str(employee)]
-            resource_skills[resource_unit_names[-1]] = {}
-            resource_availability[resource_unit_names[-1]] = 1
-            resource_renewable[resource_unit_names[-1]] = True
-            for s in rcpsp_do_domain.employees[employee].dict_skill:
-                resource_skills[resource_unit_names[-1]][s] = rcpsp_do_domain.employees[employee].dict_skill[
-                    s].skill_value
 
-        return MSRCPSP(skills_names=list(rcpsp_do_domain.skills_set),
-                       resource_unit_names=resource_unit_names,
-                       resource_type_names=resource_type_names,
-                       resource_skills=resource_skills,
-                       task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
-                       tasks_mode=rcpsp_do_domain.mode_details,
-                       successors=rcpsp_do_domain.successors,
-                       max_horizon=rcpsp_do_domain.horizon,
-                       resource_availability=resource_availability,
-                       resource_renewable=resource_renewable)
+    elif isinstance(rcpsp_do_domain, MS_RCPSPModel):
+        if not varying_ressource:
+            resource_type_names = list(rcpsp_do_domain.resources_list)
+            resource_skills = {r: {} for r in resource_type_names}
+            resource_availability = {r: rcpsp_do_domain.resources_availability[r][0]
+                                     for r in rcpsp_do_domain.resources_availability}
+            resource_renewable = {r: r not in rcpsp_do_domain.non_renewable_resources
+                                  for r in rcpsp_do_domain.resources_list}
+            resource_unit_names = []
+            for employee in rcpsp_do_domain.employees:
+                resource_unit_names += [str(employee)]
+                resource_skills[resource_unit_names[-1]] = {}
+                resource_availability[resource_unit_names[-1]] = 1
+                resource_renewable[resource_unit_names[-1]] = True
+                for s in rcpsp_do_domain.employees[employee].dict_skill:
+                    resource_skills[resource_unit_names[-1]][s] = rcpsp_do_domain.employees[employee].dict_skill[
+                        s].skill_value
+
+            return MSRCPSP(skills_names=list(rcpsp_do_domain.skills_set),
+                           resource_unit_names=resource_unit_names,
+                           resource_type_names=resource_type_names,
+                           resource_skills=resource_skills,
+                           task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
+                           tasks_mode=rcpsp_do_domain.mode_details,
+                           successors=rcpsp_do_domain.successors,
+                           max_horizon=rcpsp_do_domain.horizon,
+                           resource_availability=resource_availability,
+                           resource_renewable=resource_renewable)
+        else:
+            resource_type_names = list(rcpsp_do_domain.resources_list)
+            resource_skills = {r: {} for r in resource_type_names}
+            resource_availability = {r: rcpsp_do_domain.resources_availability[r]
+                                     for r in rcpsp_do_domain.resources_availability}
+            resource_renewable = {r: r not in rcpsp_do_domain.non_renewable_resources
+                                  for r in rcpsp_do_domain.resources_list}
+            resource_unit_names = []
+            for employee in rcpsp_do_domain.employees:
+                resource_unit_names += [str(employee)]
+                resource_skills[resource_unit_names[-1]] = {}
+                resource_availability[resource_unit_names[-1]] = [1 if x else 0
+                                                                  for x in
+                                                                  rcpsp_do_domain.employees[employee].calendar_employee]
+                resource_renewable[resource_unit_names[-1]] = True
+                for s in rcpsp_do_domain.employees[employee].dict_skill:
+                    resource_skills[resource_unit_names[-1]][s] = rcpsp_do_domain.employees[employee].dict_skill[
+                        s].skill_value
+
+            return MSRCPSPCalendar(skills_names=list(rcpsp_do_domain.skills_set),
+                                   resource_unit_names=resource_unit_names,
+                                   resource_type_names=resource_type_names,
+                                   resource_skills=resource_skills,
+                                   task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
+                                   tasks_mode=rcpsp_do_domain.mode_details,
+                                   successors=rcpsp_do_domain.successors,
+                                   max_horizon=rcpsp_do_domain.horizon,
+                                   resource_availability=resource_availability,
+                                   resource_renewable=resource_renewable)
 
 

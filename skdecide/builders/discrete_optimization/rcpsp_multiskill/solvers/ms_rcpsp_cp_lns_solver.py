@@ -115,7 +115,7 @@ class ConstraintHandlerStartTimeInterval_CP(ConstraintHandler):
                         for x in current_solution.schedule])
         last_jobs = [x for x in current_solution.schedule
                      if current_solution.schedule[x]["end_time"] >= max_time-20]
-        # last_jobs = []
+        last_jobs = []
         nb_jobs = self.problem.n_jobs_non_dummy + 2
         jobs_to_fix = set(random.sample(current_solution.schedule.keys(),
                                         int(self.fraction_to_fix * nb_jobs)))
@@ -134,10 +134,10 @@ class ConstraintHandlerStartTimeInterval_CP(ConstraintHandler):
         employee_usage_max_time = {emp: max([current_solution.schedule[t]["end_time"]
                                             for t in employee_usage[emp]]) if len(employee_usage[emp])>0 else 0
                                for emp in employee_usage}
-        employee_usage_time = {emp: sum([current_solution.schedule[t]["end_time"] -
-                                         current_solution.schedule[t]["start_time"]
-                                         for t in employee_usage[emp]])
-                               for emp in employee_usage}
+        # employee_usage_time = {emp: sum([current_solution.schedule[t]["end_time"] -
+        #                                  current_solution.schedule[t]["start_time"]
+        #                                  for t in employee_usage[emp]])
+        #                        for emp in employee_usage}
         if False:
             sorted_employee = list(sorted(employee_usage, key=lambda x: employee_usage_max_time[x]))
             for i in range(int(len(employee_usage)/4)):
@@ -211,6 +211,7 @@ class Params:
         self.plus_delta = plus_delta
         self.fraction_task_to_fix_employee = fraction_task_to_fix_employee
 
+
 class ConstraintHandlerMix(ConstraintHandler):
     def __init__(self, problem: MS_RCPSPModel,
                  list_params: List[Params], list_proba: List[float]):
@@ -270,19 +271,16 @@ class OptionNeighbor(Enum):
     MIX_ALL = 0
     MIX_FAST = 1
     MIX_LARGE_NEIGH = 2
+    OM = 4
+    DEBUG = 3
 
-class LNS_CP_MS_RCPSP_SOLVER(SolverDO):
-    def __init__(self, rcpsp_model: MS_RCPSPModel,
-                 option_neighbor: OptionNeighbor=OptionNeighbor.MIX_ALL, **kwargs):
-        self.rcpsp_model = rcpsp_model
-        self.solver = CP_MS_MRCPSP_MZN(rcpsp_model=self.rcpsp_model,
-                                       cp_solver_name=CPSolverName.CHUFFED, **kwargs)
-        self.solver.init_model()
-        self.parameters_cp = kwargs.get("parameters_cp", ParametersCP.default())
-        params_objective_function = get_default_objective_setup(problem=self.rcpsp_model)
-        # constraint_handler = ConstraintHandlerFixStartTime(problem=rcpsp_problem,
-        #                                                    fraction_fix_start_time=0.5)
-        self.params_all = [Params(fraction_to_fix=0.9,
+
+def build_neighbor_operator(option_neighbor: OptionNeighbor, rcpsp_model):
+    params_om = [Params(fraction_to_fix=0.75,
+                        minus_delta=100,
+                        plus_delta=100,
+                        fraction_task_to_fix_employee=0.8)]
+    params_all = [Params(fraction_to_fix=0.9,
                          minus_delta=1,
                          plus_delta=1,
                          fraction_task_to_fix_employee=0.5),
@@ -386,94 +384,115 @@ class LNS_CP_MS_RCPSP_SOLVER(SolverDO):
                          plus_delta=3,
                          fraction_task_to_fix_employee=0.2),
                   Params(fraction_to_fix=0.98,
-                         minus_delta=8,
-                         plus_delta=8,
-                         fraction_task_to_fix_employee=0.75),
-                  Params(fraction_to_fix=0.98,
-                         minus_delta=10,
-                         plus_delta=10,
-                         fraction_task_to_fix_employee=1.)
-                  ]
-        self.params_fast = [Params(fraction_to_fix=0.9,
-                                   minus_delta=1,
-                                   plus_delta=1,
-                                   fraction_task_to_fix_employee=0.93),
-                            Params(fraction_to_fix=0.8,
-                                   minus_delta=1,
-                                   plus_delta=1,
-                                   fraction_task_to_fix_employee=0.95),
-                            Params(fraction_to_fix=0.8,
-                                   minus_delta=2,
-                                   plus_delta=2,
-                                   fraction_task_to_fix_employee=1.),
-                            Params(fraction_to_fix=0.9,
-                                   minus_delta=1,
-                                   plus_delta=1,
-                                   fraction_task_to_fix_employee=0.93),
-                            Params(fraction_to_fix=0.92,
-                                   minus_delta=3,
-                                   plus_delta=3,
-                                   fraction_task_to_fix_employee=0.93),
-                            Params(fraction_to_fix=0.98,
-                                   minus_delta=7,
-                                   plus_delta=7,
-                                   fraction_task_to_fix_employee=0.92),
-                            Params(fraction_to_fix=0.95,
-                                   minus_delta=5,
-                                   plus_delta=5,
-                                   fraction_task_to_fix_employee=0.95)]
-        self.params_large = [
-            Params(fraction_to_fix=0.9,
-                   minus_delta=12,
-                   plus_delta=12,
-                   fraction_task_to_fix_employee=0.93),
-            Params(fraction_to_fix=0.8,
-                   minus_delta=3,
-                   plus_delta=3,
-                   fraction_task_to_fix_employee=0.),
-            Params(fraction_to_fix=0.7,
-                   minus_delta=12,
-                   plus_delta=12,
-                   fraction_task_to_fix_employee=0.8),
-            Params(fraction_to_fix=0.7,
-                   minus_delta=5,
-                   plus_delta=5,
-                   fraction_task_to_fix_employee=0.1),
-            Params(fraction_to_fix=0.6,
-                   minus_delta=3,
-                   plus_delta=3,
-                   fraction_task_to_fix_employee=0.85),
-            Params(fraction_to_fix=0.4,
-                   minus_delta=2,
-                   plus_delta=2,
-                   fraction_task_to_fix_employee=1.),
-            Params(fraction_to_fix=0.9,
-                   minus_delta=4,
-                   plus_delta=4,
-                   fraction_task_to_fix_employee=0.7),
-            Params(fraction_to_fix=0.7,
-                   minus_delta=4,
-                   plus_delta=4,
-                   fraction_task_to_fix_employee=0.7),
-            Params(fraction_to_fix=0.8,
-                   minus_delta=5,
-                   plus_delta=5,
-                   fraction_task_to_fix_employee=0.3)
-        ]
-        params = None
-        if option_neighbor == OptionNeighbor.MIX_ALL:
-            params = self.params_all
-        if option_neighbor == OptionNeighbor.MIX_FAST:
-            params = self.params_fast
-        if option_neighbor == OptionNeighbor.MIX_LARGE_NEIGH:
-            params = self.params_large
-        probas = [1/len(params)]*len(params)
-        self.constraint_handler = ConstraintHandlerStartTimeInterval_CP(problem=self.rcpsp_model,
-                                                                        fraction_to_fix=0.5,
-                                                                        minus_delta=1,
-                                                                        plus_delta=1)
-        self.constraint_handler = ConstraintHandlerMix(problem=self.rcpsp_model,
-                                                       list_params=params, list_proba=probas)
+                              minus_delta=8,
+                              plus_delta=8,
+                              fraction_task_to_fix_employee=0.75),
+                       Params(fraction_to_fix=0.98,
+                              minus_delta=10,
+                              plus_delta=10,
+                              fraction_task_to_fix_employee=1.)
+                       ]
+    params_fast = [Params(fraction_to_fix=0.9,
+                               minus_delta=1,
+                               plus_delta=1,
+                               fraction_task_to_fix_employee=0.93),
+                        Params(fraction_to_fix=0.8,
+                               minus_delta=1,
+                               plus_delta=1,
+                               fraction_task_to_fix_employee=0.95),
+                        Params(fraction_to_fix=0.8,
+                               minus_delta=2,
+                               plus_delta=2,
+                               fraction_task_to_fix_employee=1.),
+                        Params(fraction_to_fix=0.9,
+                               minus_delta=1,
+                               plus_delta=1,
+                               fraction_task_to_fix_employee=0.93),
+                        Params(fraction_to_fix=0.92,
+                               minus_delta=3,
+                               plus_delta=3,
+                               fraction_task_to_fix_employee=0.93),
+                        Params(fraction_to_fix=0.98,
+                               minus_delta=7,
+                               plus_delta=7,
+                               fraction_task_to_fix_employee=0.92),
+                        Params(fraction_to_fix=0.95,
+                               minus_delta=5,
+                               plus_delta=5,
+                               fraction_task_to_fix_employee=0.95)]
+    params_debug = [Params(fraction_to_fix=1.,
+                                minus_delta=0,
+                                plus_delta=0,
+                                fraction_task_to_fix_employee=1.)]
+    params_large = [
+        Params(fraction_to_fix=0.9,
+               minus_delta=12,
+               plus_delta=12,
+               fraction_task_to_fix_employee=0.93),
+        Params(fraction_to_fix=0.8,
+               minus_delta=3,
+               plus_delta=3,
+               fraction_task_to_fix_employee=0.),
+        Params(fraction_to_fix=0.7,
+               minus_delta=12,
+               plus_delta=12,
+               fraction_task_to_fix_employee=0.8),
+        Params(fraction_to_fix=0.7,
+               minus_delta=5,
+               plus_delta=5,
+               fraction_task_to_fix_employee=0.1),
+        Params(fraction_to_fix=0.6,
+               minus_delta=3,
+               plus_delta=3,
+               fraction_task_to_fix_employee=0.85),
+        Params(fraction_to_fix=0.4,
+               minus_delta=2,
+               plus_delta=2,
+               fraction_task_to_fix_employee=1.),
+        Params(fraction_to_fix=0.9,
+               minus_delta=4,
+               plus_delta=4,
+               fraction_task_to_fix_employee=0.7),
+        Params(fraction_to_fix=0.7,
+               minus_delta=4,
+               plus_delta=4,
+               fraction_task_to_fix_employee=0.7),
+        Params(fraction_to_fix=0.8,
+               minus_delta=5,
+               plus_delta=5,
+               fraction_task_to_fix_employee=0.3)
+    ]
+    params = None
+    if option_neighbor == OptionNeighbor.MIX_ALL:
+        params = params_all
+    if option_neighbor == OptionNeighbor.MIX_FAST:
+        params = params_fast
+    if option_neighbor == OptionNeighbor.MIX_LARGE_NEIGH:
+        params = params_large
+    if option_neighbor == OptionNeighbor.DEBUG:
+        params = params_debug
+    if option_neighbor == OptionNeighbor.OM:
+        params = params_om
+    probas = [1 / len(params)] * len(params)
+    # self.constraint_handler = ConstraintHandlerStartTimeInterval_CP(problem=self.rcpsp_model,
+    #                                                                 fraction_to_fix=0.5,
+    #                                                                 minus_delta=1,
+    #                                                                 plus_delta=1)
+    constraint_handler = ConstraintHandlerMix(problem=rcpsp_model,
+                                              list_params=params, list_proba=probas)
+    return constraint_handler
+
+class LNS_CP_MS_RCPSP_SOLVER(SolverDO):
+    def __init__(self, rcpsp_model: MS_RCPSPModel,
+                 option_neighbor: OptionNeighbor=OptionNeighbor.MIX_ALL, **kwargs):
+        self.rcpsp_model = rcpsp_model
+        self.solver = CP_MS_MRCPSP_MZN(rcpsp_model=self.rcpsp_model,
+                                       cp_solver_name=CPSolverName.CHUFFED,
+                                       **kwargs)
+        self.solver.init_model(output_type=True, **kwargs)
+        self.parameters_cp = kwargs.get("parameters_cp", ParametersCP.default())
+        params_objective_function = get_default_objective_setup(problem=self.rcpsp_model)
+        self.constraint_handler = build_neighbor_operator(option_neighbor=option_neighbor, rcpsp_model=self.rcpsp_model)
         self.post_pro = PostProMSRCPSP(problem=self.rcpsp_model,
                                        params_objective_function=params_objective_function)
         self.initial_solution_provider = InitialSolutionMS_RCPSP(problem=self.rcpsp_model,

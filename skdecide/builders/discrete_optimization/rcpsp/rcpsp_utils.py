@@ -1,6 +1,6 @@
 from skdecide.builders.discrete_optimization.generic_tools.graph_api import Graph
 from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution, RCPSPModel, RCPSPModelCalendar
-from typing import List
+from typing import List, Union
 import matplotlib.pyplot as plt
 from copy import deepcopy
 import numpy as np
@@ -13,16 +13,19 @@ import scipy.stats
 
 def compute_resource_consumption(rcpsp_model: RCPSPModel,
                                  rcpsp_sol: RCPSPSolution,
+                                 list_resources: List[Union[int, str]]=None,
                                  future_view=True):
     modes_extended = deepcopy(rcpsp_sol.rcpsp_modes)
     modes_extended.insert(0, 1)
     modes_extended.append(1)
     last_activity = max(rcpsp_sol.rcpsp_schedule)
     makespan = rcpsp_sol.rcpsp_schedule[last_activity]['end_time']
-    consumptions = np.zeros((len(rcpsp_model.resources), makespan + 1))
+    if list_resources is None:
+        list_resources = rcpsp_model.resources_list
+    consumptions = np.zeros((len(list_resources), makespan + 1))
     for act_id in rcpsp_sol.rcpsp_schedule:
-        for ir in range(len(rcpsp_model.resources)):
-            use_ir = rcpsp_model.mode_details[act_id][modes_extended[act_id - 1]][rcpsp_model.resources_list[ir]]
+        for ir in range(len(list_resources)):
+            use_ir = rcpsp_model.mode_details[act_id][modes_extended[act_id - 1]][list_resources[ir]]
             if future_view:
                 consumptions[ir, rcpsp_sol.rcpsp_schedule[act_id]["start_time"] + 1:rcpsp_sol.rcpsp_schedule[act_id][
                                                                                         "end_time"] + 1] += use_ir
@@ -32,12 +35,19 @@ def compute_resource_consumption(rcpsp_model: RCPSPModel,
     return consumptions, np.arange(0, makespan+1, 1)
 
 
-def compute_nice_resource_consumption(rcpsp_model: RCPSPModel, rcpsp_sol: RCPSPSolution):
-    c_future, times = compute_resource_consumption(rcpsp_model, rcpsp_sol, True)
-    c_past, times = compute_resource_consumption(rcpsp_model, rcpsp_sol, False)
-    merged_times = {i: [] for i in range(len(rcpsp_model.resources_list))}
-    merged_cons = {i: [] for i in range(len(rcpsp_model.resources_list))}
-    for r in range(len(rcpsp_model.resources_list)):
+def compute_nice_resource_consumption(rcpsp_model: RCPSPModel, rcpsp_sol: RCPSPSolution,
+                                      list_resources: List[Union[int, str]] = None):
+    if list_resources is None:
+        list_resources = rcpsp_model.resources_list
+    c_future, times = compute_resource_consumption(rcpsp_model, rcpsp_sol,
+                                                   list_resources=list_resources,
+                                                   future_view=True)
+    c_past, times = compute_resource_consumption(rcpsp_model, rcpsp_sol,
+                                                 list_resources=list_resources,
+                                                 future_view=False)
+    merged_times = {i: [] for i in range(len(list_resources))}
+    merged_cons = {i: [] for i in range(len(list_resources))}
+    for r in range(len(list_resources)):
         for index_t in range(len(times)):
             merged_times[r] += [times[index_t], times[index_t]]
             merged_cons[r] += [c_future[r, index_t], c_past[r, index_t]]
@@ -49,6 +59,7 @@ def compute_nice_resource_consumption(rcpsp_model: RCPSPModel, rcpsp_sol: RCPSPS
 
 def plot_ressource_view(rcpsp_model: RCPSPModel,
                         rcpsp_sol: RCPSPSolution,
+                        list_resource: List[Union[int, str]]=None,
                         title_figure="",
                         fig=None,
                         ax=None):
@@ -56,23 +67,25 @@ def plot_ressource_view(rcpsp_model: RCPSPModel,
     modes_extended.insert(0, 1)
     modes_extended.append(1)
     with_calendar = isinstance(rcpsp_model, RCPSPModelCalendar)
+    if list_resource is None:
+        list_resource = rcpsp_model.resources_list
     if ax is None:
-        fig, ax = plt.subplots(nrows=len(rcpsp_model.resources_list),
+        fig, ax = plt.subplots(nrows=len(list_resource),
                                figsize=(10, 5),
                                sharex=True)
         fig.suptitle(title_figure)
-    polygons_ax = {i: [] for i in range(len(rcpsp_model.resources_list))}
-    labels_ax = {i: [] for i in range(len(rcpsp_model.resources_list))}
+    polygons_ax = {i: [] for i in range(len(list_resource))}
+    labels_ax = {i: [] for i in range(len(list_resource))}
     sorted_activities = sorted(rcpsp_sol.rcpsp_schedule, key=lambda x: rcpsp_sol.rcpsp_schedule[x]["start_time"])
     for j in sorted_activities:
         time_start = rcpsp_sol.rcpsp_schedule[j]["start_time"]
         time_end = rcpsp_sol.rcpsp_schedule[j]["end_time"]
-        for i in range(len(rcpsp_model.resources_list)):
-            cons = rcpsp_model.mode_details[j][modes_extended[j-1]][rcpsp_model.resources_list[i]]
+        for i in range(len(list_resource)):
+            cons = rcpsp_model.mode_details[j][modes_extended[j-1]][list_resource[i]]
             if cons == 0:
                 continue
-            bound = rcpsp_model.resources[rcpsp_model.resources_list[i]] if not with_calendar \
-                    else max(rcpsp_model.resources[rcpsp_model.resources_list[i]])
+            bound = rcpsp_model.resources[list_resource[i]] if not with_calendar \
+                    else max(rcpsp_model.resources[list_resource[i]])
             for k in range(0, bound):
                 polygon = Polygon([(time_start, k), (time_end, k), (time_end, k+cons),
                                    (time_start, k+cons), (time_start, k)])
@@ -81,7 +94,7 @@ def plot_ressource_view(rcpsp_model: RCPSPModel,
                     polygons_ax[i].append(polygon)
                     labels_ax[i].append(j)
                     break
-    for i in range(len(rcpsp_model.resources_list)):
+    for i in range(len(list_resource)):
         patches = []
         for polygon in polygons_ax[i]:
             x, y = polygon.exterior.xy
@@ -90,18 +103,19 @@ def plot_ressource_view(rcpsp_model: RCPSPModel,
         p = PatchCollection(patches, cmap=matplotlib.cm.get_cmap('Blues'),
                             alpha=0.4)
         ax[i].add_collection(p)
-    merged_times, merged_cons = compute_nice_resource_consumption(rcpsp_model, rcpsp_sol)
-    for i in range(len(rcpsp_model.resources_list)):
+    merged_times, merged_cons = compute_nice_resource_consumption(rcpsp_model, rcpsp_sol,
+                                                                  list_resources=list_resource)
+    for i in range(len(list_resource)):
         ax[i].plot(merged_times[i], merged_cons[i], color="r", linewidth=2,
-                   label="Consumption "+str(rcpsp_model.resources_list[i]), zorder=1)
+                   label="Consumption "+str(list_resource[i]), zorder=1)
         if not with_calendar:
-            ax[i].axhline(y=rcpsp_model.resources[rcpsp_model.resources_list[i]], linestyle="--",
-                          label="Limit : "+str(rcpsp_model.resources_list[i]), zorder=0)
+            ax[i].axhline(y=rcpsp_model.resources[list_resource[i]], linestyle="--",
+                          label="Limit : "+str(list_resource[i]), zorder=0)
         else:
             ax[i].plot(merged_times[i],
-                       [rcpsp_model.resources[rcpsp_model.resources_list[i]][m]
+                       [rcpsp_model.resources[list_resource[i]][m]
                         for m in merged_times[i]], linestyle="--",
-                       label="Limit : " + str(rcpsp_model.resources_list[i]), zorder=0)
+                       label="Limit : " + str(list_resource[i]), zorder=0)
         ax[i].legend(fontsize=5)
         lims = ax[i].get_xlim()
         ax[i].set_xlim([lims[0], 1.*lims[1]])
@@ -150,6 +164,7 @@ def plot_task_gantt(rcpsp_model: RCPSPModel,
     ax.set_yticks(range(nb_task))
     ax.set_yticklabels(tuple(["Task "+str(tasks[j]) for j in range(nb_task)]),
                        fontdict={"size": 7})
+    return fig
 
 
 
@@ -203,6 +218,8 @@ def compute_schedule_per_resource_individual(rcpsp_model: RCPSPModel,
         mode = modes_extended[activity-1]
         start_time = rcpsp_sol.rcpsp_schedule[activity]["start_time"]
         end_time = rcpsp_sol.rcpsp_schedule[activity]["end_time"]
+        if end_time == start_time:
+            continue
         resources_needed = {r: rcpsp_model.mode_details[activity][mode][r]
                             for r in resources}
         for r in resources_needed:
@@ -251,6 +268,7 @@ def compute_schedule_per_resource_individual(rcpsp_model: RCPSPModel,
                     print("activity : ", activity)
                     print("Problem, can't build schedule")
                     print(array_ressource_usage[r]["activity"])
+                    rneeded = 0
 
     return array_ressource_usage
 

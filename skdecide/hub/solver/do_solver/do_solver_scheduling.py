@@ -32,6 +32,7 @@ class SolvingMethod(Enum):
     CP = 4
     LNS_LP = 5
     LNS_CP = 6
+    LNS_CP_CALENDAR = 7 # New algorithm, similar to lns, adding iterativelyu constraint to fulfill calendar constraints..
 
 
 def build_solver(solving_method: SolvingMethod, do_domain):
@@ -44,7 +45,9 @@ def build_solver(solving_method: SolvingMethod, do_domain):
                                  SolvingMethod.LP: "lp",
                                  SolvingMethod.CP: "cp",
                                  SolvingMethod.LNS_LP: "lns-lp",
-                                 SolvingMethod.LNS_CP: "lns-cp"}
+                                 SolvingMethod.LNS_CP: "lns-cp",
+                                 SolvingMethod.LNS_CP_CALENDAR: "lns-cp-calendar"
+                                 }
         smap = [(av, solvers_map[av]) for av in available
                 if solvers_map[av][0] == solving_method_to_str[solving_method]]
         if len(smap) > 0:
@@ -58,7 +61,8 @@ def build_solver(solving_method: SolvingMethod, do_domain):
                                  SolvingMethod.LP: "lp",
                                  SolvingMethod.CP: "cp",
                                  SolvingMethod.LNS_LP: "lns-lp",
-                                 SolvingMethod.LNS_CP: "lns-cp"}
+                                 SolvingMethod.LNS_CP: "lns-cp",
+                                 SolvingMethod.LNS_CP_CALENDAR: "lns-cp-calendar"}
         print([(av, solvers_map[av]) for av in available])
         smap = [(av, solvers_map[av]) for av in available
                 if solvers_map[av][0] == solving_method_to_str[solving_method]]

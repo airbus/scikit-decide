@@ -1,3 +1,4 @@
+from dataclasses import InitVar
 from typing import Union
 
 from skdecide.builders.discrete_optimization.generic_tools.cp_tools import CPSolver, ParametersCP, CPSolverName, map_cp_solver_name
@@ -20,6 +21,19 @@ files_mzn = {"multi-calendar": os.path.join(this_path, "../minizinc/ms_rcpsp_mul
                                                          "../minizinc/ms_rcpsp_multi_mode_mzn_calendar_no_ressource.mzn")}
 
 
+class MS_RCPSPSolCP:
+    objective: int
+    __output_item: InitVar[str] = None
+
+    def __init__(self, objective, _output_item, **kwargs):
+        self.objective = objective
+        self.dict = kwargs
+        print("One solution ", self.objective)
+
+    def check(self) -> bool:
+        return True
+
+
 class CP_MS_MRCPSP_MZN(CPSolver):
     def __init__(self,
                  rcpsp_model: MS_RCPSPModel,
@@ -36,14 +50,22 @@ class CP_MS_MRCPSP_MZN(CPSolver):
         if isinstance(self.rcpsp_model, RCPSPModelCalendar):
             self.calendar = True
         self.one_ressource_per_task = kwargs.get('one_ressource_per_task', False)
+        self.resources_index = None
 
     def init_model(self, **args):
         no_ressource = len(self.rcpsp_model.resources_list) == 0
-        print(files_mzn["multi-calendar"] if not no_ressource else files_mzn["multi-calendar-no-ressource"])
-        model = Model(files_mzn["multi-calendar"] if not no_ressource else files_mzn["multi-calendar-no-ressource"])
+        model_type = "multi-calendar" if not no_ressource else files_mzn["multi-calendar-no-ressource"]
+        model = Model(files_mzn[model_type])
+        custom_output_type = args.get("output_type", False)
+        exact_skills_need = args.get("exact_skills_need", True)
+        if custom_output_type:
+            model.output_type = MS_RCPSPSolCP
+            self.custom_output_type = True
+
         solver = Solver.lookup(map_cp_solver_name[self.cp_solver_name])
         # solver = Solver.lookup("")
-        resources_list = list(self.rcpsp_model.resources_availability.keys())
+        resources_list = sorted(list(self.rcpsp_model.resources_availability.keys()))
+        self.resources_index = resources_list
         instance = Instance(solver, model)
         n_res = len(resources_list)
         # print('n_res: ', n_res)
@@ -51,6 +73,12 @@ class CP_MS_MRCPSP_MZN(CPSolver):
         if not no_ressource:
             instance["n_res"] = n_res
             keys += ["n_res"]
+        if model_type == "multi-calendar":
+            instance["exact_skills_need"] = exact_skills_need
+            keys += ["exact_skills_need"]
+            instance["add_calendar_constraint_unit"] = args.get("add_calendar_constraint_unit", True)
+            keys += ["add_calendar_constraint_unit"]
+        instance["exact_skills_need"] = exact_skills_need
         instance["one_ressource_per_task"] = self.one_ressource_per_task
         keys += ["one_ressource_per_task"]
         # rc = [val for val in self.rcpsp_model.resources.values()]
@@ -116,8 +144,9 @@ class CP_MS_MRCPSP_MZN(CPSolver):
                 keys += ["max_time"]
             else:
                 one_ressource = list(self.rcpsp_model.resources_availability.keys())[0]
-                instance["max_time"] = min(len(self.rcpsp_model.resources_availability[one_ressource]),
-                                           self.rcpsp_model.horizon)
+                instance["max_time"] = min(len(self.rcpsp_model.resources_availability[one_ressource])-1,
+                                               self.rcpsp_model.horizon)
+                # instance["max_time"] = 2842
                 keys += ["max_time"]
                 ressource_capacity_time = [[int(x)
                                             for x in
@@ -171,9 +200,9 @@ class CP_MS_MRCPSP_MZN(CPSolver):
         instance["succ"] = succ
         keys += ["succ"]
 
-        import pymzn
-        pymzn.dict2dzn({key: instance[key] for key in keys},
-                       fout='ms_rcpsp_example_imopse.dzn')
+        # import pymzn
+        # pymzn.dict2dzn({key: instance[key] for key in keys},
+        #                fout='ms_rcpsp_example_imopse.dzn')
         self.instance = instance
         p_s: Union[PartialSolution, None] = args.get("partial_solution", None)
         if p_s is not None:
@@ -202,6 +231,26 @@ class CP_MS_MRCPSP_MZN(CPSolver):
                         string = "constraint mrun["+str(indexes[0])+"] == 1;"
                         self.instance.add_string(string)
                         constraint_strings += [string]
+            if p_s.start_together is not None:
+                for t1, t2 in p_s.start_together:
+                    string = "constraint start[" + str(t1) + "] == start[" + str(t2) + "];\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
+            if p_s.start_after_nunit is not None:
+                for t1, t2, delta in p_s.start_after_nunit:
+                    string = "constraint start[" + str(t2) + "] >= start[" + str(t1) + "]+"+str(delta)+";\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
+            if p_s.start_at_end_plus_offset is not None:
+                for t1, t2, delta in p_s.start_at_end_plus_offset:
+                    string = "constraint start[" + str(t2) + "] >= start[" + str(t1) + "]+adur["+str(t1)+"]+"+str(delta)+";\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
+            if p_s.start_at_end is not None:
+                for t1, t2 in p_s.start_at_end:
+                    string = "constraint start[" + str(t2) + "] == start[" + str(t1) + "]+adur["+str(t1)+"];\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
 
     def retrieve_solutions(self, result, parameters_cp: ParametersCP=ParametersCP.default()):
         intermediate_solutions = parameters_cp.intermediate_solution
@@ -213,15 +262,25 @@ class CP_MS_MRCPSP_MZN(CPSolver):
         units_used = []
         if intermediate_solutions:
             for i in range(len(result)):
-                starts += [result[i, "start"]]
-                mruns += [result[i, "mrun"]]
-                units_used += [result[i, "unit_used"]]
+                if isinstance(result[i], MS_RCPSPSolCP):
+                    starts += [result[i].dict["start"]]
+                    mruns += [result[i].dict["mrun"]]
+                    units_used += [result[i].dict["unit_used"]]
+                else:
+                    starts += [result[i, "start"]]
+                    mruns += [result[i, "mrun"]]
+                    units_used += [result[i, "unit_used"]]
                 # array_skill = result[i, "array_skills_required"]
                 # print("Objective : ", result[i, "objective"])
         else:
-            starts += [result["start"]]
-            mruns += [result["mrun"]]
-            units_used += [result["unit_used"]]
+            if isinstance(result, MS_RCPSPSolCP):
+                starts += [result.dict["start"]]
+                mruns += [result.dict["mrun"]]
+                units_used += [result.dict["unit_used"]]
+            else:
+                starts += [result["start"]]
+                mruns += [result["mrun"]]
+                units_used += [result["unit_used"]]
             # array_skill = result["array_skills_required"]
         for start_times, mrun, unit_used in zip(starts, mruns, units_used):
             #print("New Solution")

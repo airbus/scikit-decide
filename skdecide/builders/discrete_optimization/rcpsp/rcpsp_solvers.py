@@ -10,11 +10,12 @@ from skdecide.builders.discrete_optimization.rcpsp.solver.rcpsp_cp_lns_solver im
 from skdecide.builders.discrete_optimization.rcpsp.solver.ls_solver import LS_SOLVER, LS_RCPSP_Solver
 from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, MultiModeRCPSPModel, \
     RCPSPModelCalendar, RCPSP_H_Model, SingleModeRCPSPModel
+from skdecide.builders.discrete_optimization.rcpsp.solver.calendar_solver_iterative import SolverWithCalendarIterative
 from skdecide.builders.discrete_optimization.generic_tools.lp_tools import ParametersMilp
 from skdecide.builders.discrete_optimization.generic_tools.cp_tools import ParametersCP
-from skdecide.builders.discrete_optimization.generic_tools.lns_mip import LNS_MILP # To be included
 from skdecide.builders.discrete_optimization.generic_tools.ea.ga_tools import ParametersGa, ParametersAltGa
 from skdecide.builders.discrete_optimization.rcpsp.solver.rcpsp_ga_solver import GA_RCPSP_Solver, GA_MRCPSP_Solver
+
 
 solvers = {"lp": [(LP_RCPSP, {"lp_solver": LP_RCPSP_Solver.CBC, "parameters_milp": ParametersMilp.default()}),
                   (LP_MRCPSP, {"lp_solver": LP_RCPSP_Solver.CBC, "parameters_milp": ParametersMilp.default()})],
@@ -30,7 +31,10 @@ solvers = {"lp": [(LP_RCPSP, {"lp_solver": LP_RCPSP_Solver.CBC, "parameters_milp
            "lns-cp": [(LNS_CP_RCPSP_SOLVER, {"nb_iteration_lns": 500})],
            "ls": [(LS_RCPSP_Solver, {"ls_solver": LS_SOLVER.SA, "nb_iteration_max": 2000})],
            "ga": [(GA_RCPSP_Solver, {"parameters_ga": ParametersGa.default_rcpsp()}),
-                  (GA_MRCPSP_Solver, {"parameters_ga": ParametersAltGa.default_mrcpsp()})]
+                  (GA_MRCPSP_Solver, {"parameters_ga": ParametersAltGa.default_mrcpsp()})],
+           "lns-cp-calendar": [(SolverWithCalendarIterative, {"parameters_cp": ParametersCP.default(),
+                                                              "nb_iteration_lns": 20,
+                                                              "skip_first_iteration": False})]
            }
 
 solvers_map = {}
@@ -61,7 +65,10 @@ solvers_compatibility = {LP_RCPSP: [SingleModeRCPSPModel],
                                            MultiModeRCPSPModel,
                                            RCPSPModelCalendar],
                          GA_RCPSP_Solver: [SingleModeRCPSPModel],
-                         GA_MRCPSP_Solver: [MultiModeRCPSPModel]
+                         GA_MRCPSP_Solver: [MultiModeRCPSPModel],
+                         SolverWithCalendarIterative: [RCPSPModelCalendar,
+                                                       SingleModeRCPSPModel,
+                                                       MultiModeRCPSPModel]
                          }
 
 

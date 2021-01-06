@@ -13,7 +13,7 @@ predicate fzn_my_cumulative(array[int] of var int: s,
                     int: late  = max([ ub(s[i]) + ub(d[i]) | i in Tasks ])
                 } in (
                     %if late - early > 5000 then
-                    %  fzn_cumulative_task(s, d, r, b)
+                    %fzn_cumulative_task(s, d, r, b)
                     %else
                     cumulative_time_calendar(s, d, r, b)
                     %endif
@@ -39,10 +39,10 @@ predicate cumulative_time_calendar(array[int] of var int: s,
         )
     );
 
-% predicate fzn_cumulative_task(array[int] of var int: s,
-%                               array[int] of var int: d,
-%                               array[int] of var int: r, 
-%                               array[int] of var int: b) =
+%predicate fzn_cumulative_task(array[int] of var int: s,
+%                              array[int] of var int: d,
+%                              array[int] of var int: r,
+%                              array[int] of var int: b) =
 %     let {
 %         set of int: Tasks =
 %             {i | i in index_set(s) where ub(r[i]) > 0 /\ ub(d[i]) > 0 }

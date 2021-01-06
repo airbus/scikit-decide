@@ -95,8 +95,8 @@ constraint
     %
 constraint forall(i in Act, j in succ[i])(start[i] + adur[i] <= start[j]);
 
-    % Renewable resource constraints
-    %
+% Renewable resource constraints
+%
 constraint forall(k in RRes)(
     my_cumulative(start, adur,
                   [arreq[k,i] | i in Act],
@@ -231,6 +231,18 @@ constraint redundant_constraint(
 );
 
 
+% Help for ressource
+%constraint forall(ac in Act, m in modes[ac] where length(modes[ac])==1)(
+%        forall(t in TIME_ARR, k in Res)(
+%            if ressource_capacity_time[k,t]<mrreq[k, m] /\ mdur[m]>0 then
+%                forall(time in max(0, t-mdur[m])..t-1)
+%                    (start[ac]!=time)
+%            endif
+%        )
+%);
+
+
+
 %---------------------------------------------------------------------------%
 % Solve item
 
@@ -239,8 +251,8 @@ solve
     minimize objective;
 
 ann: durThenStartThenMode = seq_search([
-        int_search(adur, smallest, indomain_min, complete),
         int_search(start, smallest, indomain_min, complete),
+        int_search(adur, smallest, indomain_min, complete),
         bool_search(mrun, input_order, indomain_max, complete)
     ]);
 

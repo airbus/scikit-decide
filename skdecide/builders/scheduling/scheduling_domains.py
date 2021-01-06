@@ -897,7 +897,7 @@ class SchedulingActionSpace(EnumerableSpace[SchedulingAction], SamplableSpace[Sc
                    SchedulingActionEnum.TIME_PR]
         list_action = []
         if self.domain.state_is_overconsuming(self.state):
-            choices = [SchedulingActionEnum.PAUSE]  # we have to pause some task before doing anything
+            choices = [SchedulingActionEnum.PAUSE, SchedulingActionEnum.TIME_PR]  # we have to pause some task before doing anything
         for choice in choices:
             if choice == SchedulingActionEnum.START:
                 # task, mode, list of Ressources
@@ -952,7 +952,7 @@ class SchedulingActionSpaceWithResourceUnit(EnumerableSpace[SchedulingAction], S
                    SchedulingActionEnum.TIME_PR]
         list_action = []
         if self.domain.state_is_overconsuming(self.state):
-            choices = [SchedulingActionEnum.PAUSE]  # we have to pause some task before doing anything
+            choices = [SchedulingActionEnum.PAUSE, SchedulingActionEnum.TIME_PR]  # we have to pause some task before doing anything
         for choice in choices:
             if choice == SchedulingActionEnum.START:
                 # task, mode, list of Ressources

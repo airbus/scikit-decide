@@ -28,7 +28,7 @@ class MS_RCPSPSolution(Solution):
                  modes: Dict[int, int],
                  schedule: Dict[int, Dict[str, int]],  # (task: {"start_time": start, "end_time": }}
                  employee_usage: Dict[int, Dict[int, Set[str]]]):  # {task: {employee: Set(skills})}):
-        self.problem = problem
+        self.problem: MS_RCPSPModel = problem
         self.modes = modes
         self.schedule = schedule
         self.employee_usage = employee_usage
@@ -41,6 +41,27 @@ class MS_RCPSPSolution(Solution):
 
     def change_problem(self, new_problem: Problem):
         self.problem = new_problem
+
+def schedule_solution_to_variant(solution: MS_RCPSPSolution):
+    s: MS_RCPSPSolution = solution
+    priority_list_task = sorted(s.schedule, key=lambda x:
+                                s.schedule[x]["start_time"])
+    priority_list_task.remove(s.problem.source_task)
+    priority_list_task.remove(s.problem.sink_task)
+    workers = []
+    for i in sorted(s.problem.tasks)[1:-1]:
+        w = []
+        if len(s.employee_usage.get(i, {})) > 0:
+            w = [w for w in s.employee_usage.get(i)]
+        w += [wi for wi in s.problem.employees if wi not in w]
+        workers += [w]
+    solution = MS_RCPSPSolution_Variant(problem=s.problem,
+                                        priority_list_task=[p - 2 for p in priority_list_task],
+                                        priority_worker_per_task=workers,
+                                        modes_vector=[s.modes[i]
+                                                      for i
+                                                      in sorted(s.problem.tasks)[1:-1]])
+    return solution
 
 
 class MS_RCPSPSolution_Variant(MS_RCPSPSolution):
@@ -172,8 +193,16 @@ def sgs_multi_skill(solution: MS_RCPSPSolution_Variant):
                         if resource_avail_in_time[res][t] < \
                                 problem.mode_details[act_id][modes_extended[act_id - 1]][res]:  # 11
                             valid = False  # 12
+                            # print("ressource not found")
+                            # print(res, act_id)
+                            break
                     else:
                         unfeasible_non_renewable_resources = True
+                        valid = False
+                        # print('unfeasible ')
+                        break
+                if not valid:
+                    break
             if valid:
                 required_skills = {s: problem.mode_details[act_id][mode][s]
                                    for s in problem.mode_details[act_id][mode]
@@ -286,6 +315,11 @@ class SkillDetail:
         self.efficiency_ratio = efficiency_ratio
         self.experience = experience
 
+    def copy(self):
+        return SkillDetail(skill_value=self.skill_value,
+                           efficiency_ratio=self.efficiency_ratio,
+                           experience=self.experience)
+
 
 class Employee:
     dict_skill: Dict[str, SkillDetail]
@@ -296,6 +330,11 @@ class Employee:
         self.salary = salary
         self.dict_skill = dict_skill
         self.calendar_employee = calendar_employee
+
+    def copy(self):
+        return Employee(dict_skill={s: self.dict_skill[s].copy()
+                                    for s in self.dict_skill},
+                        calendar_employee=list(self.calendar_employee))
 
 
 def intersect(i1, i2):
@@ -377,7 +416,7 @@ class MS_RCPSPModel(Problem):
                                                    len(skills_availability[s])-1)] += self.employees[emp].dict_skill[s].skill_value
         res_availability = deepcopy(self.resources_availability)
         for s in skills_availability:
-            res_availability[s] = skills_availability[s]
+            res_availability[s] = [int(x) for x in skills_availability[s]]
         mode_details = deepcopy(self.mode_details)
         for task in mode_details:
             for mode in mode_details[task]:

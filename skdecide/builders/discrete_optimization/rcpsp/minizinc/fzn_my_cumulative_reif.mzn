@@ -16,7 +16,7 @@ predicate fzn_my_cumulative_reif(array[int] of var int: s,
                     %if late - early > 5000 then
                     %  fzn_cumulative_task(s, d, r, b)
                     %else
-                    cumulative_time_calendar_reif(s, d, r, b, bb)
+                      cumulative_time_calendar_reif(s, d, r, b, bb)
                     %endif
                 )
             endif

@@ -1,6 +1,5 @@
 from dataclasses import InitVar
 from typing import Union, List
-
 from skdecide.builders.discrete_optimization.generic_tools.cp_tools import CPSolver, ParametersCP, CPSolverName, map_cp_solver_name
 from skdecide.builders.discrete_optimization.generic_tools.do_problem import build_evaluate_function_aggregated, ObjectiveHandling, \
     ParamsObjectiveFunction, build_aggreg_function_and_params_objective
@@ -15,10 +14,25 @@ import os, random
 this_path = os.path.dirname(os.path.abspath(__file__))
 
 files_mzn = {"single": os.path.join(this_path, "../minizinc/rcpsp_single_mode_mzn.mzn"),
+             "single-preemptive": os.path.join(this_path, "../minizinc/rcpsp_single_mode_mzn_preemptive.mzn"),
              "multi": os.path.join(this_path, "../minizinc/rcpsp_multi_mode_mzn.mzn"),
              "multi-no-bool": os.path.join(this_path, "../minizinc/rcpsp_multi_mode_mzn_no_bool.mzn"),
              "multi-calendar": os.path.join(this_path, "../minizinc/rcpsp_multi_mode_mzn_calendar.mzn"),
+             "multi-calendar-boxes": os.path.join(this_path, "../minizinc/rcpsp_mzn_calendar_boxes.mzn"),
              "modes": os.path.join(this_path, "../minizinc/mrcpsp_mode_satisfy.mzn")}
+
+
+class RCPSPSolCP:
+    objective: int
+    __output_item: InitVar[str] = None
+
+    def __init__(self, objective, _output_item, **kwargs):
+        self.objective = objective
+        self.dict = kwargs
+        print("One solution ", self.objective)
+
+    def check(self) -> bool:
+        return True
 
 
 class CP_RCPSP_MZN(CPSolver):
@@ -34,14 +48,27 @@ class CP_RCPSP_MZN(CPSolver):
                                                        params_objective_function=params_objective_function)
 
     def init_model(self, **args):
-        model = Model(files_mzn["single"])
+        model_type = args.get("model_type", "single")
+        if model_type == "single-preemptive":
+            nb_preemptive = args.get("nb_preemptive", 2)
+        model = Model(files_mzn[model_type])
+        custom_output_type = args.get("output_type",  False)
+        if custom_output_type:
+            model.output_type = RCPSPSolCP
+            self.custom_output_type = True
         solver = Solver.lookup(map_cp_solver_name[self.cp_solver_name])
         instance = Instance(solver, model)
+        if model_type == "single-preemptive":
+            instance["nb_preemptive"] = nb_preemptive
+            # TODO : make this as options.
+            instance["possibly_preemptive"] = [True for task in self.rcpsp_model.mode_details]
+            instance["max_preempted"] = 3
         n_res = len(list(self.rcpsp_model.resources.keys()))
         # print('n_res: ', n_res)
         instance["n_res"] = n_res
         sorted_resources = sorted(self.rcpsp_model.resources_list)
-        rc = [self.rcpsp_model.resources[r]
+        self.resources_index = sorted_resources
+        rc = [int(self.rcpsp_model.resources[r])
               for r in sorted_resources]
         # print('rc: ', rc)
         instance["rc"] = rc
@@ -57,7 +84,7 @@ class CP_RCPSP_MZN(CPSolver):
         for res in sorted_resources:
             rr.append([])
             for task in sorted_tasks:
-                rr[index].append(self.rcpsp_model.mode_details[task][1][res])
+                rr[index].append(int(self.rcpsp_model.mode_details[task][1][res]))
             index += 1
         instance["rr"] = rr
         suc = [set(self.rcpsp_model.successors[task]) for task in sorted_tasks]
@@ -82,6 +109,26 @@ class CP_RCPSP_MZN(CPSolver):
                         string = "constraint s[" + str(t1) + "] <= s[" + str(t2) + "];\n"
                         self.instance.add_string(string)
                         constraint_strings += [string]
+            if p_s.start_together is not None:
+                for t1, t2 in p_s.start_together:
+                    string = "constraint s[" + str(t1) + "] == s[" + str(t2) + "];\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
+            if p_s.start_after_nunit is not None:
+                for t1, t2, delta in p_s.start_after_nunit:
+                    string = "constraint s[" + str(t2) + "] >= s[" + str(t1) + "]+"+str(delta)+";\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
+            if p_s.start_at_end_plus_offset is not None:
+                for t1, t2, delta in p_s.start_at_end_plus_offset:
+                    string = "constraint s[" + str(t2) + "] >= s[" + str(t1) + "]+d["+str(t1)+"]+"+str(delta)+";\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
+            if p_s.start_at_end is not None:
+                for t1, t2 in p_s.start_at_end:
+                    string = "constraint s[" + str(t2) + "] == s[" + str(t1) + "]+d["+str(t1)+"];\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
 
     def retrieve_solutions(self, result, parameters_cp: ParametersCP=ParametersCP.default())->ResultStorage:
         intermediate_solutions = parameters_cp.intermediate_solution
@@ -91,9 +138,16 @@ class CP_RCPSP_MZN(CPSolver):
         starts = []
         if intermediate_solutions:
             for i in range(len(result)):
-                starts += [result[i, "s"]]
+                if isinstance(result[i], RCPSPSolCP):
+                    starts += [result[i].dict["s"]]
+                else:
+                    starts += [result[i, "s"]]
         else:
-            starts = [result["s"]]
+            if isinstance(result, RCPSPSolCP):
+                starts += [result.dict["s"]]
+            else:
+                starts = [result["s"]]
+
         for start_times in starts:
             rcpsp_schedule = {}
             for k in range(len(start_times)):
@@ -148,11 +202,17 @@ class CP_MRCPSP_MZN(CPSolver):
             self.calendar = True
 
     def init_model(self, **args):
-        model = Model(files_mzn["multi"]
-                      if not self.calendar
-                      else files_mzn["multi-calendar"])
+        model_type = args.get("model_type", None)
+        if model_type is None:
+            model_type = "multi" if not self.calendar else "multi-calendar"
+        model = Model(files_mzn[model_type])
+        custom_output_type = args.get("output_type", False)
+        if custom_output_type:
+            model.output_type = RCPSPSolCP
+            self.custom_output_type = True
         solver = Solver.lookup(map_cp_solver_name[self.cp_solver_name])
         resources_list = list(self.rcpsp_model.resources.keys())
+        self.resources_index = resources_list
         instance = Instance(solver, model)
         n_res = len(resources_list)
         # print('n_res: ', n_res)
@@ -216,7 +276,7 @@ class CP_MRCPSP_MZN(CPSolver):
         keys += ["rreq"]
 
         if not self.calendar:
-            rcap = [self.rcpsp_model.resources[x] for x in resources_list]
+            rcap = [int(self.rcpsp_model.resources[x]) for x in resources_list]
         else:
             rcap = [int(max(self.rcpsp_model.resources[x])) for x in resources_list]
         # print('rcap: ', rcap)
@@ -281,6 +341,26 @@ class CP_MRCPSP_MZN(CPSolver):
                         string = "constraint mrun["+str(indexes[0])+"] == 1;"
                         self.instance.add_string(string)
                         constraint_strings += [string]
+            if p_s.start_together is not None:
+                for t1, t2 in p_s.start_together:
+                    string = "constraint start[" + str(t1) + "] == start[" + str(t2) + "];\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
+            if p_s.start_after_nunit is not None:
+                for t1, t2, delta in p_s.start_after_nunit:
+                    string = "constraint start[" + str(t2) + "] >= start[" + str(t1) + "]+"+str(delta)+";\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
+            if p_s.start_at_end_plus_offset is not None:
+                for t1, t2, delta in p_s.start_at_end_plus_offset:
+                    string = "constraint start[" + str(t2) + "] >= start[" + str(t1) + "]+adur["+str(t1)+"]+"+str(delta)+";\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
+            if p_s.start_at_end is not None:
+                for t1, t2 in p_s.start_at_end:
+                    string = "constraint start[" + str(t2) + "] == start[" + str(t1) + "]+adur["+str(t1)+"];\n"
+                    self.instance.add_string(string)
+                    constraint_strings += [string]
 
     def retrieve_solutions(self, result, parameters_cp: ParametersCP=ParametersCP.default()):
         intermediate_solutions = parameters_cp.intermediate_solution
@@ -291,12 +371,19 @@ class CP_MRCPSP_MZN(CPSolver):
         mruns = []
         if intermediate_solutions:
             for i in range(len(result)):
-                starts += [result[i, "start"]]
-                mruns += [result[i, "mrun"]]
-                # print("Objective : ", result[i, "objective"])
+                if isinstance(result[i], RCPSPSolCP):
+                    starts += [result[i].dict["start"]]
+                    mruns += [result[i].dict["mrun"]]
+                else:
+                    starts += [result[i, "s"]]
+                    mruns += [result[i, "mrun"]]
+
         else:
-            starts += [result["start"]]
-            mruns += [result["mrun"]]
+            if isinstance(result, RCPSPSolCP):
+                starts += [result.dict["start"]]
+                mruns += [result.dict["mrun"]]
+            else:
+                starts = [result["s"]]
         for start_times, mrun in zip(starts, mruns):
             modes = []
             for i in range(len(mrun)):

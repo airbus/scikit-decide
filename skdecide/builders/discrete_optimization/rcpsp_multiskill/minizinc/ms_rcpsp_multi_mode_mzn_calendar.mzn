@@ -5,6 +5,8 @@
 %          Andreas Schutt
 %
 % Copyright: Data61, CSIRO.
+
+% Adapted to multiskill multimode Project scheduling by AIR Airbus (2020)
 %---------------------------------------------------------------------------%
 %
 % This MRCPSP model was used in the publication of
@@ -25,6 +27,9 @@ int: nb_res = n_res;
 
 
 bool: one_ressource_per_task;
+bool: exact_skills_need;
+bool: add_calendar_constraint_unit;
+
 
     % Number of activities (tasks)
 int: n_tasks;
@@ -43,6 +48,7 @@ array[Mod] of int: mdur = dur;
 
 array[Res, Mod] of int: rreq;
 array[Res, Mod] of int: mrreq = rreq;
+
 
 array[Mod] of Act: mact = [sum(i in Act where m in mode[i])(i) | m in Mod];
 
@@ -80,18 +86,37 @@ endif);
 
 
 % Unit used available
-constraint forall(i in Act)(
-     forall(w in Units)(
-     let{var TIME_ARR0: st=start[i],
-         var TIME_ARR0: end=start[i]+adur[i]} in (
-            unit_used[w, i] <= min(t in st..end-1)(ressource_unit_capacity_time0[w, t])
-         )
-       )
-      );
+constraint
+    if add_calendar_constraint_unit then
+        forall(i in Act)(
+             forall(w in Units)(
+                 let{var TIME_ARR0: st=start[i],
+                     var TIME_ARR0: end=start[i]+adur[i]} in (
+                        unit_used[w, i] <= min(t in st..end-1)(ressource_unit_capacity_time0[w, t])
+                     )
+             )
+      )
+    endif;
 
 constraint forall(s in Skill, i in Act)(
     sum(w in Units)(skillunits[w, s]*unit_used[w, i])>=array_skills_required[s, i]); % skills used overachieve
-                                                                                    % the need of the skill.
+                                                                                     % the need of the skill.
+constraint
+    if exact_skills_need then
+        forall(s in Skill, i in Act)(
+            if array_skills_required[s, i]>0 then
+            sum(w in Units)(skillunits[w, s]*unit_used[w, i])==array_skills_required[s, i]
+            endif)
+    endif;
+
+
+var int: overskill=0;
+%constraint overskill=sum(s in Skill, i in Act)(
+%                        if array_skills_required[s,i]>0
+%                           then sum(w in Units)(skillunits[w, s]*unit_used[w, i])-array_skills_required[s,i]
+%                        else 0
+%                        endif);
+
 constraint
     forall(i in Act)(
         let { var mode[i]: mi } in (
@@ -110,7 +135,8 @@ constraint forall(w in Units)(
 %constraint forall(w in Units)(
 %     my_cumulative(start, adur,
 %                   [unit_used[w, i] | i in Act],
-%                   [ressource_unit_capacity_time[w, t] | t in TIME_ARR])
+%                   [ressource_unit_capacity_time[w, t] | t in TIME_ARR],
+%                   max_time)
 %);
 
 
@@ -135,7 +161,7 @@ array[Res, TIME_ARR0] of int: ressource_capacity_time0 = array2d(Res, TIME_ARR0,
 
 
 array[Mod] of var bool: mrun;
-array[Act] of var 0..UB: start;
+array[Act] of var TIME_ARR0: start;
 output["\(UB)"];
 
 array[Act] of var min(mdur)..max(mdur): adur = [let {var {mdur[m] | m in mode[i]}: x} in x | i in Act];
@@ -165,11 +191,11 @@ constraint forall(i in Act, j in succ[i])(start[i] + adur[i] <= start[j]);
 
     % Renewable resource constraints
     %
-constraint forall(k in RRes)(
-    my_cumulative(start, adur,
-                  [arreq[k,i] | i in Act],
-                  [ressource_capacity_time[k,t] | t in TIME_ARR])
-);
+%constraint forall(k in RRes)(
+%    my_cumulative(start, adur,
+%                  [arreq[k,i] | i in Act],
+%                  [ressource_capacity_time[k,t] | t in TIME_ARR])
+%);
 
 constraint forall(k in RRes)(
     cumulative(start, adur, [arreq[k,i] | i in Act], rcap[k])
@@ -307,10 +333,11 @@ solve
     minimize objective;
 
 ann: durThenStartThenMode = seq_search([
-        int_search(adur, smallest, indomain_min, complete),
         int_search(start, smallest, indomain_min, complete),
+        %int_search(adur, smallest, indomain_min, complete),
+        %int_search(start, smallest, indomain_min, complete),
         bool_search(mrun, input_order, indomain_max, complete),
-        bool_search(unit_used, input_order, indomain_max, complete)
+        bool_search(unit_used, input_order, indomain_min, complete)
     ]);
 
 %---------------------------------------------------------------------------%

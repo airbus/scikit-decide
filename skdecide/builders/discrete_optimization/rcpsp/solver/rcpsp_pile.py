@@ -268,16 +268,21 @@ class PileSolverRCPSP_Calendar(SolverDO):
         current_time = 0
         perm = []
         while len(schedule) < self.n_jobs+2:
-            if verbose:
-                print(len(schedule))
+            if True:
+                print(len(schedule), current_time)
                 print("available activities : ", available_activities)
+            #print(len(available_activities), "available activities")
             possible_activities = [n for n in available_activities
                                    if all(self.mode_details[n][self.modes_dict[n]][r]
                                           <= current_ressource_available[r][min(time,
                                                                                 len(current_ressource_available[r])-1)]
                                           for r in current_ressource_available
                                           for time in range(current_time, current_time
-                                                            + self.mode_details[n][self.modes_dict[n]]["duration"]+1))]
+                                                            + self.mode_details[n][self.modes_dict[n]]["duration"]))]
+            if current_time >= 10000:
+                print("hey")
+
+            #print(len(possible_activities))
             # for n in available_activities:
             #     for time in range(current_time, current_time
             #                       + self.mode_details[n][self.modes_dict[n]]["duration"]+1):
@@ -292,6 +297,7 @@ class PileSolverRCPSP_Calendar(SolverDO):
             if verbose:
                 print("Ressources : ", current_ressource_available)
             while len(possible_activities) > 0:
+                #print(len(possible_activities), current_time)
                 if greedy_choice == GreedyChoice.MOST_SUCCESSORS:
                     next_activity = max(possible_activities,
                                         key=lambda x: current_succ[x]["nb"])
@@ -321,13 +327,13 @@ class PileSolverRCPSP_Calendar(SolverDO):
                 mode = self.modes_dict[next_activity]
                 duration = self.mode_details[next_activity][mode]["duration"]
                 for r in self.resources:
-                    for t in range(current_time, current_time+duration+1):
+                    for t in range(current_time, current_time+duration):
                         current_ressource_available[r][t] -= self.mode_details[next_activity][mode][r]
                         if r in current_ressource_non_renewable:
                             current_ressource_non_renewable[r][t] -= self.mode_details[next_activity][mode][r]
-                if verbose:
-                    print(current_time,
-                          "Current ressource available : ", current_ressource_available)
+                #if verbose:
+                #    print(current_time)
+                #          #"Current ressource available : ", current_ressource_available)
                 possible_activities = [n for n in available_activities
                                        if all(self.mode_details[n][self.modes_dict[n]][r]
                                               <= current_ressource_available[r][time]
@@ -345,10 +351,9 @@ class PileSolverRCPSP_Calendar(SolverDO):
                             available_activities.add(neighbor)
             else:
                 current_time += 1
-                print("Do nothing")
         if verbose:
             print("Final Time ", current_time)
-        print("Final Time ", current_time)
+        # print("Final Time ", current_time)
         sol = RCPSPSolution(problem=self.rcpsp_model,
                             rcpsp_permutation=perm[:-1],
                             rcpsp_schedule=schedule,

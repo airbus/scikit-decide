@@ -31,6 +31,7 @@ class CPMObject():
     def __str__(self):
         return str({k: getattr(self, k) for k in self.__dict__.keys()})
 
+
 class CPM(SolverDO):
     def __init__(self, rcpsp_model: RCPSPModel):
         self.rcpsp_model = rcpsp_model
@@ -257,8 +258,8 @@ class CPM(SolverDO):
                                       resource_avail_in_time,
                                       task_id):
         early_start = self.map_node[task_id]._ESD
-        ressource_consumption = {r: self.rcpsp_model.mode_details[j][1][r]
-                                 for r in self.rcpsp_model.mode_details[j][1]
+        ressource_consumption = {r: self.rcpsp_model.mode_details[task_id][1][r]
+                                 for r in self.rcpsp_model.mode_details[task_id][1]
                                  if r != "duration"}
         duration = self.rcpsp_model.mode_details[task_id][1]["duration"]
         time_start = None

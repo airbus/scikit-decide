@@ -17,11 +17,13 @@ class ConstraintHandlerStartTimeInterval_CP(ConstraintHandler):
     def __init__(self, problem: RCPSPModel,
                  fraction_to_fix: float=0.9,  # TODO not really fix
                  minus_delta: int=2,
-                 plus_delta: int=2):
+                 plus_delta: int=2,
+                 delta_time_from_makepan_to_not_fix: int=5):
         self.problem = problem
         self.fraction_to_fix = fraction_to_fix
         self.minus_delta = minus_delta
         self.plus_delta = plus_delta
+        self.delta_time_from_makepan_to_not_fix = delta_time_from_makepan_to_not_fix
 
     def adding_constraint_from_results_store(self, cp_solver: Union[CP_RCPSP_MZN, CP_MRCPSP_MZN],
                                              child_instance,
@@ -31,7 +33,8 @@ class ConstraintHandlerStartTimeInterval_CP(ConstraintHandler):
         max_time = max([current_solution.rcpsp_schedule[x]["end_time"]
                         for x in current_solution.rcpsp_schedule])
         last_jobs = [x for x in current_solution.rcpsp_schedule
-                     if current_solution.rcpsp_schedule[x]["end_time"] >= max_time-5]
+                     if current_solution.rcpsp_schedule[x]["end_time"]
+                     >= max_time-self.delta_time_from_makepan_to_not_fix]
         nb_jobs = self.problem.n_jobs + 2
         jobs_to_fix = set(random.sample(current_solution.rcpsp_schedule.keys(),
                                         int(self.fraction_to_fix * nb_jobs)))
@@ -53,6 +56,81 @@ class ConstraintHandlerStartTimeInterval_CP(ConstraintHandler):
             list_strings += [string2]
             child_instance.add_string(string1)
             child_instance.add_string(string2)
+        for job in current_solution.rcpsp_schedule:
+            if isinstance(cp_solver, CP_RCPSP_MZN):
+                string = "constraint s[" + str(job) + "] <= " + str(max_time+50) + ";\n"
+            if isinstance(cp_solver, CP_MRCPSP_MZN):
+                string = "constraint start[" + str(job) + "] <= " + str(max_time+50) + ";\n"
+            child_instance.add_string(string)
+        return list_strings
+
+    def remove_constraints_from_previous_iteration(self,
+                                                   cp_solver: CP_RCPSP_MZN,
+                                                   child_instance,
+                                                   previous_constraints: Iterable[Any]):
+        pass
+
+
+class ConstraintHandlerByPart_CP(ConstraintHandler):
+    def __init__(self, problem: RCPSPModel,
+                 fraction_to_fix: float = 0.9,  # TODO not really fix
+                 nb_cut_part: int=10,
+                 minus_delta: int=2,
+                 plus_delta: int=2,
+                 delta_time_from_makepan_to_not_fix: int = 5):
+        self.fraction_to_fix = fraction_to_fix
+        self.problem = problem
+        self.nb_cut_part = nb_cut_part
+        self.minus_delta = minus_delta
+        self.plus_delta = plus_delta
+        self.delta_time_from_makepan_to_not_fix = delta_time_from_makepan_to_not_fix
+        self.current_sub_part = 0
+
+    def adding_constraint_from_results_store(self, cp_solver: Union[CP_RCPSP_MZN, CP_MRCPSP_MZN],
+                                             child_instance,
+                                             result_storage: ResultStorage) -> Iterable[Any]:
+        constraints_dict = {}
+        current_solution, fit = result_storage.get_best_solution_fit()
+        max_time = max([current_solution.rcpsp_schedule[x]["end_time"]
+                        for x in current_solution.rcpsp_schedule])
+        delta_t = max_time/self.nb_cut_part
+        task_of_interest = [t for t in current_solution.rcpsp_schedule
+                            if delta_t*self.current_sub_part <=
+                            current_solution.rcpsp_schedule[t]["start_time"] <= delta_t*(self.current_sub_part+1)]
+        last_jobs = [x for x in current_solution.rcpsp_schedule
+                     if current_solution.rcpsp_schedule[x]["end_time"]
+                     >= max_time - self.delta_time_from_makepan_to_not_fix]
+        nb_jobs = self.problem.n_jobs + 2
+        jobs_to_fix = set(random.sample(current_solution.rcpsp_schedule.keys(),
+                                        int(self.fraction_to_fix * nb_jobs)))
+        for lj in last_jobs:
+            if lj in jobs_to_fix:
+                jobs_to_fix.remove(lj)
+        for t in task_of_interest:
+            if t in jobs_to_fix:
+                jobs_to_fix.remove(t)
+        list_strings = []
+        for job in jobs_to_fix:
+            start_time_j = current_solution.rcpsp_schedule[job]["start_time"]
+            min_st = max(start_time_j - self.minus_delta, 0)
+            max_st = min(start_time_j + self.plus_delta, max_time)
+            if isinstance(cp_solver, CP_RCPSP_MZN):
+                string1 = "constraint s[" + str(job) + "] <= " + str(max_st) + ";\n"
+                string2 = "constraint s[" + str(job) + "] >= " + str(min_st) + ";\n"
+            elif isinstance(cp_solver, CP_MRCPSP_MZN):
+                string1 = "constraint start[" + str(job) + "] <= " + str(max_st) + ";\n"
+                string2 = "constraint start[" + str(job) + "] >= " + str(min_st) + ";\n"
+            list_strings += [string1]
+            list_strings += [string2]
+            child_instance.add_string(string1)
+            child_instance.add_string(string2)
+        for job in current_solution.rcpsp_schedule:
+            if isinstance(cp_solver, CP_RCPSP_MZN):
+                string = "constraint s[" + str(job) + "] <= " + str(max_time + 50) + ";\n"
+            if isinstance(cp_solver, CP_MRCPSP_MZN):
+                string = "constraint start[" + str(job) + "] <= " + str(max_time + 50) + ";\n"
+            child_instance.add_string(string)
+        self.current_sub_part = (self.current_sub_part+1) % self.nb_cut_part
         return list_strings
 
     def remove_constraints_from_previous_iteration(self,

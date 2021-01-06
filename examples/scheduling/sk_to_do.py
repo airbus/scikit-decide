@@ -1,4 +1,4 @@
-from examples.scheduling.scheduling_api_pi2 import MyExampleRCPSPDomain, MyExampleMRCPSPDomain_WithCost
+from examples.scheduling.toy_rcpsp_examples import MyExampleRCPSPDomain, MyExampleMRCPSPDomain_WithCost
 from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
 
 
