@@ -584,6 +584,7 @@ class SchedulingDomain(WithPrecedence,
             next_state.tasks_ongoing.add(started_task)
             next_state.tasks_remaining.remove(started_task)
             next_state.tasks_details[started_task].start = next_state.t
+            next_state.tasks_details[started_task].resources = resource_to_use
             next_state.tasks_details[started_task].sampled_duration = \
                 self.get_latest_sampled_duration(task=started_task, mode=mode, progress_from=0.)  # TODO: what to do with this, so far the sample is stored and then used by get_task_progress()
             for res in resource_to_use:

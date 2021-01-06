@@ -84,8 +84,8 @@ class WithResourceSkills:
             for s in skill_of_ressource:
                 if s in skills:
                     skills[s] += skill_of_ressource[s]
-        print("Ressource used : ", skills)
-        print("Skills required", skill_of_task)
+        # print("Ressource used : ", skills)
+        # print("Skills required", skill_of_task)
         return all(skills[s] >= skill_of_task[s] for s in skill_of_task)
 
 
