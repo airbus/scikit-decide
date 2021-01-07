@@ -375,7 +375,7 @@ class CP_MRCPSP_MZN(CPSolver):
                     starts += [result[i].dict["start"]]
                     mruns += [result[i].dict["mrun"]]
                 else:
-                    starts += [result[i, "s"]]
+                    starts += [result[i, "start"]]
                     mruns += [result[i, "mrun"]]
 
         else:
