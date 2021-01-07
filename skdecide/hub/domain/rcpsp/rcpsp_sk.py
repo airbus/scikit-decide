@@ -4,7 +4,8 @@ from skdecide.builders.scheduling.modes import ModeConsumption, ConstantModeCons
 from skdecide.builders.scheduling.scheduling_domains import MultiModeRCPSP, \
     SchedulingDomain, DeterministicSchedulingDomain, SingleModeRCPSP, SingleMode, \
     SingleModeRCPSP_Stochastic_Durations, MultiModeRCPSP_Stochastic_Durations, \
-    MultiModeMultiSkillRCPSP, SchedulingObjectiveEnum, State, MultiModeMultiSkillRCPSPCalendar, MultiModeRCPSPCalendar
+    MultiModeMultiSkillRCPSP, SchedulingObjectiveEnum, State, MultiModeMultiSkillRCPSPCalendar, MultiModeRCPSPCalendar, MultiModeRCPSPCalendar_Stochastic_Durations
+
 from skdecide.builders.domain import DeterministicTransitions
 
 
@@ -106,6 +107,7 @@ class MRCPSPCalendar(D):
         self.resource_availability = resource_availability
         self.original_resource_availability = {r: max(self.resource_availability[r])
                                                for r in self.resource_availability}
+
         self.resource_renewable = resource_renewable
         self.initialize_domain()
 
@@ -272,6 +274,80 @@ def build_n_determinist_from_stochastic(srcpsp: Stochastic_RCPSP, nb_instance: i
                              resource_availability=srcpsp.resource_availability,
                              resource_renewable=srcpsp.resource_renewable)]
     return instances
+
+
+
+class D(MultiModeRCPSPCalendar_Stochastic_Durations):
+    pass
+
+
+class SMRCPSPCalendar(D):
+
+    def _get_task_duration_distribution(self, task: int, mode: Optional[int] = 1, progress_from: Optional[float] = 0.,
+                                        multivariate_settings: Optional[Dict[str, int]] = None) -> Distribution:
+        return self.duration_distribution[task][mode]
+
+    def _get_quantity_resource(self, resource: str, time: int, **kwargs) -> int:
+        return self.resource_availability[resource][time]
+
+    def __init__(self,
+                 resource_names: List[str]=None,
+                 task_ids: List[int]=None,
+                 tasks_mode: Dict[int, Dict[int, Dict[str, int]]]=None,
+                 successors: Dict[int, List[int]]=None,
+                 duration_distribution: Dict[int, Dict[int, DiscreteDistribution]] = None,
+                 max_horizon: int=None,
+                 resource_availability: Dict[str, List[int]]=None,
+                 resource_renewable: Dict[str, bool]=None):
+        self.resource_names = resource_names
+        self.task_ids = task_ids
+        self.tasks_mode = tasks_mode
+        # transform the "mode_details" dict that we largely used in DO in the good format.
+        self.task_mode_dict = {}
+        self.duration_dict = {}
+        for task in self.tasks_mode:
+            self.task_mode_dict[task] = {}
+            self.duration_dict[task] = {}
+            for mode in self.tasks_mode[task]:
+                self.task_mode_dict[task][mode] = ConstantModeConsumption({})
+                for r in self.tasks_mode[task][mode]:
+                    if r in self.resource_names:
+                        self.task_mode_dict[task][mode].mode_details[r] = [self.tasks_mode[task][mode][r]]
+                self.duration_dict[task][mode] = self.tasks_mode[task][mode]["duration"]
+        self.successors = successors
+        self.max_horizon = max_horizon
+        self.resource_availability = resource_availability
+        self.resource_renewable = resource_renewable
+        self.duration_distribution = duration_distribution
+        self.initialize_domain()
+
+    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+        return self.task_mode_dict
+
+    def _get_resource_renewability(self) -> Dict[str, bool]:
+        return self.resource_renewable
+
+    def _get_max_horizon(self) -> int:
+        return self.max_horizon
+
+    def _get_successors(self) -> Dict[int, List[int]]:
+        return self.successors
+
+    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+        return self.task_ids
+
+    def _get_task_duration(self, task: int, mode: Optional[int] = 1, progress_from: Optional[float] = 0.) -> int:
+        return self.duration_dict[task][mode]
+
+    def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
+        # return self.resource_availability[resource]
+        return self.original_resource_availability[resource]
+
+    def _get_resource_types_names(self) -> List[str]:
+        return self.resource_names
+
+    def _get_objectives(self) -> List[int]:
+        return [SchedulingObjectiveEnum.MAKESPAN]
 
 
 class D(MultiModeMultiSkillRCPSP):

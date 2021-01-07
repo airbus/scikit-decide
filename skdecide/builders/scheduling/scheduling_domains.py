@@ -1200,6 +1200,27 @@ class MultiModeRCPSPCalendar(DeterministicSchedulingDomain,
     pass
 
 
+class MultiModeRCPSPCalendar_Stochastic_Durations(UncertainSchedulingDomain,
+                             MultiMode,  # this changed from Single mode RCPSP
+                             UncertainUnivariateTaskDuration,
+                             DeterministicTaskProgress,
+                             WithoutResourceUnit,
+                             WithoutPreemptivity,
+                             WithoutPreallocations,
+                             WithoutTimeLag,
+                             WithoutTimeWindow,
+                             WithoutResourceSkills,
+                             # WithoutResourceAvailabilityChange,
+                             DeterministicResourceAvailabilityChanges,
+                             WithoutConditionalTasks,
+                             ConstantResourceConsumption,
+                             MixedRenewable,  # this changed from Single mode RCPSP
+                             WithoutModeCosts,
+                             WithoutResourceCosts
+                             ):
+    pass
+
+
 class MultiModeMultiSkillRCPSP(DeterministicSchedulingDomain,
                                MultiMode,
                                DeterministicTaskDuration,
