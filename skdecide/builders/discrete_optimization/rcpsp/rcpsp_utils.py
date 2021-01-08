@@ -290,6 +290,9 @@ def plot_resource_individual_gantt(rcpsp_model: RCPSPModel,
                                 key=lambda x: 100000 * rcpsp_sol.rcpsp_schedule[x]["end_time"] + x)
     max_time = rcpsp_sol.rcpsp_schedule[sorted_task_by_end[-1]]["end_time"]
     min_time = rcpsp_sol.rcpsp_schedule[sorted_task_by_end[0]]["start_time"]
+    for key in list(array_ressource_usage.keys()):
+        if np.sum(array_ressource_usage[key]["total_activity"]) == 0:
+            array_ressource_usage.pop(key)
     resources_list = list(array_ressource_usage.keys())
     # fig, ax = plt.subplots(len(array_ressource_usage),
     #                        figsize=(10, 5))
