@@ -383,7 +383,8 @@ class CP_MRCPSP_MZN(CPSolver):
                 starts += [result.dict["start"]]
                 mruns += [result.dict["mrun"]]
             else:
-                starts = [result["s"]]
+                starts = [result["start"]]
+                mruns = [result["mrun"]]
         for start_times, mrun in zip(starts, mruns):
             modes = []
             for i in range(len(mrun)):

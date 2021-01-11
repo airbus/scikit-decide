@@ -4,7 +4,8 @@ from typing import Iterable, Any, Tuple, Union, Optional
 from skdecide.builders.discrete_optimization.generic_tools.lns_mip import PostProcessSolution
 from skdecide.builders.discrete_optimization.rcpsp.solver.rcpsp_lp_lns_solver import InitialSolutionRCPSP, InitialMethodRCPSP
 
-from skdecide.builders.discrete_optimization.rcpsp.solver.rcpsp_cp_lns_solver import ConstraintHandlerStartTimeInterval_CP
+from skdecide.builders.discrete_optimization.rcpsp.solver.rcpsp_cp_lns_solver import ConstraintHandlerStartTimeInterval_CP,  \
+    build_neighbor_operator,  OptionNeighbor
 
 from skdecide.builders.discrete_optimization.generic_tools.cp_tools import ParametersCP, CPSolverName
 from skdecide.builders.discrete_optimization.rcpsp.solver import CP_MRCPSP_MZN, CP_RCPSP_MZN
@@ -197,7 +198,7 @@ class ConstraintHandlerAddCalendarConstraint(ConstraintHandler):
         for r in ressource_breaks:
             index_ressource = cp_solver.resources_index.index(r)
             for index in ressource_breaks[r]:
-                if random.random() < 0.6:
+                if random.random() < 0.1:
                     continue
                 ind = index[0]
                 rq = self.problem_calendar.resources[r][ind]
@@ -249,10 +250,12 @@ class SolverWithCalendarIterative(SolverDO):
                                               name_task=self.problem_calendar.name_task)
         # solver = CP_MRCPSP_MZN(rcpsp_model=self.problem_no_calendar,
         #                        cp_solver_name=CPSolverName.CHUFFED)
-        solver = CP_RCPSP_MZN(rcpsp_model=self.problem_no_calendar,
-                              cp_solver_name=CPSolverName.CHUFFED)
+        # solver = CP_RCPSP_MZN(rcpsp_model=self.problem_no_calendar,
+        #                       cp_solver_name=CPSolverName.CHUFFED)
+        solver = CP_MRCPSP_MZN(rcpsp_model=self.problem_no_calendar,
+                               cp_solver_name=CPSolverName.CHUFFED)
         solver.init_model(output_type=True,
-                          model_type="single",
+                          model_type="multi",
                           partial_solution=partial_solution)
         parameters_cp = ParametersCP.default()
         parameters_cp.TimeLimit = 500
@@ -265,6 +268,11 @@ class SolverWithCalendarIterative(SolverDO):
                                                                    minus_delta=10,
                                                                    plus_delta=10,
                                                                    delta_time_from_makepan_to_not_fix=5)
+        # constraint_handler = ConstraintHandlerAddCalendarConstraint(self.problem_calendar,
+        #                                                             self.problem_no_calendar,
+        #                                                             constraint_handler)
+        constraint_handler = build_neighbor_operator(option_neighbor=OptionNeighbor.MIX_LARGE_NEIGH,
+                                                     rcpsp_model=self.problem_no_calendar)
         constraint_handler = ConstraintHandlerAddCalendarConstraint(self.problem_calendar,
                                                                     self.problem_no_calendar,
                                                                     constraint_handler)
@@ -373,10 +381,10 @@ class SolverWithCalendarIterative(SolverDO):
                                                            mode_optim=store_lns.mode_optim)
                         store_lns = result_store
                         for s, f in store_lns.list_solution_fits:
-                            store_with_all.list_solution_fits += [(s,f)]
+                            store_with_all.list_solution_fits += [(s, f)]
                         for s, f in store_with_all.list_solution_fits:
-                            if s.satisfy:
-                                store_lns.list_solution_fits += [(s,f)]
+                            #if s.satisfy:
+                            store_lns.list_solution_fits += [(s, f)]
                         print("Satisfy : ", self.problem_calendar.satisfy(best_solution))
                     else:
                         current_nb_iteration_no_improvement += 1

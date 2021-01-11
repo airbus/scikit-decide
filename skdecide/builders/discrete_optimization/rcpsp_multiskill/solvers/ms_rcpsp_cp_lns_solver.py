@@ -115,7 +115,7 @@ class ConstraintHandlerStartTimeInterval_CP(ConstraintHandler):
                         for x in current_solution.schedule])
         last_jobs = [x for x in current_solution.schedule
                      if current_solution.schedule[x]["end_time"] >= max_time-20]
-        last_jobs = []
+        # last_jobs = []
         nb_jobs = self.problem.n_jobs_non_dummy + 2
         jobs_to_fix = set(random.sample(current_solution.schedule.keys(),
                                         int(self.fraction_to_fix * nb_jobs)))
@@ -179,14 +179,14 @@ class ConstraintHandlerStartTimeInterval_CP(ConstraintHandler):
         for job in current_solution.schedule.keys():
             if job in jobs_to_fix:
                 continue
-            start_time_j = current_solution.schedule[job]["start_time"]
-            min_st = max(start_time_j-100, 0)
-            max_st = min(start_time_j+100, max_time)
-            string1 = "constraint start[" + str(job) + "] <= " + str(max_time) + ";\n"
+            # start_time_j = current_solution.schedule[job]["start_time"]
+            # min_st = max(start_time_j-100, 0)
+            # max_st = min(start_time_j+100, max_time)
+            # string1 = "constraint start[" + str(job) + "] <= " + str(max_time) + ";\n"
             # string2 = "constraint start[" + str(job) + "] >= " + str(min_st) + ";\n"
-            list_strings += [string1]
+            # list_strings += [string1]
             # list_strings += [string2]
-            child_instance.add_string(string1)
+            # child_instance.add_string(string1)
             # child_instance.add_string(string2)
         return list_strings
 
@@ -492,7 +492,8 @@ class LNS_CP_MS_RCPSP_SOLVER(SolverDO):
         self.solver.init_model(output_type=True, **kwargs)
         self.parameters_cp = kwargs.get("parameters_cp", ParametersCP.default())
         params_objective_function = get_default_objective_setup(problem=self.rcpsp_model)
-        self.constraint_handler = build_neighbor_operator(option_neighbor=option_neighbor, rcpsp_model=self.rcpsp_model)
+        self.constraint_handler = build_neighbor_operator(option_neighbor=option_neighbor,
+                                                          rcpsp_model=self.rcpsp_model)
         self.post_pro = PostProMSRCPSP(problem=self.rcpsp_model,
                                        params_objective_function=params_objective_function)
         self.initial_solution_provider = InitialSolutionMS_RCPSP(problem=self.rcpsp_model,
