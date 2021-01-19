@@ -13,7 +13,7 @@ class CustomTaskProgress:
         # Returns
          The task progress (float) between t_from and t_to.
          """
-        return self._get_task_progress(task, t_from, t_to, mode)
+        return self._get_task_progress(task, t_from, t_to, mode, sampled_duration)
 
     def _get_task_progress(self, task: int, t_from: int, t_to: int, mode: Optional[int],
                           sampled_duration: Optional[int] = None) -> float:
@@ -29,7 +29,7 @@ class DeterministicTaskProgress(CustomTaskProgress):
     over the duration of the task."""
 
     def _get_task_progress(self, task: int, t_from: int, t_to: int, mode: Optional[int],
-                          sampled_duration: Optional[int]=None) -> float:
+                           sampled_duration: Optional[int]=None) -> float:
         """
         # Returns
          The task progress (float) between t_from and t_to based on the task duration
