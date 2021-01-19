@@ -478,7 +478,6 @@ class RCPSPModel(Problem):
     mode_details: Dict[int, Dict[int, Dict[str, int]]]  # e.g. {job_id: {mode_id: {resource_name1: number_of_resources_needed, resource_name2: ...}}
                                                         # one key being "duration"
     successors: Dict[int, List[int]]  # {task_id: list of successor task ids}
-
     def __init__(self,
                  resources: Dict[str, int],
                  non_renewable_resources: List[str],

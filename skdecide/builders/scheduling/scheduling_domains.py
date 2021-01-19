@@ -606,7 +606,8 @@ class SchedulingDomain(WithPrecedence,
                 return DiscreteDistribution([(state, 1)])
             started_task = action.task
             mode = action.mode
-            duration_distrib = self.get_task_duration_distribution(started_task, mode)
+            duration_distrib = self.get_task_duration_distribution(started_task, mode,
+                                                                   multivariate_settings={"t": state.t})
             states_and_proba = []
 
             for value_duration in duration_distrib.get_values():

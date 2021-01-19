@@ -123,7 +123,7 @@ class MyExampleMRCPSPDomain_WithCost(MultiModeRCPSPWithCost):
 class MyExampleSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations):
 
     def _get_task_duration_distribution(self, task: int, mode: Optional[int] = 1,
-                                       progress_from: Optional[float] = 0.,
+                                        progress_from: Optional[float] = 0.,
                                         multivariate_settings: Optional[Dict[str, int]] = None) -> Distribution:
         all_distributions = {}
         all_distributions[1] = DiscreteDistribution([(0, 1.)])
@@ -131,7 +131,6 @@ class MyExampleSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations):
         all_distributions[3] = DiscreteDistribution([(5, 0.25), (6, 0.5), (7, 0.25)])
         all_distributions[4] = DiscreteDistribution([(3, 0.5), (4, 0.5)])
         all_distributions[5] = DiscreteDistribution([(0, 1.)])
-
         return all_distributions[task]
 
     def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
@@ -144,10 +143,62 @@ class MyExampleSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations):
         return 20
 
     def _get_successors(self) -> Dict[int, List[int]]:
-        return {1: [2,3], 2: [4], 3: [5], 4: [5], 5: []}
+        return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
 
     def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
-        return set([1,2,3,4,5])
+        return set([1, 2, 3, 4, 5])
+
+    def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
+        return {
+            1: ConstantModeConsumption({'r1': 0, 'r2': 0}),
+            2: ConstantModeConsumption({'r1': 1, 'r2': 1}),
+            3: ConstantModeConsumption({'r1': 1, 'r2': 0}),
+            4: ConstantModeConsumption({'r1': 2, 'r2': 1}),
+            5: ConstantModeConsumption({'r1': 0, 'r2': 0})
+        }
+
+    def _get_resource_types_names(self) -> List[str]:
+        return ['r1', 'r2']
+
+    def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
+        all_resource_quantities = {'r1': 2, 'r2': 1}
+        return all_resource_quantities[resource]
+
+
+class MyExampleSRCPSPDomain_2(SingleModeRCPSP_Stochastic_Durations):
+
+    def _get_task_duration_distribution(self, task: int, mode: Optional[int] = 1,
+                                        progress_from: Optional[float] = 0.,
+                                        multivariate_settings: Optional[Dict[str, int]] = None) -> Distribution:
+        all_distributions = {}
+        t = None
+        if multivariate_settings is not None:
+            if "t" in multivariate_settings:
+                t = multivariate_settings["t"]
+        all_distributions[1] = DiscreteDistribution([(0, 1.)])
+        all_distributions[2] = DiscreteDistribution([(4, 0.25), (5, 0.5), (6, 0.25)])
+        if t is not None:
+            if t == 1:
+                all_distributions[2] = DiscreteDistribution([(0, 0.25), (1, 0.75)]) # Faster
+        all_distributions[3] = DiscreteDistribution([(5, 0.25), (6, 0.5), (7, 0.25)])
+        all_distributions[4] = DiscreteDistribution([(3, 0.5), (4, 0.5)])
+        all_distributions[5] = DiscreteDistribution([(0, 1.)])
+        return all_distributions[task]
+
+    def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
+        return [SchedulingObjectiveEnum.MAKESPAN]
+
+    def __init__(self):
+        self.initialize_domain()
+
+    def _get_max_horizon(self) -> int:
+        return 20
+
+    def _get_successors(self) -> Dict[int, List[int]]:
+        return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
+
+    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+        return set([1, 2, 3, 4, 5])
 
     def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
         return {
@@ -349,15 +400,12 @@ def run_example():
     # new_state = domain.get_next_state(new_state, action)
     # print("New state :", new_state)
     # print('_is_terminal: ', domain._is_terminal(state))
-
-    ## ONLY KEEP LINE BELOW FOR SIMPLE ROLLOUT
+    # ONLY KEEP LINE BELOW FOR SIMPLE ROLLOUT
     solver = None
-
-    ## UNCOMMENT BELOW TO USE ASTAR
+    # UNCOMMENT BELOW TO USE ASTAR
     # domain.set_inplace_environment(False)
     # solver = lazy_astar.LazyAstar(from_state=state, heuristic=None, verbose=True)
     # solver.solve(domain_factory=lambda: domain)
-
     states, actions, values = rollout_episode(domain=domain,
                                               max_steps=1000,
                                               solver=solver,
@@ -418,7 +466,8 @@ def run_do():
 def run_graph_exploration():
     # domain = MyExampleRCPSPDomain()
     # domain = MyExampleSRCPSPDomain()
-    domain = MyExampleCondSRCPSPDomain()
+    # domain = MyExampleCondSRCPSPDomain()
+    domain = MyExampleSRCPSPDomain_2()
     domain.set_inplace_environment(False)
     #domain = MyExampleCondSRCPSPDomain()
     state = domain.get_initial_state()
@@ -514,7 +563,8 @@ def run_graph_exploration_conditional():
 
 
 if __name__ == "__main__":
-    run_do()
-    run_astar()
-    run_example()
-    # run_graph_exploration_conditional()
+    run_graph_exploration()
+    # run_do()
+    # run_astar()
+    # run_example()
+    #  run_graph_exploration_conditional()

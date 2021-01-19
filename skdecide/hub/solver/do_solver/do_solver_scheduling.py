@@ -32,7 +32,8 @@ class SolvingMethod(Enum):
     CP = 4
     LNS_LP = 5
     LNS_CP = 6
-    LNS_CP_CALENDAR = 7 # New algorithm, similar to lns, adding iterativelyu constraint to fulfill calendar constraints..
+    LNS_CP_CALENDAR = 7
+    # New algorithm, similar to lns, adding iterativelyu constraint to fulfill calendar constraints..
 
 
 def build_solver(solving_method: SolvingMethod, do_domain):
