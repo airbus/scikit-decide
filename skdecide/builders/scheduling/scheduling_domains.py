@@ -205,7 +205,7 @@ class SchedulingDomain(WithPrecedence,
         self.successors = self.graph.successors_map()
         self.full_predecessors = self.graph.ancestors_map()
         self.full_successors = self.graph.descendants_map()
-        self.inplace_environment = True # TODO : this changes in place the state, way faster !!!
+        self.inplace_environment = False
 
     def set_inplace_environment(self, inplace_environment: bool):
         """
