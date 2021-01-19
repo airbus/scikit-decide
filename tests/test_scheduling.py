@@ -438,6 +438,12 @@ def check_task_duration(domain, states: List[State]):
                 expected_duration = domain.get_task_duration(id, states[-1].tasks_mode[id])
                 actual_duration = states[-1].tasks_details[id].end - states[-1].tasks_details[id].start
                 assert actual_duration == expected_duration, 'duration different than expected for task ' + str(id)
+    else:
+        for id in domain.get_tasks_ids():
+            if id in states[-1].tasks_complete:  # needed for conditional tasks
+                expected_duration = states[-1].tasks_details[id].sampled_duration
+                actual_duration = states[-1].tasks_details[id].end - states[-1].tasks_details[id].start
+                assert actual_duration == expected_duration, 'duration different than expected for task ' + str(id)
 
 
 def check_resource_constraints(domain, states: List[State]):
