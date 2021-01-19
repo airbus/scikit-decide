@@ -54,7 +54,7 @@ class CP_MS_MRCPSP_MZN(CPSolver):
 
     def init_model(self, **args):
         no_ressource = len(self.rcpsp_model.resources_list) == 0
-        model_type = "multi-calendar" if not no_ressource else files_mzn["multi-calendar-no-ressource"]
+        model_type = "multi-calendar" if not no_ressource else "multi-calendar-no-ressource"
         model = Model(files_mzn[model_type])
         custom_output_type = args.get("output_type", False)
         exact_skills_need = args.get("exact_skills_need", True)
