@@ -195,8 +195,10 @@ class ToyMS_RCPSPDomain(MultiModeMultiSkillRCPSP):
     def _get_all_tasks_skills(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
         return {
             1: {1: {}},
-            2: {1: {"S1": 1}, 2: {"S2": 1}},
-            3: {1: {"S2": 1}, 2: {"S3": 1}},
+            2: {1: {"S1": 1},
+                2: {"S2": 1}},
+            3: {1: {"S2": 1},
+                2: {"S3": 1}},
             4: {1: {"S1": 1, "S2": 1},
                 2: {"S2": 1, "S3": 1}},
             5: {1: {}}
@@ -554,7 +556,7 @@ def test_do_mskill(domain_multiskill, do_solver_multiskill):
 
 
 @pytest.mark.parametrize("domain", [
-    (ToyRCPSPDomain()),
+    # (ToyRCPSPDomain()),
     # (ToyMRCPSPDomain_WithCost()),
 ])
 @pytest.mark.parametrize("solver_str", [

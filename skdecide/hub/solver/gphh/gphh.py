@@ -9,6 +9,7 @@ from skdecide.hub.solver.sgs_policies.sgs_policies import PolicyMethodParams, Ba
 from skdecide.hub.solver.do_solver.do_solver_scheduling import PolicyRCPSP, DOSolver, PolicyMethodParams, BasePolicyMethod, SolvingMethod
 from skdecide.builders.discrete_optimization.rcpsp.solver.cpm import CPM
 from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
+from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
 from enum import Enum
 from deap.gp import PrimitiveSet, PrimitiveTree, genHalfAndHalf
 from deap import gp
@@ -294,12 +295,12 @@ class ParametersGPHH:
             set_primitves=pset,
             tournament_ratio=0.1,
             pop_size=40,
-            n_gen=40,
+            n_gen=5,
             min_tree_depth=1,
             max_tree_depth=4,
             crossover_rate=0.7,
             mutation_rate=0.3,
-            base_policy_method=BasePolicyMethod.SGS_READY,
+            base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
             delta_index_freedom=0,
             delta_time_freedom=0,
             deap_verbose=True,
@@ -639,10 +640,50 @@ class GPHHPolicy(DeterministicPolicies):
 
         normalized_values = [x+1 for x in sorted(range(len(raw_values)), key=lambda k: raw_values[k],
                                                  reverse=False)]
+        normalized_values_for_do = [normalized_values[i]-2 for i in range(1,len(normalized_values)-1)]
+
+        # print('normalized_values: ', normalized_values)
+        # print('normalized_values_for_do: ', normalized_values_for_do)
+
         modes_dictionnary = {}
         for i in range(len(normalized_values)):
             modes_dictionnary[i+1] = 1
+
+#######
+        run_sgs = True
+        if run_sgs:
+            do_model = build_do_domain(self.domain)
+            modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+            modes = modes[1:-1]
+
+            schedule = {}
+            scheduled_tasks_start_times = {}
+            for j in observation.tasks_details.keys():
+                schedule[i] = {}
+                if observation.tasks_details[j].start is not None:
+                    # schedule[j]["start_time"] = observation.tasks_details[j].start
+                    scheduled_tasks_start_times[j] = observation.tasks_details[j].start
+                # if observation.tasks_details[j].end is not None:
+                #     schedule[j]["end_time"] = observation.tasks_details[j].end
+
+            solution = RCPSPSolution(problem=do_model,
+                                     rcpsp_permutation= normalized_values_for_do,
+                                     rcpsp_modes=modes,
+                                     # rcpsp_schedule=schedule
+                                     )
+
+            solution.generate_schedule_from_permutation_serial_sgs_2(current_t=t,
+                                                                     completed_tasks=
+                                                                     {j: observation.tasks_details[j]
+                                                                      for j in observation.tasks_complete},
+                                                                     scheduled_tasks_start_times=scheduled_tasks_start_times)
+            schedule = solution.rcpsp_schedule
+        else:
+            schedule = None
+
+######
         sgs_policy = PolicyRCPSP(domain=self.domain,
+                                 schedule=schedule,
                                  policy_method_params=PolicyMethodParams(
                                      # base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
                                      # base_policy_method=BasePolicyMethod.SGS_READY,

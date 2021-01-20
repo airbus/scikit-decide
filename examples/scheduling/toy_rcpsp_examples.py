@@ -416,7 +416,9 @@ def run_example():
 
 def run_astar():
     from skdecide.hub.solver.lazy_astar import LazyAstar
+
     domain = MyExampleRCPSPDomain()
+    # domain = MyExampleSRCPSPDomain()
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
     print("Initial state : ", state)
@@ -428,7 +430,16 @@ def run_astar():
                                               from_memory=state,
                                               outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
     print("Cost :", sum([v.cost for v in values]))
+    
+    from skdecide.hub.solver.do_solver.sk_to_do_binding import from_last_state_to_solution
+    do_sol = from_last_state_to_solution(states[-1], domain)
+    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_utils import plot_task_gantt, plot_ressource_view, \
+        plot_resource_individual_gantt, plt
 
+    plot_task_gantt(do_sol.problem, do_sol)
+    plot_ressource_view(do_sol.problem, do_sol)
+    plot_resource_individual_gantt(do_sol.problem, do_sol)
+    plt.show()
 
 def run_do():
     from skdecide.hub.solver.do_solver.do_solver_scheduling import PolicyRCPSP, DOSolver, \
@@ -563,8 +574,7 @@ def run_graph_exploration_conditional():
 
 
 if __name__ == "__main__":
-    run_graph_exploration()
-    # run_do()
-    # run_astar()
+    run_do()
+    run_astar()
     # run_example()
-    #  run_graph_exploration_conditional()
+    # run_graph_exploration_conditional()
