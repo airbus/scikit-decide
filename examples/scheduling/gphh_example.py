@@ -120,8 +120,12 @@ def fitness_makespan_correlation():
 
 
 def run_gphh():
-    # domain: RCPSP = load_domain("j301_1.sm")
-    domain: RCPSP = load_domain("j1201_9.sm")
+
+    n_runs = 10
+    makespans = []
+
+    domain: RCPSP = load_domain("j301_1.sm")
+    # domain: RCPSP = load_domain("j1201_9.sm")
 
     training_domains_names = ["j301_"+str(i)+".sm" for i in range(1, 11)]
 
@@ -129,28 +133,33 @@ def run_gphh():
     for td in training_domains_names:
         training_domains.append(load_domain(td))
 
-    domain.set_inplace_environment(False)
-    state = domain.get_initial_state()
+    for i in range(n_runs):
 
-    with open('cp_reference_permutations') as json_file:
-        cp_reference_permutations = json.load(json_file)
+        domain.set_inplace_environment(False)
+        state = domain.get_initial_state()
 
-    solver = GPHH(training_domains=training_domains,
-                  weight=-1,
-                  verbose=True,
-                  reference_permutations=cp_reference_permutations,
-                  training_domains_names=training_domains_names
-                  )
+        with open('cp_reference_permutations') as json_file:
+            cp_reference_permutations = json.load(json_file)
+
+        solver = GPHH(training_domains=training_domains,
+                      weight=-1,
+                      verbose=True,
+                      reference_permutations=cp_reference_permutations,
+                      training_domains_names=training_domains_names
+                      )
 
 
-    solver.solve(domain_factory=lambda: domain)
-    states, actions, values = rollout_episode(domain=domain,
-                                              max_steps=1000,
-                                              solver=solver,
-                                              from_memory=state,
-                                              verbose=False,
-                                              outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
-    print("Cost :", sum([v.cost for v in values]))
+        solver.solve(domain_factory=lambda: domain)
+        states, actions, values = rollout_episode(domain=domain,
+                                                  max_steps=1000,
+                                                  solver=solver,
+                                                  from_memory=state,
+                                                  verbose=False,
+                                                  outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+        print("Cost :", sum([v.cost for v in values]))
+        makespans.append(sum([v.cost for v in values]))
+
+    print('makespans: ', makespans)
 
 
 def run_gphh_with_settings():
