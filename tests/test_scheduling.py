@@ -28,14 +28,14 @@ from skdecide.builders.scheduling.preallocations import WithPreallocations, With
 from skdecide.builders.scheduling.conditional_tasks import WithConditionalTasks, WithoutConditionalTasks
 from skdecide.builders.scheduling.resource_availability import UncertainResourceAvailabilityChanges, DeterministicResourceAvailabilityChanges, WithoutResourceAvailabilityChange
 from skdecide import rollout, rollout_episode
-from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP
+from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, build_n_determinist_from_stochastic
 from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain, load_multiskill_domain
 from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
 from skdecide.hub.solver.lazy_astar import lazy_astar
 from skdecide.hub.solver.do_solver.do_solver_scheduling import PolicyRCPSP, DOSolver, \
     PolicyMethodParams, BasePolicyMethod, SolvingMethod
 from skdecide.hub.solver.lazy_astar import LazyAstar
-
+from skdecide.hub.solver.gphh.gphh import GPHH, ParametersGPHH
 
 optimal_solutions = {
     'ToyRCPSPDomain': {'makespan': 10},
@@ -714,3 +714,55 @@ def test_basic():
     for task_id in states[-1].tasks_details.keys():
         print('end task', task_id, ': ', states[-1].tasks_details[task_id].end)
 
+
+@pytest.mark.parametrize("domain", [
+    (ToySRCPSPDomain())
+])
+def test_sgs_policies(domain):
+    deterministic_domains = build_n_determinist_from_stochastic(domain,
+                                                                nb_instance=1)
+    training_domains = deterministic_domains
+    training_domains_names = ["my_toy_domain"]
+
+    domain.set_inplace_environment(False)
+    state = domain.get_initial_state()
+
+    # Using a stochastic domain as reference + executing on stochastic domain
+    solver = GPHH(training_domains=training_domains,
+                  domain_model=domain,
+                  weight=-1,
+                  verbose=True,
+                  training_domains_names=training_domains_names,
+                  params_gphh=ParametersGPHH.fast_test()
+                  )
+    solver.solve(domain_factory=lambda: domain)
+    solver.set_domain(domain)
+    states, actions, values = rollout_episode(domain=domain,
+                                              max_steps=1000,
+                                              solver=solver,
+                                              from_memory=state,
+                                              verbose=False,
+                                              outcome_formatter=lambda
+                                                  o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    print("Cost :", sum([v.cost for v in values]))
+    check_rollout_consistency(domain, states)
+
+    # Using a deterministic domain as reference + executing on deterministic domain
+    solver = GPHH(training_domains=training_domains,
+                  domain_model=training_domains[0],
+                  weight=-1,
+                  verbose=True,
+                  training_domains_names=training_domains_names,
+                  params_gphh=ParametersGPHH.fast_test()
+                  )
+    solver.solve(domain_factory=lambda: training_domains[0])
+    solver.set_domain(training_domains[0])
+    states, actions, values = rollout_episode(domain=training_domains[0],
+                                              max_steps=1000,
+                                              solver=solver,
+                                              from_memory=state,
+                                              verbose=False,
+                                              outcome_formatter=lambda
+                                                  o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    print("Cost :", sum([v.cost for v in values]))
+    check_rollout_consistency(domain, states)

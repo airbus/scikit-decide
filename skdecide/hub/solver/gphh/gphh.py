@@ -720,24 +720,30 @@ class GPHHPolicy(DeterministicPolicies):
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
         run_sgs = True
         cheat_mode = False
-        # regenerate_cpm = True
 
-        do_model = build_do_domain(self.domain)
+        do_model = build_do_domain(self.domain_model)
         modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
         modes = modes[1:-1]
 
         if run_sgs:
             scheduled_tasks_start_times = {}
             for j in observation.tasks_details.keys():
-                # schedule[j] = {}
                 if observation.tasks_details[j].start is not None:
-                    # schedule[j]["start_time"] = observation.tasks_details[j].start
                     scheduled_tasks_start_times[j] = observation.tasks_details[j].start
-                # if observation.tasks_details[j].end is not None:
-                #     schedule[j]["end_time"] = observation.tasks_details[j].end
-                else:
-                    if not cheat_mode:
-                        do_model.mode_details[j][1]['duration'] = self.domain_model.sample_task_duration(j, 1, 0.)
+                    do_model.mode_details[j][1]['duration'] = observation.tasks_details[j].sampled_duration
+
+        # do_model = build_do_domain(self.domain)
+        # modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        # modes = modes[1:-1]
+        #
+        # if run_sgs:
+        #     scheduled_tasks_start_times = {}
+        #     for j in observation.tasks_details.keys():
+        #         if observation.tasks_details[j].start is not None:
+        #             scheduled_tasks_start_times[j] = observation.tasks_details[j].start
+        #         else:
+        #             if not cheat_mode:
+        #                 do_model.mode_details[j][1]['duration'] = self.domain_model.sample_task_duration(j, 1, 0.)
 
         if self.recompute_cpm:
             cpm, cpm_esd = compute_cpm(do_model)
@@ -831,22 +837,33 @@ class PooledGPHHPolicy(DeterministicPolicies):
         cheat_mode = False
         regenerate_cpm = True
 
-        do_model = build_do_domain(self.domain)
+        do_model = build_do_domain(self.domain_model)
         modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
         modes = modes[1:-1]
 
         if run_sgs:
             scheduled_tasks_start_times = {}
             for j in observation.tasks_details.keys():
-                # schedule[j] = {}
                 if observation.tasks_details[j].start is not None:
-                    # schedule[j]["start_time"] = observation.tasks_details[j].start
                     scheduled_tasks_start_times[j] = observation.tasks_details[j].start
-                # if observation.tasks_details[j].end is not None:
-                #     schedule[j]["end_time"] = observation.tasks_details[j].end
-                else:
-                    if not cheat_mode:
-                        do_model.mode_details[j][1]['duration'] = self.domain_model.sample_task_duration(j, 1, 0.)
+                    do_model.mode_details[j][1]['duration'] = observation.tasks_details[j].sampled_duration
+
+        # do_model = build_do_domain(self.domain)
+        # modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        # modes = modes[1:-1]
+        #
+        # if run_sgs:
+        #     scheduled_tasks_start_times = {}
+        #     for j in observation.tasks_details.keys():
+        #         # schedule[j] = {}
+        #         if observation.tasks_details[j].start is not None:
+        #             # schedule[j]["start_time"] = observation.tasks_details[j].start
+        #             scheduled_tasks_start_times[j] = observation.tasks_details[j].start
+        #         # if observation.tasks_details[j].end is not None:
+        #         #     schedule[j]["end_time"] = observation.tasks_details[j].end
+        #         else:
+        #             if not cheat_mode:
+        #                 do_model.mode_details[j][1]['duration'] = self.domain_model.sample_task_duration(j, 1, 0.)
 
         if regenerate_cpm:
             cpm, cpm_esd = compute_cpm(do_model)
@@ -950,23 +967,34 @@ class FixedPermutationPolicy(DeterministicPolicies):
         run_sgs = True
         cheat_mode = False
 
-        do_model = build_do_domain(self.domain)
+        do_model = build_do_domain(self.domain_model)
         modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
         modes = modes[1:-1]
 
         if run_sgs:
             scheduled_tasks_start_times = {}
             for j in observation.tasks_details.keys():
-                # schedule[j] = {}
                 if observation.tasks_details[j].start is not None:
-                    # schedule[j]["start_time"] = observation.tasks_details[j].start
                     scheduled_tasks_start_times[j] = observation.tasks_details[j].start
-                # if observation.tasks_details[j].end is not None:
-                #     schedule[j]["end_time"] = observation.tasks_details[j].end
-                else:
-                    if not cheat_mode:
-                        # print('do_model: ', do_model)
-                        do_model.mode_details[j][1]['duration'] = self.domain_model.sample_task_duration(j, 1, 0.)
+                    do_model.mode_details[j][1]['duration'] = observation.tasks_details[j].sampled_duration
+
+        # do_model = build_do_domain(self.domain)
+        # modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        # modes = modes[1:-1]
+        #
+        # if run_sgs:
+        #     scheduled_tasks_start_times = {}
+        #     for j in observation.tasks_details.keys():
+        #         # schedule[j] = {}
+        #         if observation.tasks_details[j].start is not None:
+        #             # schedule[j]["start_time"] = observation.tasks_details[j].start
+        #             scheduled_tasks_start_times[j] = observation.tasks_details[j].start
+        #         # if observation.tasks_details[j].end is not None:
+        #         #     schedule[j]["end_time"] = observation.tasks_details[j].end
+        #         else:
+        #             if not cheat_mode:
+        #                 # print('do_model: ', do_model)
+        #                 do_model.mode_details[j][1]['duration'] = self.domain_model.sample_task_duration(j, 1, 0.)
 
         normalized_values = self.fixed_perm
 

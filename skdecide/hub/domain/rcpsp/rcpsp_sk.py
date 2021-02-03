@@ -266,13 +266,22 @@ def build_n_determinist_from_stochastic(srcpsp: Stochastic_RCPSP, nb_instance: i
             for m in modes_for_rcpsp[t]:
                 duration = srcpsp.sample_task_duration(task=t, mode=m)
                 modes_for_rcpsp[t][m]["duration"] = duration
+
+        resource_availability_dict = {}
+        for r in srcpsp.get_resource_types_names():
+            resource_availability_dict[r] = srcpsp.get_original_quantity_resource(r)
+
         instances += [MRCPSP(resource_names=srcpsp.get_resource_types_names(),
                              task_ids=srcpsp.get_tasks_ids(),
                              tasks_mode=modes_for_rcpsp,  # ressource
                              successors=srcpsp.successors,
-                             max_horizon=srcpsp.max_horizon,
-                             resource_availability=srcpsp.resource_availability,
-                             resource_renewable=srcpsp.resource_renewable)]
+                             # max_horizon=srcpsp.max_horizon,
+                             max_horizon=srcpsp.get_max_horizon(),
+                             # resource_availability=srcpsp.resource_availability,
+                             resource_availability=resource_availability_dict,
+                             resource_renewable=srcpsp.get_resource_renewability()
+                      # resource_renewable=srcpsp.resource_renewable
+                             )]
     return instances
 
 
