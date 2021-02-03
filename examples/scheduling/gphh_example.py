@@ -5,11 +5,12 @@ from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, Solving
 from skdecide.hub.solver.sgs_policies.sgs_policies import PolicyMethodParams, BasePolicyMethod
 from skdecide.hub.solver.gphh.gphh import GPHH, feature_average_resource_requirements, \
     feature_n_predecessors, feature_n_successors, feature_task_duration, \
-    feature_total_n_res, FeatureEnum, ParametersGPHH, protected_div, max_operator, min_operator, PrimitiveSet, PermutationDistance, EvaluationGPHH, GPHHPolicy
+    feature_total_n_res, FeatureEnum, ParametersGPHH, protected_div, max_operator, min_operator, PrimitiveSet, PermutationDistance, EvaluationGPHH, GPHHPolicy, PooledGPHHPolicy, PoolAggregationMethod
 import operator
 import numpy as np
 import json
-
+import pickle
+import os
 
 def fitness_makespan_correlation():
     # domain: RCPSP = load_domain("j301_1.sm")
@@ -78,7 +79,7 @@ def fitness_makespan_correlation():
                   weight=-1,
                   verbose=True,
                   reference_permutations=cp_reference_permutations,
-                  reference_makespans=cp_reference_makespans,
+                  # reference_makespans=cp_reference_makespans,
                   training_domains_names=training_domains_names,
                   params_gphh=params_gphh
                   )
@@ -121,7 +122,81 @@ def fitness_makespan_correlation():
 
 def run_gphh():
 
-    n_runs = 10
+    import time
+    n_runs = 1
+    makespans = []
+
+    domain: RCPSP = load_domain("j601_1.sm")
+    # domain: RCPSP = load_domain("j1201_9.sm")
+
+    training_domains_names = ["j601_"+str(i)+".sm" for i in range(1, 11)]
+
+    training_domains = []
+    for td in training_domains_names:
+        training_domains.append(load_domain(td))
+
+    runtimes = []
+    for i in range(n_runs):
+
+        domain.set_inplace_environment(False)
+        state = domain.get_initial_state()
+
+        with open('cp_reference_permutations') as json_file:
+            cp_reference_permutations = json.load(json_file)
+
+        # with open('cp_reference_makespans') as json_file:
+        #     cp_reference_makespans = json.load(json_file)
+
+        start = time.time()
+
+        solver = GPHH(training_domains=training_domains,
+                      domain_model=training_domains[3],
+                      weight=-1,
+                      verbose=True,
+                      reference_permutations=cp_reference_permutations,
+                      # reference_makespans=cp_reference_makespans,
+                      training_domains_names=training_domains_names,
+                      params_gphh=ParametersGPHH.fast_test()
+                      # params_gphh=ParametersGPHH.default()
+                      )
+
+
+        solver.solve(domain_factory=lambda: domain)
+
+        end = time.time()
+
+        runtimes.append((end-start))
+
+        heuristic = solver.hof
+        print('ttype:', solver.best_heuristic)
+        file = open('./trained_gphh_heuristics/test_gphh_'+str(i)+'.pkl', 'wb')
+        # file = open('./test_gphh_heuristic_'+str(i)+'.pkl', 'wb')
+
+        pickle.dump(dict(hof= heuristic), file)
+        file.close()
+
+        solver.set_domain(domain)
+        states, actions, values = rollout_episode(domain=domain,
+                                                  max_steps=1000,
+                                                  solver=solver,
+                                                  from_memory=state,
+                                                  verbose=False,
+                                                  outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+        print("Cost :", sum([v.cost for v in values]))
+        makespans.append(sum([v.cost for v in values]))
+
+    print('makespans: ', makespans)
+    print('runtimes: ', runtimes)
+    print('runtime - mean: ', np.mean(runtimes))
+
+
+
+def run_pooled_gphh():
+
+    n_runs = 1
+    pool_size = 5
+    remove_extreme_values = 1
+
     makespans = []
 
     domain: RCPSP = load_domain("j301_1.sm")
@@ -141,18 +216,46 @@ def run_gphh():
         with open('cp_reference_permutations') as json_file:
             cp_reference_permutations = json.load(json_file)
 
+        heuristics = []
+        func_heuristics = []
+        folder = './trained_gphh_heuristics'
+        files = os.listdir(folder)
         solver = GPHH(training_domains=training_domains,
+                      domain_model=training_domains[0],
                       weight=-1,
                       verbose=True,
                       reference_permutations=cp_reference_permutations,
                       training_domains_names=training_domains_names
                       )
 
+        print('files: ', files)
+        for f in files:
+            full_path = folder+"/"+f
+            print('f: ',full_path)
+            tmp = pickle.load(open(full_path, "rb"))
+            heuristics.append(tmp)
+            func_heuristics.append(solver.toolbox.compile(expr=tmp))
 
-        solver.solve(domain_factory=lambda: domain)
+        # for pool in range(pool_size):
+            # solver = GPHH(training_domains=training_domains,
+            #               weight=-1,
+            #               verbose=True,
+            #               reference_permutations=cp_reference_permutations,
+            #               training_domains_names=training_domains_names
+            #               )
+            # solver.solve(domain_factory=lambda: domain)
+            # func_heuristics.append(solver.func_heuristic)
+
+        pooled_gphh_solver = PooledGPHHPolicy(domain=domain,
+                                              domain_model=training_domains[0],
+                                              func_heuristics=func_heuristics,
+                                              features=list(solver.params_gphh.set_feature),
+                                              params_gphh=solver.params_gphh,
+                                              pool_aggregation_method=PoolAggregationMethod.MEAN,
+                                              remove_extremes_values=remove_extreme_values)
         states, actions, values = rollout_episode(domain=domain,
                                                   max_steps=1000,
-                                                  solver=solver,
+                                                  solver=pooled_gphh_solver,
                                                   from_memory=state,
                                                   verbose=False,
                                                   outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
@@ -489,7 +592,7 @@ def run_comparaison_stochastic():
             solver = GPHH(training_domains=training_domains, weight=-1,
                           verbose=False,
                           reference_permutations=cp_reference_permutations,
-                          reference_makespans=cp_reference_makespans,
+                          # reference_makespans=cp_reference_makespans,
                           training_domains_names=training_domains_names,
                           params_gphh=params_gphh
                           # set_feature=set_feature)
@@ -655,8 +758,8 @@ def run_comparaison():
     with open('cp_reference_permutations') as json_file:
         cp_reference_permutations = json.load(json_file)
 
-    with open('cp_reference_makespans') as json_file:
-        cp_reference_makespans = json.load(json_file)
+    # with open('cp_reference_makespans') as json_file:
+    #     cp_reference_makespans = json.load(json_file)
 
     for i in range(n_walks):
         domain.set_inplace_environment(False)
@@ -707,7 +810,7 @@ def run_comparaison():
         solver = GPHH(training_domains=training_domains, weight=-1,
                       verbose=False,
                       reference_permutations=cp_reference_permutations,
-                      reference_makespans=cp_reference_makespans,
+                      # reference_makespans=cp_reference_makespans,
                       training_domains_names=training_domains_names,
                       params_gphh =params_gphh
                       )
@@ -800,6 +903,7 @@ def compute_ref_permutations():
 
 if __name__ == "__main__":
     run_gphh()
+    # run_pooled_gphh()
     # fitness_makespan_correlation()
     # run_comparaison()
     # run_comparaison_stochastic()
