@@ -46,11 +46,11 @@ def min_operator(left, right):
     return min(left, right)
 
 
-def feature_task_duration(domain: SchedulingDomain, task_id: int, **kwargs):
+def feature_task_duration(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
     return domain.sample_task_duration(task_id)
 
 
-def feature_total_n_res(domain: SchedulingDomain, task_id: int,  **kwargs):
+def feature_total_n_res(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
     val = 0
     mode_consumption = domain.get_task_modes(task_id)[1]
     for res in mode_consumption.get_ressource_names():
@@ -58,11 +58,11 @@ def feature_total_n_res(domain: SchedulingDomain, task_id: int,  **kwargs):
     return val
 
 
-def feature_n_successors(domain: SchedulingDomain, task_id: int,  **kwargs):
+def feature_n_successors(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
     return len(domain.get_successors_task(task_id))/ len(domain.get_tasks_ids())
 
 
-def feature_n_predecessors(domain: SchedulingDomain, task_id: int,  **kwargs):
+def feature_n_predecessors(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
     return len(domain.get_predecessors_task(task_id))/ len(domain.get_tasks_ids())
 
 
@@ -84,19 +84,19 @@ def get_resource_requirements_across_duration(domain: SchedulingDomain, task_id:
     return values
 
 
-def feature_average_resource_requirements(domain: SchedulingDomain, task_id: int,  **kwargs):
+def feature_average_resource_requirements(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
     values = get_resource_requirements_across_duration(domain=domain, task_id=task_id)
     val = np.mean(values)
     return val
 
 
-def feature_minimum_resource_requirements(domain: SchedulingDomain, task_id: int,  **kwargs):
+def feature_minimum_resource_requirements(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
     values = get_resource_requirements_across_duration(domain=domain, task_id=task_id)
     val = np.min(values)
     return val
 
 
-def feature_non_zero_minimum_resource_requirements(domain: SchedulingDomain, task_id: int,  **kwargs):
+def feature_non_zero_minimum_resource_requirements(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
     values = get_resource_requirements_across_duration(domain=domain, task_id=task_id)
     if np.sum(values) > 0.:
         val = np.min([x for x in values if x > 0.])
@@ -105,58 +105,52 @@ def feature_non_zero_minimum_resource_requirements(domain: SchedulingDomain, tas
     return val
 
 
-def feature_maximum_resource_requirements(domain: SchedulingDomain, task_id: int,  **kwargs):
+def feature_maximum_resource_requirements(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
     values = get_resource_requirements_across_duration(domain=domain, task_id=task_id)
     val = np.max(values)
     return val
 
 
-def feature_resource_requirements(domain: SchedulingDomain, task_id: int,  **kwargs):
+def feature_resource_requirements(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
     values = get_resource_requirements_across_duration(domain=domain, task_id=task_id)
     val = len([x for x in values if x > 0.]) / len(values)
     return val
 
 
-def feature_all_descendants(domain: SchedulingDomain, task_id: int,  **kwargs):
+def feature_all_descendants(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
     return len(domain.full_successors[task_id]) / len(domain.get_tasks_ids())
 
 
-def feature_precedence_done(domain: SchedulingDomain, task_id: int, state: State,  **kwargs):
+def feature_precedence_done(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, state: State,  **kwargs):
     return task_id in domain.task_possible_to_launch_precedence(state=state)
 
 
-def compute_cpm(domain: SchedulingDomain):
-    try:
-        cpm = domain.cpm
-    except:
-        cpm_solver = CPM(build_do_domain(domain))
-        path = cpm_solver.run_classic_cpm()
-        domain.cpm = cpm_solver.map_node
-        domain.cpm_esd = domain.cpm[path[-1]]._ESD # to normalize...
+def compute_cpm(do_domain):
+    cpm_solver = CPM(do_domain)
+    path = cpm_solver.run_classic_cpm()
+    cpm = cpm_solver.map_node
+    cpm_esd = cpm[path[-1]]._ESD # to normalize...
+    return cpm, cpm_esd
 
 
-def feature_esd(domain: SchedulingDomain, task_id: int, **kwargs):
+def feature_esd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
     """ Will only work if you store cpm results into the object. dirty trick"""
-    compute_cpm(domain)
-    return domain.cpm[task_id]._ESD/domain.cpm_esd
+    return cpm[task_id]._ESD/cpm_esd
 
 
-def feature_lsd(domain: SchedulingDomain, task_id: int, **kwargs):
+def feature_lsd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
     """ Will only work if you store cpm results into the object. dirty trick"""
-    compute_cpm(domain)
-    return domain.cpm[task_id]._LSD/domain.cpm_esd
+    return cpm[task_id]._LSD/cpm_esd
 
 
-def feature_efd(domain: SchedulingDomain, task_id: int, **kwargs):
+def feature_efd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
     """ Will only work if you store cpm results into the object. dirty trick"""
-    compute_cpm(domain)
-    return domain.cpm[task_id]._EFD/domain.cpm_esd
+    return cpm[task_id]._EFD/cpm_esd
 
 
-def feature_lfd(domain: SchedulingDomain, task_id: int, **kwargs):
+def feature_lfd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
     """ Will only work if you store cpm results into the object. dirty trick"""
-    compute_cpm(domain)
-    return domain.cpm[task_id]._LFD/domain.cpm_esd
+    return cpm[task_id]._LFD/cpm_esd
 
 
 class D(SchedulingDomain, SingleMode):
@@ -217,7 +211,7 @@ feature_static_map = {FeatureEnum.TASK_DURATION: True,
 class EvaluationGPHH(Enum):
     SGS = 0
     PERMUTATION_DISTANCE = 1
-    SGS_DEVIATION = 2
+    # SGS_DEVIATION = 2
 
 
 class PermutationDistance(Enum):
@@ -295,7 +289,7 @@ class ParametersGPHH:
             set_primitves=pset,
             tournament_ratio=0.1,
             pop_size=40,
-            n_gen=5,
+            n_gen=100,
             min_tree_depth=1,
             max_tree_depth=4,
             crossover_rate=0.7,
@@ -304,7 +298,51 @@ class ParametersGPHH:
             delta_index_freedom=0,
             delta_time_freedom=0,
             deap_verbose=True,
-            evaluation=EvaluationGPHH.PERMUTATION_DISTANCE,
+            # evaluation=EvaluationGPHH.PERMUTATION_DISTANCE,
+            evaluation=EvaluationGPHH.SGS,
+            permutation_distance=PermutationDistance.KTD)
+
+    @staticmethod
+    def fast_test():
+        set_feature = {FeatureEnum.EARLIEST_FINISH_DATE,
+                       FeatureEnum.EARLIEST_START_DATE,
+                       FeatureEnum.LATEST_FINISH_DATE,
+                       FeatureEnum.LATEST_START_DATE,
+                       FeatureEnum.N_PREDECESSORS,
+                       FeatureEnum.N_SUCCESSORS,
+                       FeatureEnum.ALL_DESCENDANTS,
+                       FeatureEnum.RESSOURCE_REQUIRED,
+                       FeatureEnum.RESSOURCE_AVG,
+                       FeatureEnum.RESSOURCE_MAX,
+                       # FeatureEnum.RESSOURCE_MIN
+                       FeatureEnum.RESSOURCE_NZ_MIN
+                       }
+
+        pset = PrimitiveSet("main", len(set_feature))
+        pset.addPrimitive(operator.add, 2)
+        pset.addPrimitive(operator.sub, 2)
+        pset.addPrimitive(operator.mul, 2)
+        pset.addPrimitive(protected_div, 2)
+        pset.addPrimitive(max_operator, 2)
+        pset.addPrimitive(min_operator, 2)
+        pset.addPrimitive(operator.neg, 1)
+
+        return ParametersGPHH(
+            set_feature=set_feature,
+            set_primitves=pset,
+            tournament_ratio=0.1,
+            pop_size=10,
+            n_gen=2,
+            min_tree_depth=1,
+            max_tree_depth=4,
+            crossover_rate=0.7,
+            mutation_rate=0.3,
+            base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
+            delta_index_freedom=0,
+            delta_time_freedom=0,
+            deap_verbose=True,
+            evaluation=EvaluationGPHH.SGS,
+            # evaluation=EvaluationGPHH.PERMUTATION_DISTANCE,
             permutation_distance=PermutationDistance.KTD)
 
     @staticmethod
@@ -353,18 +391,21 @@ class GPHH(Solver, DeterministicPolicies):
 
     def __init__(self,
                  training_domains: List[T_domain],
+                 domain_model: SchedulingDomain,
                  weight: int,
                  # set_feature: Set[FeatureEnum]=None,
                  params_gphh: ParametersGPHH=ParametersGPHH.default(),
                  reference_permutations=None,
-                 reference_makespans=None,
+                 # reference_makespans=None,
                  training_domains_names=None,
                  verbose: bool=False):
         self.training_domains = training_domains
+        self.domain_model = domain_model
         self.params_gphh = params_gphh
         # self.set_feature = set_feature
         self.set_feature = self.params_gphh.set_feature
         print('self.set_feature: ', self.set_feature)
+        print('Evaluation: ', self.params_gphh.evaluation)
         # if set_feature is None:
         #     self.set_feature = {FeatureEnum.RESSOURCE_TOTAL,
         #                         FeatureEnum.TASK_DURATION,
@@ -376,11 +417,12 @@ class GPHH(Solver, DeterministicPolicies):
         self.pset = self.init_primitives(self.params_gphh.set_primitves)
         self.weight = weight
         self.evaluation_method = self.params_gphh.evaluation
+        self.initialize_cpm_data_for_training()
         if self.evaluation_method == EvaluationGPHH.PERMUTATION_DISTANCE:
             self.init_reference_permutations(reference_permutations, training_domains_names)
             self.permutation_distance = self.params_gphh.permutation_distance
-        if self.evaluation_method == EvaluationGPHH.SGS_DEVIATION:
-            self.init_reference_makespans(reference_makespans, training_domains_names)
+        # if self.evaluation_method == EvaluationGPHH.SGS_DEVIATION:
+        #     self.init_reference_makespans(reference_makespans, training_domains_names)
 
     def init_reference_permutations(self, reference_permutations={}, training_domains_names=[]) -> None:
         self.reference_permutations = {}
@@ -404,35 +446,35 @@ class GPHH(Solver, DeterministicPolicies):
             else:
                 self.reference_permutations[td] = reference_permutations[td_name]
 
-    def init_reference_makespans(self, reference_makespans={}, training_domains_names=[]) -> None:
-        self.reference_makespans = {}
-        for i in range(len(self.training_domains)):
-            td = self.training_domains[i]
-            td_name = training_domains_names[i]
-        # for td in self.training_domains:
-            print('td:',td)
-            if td_name not in reference_makespans.keys():
-                # Run CP
-                td.set_inplace_environment(False)
-                solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
-                                                              delta_index_freedom=0,
-                                                              delta_time_freedom=0),
-                                  method=SolvingMethod.CP)
-                solver.solve(domain_factory=lambda: td)
-
-                state = td.get_initial_state()
-                states, actions, values = rollout_episode(domain=td,
-                                                          max_steps=1000,
-                                                          solver=solver,
-                                                          from_memory=state,
-                                                          verbose=False,
-                                                          outcome_formatter=lambda
-                                                              o: f'{o.observation} - cost: {o.value.cost:.2f}')
-
-                makespan = sum([v.cost for v in values])
-                self.reference_makespans[td] = makespan
-            else:
-                self.reference_makespans[td] = reference_makespans[td_name]
+    # def init_reference_makespans(self, reference_makespans={}, training_domains_names=[]) -> None:
+    #     self.reference_makespans = {}
+    #     for i in range(len(self.training_domains)):
+    #         td = self.training_domains[i]
+    #         td_name = training_domains_names[i]
+    #     # for td in self.training_domains:
+    #         print('td:',td)
+    #         if td_name not in reference_makespans.keys():
+    #             # Run CP
+    #             td.set_inplace_environment(False)
+    #             solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
+    #                                                           delta_index_freedom=0,
+    #                                                           delta_time_freedom=0),
+    #                               method=SolvingMethod.CP)
+    #             solver.solve(domain_factory=lambda: td)
+    #
+    #             state = td.get_initial_state()
+    #             states, actions, values = rollout_episode(domain=td,
+    #                                                       max_steps=1000,
+    #                                                       solver=solver,
+    #                                                       from_memory=state,
+    #                                                       verbose=False,
+    #                                                       outcome_formatter=lambda
+    #                                                           o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    #
+    #             makespan = sum([v.cost for v in values])
+    #             self.reference_makespans[td] = makespan
+    #         else:
+    #             self.reference_makespans[td] = reference_makespans[td_name]
 
     def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
         self.domain = domain_factory()
@@ -456,8 +498,8 @@ class GPHH(Solver, DeterministicPolicies):
 
         if self.evaluation_method == EvaluationGPHH.SGS:
             self.toolbox.register("evaluate", self.evaluate_heuristic, domains=self.training_domains)
-        if self.evaluation_method == EvaluationGPHH.SGS_DEVIATION:
-            self.toolbox.register("evaluate", self.evaluate_heuristic_sgs_deviation, domains=self.training_domains)
+        # if self.evaluation_method == EvaluationGPHH.SGS_DEVIATION:
+        #     self.toolbox.register("evaluate", self.evaluate_heuristic_sgs_deviation, domains=self.training_domains)
         elif self.evaluation_method == EvaluationGPHH.PERMUTATION_DISTANCE:
             self.toolbox.register("evaluate", self.evaluate_heuristic_permutation, domains=self.training_domains)
         # self.toolbox.register("evaluate", self.evaluate_heuristic, domains=[self.training_domains[1]])
@@ -480,16 +522,19 @@ class GPHH(Solver, DeterministicPolicies):
 
         pop = self.toolbox.population(n=pop_size)
         hof = tools.HallOfFame(1)
+        self.hof = hof
         pop, log = algorithms.eaSimple(pop, self.toolbox, crossover_rate, mutation_rate, n_gen, stats=mstats,
                                        halloffame=hof, verbose=True)
 
         self.best_heuristic = hof[0]
         print('best_heuristic: ', self.best_heuristic)
 
-        func_heuristic = self.toolbox.compile(expr=self.best_heuristic)
-        self.policy = GPHHPolicy(self.domain, func_heuristic,
+        self.func_heuristic = self.toolbox.compile(expr=self.best_heuristic)
+        self.policy = GPHHPolicy(self.domain, self.domain_model,
+                                 self.func_heuristic,
                                  features=self.list_feature,
-                                 params_gphh=self.params_gphh)
+                                 params_gphh=self.params_gphh,
+                                 recompute_cpm=True)
 
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
         action = self.policy.sample_action(observation)
@@ -509,69 +554,110 @@ class GPHH(Solver, DeterministicPolicies):
         func_heuristic = self.toolbox.compile(expr=individual)
         # print('individual', individual)
         for domain in domains:
-            policy = GPHHPolicy(domain,
-                                func_heuristic,
-                                features=self.list_feature,
-                                params_gphh=self.params_gphh)
-            state = domain.get_initial_state().copy()
-            domain.set_inplace_environment(True)  # we can use True because we don't use the value
 
-            states, actions, values = rollout_episode(domain=domain,
-                                                      max_steps=10000,
-                                                      solver=policy,
-                                                      from_memory=state,
-                                                      verbose=False,
-                                                      outcome_formatter=lambda
-                                                          o: f'{o.observation} - cost: {o.value.cost:.2f}')
+            ###
+            initial_state = domain.get_initial_state()
 
-            vals.append(states[-1].t)
+            do_model = build_do_domain(domain)
+            modes = [initial_state.tasks_mode.get(j, 1) for j in sorted(domain.get_tasks_ids())]
+            modes = modes[1:-1]
+
+            cpm = self.cpm_data[domain]['cpm']
+            cpm_esd = self.cpm_data[domain]['cpm_esd']
+
+            raw_values = []
+            for task_id in domain.get_available_tasks(initial_state):
+                input_features = [feature_function_map[lf](domain=domain,
+                                                           cpm=cpm,
+                                                           cpm_esd=cpm_esd,
+                                                           task_id=task_id,
+                                                           state=initial_state)
+                                  for lf in self.list_feature]
+                output_value = func_heuristic(*input_features)
+                raw_values.append(output_value)
+
+            normalized_values = [x + 1 for x in sorted(range(len(raw_values)), key=lambda k: raw_values[k],
+                                                       reverse=False)]
+            normalized_values_for_do = [normalized_values[i] - 2 for i in range(len(normalized_values)) if
+                                        normalized_values[i] not in {1, len(normalized_values)}]
+
+            solution = RCPSPSolution(problem=do_model,
+                                     rcpsp_permutation=normalized_values_for_do,
+                                     rcpsp_modes=modes,
+                                     )
+            last_activity = max(list(solution.rcpsp_schedule.keys()))
+            do_makespan = solution.rcpsp_schedule[last_activity]['end_time']
+            vals.append(do_makespan)
+
         fitness = [np.mean(vals)]
         # fitness = [np.max(vals)]
         return fitness
 
-    def evaluate_heuristic_sgs_deviation(self, individual, domains) -> float:
-        vals = []
-        func_heuristic = self.toolbox.compile(expr=individual)
-        # selected_domains = random.sample(domains, 3)
-        selected_domains = domains
+    # def evaluate_heuristic_sgs_deviation(self, individual, domains) -> float:
+    #     vals = []
+    #     func_heuristic = self.toolbox.compile(expr=individual)
+    #     # selected_domains = random.sample(domains, 3)
+    #     selected_domains = domains
+    #
+    #     for domain in selected_domains:
+    #         policy = GPHHPolicy(domain, domain,
+    #                             func_heuristic,
+    #                             features=self.list_feature,
+    #                             params_gphh=self.params_gphh, recompute_cpm=False, cpm_data=self.cpm_data
+    #                             )
+    #         state = domain.get_initial_state().copy()
+    #         domain.set_inplace_environment(True)  # we can use True because we don't use the value
+    #
+    #         states, actions, values = rollout_episode(domain=domain,
+    #                                                   max_steps=10000,
+    #                                                   solver=policy,
+    #                                                   from_memory=state,
+    #                                                   verbose=False,
+    #                                                   outcome_formatter=lambda
+    #                                                       o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    #
+    #         makespan = states[-1].t
+    #         ref_makespan = self.reference_makespans[domain]
+    #         makespan_deviation = (makespan - ref_makespan) / ref_makespan
+    #         # print('mk: ', makespan, ' - mk_dev: ', makespan_deviation, ' - ref: ', ref_makespan)
+    #         vals.append(makespan_deviation)
+    #
+    #     # fitness = [np.mean(vals)]
+    #     fitness = [np.mean(vals)]
+    #     return fitness
 
-        for domain in selected_domains:
-            policy = GPHHPolicy(domain,
-                                func_heuristic,
-                                features=self.list_feature,
-                                params_gphh=self.params_gphh
-                                )
-            state = domain.get_initial_state().copy()
-            domain.set_inplace_environment(True)  # we can use True because we don't use the value
+    def initialize_cpm_data_for_training(self):
+        self.cpm_data = {}
+        for domain in self.training_domains:
+            do_model = build_do_domain(domain)
+            cpm, cpm_esd = compute_cpm(do_model)
+            self.cpm_data[domain] = {'cpm': cpm,
+                                     'cpm_esd': cpm_esd}
 
-            states, actions, values = rollout_episode(domain=domain,
-                                                      max_steps=10000,
-                                                      solver=policy,
-                                                      from_memory=state,
-                                                      verbose=False,
-                                                      outcome_formatter=lambda
-                                                          o: f'{o.observation} - cost: {o.value.cost:.2f}')
-
-            makespan = states[-1].t
-            ref_makespan = self.reference_makespans[domain]
-            makespan_deviation = (makespan - ref_makespan) / ref_makespan
-            # print('mk: ', makespan, ' - mk_dev: ', makespan_deviation, ' - ref: ', ref_makespan)
-            vals.append(makespan_deviation)
-
-        # fitness = [np.mean(vals)]
-        fitness = [np.mean(vals)]
-        return fitness
 
     def evaluate_heuristic_permutation(self, individual, domains) -> float:
         vals = []
         func_heuristic = self.toolbox.compile(expr=individual)
         # print('individual', individual)
+
         for domain in domains:
 
             raw_values = []
             initial_state = domain.get_initial_state()
+
+            regenerate_cpm = False
+            if regenerate_cpm:
+                do_model = build_do_domain(domain)
+                cpm, cpm_esd = compute_cpm(do_model)
+            else:
+                cpm = self.cpm_data[domain]['cpm']
+                cpm_esd = self.cpm_data[domain]['cpm_esd']
+
             for task_id in domain.get_available_tasks(state=initial_state):
+
                 input_features = [feature_function_map[lf](domain=domain,
+                                                       cpm = cpm,
+                                                        cpm_esd=cpm_esd,
                                                            task_id=task_id,
                                                            state=initial_state)
                                   for lf in self.list_feature]
@@ -600,6 +686,7 @@ class GPHH(Solver, DeterministicPolicies):
             penalized_distance = dist + penalty
             vals.append(penalized_distance)
         fitness = [np.mean(vals)]
+        # fitness = [np.max(vals)]
         return fitness
 
     def test_features(self, domain, task_id, observation):
@@ -618,20 +705,58 @@ class GPHH(Solver, DeterministicPolicies):
 
 class GPHHPolicy(DeterministicPolicies):
 
-    def __init__(self, domain: SchedulingDomain, func_heuristic, features: List[FeatureEnum]=None, params_gphh=None):
+    def __init__(self, domain: SchedulingDomain, domain_model: SchedulingDomain, func_heuristic, features: List[FeatureEnum]=None, params_gphh=None, recompute_cpm=True, cpm_data=None):
         self.domain = domain
+        self.domain_model = domain_model
         self.func_heuristic = func_heuristic
         self.list_feature = features
         self.params_gphh = params_gphh
+        self.recompute_cpm = recompute_cpm
+        self.cpm_data = cpm_data
 
     def reset(self):
         pass
 
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+        run_sgs = True
+        cheat_mode = False
+
+        do_model = build_do_domain(self.domain_model)
+        modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        modes = modes[1:-1]
+
+        if run_sgs:
+            scheduled_tasks_start_times = {}
+            for j in observation.tasks_details.keys():
+                if observation.tasks_details[j].start is not None:
+                    scheduled_tasks_start_times[j] = observation.tasks_details[j].start
+                    do_model.mode_details[j][1]['duration'] = observation.tasks_details[j].sampled_duration
+
+        # do_model = build_do_domain(self.domain)
+        # modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        # modes = modes[1:-1]
+        #
+        # if run_sgs:
+        #     scheduled_tasks_start_times = {}
+        #     for j in observation.tasks_details.keys():
+        #         if observation.tasks_details[j].start is not None:
+        #             scheduled_tasks_start_times[j] = observation.tasks_details[j].start
+        #         else:
+        #             if not cheat_mode:
+        #                 do_model.mode_details[j][1]['duration'] = self.domain_model.sample_task_duration(j, 1, 0.)
+
+        if self.recompute_cpm:
+            cpm, cpm_esd = compute_cpm(do_model)
+        else:
+            cpm = self.cpm_data[self.domain]['cpm']
+            cpm_esd = self.cpm_data[self.domain]['cpm_esd']
+
         t = observation.t
         raw_values = []
         for task_id in self.domain.get_available_tasks(observation):
             input_features = [feature_function_map[lf](domain=self.domain,
+                                                       cpm = cpm,
+                                                        cpm_esd=cpm_esd,
                                                        task_id=task_id,
                                                        state=observation)
                               for lf in self.list_feature]
@@ -640,36 +765,22 @@ class GPHHPolicy(DeterministicPolicies):
 
         normalized_values = [x+1 for x in sorted(range(len(raw_values)), key=lambda k: raw_values[k],
                                                  reverse=False)]
-        normalized_values_for_do = [normalized_values[i]-2 for i in range(1,len(normalized_values)-1)]
+        normalized_values_for_do = [normalized_values[i] - 2 for i in range(len(normalized_values)) if
+                                    normalized_values[i] not in {1, len(normalized_values)}]
 
-        # print('normalized_values: ', normalized_values)
+
+        # print(t, ': ', normalized_values)
         # print('normalized_values_for_do: ', normalized_values_for_do)
 
         modes_dictionnary = {}
         for i in range(len(normalized_values)):
             modes_dictionnary[i+1] = 1
 
-#######
-        run_sgs = True
         if run_sgs:
-            do_model = build_do_domain(self.domain)
-            modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
-            modes = modes[1:-1]
-
-            schedule = {}
-            scheduled_tasks_start_times = {}
-            for j in observation.tasks_details.keys():
-                schedule[i] = {}
-                if observation.tasks_details[j].start is not None:
-                    # schedule[j]["start_time"] = observation.tasks_details[j].start
-                    scheduled_tasks_start_times[j] = observation.tasks_details[j].start
-                # if observation.tasks_details[j].end is not None:
-                #     schedule[j]["end_time"] = observation.tasks_details[j].end
 
             solution = RCPSPSolution(problem=do_model,
-                                     rcpsp_permutation= normalized_values_for_do,
+                                     rcpsp_permutation=normalized_values_for_do,
                                      rcpsp_modes=modes,
-                                     # rcpsp_schedule=schedule
                                      )
 
             solution.generate_schedule_from_permutation_serial_sgs_2(current_t=t,
@@ -677,11 +788,11 @@ class GPHHPolicy(DeterministicPolicies):
                                                                      {j: observation.tasks_details[j]
                                                                       for j in observation.tasks_complete},
                                                                      scheduled_tasks_start_times=scheduled_tasks_start_times)
+
             schedule = solution.rcpsp_schedule
         else:
             schedule = None
 
-######
         sgs_policy = PolicyRCPSP(domain=self.domain,
                                  schedule=schedule,
                                  policy_method_params=PolicyMethodParams(
@@ -690,6 +801,240 @@ class GPHHPolicy(DeterministicPolicies):
                                      base_policy_method=self.params_gphh.base_policy_method,
                                      delta_index_freedom=self.params_gphh.delta_index_freedom,
                                      delta_time_freedom=self.params_gphh.delta_time_freedom),
+                                 permutation_task=normalized_values,
+                                 modes_dictionnary=modes_dictionnary)
+        action: SchedulingAction = sgs_policy.sample_action(observation)
+        # print('action_2: ', action.action)
+        return action
+
+    def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
+        return True
+
+
+class PoolAggregationMethod(Enum):
+    MEAN  = "mean"
+    MEDIAN = "median"
+    RANDOM = "random"
+
+
+class PooledGPHHPolicy(DeterministicPolicies):
+
+    def __init__(self, domain: SchedulingDomain, domain_model: SchedulingDomain, func_heuristics, pool_aggregation_method: PoolAggregationMethod = PoolAggregationMethod.MEAN, remove_extremes_values:int = 0, features: List[FeatureEnum]=None, params_gphh=None):
+        self.domain = domain
+        self.domain_model = domain_model
+        self.func_heuristics = func_heuristics
+        self.list_feature = features
+        self.params_gphh = params_gphh
+        self.pool_aggregation_method = pool_aggregation_method
+        self.remove_extremes_values = remove_extremes_values
+
+    def reset(self):
+        pass
+
+    def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+
+        run_sgs = True
+        cheat_mode = False
+        regenerate_cpm = True
+
+        do_model = build_do_domain(self.domain_model)
+        modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        modes = modes[1:-1]
+
+        if run_sgs:
+            scheduled_tasks_start_times = {}
+            for j in observation.tasks_details.keys():
+                if observation.tasks_details[j].start is not None:
+                    scheduled_tasks_start_times[j] = observation.tasks_details[j].start
+                    do_model.mode_details[j][1]['duration'] = observation.tasks_details[j].sampled_duration
+
+        # do_model = build_do_domain(self.domain)
+        # modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        # modes = modes[1:-1]
+        #
+        # if run_sgs:
+        #     scheduled_tasks_start_times = {}
+        #     for j in observation.tasks_details.keys():
+        #         # schedule[j] = {}
+        #         if observation.tasks_details[j].start is not None:
+        #             # schedule[j]["start_time"] = observation.tasks_details[j].start
+        #             scheduled_tasks_start_times[j] = observation.tasks_details[j].start
+        #         # if observation.tasks_details[j].end is not None:
+        #         #     schedule[j]["end_time"] = observation.tasks_details[j].end
+        #         else:
+        #             if not cheat_mode:
+        #                 do_model.mode_details[j][1]['duration'] = self.domain_model.sample_task_duration(j, 1, 0.)
+
+        if regenerate_cpm:
+            cpm, cpm_esd = compute_cpm(do_model)
+
+        t = observation.t
+        raw_values = []
+        for task_id in self.domain.get_available_tasks(observation):
+            input_features = [feature_function_map[lf](
+                                                    domain=self.domain,
+                                                       cpm = cpm,
+                                                        cpm_esd=cpm_esd,
+                                                       task_id=task_id,
+                                                       state=observation)
+                              for lf in self.list_feature]
+            output_values = []
+            for f in self.func_heuristics:
+                output_value = f(*input_features)
+                output_values.append(output_value)
+
+            # print('output_values: ', output_values)
+            if self.remove_extremes_values > 0:
+                the_median = float(np.median(output_values))
+                tmp = {}
+                for i in range(len(output_values)):
+                    tmp[i] = abs(output_values[i] - the_median)
+                tmp = sorted(tmp.items(), key=lambda x: x[1], reverse=True)
+                to_remove = [tmp[i][0] for i in range(self.remove_extremes_values)]
+                output_values = list(np.delete(output_values, to_remove))
+
+            # print('output_values filtered: ', output_values)
+            if self.pool_aggregation_method == PoolAggregationMethod.MEAN:
+                agg_value = np.mean(output_values)
+            elif self.pool_aggregation_method == PoolAggregationMethod.MEDIAN:
+                agg_value = np.median(output_values)
+            elif self.pool_aggregation_method == PoolAggregationMethod.RANDOM:
+                index = random.randint(len(output_values))
+                agg_value = output_values[index]
+
+            # print('agg_value: ', agg_value)
+            raw_values.append(agg_value)
+
+        normalized_values = [x+1 for x in sorted(range(len(raw_values)), key=lambda k: raw_values[k],
+                                                 reverse=False)]
+        normalized_values_for_do = [normalized_values[i] - 2 for i in range(len(normalized_values)) if
+                                    normalized_values[i] not in {1, len(normalized_values)}]
+
+
+        # print('normalized_values: ', normalized_values)
+        # print('normalized_values_for_do: ', normalized_values_for_do)
+
+        modes_dictionnary = {}
+        for i in range(len(normalized_values)):
+            modes_dictionnary[i+1] = 1
+
+        if run_sgs:
+
+            solution = RCPSPSolution(problem=do_model,
+                                     rcpsp_permutation=normalized_values_for_do,
+                                     rcpsp_modes=modes,
+                                     )
+
+            solution.generate_schedule_from_permutation_serial_sgs_2(current_t=t,
+                                                                     completed_tasks=
+                                                                     {j: observation.tasks_details[j]
+                                                                      for j in observation.tasks_complete},
+                                                                     scheduled_tasks_start_times=scheduled_tasks_start_times)
+
+            schedule = solution.rcpsp_schedule
+        else:
+            schedule = None
+
+        sgs_policy = PolicyRCPSP(domain=self.domain,
+                                 schedule=schedule,
+                                 policy_method_params=PolicyMethodParams(
+                                     # base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
+                                     # base_policy_method=BasePolicyMethod.SGS_READY,
+                                     base_policy_method=self.params_gphh.base_policy_method,
+                                     delta_index_freedom=self.params_gphh.delta_index_freedom,
+                                     delta_time_freedom=self.params_gphh.delta_time_freedom),
+                                 permutation_task=normalized_values,
+                                 modes_dictionnary=modes_dictionnary)
+        action: SchedulingAction = sgs_policy.sample_action(observation)
+        # print('action_2: ', action.action)
+        return action
+
+    def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
+        return True
+
+
+class FixedPermutationPolicy(DeterministicPolicies):
+
+    def __init__(self, domain: SchedulingDomain, domain_model: SchedulingDomain, fixed_perm):
+        self.domain = domain
+        self.domain_model = domain_model
+        self.fixed_perm = fixed_perm
+
+    def reset(self):
+        pass
+
+    def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+        run_sgs = True
+        cheat_mode = False
+
+        do_model = build_do_domain(self.domain_model)
+        modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        modes = modes[1:-1]
+
+        if run_sgs:
+            scheduled_tasks_start_times = {}
+            for j in observation.tasks_details.keys():
+                if observation.tasks_details[j].start is not None:
+                    scheduled_tasks_start_times[j] = observation.tasks_details[j].start
+                    do_model.mode_details[j][1]['duration'] = observation.tasks_details[j].sampled_duration
+
+        # do_model = build_do_domain(self.domain)
+        # modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        # modes = modes[1:-1]
+        #
+        # if run_sgs:
+        #     scheduled_tasks_start_times = {}
+        #     for j in observation.tasks_details.keys():
+        #         # schedule[j] = {}
+        #         if observation.tasks_details[j].start is not None:
+        #             # schedule[j]["start_time"] = observation.tasks_details[j].start
+        #             scheduled_tasks_start_times[j] = observation.tasks_details[j].start
+        #         # if observation.tasks_details[j].end is not None:
+        #         #     schedule[j]["end_time"] = observation.tasks_details[j].end
+        #         else:
+        #             if not cheat_mode:
+        #                 # print('do_model: ', do_model)
+        #                 do_model.mode_details[j][1]['duration'] = self.domain_model.sample_task_duration(j, 1, 0.)
+
+        normalized_values = self.fixed_perm
+
+        normalized_values_for_do = [normalized_values[i] - 2 for i in range(len(normalized_values)) if
+                                    normalized_values[i] not in {1, len(normalized_values)}]
+
+        # print('normalized_values: ', normalized_values)
+        # print('normalized_values_for_do: ', normalized_values_for_do)
+        t = observation.t
+
+        modes_dictionnary = {}
+        for i in range(len(normalized_values)):
+            modes_dictionnary[i+1] = 1
+
+        if run_sgs:
+
+            solution = RCPSPSolution(problem=do_model,
+                                     rcpsp_permutation=normalized_values_for_do,
+                                     rcpsp_modes=modes,
+                                     )
+
+            solution.generate_schedule_from_permutation_serial_sgs_2(current_t=t,
+                                                                     completed_tasks=
+                                                                     {j: observation.tasks_details[j]
+                                                                      for j in observation.tasks_complete},
+                                                                     scheduled_tasks_start_times=scheduled_tasks_start_times)
+
+            schedule = solution.rcpsp_schedule
+        else:
+            schedule = None
+
+        sgs_policy = PolicyRCPSP(domain=self.domain,
+                                 schedule=schedule,
+                                 policy_method_params=PolicyMethodParams(
+                                     # base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
+                                     # base_policy_method=BasePolicyMethod.SGS_READY,
+                                     base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
+                                     # delta_index_freedom=self.params_gphh.delta_index_freedom,
+                                     # delta_time_freedom=self.params_gphh.delta_time_freedom
+                                 ),
                                  permutation_task=normalized_values,
                                  modes_dictionnary=modes_dictionnary)
         action: SchedulingAction = sgs_policy.sample_action(observation)

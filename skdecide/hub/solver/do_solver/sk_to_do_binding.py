@@ -3,7 +3,7 @@ from typing import Union
 from skdecide.builders.scheduling.scheduling_domains import SchedulingDomain, \
     SingleModeRCPSP, SingleModeRCPSPCalendar, MultiModeRCPSP, MultiModeRCPSPCalendar,\
     MultiModeMultiSkillRCPSPCalendar, MultiModeMultiSkillRCPSP, MultiModeRCPSPWithCost, State
-from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, MSRCPSP, MRCPSPCalendar, MSRCPSPCalendar, RCPSPCalendar
+from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, MSRCPSP, MRCPSPCalendar, MSRCPSPCalendar, RCPSPCalendar, SingleModeRCPSP_Stochastic_Durations
 from skdecide.solvers import Solver, DeterministicPolicies
 from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, SingleModeRCPSPModel, \
     MultiModeRCPSPModel, RCPSPModelCalendar, RCPSPSolution
@@ -29,7 +29,8 @@ def build_do_domain(scheduling_domain: Union[SingleModeRCPSP,
                                              MultiModeRCPSPWithCost,
                                              MultiModeRCPSPCalendar,
                                              MultiModeMultiSkillRCPSP,
-                                             MultiModeMultiSkillRCPSPCalendar]):
+                                             MultiModeMultiSkillRCPSPCalendar,
+                                            SingleModeRCPSP_Stochastic_Durations]):
     if isinstance(scheduling_domain, SingleModeRCPSP):
         modes_details = scheduling_domain.get_tasks_modes().copy()
         mode_details_do = {}
@@ -40,6 +41,25 @@ def build_do_domain(scheduling_domain: Union[SingleModeRCPSP,
                 for r in modes_details[task][mode].get_ressource_names():
                     mode_details_do[task][mode][r] = modes_details[task][mode].get_resource_need_at_time(r, time=0) # should be constant anyway
                 mode_details_do[task][mode]["duration"] = scheduling_domain.get_task_duration(task=task, mode=mode)
+        return SingleModeRCPSPModel(resources={r: scheduling_domain.get_original_quantity_resource(r)
+                                               for r in scheduling_domain.get_resource_types_names()} ,
+                                    non_renewable_resources=[r
+                                                             for r in scheduling_domain.get_resource_renewability()
+                                                             if not scheduling_domain.get_resource_renewability()[r]],
+                                    mode_details=mode_details_do,
+                                    successors=scheduling_domain.get_successors(),
+                                    horizon=scheduling_domain.get_max_horizon(),
+                                    horizon_multiplier=1)
+    if isinstance(scheduling_domain, SingleModeRCPSP_Stochastic_Durations):
+        modes_details = scheduling_domain.get_tasks_modes().copy()
+        mode_details_do = {}
+        for task in modes_details:
+            mode_details_do[task] = {}
+            for mode in modes_details[task]:
+                mode_details_do[task][mode] = {}
+                for r in modes_details[task][mode].get_ressource_names():
+                    mode_details_do[task][mode][r] = modes_details[task][mode].get_resource_need_at_time(r, time=0) # should be constant anyway
+                mode_details_do[task][mode]["duration"] = scheduling_domain.sample_task_duration(task=task, mode=mode)
         return SingleModeRCPSPModel(resources={r: scheduling_domain.get_original_quantity_resource(r)
                                                for r in scheduling_domain.get_resource_types_names()} ,
                                     non_renewable_resources=[r
