@@ -6,8 +6,6 @@ from skdecide.builders.discrete_optimization.generic_tools.do_mutation import Mu
 from skdecide.builders.discrete_optimization.generic_tools.mutations.permutation_mutations import PermutationShuffleMutation, \
     PermutationPartialShuffleMutation, PermutationSwap, TwoOptMutation
 from skdecide.builders.discrete_optimization.generic_tools.mutations.mutation_bool import MutationBitFlip
-from skdecide.builders.discrete_optimization.tsp.mutation.mutation_tsp import Mutation2Opt, Mutation2OptIntersection, MutationSwapTSP
-from skdecide.builders.discrete_optimization.knapsack.mutation.mutation_knapsack import MutationKnapsack, KnapsackMutationSingleBitFlip
 from skdecide.builders.discrete_optimization.rcpsp.mutations.mutation_rcpsp import PermutationMutationRCPSP
 from skdecide.builders.discrete_optimization.generic_tools.mutations.mutation_integer import MutationIntegerSpecificArrity
 dictionnary_mutation = {}
@@ -18,11 +16,6 @@ dictionnary_mutation[TypeAttribute.PERMUTATION] = {"total_shuffle":
                                                    "swap": (PermutationSwap, 
                                                             {"nb_swap": 1}),
                                                    "2opt_gen": (TwoOptMutation, {})}
-                                                    
-dictionnary_mutation[TypeAttribute.PERMUTATION_TSP] = {"2opt": (Mutation2Opt, {"test_all": False, 
-                                                                               "nb_test": 200}),
-                                                       "2opt_interection": (Mutation2OptIntersection, {}),
-                                                       "swap_tsp": (MutationSwapTSP, {})}
 dictionnary_mutation[TypeAttribute.PERMUTATION_RCPSP] = {"total_shuffle_rcpsp":
                                                          (PermutationMutationRCPSP,
                                                           {"other_mutation": PermutationShuffleMutation}),
@@ -35,8 +28,6 @@ dictionnary_mutation[TypeAttribute.PERMUTATION_RCPSP] = {"total_shuffle_rcpsp":
                                                          "2opt_gen_rcpsp": (PermutationMutationRCPSP,
                                                                            {"other_mutation": TwoOptMutation})}
 dictionnary_mutation[TypeAttribute.LIST_BOOLEAN] = {"bitflip": (MutationBitFlip, {"probability_flip": 0.1})}
-dictionnary_mutation[TypeAttribute.LIST_BOOLEAN_KNAP] = {"bitflip-kp": (MutationKnapsack, {}),
-                                                         "singlebitflip-kp": (KnapsackMutationSingleBitFlip, {})}
 dictionnary_mutation[TypeAttribute.LIST_INTEGER_SPECIFIC_ARRITY] = {"random_flip": (MutationIntegerSpecificArrity,
                                                                                     {"probability_flip": 0.1}),
                                                                     "random_flip_modes_rcpsp":

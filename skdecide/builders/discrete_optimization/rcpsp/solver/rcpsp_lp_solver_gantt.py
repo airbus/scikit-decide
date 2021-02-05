@@ -1,21 +1,20 @@
-from itertools import product
 from typing import List, Dict, Union, Tuple, Set
-from mip import Model, xsum, BINARY, MINIMIZE, CBC, GRB, Var, INTEGER
-from skdecide.builders.discrete_optimization.generic_tools.do_problem import build_evaluate_function_aggregated, ParamsObjectiveFunction, \
-    ModeOptim, get_default_objective_setup, build_aggreg_function_and_params_objective
+from mip import Model, xsum, BINARY, MINIMIZE
 from skdecide.builders.discrete_optimization.generic_tools.lp_tools import MilpSolver, map_solver
 from skdecide.builders.discrete_optimization.generic_tools.lp_tools import ParametersMilp, MilpSolverName, MilpSolver
-from skdecide.builders.discrete_optimization.generic_tools.mip.pymip_tools import MyModelMilp
 from skdecide.builders.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage
 from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution, SingleModeRCPSPModel,\
-    MultiModeRCPSPModel, RCPSPModelCalendar, PartialSolution
-from skdecide.builders.discrete_optimization.rcpsp.solver.rcpsp_pile import PileSolverRCPSP, GreedyChoice
-from enum import Enum
+    MultiModeRCPSPModel, RCPSPModelCalendar
 import random
 import networkx as nx
 
-import gurobi as gurobi
-
+try:
+    import gurobi
+except:
+    try:
+        import gurobipy as gurobi
+    except:
+        raise RuntimeError('Install gurobi')
 # from gurobi import LinExpr, Model, GRB, quicksum
 
 # TODO : modelize the optimisation problem behind this.

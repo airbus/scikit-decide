@@ -1,12 +1,8 @@
 import os, sys
-import numpy as np
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),"../../"))
-from skdecide.builders.discrete_optimization.generic_tools.do_problem import Solution, Problem, EncodingRegister, TypeAttribute
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../"))
+from skdecide.builders.discrete_optimization.generic_tools.do_problem import Solution, Problem, TypeAttribute
 from skdecide.builders.discrete_optimization.generic_tools.do_mutation import Mutation, LocalMove
-from skdecide.builders.discrete_optimization.generic_tools.mutations.mutation_util import get_attribute_for_type
-from typing import Tuple, Union, List, Dict
-import numpy as np
-from copy import deepcopy
+from typing import Tuple, List, Dict
 from skdecide.builders.discrete_optimization.generic_tools.do_mutation import LocalMoveDefault
 import random
 
