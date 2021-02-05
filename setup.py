@@ -190,7 +190,6 @@ extras_require = {
         'stable-baselines>=2.6',
         'ray[rllib,debug]>=0.8.6'
     ],
-    # TODO add do dependancies
     'discrete_optimization':
     [
         'shapely>=1.7',
@@ -321,7 +320,12 @@ setup(
             'MasterMind = skdecide.hub.domain.mastermind:MasterMind [domains]',
             'Maze = skdecide.hub.domain.maze:Maze [domains]',
             'RockPaperScissors = skdecide.hub.domain.rock_paper_scissors:RockPaperScissors [domains]',
-            'SimpleGridWorld = skdecide.hub.domain.simple_grid_world:SimpleGridWorld [domains]'
+            'SimpleGridWorld = skdecide.hub.domain.simple_grid_world:SimpleGridWorld [domains]',
+            'RCPSP = skdecide.hub.domain.rcpsp.rcpsp_sk:RCPSP [domains]',
+            'MRCPSP = skdecide.hub.domain.rcpsp.rcpsp_sk:MRCPSP [domains]',
+            'MRCPSPCalendar = skdecide.hub.domain.rcpsp.rcpsp_sk:MRCPSPCalendar [domains]',
+            'RCPSPCalendar = skdecide.hub.domain.rcpsp.rcpsp_sk:RCPSPCalendar [domains]',
+            'MSRCPSPCalendar = skdecide.hub.domain.rcpsp.rcpsp_sk:MSRCPSPCalendar [domains]'
         ],
         'skdecide.solvers': [
             'AOstar = skdecide.hub.solver.aostar:AOstar',
@@ -341,7 +345,8 @@ setup(
             'POMCP = skdecide.hub.solver.pomcp:POMCP',
             'RayRLlib = skdecide.hub.solver.ray_rllib:RayRLlib [solvers]',
             'SimpleGreedy = skdecide.hub.solver.simple_greedy:SimpleGreedy',
-            'StableBaseline = skdecide.hub.solver.stable_baselines:StableBaseline [solvers]'
+            'StableBaseline = skdecide.hub.solver.stable_baselines:StableBaseline [solvers]',
+            'GPHH = skdecide.hub.solver.gphh.gphh:GPHH [solvers]'
         ]
     },
     extras_require=extras_require,

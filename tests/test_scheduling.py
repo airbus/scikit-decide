@@ -556,7 +556,7 @@ def test_do_mskill(domain_multiskill, do_solver_multiskill):
 
 
 @pytest.mark.parametrize("domain", [
-    # (ToyRCPSPDomain()),
+    (ToyRCPSPDomain()),
     # (ToyMRCPSPDomain_WithCost()),
 ])
 @pytest.mark.parametrize("solver_str", [
@@ -568,7 +568,6 @@ def test_planning_algos(domain, solver_str):
     print("Initial state : ", state)
     if solver_str == 'LazyAstar':
         solver = LazyAstar(from_state=state, heuristic=None, verbose=True)
-
     solver.solve(domain_factory=lambda: domain)
     states, actions, values = rollout_episode(domain=domain,
                                               max_steps=1000,
