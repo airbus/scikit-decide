@@ -14,7 +14,7 @@ except:
     try:
         import gurobipy as gurobi
     except:
-        raise RuntimeError('Install gurobi')
+        print('Warning : Install gurobi if needed')
 # from gurobi import LinExpr, Model, GRB, quicksum
 
 # TODO : modelize the optimisation problem behind this.

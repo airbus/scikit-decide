@@ -19,7 +19,7 @@ except:
     try:
         import gurobipy as gurobi
     except:
-        raise print('Warning : Install gurobi if ')
+        print('Warning : Install gurobi if needed')
 
 
 class LP_RCPSP_Solver(Enum):
