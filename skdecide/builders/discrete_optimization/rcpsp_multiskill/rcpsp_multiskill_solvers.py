@@ -1,3 +1,9 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 from skdecide.builders.discrete_optimization.rcpsp.solver.ls_solver import LS_RCPSP_Solver, LS_SOLVER
 from skdecide.builders.discrete_optimization.rcpsp_multiskill.solvers.cp_solvers import CP_MS_MRCPSP_MZN
 from skdecide.builders.discrete_optimization.rcpsp_multiskill.solvers.lp_model import LP_Solver_MRSCPSP

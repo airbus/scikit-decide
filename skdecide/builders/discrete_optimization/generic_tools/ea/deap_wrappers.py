@@ -1,3 +1,9 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 def generic_mutate_wrapper(individual, problem, encoding_name, indpb, solution_fn, custom_mutation):
     kwargs = {encoding_name: individual, 'problem': problem}
     custom_sol = solution_fn(**kwargs)

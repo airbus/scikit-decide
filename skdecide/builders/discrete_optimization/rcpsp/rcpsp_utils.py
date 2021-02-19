@@ -1,3 +1,9 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 from skdecide.builders.discrete_optimization.generic_tools.graph_api import Graph
 from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution, RCPSPModel, RCPSPModelCalendar
 from typing import List, Union

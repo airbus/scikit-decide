@@ -1,3 +1,9 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 from typing import Union, List, Dict, Optional
 from skdecide.builders.solver.policy import DeterministicPolicies, UncertainPolicies
 from skdecide.builders.scheduling.scheduling_domains_modelling import State, SchedulingAction, SchedulingActionEnum
