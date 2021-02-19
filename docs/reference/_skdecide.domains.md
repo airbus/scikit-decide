@@ -198,7 +198,7 @@ True if the observation belongs to the domain observation space (False otherwise
 
 ### solve\_with <Badge text="Domain" type="tip"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -208,7 +208,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -797,7 +797,7 @@ An initial observation.
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -807,7 +807,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -1451,7 +1451,7 @@ An initial observation.
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -1461,7 +1461,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -2136,7 +2136,7 @@ for _ in range(100):
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -2146,7 +2146,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -2965,7 +2965,7 @@ for _ in range(100):
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -2975,7 +2975,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -3934,7 +3934,7 @@ for _ in range(100):
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -3944,7 +3944,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -4928,7 +4928,7 @@ for _ in range(100):
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -4938,7 +4938,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -6000,7 +6000,7 @@ for _ in range(100):
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -6010,7 +6010,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -7073,7 +7073,7 @@ for _ in range(100):
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -7083,7 +7083,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -7790,4 +7790,44 @@ reached, `Initializable._reset()` must be called to reset the environment's stat
 
 #### Returns
 The environment outcome of this step.
+
+## ParallelDomain
+
+Base class for creating and launching n domains in separate processes.
+Each domain listens for incoming domain requests.
+Each request can indicate which domain should serve it, otherwise the first available
+domain i is chosen and its id is returned to the incoming request.
+
+### Constructor <Badge text="ParallelDomain" type="tip"/>
+
+<skdecide-signature name= "ParallelDomain" :sig="{'params': [{'name': 'domain_factory'}, {'name': 'lambdas', 'default': 'None'}, {'name': 'nb_domains', 'default': '8'}, {'name': 'ipc_notify', 'default': 'False'}]}"></skdecide-signature>
+
+Initialize self.  See help(type(self)) for accurate signature.
+
+## PipeParallelDomain
+
+This class can be used to create and launch n domains in separate processes.
+Each domain listens for incoming domain requests.
+Each request can indicate which domain should serve it, otherwise the first available
+domain i is chosen and its id is returned to the incoming request.
+
+### Constructor <Badge text="PipeParallelDomain" type="tip"/>
+
+<skdecide-signature name= "PipeParallelDomain" :sig="{'params': [{'name': 'domain_factory'}, {'name': 'lambdas', 'default': 'None'}, {'name': 'nb_domains', 'default': '8'}, {'name': 'ipc_notify', 'default': 'False'}]}"></skdecide-signature>
+
+Initialize self.  See help(type(self)) for accurate signature.
+
+## ShmParallelDomain
+
+This class can be used to create and launch n domains in separate processes
+with shared memory between the Python processes.
+Each domain listens for incoming domain requests.
+Each request can indicate which domain should serve it, otherwise the first available
+domain is chosen and its id is returned to the incoming request.
+
+### Constructor <Badge text="ShmParallelDomain" type="tip"/>
+
+<skdecide-signature name= "ShmParallelDomain" :sig="{'params': [{'name': 'domain_factory'}, {'name': 'shm_proxy'}, {'name': 'lambdas', 'default': 'None'}, {'name': 'nb_domains', 'default': '8'}, {'name': 'ipc_notify', 'default': 'False'}]}"></skdecide-signature>
+
+Initialize self.  See help(type(self)) for accurate signature.
 
