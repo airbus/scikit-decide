@@ -61,7 +61,7 @@ if you just want to build a dstributable wheel of scikit-decide containing the c
 
 ### Online
 
-The latest documentation is [available online](https://gheprivate.intra.corp/pages/gerard-dupont/scikit-decide).
+The latest documentation is [available online](https://airbus.github.io/scikit-decide/).
 
 ### Locally
 
