@@ -446,8 +446,6 @@ def run_do():
     from skdecide.hub.solver.do_solver.do_solver_scheduling import PolicyRCPSP, DOSolver, \
         PolicyMethodParams, BasePolicyMethod, SolvingMethod
     domain = MyExampleRCPSPDomain()
-    # domain: RCPSP = load_domain("j1010_2.mm")
-    # domain: RCPSP = load_domain("j301_1.sm")
 
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()

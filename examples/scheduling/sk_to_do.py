@@ -9,8 +9,9 @@ def create_do_from_sk():
     rcpsp_domain = MyExampleMRCPSPDomain_WithCost()
     do_domain = build_do_domain(rcpsp_domain)
     print(do_domain.__class__)
-    from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain, load_multiskill_domain
-    rcpsp_domain = load_multiskill_domain()
+    from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_multiskill_domain
+    from examples.discrete_optimization.rcpsp_multiskill_parser_example import get_data_available_ms
+    rcpsp_domain = load_multiskill_domain(get_data_available_ms()[0])
     do_domain = build_do_domain(rcpsp_domain)
     print(do_domain.__class__)
 

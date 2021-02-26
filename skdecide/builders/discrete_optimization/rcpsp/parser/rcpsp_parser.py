@@ -8,13 +8,6 @@ import os, sys
 from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, SingleModeRCPSPModel, \
     MultiModeRCPSPModel
 import os
-path_to_data = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/rcpsp/")
-files_available = [os.path.join(path_to_data, f) for f in os.listdir(path_to_data)]
-
-
-def get_data_available():
-    files = [f for f in os.listdir(path_to_data) if "pk" not in f and "json" not in f]
-    return [os.path.join(path_to_data, f) for f in files]
 
 
 def parse_psplib(input_data):
@@ -33,7 +26,7 @@ def parse_psplib(input_data):
     duration_start_line_index = duration_ref_line_index + 3
     # print('duration_start_line_index: ', duration_start_line_index)
     res_ref_line_index = lines.index('RESOURCEAVAILABILITIES:')
-    #res_ref_line_index = lines.index('RESOURCE AVAILABILITIES')
+    # res_ref_line_index = lines.index('RESOURCE AVAILABILITIES')
     duration_end_line_index = res_ref_line_index - 2
     res_start_line_index = res_ref_line_index + 1
     # print('res_start_line_index: ', res_start_line_index)

@@ -11,11 +11,12 @@ from skdecide.hub.solver.policy_evaluators.policy_evaluator import compute_expec
     rollout_based_compute_expected_cost_for_policy, rollout_based_compute_expected_cost_for_policy_scheduling
 from skdecide.hub.solver.sgs_policies.sgs_policies import PolicyMethodParams, BasePolicyMethod
 #from tests.test_scheduling_2 import ToyMS_RCPSPDomain, ToySRCPSPDomain
+from examples.discrete_optimization.rcpsp_parser_example import get_complete_path, get_data_available
 
 
 def run_and_compare_policies():
     import random
-    domain: RCPSP = load_domain("j1201_1.sm")
+    domain: RCPSP = load_domain(get_complete_path("j1201_1.sm"))
     task_to_noise = set(random.sample(domain.get_tasks_ids(), min(30, len(domain.get_tasks_ids()))))
     stochastic_domain = build_stochastic_from_deterministic(domain,
                                                             task_to_noise=task_to_noise)
@@ -74,7 +75,7 @@ def run_and_compare_policies():
 
 def run_and_compare_policies_sampled_scenarios():
     import random
-    domain: RCPSP = load_domain("j601_1.sm")
+    domain: RCPSP = load_domain(get_complete_path("j601_1.sm"))
     task_to_noise = set(random.sample(domain.get_tasks_ids(), min(30, len(domain.get_tasks_ids()))))
     stochastic_domain = build_stochastic_from_deterministic(domain,
                                                             task_to_noise=task_to_noise)

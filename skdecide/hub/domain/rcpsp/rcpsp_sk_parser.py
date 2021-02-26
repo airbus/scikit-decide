@@ -10,15 +10,10 @@ from typing import Union
 from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP
 
 
-def load_domain(file_name="j1201_1.sm"):
-    from examples.discrete_optimization.rcpsp_parser import parse_file, \
-        get_data_available, SingleModeRCPSPModel, MultiModeRCPSPModel
+def load_domain(file_path):
+    from skdecide.builders.discrete_optimization.rcpsp.parser.rcpsp_parser import parse_file, \
+        SingleModeRCPSPModel, MultiModeRCPSPModel
     from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP
-    files = get_data_available()
-    # print(files)
-    files = [f for f in files if file_name in f]  # Single mode RCPSP
-    # files = [f for f in files if 'j1010_5.mm' in f]  # Multi mode RCPSP
-    file_path = files[0]
     rcpsp_model: Union[SingleModeRCPSPModel, MultiModeRCPSPModel] = parse_file(file_path)
     if isinstance(rcpsp_model, SingleModeRCPSPModel):
         my_domain = RCPSP(resource_names=rcpsp_model.resources_list,
@@ -42,10 +37,9 @@ def load_domain(file_name="j1201_1.sm"):
     return my_domain
 
 
-def load_multiskill_domain():
-    from examples.discrete_optimization.rcpsp_multiskill_parser import parse_file, \
-        get_data_available
-    model_msrcpsp, new_tame_to_original_task_id = parse_file(get_data_available()[0],
+def load_multiskill_domain(file_path):
+    from skdecide.builders.discrete_optimization.rcpsp_multiskill.parser.rcpsp_multiskill_parser import parse_file
+    model_msrcpsp, new_tame_to_original_task_id = parse_file(file_path,
                                                              max_horizon=2000)
     resource_type_names = list(model_msrcpsp.resources_list)
     resource_skills = {r: {} for r in resource_type_names}

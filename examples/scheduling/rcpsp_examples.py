@@ -9,10 +9,12 @@ from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, Solving
 from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
 from skdecide.hub.solver.sgs_policies.sgs_policies import PolicyMethodParams, BasePolicyMethod
 from tests.test_scheduling import ToyMS_RCPSPDomain, ToySRCPSPDomain
+from examples.discrete_optimization.rcpsp_parser_example import get_complete_path, get_data_available
+from examples.discrete_optimization.rcpsp_multiskill_parser_example import get_complete_path_ms, get_data_available_ms
 
 
 def random_walk():
-    domain: RCPSP = load_domain("j301_1.sm")
+    domain: RCPSP = load_domain(get_complete_path("j301_1.sm"))
     # domain: RCPSP = load_domain("j1010_2.mm")
     state = domain.get_initial_state()
     domain.set_inplace_environment(False)
@@ -30,7 +32,7 @@ def random_walk():
 
 def cp_solve():
     do_solver = SolvingMethod.CP
-    domain: RCPSP = load_domain("j301_1.sm")
+    domain: RCPSP = load_domain(get_complete_path("j301_1.sm"))
     # domain: RCPSP = load_domain("j1010_2.mm")
 
     domain.set_inplace_environment(False)
@@ -56,7 +58,7 @@ def cp_solve():
 
 
 def do_multimode():
-    domain: RCPSP = load_domain("j1010_2.mm")
+    domain: RCPSP = load_domain(get_complete_path("j1010_2.mm"))
     state = domain.get_initial_state()
     solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
                                                               delta_index_freedom=0,
@@ -91,7 +93,7 @@ def random_walk_multiskill():
 
 
 def do_multiskill():
-    domain: MSRCPSP = load_multiskill_domain()
+    domain: MSRCPSP = load_multiskill_domain(get_data_available_ms()[0])
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
     solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
@@ -162,7 +164,7 @@ def check_uncertain_domain():
 
 
 def small_testing():
-    domain: RCPSP = load_domain("j1010_2.mm")
+    domain: RCPSP = load_domain(get_data_available("j1010_2.mm"))
     #domain: RCPSP = load_domain("j1201_1.sm")
     state = domain.get_initial_state()
     print("Initial state : ", state)
@@ -180,7 +182,7 @@ def small_testing():
 
 
 def run_and_compare_policies():
-    domain: RCPSP = load_domain("j1010_2.mm")
+    domain: RCPSP = load_domain(get_complete_path("j1010_2.mm"))
     state = domain.get_initial_state()
     solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
                                                               delta_index_freedom=0,
@@ -226,5 +228,5 @@ def run_and_compare_policies():
 if __name__ == "__main__":
     # do_multimode()
     # random_walk()
-    do_multiskill()
+    #do_multiskill_toy()
     cp_solve()

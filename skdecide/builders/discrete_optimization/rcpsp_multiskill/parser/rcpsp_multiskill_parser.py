@@ -4,24 +4,10 @@
 
 from __future__ import annotations
 
-import os, sys
 from typing import Tuple, Dict
 
-from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPSolution_Variant, \
-    MS_RCPSPModel, MS_RCPSPModel_Variant, Employee, SkillDetail, MS_RCPSPSolution
-import os
-path_to_data =\
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/rcpsp_multiskill/dataset_def/")
-
-
-def get_data_available():
-    files = [f for f in os.listdir(path_to_data) if "pk" not in f and "json" not in f]
-    return [os.path.join(path_to_data, f) for f in files]
-
-
-def get_results_directory(directory):
-    files = [f for f in os.listdir(directory) if ".sol" in f]
-    return [os.path.join(directory, f) for f in files]
+from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPModel, \
+    Employee, SkillDetail
 
 
 def parse_imopse(input_data, max_horizon=None):
@@ -45,7 +31,7 @@ def parse_imopse(input_data, max_horizon=None):
     #     7	 	 	19.8	 	 Q1: 2 	  Q4: 2 	  Q5: 0 	  Q7: 1 	  Q3: 1 	  Q6: 2
     #     8	 	 	35.8	 	 Q2: 1 	  Q0: 1 	  Q3: 2 	  Q6: 0 	  Q7: 0 	  Q8: 1
     #     9	 	 	37.6	 	 Q7: 0 	  Q5: 2 	  Q2: 0 	  Q1: 0 	  Q0: 1 	  Q3: 1
-    #     10	 	 	23.5	 	 Q8: 1 	  Q5: 1 	  Q1: 2 	  Q6: 0 	  Q4: 0 	  Q3: 2 	 "
+    #     10	 	23.5	     Q8: 1    Q5: 1       Q1: 2       Q6: 0       Q4: 0 	  Q3: 2 	 "
     nb_task = None
     nb_worker = None
     nb_precedence_relation = None
@@ -165,96 +151,12 @@ def parse_imopse(input_data, max_horizon=None):
                          sink_task=max_t+1, one_unit_per_task_max=True), new_tame_to_original_task_id
 
 
-def parse_results(input_data):
-    #if isinstance(input_data, str):
-    #    with open(input_data, 'r') as input_data_file:
-    #        return parse_results(input_data_file.read())
-    lines = input_data.split('\n')
-    schedule = {}
-    assignation = {}
-    for i in range(1, len(lines)):
-        line = lines[i]
-        words = line.split()
-        try:
-            hour = int(words[0])
-            for j in range(1, len(words)):
-                w = words[j].split("-")
-                ressource_id = w[0]
-                task_id = int(w[1])
-                assignation[task_id] = ressource_id
-                schedule[task_id] = hour
-        except:
-            pass
-    return schedule, assignation
-
-
-def recompute_solution(ms_rcpsp_model: MS_RCPSPModel,
-                       new_name_to_original_task_id: Dict,
-                       schedule: Dict,
-                       assignation: Dict):
-    reverse_name = {new_name_to_original_task_id[key]: key
-                    for key in new_name_to_original_task_id}
-    schedule_recomputed = {}
-    modes = {}
-    employee_usage = {}
-    for task in schedule:
-        schedule_recomputed[reverse_name[task]] = {"start_time": schedule[task]}
-        duration = ms_rcpsp_model.mode_details[reverse_name[task]][1]["duration"]
-        schedule_recomputed[reverse_name[task]]["end_time"] = schedule_recomputed[reverse_name[task]]["start_time"]\
-                                                              + duration
-        modes[reverse_name[task]] = 1
-        employee = assignation[task]
-        skills_used_by_employees = [s for s in ms_rcpsp_model.employees[employee].dict_skill
-                                    if ms_rcpsp_model.employees[employee].dict_skill[s].skill_value > 0
-                                    and s in ms_rcpsp_model.mode_details[reverse_name[task]][1]
-                                    and ms_rcpsp_model.mode_details[reverse_name[task]][1][s] > 0]
-        employee_usage[reverse_name[task]] = {employee: set(skills_used_by_employees)}
-    employee_usage[ms_rcpsp_model.source_task] = {}
-    employee_usage[ms_rcpsp_model.sink_task] = {}
-    modes[ms_rcpsp_model.source_task] = 1
-    modes[ms_rcpsp_model.sink_task] = 1
-    schedule_recomputed[ms_rcpsp_model.source_task] = {"start_time": 0, "end_time": 0}
-    last_time = max([schedule_recomputed[x]["end_time"] for x in schedule_recomputed])
-    schedule_recomputed[ms_rcpsp_model.sink_task] = {"start_time": last_time,
-                                                     "end_time": last_time}
-    return MS_RCPSPSolution(problem=ms_rcpsp_model,
-                            modes=modes,
-                            schedule=schedule_recomputed,
-                            employee_usage=employee_usage)
-
-
 def parse_file(file_path, max_horizon=None)->Tuple[MS_RCPSPModel, Dict]:
     with open(file_path, 'r') as input_data_file:
         input_data = input_data_file.read()
         rcpsp_model, new_tame_to_original_task_id = parse_imopse(input_data, max_horizon)
         return rcpsp_model, new_tame_to_original_task_id
 
-
-def parse_one_file():
-    files = get_data_available()
-    file = [f for f in files if "100_5_20_9_D3.def" in f][0]
-    model = parse_file(file)
-    print(model)
-
-
-def write_solution(solution: MS_RCPSPSolution,
-                   new_tame_to_original_task_id,
-                   file_path=""):
-    file1 = open(file_path, "w")
-    file1.writelines(["Hour 	 Resource assignments (resource ID - task ID) \n"])
-    sorted_task_per_hour = sorted(solution.schedule, key=lambda x: solution.schedule[x]["start_time"])
-    strings_hours = {}
-    for task in sorted_task_per_hour:
-        if task in new_tame_to_original_task_id:
-            original_task = new_tame_to_original_task_id[task]
-            employees_used = list(solution.employee_usage[task].keys())
-            hour = solution.schedule[task]["start_time"]
-            if hour not in strings_hours:
-                strings_hours[hour] = str(hour)+" "
-            for emp in employees_used:
-                strings_hours[hour] += str(emp)+"-"+str(original_task)+" "
-    file1.writelines([strings_hours[hour]+'\n' for hour in sorted(strings_hours)])
-    file1.close()
 
 
 

@@ -7,15 +7,12 @@ from __future__ import annotations
 from matplotlib.font_manager import FontProperties
 
 from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPModel, \
-    MS_RCPSPSolution_Variant, MS_RCPSPSolution, MS_RCPSPSolution_Variant
-from typing import List
+   MS_RCPSPSolution
 import matplotlib.pyplot as plt
-from copy import deepcopy
 import numpy as np
 from shapely.geometry import Polygon
 from matplotlib.patches import Polygon as pp
 from matplotlib.collections import PatchCollection
-import matplotlib.cm
 
 
 def compute_schedule_per_resource_individual(rcpsp_model: MS_RCPSPModel,

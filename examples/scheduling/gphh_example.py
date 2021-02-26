@@ -5,16 +5,19 @@ from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, Solving
 from skdecide.hub.solver.sgs_policies.sgs_policies import PolicyMethodParams, BasePolicyMethod
 from skdecide.hub.solver.gphh.gphh import GPHH, feature_average_resource_requirements, \
     feature_n_predecessors, feature_n_successors, feature_task_duration, \
-    feature_total_n_res, FeatureEnum, ParametersGPHH, protected_div, max_operator, min_operator, PrimitiveSet, PermutationDistance, EvaluationGPHH, GPHHPolicy, PooledGPHHPolicy, PoolAggregationMethod
+    feature_total_n_res, FeatureEnum, ParametersGPHH, protected_div, max_operator, min_operator, PrimitiveSet, \
+    PermutationDistance, EvaluationGPHH, GPHHPolicy, PooledGPHHPolicy, PoolAggregationMethod
 import operator
 import numpy as np
 import json
 import pickle
 import os
+from examples.discrete_optimization.rcpsp_parser_example import get_complete_path, get_data_available
+
 
 def fitness_makespan_correlation():
     # domain: RCPSP = load_domain("j301_1.sm")
-    domain: RCPSP = load_domain("j1201_9.sm")
+    domain: RCPSP = load_domain(file_path=get_complete_path("j1201_9.sm"))
 
     training_domains_names = ["j301_"+str(i)+".sm" for i in range(1, 11)]
     # training_domains_names =["j1201_9.sm"]
@@ -25,7 +28,7 @@ def fitness_makespan_correlation():
 
     training_domains = []
     for td in training_domains_names:
-        training_domains.append(load_domain(td))
+        training_domains.append(load_domain(file_path=get_complete_path(td)))
 
     with open('cp_reference_permutations') as json_file:
         cp_reference_permutations = json.load(json_file)
@@ -57,22 +60,22 @@ def fitness_makespan_correlation():
     pset.addPrimitive(operator.neg, 1)
 
     params_gphh = ParametersGPHH(
-            set_feature=set_feature,
-                              set_primitves=pset,
-                              tournament_ratio=0.1,
-                              pop_size=10,
-                              n_gen=1,
-                              min_tree_depth=1,
-                              max_tree_depth=3,
-                              crossover_rate=0.7,
-                              mutation_rate=0.3,
-                              base_policy_method=BasePolicyMethod.SGS_READY,
-                              delta_index_freedom=0,
-                              delta_time_freedom=0,
-                              deap_verbose=True,
-                              evaluation=evaluation,
-                              permutation_distance=PermutationDistance.KTD
-                              # permutation_distance = PermutationDistance.KTD_HAMMING
+        set_feature=set_feature,
+        set_primitves=pset,
+        tournament_ratio=0.1,
+        pop_size=10,
+        n_gen=1,
+        min_tree_depth=1,
+        max_tree_depth=3,
+        crossover_rate=0.7,
+        mutation_rate=0.3,
+        base_policy_method=BasePolicyMethod.SGS_READY,
+        delta_index_freedom=0,
+        delta_time_freedom=0,
+        deap_verbose=True,
+        evaluation=evaluation,
+        permutation_distance=PermutationDistance.KTD
+        # permutation_distance = PermutationDistance.KTD_HAMMING
     )
 
     solver = GPHH(training_domains=training_domains,
@@ -126,14 +129,13 @@ def run_gphh():
     n_runs = 1
     makespans = []
 
-    domain: RCPSP = load_domain("j601_1.sm")
-    # domain: RCPSP = load_domain("j1201_9.sm")
+    domain: RCPSP = load_domain(file_path=get_complete_path("j601_1.sm"))
 
     training_domains_names = ["j601_"+str(i)+".sm" for i in range(1, 11)]
 
     training_domains = []
     for td in training_domains_names:
-        training_domains.append(load_domain(td))
+        training_domains.append(load_domain(file_path=get_complete_path("j1201_9.sm")))
 
     runtimes = []
     for i in range(n_runs):
@@ -199,14 +201,14 @@ def run_pooled_gphh():
 
     makespans = []
 
-    domain: RCPSP = load_domain("j301_1.sm")
+    domain: RCPSP = load_domain(file_path=get_complete_path("j1201_9.sm"))
     # domain: RCPSP = load_domain("j1201_9.sm")
 
     training_domains_names = ["j301_"+str(i)+".sm" for i in range(1, 11)]
 
     training_domains = []
     for td in training_domains_names:
-        training_domains.append(load_domain(td))
+        training_domains.append(load_domain(file_path=get_complete_path(td)))
 
     for i in range(n_runs):
 
@@ -267,16 +269,16 @@ def run_pooled_gphh():
 
 def run_gphh_with_settings():
 
-    domain: RCPSP = load_domain("j301_1.sm")
-    training_domains = [load_domain("j301_2.sm"),
-                        load_domain("j301_3.sm"),
-                        load_domain("j301_4.sm"),
-                        load_domain("j301_5.sm"),
-                        load_domain("j301_6.sm"),
-                        load_domain("j301_7.sm"),
-                        load_domain("j301_8.sm"),
-                        load_domain("j301_9.sm"),
-                        load_domain("j301_10.sm")]
+    domain: RCPSP = load_domain(get_complete_path("j301_1.sm"))
+    training_domains = [load_domain(get_complete_path("j301_2.sm")),
+                        load_domain(get_complete_path("j301_3.sm")),
+                        load_domain(get_complete_path("j301_4.sm")),
+                        load_domain(get_complete_path("j301_5.sm")),
+                        load_domain(get_complete_path("j301_6.sm")),
+                        load_domain(get_complete_path("j301_7.sm")),
+                        load_domain(get_complete_path("j301_8.sm")),
+                        load_domain(get_complete_path("j301_9.sm")),
+                        load_domain(get_complete_path("j301_10.sm"))]
 
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
@@ -334,7 +336,7 @@ def compare_settings():
 
     domains_loaded = []
     for td in training_domains_names:
-        domains_loaded.append(load_domain(td))
+        domains_loaded.append(load_domain(get_complete_path(td)))
 
     n_walks = 5
 
@@ -373,7 +375,7 @@ def compare_settings():
         for i in range(n_walks):
             print('params: ', params.base_policy_method)
             print('walk #', i)
-            domain: RCPSP = load_domain("j301_1.sm")
+            domain: RCPSP = load_domain(get_complete_path("j301_1.sm"))
             domain.set_inplace_environment(False)
             solver = GPHH(training_domains=domains_loaded, weight=-1,
                           verbose=False,
@@ -382,7 +384,7 @@ def compare_settings():
             solver.solve(domain_factory=lambda: domain)
 
             for test_domain_str in test_domain_names:
-                domain: RCPSP = load_domain(test_domain_str)
+                domain: RCPSP = load_domain(get_complete_path(test_domain_str))
                 domain.set_inplace_environment(False)
                 state = domain.get_initial_state()
                 solver.set_domain(domain)
@@ -409,7 +411,7 @@ def compare_settings():
 
 
 def run_features():
-    domain: RCPSP = load_domain("j301_1.sm")
+    domain: RCPSP = load_domain(get_complete_path("j301_1.sm"))
     task_id = 2
     total_nres = feature_total_n_res(domain, task_id)
     print('total_nres: ', total_nres)
@@ -437,7 +439,7 @@ def run_comparaison_stochastic():
         all_results[dom] = {'random_walk': [], 'cp': [], 'cp_sgs': [], 'gphh': [], 'pile': []}
 
     for original_domain_name in test_domain_names:
-        original_domain: RCPSP = load_domain(original_domain_name)
+        original_domain: RCPSP = load_domain(get_complete_path(original_domain_name))
         task_to_noise = set(random.sample(original_domain.get_tasks_ids(), len(original_domain.get_tasks_ids())))
         stochastic_domain = build_stochastic_from_deterministic(original_domain,
                                                                 task_to_noise=task_to_noise)
@@ -645,7 +647,7 @@ def run_comparaison():
     #                           if any(g in f for g in training_cphh)]
 
     training_domains_names = all_testing_domains_names
-    domains_loaded = {domain_name: load_domain(domain_name)
+    domains_loaded = {domain_name: load_domain(get_complete_path(domain_name))
                       for domain_name in all_testing_domains_names}
     test_domain_names = all_testing_domains_names
     # test_domain_names = [test_domain_names[-1]]
@@ -654,7 +656,7 @@ def run_comparaison():
     print('training_domains_names: ', training_domains_names)
     n_walks = 5
     for td in training_domains_names:
-        domains_loaded[td] = load_domain(td)
+        domains_loaded[td] = load_domain(get_complete_path(td))
 
 
     all_results = {}
@@ -749,7 +751,7 @@ def run_comparaison():
         all_results[test_domain_str]['pile'].append(sum([v.cost for v in values]))
 
     # GPHH
-    domain: RCPSP = load_domain("j301_1.sm")
+    domain: RCPSP = load_domain(get_complete_path("j301_1.sm"))
     training_domains = [domains_loaded[training_domain]
                         for training_domain in training_domains_names]
 
@@ -855,8 +857,6 @@ def run_comparaison():
 
 
 def compute_ref_permutations():
-    from examples.discrete_optimization.rcpsp_parser import \
-        get_data_available
     import os
     files = get_data_available()
     all_single_mode = [os.path.basename(f) for f in files
@@ -865,7 +865,7 @@ def compute_ref_permutations():
     all_permutations = {}
     all_makespans = {}
     for td_name in all_single_mode:
-        td = load_domain(td_name)
+        td = load_domain(get_complete_path(td_name))
         td.set_inplace_environment(False)
         solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
                                                                   delta_index_freedom=0,
