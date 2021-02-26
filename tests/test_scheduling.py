@@ -46,7 +46,7 @@ class ToyRCPSPDomain(SingleModeRCPSP):
         return {1: [2,3], 2:[4], 3:[5], 4:[5], 5:[]}
 
     def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
-        return set([1,2,3,4,5])
+        return set([1, 2, 3, 4, 5])
 
     def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
         return {

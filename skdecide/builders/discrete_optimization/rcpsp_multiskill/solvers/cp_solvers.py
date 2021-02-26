@@ -1,3 +1,9 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 from dataclasses import InitVar
 from typing import Union
 
@@ -54,8 +60,9 @@ class CP_MS_MRCPSP_MZN(CPSolver):
 
     def init_model(self, **args):
         no_ressource = len(self.rcpsp_model.resources_list) == 0
-        # model_type = "multi-calendar" if not no_ressource else "multi-calendar-no-ressource"
-        model_type = "multi-calendar"
+        # no_ressource = False
+        model_type = "multi-calendar" if not no_ressource else "multi-calendar-no-ressource"
+        # model_type = "multi-calendar"
         model = Model(files_mzn[model_type])
         custom_output_type = args.get("output_type", False)
         exact_skills_need = args.get("exact_skills_need", True)
@@ -200,10 +207,6 @@ class CP_MS_MRCPSP_MZN(CPSolver):
 
         instance["succ"] = succ
         keys += ["succ"]
-
-        # import pymzn
-        # pymzn.dict2dzn({key: instance[key] for key in keys},
-        #                fout='ms_rcpsp_example_imopse.dzn')
         self.instance = instance
         p_s: Union[PartialSolution, None] = args.get("partial_solution", None)
         if p_s is not None:

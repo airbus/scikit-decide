@@ -425,8 +425,7 @@ def run_features():
 
 def run_comparaison_stochastic():
     import random
-    from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MSRCPSP, \
-        build_stochastic_from_deterministic, build_n_determinist_from_stochastic
+    from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, build_stochastic_from_deterministic, build_n_determinist_from_stochastic
 
     repeat_runs = 5
 
@@ -627,8 +626,7 @@ def run_comparaison_stochastic():
 
 
 def run_comparaison():
-    import random
-    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_parser import  \
+    from examples.discrete_optimization.rcpsp_parser import  \
         get_data_available
     import os
     files = get_data_available()
@@ -857,7 +855,7 @@ def run_comparaison():
 
 
 def compute_ref_permutations():
-    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_parser import \
+    from examples.discrete_optimization.rcpsp_parser import \
         get_data_available
     import os
     files = get_data_available()

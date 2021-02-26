@@ -1,3 +1,8 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
 
 from skdecide.hub.solver.graph_explorer.GraphDomain import GraphDomain
 from skdecide.hub.solver.graph_explorer.GraphExploration import GraphExploration

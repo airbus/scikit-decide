@@ -1,5 +1,8 @@
-# import os, sys
-# sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),"../"))
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
 from skdecide.builders.discrete_optimization.generic_tools.do_problem import Solution, Problem, EncodingRegister, TypeAttribute, \
     ObjectiveRegister, TypeObjective, ObjectiveHandling, TupleFitness, RobustProblem, MethodAggregating, ModeOptim
 from skdecide.builders.discrete_optimization.generic_tools.graph_api import Graph
@@ -9,7 +12,6 @@ import numpy as np
 import scipy.stats as ss
 from enum import Enum
 from copy import deepcopy
-import matplotlib.pyplot as plt
 from collections import defaultdict
 
 
@@ -41,6 +43,7 @@ class MS_RCPSPSolution(Solution):
 
     def change_problem(self, new_problem: Problem):
         self.problem = new_problem
+
 
 def schedule_solution_to_variant(solution: MS_RCPSPSolution):
     s: MS_RCPSPSolution = solution

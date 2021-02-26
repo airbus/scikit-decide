@@ -1,11 +1,17 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 # Load rcpsp domains from psplib files.
 # You need the discrete optimisation library to be able to use those.
 from typing import Union
-from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, MSRCPSP
+from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP
 
 
 def load_domain(file_name="j1201_1.sm"):
-    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_parser import parse_file, \
+    from examples.discrete_optimization.rcpsp_parser import parse_file, \
         get_data_available, SingleModeRCPSPModel, MultiModeRCPSPModel
     from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP
     files = get_data_available()
@@ -37,8 +43,8 @@ def load_domain(file_name="j1201_1.sm"):
 
 
 def load_multiskill_domain():
-    from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_parser import parse_file, \
-        get_data_available, MS_RCPSPModel
+    from examples.discrete_optimization.rcpsp_multiskill_parser import parse_file, \
+        get_data_available
     model_msrcpsp, new_tame_to_original_task_id = parse_file(get_data_available()[0],
                                                              max_horizon=2000)
     resource_type_names = list(model_msrcpsp.resources_list)

@@ -175,6 +175,13 @@ opposed to taking also into account the domain requirements for the latter.
 #### Returns
 True if the domain is compliant with the specific requirements of this solver type (False otherwise).
 
+### \_cleanup <Badge text="Solver" type="warn"/>
+
+<skdecide-signature name= "_cleanup" :sig="{'params': [{'name': 'self'}]}"></skdecide-signature>
+
+Runs cleanup code here, or code to be executed at the exit of a
+'with' context statement.
+
 ### \_get\_domain\_requirements <Badge text="Solver" type="warn"/>
 
 <skdecide-signature name= "_get_domain_requirements" :sig="{'params': [], 'return': 'List[type]'}"></skdecide-signature>
@@ -185,6 +192,13 @@ Domain requirements are classes from the `skdecide.builders.domain` package that
 
 #### Returns
 A list of classes to inherit from.
+
+### \_initialize <Badge text="Solver" type="warn"/>
+
+<skdecide-signature name= "_initialize" :sig="{'params': [{'name': 'self'}]}"></skdecide-signature>
+
+Runs long-lasting initialization code here, or code to be executed at the
+entering of a 'with' context statement.
 
 ### \_is\_policy\_defined\_for <Badge text="Policies" type="warn"/>
 

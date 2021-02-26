@@ -39,6 +39,7 @@ cpp_extension = False
 cxx_compiler = None
 cmake_options = None
 
+
 class BDistWheelCommand(bdist_wheel):
     user_options = install.user_options + [
         ('cpp-extension', None, 'Compile the C++ hub extension'),
@@ -192,14 +193,10 @@ extras_require = {
     ],
     'discrete_optimization':
     [
-        'shapely>=1.7',
         'mip==1.9',
         'minizinc>=0.3',
         'deap>=1.3',
         'networkx>=2.4',
-        'numba>=0.50',
-        'matplotlib>=3.1',
-        "seaborn>=0.10.1",
         "pymzn>=0.18.3",
         "ortools>=8.0"
     ]
@@ -226,14 +223,10 @@ if sys.platform == "win32":
         ],
         'discrete_optimization':
             [
-                'shapely>=1.7',
                 'mip==1.9',
                 'minizinc>=0.3',
                 'deap>=1.3',
                 'networkx>=2.4',
-                'numba>=0.50',
-                'matplotlib>=3.1',
-                "seaborn>=0.10.1",
                 "pymzn>=0.18.3",
                 "ortools>=8.0"
             ]
@@ -256,14 +249,10 @@ else:
         ],
         'discrete_optimization':
             [
-                'shapely>=1.7',
                 'mip==1.9',
                 'minizinc>=0.3',
                 'deap>=1.3',
                 'networkx>=2.4',
-                'numba>=0.50',
-                'matplotlib>=3.1',
-                "seaborn>=0.10.1",
                 "pymzn>=0.18.3",
                 "ortools>=8.0"
             ]

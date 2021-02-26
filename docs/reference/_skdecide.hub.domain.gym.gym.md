@@ -8,7 +8,7 @@
 
 ## GymDomain
 
-This class wraps an OpenAI Gym environment (gym.env) as an scikit-decide domain.
+This class wraps an OpenAI Gym environment (gym.env) as a scikit-decide domain.
 
 ::: warning
 Using this class requires OpenAI Gym to be installed.
@@ -228,7 +228,7 @@ An initial observation.
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -238,7 +238,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -705,9 +705,709 @@ reached, `Initializable._reset()` must be called to reset the environment's stat
 #### Returns
 The environment outcome of this step.
 
+## GymDomainHashable
+
+This class wraps an OpenAI Gym environment (gym.env) as a scikit-decide domain
+   using hashable states and actions.
+
+::: warning
+Using this class requires OpenAI Gym to be installed.
+:::
+
+### Constructor <Badge text="GymDomainHashable" type="tip"/>
+
+<skdecide-signature name= "GymDomainHashable" :sig="{'params': [{'name': 'gym_env', 'annotation': 'gym.Env'}], 'return': 'None'}"></skdecide-signature>
+
+Initialize GymDomain.
+
+#### Parameters
+- **gym_env**: The Gym environment (gym.env) to wrap.
+
+### check\_value <Badge text="Rewards" type="warn"/>
+
+<skdecide-signature name= "check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'TransitionValue[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
+
+Check that a transition value is compliant with its reward specification.
+
+::: tip
+This function returns always True by default because any kind of reward should be accepted at this level.
+:::
+
+#### Parameters
+- **value**: The transition value to check.
+
+#### Returns
+True if the transition value is compliant (False otherwise).
+
+### get\_action\_space <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "get_action_space" :sig="{'params': [{'name': 'self'}], 'return': 'D.T_agent[Space[D.T_event]]'}"></skdecide-signature>
+
+Get the (cached) domain action space (finite or infinite set).
+
+By default, `Events.get_action_space()` internally calls `Events._get_action_space_()` the first time and
+automatically caches its value to make future calls more efficient (since the action space is assumed to be
+constant).
+
+#### Returns
+The action space.
+
+### get\_applicable\_actions <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "get_applicable_actions" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}], 'return': 'D.T_agent[Space[D.T_event]]'}"></skdecide-signature>
+
+Get the space (finite or infinite set) of applicable actions in the given memory (state or history), or in
+the internal one if omitted.
+
+By default, `Events.get_applicable_actions()` provides some boilerplate code and internally
+calls `Events._get_applicable_actions()`. The boilerplate code automatically passes the `_memory` attribute
+instead of the memory parameter whenever the latter is None.
+
+#### Parameters
+- **memory**: The memory to consider (if None, the internal memory attribute `_memory` is used instead).
+
+#### Returns
+The space of applicable actions.
+
+### get\_enabled\_events <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "get_enabled_events" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}], 'return': 'Space[D.T_event]'}"></skdecide-signature>
+
+Get the space (finite or infinite set) of enabled uncontrollable events in the given memory (state or
+history), or in the internal one if omitted.
+
+By default, `Events.get_enabled_events()` provides some boilerplate code and internally
+calls `Events._get_enabled_events()`. The boilerplate code automatically passes the `_memory` attribute instead of
+the memory parameter whenever the latter is None.
+
+#### Parameters
+- **memory**: The memory to consider (if None, the internal memory attribute `_memory` is used instead).
+
+#### Returns
+The space of enabled events.
+
+### get\_observation <Badge text="TransformedObservable" type="warn"/>
+
+<skdecide-signature name= "get_observation" :sig="{'params': [{'name': 'self'}, {'name': 'state', 'annotation': 'D.T_state'}, {'name': 'action', 'default': 'None', 'annotation': 'Optional[D.T_agent[D.T_concurrency[D.T_event]]]'}], 'return': 'D.T_agent[D.T_observation]'}"></skdecide-signature>
+
+Get the deterministic observation given a state and action.
+
+#### Parameters
+- **state**: The state to be observed.
+- **action**: The last applied action (or None if the state is an initial state).
+
+#### Returns
+The probability distribution of the observation.
+
+### get\_observation\_distribution <Badge text="PartiallyObservable" type="warn"/>
+
+<skdecide-signature name= "get_observation_distribution" :sig="{'params': [{'name': 'self'}, {'name': 'state', 'annotation': 'D.T_state'}, {'name': 'action', 'default': 'None', 'annotation': 'Optional[D.T_agent[D.T_concurrency[D.T_event]]]'}], 'return': 'Distribution[D.T_agent[D.T_observation]]'}"></skdecide-signature>
+
+Get the probability distribution of the observation given a state and action.
+
+In mathematical terms (discrete case), given an action $a$, this function represents: $P(O|s, a)$,
+where $O$ is the random variable of the observation.
+
+#### Parameters
+- **state**: The state to be observed.
+- **action**: The last applied action (or None if the state is an initial state).
+
+#### Returns
+The probability distribution of the observation.
+
+### get\_observation\_space <Badge text="PartiallyObservable" type="warn"/>
+
+<skdecide-signature name= "get_observation_space" :sig="{'params': [{'name': 'self'}], 'return': 'D.T_agent[Space[D.T_observation]]'}"></skdecide-signature>
+
+Get the (cached) observation space (finite or infinite set).
+
+By default, `PartiallyObservable.get_observation_space()` internally
+calls `PartiallyObservable._get_observation_space_()` the first time and automatically caches its value to make
+future calls more efficient (since the observation space is assumed to be constant).
+
+#### Returns
+The observation space.
+
+### is\_action <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "is_action" :sig="{'params': [{'name': 'self'}, {'name': 'event', 'annotation': 'D.T_event'}], 'return': 'bool'}"></skdecide-signature>
+
+Indicate whether an event is an action (i.e. a controllable event for the agents).
+
+::: tip
+By default, this function is implemented using the `skdecide.core.Space.contains()` function on the domain
+action space provided by `Events.get_action_space()`, but it can be overridden for faster implementations.
+:::
+
+#### Parameters
+- **event**: The event to consider.
+
+#### Returns
+True if the event is an action (False otherwise).
+
+### is\_applicable\_action <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "is_applicable_action" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_event]'}, {'name': 'memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}], 'return': 'bool'}"></skdecide-signature>
+
+Indicate whether an action is applicable in the given memory (state or history), or in the internal one if
+omitted.
+
+By default, `Events.is_applicable_action()` provides some boilerplate code and internally
+calls `Events._is_applicable_action()`. The boilerplate code automatically passes the `_memory` attribute instead
+of the memory parameter whenever the latter is None.
+
+#### Parameters
+- **memory**: The memory to consider (if None, the internal memory attribute `_memory` is used instead).
+
+#### Returns
+True if the action is applicable (False otherwise).
+
+### is\_enabled\_event <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "is_enabled_event" :sig="{'params': [{'name': 'self'}, {'name': 'event', 'annotation': 'D.T_event'}, {'name': 'memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}], 'return': 'bool'}"></skdecide-signature>
+
+Indicate whether an uncontrollable event is enabled in the given memory (state or history), or in the
+internal one if omitted.
+
+By default, `Events.is_enabled_event()` provides some boilerplate code and internally
+calls `Events._is_enabled_event()`. The boilerplate code automatically passes the `_memory` attribute instead of
+the memory parameter whenever the latter is None.
+
+#### Parameters
+- **memory**: The memory to consider (if None, the internal memory attribute `_memory` is used instead).
+
+#### Returns
+True if the event is enabled (False otherwise).
+
+### is\_observation <Badge text="PartiallyObservable" type="warn"/>
+
+<skdecide-signature name= "is_observation" :sig="{'params': [{'name': 'self'}, {'name': 'observation', 'annotation': 'D.T_agent[D.T_observation]'}], 'return': 'bool'}"></skdecide-signature>
+
+Check that an observation indeed belongs to the domain observation space.
+
+::: tip
+By default, this function is implemented using the `skdecide.core.Space.contains()` function on the domain
+observation space provided by `PartiallyObservable.get_observation_space()`, but it can be overridden for
+faster implementations.
+:::
+
+#### Parameters
+- **observation**: The observation to consider.
+
+#### Returns
+True if the observation belongs to the domain observation space (False otherwise).
+
+### render <Badge text="Renderable" type="warn"/>
+
+<skdecide-signature name= "render" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}, {'name': 'kwargs', 'annotation': 'Any'}], 'return': 'Any'}"></skdecide-signature>
+
+Compute a visual render of the given memory (state or history), or the internal one if omitted.
+
+By default, `Renderable.render()` provides some boilerplate code and internally calls `Renderable._render()`. The
+boilerplate code automatically passes the `_memory` attribute instead of the memory parameter whenever the latter
+is None.
+
+#### Parameters
+- **memory**: The memory to consider (if None, the internal memory attribute `_memory` is used instead).
+
+#### Returns
+A render (e.g. image) or nothing (if the function handles the display directly).
+
+### reset <Badge text="Initializable" type="warn"/>
+
+<skdecide-signature name= "reset" :sig="{'params': [{'name': 'self'}], 'return': 'D.T_agent[D.T_observation]'}"></skdecide-signature>
+
+Reset the state of the environment and return an initial observation.
+
+By default, `Initializable.reset()` provides some boilerplate code and internally calls `Initializable._reset()`
+(which returns an initial state). The boilerplate code automatically stores the initial state into the `_memory`
+attribute and samples a corresponding observation.
+
+#### Returns
+An initial observation.
+
+### solve\_with <Badge text="Domain" type="warn"/>
+
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+
+Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
+
+By default, `Solver.check_domain()` provides some boilerplate code and internally
+calls `Solver._check_domain_additional()` (which returns True by default but can be overridden  to define
+specific checks in addition to the "domain requirements"). The boilerplate code automatically checks whether all
+domain requirements are met.
+
+#### Parameters
+- **solver**: The solver.
+- **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
+- **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
+
+#### Returns
+The new solver (auto-cast to the level of the domain).
+
+### step <Badge text="Environment" type="warn"/>
+
+<skdecide-signature name= "step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+
+Run one step of the environment's dynamics.
+
+By default, `Environment.step()` provides some boilerplate code and internally calls `Environment._step()` (which
+returns a transition outcome). The boilerplate code automatically stores next state into the `_memory` attribute
+and samples a corresponding observation.
+
+::: tip
+Whenever an existing environment needs to be wrapped instead of implemented fully in scikit-decide (e.g. compiled
+ATARI games), it is recommended to overwrite `Environment.step()` to call the external environment and not
+use the `Environment._step()` helper function.
+:::
+
+::: warning
+Before calling `Environment.step()` the first time or when the end of an episode is
+reached, `Initializable.reset()` must be called to reset the environment's state.
+:::
+
+#### Parameters
+- **action**: The action taken in the current memory (state or history) triggering the transition.
+
+#### Returns
+The environment outcome of this step.
+
+### unwrapped <Badge text="GymDomain" type="warn"/>
+
+<skdecide-signature name= "unwrapped" :sig="{'params': [{'name': 'self'}]}"></skdecide-signature>
+
+Unwrap the Gym environment (gym.env) and return it.
+
+#### Returns
+The original Gym environment.
+
+### \_check\_value <Badge text="Rewards" type="warn"/>
+
+<skdecide-signature name= "_check_value" :sig="{'params': [{'name': 'self'}, {'name': 'value', 'annotation': 'TransitionValue[D.T_value]'}], 'return': 'bool'}"></skdecide-signature>
+
+Check that a transition value is compliant with its reward specification.
+
+::: tip
+This function returns always True by default because any kind of reward should be accepted at this level.
+:::
+
+#### Parameters
+- **value**: The transition value to check.
+
+#### Returns
+True if the transition value is compliant (False otherwise).
+
+### \_get\_action\_space <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_get_action_space" :sig="{'params': [{'name': 'self'}], 'return': 'D.T_agent[Space[D.T_event]]'}"></skdecide-signature>
+
+Get the (cached) domain action space (finite or infinite set).
+
+By default, `Events._get_action_space()` internally calls `Events._get_action_space_()` the first time and
+automatically caches its value to make future calls more efficient (since the action space is assumed to be
+constant).
+
+#### Returns
+The action space.
+
+### \_get\_action\_space\_ <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_get_action_space_" :sig="{'params': [{'name': 'self'}], 'return': 'D.T_agent[Space[D.T_event]]'}"></skdecide-signature>
+
+Get the domain action space (finite or infinite set).
+
+This is a helper function called by default from `Events._get_action_space()`, the difference being that the
+result is not cached here.
+
+::: tip
+The underscore at the end of this function's name is a convention to remind that its result should be
+constant.
+:::
+
+#### Returns
+The action space.
+
+### \_get\_applicable\_actions <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_get_applicable_actions" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}], 'return': 'D.T_agent[Space[D.T_event]]'}"></skdecide-signature>
+
+Get the space (finite or infinite set) of applicable actions in the given memory (state or history), or in
+the internal one if omitted.
+
+By default, `Events._get_applicable_actions()` provides some boilerplate code and internally
+calls `Events._get_applicable_actions_from()`. The boilerplate code automatically passes the `_memory` attribute
+instead of the memory parameter whenever the latter is None.
+
+#### Parameters
+- **memory**: The memory to consider (if None, the internal memory attribute `_memory` is used instead).
+
+#### Returns
+The space of applicable actions.
+
+### \_get\_applicable\_actions\_from <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_get_applicable_actions_from" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}], 'return': 'D.T_agent[Space[D.T_event]]'}"></skdecide-signature>
+
+Get the space (finite or infinite set) of applicable actions in the given memory (state or history).
+
+This is a helper function called by default from `Events._get_applicable_actions()`, the difference being that
+the memory parameter is mandatory here.
+
+#### Parameters
+- **memory**: The memory to consider.
+
+#### Returns
+The space of applicable actions.
+
+### \_get\_enabled\_events <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_get_enabled_events" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}], 'return': 'Space[D.T_event]'}"></skdecide-signature>
+
+Get the space (finite or infinite set) of enabled uncontrollable events in the given memory (state or
+history), or in the internal one if omitted.
+
+By default, `Events._get_enabled_events()` provides some boilerplate code and internally
+calls `Events._get_enabled_events_from()`. The boilerplate code automatically passes the `_memory` attribute
+instead of the memory parameter whenever the latter is None.
+
+#### Parameters
+- **memory**: The memory to consider (if None, the internal memory attribute `_memory` is used instead).
+
+#### Returns
+The space of enabled events.
+
+### \_get\_enabled\_events\_from <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_get_enabled_events_from" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}], 'return': 'Space[D.T_event]'}"></skdecide-signature>
+
+Get the space (finite or infinite set) of enabled uncontrollable events in the given memory (state or
+history).
+
+This is a helper function called by default from `Events._get_enabled_events()`, the difference being that the
+memory parameter is mandatory here.
+
+#### Parameters
+- **memory**: The memory to consider.
+
+#### Returns
+The space of enabled events.
+
+### \_get\_memory\_maxlen <Badge text="History" type="warn"/>
+
+<skdecide-signature name= "_get_memory_maxlen" :sig="{'params': [{'name': 'self'}], 'return': 'int'}"></skdecide-signature>
+
+Get the (cached) memory max length.
+
+By default, `FiniteHistory._get_memory_maxlen()` internally calls `FiniteHistory._get_memory_maxlen_()` the first
+time and automatically caches its value to make future calls more efficient (since the memory max length is
+assumed to be constant).
+
+#### Returns
+The memory max length.
+
+### \_get\_memory\_maxlen\_ <Badge text="FiniteHistory" type="warn"/>
+
+<skdecide-signature name= "_get_memory_maxlen_" :sig="{'params': [{'name': 'self'}], 'return': 'int'}"></skdecide-signature>
+
+Get the memory max length.
+
+This is a helper function called by default from `FiniteHistory._get_memory_maxlen()`, the difference being that
+the result is not cached here.
+
+::: tip
+The underscore at the end of this function's name is a convention to remind that its result should be
+constant.
+:::
+
+#### Returns
+The memory max length.
+
+### \_get\_observation <Badge text="TransformedObservable" type="warn"/>
+
+<skdecide-signature name= "_get_observation" :sig="{'params': [{'name': 'self'}, {'name': 'state', 'annotation': 'D.T_state'}, {'name': 'action', 'default': 'None', 'annotation': 'Optional[D.T_agent[D.T_concurrency[D.T_event]]]'}], 'return': 'D.T_agent[D.T_observation]'}"></skdecide-signature>
+
+Get the deterministic observation given a state and action.
+
+#### Parameters
+- **state**: The state to be observed.
+- **action**: The last applied action (or None if the state is an initial state).
+
+#### Returns
+The probability distribution of the observation.
+
+### \_get\_observation\_distribution <Badge text="PartiallyObservable" type="warn"/>
+
+<skdecide-signature name= "_get_observation_distribution" :sig="{'params': [{'name': 'self'}, {'name': 'state', 'annotation': 'D.T_state'}, {'name': 'action', 'default': 'None', 'annotation': 'Optional[D.T_agent[D.T_concurrency[D.T_event]]]'}], 'return': 'Distribution[D.T_agent[D.T_observation]]'}"></skdecide-signature>
+
+Get the probability distribution of the observation given a state and action.
+
+In mathematical terms (discrete case), given an action $a$, this function represents: $P(O|s, a)$,
+where $O$ is the random variable of the observation.
+
+#### Parameters
+- **state**: The state to be observed.
+- **action**: The last applied action (or None if the state is an initial state).
+
+#### Returns
+The probability distribution of the observation.
+
+### \_get\_observation\_space <Badge text="PartiallyObservable" type="warn"/>
+
+<skdecide-signature name= "_get_observation_space" :sig="{'params': [{'name': 'self'}], 'return': 'D.T_agent[Space[D.T_observation]]'}"></skdecide-signature>
+
+Get the (cached) observation space (finite or infinite set).
+
+By default, `PartiallyObservable._get_observation_space()` internally
+calls `PartiallyObservable._get_observation_space_()` the first time and automatically caches its value to make
+future calls more efficient (since the observation space is assumed to be constant).
+
+#### Returns
+The observation space.
+
+### \_get\_observation\_space\_ <Badge text="PartiallyObservable" type="warn"/>
+
+<skdecide-signature name= "_get_observation_space_" :sig="{'params': [{'name': 'self'}], 'return': 'D.T_agent[Space[D.T_observation]]'}"></skdecide-signature>
+
+Get the observation space (finite or infinite set).
+
+This is a helper function called by default from `PartiallyObservable._get_observation_space()`, the difference
+being that the result is not cached here.
+
+::: tip
+The underscore at the end of this function's name is a convention to remind that its result should be
+constant.
+:::
+
+#### Returns
+The observation space.
+
+### \_init\_memory <Badge text="History" type="warn"/>
+
+<skdecide-signature name= "_init_memory" :sig="{'params': [{'name': 'self'}, {'name': 'state', 'default': 'None', 'annotation': 'Optional[D.T_state]'}], 'return': 'D.T_memory[D.T_state]'}"></skdecide-signature>
+
+Initialize memory (possibly with a state) according to its specification and return it.
+
+This function is automatically called by `Initializable._reset()` to reinitialize the internal memory whenever
+the domain is used as an environment.
+
+#### Parameters
+- **state**: An optional state to initialize the memory with (typically the initial state).
+
+#### Returns
+The new initialized memory.
+
+### \_is\_action <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_is_action" :sig="{'params': [{'name': 'self'}, {'name': 'event', 'annotation': 'D.T_event'}], 'return': 'bool'}"></skdecide-signature>
+
+Indicate whether an event is an action (i.e. a controllable event for the agents).
+
+::: tip
+By default, this function is implemented using the `skdecide.core.Space.contains()` function on the domain
+action space provided by `Events._get_action_space()`, but it can be overridden for faster implementations.
+:::
+
+#### Parameters
+- **event**: The event to consider.
+
+#### Returns
+True if the event is an action (False otherwise).
+
+### \_is\_applicable\_action <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_is_applicable_action" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_event]'}, {'name': 'memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}], 'return': 'bool'}"></skdecide-signature>
+
+Indicate whether an action is applicable in the given memory (state or history), or in the internal one if
+omitted.
+
+By default, `Events._is_applicable_action()` provides some boilerplate code and internally
+calls `Events._is_applicable_action_from()`. The boilerplate code automatically passes the `_memory` attribute
+instead of the memory parameter whenever the latter is None.
+
+#### Parameters
+- **memory**: The memory to consider (if None, the internal memory attribute `_memory` is used instead).
+
+#### Returns
+True if the action is applicable (False otherwise).
+
+### \_is\_applicable\_action\_from <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_is_applicable_action_from" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_event]'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}], 'return': 'bool'}"></skdecide-signature>
+
+Indicate whether an action is applicable in the given memory (state or history).
+
+This is a helper function called by default from `Events._is_applicable_action()`, the difference being that the
+memory parameter is mandatory here.
+
+::: tip
+By default, this function is implemented using the `skdecide.core.Space.contains()` function on the space of
+applicable actions provided by `Events._get_applicable_actions_from()`, but it can be overridden for faster
+implementations.
+:::
+
+#### Parameters
+- **memory**: The memory to consider.
+
+#### Returns
+True if the action is applicable (False otherwise).
+
+### \_is\_enabled\_event <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_is_enabled_event" :sig="{'params': [{'name': 'self'}, {'name': 'event', 'annotation': 'D.T_event'}, {'name': 'memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}], 'return': 'bool'}"></skdecide-signature>
+
+Indicate whether an uncontrollable event is enabled in the given memory (state or history), or in the
+internal one if omitted.
+
+By default, `Events._is_enabled_event()` provides some boilerplate code and internally
+calls `Events._is_enabled_event_from()`. The boilerplate code automatically passes the `_memory` attribute instead
+of the memory parameter whenever the latter is None.
+
+#### Parameters
+- **memory**: The memory to consider (if None, the internal memory attribute `_memory` is used instead).
+
+#### Returns
+True if the event is enabled (False otherwise).
+
+### \_is\_enabled\_event\_from <Badge text="Events" type="warn"/>
+
+<skdecide-signature name= "_is_enabled_event_from" :sig="{'params': [{'name': 'self'}, {'name': 'event', 'annotation': 'D.T_event'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}], 'return': 'bool'}"></skdecide-signature>
+
+Indicate whether an event is enabled in the given memory (state or history).
+
+This is a helper function called by default from `Events._is_enabled_event()`, the difference being that the
+memory parameter is mandatory here.
+
+::: tip
+By default, this function is implemented using the `skdecide.core.Space.contains()` function on the space of
+enabled events provided by `Events._get_enabled_events_from()`, but it can be overridden for faster
+implementations.
+:::
+
+#### Parameters
+- **memory**: The memory to consider.
+
+#### Returns
+True if the event is enabled (False otherwise).
+
+### \_is\_observation <Badge text="PartiallyObservable" type="warn"/>
+
+<skdecide-signature name= "_is_observation" :sig="{'params': [{'name': 'self'}, {'name': 'observation', 'annotation': 'D.T_agent[D.T_observation]'}], 'return': 'bool'}"></skdecide-signature>
+
+Check that an observation indeed belongs to the domain observation space.
+
+::: tip
+By default, this function is implemented using the `skdecide.core.Space.contains()` function on the domain
+observation space provided by `PartiallyObservable._get_observation_space()`, but it can be overridden for
+faster implementations.
+:::
+
+#### Parameters
+- **observation**: The observation to consider.
+
+#### Returns
+True if the observation belongs to the domain observation space (False otherwise).
+
+### \_render <Badge text="Renderable" type="warn"/>
+
+<skdecide-signature name= "_render" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'default': 'None', 'annotation': 'Optional[D.T_memory[D.T_state]]'}, {'name': 'kwargs', 'annotation': 'Any'}], 'return': 'Any'}"></skdecide-signature>
+
+Compute a visual render of the given memory (state or history), or the internal one if omitted.
+
+By default, `Renderable._render()` provides some boilerplate code and internally
+calls `Renderable._render_from()`. The boilerplate code automatically passes the `_memory` attribute instead of
+the memory parameter whenever the latter is None.
+
+#### Parameters
+- **memory**: The memory to consider (if None, the internal memory attribute `_memory` is used instead).
+
+#### Returns
+A render (e.g. image) or nothing (if the function handles the display directly).
+
+### \_render\_from <Badge text="Renderable" type="warn"/>
+
+<skdecide-signature name= "_render_from" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'kwargs', 'annotation': 'Any'}], 'return': 'Any'}"></skdecide-signature>
+
+Compute a visual render of the given memory (state or history).
+
+This is a helper function called by default from `Renderable._render()`, the difference being that the
+memory parameter is mandatory here.
+
+#### Parameters
+- **memory**: The memory to consider.
+
+#### Returns
+A render (e.g. image) or nothing (if the function handles the display directly).
+
+### \_reset <Badge text="Initializable" type="warn"/>
+
+<skdecide-signature name= "_reset" :sig="{'params': [{'name': 'self'}], 'return': 'D.T_agent[D.T_observation]'}"></skdecide-signature>
+
+Reset the state of the environment and return an initial observation.
+
+By default, `Initializable._reset()` provides some boilerplate code and internally
+calls `Initializable._state_reset()` (which returns an initial state). The boilerplate code automatically stores
+the initial state into the `_memory` attribute and samples a corresponding observation.
+
+#### Returns
+An initial observation.
+
+### \_state\_reset <Badge text="Initializable" type="warn"/>
+
+<skdecide-signature name= "_state_reset" :sig="{'params': [{'name': 'self'}], 'return': 'D.T_state'}"></skdecide-signature>
+
+Reset the state of the environment and return an initial state.
+
+This is a helper function called by default from `Initializable._reset()`. It focuses on the state level, as
+opposed to the observation one for the latter.
+
+#### Returns
+An initial state.
+
+### \_state\_step <Badge text="Environment" type="warn"/>
+
+<skdecide-signature name= "_state_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'TransitionOutcome[D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+
+Compute one step of the transition's dynamics.
+
+This is a helper function called by default from `Environment._step()`. It focuses on the state level, as opposed
+to the observation one for the latter.
+
+#### Parameters
+- **action**: The action taken in the current memory (state or history) triggering the transition.
+
+#### Returns
+The transition outcome of this step.
+
+### \_step <Badge text="Environment" type="warn"/>
+
+<skdecide-signature name= "_step" :sig="{'params': [{'name': 'self'}, {'name': 'action', 'annotation': 'D.T_agent[D.T_concurrency[D.T_event]]'}], 'return': 'EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]'}"></skdecide-signature>
+
+Run one step of the environment's dynamics.
+
+By default, `Environment._step()` provides some boilerplate code and internally
+calls `Environment._state_step()` (which returns a transition outcome). The boilerplate code automatically stores
+next state into the `_memory` attribute and samples a corresponding observation.
+
+::: tip
+Whenever an existing environment needs to be wrapped instead of implemented fully in scikit-decide (e.g. compiled
+ATARI games), it is recommended to overwrite `Environment._step()` to call the external environment and not
+use the `Environment._state_step()` helper function.
+:::
+
+::: warning
+Before calling `Environment._step()` the first time or when the end of an episode is
+reached, `Initializable._reset()` must be called to reset the environment's state.
+:::
+
+#### Parameters
+- **action**: The action taken in the current memory (state or history) triggering the transition.
+
+#### Returns
+The environment outcome of this step.
+
 ## DeterministicInitializedGymDomain
 
-This class wraps an OpenAI Gym environment (gym.env) as an scikit-decide domain
+This class wraps an OpenAI Gym environment (gym.env) as a scikit-decide domain
    with a deterministic initial state (i.e. reset the domain to the initial
    state returned by the first reset)
 
@@ -959,7 +1659,7 @@ An initial observation.
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -969,7 +1669,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -1510,28 +2210,36 @@ Initialize GymWidthDomain.
 - **continuous_feature_fidelity**: Number of integers to represent a continuous feature
                              in the interval-based feature abstraction (higher is more precise)
 
-### binarize <Badge text="GymWidthDomain" type="tip"/>
+### bee1\_features <Badge text="GymWidthDomain" type="tip"/>
 
-<skdecide-signature name= "binarize" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}, {'name': 'func', 'annotation': 'Callable[[int], None]'}], 'return': 'None'}"></skdecide-signature>
+<skdecide-signature name= "bee1_features" :sig="{'params': [{'name': 'self'}, {'name': 'state'}]}"></skdecide-signature>
+
+Return a numpy vector of ints representing the current 'cumulated layer' of each state variable
+        
+
+### bee2\_features <Badge text="GymWidthDomain" type="tip"/>
+
+<skdecide-signature name= "bee2_features" :sig="{'params': [{'name': 'self'}, {'name': 'state'}]}"></skdecide-signature>
+
+Return a numpy vector of ints representing the current 'cumulated layer' of each state variable
+        
+
+### binary\_features <Badge text="GymWidthDomain" type="tip"/>
+
+<skdecide-signature name= "binary_features" :sig="{'params': [{'name': 'self'}, {'name': 'memory', 'annotation': 'D.T_memory[D.T_state]'}]}"></skdecide-signature>
 
 Transform state in a bit vector and call f on each true value of this vector
 
 #### Parameters
 - **memory**: The Gym state (in observation_space) to binarize
-- **func**: The function called on each true bit of the binarized state
+
+- **Return** a list of booleans representing the binary representation of each state variable
 
 ### nb\_of\_binary\_features <Badge text="GymWidthDomain" type="tip"/>
 
 <skdecide-signature name= "nb_of_binary_features" :sig="{'params': [{'name': 'self'}], 'return': 'int'}"></skdecide-signature>
 
 Return the size of the bit vector encoding an observation
-        
-
-### state\_features <Badge text="GymWidthDomain" type="tip"/>
-
-<skdecide-signature name= "state_features" :sig="{'params': [{'name': 'self'}, {'name': 'state'}]}"></skdecide-signature>
-
-Return a numpy vector of ints representing the current 'cumulated layer' of each state variable
         
 
 ## GymDiscreteActionDomain
@@ -1841,7 +2549,7 @@ True if the event is enabled (False otherwise).
 
 ## DeterministicGymDomain
 
-This class wraps a deterministic OpenAI Gym environment (gym.env) as an scikit-decide domain.
+This class wraps a deterministic OpenAI Gym environment (gym.env) as a scikit-decide domain.
 
 ::: warning
 Using this class requires OpenAI Gym to be installed.
@@ -2217,7 +2925,7 @@ for _ in range(100):
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -2227,7 +2935,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 
@@ -3326,7 +4034,7 @@ for _ in range(100):
 
 ### solve\_with <Badge text="Domain" type="warn"/>
 
-<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver_factory', 'annotation': 'Callable[[], Solver]'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
+<skdecide-signature name= "solve_with" :sig="{'params': [{'name': 'solver', 'annotation': 'Solver'}, {'name': 'domain_factory', 'default': 'None', 'annotation': 'Optional[Callable[[], Domain]]'}, {'name': 'load_path', 'default': 'None', 'annotation': 'Optional[str]'}], 'return': 'Solver'}"></skdecide-signature>
 
 Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
 
@@ -3336,7 +4044,7 @@ specific checks in addition to the "domain requirements"). The boilerplate code 
 domain requirements are met.
 
 #### Parameters
-- **solver_factory**: A callable with no argument returning the new solver (can be just a solver class).
+- **solver**: The solver.
 - **domain_factory**: A callable with no argument returning the domain to solve (factory is the domain class if None).
 - **load_path**: The path to restore the solver state from (if None, the solving process will be launched instead).
 

@@ -8,10 +8,10 @@
 
 ## StableBaseline
 
-This class wraps a stable OpenAI Baselines solver (stable_baselines) as a scikit-decide solver.
+This class wraps a stable OpenAI Baselines solver (stable_baselines3) as a scikit-decide solver.
 
 ::: warning
-Using this class requires Stable Baselines to be installed.
+Using this class requires Stable Baselines 3 to be installed.
 :::
 
 ### Constructor <Badge text="StableBaseline" type="tip"/>
@@ -21,8 +21,8 @@ Using this class requires Stable Baselines to be installed.
 Initialize StableBaselines.
 
 #### Parameters
-- **algo_class**: The class of Baselines solver (stable_baselines) to wrap.
-- **baselines_policy**: The class of Baselines policy network (stable_baselines.common.policies) to use.
+- **algo_class**: The class of Baselines solver (stable_baselines3) to wrap.
+- **baselines_policy**: The class of Baselines policy network (stable_baselines3.common.policies or str) to use.
 
 ### check\_domain <Badge text="Solver" type="warn"/>
 
@@ -172,6 +172,13 @@ opposed to taking also into account the domain requirements for the latter.
 #### Returns
 True if the domain is compliant with the specific requirements of this solver type (False otherwise).
 
+### \_cleanup <Badge text="Solver" type="warn"/>
+
+<skdecide-signature name= "_cleanup" :sig="{'params': [{'name': 'self'}]}"></skdecide-signature>
+
+Runs cleanup code here, or code to be executed at the exit of a
+'with' context statement.
+
 ### \_get\_domain\_requirements <Badge text="Solver" type="warn"/>
 
 <skdecide-signature name= "_get_domain_requirements" :sig="{'params': [], 'return': 'List[type]'}"></skdecide-signature>
@@ -182,6 +189,13 @@ Domain requirements are classes from the `skdecide.builders.domain` package that
 
 #### Returns
 A list of classes to inherit from.
+
+### \_initialize <Badge text="Solver" type="warn"/>
+
+<skdecide-signature name= "_initialize" :sig="{'params': [{'name': 'self'}]}"></skdecide-signature>
+
+Runs long-lasting initialization code here, or code to be executed at the
+entering of a 'with' context statement.
 
 ### \_is\_policy\_defined\_for <Badge text="Policies" type="warn"/>
 

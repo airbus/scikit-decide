@@ -276,6 +276,34 @@ class D(RLDomain, FullyObservable)
 
 </template>
 
+<template v-slot:ParallelDomain>
+
+Base class for creating and launching n domains in separate processes.
+Each domain listens for incoming domain requests.
+Each request can indicate which domain should serve it, otherwise the first available
+domain i is chosen and its id is returned to the incoming request.
+
+</template>
+
+<template v-slot:PipeParallelDomain>
+
+This class can be used to create and launch n domains in separate processes.
+Each domain listens for incoming domain requests.
+Each request can indicate which domain should serve it, otherwise the first available
+domain i is chosen and its id is returned to the incoming request.
+
+</template>
+
+<template v-slot:ShmParallelDomain>
+
+This class can be used to create and launch n domains in separate processes
+with shared memory between the Python processes.
+Each domain listens for incoming domain requests.
+Each request can indicate which domain should serve it, otherwise the first available
+domain is chosen and its id is returned to the incoming request.
+
+</template>
+
 <template v-slot:MultiAgent>
 
 A domain must inherit this class if it is multi-agent (i.e hosting multiple independent agents).

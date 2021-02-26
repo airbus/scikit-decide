@@ -1,3 +1,9 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 from typing import Iterable, Any, Tuple, Union
 
 from skdecide.builders.discrete_optimization.generic_tools.cp_tools import ParametersCP
@@ -251,7 +257,6 @@ class ConstraintHandlerStartTimeIntervalMRCPSP(ConstraintHandler):
         milp_solver.model.remove(previous_constraints["range_start_time"])
         if milp_solver.lp_solver == LP_RCPSP_Solver.GRB:
             milp_solver.model.solver.update()
-
 
 
 class ConstraintHandlerStartTimeIntervalMRCPSP_GRB(ConstraintHandler):

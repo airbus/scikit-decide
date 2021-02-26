@@ -1,3 +1,7 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 from __future__ import annotations
 from typing import Any, Dict, List, Iterable, Optional, Union, Tuple
 from skdecide import Memory, Space, TransitionValue, EnumerableSpace, SamplableSpace, T, ImplicitSpace, Distribution
@@ -93,7 +97,6 @@ class GraphDomainUncertain(Domain,
         possible_states = [(s, self.next_state_map[memory][action][s][0])
                            for s in self.next_state_map[memory][action]]
         return random.choices(possible_states, weights=[p[1] for p in possible_states], k=1)[0]
-
 
 
 class GraphDomain(Domain,

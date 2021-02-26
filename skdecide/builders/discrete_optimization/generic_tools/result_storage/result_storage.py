@@ -1,9 +1,14 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 from skdecide.builders.discrete_optimization.generic_tools.do_problem import Problem, Solution, TupleFitness, \
-    ModeOptim, ParamsObjectiveFunction
-from typing import List, Tuple, Dict, Union, Set, Any, Optional
-from heapq import heappop, heappushpop, heappush, heapify, \
-    heapreplace, nlargest, nsmallest
-import matplotlib.pyplot as plt
+    ModeOptim
+from typing import List, Tuple, Dict, Union, Optional
+from heapq import heappushpop, heappush, heapify, \
+    nlargest, nsmallest
 import random
 
 fitness_class = Union[float, TupleFitness]
@@ -215,31 +220,6 @@ class ParetoFront(ResultStorage):
             extr = function_used(self.paretos, key=lambda x: x[1].vector_fitness[i])
             extreme_points += [extr]
         return extreme_points
-
-
-def plot_storage_2d(result_storage: ResultStorage, name_axis: List[str], ax=None, color="r"):
-    if ax is None:
-        fig, ax = plt.subplots(1)
-    ax.scatter(x=[p[1].vector_fitness[0]
-                  for p in result_storage.list_solution_fits],
-               y=[p[1].vector_fitness[1]
-                  for p in result_storage.list_solution_fits],
-               color=color)
-    ax.set_xlabel(name_axis[0])
-    ax.set_ylabel(name_axis[1])
-
-
-def plot_pareto_2d(pareto_front: ParetoFront, name_axis: List[str], ax=None, color="b"):
-    if ax is None:
-        fig, ax = plt.subplots(1)
-    ax.scatter(x=[p[1].vector_fitness[0]
-                  for p in pareto_front.paretos],
-               y=[p[1].vector_fitness[1]
-                  for p in pareto_front.paretos],
-               color=color)
-    ax.set_xlabel(name_axis[0])
-    ax.set_ylabel(name_axis[1])
-    # plt.show()
 
 
 

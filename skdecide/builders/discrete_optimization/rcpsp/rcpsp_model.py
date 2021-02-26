@@ -1,3 +1,9 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../"))
 from skdecide.builders.discrete_optimization.generic_tools.do_problem import Solution, Problem, EncodingRegister, TypeAttribute, \
@@ -8,7 +14,6 @@ from abc import abstractmethod
 import numpy as np
 from enum import Enum
 from copy import deepcopy
-import matplotlib.pyplot as plt
 from scipy.stats import poisson, rv_discrete, randint
 from collections import defaultdict
 
@@ -650,14 +655,6 @@ class RCPSPModel(Problem):
                 consumptions[ir, rcpsp_sol.rcpsp_schedule[act_id]["start_time"]+1:rcpsp_sol.rcpsp_schedule[act_id]["end_time"]+1] += use_ir
         return consumptions
 
-    def plot_ressource_view(self, rcpsp_sol: RCPSPSolution):
-        consumption = self.compute_resource_consumption(rcpsp_sol=rcpsp_sol)
-        fig, ax = plt.subplots(nrows=len(self.resources_list), sharex=True)
-        for i in range(len(self.resources_list)):
-            ax[i].axhline(y=self.resources[self.resources_list[i]], label=self.resources_list[i])
-            ax[i].plot(consumption[i, :])
-            ax[i].legend()
-
     def copy(self):
         return RCPSPModel(resources=self.resources,
                           non_renewable_resources=self.non_renewable_resources,
@@ -671,9 +668,6 @@ class RCPSPModel(Problem):
                             rcpsp_permutation=list(range(self.n_jobs)),
                             rcpsp_modes=[1 for i in range(self.n_jobs)])
         return sol
-
-# Variable quantity of ressource.
-# TODO :
 
 
 class RCPSPModelCalendar(RCPSPModel):

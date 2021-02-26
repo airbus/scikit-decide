@@ -1,3 +1,9 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 import os, sys
 from typing import Tuple, Dict
 
@@ -5,7 +11,7 @@ from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill i
     MS_RCPSPModel, MS_RCPSPModel_Variant, Employee, SkillDetail, MS_RCPSPSolution
 import os
 path_to_data =\
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/rcpsp_multiskill/dataset_def/")
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/rcpsp_multiskill/dataset_def/")
 
 
 def get_data_available():
@@ -250,15 +256,5 @@ def write_solution(solution: MS_RCPSPSolution,
     file1.writelines([strings_hours[hour]+'\n' for hour in sorted(strings_hours)])
     file1.close()
 
-
-def run_recompute():
-    schedule, assignation = parse_results(open("/Users/poveda_g/Documents/discrete-optimisation/"
-                                               "discrete_optimization/data/rcpsp_multiskill/de_best/100_5_20_9_D3.def.sol", "r").read())
-    model, name = parse_imopse(open("/Users/poveda_g/Documents/discrete-optimisation/"
-                                    "discrete_optimization/data/rcpsp_multiskill/dataset_def/100_5_20_9_D3.def",
-                                    "r").read(), max_horizon=1000)
-    solution = recompute_solution(model, name, schedule, assignation)
-    print(model.evaluate(solution))
-    print(model.satisfy(solution))
 
 

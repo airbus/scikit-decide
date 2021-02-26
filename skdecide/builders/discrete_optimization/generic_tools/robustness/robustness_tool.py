@@ -1,10 +1,14 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 from skdecide.builders.discrete_optimization.generic_tools.do_problem import MethodAggregating, BaseMethodAggregating, Problem, \
     RobustProblem, ParamsObjectiveFunction, ObjectiveHandling, ModeOptim, build_aggreg_function_and_params_objective
 from typing import List
 import numpy as np
 import random
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from skdecide.builders.discrete_optimization.generic_tools.ls.hill_climber import HillClimberPareto
 from skdecide.builders.discrete_optimization.generic_tools.ls.local_search import RestartHandlerLimit, ModeMutation
@@ -15,7 +19,6 @@ from skdecide.builders.discrete_optimization.rcpsp.mutations.mutation_rcpsp impo
 from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution, Aggreg_RCPSPModel, RCPSPModel
 
 
-# TODO : most of this can become generic, but for now it's adapted to RCPSP..
 class RobustnessTool:
     def __init__(self,
                  base_instance: RCPSPModel,
@@ -91,23 +94,6 @@ class RobustnessTool:
                 results[index_pareto, index_instance, 1] = fit["makespan"]
                 results[index_pareto, index_instance, 2] = fit["mean_resource_reserve"]
         return results
-
-    def plot(self, results, image_tag=""):
-        feasible = np.sum(results[:, :, 0], axis=1)
-        mean_makespan = np.mean(results[:, :, 1], axis=1)
-        max_makespan = np.max(results[:, :, 1], axis=1)
-        print(self.tags)
-        print("Mean makespan over test instances : ", mean_makespan)
-        print("Max makespan over test instances : ", max_makespan)
-        print("methods ", self.tags)
-        fig, ax = plt.subplots(1, figsize=(10, 10))
-        for tag, i in zip(self.tags, range(len(self.tags))):
-            sns.distplot(results[i, :, 1], rug=True,
-                         bins=max(1, len(self.all_instances) // 10),
-                         label=tag)
-        plt.legend()
-        plt.figure("Makespan distribution over test instances, for different optimisation approaches")
-        fig.savefig(str(image_tag)+"_comparaison_methods_robust.png")
 
 
 def solve_model(model, postpro=True,

@@ -226,4 +226,5 @@ def run_and_compare_policies():
 if __name__ == "__main__":
     # do_multimode()
     # random_walk()
+    do_multiskill()
     cp_solve()

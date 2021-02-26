@@ -1,8 +1,14 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+from __future__ import annotations
+
 import os, sys
 from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, SingleModeRCPSPModel, \
     MultiModeRCPSPModel
 import os
-path_to_data = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/rcpsp/")
+path_to_data = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/rcpsp/")
 files_available = [os.path.join(path_to_data, f) for f in os.listdir(path_to_data)]
 
 

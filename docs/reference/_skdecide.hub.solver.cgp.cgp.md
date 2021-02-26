@@ -24,6 +24,15 @@ Flatten and normalise according to AIGYM type (BOX, DISCRETE, TUPLE)
 :param types: the gym type corresponding to the vals arrays
 :return: a flatten array with normalised vals
 
+## norm
+
+<skdecide-signature name= "norm" :sig="{'params': [{'name': 'vals'}, {'name': 'types'}]}"></skdecide-signature>
+
+Normalise according to AIGYM type (BOX, DISCRETE, TUPLE)
+:param vals: a np array structure
+:param types: the gym type corresponding to the vals arrays
+:return: array with normalised vals
+
 ## denorm
 
 <skdecide-signature name= "denorm" :sig="{'params': [{'name': 'vals'}, {'name': 'types'}]}"></skdecide-signature>
