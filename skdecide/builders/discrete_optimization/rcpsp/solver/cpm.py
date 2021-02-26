@@ -2,8 +2,7 @@ from typing import Dict, Any, List
 
 from skdecide.builders.discrete_optimization.generic_tools.do_solver import SolverDO
 from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, SingleModeRCPSPModel, \
-    MultiModeRCPSPModel, RCPSPModelCalendar
-from skdecide.builders.discrete_optimization.rcpsp.rcpsp_utils import compute_graph_rcpsp
+    MultiModeRCPSPModel, RCPSPModelCalendar, compute_graph_rcpsp
 import networkx as nx
 from heapq import heappop, heappush
 import numpy as np

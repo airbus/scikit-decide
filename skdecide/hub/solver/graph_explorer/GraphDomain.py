@@ -1,6 +1,4 @@
 from __future__ import annotations
-import matplotlib.pyplot as plt
-from collections import defaultdict
 from typing import Any, Dict, List, Iterable, Optional, Union, Tuple
 from skdecide import Memory, Space, TransitionValue, EnumerableSpace, SamplableSpace, T, ImplicitSpace, Distribution
 import random
@@ -8,6 +6,7 @@ from skdecide.builders.domain import DeterministicTransitions, Actions, Goals, M
     FullyObservable, PositiveCosts, UncertainTransitions
 from skdecide import Domain, DeterministicPlanningDomain, D
 import networkx as nx
+
 
 class ActionSpace(EnumerableSpace, SamplableSpace):
     def sample(self) -> T:

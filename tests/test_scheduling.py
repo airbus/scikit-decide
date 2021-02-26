@@ -3,29 +3,18 @@ import pytest
 from enum import Enum
 from typing import Dict, List, Any, Optional, Union, Set
 import random
-
-from skdecide import Distribution
 from skdecide.builders.scheduling.scheduling_domains import SingleModeRCPSP, SchedulingDomain, \
     SchedulingObjectiveEnum, SingleModeRCPSP_Stochastic_Durations, \
     SingleModeRCPSP_Stochastic_Durations_WithConditionalTasks, \
     SingleModeRCPSP_Simulated_Stochastic_Durations_WithConditionalTasks, \
-    MultiModeRCPSPWithCost, MultiModeMultiSkillRCPSPCalendar, MultiModeMultiSkillRCPSP, State, SchedulingAction
-from skdecide import Domain, Space, TransitionValue, Distribution, TransitionOutcome, ImplicitSpace, DiscreteDistribution
+    MultiModeRCPSPWithCost, MultiModeMultiSkillRCPSP, State, SchedulingAction
+from skdecide import Distribution, DiscreteDistribution
 
-from skdecide.builders.scheduling.modes import SingleMode, MultiMode, ModeConsumption, ConstantModeConsumption
-from skdecide.builders.scheduling.resource_consumption import VariableResourceConsumption, ConstantResourceConsumption
-from skdecide.builders.scheduling.precedence import WithPrecedence, WithoutPrecedence
-from skdecide.builders.scheduling.preemptivity import WithPreemptivity, WithoutPreemptivity, ResumeType
-from skdecide.builders.scheduling.resource_type import WithResourceTypes, WithoutResourceTypes, WithResourceUnits, WithoutResourceUnit, SingleResourceUnit
-from skdecide.builders.scheduling.resource_renewability import RenewableOnly, MixedRenewable
+from skdecide.builders.scheduling.modes import ModeConsumption, ConstantModeConsumption
+from skdecide.builders.scheduling.preemptivity import WithoutPreemptivity
 from skdecide.builders.scheduling.scheduling_domains_modelling import SchedulingActionEnum
-from skdecide.builders.scheduling.task_duration import SimulatedTaskDuration, DeterministicTaskDuration, UncertainUnivariateTaskDuration
-from skdecide.builders.scheduling.task_progress import CustomTaskProgress, DeterministicTaskProgress
-from skdecide.builders.scheduling.skills import WithResourceSkills, WithoutResourceSkills
-from skdecide.builders.scheduling.time_lag import WithTimeLag, WithoutTimeLag, TimeLag
-from skdecide.builders.scheduling.time_windows import WithTimeWindow, WithoutTimeWindow, TimeWindow
-from skdecide.builders.scheduling.preallocations import WithPreallocations, WithoutPreallocations
-from skdecide.builders.scheduling.conditional_tasks import WithConditionalTasks, WithoutConditionalTasks
+from skdecide.builders.scheduling.task_duration import DeterministicTaskDuration
+from skdecide.builders.scheduling.conditional_tasks import  WithoutConditionalTasks
 from skdecide.builders.scheduling.resource_availability import UncertainResourceAvailabilityChanges, DeterministicResourceAvailabilityChanges, WithoutResourceAvailabilityChange
 from skdecide import rollout, rollout_episode
 from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, build_n_determinist_from_stochastic
@@ -503,8 +492,8 @@ def check_skills(domain, states: List[State]):
 @pytest.mark.parametrize("do_solver", [
     # (SolvingMethod.PILE),
     # (SolvingMethod.CP),
-    #(SolvingMethod.LP), # Runs on Popo but not ORC
-    #(SolvingMethod.LNS_CP), # long to run ...
+    # (SolvingMethod.LP), # Runs on Popo but not ORC
+    # (SolvingMethod.LNS_CP), # long to run ...
     (SolvingMethod.GA),
 ])
 def test_do(domain, do_solver):

@@ -1220,7 +1220,21 @@ class MRCPSP_H_Model(MultiModeRCPSPModel):
         return objectives
 
 
-
-
-
-
+def compute_graph_rcpsp(rcpsp_model: RCPSPModel):
+    nodes = [(n, {mode: rcpsp_model.mode_details[n][mode]["duration"]
+                  for mode in rcpsp_model.mode_details[n]})
+             for n in range(1, rcpsp_model.n_jobs + 3)]
+    edges = []
+    for n in rcpsp_model.successors:
+        for succ in rcpsp_model.successors[n]:
+            dict_transition = {mode: rcpsp_model.mode_details[n][mode]["duration"]
+                               for mode in rcpsp_model.mode_details[n]}
+            min_duration = min(dict_transition.values())
+            max_duration = max(dict_transition.values())
+            dict_transition["min_duration"] = min_duration
+            dict_transition["max_duration"] = max_duration
+            dict_transition["minus_min_duration"] = -min_duration
+            dict_transition["minus_max_duration"] = -max_duration
+            dict_transition["link"] = 1
+            edges += [(n, succ, dict_transition)]
+    return Graph(nodes, edges, False)
