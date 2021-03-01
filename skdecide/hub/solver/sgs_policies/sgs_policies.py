@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 from typing import Union, List, Dict, Optional
-from skdecide.builders.solver.policy import DeterministicPolicies, UncertainPolicies
-from skdecide.builders.scheduling.scheduling_domains_modelling import State, SchedulingAction, SchedulingActionEnum
-from skdecide.builders.scheduling.scheduling_domains import SchedulingDomain, D, MultiModeRCPSP, SingleModeRCPSP
+from skdecide.builders.solver.policy import DeterministicPolicies
+from skdecide.builders.domain.scheduling.scheduling_domains_modelling import State, SchedulingAction, SchedulingActionEnum
+from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain, D, MultiModeRCPSP, SingleModeRCPSP
 from enum import Enum
 from functools import partial
 

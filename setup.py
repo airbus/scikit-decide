@@ -198,6 +198,7 @@ extras_require = {
         'deap>=1.3',
         'networkx>=2.4',
         "pymzn>=0.18.3",
+        'matplotlib>=3.1.0',
         "ortools>=8.0"
     ]
 }
@@ -228,6 +229,7 @@ if sys.platform == "win32":
                 'deap>=1.3',
                 'networkx>=2.4',
                 "pymzn>=0.18.3",
+                'matplotlib>=3.1.0',
                 "ortools>=8.0"
             ]
     }
@@ -252,6 +254,7 @@ else:
                 'mip==1.9',
                 'minizinc>=0.3',
                 'deap>=1.3',
+                'matplotlib>=3.1.0',
                 'networkx>=2.4',
                 "pymzn>=0.18.3",
                 "ortools>=8.0"

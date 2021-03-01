@@ -1,17 +1,11 @@
-from skdecide.builders.scheduling.scheduling_domains_modelling import SchedulingAction, SchedulingActionEnum, State
-from skdecide.builders.solver import Policies
-from skdecide import rollout_episode, autocastable, DiscreteDistribution
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain, load_multiskill_domain
-from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MSRCPSP, \
-    build_stochastic_from_deterministic, build_n_determinist_from_stochastic
+from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
+from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, build_stochastic_from_deterministic, build_n_determinist_from_stochastic
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod, from_solution_to_policy
-from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
 from skdecide.hub.solver.meta_policy.meta_policies import MetaPolicy
-from skdecide.hub.solver.policy_evaluators.policy_evaluator import compute_expected_cost_for_policy, \
-    rollout_based_compute_expected_cost_for_policy, rollout_based_compute_expected_cost_for_policy_scheduling
+from skdecide.hub.solver.policy_evaluators.policy_evaluator import \
+    rollout_based_compute_expected_cost_for_policy_scheduling
 from skdecide.hub.solver.sgs_policies.sgs_policies import PolicyMethodParams, BasePolicyMethod
-#from tests.test_scheduling_2 import ToyMS_RCPSPDomain, ToySRCPSPDomain
-from examples.discrete_optimization.rcpsp_parser_example import get_complete_path, get_data_available
+from examples.discrete_optimization.rcpsp_parser_example import get_complete_path
 
 
 def run_and_compare_policies():
@@ -48,7 +42,6 @@ def run_and_compare_policies():
                                            domain=stochastic_domain,
                                            policy_method_params=policy_methods[i])
                 for i in range(len(policy_methods))}
-    from skdecide.hub.solver.meta_policy.meta_policies import MetaPolicy
     keys = list(policies.keys())
     for key in keys:
         value_function_dict, policy_dict, preds, succs = \

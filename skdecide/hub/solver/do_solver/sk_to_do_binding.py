@@ -6,14 +6,15 @@ from __future__ import annotations
 
 from typing import Union
 
-from skdecide.builders.scheduling.scheduling_domains import SchedulingDomain, \
+from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain, \
     SingleModeRCPSP, SingleModeRCPSPCalendar, MultiModeRCPSP, MultiModeRCPSPCalendar,\
-    MultiModeMultiSkillRCPSPCalendar, MultiModeMultiSkillRCPSP, MultiModeRCPSPWithCost, State
-from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, MSRCPSP, MRCPSPCalendar, MSRCPSPCalendar, RCPSPCalendar, SingleModeRCPSP_Stochastic_Durations
-from skdecide.solvers import Solver, DeterministicPolicies
-from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, SingleModeRCPSPModel, \
+    MultiModeMultiSkillRCPSPCalendar, MultiModeMultiSkillRCPSP, MultiModeRCPSPWithCost, State, \
+    SingleModeRCPSP_Stochastic_Durations
+from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, MSRCPSP, MRCPSPCalendar, MSRCPSPCalendar
+from skdecide.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, SingleModeRCPSPModel, \
     MultiModeRCPSPModel, RCPSPModelCalendar, RCPSPSolution
-from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPModel, MS_RCPSPModel_Variant, Employee, \
+from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPModel, \
+    MS_RCPSPModel_Variant, Employee, \
     SkillDetail
 
 
@@ -36,7 +37,7 @@ def build_do_domain(scheduling_domain: Union[SingleModeRCPSP,
                                              MultiModeRCPSPCalendar,
                                              MultiModeMultiSkillRCPSP,
                                              MultiModeMultiSkillRCPSPCalendar,
-                                            SingleModeRCPSP_Stochastic_Durations]):
+                                             SingleModeRCPSP_Stochastic_Durations]):
     if isinstance(scheduling_domain, SingleModeRCPSP):
         modes_details = scheduling_domain.get_tasks_modes().copy()
         mode_details_do = {}

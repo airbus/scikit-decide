@@ -3,15 +3,11 @@
 # LICENSE file in the root directory of this source tree.
 
 from __future__ import annotations
-
 from typing import List
 import matplotlib.pyplot as plt
-from skdecide.builders.discrete_optimization.generic_tools.result_storage.resultcomparator import ResultComparator
-
-from skdecide.builders.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage, \
-    ParetoFront
-
-from skdecide.builders.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage, result_storage_to_pareto_front
+from skdecide.discrete_optimization.generic_tools import ResultComparator
+from skdecide.discrete_optimization.generic_tools import ResultStorage, \
+    result_storage_to_pareto_front, ParetoFront
 import seaborn as sns
 import matplotlib.cm as cm
 
@@ -64,10 +60,7 @@ class ResultComparatorPlot(ResultComparator):
             for s in rs.list_solution_fits:
                 sols.append(s)
         rs = ResultStorage(list_solution_fits=sols, best_solution=None)
-        # print('len(rs): ', len(rs.list_solution_fits))
         pareto_store = result_storage_to_pareto_front(result_storage=rs, problem=None)
-        # print('len(pareto_store): ', len(pareto_store.list_solution_fits))
-        # print('hhhh: ', [x[1].vector_fitness for x in pareto_store.list_solution_fits])
         return pareto_store
 
     def plot_all_2d_paretos_single_plot(self,
@@ -111,7 +104,6 @@ class ResultComparatorPlot(ResultComparator):
 
         cols = 2
         rows = math.ceil(len(self.list_result_storage) / cols)
-        # I have to do this to ensure at least 2 rows or else it creates axs with only 1 diumension and it crashes
         fig, axs = plt.subplots(rows, cols)
         axis = axs.flatten()
         colors = cm.rainbow(np.linspace(0, 1, len(self.list_result_storage)))
@@ -131,7 +123,6 @@ class ResultComparatorPlot(ResultComparator):
 
     def plot_super_pareto(self):
         super_pareto = self.generate_super_pareto()
-        # plot_storage_2d(result_storage=super_pareto, name_axis=self.objectives_str)
         plot_pareto_2d(pareto_front=super_pareto, name_axis=self.objectives_str)
         # TODO: This one is not working ! Need to check why
         plt.title('Pareto front obtained by merging solutions from all result stores')
@@ -141,8 +132,6 @@ class ResultComparatorPlot(ResultComparator):
         data = self.get_best_by_objective_by_result_storage(objectif_str)
         x = list(data.keys())
         y = [data[key][1].vector_fitness[obj_index] for key in x]
-        # print('x: ', x)
-        # print('y: ', y)
         y_pos = np.arange(len(x))
 
         plt.bar(y_pos, y)

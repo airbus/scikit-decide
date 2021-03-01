@@ -6,20 +6,13 @@ from __future__ import annotations
 
 from typing import Union, Callable, Dict, Any
 
-from skdecide.builders.discrete_optimization.generic_tools.ea.ga import Ga
-
-from skdecide.builders.discrete_optimization.rcpsp.solver import PileSolverRCPSP, LP_RCPSP, CP_RCPSP_MZN
-
-from skdecide.builders.scheduling.scheduling_domains import SchedulingDomain, \
-    SingleModeRCPSP, SingleModeRCPSPCalendar, MultiModeRCPSP, MultiModeRCPSPCalendar,\
-    MultiModeMultiSkillRCPSPCalendar, MultiModeMultiSkillRCPSP, MultiModeRCPSPWithCost
-from skdecide.builders.scheduling.scheduling_domains_modelling import State
+from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
 from skdecide.hub.solver.sgs_policies.sgs_policies import PolicyRCPSP, PolicyMethodParams, BasePolicyMethod
 from skdecide.solvers import Solver, DeterministicPolicies
 from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
-from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, SingleModeRCPSPModel, \
+from skdecide.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, SingleModeRCPSPModel, \
     MultiModeRCPSPModel, RCPSPModelCalendar, RCPSPSolution
-from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPModel, MS_RCPSPModel_Variant,\
+from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPModel, \
     MS_RCPSPSolution_Variant, MS_RCPSPSolution
 
 
@@ -44,7 +37,7 @@ class SolvingMethod(Enum):
 
 def build_solver(solving_method: SolvingMethod, do_domain):
     if isinstance(do_domain, (RCPSPModelCalendar, RCPSPModel, MultiModeRCPSPModel)):
-        from skdecide.builders.discrete_optimization.rcpsp.rcpsp_solvers import look_for_solver, solvers_map
+        from skdecide.discrete_optimization.rcpsp.rcpsp_solvers import look_for_solver, solvers_map
         available = look_for_solver(do_domain)
         solving_method_to_str = {SolvingMethod.PILE: "greedy",
                                  SolvingMethod.GA: "ga",
@@ -60,7 +53,7 @@ def build_solver(solving_method: SolvingMethod, do_domain):
         if len(smap) > 0:
             return smap[0]
     if isinstance(do_domain, (MS_RCPSPModel, MS_RCPSPModel, MultiModeRCPSPModel)):
-        from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import look_for_solver, solvers_map
+        from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import look_for_solver, solvers_map
         available = look_for_solver(do_domain)
         solving_method_to_str = {SolvingMethod.PILE: "greedy",
                                  SolvingMethod.GA: "ga",
@@ -143,10 +136,10 @@ class DOSolver(Solver, DeterministicPolicies):
     def get_available_methods(self, domain: SchedulingDomain):
         do_domain = build_do_domain(domain)
         if isinstance(do_domain, (MS_RCPSPModel)):
-            from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import look_for_solver, solvers_map
+            from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import look_for_solver, solvers_map
             available = look_for_solver(do_domain)
         elif isinstance(do_domain, (SingleModeRCPSPModel, RCPSPModel, MultiModeRCPSPModel)):
-            from skdecide.builders.discrete_optimization.rcpsp.rcpsp_solvers import look_for_solver, solvers_map
+            from skdecide.discrete_optimization.rcpsp.rcpsp_solvers import look_for_solver, solvers_map
             available = look_for_solver(do_domain)
         smap = [(av, solvers_map[av]) for av in available]
         print("available solvers :", smap)

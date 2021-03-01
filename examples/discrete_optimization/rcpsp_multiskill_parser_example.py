@@ -3,12 +3,6 @@
 # LICENSE file in the root directory of this source tree.
 
 from __future__ import annotations
-
-import os, sys
-from typing import Tuple, Dict
-
-from skdecide.builders.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPSolution_Variant, \
-    MS_RCPSPModel, MS_RCPSPModel_Variant, Employee, SkillDetail, MS_RCPSPSolution
 import os
 path_to_data =\
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/rcpsp_multiskill/dataset_def/")

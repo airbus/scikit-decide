@@ -6,9 +6,8 @@ from __future__ import annotations
 
 from typing import Callable
 from skdecide.solvers import Solver, DeterministicPolicies
-from skdecide.builders.scheduling.scheduling_domains_modelling import State, SchedulingAction, SchedulingActionEnum
-from skdecide.builders.scheduling.scheduling_domains import SchedulingDomain
-from skdecide.builders.scheduling.modes import SingleMode, MultiMode
+from skdecide.builders.domain.scheduling.scheduling_domains_modelling import State, SchedulingAction, SchedulingActionEnum
+from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
 from enum import Enum
 import numpy as np
 import random

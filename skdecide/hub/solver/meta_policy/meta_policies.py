@@ -4,11 +4,11 @@
 
 from __future__ import annotations
 
-from typing import Union, Dict, Any
+from typing import Dict, Any
 
 from skdecide import rollout_episode
-from skdecide.builders.solver import DeterministicPolicies, Policies
-from skdecide.builders.scheduling.scheduling_domains import SchedulingDomain, D
+from skdecide.builders.solver import DeterministicPolicies
+from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain, D
 
 
 class MetaPolicy(DeterministicPolicies):

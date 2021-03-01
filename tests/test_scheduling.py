@@ -3,26 +3,24 @@ import pytest
 from enum import Enum
 from typing import Dict, List, Any, Optional, Union, Set
 import random
-from skdecide.builders.scheduling.scheduling_domains import SingleModeRCPSP, SchedulingDomain, \
-    SchedulingObjectiveEnum, SingleModeRCPSP_Stochastic_Durations, \
+from skdecide.builders.domain.scheduling.scheduling_domains import SingleModeRCPSP, SchedulingObjectiveEnum, SingleModeRCPSP_Stochastic_Durations, \
     SingleModeRCPSP_Stochastic_Durations_WithConditionalTasks, \
     SingleModeRCPSP_Simulated_Stochastic_Durations_WithConditionalTasks, \
     MultiModeRCPSPWithCost, MultiModeMultiSkillRCPSP, State, SchedulingAction
 from skdecide import Distribution, DiscreteDistribution
 
-from skdecide.builders.scheduling.modes import ModeConsumption, ConstantModeConsumption
-from skdecide.builders.scheduling.preemptivity import WithoutPreemptivity
-from skdecide.builders.scheduling.scheduling_domains_modelling import SchedulingActionEnum
-from skdecide.builders.scheduling.task_duration import DeterministicTaskDuration
-from skdecide.builders.scheduling.conditional_tasks import  WithoutConditionalTasks
-from skdecide.builders.scheduling.resource_availability import UncertainResourceAvailabilityChanges, DeterministicResourceAvailabilityChanges, WithoutResourceAvailabilityChange
-from skdecide import rollout, rollout_episode
+from skdecide.builders.domain.scheduling.modes import ModeConsumption, ConstantModeConsumption
+from skdecide.builders.domain.scheduling.preemptivity import WithoutPreemptivity
+from skdecide.builders.domain.scheduling.scheduling_domains_modelling import SchedulingActionEnum
+from skdecide.builders.domain.scheduling.task_duration import DeterministicTaskDuration
+from skdecide.builders.domain.scheduling.conditional_tasks import  WithoutConditionalTasks
+from skdecide.builders.domain.scheduling.resource_availability import DeterministicResourceAvailabilityChanges
+from skdecide import rollout_episode
 from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, build_n_determinist_from_stochastic
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain, load_multiskill_domain
+from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
 from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
-from skdecide.hub.solver.lazy_astar import lazy_astar
-from skdecide.hub.solver.do_solver.do_solver_scheduling import PolicyRCPSP, DOSolver, \
-    PolicyMethodParams, BasePolicyMethod, SolvingMethod
+from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, \
+    PolicyMethodParams, SolvingMethod, BasePolicyMethod
 from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.solver.gphh.gphh import GPHH, ParametersGPHH
 
@@ -464,7 +462,7 @@ def check_skills(domain, states: List[State]):
     if isinstance(domain, ToyMS_RCPSPDomain):
         ressource_units = domain.get_resource_units_names()
         for state in states:
-            from skdecide.builders.scheduling.scheduling_domains import State
+            from skdecide.builders.domain.scheduling.scheduling_domains import State
             st: State = state
             task_checked = set()
             for task in st.tasks_ongoing:
@@ -666,41 +664,6 @@ def test_compute_all_graph(domain):
                     duration_task_for_ns = ns.tasks_details[task].sampled_duration
                     assert duration_task_for_ns in task_duration and \
                            prob == task_duration[duration_task_for_ns]  # duration are coherent with the input distribution
-
-
-def test_basic():
-    domain_rcpsp = load_domain("j1201_1.sm")
-    domain_mrcpsp = load_domain("j1010_2.mm")
-    assert isinstance(domain_rcpsp, RCPSP)
-    assert isinstance(domain_mrcpsp, MRCPSP)
-    # domain: RCPSP = load_domain("j1201_1.sm")
-    state: State = domain_rcpsp.get_initial_state()
-    print("Initial state : ", state)
-    assert len(state.tasks_ongoing) == 0
-    assert len(state.tasks_complete) == 0
-    assert len(state.tasks_paused) == 0
-    actions = domain_rcpsp.get_applicable_actions(state)
-    action_list: List[SchedulingAction] = actions.get_elements()
-    assert len(action_list) == 2
-    action_start_source = [ac for ac in action_list
-                           if ac.action == SchedulingActionEnum.START
-                           and ac.task == 1]
-    assert len(action_start_source) == 1
-    next_state = domain_rcpsp.get_next_state(state, action_start_source[0])
-    print("New state ", next_state)
-    assert len(next_state.tasks_complete) == 1  # it is a dummy task, it should be completed now.
-
-    action_list = domain_rcpsp.get_applicable_actions(state).get_elements()
-
-    states, actions, values = rollout_episode(domain=domain_rcpsp,
-                                              solver=None,
-                                              from_memory=state,
-                                              max_steps=500,
-                                              outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
-    print("rollout done")
-    print('end times: ')
-    for task_id in states[-1].tasks_details.keys():
-        print('end task', task_id, ': ', states[-1].tasks_details[task_id].end)
 
 
 @pytest.mark.parametrize("domain", [

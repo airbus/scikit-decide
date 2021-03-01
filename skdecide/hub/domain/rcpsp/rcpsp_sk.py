@@ -5,14 +5,13 @@
 from __future__ import annotations
 
 from typing import Optional, List, Dict, Union, Set, Any
-from skdecide import TransitionValue, Distribution, DiscreteDistribution
-from skdecide.builders.scheduling.modes import ModeConsumption, ConstantModeConsumption
-from skdecide.builders.scheduling.scheduling_domains import MultiModeRCPSP, \
-    SchedulingDomain, DeterministicSchedulingDomain, SingleModeRCPSP, SingleMode, \
-    SingleModeRCPSP_Stochastic_Durations, MultiModeRCPSP_Stochastic_Durations, \
-    MultiModeMultiSkillRCPSP, SchedulingObjectiveEnum, State, MultiModeMultiSkillRCPSPCalendar, MultiModeRCPSPCalendar, MultiModeRCPSPCalendar_Stochastic_Durations
-
-from skdecide.builders.domain import DeterministicTransitions
+from skdecide import Distribution, DiscreteDistribution
+from skdecide.builders.domain.scheduling.modes import ModeConsumption, ConstantModeConsumption
+from skdecide.builders.domain.scheduling.scheduling_domains import MultiModeRCPSP, \
+    SingleMode, \
+    MultiModeRCPSP_Stochastic_Durations, \
+    MultiModeMultiSkillRCPSP, SchedulingObjectiveEnum, MultiModeMultiSkillRCPSPCalendar, MultiModeRCPSPCalendar, \
+    MultiModeRCPSPCalendar_Stochastic_Durations
 
 
 class D(MultiModeRCPSP):

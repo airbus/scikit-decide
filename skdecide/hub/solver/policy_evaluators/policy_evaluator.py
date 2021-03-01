@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-from skdecide import GoalMDPDomain, DeterministicPolicySolver
-from skdecide.builders.scheduling.scheduling_domains import SchedulingDomain
+from skdecide import GoalMDPDomain
+from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
 from skdecide.builders.solver.policy import DeterministicPolicies
 from collections import defaultdict
 from typing import Tuple, Dict, Any, Set, List

@@ -2,28 +2,13 @@ from enum import Enum
 from typing import Dict, List, Any, Optional, Union, Set
 import random
 
-from skdecide import Distribution
-from skdecide.builders.scheduling.scheduling_domains import SingleModeRCPSP, SchedulingDomain, SchedulingObjectiveEnum, SingleModeRCPSP_Stochastic_Durations, SingleModeRCPSP_Stochastic_Durations_WithConditionalTasks, SingleModeRCPSP_Simulated_Stochastic_Durations_WithConditionalTasks, MultiModeRCPSPWithCost
-from skdecide import Domain, Space, TransitionValue, Distribution, TransitionOutcome, ImplicitSpace, DiscreteDistribution
+from skdecide.builders.domain.scheduling.scheduling_domains import SingleModeRCPSP, SchedulingObjectiveEnum,\
+    SingleModeRCPSP_Stochastic_Durations, SingleModeRCPSP_Stochastic_Durations_WithConditionalTasks, \
+    SingleModeRCPSP_Simulated_Stochastic_Durations_WithConditionalTasks, MultiModeRCPSPWithCost
+from skdecide import Distribution, DiscreteDistribution
 
-from skdecide.builders.scheduling.modes import SingleMode, MultiMode, ModeConsumption, ConstantModeConsumption
-from skdecide.builders.scheduling.resource_consumption import VariableResourceConsumption, ConstantResourceConsumption
-from skdecide.builders.scheduling.precedence import WithPrecedence, WithoutPrecedence
-from skdecide.builders.scheduling.preemptivity import WithPreemptivity, WithoutPreemptivity, ResumeType
-from skdecide.builders.scheduling.resource_type import WithResourceTypes, WithoutResourceTypes, WithResourceUnits, WithoutResourceUnit, SingleResourceUnit
-from skdecide.builders.scheduling.resource_renewability import RenewableOnly, MixedRenewable
-from skdecide.builders.scheduling.task_duration import SimulatedTaskDuration, DeterministicTaskDuration, UncertainUnivariateTaskDuration
-from skdecide.builders.scheduling.task_progress import CustomTaskProgress, DeterministicTaskProgress
-from skdecide.builders.scheduling.skills import WithResourceSkills, WithoutResourceSkills
-from skdecide.builders.scheduling.time_lag import WithTimeLag, WithoutTimeLag, TimeLag
-from skdecide.builders.scheduling.time_windows import WithTimeWindow, WithoutTimeWindow, TimeWindow
-from skdecide.builders.scheduling.preallocations import WithPreallocations, WithoutPreallocations
-from skdecide.builders.scheduling.conditional_tasks import WithConditionalTasks, WithoutConditionalTasks
-from skdecide.builders.scheduling.resource_availability import UncertainResourceAvailabilityChanges, DeterministicResourceAvailabilityChanges, WithoutResourceAvailabilityChange
-from skdecide import rollout, rollout_episode
-from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
-from skdecide.hub.solver.lazy_astar import lazy_astar
+from skdecide.builders.domain.scheduling.modes import ModeConsumption, ConstantModeConsumption
+from skdecide import rollout_episode
 
 
 class MyExampleRCPSPDomain(SingleModeRCPSP):
@@ -38,10 +23,10 @@ class MyExampleRCPSPDomain(SingleModeRCPSP):
         return 50
 
     def _get_successors(self) -> Dict[int, List[int]]:
-        return {1: [2,3], 2:[4], 3:[5], 4:[5], 5:[]}
+        return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
 
     def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
-        return set([1,2,3,4,5])
+        return {1, 2, 3, 4, 5}
 
     def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
         return {
@@ -433,9 +418,9 @@ def run_astar():
     
     from skdecide.hub.solver.do_solver.sk_to_do_binding import from_last_state_to_solution
     do_sol = from_last_state_to_solution(states[-1], domain)
-    from examples.discrete_optimization.rcpsp_plot_utils import plot_resource_individual_gantt, plt
-    from examples.discrete_optimization.rcpsp_plot_utils import plot_task_gantt
-    from examples.discrete_optimization.rcpsp_plot_utils import plot_ressource_view
+    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_resource_individual_gantt, plt
+    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_task_gantt
+    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_ressource_view
 
     plot_task_gantt(do_sol.problem, do_sol)
     plot_ressource_view(do_sol.problem, do_sol)
@@ -443,7 +428,7 @@ def run_astar():
     plt.show()
 
 def run_do():
-    from skdecide.hub.solver.do_solver.do_solver_scheduling import PolicyRCPSP, DOSolver, \
+    from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, \
         PolicyMethodParams, BasePolicyMethod, SolvingMethod
     domain = MyExampleRCPSPDomain()
 
@@ -464,10 +449,9 @@ def run_do():
     print("Cost :", sum([v.cost for v in values]))
     from skdecide.hub.solver.do_solver.sk_to_do_binding import from_last_state_to_solution
     do_sol = from_last_state_to_solution(states[-1], domain)
-    from examples.discrete_optimization.rcpsp_plot_utils import plot_resource_individual_gantt, plt
-    from examples.discrete_optimization.rcpsp_plot_utils import plot_task_gantt
-    from examples.discrete_optimization.rcpsp_plot_utils import plot_ressource_view
-
+    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_resource_individual_gantt, plt
+    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_task_gantt
+    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_ressource_view
     plot_task_gantt(do_sol.problem, do_sol)
     plot_ressource_view(do_sol.problem, do_sol)
     plot_resource_individual_gantt(do_sol.problem, do_sol)
@@ -475,16 +459,11 @@ def run_do():
 
 
 def run_graph_exploration():
-    # domain = MyExampleRCPSPDomain()
-    # domain = MyExampleSRCPSPDomain()
-    # domain = MyExampleCondSRCPSPDomain()
     domain = MyExampleSRCPSPDomain_2()
     domain.set_inplace_environment(False)
-    #domain = MyExampleCondSRCPSPDomain()
     state = domain.get_initial_state()
     print("Initial state : ", state)
     from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
-    from skdecide.hub.solver.graph_explorer.GraphDomain import GraphDomainUncertain
     explorer = DFSExploration(domain=domain, max_edges=10000, max_nodes=10000)
     graph_exploration = explorer.build_graph_domain(init_state=state)
     nx_graph = graph_exploration.to_networkx()
@@ -510,14 +489,11 @@ def run_graph_exploration():
 
 
 def run_graph_exploration_conditional():
-    # domain = MyExampleRCPSPDomain()
     domain = MyExampleCondSRCPSPDomain()
     domain.set_inplace_environment(False)
-    #domain = MyExampleCondSRCPSPDomain()
     state = domain.get_initial_state()
     print("Initial state : ", state)
     from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
-    from skdecide.hub.solver.graph_explorer.GraphDomain import GraphDomainUncertain
     from itertools import count
     c = count()
     score_state = lambda x: (len(x.tasks_remaining)

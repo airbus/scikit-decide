@@ -4,18 +4,17 @@
 
 from __future__ import annotations
 
-from typing import Union, List, Dict, Optional, Callable, Set
-from skdecide.builders.solver.policy import DeterministicPolicies, UncertainPolicies
-from skdecide import Domain, Solver
-from skdecide.builders.scheduling.modes import SingleMode
-from skdecide.builders.scheduling.scheduling_domains_modelling import State, SchedulingAction, SchedulingActionEnum
-from skdecide.builders.scheduling.scheduling_domains import SchedulingDomain, D, MultiModeRCPSP, SingleModeRCPSP
-from skdecide import rollout_episode
-from skdecide.hub.solver.sgs_policies.sgs_policies import PolicyMethodParams, BasePolicyMethod, PolicyRCPSP
-from skdecide.hub.solver.do_solver.do_solver_scheduling import PolicyRCPSP, DOSolver, PolicyMethodParams, BasePolicyMethod, SolvingMethod
-from skdecide.builders.discrete_optimization.rcpsp.solver.cpm import CPM
+from typing import List, Dict, Callable, Set
+from skdecide.builders.solver.policy import DeterministicPolicies
+from skdecide import Solver
+from skdecide.builders.domain.scheduling.modes import SingleMode
+from skdecide.builders.domain.scheduling.scheduling_domains_modelling import State, SchedulingAction
+from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain, D
+from skdecide.hub.solver.do_solver.do_solver_scheduling import PolicyRCPSP, DOSolver, PolicyMethodParams, SolvingMethod
+from skdecide.hub.solver.sgs_policies.sgs_policies import BasePolicyMethod
+from skdecide.discrete_optimization.rcpsp.solver.cpm import CPM
 from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
-from skdecide.builders.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
+from skdecide.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
 from enum import Enum
 from deap.gp import PrimitiveSet, PrimitiveTree, genHalfAndHalf
 from deap import gp
@@ -25,7 +24,6 @@ from deap import creator
 from deap import tools
 
 import operator
-import itertools
 import numpy as np
 import random
 from scipy import stats
