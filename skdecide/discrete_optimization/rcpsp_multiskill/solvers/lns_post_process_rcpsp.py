@@ -10,6 +10,7 @@ from skdecide.discrete_optimization.generic_tools.lns_mip import PostProcessSolu
 from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage
 from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPModel, MS_RCPSPSolution
 import networkx as nx
+import numpy as np
 
 
 class PostProMSRCPSP(PostProcessSolution):
@@ -54,9 +55,9 @@ def sgs_variant(solution: MS_RCPSPSolution,
     new_proposed_schedule = {}
     # 1, 2
     resource_avail_in_time = {}
-    new_horizon = problem.horizon
+    new_horizon = min(solution.schedule[problem.sink_task]["end_time"]*4, problem.horizon)
     for res in problem.resources_set:
-        resource_avail_in_time[res] = problem.resources_availability[res][:new_horizon + 1]
+        resource_avail_in_time[res] = np.copy(problem.resources_availability[res][:new_horizon + 1])
     worker_avail_in_time = {}
     for i in problem.employees:
         worker_avail_in_time[i] = list(problem.employees[i].calendar_employee)
@@ -74,16 +75,27 @@ def sgs_variant(solution: MS_RCPSPSolution,
         else:
             min_time = 0
         new_starting_time = solution.schedule[task]["start_time"]
-        for t in range(min_time, solution.schedule[task]["start_time"]+1):
-            if all(all(worker_avail_in_time[emp][time]
-                       for time in range(t,
-                                         t+ solution.schedule[task]["end_time"]-solution.schedule[task]["start_time"]))
-                   for emp in employee_used):
-                new_starting_time = t
-                break
+        if solution.schedule[task]["start_time"]==solution.schedule[task]["end_time"]:
+            new_starting_time = min_time
+        else:
+            for t in range(min_time, solution.schedule[task]["start_time"]+1):
+                if all(all(worker_avail_in_time[emp][time]
+                                    for time in range(t,
+                                                      t + solution.schedule[task]["end_time"]-solution.schedule[task]["start_time"]))
+                                for emp in employee_used) and \
+                all(resource_avail_in_time[res][time] >= problem.mode_details[task][solution.modes[task]].get(res, 0)
+                    for res in
+                    problem.resources_list for time in range(t,
+                                                             t + solution.schedule[task]["end_time"]
+                                                             - solution.schedule[task]["start_time"])):
+                    new_starting_time = t
+                    break
         duration = solution.schedule[task]["end_time"]-solution.schedule[task]["start_time"]
         new_proposed_schedule[task] = {"start_time": new_starting_time,
                                        "end_time": new_starting_time+duration}
+        for res in problem.resources_list:
+            resource_avail_in_time[res][new_starting_time:new_starting_time+duration] \
+                -= problem.mode_details[task][solution.modes[task]].get(res, 0)
         for t in range(new_starting_time, new_starting_time+duration):
             for emp in employee_used:
                 worker_avail_in_time[emp][t] = False
@@ -91,9 +103,10 @@ def sgs_variant(solution: MS_RCPSPSolution,
                                     modes=solution.modes,
                                     schedule=new_proposed_schedule,
                                     employee_usage=solution.employee_usage)
-    #print("New : ", problem.evaluate(new_solution), problem.satisfy(new_solution))
-    #print("Old : ", problem.evaluate(solution), problem.satisfy(solution))
+    # print("New : ", problem.evaluate(new_solution), problem.satisfy(new_solution))
+    # print("Old : ", problem.evaluate(solution), problem.satisfy(solution))
     return new_solution
+
 
 
 

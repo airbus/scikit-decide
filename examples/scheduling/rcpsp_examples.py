@@ -27,6 +27,15 @@ def random_walk():
     print('end times: ')
     for task_id in states[-1].tasks_details.keys():
         print('end task', task_id, ': ', states[-1].tasks_details[task_id].end)
+    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_resource_individual_gantt, plt
+    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_task_gantt
+    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_ressource_view
+    from skdecide.hub.solver.do_solver.sk_to_do_binding import from_last_state_to_solution
+    do_sol = from_last_state_to_solution(states[-1], domain)
+    plot_task_gantt(do_sol.problem, do_sol)
+    plot_ressource_view(do_sol.problem, do_sol)
+    plot_resource_individual_gantt(do_sol.problem, do_sol)
+    plt.show()
 
 
 def cp_solve():
@@ -160,23 +169,6 @@ def check_uncertain_domain():
                                duration_task_for_ns]  # duration are coherent with the input distribution
 
 
-def small_testing():
-    domain: RCPSP = load_domain(get_complete_path("j1010_2.mm"))
-    state = domain.get_initial_state()
-    print("Initial state : ", state)
-    actions = domain.get_applicable_actions(state)
-    print([str(action) for action in actions.get_elements()])
-    action = actions.get_elements()[0]
-    new_state = domain.get_next_state(state, action)
-    print("New state ", new_state)
-    actions = domain.get_applicable_actions(new_state)
-    print("New actions : ", [str(action) for action in actions.get_elements()])
-    action = actions.get_elements()[0]
-    print(action)
-    new_state = domain.get_next_state(new_state, action)
-    print("New state :", new_state)
-
-
 def run_and_compare_policies():
     domain: RCPSP = load_domain(get_complete_path("j1010_2.mm"))
     state = domain.get_initial_state()
@@ -211,18 +203,21 @@ def run_and_compare_policies():
                              known_domain=domain,
                              nb_rollout_estimation=1,
                              verbose=True)
-
     states, actions, values = rollout_episode(domain=domain,
                                               solver=meta_policy,
                                               from_memory=state,
                                               max_steps=1000,
                                               action_formatter=lambda a: f'{a}',
                                               outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
-    print("Hey")
 
 
 if __name__ == "__main__":
-    # do_multimode()
-    # random_walk()
+    # check_uncertain_domain()
+    #random_walk()
+    #cp_solve()
+    #random_walk_multiskill()
     do_multiskill_toy()
-    cp_solve()
+    #do_multimode()
+    # random_walk()
+    # do_multiskill_toy()
+    # cp_solve()

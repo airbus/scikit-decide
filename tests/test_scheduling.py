@@ -17,7 +17,6 @@ from skdecide.builders.domain.scheduling.conditional_tasks import  WithoutCondit
 from skdecide.builders.domain.scheduling.resource_availability import DeterministicResourceAvailabilityChanges
 from skdecide import rollout_episode
 from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, build_n_determinist_from_stochastic
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
 from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, \
     PolicyMethodParams, SolvingMethod, BasePolicyMethod

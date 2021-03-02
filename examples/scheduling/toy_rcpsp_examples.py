@@ -418,9 +418,9 @@ def run_astar():
     
     from skdecide.hub.solver.do_solver.sk_to_do_binding import from_last_state_to_solution
     do_sol = from_last_state_to_solution(states[-1], domain)
-    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_resource_individual_gantt, plt
-    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_task_gantt
-    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_ressource_view
+    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_resource_individual_gantt, plt
+    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_task_gantt
+    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_ressource_view
 
     plot_task_gantt(do_sol.problem, do_sol)
     plot_ressource_view(do_sol.problem, do_sol)
@@ -449,9 +449,9 @@ def run_do():
     print("Cost :", sum([v.cost for v in values]))
     from skdecide.hub.solver.do_solver.sk_to_do_binding import from_last_state_to_solution
     do_sol = from_last_state_to_solution(states[-1], domain)
-    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_resource_individual_gantt, plt
-    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_task_gantt
-    from skdecide.builders.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_ressource_view
+    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_resource_individual_gantt, plt
+    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_task_gantt
+    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import plot_ressource_view
     plot_task_gantt(do_sol.problem, do_sol)
     plot_ressource_view(do_sol.problem, do_sol)
     plot_resource_individual_gantt(do_sol.problem, do_sol)
