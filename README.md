@@ -1,4 +1,27 @@
-[![PyPI version](https://badge.fury.io/py/scikit-decide.svg)](https://badge.fury.io/py/scikit-decide) ![PyPI - License](https://img.shields.io/pypi/l/scikit-decide) ![PyPI - Downloads](https://img.shields.io/pypi/dm/scikit-decide)
+
+                    _  __    _  __              __             _      __    
+       _____ _____ (_)/ /__ (_)/ /_        ____/ /___   _____ (_)____/ /___ 
+      / ___// ___// // //_// // __/______ / __  // _ \ / ___// // __  // _ \
+     (__  )/ /__ / // ,<  / // /_ /_____// /_/ //  __// /__ / // /_/ //  __/
+    /____/ \___//_//_/|_|/_/ \__/        \__,_/ \___/ \___//_/ \__,_/ \___/
+
+<br>
+<p align="center">
+  <a href="https://github.com/airbus/scikit-decide/actions?query=workflow%3Abuild_test_deploy">
+    <img src="https://img.shields.io/github/workflow/status/airbus/scikit-decide/build_test_deploy?logo=github&label=CI%20status" alt="actions status">
+  </a>
+  <a href="https://github.com/airbus/scikit-decide/tags">
+    <img src="https://img.shields.io/github/tag/airbus/scikit-decide.svg?label=current%20version" alt="version">
+  </a>
+  <a href="https://github.com/airbus/scikit-decide/stargazers">
+    <img src="https://img.shields.io/github/stars/airbus/scikit-decide.svg" alt="stars">
+  </a>
+  <a href="https://github.com/airbus/scikit-decide/network">
+    <img src="https://img.shields.io/github/forks/airbus/scikit-decide.svg" alt="forks">
+  </a>
+</p>
+<br>
+
 # Scikit-decide for Python
 
 Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.
