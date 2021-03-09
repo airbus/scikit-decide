@@ -15,7 +15,7 @@ from collections import namedtuple  # TODO: replace with `from typing import Nam
 import gym
 import numpy as np
 
-from skdecide import Domain, Space, TransitionValue, TransitionOutcome, ImplicitSpace
+from skdecide import Domain, Space, Value, TransitionOutcome, ImplicitSpace
 from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, UnrestrictedActions, \
     Initializable, DeterministicInitialized, Markovian, Memoryless, FullyObservable, Renderable, Rewards, \
     PositiveCosts, Goals
@@ -47,9 +47,9 @@ class GymDomain(D):
         return self._gym_env.reset()
 
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         obs, reward, done, info = self._gym_env.step(action)
-        return TransitionOutcome(state=obs, value=TransitionValue(reward=reward), termination=done, info=info)
+        return TransitionOutcome(state=obs, value=Value(reward=reward), termination=done, info=info)
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
         return GymSpace(self._gym_env.action_space)
@@ -135,7 +135,7 @@ class GymDomainHashable(GymDomain):
         return GymDomainStateProxy(super()._state_reset())
 
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         outcome = super()._state_step(action)
         outcome.state = GymDomainStateProxy(outcome.state)
         return outcome
@@ -201,13 +201,13 @@ class DeterministicInitializedGymDomain(D):
         return self._initial_state
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         obs, reward, done, info = self._gym_env.step(action)
         if self._set_state is not None and self._get_state is not None:
             state = GymDomainStateProxy(state=obs, context=self._initial_env_state)
         else:
             state = GymDomainStateProxy(state=obs, context=self._init_env)
-        return TransitionOutcome(state=state, value=TransitionValue(reward=reward), termination=done, info=info)
+        return TransitionOutcome(state=state, value=Value(reward=reward), termination=done, info=info)
     
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
         return GymSpace(self._gym_env.action_space)
@@ -714,20 +714,20 @@ class DeterministicGymDomain(D):
             self._set_state(env, memory._context[4])
         self._gym_env = env  # Just in case the simulation environment would be different from the planner's environment...
         obs, reward, done, info = env.step(action)
-        outcome = TransitionOutcome(state=obs, value=TransitionValue(reward=reward), termination=done, info=info)
+        outcome = TransitionOutcome(state=obs, value=Value(reward=reward), termination=done, info=info)
         # print('Transition:', str(memory._state), ' -> ', str(action), ' -> ', str(outcome.state))
         return GymDomainStateProxy(state=outcome.state,
                                                 context=[env, memory._state, action, outcome,
                                                          self._get_state(env) if (self._get_state is not None and self._set_state is not None) else None])
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
+                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
         last_memory, last_action, outcome = next_state._context[1:4]
         # assert (self._are_same(self._gym_env.observation_space, memory._state, last_memory) and
         #         self._are_same(self._gym_env.action_space, action, last_action))
         return outcome.value
 
-    def _is_terminal(self, state: D.T_state) -> bool:
+    def _is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
         outcome = state._context[3]
         return outcome.termination if outcome is not None else False
     

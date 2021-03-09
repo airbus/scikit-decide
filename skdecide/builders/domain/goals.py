@@ -67,7 +67,7 @@ class Goals:
         raise NotImplementedError
 
     @autocastable
-    def is_goal(self, observation: D.T_agent[D.T_observation]) -> bool:
+    def is_goal(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_predicate]:
         """Indicate whether an observation belongs to the goals.
 
         !!! tip
@@ -82,7 +82,7 @@ class Goals:
         """
         return self._is_goal(observation)
 
-    def _is_goal(self, observation: D.T_agent[D.T_observation]) -> bool:
+    def _is_goal(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_predicate]:
         """Indicate whether an observation belongs to the goals.
 
         !!! tip
@@ -99,4 +99,4 @@ class Goals:
         if self.T_agent == Union:
             return goals.contains(observation)
         else:  # StrDict
-            return all(goals[k].contains(v) for k, v in observation.items())
+            return {k: goals[k].contains(v) for k, v in observation.items()}

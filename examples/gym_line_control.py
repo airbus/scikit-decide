@@ -9,7 +9,7 @@ from typing import Callable, Any
 from math import sqrt, exp, fabs
 from gym.envs.classic_control import rendering
 
-from skdecide import TransitionOutcome, TransitionValue
+from skdecide import TransitionOutcome, Value
 from skdecide.builders.domain import Renderable
 from skdecide.hub.domain.gym import DeterministicInitializedGymDomain, GymWidthDomain, GymDiscreteActionDomain
 from skdecide.hub.solver.iw import IW
@@ -147,9 +147,9 @@ class GymRIWDomain(D):
         self._current_point = None
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         o = super()._state_step(action)
-        return TransitionOutcome(state=o.state, value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
+        return TransitionOutcome(state=o.state, value=Value(reward=o.value.reward - 1), termination=o.termination, info=o.info)
 
 
 domain_factory = lambda: GymRIWDomain(gym_env=FakeGymEnv(),

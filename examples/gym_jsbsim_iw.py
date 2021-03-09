@@ -9,7 +9,7 @@ import folium
 
 from typing import Callable, Any, Optional
 
-from skdecide import TransitionOutcome, TransitionValue, EnvironmentOutcome, Domain
+from skdecide import TransitionOutcome, Value, EnvironmentOutcome, Domain
 from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from skdecide.hub.domain.gym import GymPlanningDomain, GymWidthDomain, \
@@ -84,16 +84,16 @@ class GymIWDomain(D):
         return GymDomainStateProxy(state=normalize_and_round(state_proxy._state), context=state_proxy._context)
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         o = super()._state_step(action)
         return TransitionOutcome(state=GymDomainStateProxy(state=normalize_and_round(o.state._state), context=o.state._context),
-                                 value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
+                                 value=Value(reward=o.value.reward - 1), termination=o.termination, info=o.info)
 
     def _sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
-        EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+        EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         o = super()._sample(memory, action)
         return EnvironmentOutcome(observation=GymDomainStateProxy(state=normalize_and_round(o.observation._state), context=o.observation._context),
-                                  value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
+                                  value=Value(reward=o.value.reward - 1), termination=o.termination, info=o.info)
     
     def _get_next_state(self, memory: D.T_memory[D.T_state],
                               action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
@@ -101,9 +101,9 @@ class GymIWDomain(D):
         return GymDomainStateProxy(state=normalize_and_round(o._state), context=o._context)
     
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
+                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
         v = super()._get_transition_value(memory, action, next_state)
-        return TransitionValue(reward=v.reward - 1)
+        return Value(reward=v.reward - 1)
 
 
 class EvaluationDomain(GymPlanningDomain):
@@ -124,11 +124,11 @@ class EvaluationDomain(GymPlanningDomain):
         return s
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         self._gym_env.set_state(self._current_state)
         o = super()._state_step(action)
         self._current_state = self._gym_env.get_state()
-        return TransitionOutcome(state=o.state, value=TransitionValue(reward=o.value.reward - 1), termination=o.termination, info=o.info)
+        return TransitionOutcome(state=o.state, value=Value(reward=o.value.reward - 1), termination=o.termination, info=o.info)
     
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
         # Get rid of the current state and just look at the gym env's current internal state

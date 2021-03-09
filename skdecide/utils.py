@@ -195,7 +195,8 @@ def rollout(domain: Domain, solver: Optional[Solver] = None, from_memory: Option
                     }
             if outcome_formatter is not None:
                 logger.debug('Result: {}'.format(outcome_formatter(outcome)))
-            if outcome.termination:
+            termination = outcome.termination if domain.T_agent == Union else all(t for a, t in outcome.termination.items())
+            if termination:
                 logger.debug(f'Episode {i_episode + 1} terminated after {step + 1} steps.')
                 break
             if max_framerate is not None:

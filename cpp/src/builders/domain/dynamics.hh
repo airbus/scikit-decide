@@ -106,10 +106,9 @@ public :
     typedef Memory<State> StateMemory;
     typedef TstateDistribution NextStateDistribution;
     typedef TsmartPointer<NextStateDistribution> NextStateDistributionPtr;
-    typedef Tvalue Value;
     typedef Tinfo Info;
-    typedef TransitionValue<TT, Value> TransitionValueReturn;
-    typedef TransitionOutcome<State, TT, Value, Info> TransitionOutcomeReturn;
+    typedef Value<TT, Tvalue> TransitionValueReturn;
+    typedef TransitionOutcome<State, TT, Tvalue, Info> TransitionOutcomeReturn;
     typedef TsmartPointer<TransitionOutcomeReturn> TransitionOutcomePtr;
 
     virtual NextStateDistributionPtr get_next_state_distribution(const StateMemory& memory, const Event& event) = 0;

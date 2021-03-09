@@ -1,0 +1,87 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/mcts.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
+
+template class skdecide::MCTSSolver<skdecide::PythonDomainProxy<skdecide::${Texecution}>,
+                                    skdecide::${Texecution},
+                                    skdecide::${TtransitionMode},
+                                    skdecide::${TtreePolicy},
+                                    skdecide::${Texpander},
+                                    skdecide::${TactionSelectorOptimization},
+                                    skdecide::${TactionSelectorExecution},
+                                    skdecide::${TrolloutPolicy},
+                                    skdecide::${TbackPropagator}>;
+
+typedef skdecide::MCTSSolver<skdecide::PythonDomainProxy<skdecide::${Texecution}>,
+                             skdecide::${Texecution},
+                             skdecide::${TtransitionMode},
+                             skdecide::${TtreePolicy},
+                             skdecide::${Texpander},
+                             skdecide::${TactionSelectorOptimization},
+                             skdecide::${TactionSelectorExecution},
+                             skdecide::${TrolloutPolicy},
+                             skdecide::${TbackPropagator}> InstantiatedMCTSSolver;
+
+#define D_${Texecution}
+
+#define D_${TtransitionMode}
+#if defined D_StepTransitionMode
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_step_transition_mode_impl.hh"
+template struct skdecide::StepTransitionMode<InstantiatedMCTSSolver>;
+#elif defined D_SampleTransitionMode
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_sample_transition_mode_impl.hh"
+template struct skdecide::SampleTransitionMode<InstantiatedMCTSSolver>;
+#elif defined D_DistributionTransitionMode
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_distribution_transition_mode_impl.hh"
+template struct skdecide::DistributionTransitionMode<InstantiatedMCTSSolver>;
+#endif
+
+#define D_${TtreePolicy}
+#if defined D_DefaultTreePolicy
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_default_tree_policy_impl.hh"
+template class skdecide::DefaultTreePolicy<InstantiatedMCTSSolver>;
+#endif
+
+#define D_${Texpander}
+#if defined D_FullExpand
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_full_expand_impl.hh"
+template class skdecide::FullExpand<InstantiatedMCTSSolver>;
+#elif defined D_PartialExpand
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_partial_expand_impl.hh"
+template class skdecide::PartialExpand<InstantiatedMCTSSolver>;
+#endif
+
+#define DOPT_${TactionSelectorOptimization}
+#if defined DOPT_UCB1ActionSelector
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_ucb1_action_selector_impl.hh"
+template class skdecide::UCB1ActionSelector<InstantiatedMCTSSolver>;
+#elif defined DOPT_BestQValueActionSelector
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_best_qvalue_action_selector_impl.hh"
+template class skdecide::BestQValueActionSelector<InstantiatedMCTSSolver>;
+#endif
+
+#define DEXE_${TactionSelectorExecution}
+#if defined DEXE_UCB1ActionSelector && !defined DOPT_UCB1ActionSelector
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_ucb1_action_selector_impl.hh"
+template class skdecide::UCB1ActionSelector<InstantiatedMCTSSolver>;
+#elif defined DEXE_BestQValueActionSelector && !defined DOPT_BestQValueActionSelector
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_best_qvalue_action_selector_impl.hh"
+template class skdecide::BestQValueActionSelector<InstantiatedMCTSSolver>;
+#endif
+
+#define D_${TrolloutPolicy}
+#if defined D_DefaultRolloutPolicy
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_default_rollout_policy_impl.hh"
+template class skdecide::DefaultRolloutPolicy<InstantiatedMCTSSolver>;
+#endif
+
+#define D_${TbackPropagator}
+#if defined D_GraphBackup
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_graph_backup_impl.hh"
+template struct skdecide::GraphBackup<InstantiatedMCTSSolver>;
+#endif

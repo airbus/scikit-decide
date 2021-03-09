@@ -18,8 +18,8 @@
 #include "pegtl/normal.hpp"
 #include "pegtl/internal/demangle.hpp"
 
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace tao
 {

@@ -7,7 +7,8 @@ from typing import NamedTuple, Optional, Iterable
 from math import sqrt
 import getopt, sys
 
-from skdecide import GoalMDPDomain, TransitionValue, Space, EnumerableSpace, ImplicitSpace, DiscreteDistribution
+from skdecide import GoalMDPDomain, Value, Value, Space, \
+                     EnumerableSpace, ImplicitSpace, DiscreteDistribution
 from skdecide.builders.domain import Actions
 from skdecide.hub.space.gym import MultiDiscreteSpace
 from skdecide.utils import load_registered_solver, rollout
@@ -61,6 +62,7 @@ class D(GoalMDPDomain, Actions):
     T_observation = MyState  # Type of observations
     T_event = MyActions  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
+    T_predicate = bool  # Type of logical checks
     T_info = None  # Type of additional information given as part of an environment outcome
 
 
@@ -104,14 +106,14 @@ class MyDomain(D):
         return next_state_distribution
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
+                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
         if next_state.x == -1 and next_state.y == -1:
             cost = 2 * (self.num_cols + self.num_rows) # dead-end state, penalty higher than optimal goal-reaching paths
         else:
             cost = abs(next_state.x - memory.x) + abs(next_state.y - memory.y)  # every move costs 1
-        return TransitionValue(cost=cost)
+        return Value(cost=cost)
 
-    def _is_terminal(self, state: D.T_state) -> bool:
+    def _is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
         return self.is_goal(state) or (state.x == -1 and state.y == -1)
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
@@ -175,7 +177,7 @@ if __name__ == '__main__':
          'config': {'domain_factory': domain_factory,
                     'parallel': False, 'discount': 1.0, 'max_tip_expanions': 1,
                     'detect_cycles': False, 'debug_logs': False,
-                    'heuristic': lambda d, s: sqrt((s.x-(rows-1))*(s.x-(rows-1))+(s.y-(columns-1))*(s.y-(columns-1)))}}
+                    'heuristic': lambda d, s: Value(cost=sqrt((s.x-(rows-1))*(s.x-(rows-1))+(s.y-(columns-1))*(s.y-(columns-1))))}}
     ]
 
     # Load solvers (filtering out badly installed ones)

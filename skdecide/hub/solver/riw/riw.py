@@ -4,14 +4,12 @@
 
 from __future__ import annotations
 
-import multiprocessing
 import os
 import sys
-from typing import Callable, Dict, List, Any
+from typing import Callable, Dict, List, Any, Tuple
 
 from skdecide import Domain, Solver
 from skdecide import hub
-from skdecide.domains import PipeParallelDomain, ShmParallelDomain
 from skdecide.builders.domain import SingleAgent, Sequential, Environment, Actions, \
     DeterministicInitialized, Markovian, FullyObservable, Rewards
 from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
@@ -42,12 +40,15 @@ try:
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
                      exploration: float = 0.25,
+                     epsilon_moving_average_window: int = 100,
+                     epsilon: float = 0.001,
                      discount: float = 1.0,
                      online_node_garbage: bool = False,
                      continuous_planning: bool = True,
                      parallel: bool = False,
                      shared_memory_proxy = None,
-                     debug_logs: bool = False) -> None:
+                     debug_logs: bool = False,
+                     watchdog: Callable[[int, int, float, float], bool] = None) -> None:
             ParallelSolver.__init__(self,
                                     domain_factory=domain_factory,
                                     parallel=parallel,
@@ -61,10 +62,16 @@ try:
             self._rollout_budget = rollout_budget
             self._max_depth = max_depth
             self._exploration = exploration
+            self._epsilon_moving_average_window = epsilon_moving_average_window
+            self._epsilon = epsilon
             self._discount = discount
             self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
             self._debug_logs = debug_logs
+            if watchdog is None:
+                self._watchdog = lambda elapsed_time, number_rollouts, best_value, epsilon_moving_average: True
+            else:
+                self._watchdog = watchdog
             self._lambdas = [self._state_features]
             self._ipc_notify = True
         
@@ -78,10 +85,13 @@ try:
                                       rollout_budget=self._rollout_budget,
                                       max_depth=self._max_depth,
                                       exploration=self._exploration,
+                                      epsilon_moving_average_window=self._epsilon_moving_average_window,
+                                      epsilon=self._epsilon,
                                       discount=self._discount,
                                       online_node_garbage=self._online_node_garbage,
                                       parallel=self._parallel,
-                                      debug_logs=self._debug_logs)
+                                      debug_logs=self._debug_logs,
+                                      watchdog=self._watchdog)
             self._solver.clear()
 
         def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
