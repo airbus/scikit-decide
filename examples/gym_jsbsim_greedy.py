@@ -9,11 +9,9 @@ import folium
 
 from typing import Callable, Any
 
-from skdecide import TransitionOutcome, TransitionValue, Solver, Space, Domain
-from skdecide.builders.domain import SingleAgent, Rewards, Sequential, UnrestrictedActions, Initializable, Memoryless, FullyObservable, Renderable
+from skdecide import Solver
 from skdecide.hub.domain.gym import DeterministicGymDomain, GymDiscreteActionDomain
 from skdecide.builders.solver import DeterministicPolicies, Utilities
-from skdecide.hub.space.gym import GymSpace
 from skdecide.utils import rollout
 
 from gym_jsbsim.catalogs.catalog import Catalog as prp

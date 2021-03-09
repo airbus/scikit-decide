@@ -8,13 +8,21 @@
    - add custom mutexes for time reporting and random generator calls
 
 - A* and AO*:
-   - _goal_checker called only once zhen expanding the state
+   - _goal_checker called only once when expanding the state
 
 - AO*:
    - catch exception of python solver's get_next_action() and get_utility()
 
 - LRTDP and LAO*:
    - check SSP?
+
+- MARTDP:
+   - parallel agent searches
+
+ALL:
+   - add watchdogs
+   - get_utility() returns Value() instead of double
+   - replace solved or goal message from root node in solve() with the LRTDP's one
 
 - examples:
    - check order of domain and state in all C++-based solver lambdas

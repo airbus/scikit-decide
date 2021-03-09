@@ -12,7 +12,7 @@ import json
 
 from typing import Callable, Any
 
-from skdecide import TransitionOutcome, TransitionValue, Domain
+from skdecide import TransitionOutcome, Value, Domain
 from skdecide.builders.domain import DeterministicInitialized
 from skdecide.hub.domain.gym import GymWidthDomain, \
     GymDiscreteActionDomain, GymDomainStateProxy, GymDomainHashable
@@ -83,7 +83,7 @@ class GymRIWDomain(D):
         return GymDomainStateProxy(state=s._state, context=(0, 0, 0, 0))
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[TransitionValue[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         o = super()._state_step(action)
         self._current_depth += 1
         self._cumulated_reward += o.value.reward

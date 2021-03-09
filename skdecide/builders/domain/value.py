@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from skdecide.core import D, TransitionValue, autocastable
+from skdecide.core import D, Value, autocastable
 
 __all__ = ['Rewards', 'PositiveCosts']
 
@@ -13,31 +13,31 @@ class Rewards:
     """A domain must inherit this class if it sends rewards (positive and/or negative)."""
 
     @autocastable
-    def check_value(self, value: TransitionValue[D.T_value]) -> bool:
-        """Check that a transition value is compliant with its reward specification.
+    def check_value(self, value: Value[D.T_value]) -> bool:
+        """Check that a value is compliant with its reward specification.
 
         !!! tip
             This function returns always True by default because any kind of reward should be accepted at this level.
 
         # Parameters
-        value: The transition value to check.
+        value: The value to check.
 
         # Returns
-        True if the transition value is compliant (False otherwise).
+        True if the value is compliant (False otherwise).
         """
         return self._check_value(value)
 
-    def _check_value(self, value: TransitionValue[D.T_value]) -> bool:
-        """Check that a transition value is compliant with its reward specification.
+    def _check_value(self, value: Value[D.T_value]) -> bool:
+        """Check that a value is compliant with its reward specification.
 
         !!! tip
             This function returns always True by default because any kind of reward should be accepted at this level.
 
         # Parameters
-        value: The transition value to check.
+        value: The value to check.
 
         # Returns
-        True if the transition value is compliant (False otherwise).
+        True if the value is compliant (False otherwise).
         """
         return True
 
@@ -48,18 +48,18 @@ class PositiveCosts(Rewards):
     Having only positive costs is a required assumption for certain solvers to work, such as classical planners.
     """
 
-    def _check_value(self, value: TransitionValue[D.T_value]) -> bool:
-        """Check that a transition value is compliant with its cost specification (must be positive).
+    def _check_value(self, value: Value[D.T_value]) -> bool:
+        """Check that a value is compliant with its cost specification (must be positive).
 
         !!! tip
             This function calls #PositiveCost._is_positive() to determine if a value is positive (can be overridden for
             advanced value types).
 
         # Parameters
-        value: The transition value to check.
+        value: The value to check.
 
         # Returns
-        True if the transition value is compliant (False otherwise).
+        True if the value is compliant (False otherwise).
         """
         return self._is_positive(value.cost)
 

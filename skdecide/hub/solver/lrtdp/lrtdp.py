@@ -4,13 +4,13 @@
 
 from __future__ import annotations
 
-import multiprocessing
 import os
 import sys
 from typing import Optional, Callable, Dict, Tuple
 
 from skdecide import Domain, Solver
 from skdecide import hub
+from skdecide.core import Value
 from skdecide.builders.domain import SingleAgent, Sequential, UncertainTransitions, Actions, Goals, Markovian, \
     FullyObservable, PositiveCosts
 from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
@@ -35,25 +35,27 @@ try:
         
         def __init__(self,
                      domain_factory: Callable[[], Domain] = None,
-                     heuristic: Optional[Callable[[Domain, D.T_state], float]] = None,
+                     heuristic: Optional[Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]] = None,
                      use_labels: bool = True,
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
-                     discount: float = 1.0,
+                     epsilon_moving_average_window: int = 100,
                      epsilon: float = 0.001,
+                     discount: float = 1.0,
                      online_node_garbage: bool = False,
                      continuous_planning: bool = True,
                      parallel: bool = False,
                      shared_memory_proxy = None,
-                     debug_logs: bool = False) -> None:
+                     debug_logs: bool = False,
+                     watchdog: Callable[[int, int, float, float], bool] = None) -> None:
             ParallelSolver.__init__(self,
                                     domain_factory=domain_factory,
                                     parallel=parallel,
                                     shared_memory_proxy=shared_memory_proxy)
             self._solver = None
             if heuristic is None:
-                self._heuristic = lambda d, s: 0
+                self._heuristic = lambda d, s: Value(cost=0)
             else:
                 self._heuristic = heuristic
             self._lambdas = [self._heuristic]
@@ -61,11 +63,16 @@ try:
             self._time_budget = time_budget
             self._rollout_budget = rollout_budget
             self._max_depth = max_depth
-            self._discount = discount
+            self._epsilon_moving_average_window = epsilon_moving_average_window
             self._epsilon = epsilon
+            self._discount = discount
             self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
             self._debug_logs = debug_logs
+            if watchdog is None:
+                self._watchdog = lambda elapsed_time, number_rollouts, best_value, epsilon_moving_average: True
+            else:
+                self._watchdog = watchdog
             self._ipc_notify = True
 
         def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
@@ -77,11 +84,13 @@ try:
                                         time_budget=self._time_budget,
                                         rollout_budget=self._rollout_budget,
                                         max_depth=self._max_depth,
-                                        discount=self._discount,
+                                        epsilon_moving_average_window=self._epsilon_moving_average_window,
                                         epsilon=self._epsilon,
+                                        discount=self._discount,
                                         online_node_garbage=self._online_node_garbage,
                                         parallel=self._parallel,
-                                        debug_logs=self._debug_logs)
+                                        debug_logs=self._debug_logs,
+                                        watchdog=self._watchdog)
             self._solver.clear()
         
         def _solve_domain(self, domain_factory: Callable[[], D]) -> None:

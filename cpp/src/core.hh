@@ -279,12 +279,12 @@ enum class TransitionType {
     COST
 };
 
-template <TransitionType TT = TransitionType::REWARD, typename T = double> class TransitionValue;
+template <TransitionType TT = TransitionType::REWARD, typename T = double> class Value;
 
 template <typename T>
-class TransitionValue<TransitionType::REWARD, T> {
+class Value<TransitionType::REWARD, T> {
 public :
-    TransitionValue(const T& value) : m_value(value) {}
+    Value(const T& value) : m_value(value) {}
 
     inline virtual T reward() const { return m_value; }
     inline virtual T cost() const { return -m_value; }
@@ -294,9 +294,9 @@ private :
 };
 
 template <typename T>
-class TransitionValue<TransitionType::COST, T> {
+class Value<TransitionType::COST, T> {
 public :
-    TransitionValue(const T& value) : m_value(value) {}
+    Value(const T& value) : m_value(value) {}
 
     inline virtual T reward() const { return -m_value; }
     inline virtual T cost() const { return m_value; }
@@ -312,7 +312,7 @@ struct EnvironmentOutcome {
     : observation(observation), value(value), termination(termination), info(info) {}
 
     Tobservation observation;
-    TransitionValue<TT, Tvalue> value;
+    Value<TT, Tvalue> value;
     bool termination;
     Tinfo info;
 };
@@ -324,7 +324,7 @@ struct TransitionOutcome {
     : state(state), value(value), termination(termination), info(info) {}
 
     Tstate state;
-    TransitionValue<TT, Tvalue> value;
+    Value<TT, Tvalue> value;
     bool termination;
     Tinfo info;
 };

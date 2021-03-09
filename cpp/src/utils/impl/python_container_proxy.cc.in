@@ -1,0 +1,4 @@
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_container_proxy.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_container_proxy_impl.hh"
+
+template class skdecide::PythonContainerProxy<skdecide::${Texecution}>;

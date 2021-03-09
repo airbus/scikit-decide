@@ -12,7 +12,7 @@ from dataclasses import dataclass, asdict, astuple, replace
 from typing import TypeVar, Generic, Union, Optional, Iterable, Sequence, List, Tuple, Dict, Deque, Callable
 
 __all__ = ['T', 'D', 'Space', 'ImplicitSpace', 'EnumerableSpace', 'EmptySpace', 'SamplableSpace', 'SerializableSpace',
-           'Distribution', 'ImplicitDistribution', 'DiscreteDistribution', 'SingleValueDistribution', 'TransitionValue',
+           'Distribution', 'ImplicitDistribution', 'DiscreteDistribution', 'SingleValueDistribution', 'Value',
            'EnvironmentOutcome', 'TransitionOutcome', 'Memory', 'StrDict', 'Constraint', 'ImplicitConstraint',
            'BoundConstraint', 'autocast_all', 'autocastable', 'nocopy']
 
@@ -24,6 +24,7 @@ class D:
     T_observation = TypeVar('T_observation')  # Type of observations
     T_event = TypeVar('T_event')  # Type of events
     T_value = TypeVar('T_value')  # Type of transition values (rewards or costs)
+    T_predicate = TypeVar('T_predicate')  # Type of logical checks
     T_info = TypeVar('T_info')  # Type of additional information given as part of an environment outcome
     T_memory = TypeVar('T_memory')
     T_agent = TypeVar('T_agent')
@@ -275,10 +276,10 @@ class ExtendedDataclass:
         return replace(self, **changes)
 
 
-# TransitionValue
+# Value
 @dataclass
-class TransitionValue(Generic[D.T_value]):
-    """A transition value (reward or cost).
+class Value(Generic[D.T_value]):
+    """A value (reward or cost).
 
     !!! warning
         It is recommended to use either the reward or the cost parameter. If no one is used, a reward/cost of 0 is
@@ -292,8 +293,8 @@ class TransitionValue(Generic[D.T_value]):
     # Example
     ```python
     # These two lines are equivalent, use the one you prefer
-    value_1 = TransitionValue(reward=-5)
-    value_2 = TransitionValue(cost=5)
+    value_1 = Value(reward=-5)
+    value_2 = Value(cost=5)
 
     assert value_1.reward == value_2.reward == -5  # True
     assert value_1.cost == value_2.cost == 5  # True
@@ -320,7 +321,7 @@ class TransitionValue(Generic[D.T_value]):
 
 # EnvironmentOutcome
 @dataclass
-class EnvironmentOutcome(Generic[D.T_observation, D.T_value, D.T_info], Castable, ExtendedDataclass):
+class EnvironmentOutcome(Generic[D.T_observation, D.T_value, D.T_predicate, D.T_info], Castable, ExtendedDataclass):
     """An environment outcome for an internal transition.
 
     # Parameters
@@ -331,25 +332,29 @@ class EnvironmentOutcome(Generic[D.T_observation, D.T_value, D.T_info], Castable
     """
     observation: D.T_observation
     value: Optional[D.T_value] = None
-    termination: bool = False
+    termination: Optional[D.T_predicate] = None
     info: Optional[D.T_info] = None
 
     def __post_init__(self) -> None:
         if self.value is None:
-            self.value = {k: TransitionValue() for k in self.observation} if isinstance(self.observation,
-                                                                                        dict) else TransitionValue()
+            self.value = {k: Value() for k in self.observation} if isinstance(self.observation,
+                                                                                        dict) else Value()
+        if self.termination is None:
+            self.termination = {k: False for k in self.observation} if isinstance(self.observation,
+                                                                                        dict) else False
         if self.info is None:
             self.info = {k: None for k in self.observation} if isinstance(self.observation, dict) else None
 
     def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
         return EnvironmentOutcome(cast(self.observation, src_sub[0], dst_sub[0]),
-                                  cast(self.value, src_sub[1], dst_sub[1]), self.termination,
-                                  cast(self.info, src_sub[2], dst_sub[2]))
+                                  cast(self.value, src_sub[1], dst_sub[1]),
+                                  cast(self.termination, src_sub[2], dst_sub[2]),
+                                  cast(self.info, src_sub[3], dst_sub[3]))
 
 
 # TransitionOutcome
 @dataclass
-class TransitionOutcome(Generic[D.T_state, D.T_value, D.T_info], Castable, ExtendedDataclass):
+class TransitionOutcome(Generic[D.T_state, D.T_value, D.T_predicate, D.T_info], Castable, ExtendedDataclass):
     """A transition outcome.
 
     # Parameters
@@ -360,19 +365,25 @@ class TransitionOutcome(Generic[D.T_state, D.T_value, D.T_info], Castable, Exten
     """
     state: D.T_state
     value: Optional[D.T_value] = None
-    termination: bool = False
+    termination: Optional[D.T_predicate] = None
     info: Optional[D.T_info] = None
 
     def __post_init__(self) -> None:
         if self.value is None:
-            self.value = {k: TransitionValue() for k in self.state} if isinstance(self.state,
-                                                                                  dict) else TransitionValue()
+            self.value = {k: Value() for k in self.state} if isinstance(self.state,
+                                                                                  dict) else Value()
+        if self.termination is None:
+            self.termination = {k: False for k in self.observation} if isinstance(self.observation,
+                                                                                        dict) else False
+
         if self.info is None:
             self.info = {k: None for k in self.state} if isinstance(self.state, dict) else None
 
     def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
-        return TransitionOutcome(cast(self.state, src_sub[0], dst_sub[0]), cast(self.value, src_sub[1], dst_sub[1]),
-                                 self.termination, cast(self.info, src_sub[2], dst_sub[2]))
+        return TransitionOutcome(cast(self.state, src_sub[0], dst_sub[0]),
+                                 cast(self.value, src_sub[1], dst_sub[1]),
+                                 cast(self.termination, src_sub[2], dst_sub[2]),
+                                 cast(self.info, src_sub[3], dst_sub[3]))
 
 
 # Memory

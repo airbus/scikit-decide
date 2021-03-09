@@ -1,3 +1,7 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10.2)
 PROJECT(skdecide)
 
@@ -9,7 +13,13 @@ ENABLE_LANGUAGE(CXX)
 SET(CMAKE_CXX_STANDARD 17)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
-SET(CMAKE_CXX_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS}")
+
+IF (NOT WIN32 AND NOT CYGWIN)
+    SET(CMAKE_CXX_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS}")
+ENDIF ()
+
+SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+INCLUDE(GenerateTemplateInstantiationFiles)
 
 SET(LIBS "")
 SET(INTERFACES "")

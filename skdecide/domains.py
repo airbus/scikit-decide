@@ -80,6 +80,7 @@ class Domain(MultiAgent, Parallel, Environment, Events, History, PartiallyObserv
     T_observation = NewType('T_observation', object)
     T_event = NewType('T_event', object)
     T_value = NewType('T_value', object)
+    T_predicate = NewType('T_predicate', object)
     T_info = NewType('T_info', object)
 
     @classmethod

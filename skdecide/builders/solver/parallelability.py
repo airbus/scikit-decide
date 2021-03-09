@@ -63,10 +63,10 @@ class ParallelSolver:
     
     def get_domain(self):
         """
-        Returns the domain, optionnally creating a parallel domain if not already created.
+        Returns the domain, optionally creating a parallel domain if not already created.
         """
         if self._domain is None:
-            self._create_domain()
+            self._initialize()
         return self._domain
     
     def call_domain_method(self, name, *args):

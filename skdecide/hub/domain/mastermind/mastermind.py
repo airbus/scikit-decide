@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import NamedTuple, Tuple, Optional
 
-from skdecide import GoalPOMDPDomain, TransitionValue, Space, DiscreteDistribution, Distribution
+from skdecide import GoalPOMDPDomain, Value, Space, DiscreteDistribution, Distribution
 from skdecide.builders.domain import DeterministicTransitions, UnrestrictedActions, TransformedObservable
 from skdecide.hub.space.gym import ListSpace, MultiDiscreteSpace
 
@@ -30,6 +30,7 @@ class D(GoalPOMDPDomain, DeterministicTransitions, UnrestrictedActions, Transfor
     T_observation = Score  # Type of observations
     T_event = Row  # Type of events (a row guess in this case)
     T_value = int  # Type of transition values (costs)
+    T_predicate = bool  # Type of logical checks
     T_info = None  # Type of additional information given as part of an environment outcome
 
 
@@ -49,14 +50,14 @@ class MasterMind(D):
             return State(memory.solution, self._calc_score(memory, action))
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[TransitionValue[D.T_value]]:
-        return TransitionValue(cost=1)
+                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
+        return Value(cost=1)
 
     # Overridden to help some solvers compute more efficiently (not mandatory, but good practice)
     def _is_transition_value_dependent_on_next_state_(self) -> bool:
         return False
 
-    def _is_terminal(self, state: D.T_state) -> bool:
+    def _is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
         return self._is_goal(state.score)
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
