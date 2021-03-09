@@ -2,249 +2,74 @@ name: build_test_deploy
 
 on:
   push:
-    tags:
-    - 'v*'
 
 jobs:
-  build-unix:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Build manylinux Python wheels
-        uses: galleon/manylinux-build-action@master
-        with:
-          python-versions: 'cp37-cp37m cp38-cp38'
-      - name: Upload artifact
-        uses: actions/upload-artifact@v1.0.0
-        with:
-          name: wh_unix
-          path: wheelhouse
-  build-macos:
+  build:
     strategy:
-      matrix:
-        os: [macos-latest]
-        python-version: [3.7, 3.8]
-        compiler: [gnu]
       fail-fast: false
+      matrix:
+        os: [windows-2016, macos-10.15]
+        python-version: [3.7, 3.8]
+        include:
+          - os: ubuntu-latest
+            python-version: 3.8
+            wheel: x86_64
+    defaults:
+      run:
+        shell: bash
     runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: true
-      - name: Set up Python
+
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install boost package
-        run: brew install boost
-      - name: Install libomp package
-        run: brew install libomp
-      - name: Install dependencies
+
+      - name: Load cached venv
+        id: cached-pip-wheels
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Set up Docker Buildx
+        if: matrix.os == 'ubuntu-latest'
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Install boost & omp on MacOS
+        if: matrix.os == 'macos-10.15'
+        run: brew install boost libomp
+
+      - name: Install on Windows
+        if: matrix.os == 'windows-2016'
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-        shell: bash
-      - name: Build using setup.py
-        run: python setup.py sdist bdist_wheel --cpp-extension
-        env:
-          MACOSX_DEPLOYMENT_TARGET: 10.13
-      - name: Upload artifact
-        uses: actions/upload-artifact@v1.0.0
-        with:
-          name: wh_macos
-          path: dist
-  build-windows:
-    strategy:
-      matrix:
-        os: [windows-latest]
-        python-version: [3.7, 3.8]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+          echo $BOOST_ROOT_1_72_0
+          echo "BOOST_ROOT=$(echo $BOOST_ROOT_1_72_0)" >> $GITHUB_ENV
+
+      - name: Build macOS/Windows wheel
+        if: matrix.os != 'ubuntu-latest'
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-          pip install torch==1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
-        shell: pwsh
-      - name: Set BOOST_ROOT variable
+          echo $BOOST_ROOT
+          python -m pip install --upgrade -q pip
+          pip install build
+          python -m build --sdist --wheel
+
+      - name: Build x86 Linux wheels
+        if: matrix.wheel == 'x86_64'
         run: |
-          gci env:* | sort-object name
-          echo BOOST_ROOT=$env:BOOST_ROOT_1_72_0 | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo BOOST_ROOT_1_72_0=$env:BOOST_ROOT_1_72_0
-      - name: Check BOOST_ROOT variable
-        run: |
-          echo $env.BOOST_ROOT_1_72_0
-          echo $env.BOOST_ROOT
-        shell: pwsh
-      - name: Build using setup.py
-        run: python setup.py sdist bdist_wheel --cpp-extension
-      - name: Upload artifact
-        uses: actions/upload-artifact@v1.0.0
+          #docker run -e PLAT=manylinux2014_x86_64 -v `pwd`:/io quay.io/pypa/manylinux2014_x86_64 /io/scripts/build-manylinux-wheels.sh
+          docker --version
+          DOCKER_BUILDKIT=1 docker build -t skdecide_x86_64 --output type=local,dest=tmpwheelhouse -f scripts/Dockerfile_x86_64 .
+          mkdir -p dist
+          mv tmpwheelhouse/wheelhouse/*.whl dist/
+
+      - name: Upload as build artifacts
+        uses: actions/upload-artifact@v2
         with:
-          name: wh_windows
-          path: dist
-  test-unix:
-    needs: build-unix
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: [3.7, 3.8]
-        compiler: [gnu]
-      fail-fast: true
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-        shell: bash
-      - name: Download Unix artifact
-        uses: actions/download-artifact@v1.0.0
-        with:
-          name: wh_unix
-      - name: Test with pytest
-        run: |
-          pip install --find-links ./wh_unix/ scikit-decide[all] 
-          pytest -v -s tests
-  test-macos:
-    needs: build-macos
-    strategy:
-      matrix:
-        os: [macos-latest]
-        python-version: [3.7, 3.8]
-        compiler: [gnu]
-      fail-fast: true
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install boost package
-        run: brew install boost
-      - name: Install libomp package
-        run: brew install libomp
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-        shell: bash
-      - name: Download MacOS artifact
-        uses: actions/download-artifact@v1.0.0
-        with:
-          name: wh_macos
-      - name: Test with pytest
-        run: |
-          pip install --find-links ./wh_macos/ scikit-decide[all] 
-          pytest -v -s tests
-  test-windows:
-    needs: build-windows
-    strategy:
-      matrix:
-        os: [windows-latest]
-        python-version: [3.7, 3.8]
-        compiler: [gnu]
-      fail-fast: true
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-          pip install torch==1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
-        shell: pwsh
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v1.0.0
-        with:
-          name: wh_windows
-      - name: Test with pytest
-        run: |
-          pip install --find-links ./wh_windows/ scikit-decide[all] 
-          pytest -v -s tests
-  deploy:
-    needs: [test-unix, test-macos, test-windows]
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: [3.8]
-      fail-fast: true
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Download Unix artifact
-        uses: actions/download-artifact@v1.0.0
-        with:
-          name: wh_unix
-      - name: Download MacOS artifact
-        uses: actions/download-artifact@v1.0.0
-        with:
-          name: wh_macos
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v1.0.0
-        with:
-          name: wh_windows
-      - name: Move everything in wheelhouse
-        run: mkdir wheelhouse && mv wh_*/*.whl wheelhouse/ && mv wh_windows/*.tar.gz wheelhouse/
-      - name: Publish distribution 📦 to Test PyPI
-        if: startsWith(github.event.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          password: ${{ secrets.test_pypi_password }}
-          packages_dir: wheelhouse/
-          repository_url: https://test.pypi.org/legacy/
-      - name: Publish distribution 📦 to PyPI
-        if: startsWith(github.event.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          password: ${{ secrets.pypi_password }}
-          packages_dir: wheelhouse/
-  build-docs:
-    needs: deploy
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: [3.8]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: generate documentation
-        run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
-        with:
-          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
-          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
-          COMMIT_MESSAGE: publish documentation
-          CLEAN: true
-          SINGLE_COMMIT: true
+          name: wheels
+          path: dist/*.whl
