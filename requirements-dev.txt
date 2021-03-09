@@ -1,5 +1,0 @@
-pytest
-pytest-cov
-simplejson
-tqdm
-wheel
