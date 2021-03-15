@@ -126,6 +126,7 @@ void init_pymcts(py::module& m) {
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false,
                  py::arg("watchdog")=nullptr)
+            .def("close", &skdecide::PyMCTSSolver::close)
             .def("clear", &skdecide::PyMCTSSolver::clear)
             .def("solve", &skdecide::PyMCTSSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &skdecide::PyMCTSSolver::is_solution_defined_for, py::arg("state"))

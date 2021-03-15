@@ -26,6 +26,7 @@ void init_pyaostar(py::module& m) {
                  py::arg("detect_cycles")=false,
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
+            .def("close", &skdecide::PyAOStarSolver::close)
             .def("clear", &skdecide::PyAOStarSolver::clear)
             .def("solve", &skdecide::PyAOStarSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &skdecide::PyAOStarSolver::is_solution_defined_for, py::arg("state"))

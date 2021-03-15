@@ -20,6 +20,7 @@ void init_pyastar(py::module& m) {
                  py::arg("heuristic"),
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
+            .def("close", &skdecide::PyAStarSolver::close)
             .def("clear", &skdecide::PyAStarSolver::clear)
             .def("solve", &skdecide::PyAStarSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &skdecide::PyAStarSolver::is_solution_defined_for, py::arg("state"))

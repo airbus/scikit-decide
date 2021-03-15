@@ -820,6 +820,11 @@ SK_PY_DOMAIN_PROXY_SEQ_IMPL_CLASS::~Implementation() {
 }
 
 SK_PY_DOMAIN_PROXY_SEQ_IMPL_TEMPLATE_DECL
+void SK_PY_DOMAIN_PROXY_SEQ_IMPL_CLASS::close() {
+
+}
+
+SK_PY_DOMAIN_PROXY_SEQ_IMPL_TEMPLATE_DECL
 std::size_t SK_PY_DOMAIN_PROXY_SEQ_IMPL_CLASS::get_parallel_capacity() {
     return 1;
 }
@@ -1011,6 +1016,18 @@ SK_PY_DOMAIN_PROXY_PAR_IMPL_CLASS::~Implementation() {
 }
 
 SK_PY_DOMAIN_PROXY_PAR_IMPL_TEMPLATE_DECL
+void SK_PY_DOMAIN_PROXY_PAR_IMPL_CLASS::close() {
+    try {
+        _connections.clear();
+    } catch (const nng::exception& e) {
+        std::string err_msg("SKDECIDE exception when trying to close pipeline connections with the python parallel domain: ");
+        err_msg += e.who() + std::string(": ") + std::string(e.what());
+        Logger::error(err_msg);
+        throw std::runtime_error(err_msg);
+    }
+}
+
+SK_PY_DOMAIN_PROXY_PAR_IMPL_TEMPLATE_DECL
 std::size_t SK_PY_DOMAIN_PROXY_PAR_IMPL_CLASS::get_parallel_capacity() {
     typename GilControl<Texecution>::Acquire acquire;
     return py::cast<std::size_t>(_domain->attr("get_parallel_capacity")());
@@ -1137,6 +1154,11 @@ SK_PY_DOMAIN_PROXY_CLASS::PythonDomainProxy(const py::object& domain) {
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 SK_PY_DOMAIN_PROXY_CLASS::~PythonDomainProxy() {
     _implementation.reset();
+}
+
+SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
+void SK_PY_DOMAIN_PROXY_CLASS::close() {
+    _implementation->close();
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL

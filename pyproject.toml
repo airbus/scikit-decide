@@ -32,6 +32,37 @@ domains = [ "gym", "numpy", "matplotlib", "simplejson" ]
 solvers = [ "gym", "numpy", "joblib", "ray", "torch", "stable-baselines3" ]
 all = [ "gym", "numpy", "matplotlib", "simplejson", "joblib", "ray", "torch", "stable-baselines3" ]
 
+[tool.poetry.plugins."skdecide.domains"]
+  GymDomain = "skdecide.hub.domain.gym:GymDomain [domains]"
+  DeterministicGymDomain = "skdecide.hub.domain.gym:DeterministicGymDomain [domains]"
+  CostDeterministicGymDomain = "skdecide.hub.domain.gym:CostDeterministicGymDomain [domains]"
+  GymPlanningDomain = "skdecide.hub.domain.gym:GymPlanningDomain [domains]"
+  GymWidthPlanningDomain = "skdecide.hub.domain.gym:GymWidthPlanningDomain [domains]"
+  MasterMind = "skdecide.hub.domain.mastermind:MasterMind [domains]"
+  Maze = "skdecide.hub.domain.maze:Maze [domains]"
+  RockPaperScissors = "skdecide.hub.domain.rock_paper_scissors:RockPaperScissors [domains]"
+  SimpleGridWorld = "skdecide.hub.domain.simple_grid_world:SimpleGridWorld [domains]"
+
+[tool.poetry.plugins."skdecide.solvers"]
+  AOstar = "skdecide.hub.solver.aostar:AOstar"
+  Astar = "skdecide.hub.solver.astar:Astar"
+  LRTAstar = "skdecide.hub.solver.lrtastar:LRTAstar"
+  MCTS = "skdecide.hub.solver.mcts:MCTS"
+  UCT = "skdecide.hub.solver.mcts:UCT"
+  AugmentedRandomSearch = "skdecide.hub.solver.ars:AugmentedRandomSearch [solvers]"
+  BFWS = "skdecide.hub.solver.bfws:BFWS"
+  CGP = "skdecide.hub.solver.cgp:CGP [solvers]"
+  IW = "skdecide.hub.solver.iw:IW"
+  RIW = "skdecide.hub.solver.riw:RIW"
+  LRTDP = "skdecide.hub.solver.lrtdp:LRTDP"
+  ILAOstar = "skdecide.hub.solver.ilaostar:ILAOstar"
+  LazyAstar = "skdecide.hub.solver.lazy_astar:LazyAstar"
+  MaxentIRL = "skdecide.hub.solver.maxent_irl:MaxentIRL [solvers]"
+  POMCP = "skdecide.hub.solver.pomcp:POMCP"
+  RayRLlib = "skdecide.hub.solver.ray_rllib:RayRLlib [solvers]"
+  SimpleGreedy = "skdecide.hub.solver.simple_greedy:SimpleGreedy"
+  StableBaseline = "skdecide.hub.solver.stable_baselines:StableBaseline [solvers]"
+
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.2"
 pytest-cov = "^2.11.1"

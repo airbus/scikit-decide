@@ -40,14 +40,15 @@ private :
     class BaseImplementation {
     public :
         virtual ~BaseImplementation() {}
-        virtual void clear() =0;
-        virtual void solve(const py::object& s) =0;
-        virtual py::bool_ is_solution_defined_for(const py::object& s) =0;
-        virtual py::object get_next_action(const py::object& s) =0;
-        virtual py::float_ get_utility(const py::object& s) =0;
-        virtual py::int_ get_nb_of_explored_states() =0;
-        virtual py::int_ get_nb_of_pruned_states() =0;
-        virtual py::list get_intermediate_scores() =0;
+        virtual void close() = 0;
+        virtual void clear() = 0;
+        virtual void solve(const py::object& s) = 0;
+        virtual py::bool_ is_solution_defined_for(const py::object& s) = 0;
+        virtual py::object get_next_action(const py::object& s) = 0;
+        virtual py::float_ get_utility(const py::object& s) = 0;
+        virtual py::int_ get_nb_of_explored_states() = 0;
+        virtual py::int_ get_nb_of_pruned_states() = 0;
+        virtual py::list get_intermediate_scores() = 0;
     };
 
     template <typename Texecution, template <typename...> class Thashing_policy>
@@ -82,25 +83,25 @@ private :
             check_domain(domain);
             _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>>(
-                                                                            *_domain,
-                                                                            [this](PyIWDomain<Texecution>& d, const typename PyIWDomain<Texecution>::State& s)->std::unique_ptr<PyIWFeatureVector<Texecution>> {
-                                                                                try {
-                                                                                    auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
-                                                                                        return _state_features(dd, ss);
-                                                                                    };
-                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, fsf, s.pyobj());
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    std::unique_ptr<PyIWFeatureVector<Texecution>> rr = std::make_unique<PyIWFeatureVector<Texecution>>(*r);
-                                                                                    r.reset();
-                                                                                    return rr;
-                                                                                } catch (const std::exception& e) {
-                                                                                    Logger::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
-                                                                                    throw;
-                                                                                }
-                                                                            },
-                                                                            pno,
-                                                                            time_budget,
-                                                                            debug_logs);
+                *_domain,
+                [this](PyIWDomain<Texecution>& d, const typename PyIWDomain<Texecution>::State& s)->std::unique_ptr<PyIWFeatureVector<Texecution>> {
+                    try {
+                        auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                            return _state_features(dd, ss);
+                        };
+                        std::unique_ptr<py::object> r = d.call(nullptr, fsf, s.pyobj());
+                        typename skdecide::GilControl<Texecution>::Acquire acquire;
+                        std::unique_ptr<PyIWFeatureVector<Texecution>> rr = std::make_unique<PyIWFeatureVector<Texecution>>(*r);
+                        r.reset();
+                        return rr;
+                    } catch (const std::exception& e) {
+                        Logger::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
+                        throw;
+                    }
+                },
+                pno,
+                time_budget,
+                debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
@@ -125,6 +126,10 @@ private :
             if (!py::hasattr(domain, "is_terminal")) {
                 throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing is_terminal()");
             }
+        }
+
+        virtual void close() {
+            _domain->close();
         }
 
         virtual void clear() {
@@ -260,6 +265,10 @@ public :
             SolverInstantiator(_implementation)).instantiate(
                 domain, state_features, node_ordering, time_budget, debug_logs);
         
+    }
+
+    void close() {
+        _implementation->close();
     }
 
     void clear() {

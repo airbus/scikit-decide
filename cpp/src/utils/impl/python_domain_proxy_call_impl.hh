@@ -28,6 +28,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     Implementation(const py::object& domain);
     ~Implementation();
 
+    void close();
     std::size_t get_parallel_capacity();
     ApplicableActionSpace get_applicable_actions(const Memory& m, const std::size_t* thread_id = nullptr);
 
@@ -77,6 +78,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     Implementation(const py::object& domain);
     ~Implementation();
 
+    void close();
     std::size_t get_parallel_capacity();
     ApplicableActionSpace get_applicable_actions(const Memory& m, const std::size_t* thread_id = nullptr);
 

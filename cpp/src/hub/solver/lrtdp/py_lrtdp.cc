@@ -38,6 +38,7 @@ void init_pylrtdp(py::module& m) {
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false,
                  py::arg("watchdog")=nullptr)
+            .def("close", &skdecide::PyLRTDPSolver::close)
             .def("clear", &skdecide::PyLRTDPSolver::clear)
             .def("solve", &skdecide::PyLRTDPSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &skdecide::PyLRTDPSolver::is_solution_defined_for, py::arg("state"))

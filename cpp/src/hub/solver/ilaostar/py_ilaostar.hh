@@ -31,14 +31,15 @@ private :
     class BaseImplementation {
     public :
         virtual ~BaseImplementation() {}
-        virtual void clear() =0;
-        virtual void solve(const py::object& s) =0;
-        virtual py::bool_ is_solution_defined_for(const py::object& s) =0;
-        virtual py::object get_next_action(const py::object& s) =0;
-        virtual py::float_ get_utility(const py::object& s) =0;
-        virtual py::int_ get_nb_of_explored_states() =0;
-        virtual py::int_ best_solution_graph_size() =0;
-        virtual py::dict get_policy() =0;
+        virtual void close() = 0;
+        virtual void clear() = 0;
+        virtual void solve(const py::object& s) = 0;
+        virtual py::bool_ is_solution_defined_for(const py::object& s) = 0;
+        virtual py::object get_next_action(const py::object& s) = 0;
+        virtual py::float_ get_utility(const py::object& s) = 0;
+        virtual py::int_ get_nb_of_explored_states() = 0;
+        virtual py::int_ best_solution_graph_size() = 0;
+        virtual py::dict get_policy() = 0;
     };
 
     template <typename Texecution>
@@ -103,6 +104,10 @@ private :
             if (!py::hasattr(domain, "get_transition_value")) {
                 throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_transition_value()");
             }
+        }
+
+        virtual void close() {
+            _domain->close();
         }
 
         virtual void clear() {
@@ -211,6 +216,10 @@ public :
             SolverInstantiator(_implementation)).instantiate(
                 domain, goal_checker, heuristic, discount, epsilon, debug_logs);
         
+    }
+
+    void close() {
+        _implementation->close();
     }
 
     void clear() {
