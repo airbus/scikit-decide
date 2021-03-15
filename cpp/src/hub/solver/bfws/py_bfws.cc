@@ -26,6 +26,7 @@ void init_pybfws(py::module& m) {
                  py::arg("use_state_feature_hash")=false,
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
+            .def("close", &skdecide::PyBFWSSolver::close)
             .def("clear", &skdecide::PyBFWSSolver::clear)
             .def("solve", &skdecide::PyBFWSSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &skdecide::PyBFWSSolver::is_solution_defined_for, py::arg("state"))

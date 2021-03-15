@@ -27,6 +27,7 @@ void init_pyiw(py::module& m) {
                  py::arg("time_budget")=0,
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
+            .def("close", &skdecide::PyIWSolver::close)
             .def("clear", &skdecide::PyIWSolver::clear)
             .def("solve", &skdecide::PyIWSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &skdecide::PyIWSolver::is_solution_defined_for, py::arg("state"))

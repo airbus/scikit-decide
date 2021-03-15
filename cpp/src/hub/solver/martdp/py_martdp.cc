@@ -46,6 +46,7 @@ void init_pymartdp(py::module& m) {
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false,
                  py::arg("watchdog")=nullptr)
+            .def("close", &skdecide::PyMARTDPSolver::close)
             .def("clear", &skdecide::PyMARTDPSolver::clear)
             .def("solve", &skdecide::PyMARTDPSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &skdecide::PyMARTDPSolver::is_solution_defined_for, py::arg("state"))

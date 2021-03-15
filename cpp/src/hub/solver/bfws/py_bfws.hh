@@ -39,11 +39,12 @@ private :
     class BaseImplementation {
     public :
         virtual ~BaseImplementation() {}
-        virtual void clear() =0;
-        virtual void solve(const py::object& s) =0;
-        virtual py::bool_ is_solution_defined_for(const py::object& s) =0;
-        virtual py::object get_next_action(const py::object& s) =0;
-        virtual py::float_ get_utility(const py::object& s) =0;
+        virtual void close() = 0;
+        virtual void clear() = 0;
+        virtual void solve(const py::object& s) = 0;
+        virtual py::bool_ is_solution_defined_for(const py::object& s) = 0;
+        virtual py::object get_next_action(const py::object& s) = 0;
+        virtual py::float_ get_utility(const py::object& s) = 0;
     };
 
     template <typename Texecution, template <typename...> class Thashing_policy>
@@ -59,49 +60,49 @@ private :
             check_domain(domain);
             _domain = std::make_unique<PyBFWSDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::BFWSSolver<PyBFWSDomain<Texecution>, PyBFWSFeatureVector<Texecution>, Thashing_policy, Texecution>>(
-                                                                            *_domain,
-                                                                            [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s)->std::unique_ptr<PyBFWSFeatureVector<Texecution>> {
-                                                                                try {
-                                                                                    auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
-                                                                                        return _state_features(dd, ss);
-                                                                                    };
-                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, fsf, s.pyobj());
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    std::unique_ptr<PyBFWSFeatureVector<Texecution>> rr = std::make_unique<PyBFWSFeatureVector<Texecution>>(*r);
-                                                                                    r.reset();
-                                                                                    return rr;
-                                                                                } catch (const std::exception& e) {
-                                                                                    Logger::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
-                                                                                    throw;
-                                                                                }
-                                                                            },
-                                                                            [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s) -> typename PyBFWSDomain<Texecution>::Value {
-                                                                                try {
-                                                                                    auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
-                                                                                        return _heuristic(dd, ss);
-                                                                                    };
-                                                                                    return typename PyBFWSDomain<Texecution>::Value(d.call(nullptr, fh, s.pyobj()));
-                                                                                } catch (const std::exception& e) {
-                                                                                    Logger::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
-                                                                                    throw;
-                                                                                }
-                                                                            },
-                                                                            [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s)->bool {
-                                                                                try {
-                                                                                    auto ftc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
-                                                                                        return _termination_checker(dd, ss);
-                                                                                    };
-                                                                                    std::unique_ptr<py::object> r = d.call(nullptr, ftc, s.pyobj());
-                                                                                    typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                                                                    bool rr = r->template cast<bool>();
-                                                                                    r.reset();
-                                                                                    return  rr;
-                                                                                } catch (const std::exception& e) {
-                                                                                    Logger::error(std::string("SKDECIDE exception when calling termination checker: ") + e.what());
-                                                                                    throw;
-                                                                                }
-                                                                            },
-                                                                            debug_logs);
+                *_domain,
+                [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s)->std::unique_ptr<PyBFWSFeatureVector<Texecution>> {
+                    try {
+                        auto fsf = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                            return _state_features(dd, ss);
+                        };
+                        std::unique_ptr<py::object> r = d.call(nullptr, fsf, s.pyobj());
+                        typename skdecide::GilControl<Texecution>::Acquire acquire;
+                        std::unique_ptr<PyBFWSFeatureVector<Texecution>> rr = std::make_unique<PyBFWSFeatureVector<Texecution>>(*r);
+                        r.reset();
+                        return rr;
+                    } catch (const std::exception& e) {
+                        Logger::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
+                        throw;
+                    }
+                },
+                [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s) -> typename PyBFWSDomain<Texecution>::Value {
+                    try {
+                        auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                            return _heuristic(dd, ss);
+                        };
+                        return typename PyBFWSDomain<Texecution>::Value(d.call(nullptr, fh, s.pyobj()));
+                    } catch (const std::exception& e) {
+                        Logger::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
+                        throw;
+                    }
+                },
+                [this](PyBFWSDomain<Texecution>& d, const typename PyBFWSDomain<Texecution>::State& s)->bool {
+                    try {
+                        auto ftc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
+                            return _termination_checker(dd, ss);
+                        };
+                        std::unique_ptr<py::object> r = d.call(nullptr, ftc, s.pyobj());
+                        typename skdecide::GilControl<Texecution>::Acquire acquire;
+                        bool rr = r->template cast<bool>();
+                        r.reset();
+                        return  rr;
+                    } catch (const std::exception& e) {
+                        Logger::error(std::string("SKDECIDE exception when calling termination checker: ") + e.what());
+                        throw;
+                    }
+                },
+                debug_logs);
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
@@ -123,6 +124,10 @@ private :
             if (!py::hasattr(domain, "is_terminal")) {
                 throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing is_terminal()");
             }
+        }
+
+        virtual void close() {
+            _domain->close();
         }
 
         virtual void clear() {
@@ -232,6 +237,10 @@ public :
             SolverInstantiator(_implementation)).instantiate(
                 domain, state_features, heuristic, termination_checker, debug_logs);
         
+    }
+
+    void close() {
+        _implementation->close();
     }
 
     void clear() {

@@ -24,6 +24,7 @@ void init_pyilaostar(py::module& m) {
                  py::arg("epsilon")=0.001,
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false)
+            .def("close", &skdecide::PyILAOStarSolver::close)
             .def("clear", &skdecide::PyILAOStarSolver::clear)
             .def("solve", &skdecide::PyILAOStarSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &skdecide::PyILAOStarSolver::is_solution_defined_for, py::arg("state"))

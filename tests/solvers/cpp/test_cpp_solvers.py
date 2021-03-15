@@ -10,6 +10,7 @@ import inspect
 from enum import Enum
 from typing import NamedTuple, Optional
 from math import sqrt
+from copy import deepcopy
 from pathos.helpers import mp
 
 from skdecide import DeterministicPlanningDomain, Value, \
@@ -152,19 +153,6 @@ class GridDomain(D):
                             'optimal': True}])
 def solver_cpp(request):
     return request.param
-
-
-@pytest.fixture(params=[{'entry': 'LazyAstar',
-                         'config': {'verbose': False},
-                         'optimal': True},
-                        {'entry': 'StableBaseline',
-                         'config': {'baselines_policy': 'MlpPolicy',
-                                    'learn_config': {'total_timesteps': 10},
-                                    'verbose': 1},
-                         'optimal': False}])
-def solver_python(request):
-    return request.param
-
 
 @pytest.fixture(params=[False, True])
 def parallel(request):
@@ -386,13 +374,13 @@ class GridShmProxy:
 
 # TESTS
 
-def do_test_cpp(solver_cpp, parallel, shared_memory, result):
+def test_solver_cpp(solver_cpp, parallel, shared_memory):
     noexcept = True
     
     try:
         dom = GridDomain()
         solver_type = load_registered_solver(solver_cpp['entry'])
-        solver_args = solver_cpp['config']
+        solver_args = deepcopy(solver_cpp['config'])
         if 'parallel' in inspect.signature(solver_type.__init__).parameters:
             solver_args['parallel'] = parallel
         if 'shared_memory_proxy' in inspect.signature(solver_type.__init__).parameters and shared_memory:
@@ -405,56 +393,5 @@ def do_test_cpp(solver_cpp, parallel, shared_memory, result):
     except Exception as e:
         print(e)
         noexcept = False
-    result.send(solver_type.check_domain(dom) and noexcept and \
-                ((not solver_cpp['optimal']) or parallel or (cost == 18 and len(plan) == 18)))
-    result.close()
-
-def test_solve_cpp(solver_cpp, parallel, shared_memory):
-    # We launch each algorithm in a separate process in order to avoid the various
-    # algorithms to initialize different versions of the OpenMP library in the same
-    # process (since our C++ hub algorithms and other algorithms like PPO2 - via torch -
-    # might link against different OpenMP libraries)
-    pparent, pchild = mp.Pipe(duplex=False)
-    p = mp.Process(target=do_test_cpp, args=(solver_cpp, parallel, shared_memory, pchild,))
-    p.start()
-    r = pparent.recv()
-    p.join()
-    p.close()
-    pparent.close()
-    assert r
-
-
-def do_test_python(solver_python, result):
-    noexcept = True
-
-    try:
-        dom = GridDomain()
-        solver_type = load_registered_solver(solver_python['entry'])
-        solver_args = solver_python['config']
-        if solver_python['entry'] == 'StableBaseline':
-            from stable_baselines3 import PPO
-            solver_args['algo_class'] = PPO
-    
-        with solver_type(**solver_args) as slv:
-            GridDomain.solve_with(slv)
-            plan, cost = get_plan(dom, slv)
-    except Exception as e:
-        print(e)
-        noexcept = False
-    result.send(solver_type.check_domain(dom) and noexcept and \
-                ((not solver_python['optimal']) or (cost == 18 and len(plan) == 18)))
-    result.close()
-
-def test_solve_python(solver_python):
-    # We launch each algorithm in a separate process in order to avoid the various
-    # algorithms to initialize different versions of the OpenMP library in the same
-    # process (since our C++ hub algorithms and other algorithms like PPO2 - via torch -
-    # might link against different OpenMP libraries)
-    pparent, pchild = mp.Pipe(duplex=False)
-    p = mp.Process(target=do_test_python, args=(solver_python, pchild,))
-    p.start()
-    r = pparent.recv()
-    p.join()
-    p.close()
-    pparent.close()
-    assert r
+    assert solver_type.check_domain(dom) and noexcept and \
+                ((not solver_cpp['optimal']) or parallel or (cost == 18 and len(plan) == 18))

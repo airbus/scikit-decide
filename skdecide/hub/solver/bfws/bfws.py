@@ -56,6 +56,15 @@ try:
                 self._heuristic = heuristic
             self._lambdas = [self._state_features, self._heuristic, self._termination_checker]
             self._ipc_notify = True
+
+        def close(self):
+            """Joins the parallel domains' processes.
+            Not calling this method (or not using the 'with' context statement)
+            results in the solver forever waiting for the domain processes to exit.
+            """
+            if self._parallel:
+                self._solver.close()
+            ParallelSolver.close(self)
         
         def _init_solve(self, domain_factory: Callable[[], D]) -> None:
             self._domain_factory = domain_factory

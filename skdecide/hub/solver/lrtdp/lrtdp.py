@@ -75,6 +75,15 @@ try:
                 self._watchdog = watchdog
             self._ipc_notify = True
 
+        def close(self):
+            """Joins the parallel domains' processes.
+            Not calling this method (or not using the 'with' context statement)
+            results in the solver forever waiting for the domain processes to exit.
+            """
+            if self._parallel:
+                self._solver.close()
+            ParallelSolver.close(self)
+
         def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
             self._domain_factory = domain_factory
             self._solver = lrtdp_solver(domain=self.get_domain(),
