@@ -10,6 +10,9 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
     TARGET_LINK_LIBRARIES(__skdecide_hub_cpp PRIVATE
                             ${LIBS}
                             INTERFACE ${INTERFACES})
+    INSTALL(TARGETS __skdecide_hub_cpp
+            RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX} COMPONENT libraries
+            LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX} COMPONENT libraries)
 ENDIF ()
 
 ADD_SUBDIRECTORY (solver)

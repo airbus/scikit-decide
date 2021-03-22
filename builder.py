@@ -87,52 +87,91 @@ class ExtensionBuilder(build_ext):
                     raise RuntimeError("CMake >= 3.1.0 is required on Windows")
 
     def build_cmake_extension(self, ext: CMakeExtension) -> None:
-        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-        cmake_args = [
-            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=" + extdir,
-            "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=" + extdir,
-            "-DPYTHON_EXECUTABLE=" + sys.executable,
-            "-DONLY_PYTHON=ON",
+        ext_dir = Path(self.get_ext_fullpath(ext.name)).parent.absolute()
+        cmake_install_prefix = ext_dir / ext.install_prefix
+
+        configure_args = [
+            f"-DCMAKE_BUILD_TYPE={ext.cmake_build_type}",
+            f"-DCMAKE_INSTALL_PREFIX:PATH={cmake_install_prefix}",
         ]
 
-        cfg = "Debug" if self.debug else "Release"
-        # cfg = 'Debug'
-        build_args = ["--config", cfg]
+        # Extend configure arguments with those from the extension
+        configure_args += ext.cmake_configure_options
+
+        # Set build arguments
+        build_args = ["--config", ext.cmake_build_type]
 
         if platform.system() == "Windows":
-            cmake_args += [
-                "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}".format(cfg.upper(), extdir)
-            ]
-            cmake_args += [
-                "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{}={}".format(cfg.upper(), extdir)
-            ]
             if sys.maxsize > 2 ** 32:
-                cmake_args += ["-A", "x64"]
+                configure_args += ["-A", "x64"]
             build_args += ["--", "/m"]
         else:
-            cmake_args += ["-DCMAKE_BUILD_TYPE=" + cfg]
             build_args += ["--", "-j4"]
-        cmake_args += ["-DPYTHON_INCLUDE_DIR={}".format(sysconfig.get_path("include"))]
 
+        """
         env = os.environ.copy()
         env["CXXFLAGS"] = '{} -DVERSION_INFO=\\"{}\\"'.format(
             env.get("CXXFLAGS", ""), self.distribution.get_version()
         )
-        if not os.path.exists(self.build_temp):
-            os.makedirs(self.build_temp)
-        subprocess.check_call(
-            ["cmake", ext.source_dir] + cmake_args, cwd=self.build_temp, env=env
-        )
-        subprocess.check_call(
-            ["cmake", "--build", "."] + build_args, cwd=self.build_temp
-        )
+        """
+
+        # Get the absolute path to the build folder
+        build_folder = str(Path('.').absolute() / f"{self.build_temp}_{ext.name}")
+
+        # Make sure the build folder exists
+        Path(build_folder).mkdir(exist_ok=True, parents=True)
+
+        configure_command = ['cmake', '-S', ext.source_dir, '-B', build_folder] + configure_args
+
+        build_command = ['cmake', '--build', build_folder] + build_args
+
+        install_command = ['cmake', '--install',  build_folder]
+        if ext.cmake_component is not None:
+            install_command.extend(['--component', ext.cmake_component])
+
+        print(f"$ {' '.join(configure_command)}")
+        print(f"$ {' '.join(build_command)}")
+        print(f"$ {' '.join(install_command)}")
+
+        # Generate the project
+        subprocess.check_call(configure_command)
+        # Build the project
+        subprocess.check_call(build_command)
+        # Install the project
+        subprocess.check_call(install_command)
+
 
 
 def build(setup_kwargs: Dict[str, Any]) -> None:
     cython_modules = []
 
     cmake_modules = [
-        CMakeExtension(name="skdecide/hub/", source_dir="cpp", install_prefix="build")
+        CMakeExtension(
+            name="skdecide/hub/",
+            source_dir="cpp",
+            install_prefix="",
+            cmake_configure_options=[
+                           f"-DPYTHON_EXECUTABLE={Path(sys.executable)}",
+                           f"-DONLY_PYTHON=ON",
+                       ]),
+        CMakeExtension(
+            name="chuffed",
+            source_dir="cpp/deps/chuffed",
+            install_prefix="skdecide/hub",
+            cmake_configure_options=[
+                       ]),
+        CMakeExtension(
+            name="gecode",
+            source_dir="cpp/deps/gecode",
+            install_prefix="skdecide/hub",
+            cmake_configure_options=[
+                       ]),
+        CMakeExtension(name="libminizinc",
+            source_dir="cpp/deps/libminizinc",
+            install_prefix="skdecide/hub",
+            cmake_configure_options=[
+                           f"-DBUILD_SHARED_LIBS:BOOL=OFF",
+                       ]),
     ]
     ext_modules = cython_modules + cmake_modules
 

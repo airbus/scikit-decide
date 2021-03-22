@@ -182,6 +182,25 @@ python-versions = "*"
 six = "*"
 
 [[package]]
+name = "deap"
+version = "1.3.1"
+description = "Distributed Evolutionary Algorithms in Python"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+numpy = "*"
+
+[[package]]
+name = "decorator"
+version = "4.4.2"
+description = "Decorators for Humans"
+category = "main"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*"
+
+[[package]]
 name = "dill"
 version = "0.3.3"
 description = "serialize all of python"
@@ -444,6 +463,28 @@ pyparsing = ">=2.0.3,<2.0.4 || >2.0.4,<2.1.2 || >2.1.2,<2.1.6 || >2.1.6"
 python-dateutil = ">=2.1"
 
 [[package]]
+name = "minizinc"
+version = "0.4.2"
+description = "Access MiniZinc directly from Python"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+dzn = ["lark-parser (>=0.7.5)"]
+
+[[package]]
+name = "mip"
+version = "1.13.0"
+description = "Python tools for Modeling and Solving Mixed-Integer Linear     Programs (MIPs)"
+category = "main"
+optional = false
+python-versions = ">3.5.0"
+
+[package.dependencies]
+cffi = "*"
+
+[[package]]
 name = "msgpack"
 version = "1.0.2"
 description = "MessagePack (de)serializer."
@@ -471,11 +512,35 @@ python-versions = "*"
 dill = ">=0.3.3"
 
 [[package]]
+name = "networkx"
+version = "2.5"
+description = "Python package for creating and manipulating graphs and networks"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+decorator = ">=4.3.0"
+
+[package.extras]
+all = ["numpy", "scipy", "pandas", "matplotlib", "pygraphviz", "pydot", "pyyaml", "lxml", "pytest"]
+gdal = ["gdal"]
+lxml = ["lxml"]
+matplotlib = ["matplotlib"]
+numpy = ["numpy"]
+pandas = ["pandas"]
+pydot = ["pydot"]
+pygraphviz = ["pygraphviz"]
+pytest = ["pytest"]
+pyyaml = ["pyyaml"]
+scipy = ["scipy"]
+
+[[package]]
 name = "numpy"
 version = "1.20.1"
 description = "NumPy is the fundamental package for array computing with Python."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [[package]]
@@ -1038,7 +1103,7 @@ solvers = ["gym", "numpy", "joblib", "ray", "torch", "stable-baselines3"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "75d03f3a6ec7b2708782bd18491424270da77c3461a169eb6a19a1c185ccac5c"
+content-hash = "319f9f04b7fd4cb2a41547bc3de308ceeccf84c00da5424f26e2e050a7d4a57a"
 
 [metadata.files]
 aiohttp = [
@@ -1225,6 +1290,44 @@ coverage = [
 cycler = [
     {file = "cycler-0.10.0-py2.py3-none-any.whl", hash = "sha256:1d8a5ae1ff6c5cf9b93e8811e581232ad8920aeec647c37316ceac982b08cb2d"},
     {file = "cycler-0.10.0.tar.gz", hash = "sha256:cd7b2d1018258d7247a71425e9f26463dfb444d411c39569972f4ce586b0c9d8"},
+]
+deap = [
+    {file = "deap-1.3.1-cp27-cp27m-macosx_10_13_x86_64.whl", hash = "sha256:937548989075ddbc30294e0a5d96432000217c83421dad28afc8bc373723cb82"},
+    {file = "deap-1.3.1-cp27-cp27m-macosx_10_14_x86_64.whl", hash = "sha256:8fd13bee65a91b77bbf999befdebe471c102b6b26581ea92bbd6fa4e4d55efd3"},
+    {file = "deap-1.3.1-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:86a4b98fb7b46e53125f48e8b5572b3c8021c9d31e7edc15e1b2b59c21209d03"},
+    {file = "deap-1.3.1-cp27-cp27m-manylinux2010_x86_64.whl", hash = "sha256:ef1e150be601a2fa94eca9a82a089036830c47c7cc0c67e92ec8ebca64c19b50"},
+    {file = "deap-1.3.1-cp27-cp27m-win_amd64.whl", hash = "sha256:b11bf90dc6ddc454f47977d4d3f2c32f48d5fb3bd200120827c4d55206b3c110"},
+    {file = "deap-1.3.1-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:49a21b4f21f5e429c3dfa2d7e448cd1a80963ca4f4b71653d1a78d4ae10c9d70"},
+    {file = "deap-1.3.1-cp27-cp27mu-manylinux2010_x86_64.whl", hash = "sha256:50d4c817b3b17ab705a15e99a03384d588735a966ba170a1d42aa45a59288dc7"},
+    {file = "deap-1.3.1-cp34-cp34m-manylinux1_x86_64.whl", hash = "sha256:dd9d2b5c65814930084b4c781ced6bb6906fabf708e4c94b97c5fce9432a088a"},
+    {file = "deap-1.3.1-cp34-cp34m-manylinux2010_x86_64.whl", hash = "sha256:4fcf65d04420bd8d7b2ee4f165c562db6671746c1cdf599d82ec59f71be7188e"},
+    {file = "deap-1.3.1-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:2f2f9373e23dfbd6cdda2ff0c05f2fc7f9a96d0f03d9a3814bae4790067339ed"},
+    {file = "deap-1.3.1-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:5d2d481ec28f947d9c3d838909a49c5e09bbdc8110cca366b544fb0d5afbdd95"},
+    {file = "deap-1.3.1-cp35-cp35m-win_amd64.whl", hash = "sha256:a1fb86ed6ef2ebf4e9e938b87fdcbc10cad1c147cd9ec9311957d6ec583e9d49"},
+    {file = "deap-1.3.1-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:e071b3a5ffeeb760a3d7e606a81122c2f192c9ebe9317116131a9d6624bfdf49"},
+    {file = "deap-1.3.1-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:657a038e69937e292fac3daf6641243a7ebd87e8424e8bdf930e5ef74e638776"},
+    {file = "deap-1.3.1-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:3113e31e7f9e6e2d0d3e9d41168541ca9469b3e796c03cfb5d81bd170af096fa"},
+    {file = "deap-1.3.1-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:ead42f533c07e929ba02a4b3b9e04c274eb64689edd9c0fe42e4f63620b24385"},
+    {file = "deap-1.3.1-cp36-cp36m-win_amd64.whl", hash = "sha256:6365452dce08f6df9daee7255671972184c5e5da11391232e874cccc36d02366"},
+    {file = "deap-1.3.1-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:354d629e0d1605c493e4eee3587a7e3503343864b9967d5b2d83c0026307346c"},
+    {file = "deap-1.3.1-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:809534e155c76a4f46d480f6d73dc347f2bc90324d9e3546a68bdbf33164d165"},
+    {file = "deap-1.3.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:9e330449160ebe18929e7db2595c2a6931f5132a323e4096d36ef26d0802bd14"},
+    {file = "deap-1.3.1-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:0283b29ab47d841cd33c19fed547d18c15b95b2876223de42799dc61c0453080"},
+    {file = "deap-1.3.1-cp37-cp37m-win_amd64.whl", hash = "sha256:faa6a761368fcaa4459d45557a803fc3dc610c2aef37a2f62dfbddcbfabd29a3"},
+    {file = "deap-1.3.1-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:827d278d77d42aa499404e02817de8a02c5303c8cb6dde51033fa2783c6a0ea5"},
+    {file = "deap-1.3.1-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:26a1d10fd8b5f5dc128abea43f17b626e0e2123d5de09ee26f591ab66117e751"},
+    {file = "deap-1.3.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:8d41226849f01f4bbcff8db7037d4e8063d7f3a5b5e090c0ea59e9aa8ec3fca9"},
+    {file = "deap-1.3.1-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:1eac7020de9d3995173bbe30ea04cdc995830a52c97c8b4dd2d01cf6a818799d"},
+    {file = "deap-1.3.1-cp38-cp38-win_amd64.whl", hash = "sha256:794acffc3a2da2213bd184be8d6a751b0df03bdf2271bb57da7414201c4afb28"},
+    {file = "deap-1.3.1-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:38ef2defe7d9e32c9552173ace5e99ff2b29599877f7dc0420baa747475837df"},
+    {file = "deap-1.3.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:bc58673b26c8c417e3d479701eca2b9fc3bfd9f646067036a06f7bbadabf8bba"},
+    {file = "deap-1.3.1-cp39-cp39-manylinux2010_x86_64.whl", hash = "sha256:53a70b3f07a06ad6693e5b7e0c4a4387147ed0113e0eeda7ac33cfc516487f89"},
+    {file = "deap-1.3.1-cp39-cp39-win_amd64.whl", hash = "sha256:47ef982c4ad26a1b5f45cf8c82b262d46b90c39e9686ba3cb831f9fcdcbdc88b"},
+    {file = "deap-1.3.1.tar.gz", hash = "sha256:11f54493ceb54aae10dde676577ef59fc52d52f82729d5a12c90b0813c857a2f"},
+]
+decorator = [
+    {file = "decorator-4.4.2-py2.py3-none-any.whl", hash = "sha256:41fa54c2a0cc4ba648be4fd43cff00aedf5b9465c9bf18d64325bc225f08f760"},
+    {file = "decorator-4.4.2.tar.gz", hash = "sha256:e3a62f0520172440ca0dcc823749319382e377f37f140a0b99ef45fecb84bfe7"},
 ]
 dill = [
     {file = "dill-0.3.3-py2.py3-none-any.whl", hash = "sha256:78370261be6ea49037ace8c17e0b7dd06d0393af6513cc23f9b222d9367ce389"},
@@ -1486,6 +1589,14 @@ matplotlib = [
     {file = "matplotlib-3.3.4-pp37-pypy37_pp73-manylinux2010_x86_64.whl", hash = "sha256:cf3a7e54eff792f0815dbbe9b85df2f13d739289c93d346925554f71d484be78"},
     {file = "matplotlib-3.3.4.tar.gz", hash = "sha256:3e477db76c22929e4c6876c44f88d790aacdf3c3f8f3a90cb1975c0bf37825b0"},
 ]
+minizinc = [
+    {file = "minizinc-0.4.2-py3-none-any.whl", hash = "sha256:d4327468b7cdc1b1379c6fa50350393d2d0903ac1be55235f534992b4f7b2538"},
+    {file = "minizinc-0.4.2.tar.gz", hash = "sha256:c0e5fae557df0b757bbe4dbec70f7b033b2acc0acabea213e3bbcb0b41d8efeb"},
+]
+mip = [
+    {file = "mip-1.13.0-py3-none-any.whl", hash = "sha256:62b75ac7580b0d13f6113ccace633160e7f9c2e07631f69ed36405f2ff035863"},
+    {file = "mip-1.13.0.tar.gz", hash = "sha256:b22cb3fad91269a5f139d77fc13839e57132d90b9c697ed2791cf7bb14fbcc7a"},
+]
 msgpack = [
     {file = "msgpack-1.0.2-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:b6d9e2dae081aa35c44af9c4298de4ee72991305503442a5c74656d82b581fe9"},
     {file = "msgpack-1.0.2-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:a99b144475230982aee16b3d249170f1cccebf27fb0a08e9f603b69637a62192"},
@@ -1567,6 +1678,10 @@ multiprocess = [
     {file = "multiprocess-0.70.11.1-py38-none-any.whl", hash = "sha256:7761fed45cae123aa4b7bb918e77a5cfef6fd436c65bc87453e76bf2bdc3e29e"},
     {file = "multiprocess-0.70.11.1-py39-none-any.whl", hash = "sha256:ae026110257fc551fc949d96d69160768810d9019786c8c84c0c28d1f88fab67"},
     {file = "multiprocess-0.70.11.1.zip", hash = "sha256:9d5e417f3ebce4d027a3c900995840f167f316d9f73c0a7a1fbb4ac0116298d0"},
+]
+networkx = [
+    {file = "networkx-2.5-py3-none-any.whl", hash = "sha256:8c5812e9f798d37c50570d15c4a69d5710a18d77bafc903ee9c5fba7454c616c"},
+    {file = "networkx-2.5.tar.gz", hash = "sha256:7978955423fbc9639c10498878be59caf99b44dc304c2286162fd24b458c1602"},
 ]
 numpy = [
     {file = "numpy-1.20.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:ae61f02b84a0211abb56462a3b6cd1e7ec39d466d3160eb4e1da8bf6717cdbeb"},
