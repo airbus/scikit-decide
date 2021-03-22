@@ -69,9 +69,7 @@ class CP_MS_MRCPSP_MZN(CPSolver):
         if custom_output_type:
             model.output_type = MS_RCPSPSolCP
             self.custom_output_type = True
-
         solver = Solver.lookup(map_cp_solver_name[self.cp_solver_name])
-        # solver = Solver.lookup("")
         resources_list = sorted(list(self.rcpsp_model.resources_availability.keys()))
         self.resources_index = resources_list
         instance = Instance(solver, model)
@@ -84,7 +82,7 @@ class CP_MS_MRCPSP_MZN(CPSolver):
         if model_type == "multi-calendar":
             instance["exact_skills_need"] = exact_skills_need
             keys += ["exact_skills_need"]
-            instance["add_calendar_constraint_unit"] = args.get("add_calendar_constraint_unit", True)
+            instance["add_calendar_constraint_unit"] = args.get("add_calendar_constraint_unit", False)
             keys += ["add_calendar_constraint_unit"]
         instance["exact_skills_need"] = exact_skills_need
         instance["one_ressource_per_task"] = self.one_ressource_per_task

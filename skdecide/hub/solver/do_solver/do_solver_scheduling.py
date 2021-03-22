@@ -125,8 +125,8 @@ class DOSolver(Solver, DeterministicPolicies):
 
     def __init__(self,
                  policy_method_params: PolicyMethodParams,
-                 method: SolvingMethod=SolvingMethod.PILE,
-                 dict_params: Dict[Any, Any]=None):
+                 method: SolvingMethod = SolvingMethod.PILE,
+                 dict_params: Dict[Any, Any] = None):
         self.method = method
         self.policy_method_params = policy_method_params
         self.dict_params = dict_params
@@ -170,7 +170,7 @@ class DOSolver(Solver, DeterministicPolicies):
                                                      domain=self.domain,
                                                      policy_method_params=self.policy_method_params)
 
-    def get_external_policy(self)->PolicyRCPSP:
+    def get_external_policy(self) -> PolicyRCPSP:
         return self.policy_object
 
     def compute_external_policy(self, policy_method_params: PolicyMethodParams):

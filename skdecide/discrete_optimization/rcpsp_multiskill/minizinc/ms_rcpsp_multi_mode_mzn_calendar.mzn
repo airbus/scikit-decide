@@ -334,8 +334,8 @@ solve
 
 ann: durThenStartThenMode = seq_search([
         int_search(start, smallest, indomain_min, complete),
-        %int_search(adur, smallest, indomain_min, complete),
-        %int_search(start, smallest, indomain_min, complete),
+        % int_search(adur, smallest, indomain_min, complete),
+        % int_search(start, smallest, indomain_min, complete),
         bool_search(mrun, input_order, indomain_max, complete),
         bool_search(unit_used, input_order, indomain_min, complete)
     ]);
