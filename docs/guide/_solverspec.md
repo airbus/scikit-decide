@@ -60,6 +60,13 @@ A solver must inherit this class if it can provide the Q function (i.e. action-v
 
 </template>
 
+<template v-slot:ParallelSolver>
+
+A solver must inherit this class if it wants to call several cloned parallel domains in separate concurrent processes.
+The solver is meant to be called either within a 'with' context statement, or to be cleaned up using the close() method.
+
+</template>
+
 <template v-slot:Policies>
 
 A solver must inherit this class if it computes a stochastic policy as part of the solving process.

@@ -19,3 +19,12 @@
 [submodule "cpp/sdk/spdlog"]
 	path = cpp/sdk/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "cpp/deps/chuffed"]
+	path = cpp/deps/chuffed
+	url = https://github.com/chuffed/chuffed.git
+[submodule "cpp/deps/libminizinc"]
+	path = cpp/deps/libminizinc
+	url = https://github.com/MiniZinc/libminizinc.git
+[submodule "cpp/deps/gecode"]
+	path = cpp/deps/gecode
+	url = https://github.com/Gecode/gecode.git

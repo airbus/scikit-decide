@@ -1,7 +1,11 @@
-name: build_test_deploy
+name: 🔨 Build scikit-decide
 
 on:
   push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
 
 jobs:
   build:
@@ -19,8 +23,13 @@ jobs:
         shell: bash
     runs-on: ${{ matrix.os }}
 
+    env:
+      BOOST_ROOT: ${{github.workspace}}/3rdparty/boost
+      BOOST_URL: https://sourceforge.net/projects/boost/files/boost/1.72.0/boost_1_72_0.tar.bz2/download
+
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout scikit-decide source code
+        uses: actions/checkout@v2
         with:
           submodules: true
 
@@ -36,6 +45,28 @@ jobs:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
+      - name: Restore Boost cache
+        uses: actions/cache@v2.1.4
+        id: cache-boost
+        with:
+          path: ${{env.BOOST_ROOT}}
+          key: boost
+
+      - name: Install Boost
+        if: steps.cache-boost.outputs.cache-hit != 'true'
+        run: |
+          if [ "$OS" == "Windows_NT" ]; then
+            # fix up paths to be forward slashes consistently
+            BOOST_ROOT=$(echo $BOOST_ROOT | sed 's/\\/\//g')
+          fi
+          mkdir -p $BOOST_ROOT
+          curl --progress-bar --location --output $BOOST_ROOT/download.tar.bz2 $BOOST_URL
+          7z -o$BOOST_ROOT x $BOOST_ROOT/download.tar.bz2 -y -bd
+          7z -o$BOOST_ROOT x $BOOST_ROOT/download.tar -y -bd
+          cd $BOOST_ROOT && cp -r boost_*/* .
+          rm -rf boost_*/* download.tar.bz2 download.tar
+        shell: bash
+
       - name: Set up Docker Buildx
         if: matrix.os == 'ubuntu-latest'
         id: buildx
@@ -43,13 +74,7 @@ jobs:
 
       - name: Install boost & omp on MacOS
         if: matrix.os == 'macos-10.15'
-        run: brew install boost libomp
-
-      - name: Install on Windows
-        if: matrix.os == 'windows-2016'
-        run: |
-          echo $BOOST_ROOT_1_72_0
-          echo "BOOST_ROOT=$(echo $BOOST_ROOT_1_72_0)" >> $GITHUB_ENV
+        run: brew install libomp
 
       - name: Build macOS/Windows wheel
         if: matrix.os != 'ubuntu-latest'
@@ -73,3 +98,178 @@ jobs:
         with:
           name: wheels
           path: dist/*.whl
+
+  test-unix:
+    needs: build
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.7, 3.8]
+        compiler: [gnu]
+      fail-fast: true
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest tqdm
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wheels
+
+      - name: Test with pytest
+        run: |
+          pip install --find-links ./wheels/ scikit-decide[all] 
+          pytest -v -s tests/autocast
+          pytest -v -s tests/solvers/cpp
+          pytest -v -s tests/solvers/python
+          pytest -v -s tests/scheduling
+
+  test-macos:
+    needs: build
+    strategy:
+      matrix:
+        os: [macos-latest]
+        python-version: [3.7, 3.8]
+        compiler: [gnu]
+      fail-fast: true
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install libomp package
+        run: brew install libomp
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest tqdm
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wheels
+
+      - name: Test with pytest
+        run: |
+          pip install --find-links ./wheels/ scikit-decide[all] 
+          pytest -v -s tests/autocast
+          pytest -v -s tests/solvers/cpp
+          pytest -v -s tests/solvers/python
+          pytest -v -s tests/scheduling
+
+  test-windows:
+    needs: build
+    strategy:
+      matrix:
+        os: [windows-latest]
+        python-version: [3.7, 3.8]
+        compiler: [gnu]
+      fail-fast: true
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest tqdm
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wheels
+
+      - name: Test with pytest
+        run: |
+          pip install 
+          pip install --find-links ./wheels/ scikit-decide[all] 
+          pytest -v -s tests/autocast
+          pytest -v -s tests/solvers/cpp
+          pytest -v -s tests/solvers/python
+          pytest -v -s tests/scheduling
+
+  deploy:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && github.repository == 'Airbus/scikit-decide'
+    needs: [test-unix, test-macos, test-windows]
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.8]
+      fail-fast: true
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Download Unix artifact
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wh_unix
+      - name: Download MacOS artifact
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wh_macos
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wh_windows
+      - name: Move everything in wheelhouse
+        run: mkdir wheelhouse && mv wh_*/*.whl wheelhouse/ && mv wh_windows/*.tar.gz wheelhouse/
+      - name: Publish distribution 📦 to Test PyPI
+        if: startsWith(github.event.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.test_pypi_password }}
+          packages_dir: wheelhouse/
+          repository_url: https://test.pypi.org/legacy/
+      - name: Publish distribution 📦 to PyPI
+        if: startsWith(github.event.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.pypi_password }}
+          packages_dir: wheelhouse/
+  
+  build-docs:
+    needs: deploy
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.8]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: generate documentation
+        run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
+          BRANCH: gh-pages # The branch the action should deploy to.
+          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
+          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
+          COMMIT_MESSAGE: publish documentation
+          CLEAN: true
+          SINGLE_COMMIT: true
