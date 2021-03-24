@@ -1,15 +1,36 @@
 [tool.poetry]
 name = "scikit-decide"
 version = "0.9.2"
-description = "The scikit-decide Python project"
-authors = ["tog <guillaume.alleon@gmail.com>"]
+description = "The AI framework for Reinforcement Learning, Automated Planning and Scheduling"
+authors = [ "Airbus AI Research <scikit-decide@airbus.com>",]
 license = "MIT"
 readme = "README.md"
 homepage = "https://airbus.github.io/scikit-decide/"
 repository = "https://github.com/airbus/scikit-decide"
 keywords = ["reinforcement learning", "planning", "scheduling"]
 packages = [{include = "skdecide"}]
-include = []
+include = [ "LICENSE", "README.md", ]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Development Status :: 4 - Beta",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+    "Programming Language :: C++",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+]
+
 
 [tool.poetry.build]
 script = "builder.py"

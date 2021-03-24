@@ -32,53 +32,29 @@ Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning 
 
 The use of a virtual environment for scikit-decide is recommended, e.g. by using [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install):
 
-    conda create --name skdecide python=3.7
-    conda activate skdecide
+On MacOS/Linux:
 
-### 2. Install the scikit-decide library
+    python3 -m venv /path/to/new/virtual/environment
+    source /path/to/new/virtual/environment/bin/activate
 
-#### a. Full installation (recommended)
+On Windows:
 
-Make sure you are in the "scikit-decide" root directory and install with Pip:
+    py -m venv \path\to\new\virtual\environment
+    \path\to\new\virtual\environment\Scripts\activate
 
-    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
-    pip install .[all]
+### 2. Quick install [Recommended]
 
-This will install the core library and additionally all dependencies required by domains/solvers in the hub (scikit-decide catalog).
+    pip3 install -U pip
+    pip3 install scikit-decide[all]
 
-Alternatively, if you wish to install only the ones required by domains (resp. solvers) from the hub, replace `[all]` in the last command by `[domains]` (resp. `[solvers]`).
+### 3. Install from source
 
-#### b. Minimal installation (not recommended)
-
-Make sure you are in the "scikit-decide" root directory and install with Pip:
-
-    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
-    pip install .
-
-This will only install the core library, which is enough if you intend to create your own domain and solver.
-
-#### c. C++ extension installation
-
-This extension provides several algorithms implemented in C++ that are directly available in the Python interface.
-Make sure you have a recent C++ compiler with c++-17 support.
-Make sure you are in the "scikit-decide" root directory:
-
-    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
-
-Get the git submodules that are required to build the C++ extension:
-
-    git submodule update --init --recursive
-
-Build and install scikit-decide containing the C++ extension with Pip:
-
-    pip install --install-option="--cpp-extension" --install-option="--cxx-compiler=<PATH_TO_YOUR_CPP_COMPILER>" --install-option="--cmake-options="<OPTIONAL_CMAKE_OPTIONS>" .\[all\] -v
-
-CMake options are useful in case of unusual system configurations, so we recommend to try to build the C++ extension without providing cmake options.
-Should you need to pass cmake options to the installer, use the same format as the standard cmake command.
-
-if you just want to build a dstributable wheel of scikit-decide containing the compiled C++ extension, make sure you are in the "scikit-decide" root directory and build it with setuptools:
-
-    python setup.py bdist_wheel --cpp-extension --cxx-compiler=<PATH_TO_YOUR_CPP_COMPILER> --cmake-options=<OPTIONAL_CMAKE_OPTIONS>
+    pip3 install -U pip
+    curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+    git clone --recurse-submodules -j8 https://github.com/Airbus/scikit-decide.git
+    cd scikit-decide
+    poetry install --no-root --extras all
+    poetry build 
 
 ## Documentation
 
@@ -161,4 +137,4 @@ Pytest is required to run unit tests (`pip install pytest`).
 Make sure you are in the "scikit-decide" root directory and run unit tests (the "-v" verbose mode is optional but gives additional details):
 
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
-    pytest tests -v
+    poetry run pytest -vv -s tests/solvers/cpp

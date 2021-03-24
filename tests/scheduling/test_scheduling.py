@@ -16,6 +16,7 @@ from skdecide.builders.domain.scheduling.task_duration import DeterministicTaskD
 from skdecide.builders.domain.scheduling.conditional_tasks import  WithoutConditionalTasks
 from skdecide.builders.domain.scheduling.resource_availability import DeterministicResourceAvailabilityChanges
 from skdecide import rollout_episode
+from skdecide.discrete_optimization.generic_tools.cp_tools import CPSolverName
 from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MRCPSP, build_n_determinist_from_stochastic
 from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, \
@@ -613,8 +614,46 @@ def test_optimality(domain, do_solver):
                                               max_steps=1000,
                                               solver=solver,
                                               from_memory=state,
-                                              action_formatter=lambda o: str(o),
-                                              outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                                              action_formatter=
+                                              lambda o: str(o),
+                                              outcome_formatter=
+                                              lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+
+    if isinstance(domain, ToyRCPSPDomain):
+        makespan = max([states[-1].tasks_details[x].end for x in states[-1].tasks_complete])
+        assert makespan == optimal_solutions['ToyRCPSPDomain']['makespan']
+    if isinstance(domain, ToyMS_RCPSPDomain):
+        makespan = max([states[-1].tasks_details[x].end for x in states[-1].tasks_complete])
+        assert makespan == optimal_solutions['ToyMS_RCPSPDomain']['makespan']
+
+
+@pytest.mark.parametrize("domain", [
+    (ToyRCPSPDomain()),
+    (ToyMS_RCPSPDomain())
+])
+@pytest.mark.parametrize("do_solver", [
+    (SolvingMethod.CP, CPSolverName.GECODE),
+])
+def test_gecode_optimality(domain, do_solver):
+    print('domain: ', domain)
+    domain.set_inplace_environment(False)
+    state = domain.get_initial_state()
+    print("Initial state : ", state)
+    solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
+                                                                  delta_index_freedom=0,
+                                                                  delta_time_freedom=0),
+                      method=do_solver[0],
+                      dict_params={"cp_solver_name": do_solver[1]})
+    solver.solve(domain_factory=lambda: domain)
+    print(do_solver)
+    states, actions, values = rollout_episode(domain=domain,
+                                              max_steps=1000,
+                                              solver=solver,
+                                              from_memory=state,
+                                              action_formatter=
+                                              lambda o: str(o),
+                                              outcome_formatter=
+                                              lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
 
     if isinstance(domain, ToyRCPSPDomain):
         makespan = max([states[-1].tasks_details[x].end for x in states[-1].tasks_complete])
