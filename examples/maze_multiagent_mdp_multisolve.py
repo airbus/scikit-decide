@@ -191,6 +191,7 @@ class MultiAgentMaze(D):
             if tuple(next_state[agent]) in occupied_cells:
                 dead_end[agent] = True
                 dead_end[occupied_cells[tuple(next_state[agent])]] = True
+                transition_value[agent] = Value(cost=1000)  # for random walk
             else:
                 occupied_cells[tuple(next_state[agent])] = agent
         return TransitionOutcome(state=HashableDict(next_state),
@@ -243,6 +244,12 @@ class MultiAgentMaze(D):
         def __init__(self, domain: D, memory: D.T_memory[D.T_state]) -> None:
             self._domain = domain
             self._memory = memory
+        
+        def items(self) -> D.T_agent[D.T_concurrency[EnumSpace]]:
+            # Used by random walk that needs independent agent action spaces.
+            # It may lead to infeasible actions in which case _state_sample(...)
+            # returns a large cost
+            return [(a, EnumSpace(AgentAction)) for a in self._memory.keys()]
         
         def sample(self) -> D.T_agent[D.T_concurrency[D.T_event]]:
             # Shuffle the agents (not in place, thus don't use rd.shuffle())
@@ -477,7 +484,7 @@ if __name__ == '__main__':
             # Check if Random Walk selected or other
             if solver_type is None:
                 rollout(domain, solver=None, max_steps=1000,
-                        outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                        outcome_formatter=lambda o: f'{o.observation} - cost: {sum(o.value[a].cost for a in o.observation):.2f}')
             else:
                 # Check that the solver is compatible with the domain
                 assert solver_type.check_domain(domain)
