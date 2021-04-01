@@ -382,9 +382,6 @@ SK_MARTDP_SOLVER_CLASS::greedy_action(StateNode* s) {
         for (const auto& outcome : action.outcomes) {
             double outcome_cost = outcome.second.first;
             double outcome_probability = ((double) outcome.second.second) / ((double) action.expansions_count);
-            assert(action.value.size() == _nb_agents);
-            assert(outcome.first);
-            assert(outcome.first->value.size() == _nb_agents);
             for (std::size_t a = 0 ; a < _nb_agents ; a++) {
                 action.value[a] = outcome_probability * (outcome_cost + (_discount * outcome.first->value[a]));
                 action.all_value += action.value[a];
