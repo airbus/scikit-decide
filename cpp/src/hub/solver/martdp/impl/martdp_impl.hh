@@ -97,6 +97,10 @@ void SK_MARTDP_SOLVER_CLASS::solve(const State& s) {
         auto si = _graph.emplace(s);
         StateNode& root_node = const_cast<StateNode&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
 
+        if (si.second) {
+            initialize_node(root_node, _goal_checker(_domain, root_node.state));
+        }
+
         if (root_node.all_goal) { // problem already solved from this state (was present in _graph and already solved)
             Logger::info("MARTDP finished to solve from state " + s.print() + " [goal state]");
             return;
@@ -378,6 +382,9 @@ SK_MARTDP_SOLVER_CLASS::greedy_action(StateNode* s) {
         for (const auto& outcome : action.outcomes) {
             double outcome_cost = outcome.second.first;
             double outcome_probability = ((double) outcome.second.second) / ((double) action.expansions_count);
+            assert(action.value.size() == _nb_agents);
+            assert(outcome.first);
+            assert(outcome.first->value.size() == _nb_agents);
             for (std::size_t a = 0 ; a < _nb_agents ; a++) {
                 action.value[a] = outcome_probability * (outcome_cost + (_discount * outcome.first->value[a]));
                 action.all_value += action.value[a];
@@ -551,10 +558,25 @@ void SK_MARTDP_SOLVER_CLASS::compute_reachable_subgraph(StateNode* node, std::un
 SK_MARTDP_SOLVER_TEMPLATE_DECL
 void SK_MARTDP_SOLVER_CLASS::remove_subgraph(std::unordered_set<StateNode*>& root_subgraph,
                                              std::unordered_set<StateNode*>& child_subgraph) {
+    std::unordered_set<StateNode*> removed_subgraph;
+    // First pass: look for nodes in root_subgraph but not child_subgraph and remove
+    // those nodes from their children's parents
+    // Don't actually remove those nodes in the first pass otherwise some children to remove
+    // won't exist anymore when looking for their parents
     for (auto& n : root_subgraph) {
         if (child_subgraph.find(n) == child_subgraph.end()) {
-            _graph.erase(StateNode(n->state));
+            for (auto& action : n->actions) {
+                for (auto& outcome : action.outcomes) {
+                    // we won't change the real key (ActionNode::action) so we are safe
+                    outcome.first->parents.erase(&const_cast<ActionNode&>(action));
+                }
+            }
+            removed_subgraph.insert(n);
         }
+    }
+    // Second pass: actually remove nodes in root_subgraph but not in child_subgraph
+    for (auto& n : removed_subgraph) {
+        _graph.erase(StateNode(n->state));
     }
 }
 
