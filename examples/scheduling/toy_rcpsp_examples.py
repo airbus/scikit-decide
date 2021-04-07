@@ -427,6 +427,7 @@ def run_astar():
     plot_resource_individual_gantt(do_sol.problem, do_sol)
     plt.show()
 
+
 def run_do():
     from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, \
         PolicyMethodParams, BasePolicyMethod, SolvingMethod
