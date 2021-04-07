@@ -213,15 +213,8 @@ class RCPSPSolution(Solution):
                 valid = True  # 8
                 for t in range(current_min_time,
                                current_min_time
-                               +self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']):  # 9
-                    # print(act_id, t)
+                               + self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']):  # 9
                     for res in resource_avail_in_time.keys():  # 10
-                        # if t == 4:
-                        #     print('res--', res)
-                            # print('t--', t)
-                            # print('horizon', new_horizon)
-                            # print('resource_avail_in_time[res][t]: ', resource_avail_in_time[res][t])
-                            # print('self.problem.mode_details[act_id][modes_extended[act_id-1]][res]: ', self.problem.mode_details[act_id][modes_extended[act_id-1]][res])
                         if t < new_horizon:
                             if resource_avail_in_time[res][t] < self.problem.mode_details[act_id][modes_extended[act_id-1]][res]:  # 11
                                 valid = False  # 12
@@ -230,11 +223,7 @@ class RCPSPSolution(Solution):
                 if not valid:  # 13
                     current_min_time += 1  # 14
             if not unfeasible_non_renewable_resources:
-                # print('current_min_time: ', current_min_time)
-                # print('in mode: ', modes_extended[act_id-1])
-                # print('(mode details - duration: ', self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration'])
                 end_t = current_min_time + self.problem.mode_details[act_id][modes_extended[act_id - 1]]['duration']-1
-                # print('end_t: ', end_t)
                 for t in range(current_min_time, current_min_time + self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']):  # 15
                     for res in resource_avail_in_time.keys():  # 16
                         resource_avail_in_time[res][t] -= self.problem.mode_details[act_id][modes_extended[act_id-1]][res]  # 17
@@ -243,8 +232,6 @@ class RCPSPSolution(Solution):
                                 resource_avail_in_time[res][tt] -= self.problem.mode_details[act_id][modes_extended[act_id - 1]][res]
                                 if resource_avail_in_time[res][tt] < 0:
                                     unfeasible_non_renewable_resources = True
-                                    # print('resource', res, 'exhausted', resource_avail_in_time[res][tt], 'initial avail: ', self.problem.resources[res])
-                        # print(res, ' resource_avail_in_time[res]: ', resource_avail_in_time[res])
 
                 activity_end_times[act_id] = current_min_time + self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']  # 18
                 perm_extended.remove(act_id)

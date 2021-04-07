@@ -2,13 +2,15 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+# Plot utilities outside of the main library, needs additional dependencies like seaborn.
+
 from __future__ import annotations
 from typing import List
 import matplotlib.pyplot as plt
-from skdecide.discrete_optimization.generic_tools import ResultComparator
-from skdecide.discrete_optimization.generic_tools import ResultStorage, \
+from skdecide.discrete_optimization.generic_tools.result_storage.resultcomparator import ResultComparator
+from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage, \
     result_storage_to_pareto_front, ParetoFront
-import seaborn as sns
+import seaborn as sns # You'd need seaborn for this example.
 import matplotlib.cm as cm
 
 import numpy as np

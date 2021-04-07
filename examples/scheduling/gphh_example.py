@@ -135,7 +135,7 @@ def run_gphh():
 
     training_domains = []
     for td in training_domains_names:
-        training_domains.append(load_domain(file_path=get_complete_path("j1201_9.sm")))
+        training_domains.append(load_domain(file_path=get_complete_path(td)))
 
     runtimes = []
     for i in range(n_runs):
@@ -161,22 +161,17 @@ def run_gphh():
                       params_gphh=ParametersGPHH.fast_test()
                       # params_gphh=ParametersGPHH.default()
                       )
-
-
         solver.solve(domain_factory=lambda: domain)
-
         end = time.time()
-
         runtimes.append((end-start))
-
         heuristic = solver.hof
         print('ttype:', solver.best_heuristic)
-        file = open('./trained_gphh_heuristics/test_gphh_'+str(i)+'.pkl', 'wb')
-        # file = open('./test_gphh_heuristic_'+str(i)+'.pkl', 'wb')
-
-        pickle.dump(dict(hof= heuristic), file)
+        folder = './trained_gphh_heuristics'
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        file = open(os.path.join(folder, 'test_gphh_'+str(i)+'.pkl'), 'wb')
+        pickle.dump(dict(hof=heuristic), file)
         file.close()
-
         solver.set_domain(domain)
         states, actions, values = rollout_episode(domain=domain,
                                                   max_steps=1000,
@@ -190,7 +185,6 @@ def run_gphh():
     print('makespans: ', makespans)
     print('runtimes: ', runtimes)
     print('runtime - mean: ', np.mean(runtimes))
-
 
 
 def run_pooled_gphh():
@@ -221,6 +215,7 @@ def run_pooled_gphh():
         heuristics = []
         func_heuristics = []
         folder = './trained_gphh_heuristics'
+
         files = os.listdir(folder)
         solver = GPHH(training_domains=training_domains,
                       domain_model=training_domains[0],
@@ -628,7 +623,7 @@ def run_comparaison_stochastic():
 
 
 def run_comparaison():
-    from examples.discrete_optimization.rcpsp_parser import  \
+    from examples.discrete_optimization.rcpsp_parser_example import  \
         get_data_available
     import os
     files = get_data_available()
@@ -901,10 +896,4 @@ def compute_ref_permutations():
 
 if __name__ == "__main__":
     run_gphh()
-    # run_pooled_gphh()
-    # fitness_makespan_correlation()
-    # run_comparaison()
-    # run_comparaison_stochastic()
-    # run_gphh_with_settings()
-    # compare_settings()
-    # compute_ref_permutations()
+

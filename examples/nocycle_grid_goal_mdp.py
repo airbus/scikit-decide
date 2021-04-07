@@ -143,7 +143,7 @@ if __name__ == '__main__':
     except getopt.GetoptError as err:
         # print help information and exit:
         print(err) # will print something like "option -a not recognized"
-        usage()
+        # usage()
         sys.exit(2)
     
     rows = 10
