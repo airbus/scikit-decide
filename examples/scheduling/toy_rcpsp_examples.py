@@ -270,7 +270,7 @@ class MyExampleCondSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations_WithConditi
         return {1: [2,3], 2:[4], 3:[7], 4:[7], 5:[7], 6:[7], 7:[]}
 
     def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
-        return set([1,2,3,4,5,6,7])
+        return {1, 2, 3, 4, 5, 6, 7}
 
     def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
         return {

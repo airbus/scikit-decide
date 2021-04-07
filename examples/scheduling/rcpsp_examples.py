@@ -7,7 +7,7 @@ from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MSRCPSP
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
 from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
 from skdecide.hub.solver.sgs_policies.sgs_policies import PolicyMethodParams, BasePolicyMethod
-from tests.test_scheduling import ToyMS_RCPSPDomain, ToySRCPSPDomain
+from tests.scheduling.test_scheduling import ToyMS_RCPSPDomain, ToySRCPSPDomain
 from examples.discrete_optimization.rcpsp_parser_example import get_complete_path, get_data_available
 from examples.discrete_optimization.rcpsp_multiskill_parser_example import get_data_available_ms, \
     get_complete_path_ms
@@ -213,11 +213,11 @@ def run_and_compare_policies():
 
 if __name__ == "__main__":
     # check_uncertain_domain()
-    #random_walk()
-    #cp_solve()
-    #random_walk_multiskill()
+    # random_walk()
+    # cp_solve()
+    # random_walk_multiskill()
     do_multiskill_toy()
-    #do_multimode()
+    # do_multimode()
     # random_walk()
     # do_multiskill_toy()
     # cp_solve()

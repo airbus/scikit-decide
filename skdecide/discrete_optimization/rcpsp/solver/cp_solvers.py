@@ -674,23 +674,19 @@ class CP_MRCPSP_MZN_MODES:
         model = Model(files_mzn["modes"])
         solver = Solver.lookup(map_cp_solver_name[self.cp_solver_name])
         instance = Instance(solver, model)
+        keys = []
 
         n_res = len(list(self.rcpsp_model.resources.keys()))
-        # print('n_res: ', n_res)
         instance["n_res"] = n_res
-
-        # rc = [val for val in self.rcpsp_model.resources.values()]
-        # # print('rc: ', rc)
-        # instance["rc"] = rc
+        keys += ["n_res"]
 
         n_tasks = self.rcpsp_model.n_jobs + 2
-        # print('n_tasks: ', n_tasks)
         instance["n_tasks"] = n_tasks
+        keys += ["n_tasks"]
         sorted_tasks = sorted(self.rcpsp_model.mode_details.keys())
-        # print('mode_details: ', self.rcpsp_model.mode_details)
         n_opt = sum([len(list(self.rcpsp_model.mode_details[key].keys())) for key in sorted_tasks])
-        # print('n_opt: ', n_opt)
         instance["n_opt"] = n_opt
+        keys += ["n_opt"]
 
         modes = []
         counter = 0
@@ -709,7 +705,7 @@ class CP_MRCPSP_MZN_MODES:
 
         # print('modes: ', modes)
         instance['modes'] = modes
-
+        keys += ["modes"]
 
         rreq = []
         index = 0
@@ -722,18 +718,24 @@ class CP_MRCPSP_MZN_MODES:
 
         # print('rreq: ', rreq)
         instance["rreq"] = rreq
+        keys += ["rreq"]
+
 
         rcap = [val for val in self.rcpsp_model.resources.values()]
         # print('rcap: ', rcap)
         if isinstance(rcap[0], list):
             rcap = [int(max(r)) for r in rcap]
         instance["rcap"] = rcap
+        keys += ["rcap"]
 
-        # print('non_renewable_resources:', self.rcpsp_model.non_renewable_resources)
         rtype = [2 if res in self.rcpsp_model.non_renewable_resources else 1 for res in self.rcpsp_model.resources.keys()]
 
-        # print('rtype: ', rtype)
         instance["rtype"] = rtype
+        keys += ["rtype"]
+
+        # import pymzn # For debug purposes
+        # pymzn.dict2dzn({k: instance[k] for k in keys}, fout="debug_modes_satisfaction.dzn")
+
         self.instance: Instance = instance
         p_s: Union[PartialSolution, None] = args.get("partial_solution", None)
         if p_s is not None:
@@ -747,7 +749,6 @@ class CP_MRCPSP_MZN_MODES:
                         string = "constraint mrun[" + str(indexes[0]) + "] == 1;"
                         self.instance.add_string(string)
                         constraint_strings += [string]
-
 
     def retrieve_solutions(self, result, parameters_cp: ParametersCP=ParametersCP.default()):
         intermediate_solutions = parameters_cp.intermediate_solution
@@ -770,16 +771,20 @@ class CP_MRCPSP_MZN_MODES:
             all_modes += [modes]
         return all_modes
 
-    def solve(self, parameters_cp: ParametersCP=ParametersCP.default(), **args):
+    def solve(self, parameters_cp: ParametersCP = None, **args):
+        if parameters_cp is None:
+            parameters_cp = ParametersCP.default()
         if self.instance is None:
             self.init_model(**args)
         timeout = parameters_cp.TimeLimit
         intermediate_solutions = parameters_cp.intermediate_solution
         result = self.instance.solve(timeout=timedelta(seconds=timeout),
+                                     # nr_solutions=1000,
+                                     # nr_solutions=1,
                                      nr_solutions=parameters_cp.nr_solutions
                                      if not parameters_cp.all_solutions else None,
-                                     all_solutions=parameters_cp.all_solutions,
-                                     intermediate_solutions=intermediate_solutions)
+                                     all_solutions=parameters_cp.all_solutions)
+                                     #intermediate_solutions=intermediate_solutions)
         verbose = args.get("verbose", False)
         if verbose:
             print(result.status)
