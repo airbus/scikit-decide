@@ -396,7 +396,9 @@ def test_rollout(domain):
                                               max_steps=1000,
                                               solver=None,
                                               from_memory=state,
-                                              outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                                              action_formatter=None,
+                                              outcome_formatter=None,
+                                              verbose=False)
     check_rollout_consistency(domain, states)
 
 
@@ -509,8 +511,11 @@ def test_do(domain, do_solver):
                                               max_steps=1000,
                                               solver=solver,
                                               from_memory=state,
-                                              action_formatter=lambda o: str(o),
-                                              outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                                              action_formatter=None,
+                                              outcome_formatter=None,
+                                              verbose=False)
+                                              #action_formatter=lambda o: str(o),
+                                              #outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
     check_rollout_consistency(domain, states)
 
 @pytest.mark.parametrize("domain_multiskill", [
@@ -537,8 +542,9 @@ def test_do_mskill(domain_multiskill, do_solver_multiskill):
                                               max_steps=1000,
                                               solver=solver,
                                               from_memory=state,
-                                              action_formatter=lambda o: str(o),
-                                              outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                                              action_formatter=None,
+                                              outcome_formatter=None,
+                                              verbose=False)
     check_rollout_consistency(domain_multiskill, states)
 
 
@@ -554,14 +560,15 @@ def test_planning_algos(domain, solver_str):
     state = domain.get_initial_state()
     print("Initial state : ", state)
     if solver_str == 'LazyAstar':
-        solver = LazyAstar(from_state=state, heuristic=None, verbose=True)
+        solver = LazyAstar(from_state=state, heuristic=None, verbose=False)
     solver.solve(domain_factory=lambda: domain)
     states, actions, values = rollout_episode(domain=domain,
                                               max_steps=1000,
                                               solver=solver,
                                               from_memory=state,
-                                              action_formatter=lambda o: str(o),
-                                              outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                                              action_formatter=None,
+                                              outcome_formatter=None,
+                                              verbose=False)
     check_rollout_consistency(domain, states)
 
 
@@ -569,17 +576,21 @@ def test_planning_algos(domain, solver_str):
     (ToyCondSRCPSPDomain()),
 ])
 def test_conditional_task_models(domain):
-    n_rollout = 250
+    n_rollout = 2000
     counters = {'PROBLEM_OPERATION_2': 0, 'PROBLEM_OPERATION_3': 0}
     domain.set_inplace_environment(False)
+    random.seed(42)
+    import numpy as np
+    np.random.seed(42)
     for i in range(n_rollout):
         state = domain.get_initial_state()
         states, actions, values = rollout_episode(domain=domain,
                                                   max_steps=1000,
                                                   solver=None,
                                                   from_memory=state.copy(),
-                                                  outcome_formatter=None)
-                                              # outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                                                  verbose=False,
+                                                  outcome_formatter=None,
+                                                  action_formatter=None)
         if ConditionElementsExample.PROBLEM_OPERATION_2 in states[-1]._current_conditions:
             counters['PROBLEM_OPERATION_2'] += 1
         if ConditionElementsExample.PROBLEM_OPERATION_3 in states[-1]._current_conditions:
@@ -614,10 +625,9 @@ def test_optimality(domain, do_solver):
                                               max_steps=1000,
                                               solver=solver,
                                               from_memory=state,
-                                              action_formatter=
-                                              lambda o: str(o),
-                                              outcome_formatter=
-                                              lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                                              action_formatter=None,
+                                              outcome_formatter=None,
+                                              verbose=False)
 
     if isinstance(domain, ToyRCPSPDomain):
         makespan = max([states[-1].tasks_details[x].end for x in states[-1].tasks_complete])
@@ -650,10 +660,9 @@ def test_gecode_optimality(domain, do_solver):
                                               max_steps=1000,
                                               solver=solver,
                                               from_memory=state,
-                                              action_formatter=
-                                              lambda o: str(o),
-                                              outcome_formatter=
-                                              lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                                              action_formatter=None,
+                                              outcome_formatter=None,
+                                              verbose=False)
 
     if isinstance(domain, ToyRCPSPDomain):
         makespan = max([states[-1].tasks_details[x].end for x in states[-1].tasks_complete])
@@ -720,7 +729,7 @@ def test_sgs_policies(domain):
     solver = GPHH(training_domains=training_domains,
                   domain_model=domain,
                   weight=-1,
-                  verbose=True,
+                  verbose=False,
                   training_domains_names=training_domains_names,
                   params_gphh=ParametersGPHH.fast_test()
                   )
@@ -730,9 +739,9 @@ def test_sgs_policies(domain):
                                               max_steps=1000,
                                               solver=solver,
                                               from_memory=state,
-                                              verbose=False,
-                                              outcome_formatter=lambda
-                                                  o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                                              action_formatter=None,
+                                              outcome_formatter=None,
+                                              verbose=False)
     print("Cost :", sum([v.cost for v in values]))
     check_rollout_consistency(domain, states)
 
@@ -740,7 +749,7 @@ def test_sgs_policies(domain):
     solver = GPHH(training_domains=training_domains,
                   domain_model=training_domains[0],
                   weight=-1,
-                  verbose=True,
+                  verbose=False,
                   training_domains_names=training_domains_names,
                   params_gphh=ParametersGPHH.fast_test()
                   )
@@ -750,8 +759,8 @@ def test_sgs_policies(domain):
                                               max_steps=1000,
                                               solver=solver,
                                               from_memory=state,
-                                              verbose=False,
-                                              outcome_formatter=lambda
-                                                  o: f'{o.observation} - cost: {o.value.cost:.2f}')
+                                              action_formatter=None,
+                                              outcome_formatter=None,
+                                              verbose=False)
     print("Cost :", sum([v.cost for v in values]))
     check_rollout_consistency(domain, states)
