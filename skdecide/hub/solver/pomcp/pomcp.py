@@ -39,7 +39,7 @@ class POMCP(Solver, DeterministicPolicies):
         # bound). The approximation 2 * max_depth is ok if all actions have
         # cost 1. In general, there seems to be no way to query the domain
         # for the range of possible cost values.
-        self._VLV = 2 * self._max_depth  # TODO: replace with math.inf (or float('inf') as backup)?
+        self._VLV = 100 * self._max_depth
 
     def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
         self._domain = domain_factory()
@@ -75,9 +75,10 @@ class POMCP(Solver, DeterministicPolicies):
         
         # Select the best action from the successors of the current node:
         action = self._get_best_action(self._act_history, self._obs_history)
-        
+
         # Record the last action, and then return it:
         self._act_history = self._act_history + (action,)
+
         return action
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
@@ -94,7 +95,7 @@ class POMCP(Solver, DeterministicPolicies):
     def _update_belief_state(self, belief, action):
         new_belief = []
         for state in belief:
-            d = self._domain.get_next_state_distribution(Memory([state]), action)
+            d = self._domain.get_next_state_distribution(Memory([state]), action) if action is not None else self._domain.get_initial_state_distribution()
             new_state = d.sample()
             new_belief.append(new_state)
         return new_belief
@@ -121,7 +122,7 @@ class POMCP(Solver, DeterministicPolicies):
                         score = node[1] - (w * math.sqrt(math.log(parent[0])/node[0]))
                 else:
                     score = node[1]
-                if score < best_action_score:
+                if score <= best_action_score:
                     best_action = action
                     best_action_score = score
         return best_action
@@ -189,17 +190,17 @@ class POMCP(Solver, DeterministicPolicies):
 def get_probability(distribution, element, n=100):
     """Utility function to get the probability of a specific element from a scikit-decide distribution
     (based on sampling if this distribution is not a DiscreteDistribution)."""
-    # TODO: uncomment lines below once debugged
-    # # Avoid "dumb" sampling if the distribution is a DiscreteDistribution:
-    # if isinstance(distribution, DiscreteDistribution):
-    #     return next(p for e, p in distribution.get_values() if e == element)
-    # else:
-    p = 0
-    for i in range(n):
-        x = distribution.sample()
-        if x == element:
-            p += 1
-    return p / n
+
+    # Avoid "dumb" sampling if the distribution is a DiscreteDistribution:
+    if isinstance(distribution, DiscreteDistribution):
+        return next((p for e, p in distribution.get_values() if e == element), 0.)
+    else:
+        p = 0
+        for i in range(n):
+            x = distribution.sample()
+            if x == element:
+                p += 1
+        return p / n
 
 
 if __name__ == '__main__':
