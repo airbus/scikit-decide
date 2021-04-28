@@ -22,10 +22,10 @@ class GymDomainForWidthSolvers(D):
                  set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
                  get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
                  termination_is_goal: bool = True,
-                 continuous_feature_fidelity: int = 1,
+                 continuous_feature_fidelity: int = 5,
                  discretization_factor: int = 3,
                  branching_factor: int = None,
-                 max_depth: int = 50) -> None:
+                 max_depth: int = 1000) -> None:
         GymPlanningDomain.__init__(self,
                                    gym_env=gym_env,
                                    set_state=set_state,
@@ -39,8 +39,10 @@ class GymDomainForWidthSolvers(D):
         gym_env._max_episode_steps = max_depth
     
     def state_features(self, s):
-        return self.bee1_features(np.append(s._state,
-                                            s._context[3].value.reward if s._context[3] is not None else 0))
+        return self.bee2_features(s)
+    
+    def heuristic(self, s):
+        return Value(cost=0)
 
 
 if __name__ == '__main__':
@@ -105,17 +107,30 @@ if __name__ == '__main__':
          'entry': 'Astar',
          'need_domain_factory': True,
          'config': {'heuristic': lambda d, s: d.heuristic(s),
-                    'parallel': False, 'debug_logs': False}},
+                    'parallel': False,
+                    'debug_logs': False}},
+        
+        # LRTA* (classical planning)
+        {'name': 'LRTAStar',
+         'entry': 'LRTAstar',
+         'need_domain_factory': False,
+         'config': {'max_depth': 200,
+                    'max_iter': 1000,
+                    'heuristic': lambda d, s: d.heuristic(s),
+                    'verbose': True}},
 
         # UCT (reinforcement learning / search)
         {'name': 'UCT (reinforcement learning / search)',
          'entry': 'UCT',
          'need_domain_factory': True,
-         'config': {'time_budget': 1000, 'rollout_budget': 100,
+         'config': {'time_budget': 200,
+                    'rollout_budget': 100000,
                     'heuristic': lambda d, s: (d.heuristic(s), 10000),
                     'online_node_garbage': True,
-                    'max_depth': 50, 'ucb_constant': 1.0 / sqrt(2.0),
-                    'parallel': False, 'debug_logs': False}},
+                    'max_depth': 1000,
+                    'ucb_constant': 1.0 / sqrt(2.0),
+                    'parallel': False,
+                    'debug_logs': False}},
 
         # PPO: Proximal Policy Optimization (deep reinforcement learning)
         {'name': 'PPO: Proximal Policy Optimization (deep reinforcement learning)',
@@ -142,18 +157,25 @@ if __name__ == '__main__':
          'entry': 'RIW',
          'need_domain_factory': True,
          'config': {'state_features': lambda d, s: d.state_features(s),
-                    'time_budget': 1000, 'rollout_budget': 100,
-                    'max_depth': 50, 'exploration': 0.25,
-                    'use_simulation_domain': True, 'online_node_garbage': True,
-                    'continuous_planning': False,
-                    'parallel': False, 'debug_logs': False}},
+                    'use_state_feature_hash': False,
+                    'use_simulation_domain': True,
+                    'time_budget': 200,
+                    'rollout_budget': 100000,
+                    'max_depth': 1000,
+                    'exploration': 0.25,
+                    'online_node_garbage': True,
+                    'continuous_planning': True,
+                    'parallel': False,
+                    'debug_logs': False}},
         
         # IW (classical planning)
         {'name': 'IW (classical planning)',
          'entry': 'IW',
          'need_domain_factory': True,
          'config': {'state_features': lambda d, s: d.state_features(s),
-                    'parallel': False, 'debug_logs': False}},
+                    'node_ordering': lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty > b_novelty,
+                    'parallel': False,
+                    'debug_logs': False}},
         
         # BFWS (classical planning)
         {'name': 'BFWS (planning) - (num_rows * num_cols) binary encoding (1 binary variable <=> 1 cell)',
@@ -162,7 +184,8 @@ if __name__ == '__main__':
          'config': {'state_features': lambda d, s: d.state_features(s),
                     'heuristic': lambda d, s: d.heuristic(s),
                     'termination_checker': lambda d, s: d.is_goal(s),
-                    'parallel': False, 'debug_logs': False}}
+                    'parallel': False,
+                    'debug_logs': False}}
     ]
 
     # Load domains (filtering out badly installed ones)
@@ -213,6 +236,12 @@ if __name__ == '__main__':
                 elif selected_domain['name'] == 'Maze':
                     setattr(domain_type, 'heuristic',
                             lambda self, s: Value(cost=sqrt((self._goal.x - s.x)**2 + (self._goal.y - s.y)**2)))
+                elif selected_domain['name'] == 'Cart Pole (OpenAI Gym)':
+                    setattr(domain_type, 'heuristic',
+                            lambda self, s: Value(cost=1))
+                elif selected_domain['name'] == 'Mountain Car continuous (OpenAI Gym)':
+                    setattr(domain_type, 'heuristic',
+                            lambda self, s: Value(cost=150))
                 else:
                     setattr(domain_type, 'heuristic',
                             lambda self, s: Value(cost=0))
@@ -237,16 +266,21 @@ if __name__ == '__main__':
                 else:
                     # Solve with selected solver
                     actual_domain_type = domain_type
+                    actual_domain_config = selected_domain['config']
                     actual_domain = domain
                     if selected_solver['need_domain_factory']:
                         if selected_domain['entry'].__name__ == 'GymDomain' and \
-                            (selected_solver['entry'].__name__ == 'IW' or selected_solver['entry'].__name__ == 'BFWS'):
+                            (selected_solver['entry'].__name__ == 'IW' or
+                             selected_solver['entry'].__name__ == 'RIW' or
+                             selected_solver['entry'].__name__ == 'BFWS' or
+                             selected_solver['entry'].__name__ == 'UCT'):
                             actual_domain_type = GymDomainForWidthSolvers
-                            actual_domain = actual_domain_type(**selected_domain['config'])
-                            selected_solver['config']['node_ordering'] = lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty > b_novelty
-                        selected_solver['config']['domain_factory'] = lambda: actual_domain_type(**selected_domain['config'])
+                            if selected_domain['name'] == 'Cart Pole (OpenAI Gym)':
+                                actual_domain_config['termination_is_goal'] = False
+                            actual_domain = actual_domain_type(**actual_domain_config)
+                        selected_solver['config']['domain_factory'] = lambda: actual_domain_type(**actual_domain_config)
                     with solver_type(**selected_solver['config']) as solver:
-                        actual_domain_type.solve_with(solver, lambda: actual_domain_type(**selected_domain['config']))
+                        actual_domain_type.solve_with(solver, lambda: actual_domain_type(**actual_domain_config))
                         rollout(actual_domain, solver, **selected_domain['rollout'])
                 if hasattr(domain, 'close'):
                     domain.close()
