@@ -333,7 +333,7 @@ if __name__ == '__main__':
 
     # Write Reference index (reference/README.md)
     REF_INDEX_MAXDEPTH = 5
-    ref_entries = sorted([tuple(m['ref'].split('.')) for m in autodocs], key=lambda x: (len(x), x))  # sorted entries
+    ref_entries = sorted([tuple(m['ref'].split('.')) for m in autodocs], key=lambda x: [x[i] if i < len(x)-1 else '' for i in range(REF_INDEX_MAXDEPTH)])  # tree-sorted entries
     ref_entries = filter(lambda e: len(e) <= REF_INDEX_MAXDEPTH, ref_entries)  # filter out by max depth
     ref_entries = [{'text': e[-1], 'link': '.'.join(e), 'section': e[:-1]} for e in ref_entries]  # organize entries
 
@@ -366,7 +366,7 @@ if __name__ == '__main__':
     }
     for element in ['domain', 'solver']:
         spec = ''
-        characteristics = [module for module in autodocs if module['ref'].startswith(f'skdecide.builders.{element}.')]
+        characteristics = [module for module in autodocs if module['ref'].startswith(f'skdecide.builders.{element}.') and '.scheduling.' not in module['ref']]  # TODO: add separate scheduling domain/solver generator?
         default_characteristics = {c['ref'].split('.')[-1].capitalize(): '(none)' for c in characteristics}
     
         tmp_templates = []
@@ -419,7 +419,7 @@ if __name__ == '__main__':
         tmp_types = {}
         tmp_signatures = {}
         for module in autodocs:
-            if module['ref'].startswith(f'skdecide.builders.{element}.'):
+            if module['ref'].startswith(f'skdecide.builders.{element}.') and '.scheduling.' not in module['ref']:  # TODO: also store scheduling domain/state state (separately?) once scheduling domain/solver generator implemented
                 not_implemented = set()
                 for level in module.get('members', []):
                     level_name = level['name']
