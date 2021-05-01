@@ -32,8 +32,6 @@ for PYBIN in /opt/python/cp${PYTHON_VERSION/./}*/bin; do
     (cd /io/ && "${PYBIN}/python" -m pip install build cmake)
     (cd /io/ && "${PYBIN}/python" -m build --sdist --wheel --outdir /io/temp-wheels)
     (cd /io/ && rm -rf build)
-#   (cd /io/ &&  "${PYBIN}/python" -m pytest)
-#   (cd /io/ && "${PYBIN}/python" setup.py -q bdist_wheel -d /io/temp-wheels) # --cpp-extension)
 done
 
 echo $PLAT
