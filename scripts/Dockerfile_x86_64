@@ -17,10 +17,10 @@ RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.16.3/cmake-3.1
     && make \
     && make install
 # Install the latest boost library
-RUN curl -L https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.tar.gz -o boost-1.72.0.tar.gz \
-    && tar xfz boost-1.72.0.tar.gz \
-    && rm boost-1.72.0.tar.gz \
-    && cd boost_1_72_0 \
+RUN curl -L https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz -o boost-1.76.0.tar.gz \
+    && tar xfz boost-1.76.0.tar.gz \
+    && rm boost-1.76.0.tar.gz \
+    && cd boost_1_76_0 \
     && ./bootstrap.sh --help \
     && ./bootstrap.sh --without-icu --with-libraries=headers --prefix=/usr/local \
     && ./b2 install
