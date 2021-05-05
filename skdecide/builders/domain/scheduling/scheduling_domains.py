@@ -789,14 +789,14 @@ class SchedulingDomain(WithPrecedence,
                 if self.is_renewable(res):
                     renewable_type_cost_val += self.get_resource_cost_per_time_unit()[res] * next_state.resource_used[res]
                 else:
-                    nonrenewable_type_cost_val += (next_state.resource_used[res] - memory[-1].resource_used[res])  # res used not decreased for NR resources so need to compute difference from previous state
+                    nonrenewable_type_cost_val += (next_state.resource_used[res] - memory.resource_used[res])  # res used not decreased for NR resources so need to compute difference from previous state
             renewable_unit_cost_val = 0.
             nonrenewable_unit_cost_val = 0.
             for res in self.get_resource_units_names():
                 if self.is_renewable(res):
                     renewable_unit_cost_val += self.get_resource_cost_per_time_unit()[res] * next_state.resource_used[res]
                 else:
-                    nonrenewable_unit_cost_val += (next_state.resource_used[res] - memory[-1].resource_used[res])  # res used not decreased for NR resources so need to compute difference from previous state
+                    nonrenewable_unit_cost_val += (next_state.resource_used[res] - memory.resource_used[res])  # res used not decreased for NR resources so need to compute difference from previous state
             transition_cost = mode_cost_val + renewable_type_cost_val + nonrenewable_type_cost_val + renewable_unit_cost_val + nonrenewable_unit_cost_val
 
         # TODO: Handle more than 1 objective in the transition value (need weights ?)
