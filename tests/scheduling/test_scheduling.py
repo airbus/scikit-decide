@@ -447,16 +447,10 @@ def check_resource_constraints(domain, states: List[State]):
                 total_available = domain.get_quantity_resource(res, t)
                 total_consumed = 0
                 for id in domain.get_tasks_ids():
-                    if states[-1].tasks_details[id].start <= t and states[-1].tasks_details[id].end > t:
-                        total_consumed += domain.get_task_consumption(id, states[-1].tasks_mode[id], res, t)
-                assert total_consumed <= total_available, 'over consumption at t=' + str(t) + ' for res ' + res
-
-            for res in domain.get_resource_units_names():
-                total_available = domain.get_quantity_resource(res, t)
-                total_consumed = 0
-                for id in domain.get_tasks_ids():
-                    if states[-1].tasks_details[id].start <= t and states[-1].tasks_details[id].end > t:
-                        total_consumed += domain.get_task_consumption(id, states[-1].tasks_mode[id], res, t)
+                    if states[-1].tasks_details[id].start is not None and states[-1].tasks_details[id].end is not None:
+                        # The task had been scheduled.
+                        if states[-1].tasks_details[id].start <= t and states[-1].tasks_details[id].end > t:
+                            total_consumed += domain.get_task_consumption(id, states[-1].tasks_mode[id], res, t)
                 assert total_consumed <= total_available, 'over consumption at t=' + str(t) + ' for res ' + res
 
 
@@ -524,8 +518,8 @@ def test_do(domain, do_solver):
 @pytest.mark.parametrize("do_solver_multiskill", [
     # (SolvingMethod.CP),
     # (SolvingMethod.LS),
-    # (SolvingMethod.LP), # Runs on Popo but not ORC
-    # (SolvingMethod.LNS_CP), # long to run ...
+    # (SolvingMethod.LP),
+    # (SolvingMethod.LNS_CP)
     (SolvingMethod.GA)
 ])
 def test_do_mskill(domain_multiskill, do_solver_multiskill):
