@@ -25,9 +25,11 @@ mkdir -p /io/temp-wheels
 # Clean out any old existing wheels.
 find /io/temp-wheels/ -type f -delete
 
-for PYBIN in /opt/python/cp3[78]*/bin; do
+# Uses the Python version requested as first argument, otherwise use 3.8 by default
+PYTHON_VERSION=${1:-3.8}
+for PYBIN in /opt/python/cp${PYTHON_VERSION/./}*/bin; do
     (cd /io/ && "${PYBIN}/python" -m pip install --upgrade -q pip)
-    (cd /io/ && "${PYBIN}/python" -m pip install build)
+    (cd /io/ && "${PYBIN}/python" -m pip install build cmake)
     (cd /io/ && "${PYBIN}/python" -m build --sdist --wheel --outdir /io/temp-wheels)
     (cd /io/ && rm -rf build)
 #   (cd /io/ &&  "${PYBIN}/python" -m pytest)
