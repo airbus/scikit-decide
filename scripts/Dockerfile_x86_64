@@ -6,16 +6,11 @@ COPY . /io/
 WORKDIR /io/
 
 ARG CONDA_PREFIX=/opt/conda
+ARG PYTHON_VERSION=3.8
+ARG SKDECIDE_SKIP_DEPS=0
+ENV SKDECIDE_SKIP_DEPS=$SKDECIDE_SKIP_DEPS
 
 RUN yum install -y git zlib-devel
-# Install the latest CMake
-RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.16.3/cmake-3.16.3.tar.gz -o cmake-3.16.3.tar.gz \
-    && tar xfz cmake-3.16.3.tar.gz \
-    && rm cmake-3.16.3.tar.gz \
-    && cd cmake-3.16.3 \
-    && ./bootstrap -- -DCMAKE_USE_OPENSSL=OFF \
-    && make \
-    && make install
 # Install the latest boost library
 RUN curl -L https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz -o boost-1.76.0.tar.gz \
     && tar xfz boost-1.76.0.tar.gz \
@@ -25,7 +20,7 @@ RUN curl -L https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boo
     && ./bootstrap.sh --without-icu --with-libraries=headers --prefix=/usr/local \
     && ./b2 install
 #
-RUN ./scripts/build-manylinux-wheels.sh
+RUN ./scripts/build-manylinux-wheels.sh $PYTHON_VERSION
 #
 FROM scratch as release
 COPY --from=build /io/dist /wheelhouse

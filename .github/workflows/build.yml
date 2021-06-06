@@ -12,12 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2016, macos-10.15]
+        os: [windows-2016, macos-10.15, ubuntu-latest]
         python-version: [3.7, 3.8]
-        include:
-          - os: ubuntu-latest
-            python-version: 3.8
-            wheel: x86_64
     defaults:
       run:
         shell: bash
@@ -26,12 +22,14 @@ jobs:
     env:
       BOOST_ROOT: ${{github.workspace}}/3rdparty/boost
       BOOST_URL: https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.bz2
+      SKDECIDE_SKIP_DEPS: 1
 
     steps:
       - name: Checkout scikit-decide source code
         uses: actions/checkout@v2
         with:
           submodules: true
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -67,6 +65,20 @@ jobs:
           rm -rf boost_*/* download.tar.bz2 download.tar
         shell: bash
 
+      - name: Restore build dependencies
+        id: cache-build-dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            skdecide/hub/bin
+            skdecide/hub/share
+            skdecide/hub/*.msc
+          key: ${{ runner.os }}-cache-deps-${{ hashFiles('cpp/deps/chuffed', 'cpp/deps/gecode', 'cpp/deps/libminizinc') }}
+
+      - name: Update SKDECIDE_SKIP_DEPS
+        if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
+        run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         if: matrix.os == 'ubuntu-latest'
         id: buildx
@@ -80,18 +92,20 @@ jobs:
         if: matrix.os != 'ubuntu-latest'
         run: |
           echo $BOOST_ROOT
-          python -m pip install --upgrade -q pip
+          python -m pip install --upgrade pip
           pip install build poetry-dynamic-versioning
           python -m build --sdist --wheel
 
       - name: Build x86 Linux wheels
-        if: matrix.wheel == 'x86_64'
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          #docker run -e PLAT=manylinux2014_x86_64 -v `pwd`:/io quay.io/pypa/manylinux2014_x86_64 /io/scripts/build-manylinux-wheels.sh
-          docker --version
-          DOCKER_BUILDKIT=1 docker build -t skdecide_x86_64 --output type=local,dest=tmpwheelhouse -f scripts/Dockerfile_x86_64 .
+          DOCKER_BUILDKIT=1 docker build -t skdecide_x86_64 --build-arg PYTHON_VERSION=${{matrix.python-version}} --build-arg SKDECIDE_SKIP_DEPS=${{env.SKDECIDE_SKIP_DEPS}} --output type=local,dest=tmpwheelhouse -f scripts/Dockerfile_x86_64 .
           mkdir -p dist
           mv tmpwheelhouse/wheelhouse/*.whl dist/
+
+      - name: Update build cache from wheels
+        if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
+        run: 7z x dist/*.whl -y
 
       - name: Upload as build artifacts
         uses: actions/upload-artifact@v2
@@ -129,7 +143,7 @@ jobs:
 
       - name: Test with pytest
         run: |
-          pip install --find-links ./wheels/ scikit-decide[all] 
+          pip install --pre --find-links ./wheels/ "scikit-decide[all]"
           pytest -v -s tests/autocast
           pytest -v -s tests/solvers/cpp
           pytest -v -s tests/solvers/python
@@ -168,7 +182,8 @@ jobs:
 
       - name: Test with pytest
         run: |
-          pip install --find-links ./wheels/ scikit-decide[all] 
+          env
+          pip install --pre --find-links ./wheels/ "scikit-decide[all]"
           pytest -v -s tests/autocast
           pytest -v -s tests/solvers/cpp
           pytest -v -s tests/solvers/python
@@ -206,15 +221,13 @@ jobs:
 
       - name: Test with pytest
         run: |
-          pip install 
-          pip install --find-links ./wheels/ scikit-decide[all] 
+          pip install --pre --find-links ./wheels/ "scikit-decide[all]"
           pytest -v -s tests/autocast
           pytest -v -s tests/solvers/cpp
           pytest -v -s tests/solvers/python
           pytest -v -s tests/scheduling
 
-  deploy:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && github.repository == 'Airbus/scikit-decide'
+  upload:
     needs: [test-unix, test-macos, test-windows]
     strategy:
       matrix:
@@ -223,53 +236,15 @@ jobs:
       fail-fast: true
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Download Unix artifact
+      - name: Download artifacts
         uses: actions/download-artifact@v1.0.0
         with:
-          name: wh_unix
-      - name: Download MacOS artifact
-        uses: actions/download-artifact@v1.0.0
+          name: wheels
+      - name: Upload artifacts 📦 to release
+        uses: svenstaro/upload-release-action@v1-release
         with:
-          name: wh_macos
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v1.0.0
-        with:
-          name: wh_windows
-      - name: Move everything in wheelhouse
-        run: mkdir wheelhouse && mv wh_*/*.whl wheelhouse/ && mv wh_windows/*.tar.gz wheelhouse/
-      - name: Publish distribution 📦 to Test PyPI
-        if: startsWith(github.event.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          password: ${{ secrets.test_pypi_password }}
-          packages_dir: wheelhouse/
-          repository_url: https://test.pypi.org/legacy/
-      - name: Publish distribution 📦 to PyPI
-        if: startsWith(github.event.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          password: ${{ secrets.pypi_password }}
-          packages_dir: wheelhouse/
-  
-  build-docs:
-    needs: deploy
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: [3.8]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: generate documentation
-        run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
-        with:
-          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
-          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
-          COMMIT_MESSAGE: publish documentation
-          CLEAN: true
-          SINGLE_COMMIT: true
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: wheels/*.whl
+          tag: daily
+          overwrite: true
+          file_glob: true

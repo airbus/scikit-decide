@@ -154,25 +154,28 @@ def build(setup_kwargs: Dict[str, Any]) -> None:
                            f"-DPYTHON_EXECUTABLE={Path(sys.executable)}",
                            f"-DONLY_PYTHON=ON",
                        ]),
-        CMakeExtension(
-            name="chuffed",
-            source_dir="cpp/deps/chuffed",
-            install_prefix="skdecide/hub",
-            cmake_configure_options=[
-                       ]),
-        CMakeExtension(
-            name="gecode",
-            source_dir="cpp/deps/gecode",
-            install_prefix="skdecide/hub",
-            cmake_configure_options=[
-                       ]),
-        CMakeExtension(name="libminizinc",
-            source_dir="cpp/deps/libminizinc",
-            install_prefix="skdecide/hub",
-            cmake_configure_options=[
-                           f"-DBUILD_SHARED_LIBS:BOOL=OFF",
-                       ]),
     ]
+    if 'SKDECIDE_SKIP_DEPS' not in os.environ or os.environ['SKDECIDE_SKIP_DEPS'] == '0':
+        cmake_modules.extend([
+            CMakeExtension(
+                name="chuffed",
+                source_dir="cpp/deps/chuffed",
+                install_prefix="skdecide/hub",
+                cmake_configure_options=[
+                           ]),
+            CMakeExtension(
+                name="gecode",
+                source_dir="cpp/deps/gecode",
+                install_prefix="skdecide/hub",
+                cmake_configure_options=[
+                           ]),
+            CMakeExtension(name="libminizinc",
+                source_dir="cpp/deps/libminizinc",
+                install_prefix="skdecide/hub",
+                cmake_configure_options=[
+                               f"-DBUILD_SHARED_LIBS:BOOL=OFF",
+                           ]),
+        ])
     ext_modules = cython_modules + cmake_modules
 
     f = "cpp/deps/gecode/CMakeLists.txt"
