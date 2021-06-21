@@ -81,7 +81,7 @@ jobs:
         run: |
           echo $BOOST_ROOT
           python -m pip install --upgrade -q pip
-          pip install build
+          pip install build poetry-dynamic-versioning
           python -m build --sdist --wheel
 
       - name: Build x86 Linux wheels
