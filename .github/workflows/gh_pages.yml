@@ -21,14 +21,12 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Download Unix artifact
-        uses: dsaltares/fetch-gh-release-asset@master
+      - name: Download artifacts
+        uses: dawidd6/action-download-artifact@v2
         with:
-          repo: "galleon/scikit-decide"
-          version: "tags/daily"
-          file: "scikit_decide-0.9.2.dev0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
-          target: "scikit_decide-0.9.2.dev0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
-          token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: build.yml
+          workflow_conclusion: success
+          name: wheels
       - name: Install scikit-decide 
         run: |
           ls -lrt 
