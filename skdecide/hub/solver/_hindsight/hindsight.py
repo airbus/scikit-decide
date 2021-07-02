@@ -10,8 +10,8 @@ from typing import Dict, Hashable, Union
 
 import pathos.pools as pp
 
-from skdecide import Memory
-from skdecide.builders.solver import DeterministicPolicySolver, SolutionSolver
+from skdecide import Memory, Solver
+from skdecide.solvers import DeterministicPolicySolver
 
 
 def tree():
@@ -19,7 +19,7 @@ def tree():
 
 
 class HindsightPlanner:
-    dict_planner: Dict[int, Union[SolutionSolver, DeterministicPolicySolver]]
+    dict_planner: Dict[int, Union[Solver, DeterministicPolicySolver]]
     weight_scenario: Dict[int, float]
     # 1st key : a hashable state, 2nd key: the id of scenario, and finally the value is a path returned by the planner.
     plan_by_scenario: Dict[Hashable, Dict[int, object]]

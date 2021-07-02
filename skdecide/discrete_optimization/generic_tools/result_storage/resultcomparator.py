@@ -4,10 +4,9 @@
 
 from __future__ import annotations
 
-from skdecide.discrete_optimization.generic_tools \
-    import ResultStorage, result_storage_to_pareto_front
+from skdecide.discrete_optimization.generic_tools.result_storage import ResultStorage, result_storage_to_pareto_front
 from typing import List
-from skdecide.discrete_optimization.generic_tools import Problem
+from skdecide.discrete_optimization.generic_tools.do_problem import Problem
 
 
 class ResultComparator:

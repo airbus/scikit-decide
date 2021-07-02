@@ -4,17 +4,17 @@
 
 from __future__ import annotations
 
-from skdecide.discrete_optimization.generic_tools import MethodAggregating, BaseMethodAggregating, \
+from skdecide.discrete_optimization.generic_tools.do_problem import MethodAggregating, BaseMethodAggregating, \
     ParamsObjectiveFunction, ObjectiveHandling, ModeOptim, build_aggreg_function_and_params_objective
 from typing import List
 import numpy as np
 import random
 
-from skdecide.discrete_optimization.generic_tools import HillClimberPareto
-from skdecide.discrete_optimization.generic_tools import RestartHandlerLimit, ModeMutation
-from skdecide.discrete_optimization.generic_tools import TemperatureSchedulingFactor, SimulatedAnnealing
-from skdecide.discrete_optimization.generic_tools import BasicPortfolioMutation
-from skdecide.discrete_optimization.generic_tools import get_available_mutations
+from skdecide.discrete_optimization.generic_tools.ls.hill_climber import HillClimberPareto
+from skdecide.discrete_optimization.generic_tools.ls.local_search import RestartHandlerLimit, ModeMutation
+from skdecide.discrete_optimization.generic_tools.ls.simulated_annealing import TemperatureSchedulingFactor, SimulatedAnnealing
+from skdecide.discrete_optimization.generic_tools.mutations.mixed_mutation import BasicPortfolioMutation
+from skdecide.discrete_optimization.generic_tools.mutations.mutation_catalog import get_available_mutations
 from skdecide.discrete_optimization.rcpsp.mutations.mutation_rcpsp import PermutationMutationRCPSP
 from skdecide.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution, Aggreg_RCPSPModel, RCPSPModel
 
