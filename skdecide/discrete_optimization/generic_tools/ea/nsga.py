@@ -4,17 +4,17 @@
 
 from __future__ import annotations
 
-from skdecide.discrete_optimization.generic_tools import Problem, EncodingRegister, TypeAttribute, ObjectiveHandling, \
+from skdecide.discrete_optimization.generic_tools.do_problem import Problem, EncodingRegister, TypeAttribute, ObjectiveHandling, \
     ParamsObjectiveFunction, ModeOptim, build_evaluate_function_aggregated
 from deap import creator, base, tools, algorithms
 import random
 from typing import Union, Optional, Any, Dict, List
 import numpy as np
-from skdecide.discrete_optimization.generic_tools import generic_mutate_wrapper
-from skdecide.discrete_optimization.generic_tools import Mutation
-from skdecide.discrete_optimization.generic_tools import DeapCrossover, DeapMutation, DeapSelection
-from skdecide.discrete_optimization.generic_tools import ResultStorage
-from skdecide.discrete_optimization.generic_tools import TupleFitness
+from skdecide.discrete_optimization.generic_tools.ea.deap_wrappers import generic_mutate_wrapper
+from skdecide.discrete_optimization.generic_tools.do_mutation import Mutation
+from skdecide.discrete_optimization.generic_tools.ea.ga import DeapCrossover, DeapMutation, DeapSelection
+from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage
+from skdecide.discrete_optimization.generic_tools.do_problem import TupleFitness
 
 class Nsga():
     """NSGA
