@@ -464,6 +464,7 @@ if __name__ == '__main__':
         if docstr.startswith('Example '):
             selected_examples.append((docstr, name, code))
 
+    os.makedirs(os.path.join('.vuepress', 'public', 'notebooks'), exist_ok=True)
     sorted_examples = sorted(selected_examples)
     for docstr, name, code in sorted_examples:
         examples += f'## {docstr[docstr.index(":")+1:]}\n\n'
