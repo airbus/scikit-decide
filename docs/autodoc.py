@@ -70,6 +70,8 @@ def find_abs_modules(package):
     path_list = []
     spec_list = []
     for importer, modname, ispkg in pkgutil.walk_packages(package.__path__):
+        if modname == "hub.__skdecide_hub_cpp":
+            continue
         import_path = f'{package.__name__}.{modname}'
         if ispkg:
             spec = pkgutil._get_spec(importer, modname)
