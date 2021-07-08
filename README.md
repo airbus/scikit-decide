@@ -32,29 +32,65 @@ Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning 
 
 The use of a virtual environment for scikit-decide is recommended, e.g. by using [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install):
 
-On MacOS/Linux:
-
-    python3 -m venv /path/to/new/virtual/environment
-    source /path/to/new/virtual/environment/bin/activate
-
-On Windows:
-
-    py -m venv \path\to\new\virtual\environment
-    \path\to\new\virtual\environment\Scripts\activate
+    conda create --name skdecide python=3.7
+    conda activate skdecide
 
 ### 2. Quick install [Recommended]
 
     pip3 install -U pip
     pip3 install scikit-decide[all]
 
-### 3. Install from source
+### 3. Install from source [Developper mode]
 
-    pip3 install -U pip
-    curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+In order to install scikit-decide from the source so that your modification to the library are taken into account, we recommmend using poetry.
+
+Here are the steps to follow:
+
+- Clone the source and got to the "scikit-decide" root directory.
+    ```shell
     git clone --recurse-submodules -j8 https://github.com/Airbus/scikit-decide.git
     cd scikit-decide
-    poetry install --no-root --extras all
-    poetry build 
+    ```
+
+- Install and use pyenv to select the python version.
+    
+    - [Install the Python build dependencies](https://github.com/pyenv/pyenv/wiki#suggested-build-environment) as suggested on pyenv github.
+    - Install pyenv using [pyenv-installer](https://github.com/pyenv/pyenv-installer):
+        ```shell
+        curl https://pyenv.run | bash
+        exec $SHELL
+        ```
+    
+    - Install and set proper python version (e.g. 3.8.11) for the scikit-decide project.
+        ```shell
+        pyenv install 3.8.11
+        pyenv local 3.8.11
+        ```
+    
+- Update pip installer (the one that `pyenv` makes you use).
+    ```shell
+    pip install -U pip
+    ```
+
+- Use poetry to install the project:
+
+    - Install [poetry](https://python-poetry.org/docs/master/#installation).
+        ```shell
+        curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python -
+        export PATH="$HOME/.local/bin:$PATH"  # add path to poetry
+        ```
+    
+    - Specify to poetry the python version to use so that it creates the appropriate virtual environment.
+        ```shell
+        poetry env use 3.8.11
+        ```
+      
+    - Install all dependencies as defined in `poetry.lock`.
+        ```shell
+        rm -rf build  # removing previous build
+        poetry install --extras all
+        ```
+        
 
 ## Documentation
 
@@ -66,7 +102,11 @@ The latest documentation is [available online](https://airbus.github.io/scikit-d
 
 You can also run the documentation locally (e.g. when you are contributing to it or to access an older version).
 
-#### 1. Install the documentation
+#### 1. Install the library in developper mode.
+
+See [above](#3-nstall-from-source-developper-mode) to install scikit-decide with poetry.
+
+#### 2. Install the documentation dependencies
 
 The documentation is using [VuePress](https://v1.vuepress.vuejs.org) to generate an interactive static website.
 
@@ -77,14 +117,23 @@ Make sure you are in the "scikit-decide" root directory and install documentatio
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
     yarn install
 
-#### 2. Access the documentation
+#### 3. Build the docs
+
+Make sure you are in the "scikit-decide" root directory and using the virtual environment where you installed scikit-decide. 
+If you used poetry, that means prepending python commands with `poetry run`.
+Then generate doc with:
+    
+    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
+    poetry run python docs/autodoc.py
+ 
+#### 3. Access the documentation
 
 Make sure you are in the "scikit-decide" root directory and start the local documentation server:
 
     cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE
     yarn docs:dev
 
-Open your web browser to access the documentation (by default on http://localhost:8080).
+Open your web browser to access the documentation (by default on http://localhost:8080/scikit-decide/).
 
 ## Examples
 
@@ -132,7 +181,7 @@ These combinations are particularly efficient if you want to try them out:
 
 ## Unit tests
 
-Pytest is required to run unit tests (`pip install pytest`).
+Pytest is required to run unit tests. It should have been already installed by poetry if you followed above instructions.
 
 Make sure you are in the "scikit-decide" root directory and run unit tests (the "-v" verbose mode is optional but gives additional details):
 
