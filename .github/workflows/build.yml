@@ -248,3 +248,49 @@ jobs:
           tag: daily
           overwrite: true
           file_glob: true
+  build-docs:
+    needs: upload
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.7]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Download artifacts
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: build.yml
+          workflow_conclusion: success
+          name: wheels
+      - name: Install scikit-decide
+        run: |
+          ls -lrt
+          python -m pip install --upgrade pip
+          python --version
+          python -c "import platform; print(platform.architecture())"
+          python3 -c "import distutils.util; print(distutils.util.get_platform().replace('.', '_').replace('-', '_'))"
+          pip install --pre --find-links ./ "scikit-decide[all]"
+      - name: Generate
+        run: |
+          (cd docs; python autodoc.py)
+      - name: generate documentation
+        run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
+      - name: Deploy 🚀
+        if: ${{ github.ref == 'refs/heads/master' }}
+        uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
+          BRANCH: gh-pages # The branch the action should deploy to.
+          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
+          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
+          COMMIT_MESSAGE: publish documentation
+          CLEAN: true
+          SINGLE_COMMIT: true
