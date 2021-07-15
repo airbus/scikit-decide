@@ -20,16 +20,27 @@ header_comment = '# %%\n'
 
 
 # https://github.com/kiwi0fruit/ipynb-py-convert/blob/master/ipynb_py_convert/__main__.py
-def py2nb(py_str):
+def py2nb(py_str, title=None):
     cells = []
-    chunks = py_str.split(f'\n\n{header_comment}')[1:]
+    if title is not None:
+        # first cell = title
+        cell = {
+            'cell_type': 'markdown',
+            'metadata': {},
+            'source': [f'# {title}'],
+        }
+        cells.append(cell)
 
+    chunks = py_str.split(f'\n\n{header_comment}')[1:]
     for chunk in chunks:
         cell_type = 'code'
         chunk = chunk.strip()
         if chunk.startswith("'''"):
             chunk = chunk.strip("'\n")
             cell_type = 'markdown'
+        elif chunk.startswith("# %"):
+            # magic commands
+            chunk = chunk[2:]
 
         cell = {
             'cell_type': cell_type,
@@ -200,6 +211,7 @@ def is_implemented(func_code):
 
 
 if __name__ == '__main__':
+    docdir = os.path.dirname(os.path.abspath(__file__))
 
     # ========== GATHER AUTODOC INFOS ==========
 
@@ -279,10 +291,11 @@ if __name__ == '__main__':
     # ========== GENERATE MARKDOWN FILES ==========
 
     # Remove all previously auto-generated files
-    for oldpath in glob('reference/_*.md') + glob('guide/_*.md') + glob('.vuepress/public/notebooks/*.ipynb'):
+    for oldpath in glob(f'{docdir}/reference/_*.md') + glob(f'{docdir}/guide/_*.md') + glob(f'{docdir}/.vuepress/public/notebooks/*.ipynb'):
         os.remove(oldpath)
 
     # Generate Reference Markdown files (reference/_skdecide.*.md)
+    os.makedirs(f'{docdir}/reference', exist_ok=True)
     for module in autodocs:
 
         # Initiate Markdown
@@ -330,7 +343,7 @@ if __name__ == '__main__':
                         if 'doc' in submember:
                             md += f'{doc_escape(submember["doc"])}\n\n'
 
-        with open(f'reference/_{module["ref"]}.md', 'w') as f:
+        with open(f'{docdir}/reference/_{module["ref"]}.md', 'w') as f:
             f.write(md)
 
     # Write Reference index (reference/README.md)
@@ -353,7 +366,7 @@ if __name__ == '__main__':
                 sections.add(section)
         reference += f'- <router-link to="_{e["link"]}">{e["text"]}</router-link>\n'
 
-    with open(f'reference/README.md', 'w') as f:
+    with open(f'{docdir}/reference/README.md', 'w') as f:
         f.write(reference)
 
     # Write Domain/Solver Specification pages (guide/_domainspec.md & guide/_solverspec.md)
@@ -411,7 +424,7 @@ if __name__ == '__main__':
                      f'<skdecide-spec{" isSolver" if element == "solver" else ""}>\n\n' + spec
         spec += '</skdecide-spec>\n\n'
 
-        with open(f'guide/_{element}spec.md', 'w') as f:
+        with open(f'{docdir}/guide/_{element}spec.md', 'w') as f:
             f.write(spec)
 
     # Write Json state (.vuepress/_state.json)
@@ -452,27 +465,29 @@ if __name__ == '__main__':
         state['types'][element] = tmp_types
         state['signatures'][element] = tmp_signatures
 
-    with open('.vuepress/_state.json', 'w') as f:
+    with open(f'{docdir}/.vuepress/_state.json', 'w') as f:
         json.dump(state, f)
 
     # Convert selected examples to notebooks & write Examples page (guide/_examples.md)
     examples = '# Examples\n\n'
 
     selected_examples = []
-    for example in glob('../examples/*.py'):
+    for example in glob(f'{docdir}/../examples/*.py'):
         docstr, name, code = py_parse(example)
         if docstr.startswith('Example '):
             selected_examples.append((docstr, name, code))
 
-    os.makedirs(os.path.join('.vuepress', 'public', 'notebooks'), exist_ok=True)
+    os.makedirs(f'{docdir}/.vuepress/public/notebooks', exist_ok=True)
     sorted_examples = sorted(selected_examples)
     for docstr, name, code in sorted_examples:
-        examples += f'## {docstr[docstr.index(":")+1:]}\n\n'
-        examples += f'<el-link type="primary" icon="el-icon-bottom" :underline="false" style="margin: 10px" href="/notebooks/{name}.ipynb">Download Notebook</el-link>\n'
+        title = docstr[docstr.index(":")+1:]
+        examples += f'## {title}\n\n'
+        examples += f'<el-link type="primary" icon="el-icon-bottom" :underline="false" style="margin: 10px" href="../notebooks/{name}.ipynb">Download Notebook</el-link>\n'
         examples += f'<el-link type="warning" icon="el-icon-cloudy" :underline="false" style="margin: 10px" href="https://colab.research.google.com/github/airbus/scikit-decide/blob/gh-pages/notebooks/{name}.ipynb">Run in Google Colab</el-link>\n\n'
-        notebook = py2nb(code)
+        notebook = py2nb(code, title=title)
 
-        for cell in notebook.get('cells', []):
+        # Render cells, except for first cell with title
+        for cell in notebook['cells'][1:]:
             cell_type = cell['cell_type']
             cell_source = ''.join(cell['source'])
             if cell_type == 'markdown':
@@ -480,8 +495,8 @@ if __name__ == '__main__':
             elif cell_type == 'code':
                 examples += f'``` py\n{cell_source}\n```\n\n'
 
-        with open(f'.vuepress/public/notebooks/{name}.ipynb', 'w') as f:
+        with open(f'{docdir}/.vuepress/public/notebooks/{name}.ipynb', 'w') as f:
             json.dump(notebook, f, indent=2)
 
-    with open('guide/_examples.md', 'w') as f:
+    with open(f'{docdir}/guide/_examples.md', 'w') as f:
         f.write(examples)
