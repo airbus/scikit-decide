@@ -140,6 +140,14 @@ class ExtensionBuilder(build_ext):
         # Install the project
         subprocess.check_call(install_command)
 
+    def copy_extensions_to_source(self):
+        original_extensions = list(self.extensions)
+        self.extensions = [
+            ext for ext in self.extensions
+            if not isinstance(ext, CMakeExtension) or not ext.disable_editable
+        ]
+        super().copy_extensions_to_source()
+        self.extensions = original_extensions
 
 
 def build(setup_kwargs: Dict[str, Any]) -> None:
@@ -147,7 +155,7 @@ def build(setup_kwargs: Dict[str, Any]) -> None:
 
     cmake_modules = [
         CMakeExtension(
-            name="skdecide/hub/",
+            name="skdecide/hub/__skdecide_hub_cpp",
             source_dir="cpp",
             install_prefix="",
             cmake_configure_options=[
@@ -159,6 +167,7 @@ def build(setup_kwargs: Dict[str, Any]) -> None:
         cmake_modules.extend([
             CMakeExtension(
                 name="chuffed",
+                disable_editable=True,
                 source_dir="cpp/deps/chuffed",
                 install_prefix="skdecide/hub",
                 cmake_configure_options=[
@@ -167,11 +176,14 @@ def build(setup_kwargs: Dict[str, Any]) -> None:
                            ]),
             CMakeExtension(
                 name="gecode",
+                disable_editable=True,
                 source_dir="cpp/deps/gecode",
                 install_prefix="skdecide/hub",
                 cmake_configure_options=[
                            ]),
-            CMakeExtension(name="libminizinc",
+            CMakeExtension(
+                name="libminizinc",
+                disable_editable=True,
                 source_dir="cpp/deps/libminizinc",
                 install_prefix="skdecide/hub",
                 cmake_configure_options=[
