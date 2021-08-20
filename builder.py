@@ -162,6 +162,8 @@ def build(setup_kwargs: Dict[str, Any]) -> None:
                 source_dir="cpp/deps/chuffed",
                 install_prefix="skdecide/hub",
                 cmake_configure_options=[
+                           f"-DBISON_EXECUTABLE=false",
+                           f"-DFLEX_EXECUTABLE=false",
                            ]),
             CMakeExtension(
                 name="gecode",
