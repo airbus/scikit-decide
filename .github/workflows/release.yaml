@@ -231,12 +231,7 @@ jobs:
 
   upload:
     needs: [test-unix, test-macos, test-windows]
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: [3.8]
-      fail-fast: true
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Download artifacts
@@ -260,12 +255,7 @@ jobs:
 
   deploy:
     needs: [upload]
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: [3.8]
-      fail-fast: true
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Download artifact
@@ -284,12 +274,7 @@ jobs:
 
   build-docs:
     needs: [deploy]
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: [3.7]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
@@ -299,7 +284,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.7
 
       - name: Download artifacts
         uses: actions/download-artifact@v1.0.0
