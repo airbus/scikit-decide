@@ -1,0 +1,329 @@
+name: 🔨 Release scikit-decide
+
+on:
+  create:
+    branches:
+      - master
+    tags:
+      - 'v?.*'
+  workflow_dispatch:
+
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2016, macos-10.15, ubuntu-latest]
+        python-version: [3.7, 3.8]
+    defaults:
+      run:
+        shell: bash
+    runs-on: ${{ matrix.os }}
+
+    env:
+      BOOST_ROOT: ${{github.workspace}}/3rdparty/boost
+      BOOST_URL: https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.bz2
+      SKDECIDE_SKIP_DEPS: 1
+
+    steps:
+      - name: Checkout scikit-decide source code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Load cached venv
+        id: cached-pip-wheels
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Restore Boost cache
+        uses: actions/cache@v2.1.4
+        id: cache-boost
+        with:
+          path: ${{env.BOOST_ROOT}}
+          key: boost
+
+      - name: Install Boost
+        if: steps.cache-boost.outputs.cache-hit != 'true'
+        run: |
+          if [ "$OS" == "Windows_NT" ]; then
+            # fix up paths to be forward slashes consistently
+            BOOST_ROOT=$(echo $BOOST_ROOT | sed 's/\\/\//g')
+          fi
+          mkdir -p $BOOST_ROOT
+          curl --progress-bar --location --output $BOOST_ROOT/download.tar.bz2 $BOOST_URL
+          7z -o$BOOST_ROOT x $BOOST_ROOT/download.tar.bz2 -y -bd
+          7z -o$BOOST_ROOT x $BOOST_ROOT/download.tar -y -bd
+          cd $BOOST_ROOT && cp -r boost_*/* .
+          rm -rf boost_*/* download.tar.bz2 download.tar
+        shell: bash
+
+      - name: Restore build dependencies
+        id: cache-build-dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            skdecide/hub/bin
+            skdecide/hub/share
+            skdecide/hub/*.msc
+          key: ${{ runner.os }}-cache-deps-${{ hashFiles('cpp/deps/chuffed', 'cpp/deps/gecode', 'cpp/deps/libminizinc') }}
+
+      - name: Update SKDECIDE_SKIP_DEPS
+        if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
+        run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        if: matrix.os == 'ubuntu-latest'
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Install boost & omp on MacOS
+        if: matrix.os == 'macos-10.15'
+        run: brew install libomp
+
+      - name: Build macOS/Windows wheel
+        if: matrix.os != 'ubuntu-latest'
+        run: |
+          echo $BOOST_ROOT
+          python -m pip install --upgrade pip
+          pip install build poetry-dynamic-versioning
+          python -m build --sdist --wheel
+
+      - name: Build x86 Linux wheels
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t skdecide_x86_64 --build-arg PYTHON_VERSION=${{matrix.python-version}} --build-arg SKDECIDE_SKIP_DEPS=${{env.SKDECIDE_SKIP_DEPS}} --output type=local,dest=tmpwheelhouse -f scripts/Dockerfile_x86_64 .
+          mkdir -p dist
+          mv tmpwheelhouse/wheelhouse/*.whl dist/
+
+      - name: Update build cache from wheels
+        if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
+        run: 7z x dist/*.whl -y
+
+      - name: Upload as build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist/*.whl
+
+  test-unix:
+    needs: build
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.7, 3.8]
+        compiler: [gnu]
+      fail-fast: true
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest tqdm
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wheels
+
+      - name: Test with pytest
+        run: |
+          pip install --pre --find-links ./wheels/ "scikit-decide[all]"
+          pytest -v -s tests/autocast
+          pytest -v -s tests/solvers/cpp
+          pytest -v -s tests/solvers/python
+          pytest -v -s tests/scheduling
+
+  test-macos:
+    needs: build
+    strategy:
+      matrix:
+        os: [macos-latest]
+        python-version: [3.7, 3.8]
+        compiler: [gnu]
+      fail-fast: true
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install libomp package
+        run: brew install libomp
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest tqdm
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wheels
+
+      - name: Test with pytest
+        run: |
+          env
+          pip install --pre --find-links ./wheels/ "scikit-decide[all]"
+          pytest -v -s tests/autocast
+          pytest -v -s tests/solvers/cpp
+          pytest -v -s tests/solvers/python
+          pytest -v -s tests/scheduling
+
+  test-windows:
+    needs: build
+    strategy:
+      matrix:
+        os: [windows-latest]
+        python-version: [3.7, 3.8]
+        compiler: [gnu]
+      fail-fast: true
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest tqdm
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wheels
+
+      - name: Test with pytest
+        run: |
+          pip install --pre --find-links ./wheels/ "scikit-decide[all]"
+          pytest -v -s tests/autocast
+          pytest -v -s tests/solvers/cpp
+          pytest -v -s tests/solvers/python
+          pytest -v -s tests/scheduling
+
+  upload:
+    needs: [test-unix, test-macos, test-windows]
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.8]
+      fail-fast: true
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wheels
+
+      - name: Get the version
+        id: get_version
+        run: |
+          echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+
+      - name: Upload artifacts 📦 to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: wheels/*.whl
+          tag: ${{ steps.get_version.outputs.VERSION }}
+          overwrite: true
+          file_glob: true
+
+  deploy:
+    needs: [upload]
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.8]
+      fail-fast: true
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wheels
+
+      - name: Publish distribution 📦 to PyPI
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_PASSWORD }}
+        if: ${{ env.GITHUB_REPOSITORY  == 'airbus/scikit-decide' }} && ${{ env.PYPI_TOKEN != '' }}
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.PYPI_PASSWORD }}
+          packages_dir: wheels/
+
+  build-docs:
+    needs: [deploy]
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.7]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v1.0.0
+        with:
+          name: wheels
+
+      - name: Install scikit-decide
+        run: |
+          pip install --pre --find-links ./wheels "scikit-decide[all]"
+
+      - name: Generate
+        run: |
+          (cd docs; python autodoc.py)
+
+      - name: generate documentation
+        run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
+          BRANCH: gh-pages # The branch the action should deploy to.
+          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
+          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
+          COMMIT_MESSAGE: publish documentation
+          CLEAN: true
+          SINGLE_COMMIT: true
