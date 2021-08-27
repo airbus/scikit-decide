@@ -262,11 +262,21 @@ jobs:
       - name: Publish distribution 📦 to PyPI
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_PASSWORD }}
-        if: ${{ env.GITHUB_REPOSITORY  == 'airbus/scikit-decide' }} && ${{ env.PYPI_TOKEN != '' }}
+        if: env.GITHUB_REPOSITORY  == 'airbus/scikit-decide' && env.PYPI_TOKEN != ''
         uses: pypa/gh-action-pypi-publish@master
         with:
           password: ${{ secrets.PYPI_PASSWORD }}
           packages_dir: wheels/
+
+      - name: Publish distribution 📦 to Test PyPI
+        env:
+          TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_PASSWORD }}
+        if: env.TEST_PYPI_TOKEN != ''
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.TEST_PYPI_PASSWORD }}
+          packages_dir: wheels/
+          repository_url: https://test.pypi.org/legacy/
 
   build-docs:
     needs: [deploy]
