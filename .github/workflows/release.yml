@@ -262,7 +262,7 @@ jobs:
       - name: Publish distribution 📦 to PyPI
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_PASSWORD }}
-        if: env.GITHUB_REPOSITORY  == 'airbus/scikit-decide' && env.PYPI_TOKEN != ''
+        if: github.repository == 'airbus/scikit-decide' && env.PYPI_TOKEN != ''
         uses: pypa/gh-action-pypi-publish@master
         with:
           password: ${{ secrets.PYPI_PASSWORD }}
