@@ -25,34 +25,46 @@ Scikit-decide provides a meaningful API to interact with domains at the expected
 ## Installation
 
 ### 1. Make sure to have a Python 3.7+ environment
+  
+The use of a virtual environment for scikit-decide is recommended, and you will need to ensure the environment use a Python version greater than 3.7.
+This can be achieved by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win)) and [venv](https://docs.python.org/fr/3/library/venv.html) module as follows:
 
-The use of a virtual environment for scikit-decide is recommended, e.g. by using [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install):
+- <a name="use-pyenv"></a>Use pyenv to install an appropriate python version (3.7+).
+    
+    - Install the [Python build dependencies](https://github.com/pyenv/pyenv/wiki#suggested-build-environment) as suggested on pyenv github.
+    - Install pyenv using [pyenv-installer](https://github.com/pyenv/pyenv-installer):
+        ```shell
+        curl https://pyenv.run | bash
+        exec $SHELL
+        ```
+    - Install the chosen python version (e.g. 3.8.11):
+        ```shell
+        pyenv install 3.8.11
+        ```
+      
+- Create the virtual environment with the installed python version, and activate it.
+    ```shell
+    pyenv shell 3.8.11
+    python -m venv skdecide-venv
+    source skdecide-venv
+    ```   
 
-    conda create --name skdecide python=3.7
-    conda activate skdecide
+### 2. Install scikit-decide library
 
-### 2. Install the scikit-decide library
+##### Full install [Recommended]
 
-#### a. Full installation (recommended)
+Install scikit-decide library from PyPI with all dependencies required by domains/solvers in the hub (scikit-decide catalog).
+```shell
+pip install -U pip
+pip install -U scikit-decide[all]
+```
 
-Make sure you are in the "scikit-decide for Python" root directory and install with Pip:
-
-    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE/python
-    pip install .[all]
-
-This will install the core library and additionally all dependencies required by domains/solvers in the hub (scikit-decide catalog).
-
-Alternatively, if you wish to install only the ones required by domains (resp. solvers) from the hub, replace `[all]` in the last command by `[domains]` (resp. `[solvers]`).
-
-#### b. Minimal installation (not recommended)
-
-Make sure you are in the "scikit-decide for Python" root directory and install with Pip:
-
-    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE/python
-    pip install .
-
-This will only install the core library, which is enough if you intend to create your own domain and solver.
-
+##### Minimal install  
+Alternatively you can choose to only install the core library, which is enough if you intend to create your own domain and solver.
+```shell
+pip install -U pip
+pip install -U scikit-decide
+```
 ## Getting started
 
 Domain characteristics are one of the key concepts in scikit-decide: they are combined on the one hand to define domains, on the other hand to specify the envelope of domains a solver can tackle.
