@@ -70,7 +70,7 @@ This can be achieved by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv
 
 ### 2. Install scikit-decide library
 
-##### Full install [Recommended]
+#### Full install [Recommended]
 
 Install scikit-decide library from PyPI with all dependencies required by domains/solvers in the hub (scikit-decide catalog).
 ```shell
@@ -78,7 +78,7 @@ pip install -U pip
 pip install -U scikit-decide[all]
 ```
 
-##### Minimal install  
+#### Minimal install  
 Alternatively you can choose to only install the core library, which is enough if you intend to create your own domain and solver.
 ```shell
 pip install -U pip
