@@ -26,6 +26,28 @@
 
 Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.
 
+
+* [Installation](#installation)
+  * [Installing the latest release](#installing-the-latest-release)
+     * [1. Make sure to have a Python 3.7+ environment](#1-make-sure-to-have-a-python-37-environment)
+        * [On Linux/MacOS](#on-linuxmacos)
+        * [On Windows](#on-windows)
+     * [2. Install scikit-decide library](#2-install-scikit-decide-library)
+        * [Full install [Recommended]](#full-install-recommended)
+        * [Minimal install](#minimal-install)
+  * [Installing from source [Developer mode]](#installing-from-source-developer-mode)
+* [Documentation](#documentation)
+  * [Online](#online)
+  * [Locally](#locally)
+     * [1. Install the library in developer mode.](#1-install-the-library-in-developer-mode)
+     * [2. Install the documentation dependencies](#2-install-the-documentation-dependencies)
+     * [3. Build the docs](#3-build-the-docs)
+     * [4. Access the documentation](#4-access-the-documentation)
+* [Examples](#examples)
+  * [Playground](#playground)
+* [Unit tests](#unit-tests)
+
+
 ## Installation
 
 ### Installing the latest release
