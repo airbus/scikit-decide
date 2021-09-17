@@ -35,6 +35,8 @@ Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning 
 The use of a virtual environment for scikit-decide is recommended, and you will need to ensure the environment use a Python version greater than 3.7.
 This can be achieved by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win)) and [venv](https://docs.python.org/fr/3/library/venv.html) module as follows:
 
+##### On Linux/MacOS
+
 - <a name="use-pyenv"></a>Use pyenv to install an appropriate python version (3.7+).
     
     - Install the [Python build dependencies](https://github.com/pyenv/pyenv/wiki#suggested-build-environment) as suggested on pyenv github.
@@ -55,6 +57,23 @@ This can be achieved by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv
     source skdecide-venv
     ```   
 
+##### On Windows
+
+- Use pyenv-win to install an appropriate python version (3.7+).
+    
+    - Install pyenv-win following one of the [several official methods](https://github.com/pyenv-win/pyenv-win#installation).
+    - Install the chosen python version (e.g. 3.8.11):
+        ```shell
+        pyenv install 3.8.11
+        ```
+      
+- Create the virtual environment with the installed python version, and activate it.
+    ```shell
+    pyenv shell 3.8.11
+    python -m venv skdecide-venv
+    skdecide-venv\Scripts\activate
+    ```   
+
 #### 2. Install scikit-decide library
 
 ##### Full install [Recommended]
@@ -73,6 +92,8 @@ pip install -U scikit-decide
 ```
   
 ### Installing from source [Developer mode]
+
+> **Disclaimer**: The following process has only been tested on Linux/MacOS platforms. For windows, you will need at least to use pyenv-win instead of pyenv. 
 
 In order to install scikit-decide from the source so that your modification to the library are taken into account, we recommmend using poetry.
 
