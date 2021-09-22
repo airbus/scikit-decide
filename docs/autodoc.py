@@ -35,8 +35,8 @@ def py2nb(py_str, title=None):
     for chunk in chunks:
         cell_type = 'code'
         chunk = chunk.strip()
-        if chunk.startswith("'''"):
-            chunk = chunk.strip("'\n")
+        if chunk.startswith('"""'):
+            chunk = chunk.strip('"\n')
             cell_type = 'markdown'
         elif chunk.startswith("# %"):
             # magic commands
