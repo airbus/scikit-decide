@@ -43,4 +43,14 @@ repos:
     hooks:
       - id: isort
         name: isort (python)
-        args: ["--profile", "black"]
+
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.1.1
+    hooks:
+      - id: nbqa-black
+      - id: nbqa-isort
+      - id: nbqa
+        entry: nbqa pycln
+        name: nbqa-pycln
+        alias: nbqa-pycln
+        additional_dependencies: [pycln]
