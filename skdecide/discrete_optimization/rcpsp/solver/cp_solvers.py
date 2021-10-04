@@ -14,6 +14,7 @@ from skdecide.discrete_optimization.generic_tools.result_storage.result_storage 
 from skdecide.discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, RCPSPSolution, \
     RCPSPModelCalendar, PartialSolution
 from minizinc import Instance, Model, Solver
+import asyncio
 import json
 from datetime import timedelta
 import os
@@ -36,7 +37,7 @@ class RCPSPSolCP:
     def __init__(self, objective, _output_item, **kwargs):
         self.objective = objective
         self.dict = kwargs
-        print("One solution ", self.objective)
+        # print("One solution ", self.objective)
 
     def check(self) -> bool:
         return True
@@ -191,6 +192,31 @@ class CP_RCPSP_MZN(CPSolver):
             print(result.statistics["solveTime"])
         return self.retrieve_solutions(result, parameters_cp=parameters_cp)
 
+    def solve2(self, parameters_cp: ParametersCP=ParametersCP.default(), **args):
+        if self.instance is None:
+            self.init_model(**args)
+
+        timeout = parameters_cp.TimeLimit
+        intermediate_solutions = parameters_cp.intermediate_solution
+
+        async def solve_async():
+            tasks = set()
+
+
+        asyncio.run(solve_async())
+
+        try:
+            result = self.instance.solve(timeout=timedelta(seconds=timeout),
+                                         intermediate_solutions=intermediate_solutions)
+        except Exception as e:
+            print(e)
+            return None
+        verbose = args.get("verbose", False)
+        if verbose:
+            print(result.status)
+            print(result.statistics["solveTime"])
+        return self.retrieve_solutions(result, parameters_cp=parameters_cp)
+
 
 class CP_MRCPSP_MZN(CPSolver):
     def __init__(self,
@@ -307,7 +333,7 @@ class CP_MRCPSP_MZN(CPSolver):
         if self.calendar:
             one_ressource = list(self.rcpsp_model.resources.keys())[0]
             instance["max_time"] = len(self.rcpsp_model.resources[one_ressource])
-            print(instance["max_time"])
+            # print(instance["max_time"])
             keys += ["max_time"]
             ressource_capacity_time = [[int(x) for x in self.rcpsp_model.resources[res]]
                                        for res in resources_list]
@@ -560,7 +586,7 @@ class CP_MRCPSP_MZN_NOBOOL(CPSolver):
         if self.calendar:
             one_ressource = list(self.rcpsp_model.resources.keys())[0]
             instance["max_time"] = len(self.rcpsp_model.resources[one_ressource])
-            print(instance["max_time"])
+            # print(instance["max_time"])
             keys += ["max_time"]
             ressource_capacity_time = [[int(x) for x in self.rcpsp_model.resources[res]]
                                        for res in resources_list]
@@ -745,7 +771,7 @@ class CP_MRCPSP_MZN_MODES:
                     indexes = [i for i in self.modeindex_map if self.modeindex_map[i]["task"] == task
                                and self.modeindex_map[i]["original_mode_index"] == p_s.task_mode[task]]
                     if len(indexes) >= 0:
-                        print("Index found : ", len(indexes))
+                        # print("Index found : ", len(indexes))
                         string = "constraint mrun[" + str(indexes[0]) + "] == 1;"
                         self.instance.add_string(string)
                         constraint_strings += [string]

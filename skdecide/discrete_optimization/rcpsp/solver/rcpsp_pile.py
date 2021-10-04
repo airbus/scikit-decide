@@ -63,7 +63,7 @@ class PileSolverRCPSP(SolverDO):
             params_cp = ParametersCP.default()
             params_cp.time_limit = 1
             params_cp.pool_solutions = 10000
-            params_cp.nr_solutions = 1000
+            params_cp.nr_solutions = 1
             # params_cp.nr_solutions = float("inf")
             params_cp.all_solutions = False
             result_storage = solver.solve(parameters_cp=params_cp,

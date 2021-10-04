@@ -125,7 +125,7 @@ class PostProcessSolutionNonFeasible(PostProcessSolution):
                 rb, constraints = get_ressource_breaks(self.problem_calendar, self.problem_no_calendar, sol[0])
                 sol[0].satisfy = not(any(len(rb[r]) > 0 for r in rb))
                 sol[0].constraints = constraints
-                print("Check Ressource : ", sol[0].satisfy)
+                # print("Check Ressource : ", sol[0].satisfy)
             if sol[0].satisfy is False:
                 if self.partial_solution is None:
                     solution = RCPSPSolution(problem=self.problem_calendar,
@@ -153,7 +153,7 @@ class ConstraintHandlerAddCalendarConstraint(ConstraintHandler):
                                              result_storage: ResultStorage) -> Iterable[Any]:
         solution, fit = result_storage.get_best_solution_fit()
         if ("satisfy" in solution.__dict__.keys() and solution.satisfy):
-            print("adding the other constraints !")
+            # print("adding the other constraints !")
             return self.other_constraint.adding_constraint_from_results_store(cp_solver, child_instance, result_storage)
         ressource_breaks, constraints = get_ressource_breaks(self.problem_calendar,
                                                              self.problem_no_calendar,
@@ -315,7 +315,7 @@ class SolverWithCalendarIterative(SolverDO):
             init_solution, objective = store_lns.get_best_solution_fit()
             best_solution = init_solution.copy()
             satisfy = self.problem_calendar.satisfy(init_solution)
-            print("Satisfy ", satisfy)
+            # print("Satisfy ", satisfy)
             best_objective = objective
         else:
             best_objective = float('inf') if sense == ModeOptim.MINIMIZATION else -float("inf")
@@ -325,13 +325,13 @@ class SolverWithCalendarIterative(SolverDO):
             store_with_all = None
         constraint_to_keep = set()
         for iteration in range(nb_iteration_lns):
-            print('Starting iteration n°', iteration,
-                  " current objective ", best_objective)
-            try:
-                print("Best feasible solution ", max([f for s, f in store_with_all.list_solution_fits
-                                                      if "satisfy" in s.__dict__.keys() and s.satisfy]))
-            except:
-                print("No Feasible solution yet")
+            # print('Starting iteration n°', iteration,
+            #      " current objective ", best_objective)
+            # try:
+            #     print("Best feasible solution ", max([f for s, f in store_with_all.list_solution_fits
+            #                                          if "satisfy" in s.__dict__.keys() and s.satisfy]))
+            #except:
+            #    print("No Feasible solution yet")
             with self.cp_solver.instance.branch() as child:
                 if iteration == 0 and not skip_first_iteration or iteration >= 1:
                     for c in constraint_to_keep:
@@ -351,18 +351,18 @@ class SolverWithCalendarIterative(SolverDO):
                         result = child.solve(timeout=timedelta(seconds=parameters_cp.TimeLimit),
                                              intermediate_solutions=parameters_cp.intermediate_solution)
                     result_store = self.cp_solver.retrieve_solutions(result, parameters_cp=parameters_cp)
-                    print("iteration n°", iteration, "Solved !!!")
-                    print(result.status)
+                    # print("iteration n°", iteration, "Solved !!!")
+                    # print(result.status)
                     if len(result_store.list_solution_fits) > 0:
-                        print("Solved !!!")
+                        # print("Solved !!!")
                         bsol, fit = result_store.get_best_solution_fit()
-                        print("Fitness = ", fit)
-                        print("Post Process..")
-                        print("Satisfy best current sol : ")
-                        print(self.problem_calendar.satisfy(bsol))
+                        # print("Fitness = ", fit)
+                        # print("Post Process..")
+                        # print("Satisfy best current sol : ")
+                        # print(self.problem_calendar.satisfy(bsol))
                         result_store = self.post_process_solution.build_other_solution(result_store)
                         bsol, fit = result_store.get_best_solution_fit()
-                        print("After postpro = ", fit)
+                        # print("After postpro = ", fit)
                         if sense == ModeOptim.MAXIMIZATION and fit >= best_objective:
                             if fit > best_objective:
                                 current_nb_iteration_no_improvement = 0
@@ -391,21 +391,21 @@ class SolverWithCalendarIterative(SolverDO):
                         for s, f in store_with_all.list_solution_fits:
                             #if s.satisfy:
                             store_lns.list_solution_fits += [(s, f)]
-                        print("Satisfy : ", self.problem_calendar.satisfy(best_solution))
+                        # print("Satisfy : ", self.problem_calendar.satisfy(best_solution))
                     else:
                         current_nb_iteration_no_improvement += 1
                     if skip_first_iteration and result.status == Status.OPTIMAL_SOLUTION and iteration == 0\
                             and best_solution.satisfy:
-                        print("Finish LNS because found optimal solution")
+                        # print("Finish LNS because found optimal solution")
                         break
                 else:
                 #except Exception as e:
                     current_nb_iteration_no_improvement += 1
-                    print("Failed ! reason : ", e)
+                    # print("Failed ! reason : ", e)
                 if time.time() - deb_time > max_time_seconds:
                     print("Finish LNS with time limit reached")
                     break
-                print(current_nb_iteration_no_improvement, "/", nb_iteration_no_improvement)
+                # print(current_nb_iteration_no_improvement, "/", nb_iteration_no_improvement)
                 if current_nb_iteration_no_improvement > nb_iteration_no_improvement:
                     print("Finish LNS with maximum no improvement iteration ")
                     break
@@ -422,10 +422,3 @@ class SolverWithCalendarIterative(SolverDO):
                 #                                                                                    result_storage=
                 #                                                                                    store_lns)
         return store_with_all
-
-
-
-
-
-
-
