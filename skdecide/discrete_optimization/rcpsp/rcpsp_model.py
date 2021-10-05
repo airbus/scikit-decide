@@ -14,7 +14,6 @@ from copy import deepcopy
 from scipy.stats import poisson, rv_discrete, randint
 from collections import defaultdict
 
-
 def tree():
     return defaultdict(tree)
 
@@ -25,11 +24,12 @@ class ScheduleGenerationScheme(Enum):
 
 
 class RCPSPSolution(Solution):
+    """
     rcpsp_permutation: Union[List[int], np.array]
     rcpsp_schedule: Dict[int, Dict]  # {task_id: {'start': start_time, 'end': end_time, 'resources': list_of_resource_ids}}
     rcpsp_modes: List[int]  # {task_id: mode_id}
     standardised_permutation: Union[List[int], np.array]
-
+    """
     def __init__(self, problem,
                  rcpsp_permutation=None,
                  rcpsp_schedule=None,
@@ -101,9 +101,7 @@ class RCPSPSolution(Solution):
             sched_str = 'None'
         else:
             sched_str = str(self.rcpsp_schedule)
-        val = "RCPSP solution (rcpsp_schedule): " + sched_str
-        print('type: ', type(val))
-        return val
+        return "RCPSP solution (rcpsp_schedule): " + sched_str
 
     def generate_permutation_from_schedule(self):
         sorted_task = [i - 2 for i in sorted(self.rcpsp_schedule,
@@ -130,10 +128,7 @@ class RCPSPSolution(Solution):
                 start_time = self.rcpsp_schedule[act_id]['start_time']
                 end_time = self.rcpsp_schedule[act_id]['end_time']
                 mode = self.rcpsp_modes[act_id-2]
-                # print('act_id: ', act_id)
-                # print('start_time: ', start_time)
-                # print('end_time: ', end_time)
-                # print('mode: ', mode)
+
                 for t in range(start_time, end_time):
                     for res in resource_avail_in_time.keys():
                         resource_avail_in_time[res][t] -= self.problem.mode_details[act_id][mode][res]  # 17
@@ -141,15 +136,12 @@ class RCPSPSolution(Solution):
                             for tt in range(end_time + 1, makespan):
                                 resource_avail_in_time[res][tt] -= \
                                 self.problem.mode_details[act_id][mode][res]
-        # print('resource_avail_in_time: ', resource_avail_in_time)
         mean_avail = {}
         for res in list(self.problem.resources.keys()):
             mean_avail[res] = np.mean(resource_avail_in_time[res])
 
         mean_resource_reserve = np.mean([mean_avail[res] / self.problem.resources[res] for res in list(self.problem.resources.keys())])
-        # print('mean_avail: ', mean_avail)
-        # print('original_avail: ', self.problem.resources)
-        # print('val: ', mean_resource_reserve)
+
         return mean_resource_reserve
 
     def generate_schedule_from_permutation_serial_sgs(self):
@@ -174,25 +166,20 @@ class RCPSPSolution(Solution):
         perm_extended = [x+2 for x in perm]
         perm_extended.insert(0, 1)
         perm_extended.append(self.problem.n_jobs + 2)
-        # print('perm_extended: ', perm_extended)
+
         modes_extended = deepcopy(self.rcpsp_modes)
         modes_extended.insert(0, 1)
         modes_extended.append(1)
-        # print('pre-modes_extended: ', modes_extended)
 
         # fix modes in case specified mode not in mode details for the activites
         for i in range(len(modes_extended)):
-            # print(list(self.problem.mode_details[i + 1].keys()))
 
             if modes_extended[i] not in list(self.problem.mode_details[i+1].keys()):
                 modes_extended[i] = 1
                 if i != 0 and i != len(modes_extended)-1:
                     self.rcpsp_modes[i-1] = modes_extended[i]
 
-        # print('modes_extended: ', modes_extended)
-        # print('start SGS')
         while len(perm_extended) > 0 and not unfeasible_non_renewable_resources:
-            # print('perm_extended: ', perm_extended)
             # get first activity in perm with precedences respected
             for id in perm_extended:
                 respected = True
@@ -203,13 +190,10 @@ class RCPSPSolution(Solution):
                 if respected:
                     act_id = id
                     break
-            # print('next act_id respecting precedences :', act_id)
             # for act_id in perm_extended:  # 4
             current_min_time = minimum_starting_time[act_id]  # 5
-            # print('current_min_time_0: ', current_min_time)
             valid = False  # 6
             while not valid:  # 7
-                # print('current_min_time: ', current_min_time)
                 valid = True  # 8
                 for t in range(current_min_time,
                                current_min_time
@@ -235,11 +219,9 @@ class RCPSPSolution(Solution):
 
                 activity_end_times[act_id] = current_min_time + self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']  # 18
                 perm_extended.remove(act_id)
-                # print('scheduled to complete at: ', activity_end_times[act_id])
                 for s in self.problem.successors[act_id]:  # 19
                     minimum_starting_time[s] = max(minimum_starting_time[s], activity_end_times[act_id])  # 20
 
-        # print('activity_end_times: ', activity_end_times)
         self.rcpsp_schedule = {}
         for act_id in activity_end_times:
             self.rcpsp_schedule[act_id] = {}
@@ -282,30 +264,23 @@ class RCPSPSolution(Solution):
         perm_extended = [x+2 for x in perm]
         perm_extended.insert(0, 1)
         perm_extended.append(self.problem.n_jobs + 2)
-        # print('perm_extended: ', perm_extended)
+
         modes_extended = deepcopy(self.rcpsp_modes)
         modes_extended.insert(0, 1)
         modes_extended.append(1)
-        # print('pre-modes_extended: ', modes_extended)
 
         all_activities = [x for x in list(self.problem.resources.keys()) if x not in list(completed_tasks)]
-        # print('all_activities: ', all_activities)
         perm_extended = [x for x in perm_extended if x not in list(completed_tasks)]
-        # print('perm_extended - removed completed_tasks: ', perm_extended)
 
         # fix modes in case specified mode not in mode details for the activites
         for i in range(len(modes_extended)):
-            # print(list(self.problem.mode_details[i + 1].keys()))
 
             if modes_extended[i] not in list(self.problem.mode_details[i+1].keys()):
                 modes_extended[i] = 1
                 if i != 0 and i != len(modes_extended)-1:
                     self.rcpsp_modes[i-1] = modes_extended[i]
 
-        # print('modes_extended: ', modes_extended)
-        # print('start SGS')
         while len(perm_extended) > 0 and not unfeasible_non_renewable_resources:
-            # print('perm_extended: ', perm_extended)
             # get first activity in perm with precedences respected
             for id in perm_extended:
                 respected = True
@@ -316,25 +291,15 @@ class RCPSPSolution(Solution):
                 if respected:
                     act_id = id
                     break
-            # print('next act_id respecting precedences :', act_id)
             # for act_id in perm_extended:  # 4
             current_min_time = minimum_starting_time[act_id]  # 5
-            # print('current_min_time_0: ', current_min_time)
             valid = False  # 6
             while not valid:  # 7
-                # print('current_min_time: ', current_min_time)
                 valid = True  # 8
                 for t in range(current_min_time,
                                current_min_time
                                +self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']):  # 9
-                    # print(act_id, t)
                     for res in resource_avail_in_time.keys():  # 10
-                        # if t == 4:
-                        #     print('res--', res)
-                            # print('t--', t)
-                            # print('horizon', new_horizon)
-                            # print('resource_avail_in_time[res][t]: ', resource_avail_in_time[res][t])
-                            # print('self.problem.mode_details[act_id][modes_extended[act_id-1]][res]: ', self.problem.mode_details[act_id][modes_extended[act_id-1]][res])
                         if t < new_horizon:
                             if resource_avail_in_time[res][t] < self.problem.mode_details[act_id][modes_extended[act_id-1]][res]:  # 11
                                 valid = False  # 12
@@ -343,11 +308,7 @@ class RCPSPSolution(Solution):
                 if not valid:  # 13
                     current_min_time += 1  # 14
             if not unfeasible_non_renewable_resources:
-                # print('current_min_time: ', current_min_time)
-                # print('in mode: ', modes_extended[act_id-1])
-                # print('(mode details - duration: ', self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration'])
                 end_t = current_min_time + self.problem.mode_details[act_id][modes_extended[act_id - 1]]['duration']-1
-                # print('end_t: ', end_t)
                 for t in range(current_min_time, current_min_time + self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']):  # 15
                     for res in resource_avail_in_time.keys():  # 16
                         resource_avail_in_time[res][t] -= self.problem.mode_details[act_id][modes_extended[act_id-1]][res]  # 17
@@ -356,16 +317,12 @@ class RCPSPSolution(Solution):
                                 resource_avail_in_time[res][tt] -= self.problem.mode_details[act_id][modes_extended[act_id - 1]][res]
                                 if resource_avail_in_time[res][tt] < 0:
                                     unfeasible_non_renewable_resources = True
-                                    # print('resource', res, 'exhausted', resource_avail_in_time[res][tt], 'initial avail: ', self.problem.resources[res])
-                        # print(res, ' resource_avail_in_time[res]: ', resource_avail_in_time[res])
 
                 activity_end_times[act_id] = current_min_time + self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']  # 18
                 perm_extended.remove(act_id)
-                # print('scheduled to complete at: ', activity_end_times[act_id])
                 for s in self.problem.successors[act_id]:  # 19
                     minimum_starting_time[s] = max(minimum_starting_time[s], activity_end_times[act_id])  # 20
 
-        # print('activity_end_times: ', activity_end_times)
         self.rcpsp_schedule = {}
         for act_id in activity_end_times:
             self.rcpsp_schedule[act_id] = {}
@@ -391,56 +348,6 @@ class RCPSPSolution(Solution):
 
     def __eq__(self, other):
         return self.rcpsp_permutation == other.rcpsp_permutation and self.rcpsp_modes == other.rcpsp_modes
-    # def generate_schedule_from_permutation_serial_sgs(self):
-    #     perm = self.rcpsp_permutation
-    #     activity_end_times = {}
-    #
-    #     # 1, 2
-    #     resource_avail_in_time = {}
-    #     for res in list(self.problem.resources.keys()):
-    #         resource_avail_in_time[res] = np.full(self.problem.horizon, self.problem.resources[res], dtype=int).tolist()
-    #
-    #     # 3
-    #     minimum_starting_time = {}
-    #     for act in list(self.problem.successors.keys()):
-    #         minimum_starting_time[act-1] = 0
-    #
-    #     perm_extended = [x+2 for x in perm]
-    #     perm_extended.insert(0,1)
-    #     perm_extended.append(self.problem.n_jobs + 2)
-    #     # print('perm_extended: ', perm_extended)
-    #
-    #     modes_extended = self.rcpsp_modes
-    #     modes_extended.insert(0,1)
-    #     modes_extended.append(1)
-    #     # print('modes_extended: ', modes_extended)
-    #
-    #     for act_id in perm_extended:  # 4
-    #         current_min_time = minimum_starting_time[act_id]  # 5
-    #         valid = False  # 6
-    #         while not valid:  # 7
-    #             valid = True  # 8
-    #             for t in range(current_min_time, current_min_time+self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']):  # 9
-    #                 # print(act_id, t)
-    #                 for res in resource_avail_in_time.keys():  # 10
-    #                     if resource_avail_in_time[res][t] < self.problem.mode_details[act_id][modes_extended[act_id-1]][res]:  # 11
-    #                         valid = False  # 12
-    #                 if not valid:  # 13
-    #                     current_min_time += 1  # 14
-    #         for t in range(current_min_time, current_min_time + self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']):  # 15
-    #             for res in resource_avail_in_time.keys():  # 16
-    #                 resource_avail_in_time[res][t] -= self.problem.mode_details[act_id][modes_extended[act_id-1]][res]  # 17
-    #         activity_end_times[act_id] = current_min_time + self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']  # 18
-    #         for s in self.problem.successors[act_id]:  # 19
-    #             minimum_starting_time[s] = activity_end_times[act_id]  # 20
-    #
-    #     # print('activity_end_times: ', activity_end_times)
-    #     self.rcpsp_schedule = {}
-    #     for act_id in activity_end_times:
-    #         self.rcpsp_schedule[act_id] = {}
-    #         self.rcpsp_schedule[act_id]['start_time'] = activity_end_times[act_id] - self.problem.mode_details[act_id][modes_extended[act_id-1]]['duration']
-    #         self.rcpsp_schedule[act_id]['end_time'] = activity_end_times[act_id]
-
 
 class PartialSolution:
     def __init__(self,
@@ -459,14 +366,6 @@ class PartialSolution:
 
 
 class RCPSPModel(Problem):
-    sgs: ScheduleGenerationScheme
-    resources: Dict[str, int]  # {resource_name: number_of_resource}
-    non_renewable_resources: List[str]  # e.g. [resource_name3, resource_name4]
-    n_jobs: int  # excluding dummy activities Start (0) and End (n)
-    # possible_modes: Dict[int, List[int]]  # {task_id: list_of_mode_ids}
-    mode_details: Dict[int, Dict[int, Dict[str, int]]]  # e.g. {job_id: {mode_id: {resource_name1: number_of_resources_needed, resource_name2: ...}}
-                                                        # one key being "duration"
-    successors: Dict[int, List[int]]  # {task_id: list of successor task ids}
     def __init__(self,
                  resources: Dict[str, int],
                  non_renewable_resources: List[str],
@@ -503,7 +402,6 @@ class RCPSPModel(Problem):
                 edges += [(n, succ, {})]
         return Graph(nodes, edges, False)
 
-    # @abstractmethod
     def evaluate_function(self, rcpsp_sol: RCPSPSolution):
         if rcpsp_sol._schedule_to_recompute:
             rcpsp_sol.generate_schedule_from_permutation_serial_sgs()
@@ -530,7 +428,6 @@ class RCPSPModel(Problem):
 
     def satisfy(self, rcpsp_sol: RCPSPSolution)->bool:
         if rcpsp_sol.rcpsp_schedule_feasible is False:
-            print('Schedule flagged as infeasible when generated')
             return False
         else:
             modes_extended = deepcopy(rcpsp_sol.rcpsp_modes)
@@ -548,19 +445,12 @@ class RCPSPModel(Problem):
                     start = rcpsp_sol.rcpsp_schedule[act_id]['start_time']
                     end = rcpsp_sol.rcpsp_schedule[act_id]['end_time']
                     mode = modes_extended[act_id-1]
-                    # print(act_id)
                     for res in self.resources.keys():#self.mode_details[act_id][mode]:
                         if start <= t and t < end:
-                            # print('res: ', res)
-                            # print('adding usage from act', act_id)
-                            # print('mode:', mode)
-                            # print('self.mode_details[act_id][mode][res]: ', self.mode_details[act_id][mode][res])
                             resource_usage[res] += self.mode_details[act_id][mode][res]
 
                 for res in self.resources.keys():
                     if resource_usage[res] > self.resources[res]:
-                        print('Time step resource violation: time: ', t, 'res', res,
-                              'res_usage: ', resource_usage[res], 'res_avail: ', self.resources[res])
                         return False
 
             # Check for non-renewable resource violation
@@ -570,7 +460,6 @@ class RCPSPModel(Problem):
                     mode = modes_extended[act_id-1]
                     usage += self.mode_details[act_id][mode][res]
                 if usage > self.resources[res]:
-                    print('Non-renewable resource violation: act_id: ', act_id, 'res', res, 'res_usage: ', resource_usage[res], 'res_avail: ', self.resources[res])
                     return False
 
             # Check precedences / successors
@@ -579,14 +468,12 @@ class RCPSPModel(Problem):
                     start_succ = rcpsp_sol.rcpsp_schedule[succ_id]['start_time']
                     end_pred = rcpsp_sol.rcpsp_schedule[act_id]['end_time']
                     if start_succ < end_pred:
-                        print('Precedence relationship broken: ', act_id, 'end at ', end_pred, 'while ', succ_id, 'start at', start_succ)
                         return False
 
             return True
 
     def __str__(self):
-        val = "RCPSP model"
-        return val
+        return "RCPSP model"
 
     def get_solution_type(self):
         return RCPSPSolution
@@ -600,7 +487,6 @@ class RCPSPModel(Problem):
                                               "n": self.n_jobs}
 
         max_number_modes = max([len(list(self.mode_details[x].keys())) for x in self.mode_details.keys()])
-        # print('max_number_modes: ', max_number_modes)
         dict_register["rcpsp_modes"] = {"name": "rcpsp_modes",
                                         "type": [TypeAttribute.LIST_INTEGER],
                                         "n": self.n_jobs,
@@ -699,7 +585,6 @@ class RCPSPModelCalendar(RCPSPModel):
 
     def satisfy(self, rcpsp_sol: RCPSPSolution)->bool:
         if rcpsp_sol.rcpsp_schedule_feasible is False:
-            print('Schedule flagged as infeasible when generated')
             return False
         else:
             modes_extended = deepcopy(rcpsp_sol.rcpsp_modes)
@@ -716,19 +601,12 @@ class RCPSPModelCalendar(RCPSPModel):
                     start = rcpsp_sol.rcpsp_schedule[act_id]['start_time']
                     end = rcpsp_sol.rcpsp_schedule[act_id]['end_time']
                     mode = modes_extended[act_id-1]
-                    # print(act_id)
                     for res in self.resources.keys():#self.mode_details[act_id][mode]:
                         if start <= t and t < end:
-                            # print('res: ', res)
-                            # print('adding usage from act', act_id)
-                            # print('mode:', mode)
-                            # print('self.mode_details[act_id][mode][res]: ', self.mode_details[act_id][mode][res])
                             resource_usage[res] += self.mode_details[act_id][mode][res]
 
                 for res in self.resources.keys():
                     if resource_usage[res] > self.resources[res][t]:
-                        print('Time step resource violation: time: ', t, 'res', res,
-                              'res_usage: ', resource_usage[res], 'res_avail: ', self.resources[res])
                         return False
 
             # Check for non-renewable resource violation
@@ -738,7 +616,6 @@ class RCPSPModelCalendar(RCPSPModel):
                     mode = modes_extended[act_id-1]
                     usage += self.mode_details[act_id][mode][res]
                 if usage > self.resources[res][0]:
-                    print('Non-renewable resource violation: act_id: ', act_id, 'res', res, 'res_usage: ', resource_usage[res], 'res_avail: ', self.resources[res])
                     return False
 
             # Check precedences / successors
@@ -747,7 +624,6 @@ class RCPSPModelCalendar(RCPSPModel):
                     start_succ = rcpsp_sol.rcpsp_schedule[succ_id]['start_time']
                     end_pred = rcpsp_sol.rcpsp_schedule[act_id]['end_time']
                     if start_succ < end_pred:
-                        print('Precedence relationship broken: ', act_id, 'end at ', end_pred, 'while ', succ_id, 'start at', start_succ)
                         return False
 
             return True
@@ -804,10 +680,8 @@ class MultiModeRCPSPModel(RCPSPModel):
         att = self.get_attribute_register().dict_attribute_to_type[encoding_str]['name']
         if att == 'rcpsp_modes':
             self.set_fixed_modes(sol.rcpsp_modes)
-            print('self.fixed_modes:', self.fixed_modes)
         elif att == 'rcpsp_permutation':
             self.set_fixed_permutation(sol.rcpsp_permutation)
-            print('self.fixed_permutation:', self.fixed_permutation)
 
     def set_fixed_modes(self, fixed_modes):
         self.fixed_modes = fixed_modes
@@ -1107,47 +981,31 @@ class RCPSP_H_Model(SingleModeRCPSPModel):
         for main_id in self.pre_helper_activities:
             pre_helper_ids.append(self.pre_helper_activities[main_id][0])
             pre_helper_starts.append(rcpsp_sol.rcpsp_schedule[self.pre_helper_activities[main_id][0]]['start_time'])
-        # print('pre_helper_ids: ', pre_helper_ids)
-        # print('pre_helper_starts: ', pre_helper_starts)
         sorted_pre_helper_ids = [x for _, x in sorted(zip(pre_helper_starts, pre_helper_ids), reverse=True)]
-        # print('sorted_pre_helper_ids: ', sorted_pre_helper_ids)
 
         # for each pre_helper, try to start as late as possible
         for id in sorted_pre_helper_ids:
-            # print('id: ',id)
-            # print('original_start: ', corrected_sol.rcpsp_schedule[id]['start_time'])
-            # print('self.successors[id]: ', self.successors[id])
             # Latest possible cannot be later than the earliest start of its successors
             all_successor_starts = [corrected_sol.rcpsp_schedule[s_id]['start_time'] for s_id in self.successors[id]]
-            # print('all_successor_starts: ', all_successor_starts)
             latest_end = min(all_successor_starts)
-            # print('initial latest_end: ',latest_end)
             duration = (corrected_sol.rcpsp_schedule[id]['end_time'] - corrected_sol.rcpsp_schedule[id]['start_time'])
             latest_start = latest_end - duration
-            # print('initial latest_start:', latest_start)
 
-            # print('self.compute_resource_consumption(): ', self.compute_resource_consumption(corrected_sol))
             # Then iteratively check if the latest time is suitable resource-wise
             # if not try earlier
 
             # first copy the resource consumption array and remove consumption of the pre_helper activity
             consumption = np.copy(self.compute_resource_consumption(corrected_sol))
-            # print('self.resources: ', self.resources)
             for i in range(len(list(self.resources.keys()))):
                 res_str = list(self.resources.keys())[i]
-                # print('res_str: ', res_str)
                 for t in range(corrected_sol.rcpsp_schedule[id]['start_time'], corrected_sol.rcpsp_schedule[id]['end_time']):
-                    # print('t: ', t)
                     consumption[i,t+1] -= self.mode_details[id][1][res_str]
-
-            # print('consumption -2: ', consumption)
 
             # then start trying iteratively to fit the pre_helper activity as late as possible
             stop = False
             while not stop:
                 all_good = True
                 for t in range(latest_start, latest_start+duration):
-                    # print('t: ',t)
                     for i in range(len(list(self.resources.keys()))):
                         res_str = list(self.resources.keys())[i]
                         if consumption[i,t+1] + self.mode_details[id][1][res_str] > self.resources[res_str]:
@@ -1156,13 +1014,10 @@ class RCPSP_H_Model(SingleModeRCPSPModel):
                 if all_good:
                     corrected_sol.rcpsp_schedule[id]['start_time'] = latest_start
                     corrected_sol.rcpsp_schedule[id]['end_time'] = latest_start+duration
-                    # print('Corrected start: ',corrected_sol.rcpsp_schedule[id]['start_time'])
-                    # print('Corrected end: ', corrected_sol.rcpsp_schedule[id]['end_time'])
                     stop = True
                 else:
                     latest_start -= 1
 
-        # print(' ---------- ')
         return corrected_sol.rcpsp_schedule
 
 

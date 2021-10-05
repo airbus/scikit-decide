@@ -76,12 +76,10 @@ def get_ressource_breaks(problem_calendar: MS_RCPSPModel,
     for r in ressource_arrays:
         index = np.argwhere(ressource_arrays[r] > problem_calendar.resources_availability[r])
         index_ressource[r] = index
-        # print("Constraints broken : ", r, index)
         task_concerned[r] = [j for j in range(ressource_arrays_usage[r].shape[1])
                              if any(ressource_arrays_usage[r][ind[0], j] == 1
                                     for ind in index
                                     if problem_calendar.resources_availability[r][ind[0]] == 0)]
-        # print("Concerned : ", task_concerned[r])
         task_concerned[r] = [sorted_keys_schedule[rr] for rr in task_concerned[r]]
         constraints[r] = {}
         for t in task_concerned[r]:
@@ -105,14 +103,12 @@ def get_ressource_breaks(problem_calendar: MS_RCPSPModel,
     constraints_employee = {}
     for emp in employees_arrays:
         index = np.argwhere(employees_arrays[emp] > 1*problem_calendar.employees[emp].calendar_employee)
-        # print([employees_arrays[emp][i[0]] for i in index],
-        #       [problem_calendar.employees[emp].calendar_employee[i[0]] for i in index])
+
         # index_ressource[emp] = index
         task_concerned[emp] = [j for j in range(employees_arrays_usage[emp].shape[1])
                                if any(employees_arrays_usage[emp][ind[0], j] == 1
                                       for ind in index
                                       if not problem_calendar.employees[emp].calendar_employee[ind[0]])]
-        # print("Concerned : ", task_concerned[r])
         task_concerned[emp] = [sorted_keys_schedule[rr] for rr in task_concerned[emp]]
         constraints_employee[emp] = {}
         for t in task_concerned[emp]:
@@ -124,10 +120,7 @@ def get_ressource_breaks(problem_calendar: MS_RCPSPModel,
             first_possible_start_before = next((st for st in range(current_start, -1, -1)
                                                if problem_calendar.employees[emp].calendar_employee[st]),
                                                None)
-            # if first_possible_start_before is not None:
-            #     first_possible_start_before = \
-            #         max(0,
-            #            first_possible_start_before-problem_calendar.mode_details[t][1]["duration"]+1)
+
             constraints_employee[emp] = (first_possible_start_before, first_possible_start_future)
     return index_ressource, constraints, constraints_employee
 
@@ -181,7 +174,6 @@ class PostProcessSolutionNonFeasible(PostProcessSolution):
                 sol[0].satisfy = not(any(len(rb[r]) > 0 for r in rb))
                 sol[0].satisfy = self.problem_calendar.satisfy(sol[0])
                 sol[0].constraints = constraints
-                print("Check Ressource : ", sol[0].satisfy)
             if sol[0].satisfy is False:
                 if self.partial_solution is None:
                     s: MS_RCPSPSolution = sol[0]
@@ -191,8 +183,7 @@ class PostProcessSolutionNonFeasible(PostProcessSolution):
                     solution.satisfy = self.problem_calendar.satisfy(solution)
                     result_storage.list_solution_fits += [(solution,
                                                            -self.problem_calendar.evaluate(solution)["makespan"])]
-        # result_storage.list_solution_fits = [r for r in result_storage.list_solution_fits
-        #                                      if r[0].satisfy]
+
         return result_storage
 
 
@@ -210,7 +201,6 @@ class ConstraintHandlerAddCalendarConstraint(ConstraintHandler):
         solution, fit = result_storage.get_best_solution_fit()
         solution: MS_RCPSPSolution = solution
         if ("satisfy" in solution.__dict__.keys() and solution.satisfy):
-            print("adding the other constraints !")
             return self.other_constraint.adding_constraint_from_results_store(cp_solver,
                                                                               child_instance,
                                                                               ResultStorage(list_solution_fits=[(solution, fit)],
@@ -266,9 +256,7 @@ class ConstraintHandlerAddCalendarConstraint(ConstraintHandler):
                             + """< start[i] + adur[i]) * arreq["""+str(index_ressource+1)+""",i]);\n"""
                     child_instance.add_string(s)
                     list_strings += [s]
-                    # print(s)
-                    # print("Res", r)
-                    # print("Time", index)
+
                 if r in self.problem_calendar.employees:
                     index_ressource = cp_solver.employees_position.index(r)
                     rq = int(self.problem_calendar.employees[r].calendar_employee[ind])
@@ -279,9 +267,6 @@ class ConstraintHandlerAddCalendarConstraint(ConstraintHandler):
                             + """< start[i] + adur[i]) * unit_used["""+str(index_ressource+1)+""",i]);\n"""
                     child_instance.add_string(s)
                     list_strings += [s]
-                    # print(s)
-                    # print("Res", r)
-                    # print("Time", index)
 
         satisfiable = [(s, f)
                        for s, f in result_storage.list_solution_fits if "satisfy" in s.__dict__.keys()
@@ -372,7 +357,6 @@ class SolverWithCalendarIterative(SolverDO):
             init_solution, objective = store_lns.get_best_solution_fit()
             best_solution = init_solution.copy()
             satisfy = self.problem_calendar.satisfy(init_solution)
-            print("Satisfy ", satisfy)
             best_objective = objective
         else:
             best_objective = float('inf') if sense == ModeOptim.MINIMIZATION else -float("inf")
@@ -382,8 +366,6 @@ class SolverWithCalendarIterative(SolverDO):
             store_with_all = None
         constraint_to_keep = set()
         for iteration in range(nb_iteration_lns):
-            print('Starting iteration n°', iteration,
-                  " current objective ", best_objective)
             try:
                 print("Best feasible solution ", max([f for s, f in store_with_all.list_solution_fits
                                                       if "satisfy" in s.__dict__.keys() and s.satisfy]))
@@ -407,18 +389,10 @@ class SolverWithCalendarIterative(SolverDO):
                         result = child.solve(timeout=timedelta(seconds=parameters_cp.TimeLimit),
                                              intermediate_solutions=parameters_cp.intermediate_solution)
                     result_store = self.cp_solver.retrieve_solutions(result, parameters_cp=parameters_cp)
-                    print("iteration n°", iteration, "Solved !!!")
-                    print(result.status)
                     if len(result_store.list_solution_fits) > 0:
-                        print("Solved !!!")
                         bsol, fit = result_store.get_best_solution_fit()
-                        print("Fitness = ", fit)
-                        print("Post Process..")
-                        print("Satisfy best current sol : ")
-                        print(self.problem_calendar.satisfy(bsol))
                         result_store = self.post_process_solution.build_other_solution(result_store)
                         bsol, fit = result_store.get_best_solution_fit()
-                        print("After postpro = ", fit)
                         if sense == ModeOptim.MAXIMIZATION and fit >= best_objective:
                             if fit > best_objective:
                                 current_nb_iteration_no_improvement = 0
@@ -447,23 +421,16 @@ class SolverWithCalendarIterative(SolverDO):
                         for s, f in store_with_all.list_solution_fits:
                             if s.satisfy:
                                 store_lns.list_solution_fits += [(s,f)]
-                        print("Satisfy : ", self.problem_calendar.satisfy(best_solution))
                     else:
                         current_nb_iteration_no_improvement += 1
                     if skip_first_iteration and result.status == Status.OPTIMAL_SOLUTION and iteration == 0\
                             and best_solution.satisfy:
-                        print("Finish LNS because found optimal solution")
                         break
                 else:
-                #except Exception as e:
                     current_nb_iteration_no_improvement += 1
-                    print("Failed ! reason : ", e)
                 if time.time() - deb_time > max_time_seconds:
-                    print("Finish LNS with time limit reached")
                     break
-                print(current_nb_iteration_no_improvement, "/", nb_iteration_no_improvement)
                 if current_nb_iteration_no_improvement > nb_iteration_no_improvement:
-                    print("Finish LNS with maximum no improvement iteration ")
                     break
         return store_with_all
 

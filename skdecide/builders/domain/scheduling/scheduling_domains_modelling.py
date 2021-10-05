@@ -138,25 +138,6 @@ class State:
         return self.__hash__() == other.__hash__()
 
 
-# class SamplableAction:
-#     """
-#     [Deprecated and soon will disappear probably]
-#     Can be used to define all sub-actions that can happen at one point in time. Resource allocation can be managed.
-#     These actions are not enumerable due to their fine grain definition. They can only be sampled.
-#
-#     E.g.
-#         action_tasks = {2: 'action': SamplableActionEnum.START, 'resources': [], 'mode': 1
-#                         4: 'action': SamplableActionEnum.START, 'resources': ['ru_1', 'ru_2'], 'mode': None
-#                         5: 'action': SamplableActionEnum.PAUSE, 'resources': [], 'mode': None
-#                         6: 'action': SamplableActionEnum.REALLOCATE, 'resources': ['ru_3', 'ru_4'], 'mode': None
-#                         }
-#     """
-#     action_tasks: Dict[int, Dict[str, Any]]
-#
-#     def __init__(self, action_tasks: Dict[int, Dict[str, Any]]):
-#         self.action_tasks = action_tasks
-
-
 class SchedulingAction:
     """
     Can be used to define actions on single task. Resource allocation can only be managed through changes in the mode.

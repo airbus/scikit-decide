@@ -210,12 +210,12 @@ class ConstraintHandlerMix(ConstraintHandler):
                                     == max_improvement])
         d_params = {key: getattr(self.list_params[int(choice)], key)
                     for key in self.list_params[0].__dict__.keys()}
-        print("Params : ", d_params)
+
         ch = ConstraintHandlerStartTimeInterval_CP(problem=self.problem, **d_params)
         self.current_iteration += 1
         self.last_index_param = choice
         self.status[self.last_index_param]["nb_usage"] += 1
-        print("Status ", self.status)
+
         return ch.adding_constraint_from_results_store(cp_solver,
                                                        child_instance,
                                                        result_storage)
@@ -379,10 +379,7 @@ def build_neighbor_operator(option_neighbor: OptionNeighbor, rcpsp_model):
     if option_neighbor == OptionNeighbor.OM:
         params = params_om
     probas = [1 / len(params)] * len(params)
-    # self.constraint_handler = ConstraintHandlerStartTimeInterval_CP(problem=self.rcpsp_model,
-    #                                                                 fraction_to_fix=0.5,
-    #                                                                 minus_delta=1,
-    #                                                                 plus_delta=1)
+
     constraint_handler = ConstraintHandlerMix(problem=rcpsp_model,
                                               list_params=params, list_proba=probas)
     return constraint_handler
@@ -397,12 +394,7 @@ class LNS_CP_RCPSP_SOLVER(SolverDO):
         self.solver.init_model(output_type=True)
         self.parameters_cp = ParametersCP.default()
         params_objective_function = get_default_objective_setup(problem=self.rcpsp_model)
-        # constraint_handler = ConstraintHandlerFixStartTime(problem=rcpsp_problem,
-        #                                                    fraction_fix_start_time=0.5)
-        # self.constraint_handler = ConstraintHandlerStartTimeInterval_CP(problem=self.rcpsp_model,
-        #                                                                 fraction_to_fix=0.6,
-        #                                                                 minus_delta=5,
-        #                                                                 plus_delta=5)
+
         self.constraint_handler = build_neighbor_operator(option_neighbor=option_neighbor,
                                                           rcpsp_model=self.rcpsp_model)
         self.initial_solution_provider = InitialSolutionRCPSP(problem=self.rcpsp_model,

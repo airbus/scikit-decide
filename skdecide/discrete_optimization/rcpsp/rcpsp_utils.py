@@ -75,8 +75,7 @@ def compute_schedule_per_resource_individual(rcpsp_model: RCPSPModel,
                                 key=lambda x: 100000*rcpsp_sol.rcpsp_schedule[x]["end_time"]+x)
     max_time = rcpsp_sol.rcpsp_schedule[sorted_task_by_end[-1]]["end_time"]
     min_time = rcpsp_sol.rcpsp_schedule[sorted_task_by_end[0]]["start_time"]
-    print("Min time ", min_time)
-    print("Max time ", max_time)
+
     with_calendar = isinstance(rcpsp_model, RCPSPModelCalendar)
 
     array_ressource_usage = {resources[i]:
@@ -118,14 +117,8 @@ def compute_schedule_per_resource_individual(rcpsp_model: RCPSPModel,
             if not with_calendar:
                 range_interest = range(array_ressource_usage[r]["activity"].shape[1])
             else:
-                # try:
-                #     range_interest = [x for x in range(len(rcpsp_model.calendar_details[r])) if
-                #                       rcpsp_model.calendar_details[r][x][time_to_index[start_time]] == 1]
-                # except:
                 range_interest = range(rcpsp_model.resources[r][time_to_index[start_time]])
             while rneeded > 0:
-                # availables_people_r = [i for i in range(array_ressource_usage[r]["activity"].shape[1])
-                #                        if array_ressource_usage[r]["activity"][time_to_index[start_time], i] == 0]
                 availables_people_r = [i for i in range_interest
                                        if array_ressource_usage[r]["activity"][time_to_index[start_time], i] == 0]
                 if verbose:
@@ -151,12 +144,6 @@ def compute_schedule_per_resource_individual(rcpsp_model: RCPSPModel,
                     # for plot purposes.
                     rneeded -= 1
                 else:
-                    print("r_needed ", rneeded)
-                    print("Ressource needed : ", resources_needed)
-                    print("ressource : ", r)
-                    print("activity : ", activity)
-                    print("Problem, can't build schedule")
-                    print(array_ressource_usage[r]["activity"])
                     rneeded = 0
 
     return array_ressource_usage

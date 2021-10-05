@@ -33,7 +33,7 @@ class EncodingRegister:
 
     def __init__(self, dict_attribute_to_type: Dict[str, Any]):
         self.dict_attribute_to_type = dict_attribute_to_type
-    
+
     def get_types(self):
         return [t for k in self.dict_attribute_to_type
                 for t in self.dict_attribute_to_type[k]["type"]]
@@ -82,7 +82,7 @@ class Solution:
     @abstractmethod
     def copy(self):
         ...
-    
+
     def lazy_copy(self):
         return self.copy()
 
@@ -226,7 +226,7 @@ def get_default_objective_setup(problem: Problem)->ParamsObjectiveFunction:
     register_objective = problem.get_objective_register()
     objs, weights = register_objective.get_list_objective_and_default_weight()
     sense = register_objective.objective_sense
-    print(sense, register_objective.objective_handling, objs, weights)
+
     return ParamsObjectiveFunction(objective_handling=register_objective.objective_handling,
                                    objectives=objs,
                                    weights=weights,
