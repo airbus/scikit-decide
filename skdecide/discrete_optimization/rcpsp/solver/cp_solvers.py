@@ -36,7 +36,6 @@ class RCPSPSolCP:
     def __init__(self, objective, _output_item, **kwargs):
         self.objective = objective
         self.dict = kwargs
-        print("One solution ", self.objective)
 
     def check(self) -> bool:
         return True
@@ -71,20 +70,20 @@ class CP_RCPSP_MZN(CPSolver):
             instance["possibly_preemptive"] = [True for task in self.rcpsp_model.mode_details]
             instance["max_preempted"] = 3
         n_res = len(list(self.rcpsp_model.resources.keys()))
-        # print('n_res: ', n_res)
+
         instance["n_res"] = n_res
         sorted_resources = sorted(self.rcpsp_model.resources_list)
         self.resources_index = sorted_resources
         rc = [int(self.rcpsp_model.resources[r])
               for r in sorted_resources]
-        # print('rc: ', rc)
+
         instance["rc"] = rc
         n_tasks = self.rcpsp_model.n_jobs + 2
-        # print('n_tasks: ', n_tasks)
+
         instance["n_tasks"] = n_tasks
         sorted_tasks = sorted(self.rcpsp_model.mode_details.keys())
         d = [int(self.rcpsp_model.mode_details[key][1]['duration']) for key in sorted_tasks]
-        # print('d: ', d)
+
         instance["d"] = d
         rr = []
         index = 0
@@ -222,25 +221,21 @@ class CP_MRCPSP_MZN(CPSolver):
         self.resources_index = resources_list
         instance = Instance(solver, model)
         n_res = len(resources_list)
-        # print('n_res: ', n_res)
+
         keys = []
 
         instance["n_res"] = n_res
         keys += ["n_res"]
 
-        # rc = [val for val in self.rcpsp_model.resources.values()]
-        # # print('rc: ', rc)
-        # instance["rc"] = rc
-
         n_tasks = self.rcpsp_model.n_jobs + 2
-        # print('n_tasks: ', n_tasks)
+
         instance["n_tasks"] = n_tasks
         keys += ["n_tasks"]
 
         sorted_tasks = sorted(self.rcpsp_model.mode_details.keys())
-        # print('mode_details: ', self.rcpsp_model.mode_details)
+
         n_opt = sum([len(list(self.rcpsp_model.mode_details[key].keys())) for key in sorted_tasks])
-        # print('n_opt: ', n_opt)
+
         instance["n_opt"] = n_opt
         keys += ["n_opt"]
 
@@ -260,11 +255,10 @@ class CP_MRCPSP_MZN(CPSolver):
             modes.append(set_mode_task)
             dur = dur + [self.rcpsp_model.mode_details[act][key]['duration']
                          for key in tmp]
-        # print('modes: ', modes)
+
         instance['modes'] = modes
         keys += ["modes"]
 
-        # print('dur: ', dur)
         instance['dur'] = dur
         keys += ["dur"]
 
@@ -278,7 +272,6 @@ class CP_MRCPSP_MZN(CPSolver):
                     rreq[index].append(int(self.rcpsp_model.mode_details[task][mod][res]))
             index += 1
 
-        # print('rreq: ', rreq)
         instance["rreq"] = rreq
         keys += ["rreq"]
 
@@ -286,20 +279,17 @@ class CP_MRCPSP_MZN(CPSolver):
             rcap = [int(self.rcpsp_model.resources[x]) for x in resources_list]
         else:
             rcap = [int(max(self.rcpsp_model.resources[x])) for x in resources_list]
-        # print('rcap: ', rcap)
+
         instance["rcap"] = rcap
         keys += ["rcap"]
 
-        # print('non_renewable_resources:', self.rcpsp_model.non_renewable_resources)
         rtype = [2 if res in self.rcpsp_model.non_renewable_resources else 1
                  for res in resources_list]
 
-        # print('rtype: ', rtype)
         instance["rtype"] = rtype
         keys += ["rtype"]
 
         succ = [set(self.rcpsp_model.successors[task]) for task in sorted_tasks]
-        # print('succ: ', succ)
 
         instance["succ"] = succ
         keys += ["succ"]
@@ -307,19 +297,14 @@ class CP_MRCPSP_MZN(CPSolver):
         if self.calendar:
             one_ressource = list(self.rcpsp_model.resources.keys())[0]
             instance["max_time"] = len(self.rcpsp_model.resources[one_ressource])
-            print(instance["max_time"])
             keys += ["max_time"]
             ressource_capacity_time = [[int(x) for x in self.rcpsp_model.resources[res]]
                                        for res in resources_list]
-            # print(instance["max_time"])
-            # print(len(ressource_capacity_time))
-            # print([len(x) for x in ressource_capacity_time])
+
             instance["ressource_capacity_time"] = ressource_capacity_time
             keys += ["ressource_capacity_time"]
 
-        # import pymzn
-        # pymzn.dict2dzn({key: instance[key] for key in keys},
-        #                 fout='rcpsp_.dzn')
+
         self.instance = instance
         p_s: Union[PartialSolution, None] = args.get("partial_solution", None)
         if p_s is not None:
@@ -471,25 +456,21 @@ class CP_MRCPSP_MZN_NOBOOL(CPSolver):
         resources_list = list(self.rcpsp_model.resources.keys())
         instance = Instance(solver, model)
         n_res = len(resources_list)
-        # print('n_res: ', n_res)
+
         keys = []
 
         instance["n_res"] = n_res
         keys += ["n_res"]
 
-        # rc = [val for val in self.rcpsp_model.resources.values()]
-        # # print('rc: ', rc)
-        # instance["rc"] = rc
-
         n_tasks = self.rcpsp_model.n_jobs + 2
-        # print('n_tasks: ', n_tasks)
+
         instance["n_tasks"] = n_tasks
         keys += ["n_tasks"]
 
         sorted_tasks = sorted(self.rcpsp_model.mode_details.keys())
-        # print('mode_details: ', self.rcpsp_model.mode_details)
+
         n_opt = sum([len(list(self.rcpsp_model.mode_details[key].keys())) for key in sorted_tasks])
-        # print('n_opt: ', n_opt)
+
         instance["n_opt"] = n_opt
         keys += ["n_opt"]
 
@@ -501,7 +482,7 @@ class CP_MRCPSP_MZN_NOBOOL(CPSolver):
         general_counter = 1
         for act in sorted_tasks:
             tmp = sorted(self.rcpsp_model.mode_details[act].keys())
-            # tmp = [counter + x for x in tmp]
+
             set_mode_task = set()
             for i in range(len(tmp)):
                 original_mode_index = tmp[i]
@@ -512,15 +493,11 @@ class CP_MRCPSP_MZN_NOBOOL(CPSolver):
             dur = dur + [self.rcpsp_model.mode_details[act][key]['duration']
                          for key in tmp]
 
-        # print('modes: ', modes)
         instance['modes'] = modes
         keys += ["modes"]
 
-
-        # print('dur: ', dur)
         instance['dur'] = dur
         keys += ["dur"]
-
 
         rreq = []
         index = 0
@@ -531,7 +508,6 @@ class CP_MRCPSP_MZN_NOBOOL(CPSolver):
                     rreq[index].append(int(self.rcpsp_model.mode_details[task][mod][res]))
             index += 1
 
-        # print('rreq: ', rreq)
         instance["rreq"] = rreq
         keys += ["rreq"]
 
@@ -539,20 +515,17 @@ class CP_MRCPSP_MZN_NOBOOL(CPSolver):
             rcap = [self.rcpsp_model.resources[x] for x in resources_list]
         else:
             rcap = [int(max(self.rcpsp_model.resources[x])) for x in resources_list]
-        # print('rcap: ', rcap)
+
         instance["rcap"] = rcap
         keys += ["rcap"]
 
-        # print('non_renewable_resources:', self.rcpsp_model.non_renewable_resources)
         rtype = [2 if res in self.rcpsp_model.non_renewable_resources else 1
                  for res in resources_list]
 
-        # print('rtype: ', rtype)
         instance["rtype"] = rtype
         keys += ["rtype"]
 
         succ = [set(self.rcpsp_model.successors[task]) for task in sorted_tasks]
-        # print('succ: ', succ)
 
         instance["succ"] = succ
         keys += ["succ"]
@@ -560,19 +533,14 @@ class CP_MRCPSP_MZN_NOBOOL(CPSolver):
         if self.calendar:
             one_ressource = list(self.rcpsp_model.resources.keys())[0]
             instance["max_time"] = len(self.rcpsp_model.resources[one_ressource])
-            print(instance["max_time"])
             keys += ["max_time"]
             ressource_capacity_time = [[int(x) for x in self.rcpsp_model.resources[res]]
                                        for res in resources_list]
-            # print(instance["max_time"])
-            # print(len(ressource_capacity_time))
-            # print([len(x) for x in ressource_capacity_time])
+
             instance["ressource_capacity_time"] = ressource_capacity_time
             keys += ["ressource_capacity_time"]
 
-        # import pymzn
-        # pymzn.dict2dzn({key: instance[key] for key in keys},
-        #                fout='rcpsp_.dzn')
+
         self.instance = instance
         p_s: Union[PartialSolution, None] = args.get("partial_solution", None)
         if p_s is not None:
@@ -613,7 +581,6 @@ class CP_MRCPSP_MZN_NOBOOL(CPSolver):
         if intermediate_solutions:
             for i in range(len(result)):
                 object_result += [result[i]]
-                # print("Objective : ", result[i, "objective"])
         else:
             object_result += [result]
         for res in object_result:
@@ -703,7 +670,6 @@ class CP_MRCPSP_MZN_MODES:
             modes.append(set(tmp))
             counter = tmp[-1]
 
-        # print('modes: ', modes)
         instance['modes'] = modes
         keys += ["modes"]
 
@@ -716,13 +682,12 @@ class CP_MRCPSP_MZN_MODES:
                     rreq[index].append(int(self.rcpsp_model.mode_details[task][mod][res]))
             index += 1
 
-        # print('rreq: ', rreq)
         instance["rreq"] = rreq
         keys += ["rreq"]
 
 
         rcap = [val for val in self.rcpsp_model.resources.values()]
-        # print('rcap: ', rcap)
+
         if isinstance(rcap[0], list):
             rcap = [int(max(r)) for r in rcap]
         instance["rcap"] = rcap
@@ -733,9 +698,6 @@ class CP_MRCPSP_MZN_MODES:
         instance["rtype"] = rtype
         keys += ["rtype"]
 
-        # import pymzn # For debug purposes
-        # pymzn.dict2dzn({k: instance[k] for k in keys}, fout="debug_modes_satisfaction.dzn")
-
         self.instance: Instance = instance
         p_s: Union[PartialSolution, None] = args.get("partial_solution", None)
         if p_s is not None:
@@ -745,7 +707,6 @@ class CP_MRCPSP_MZN_MODES:
                     indexes = [i for i in self.modeindex_map if self.modeindex_map[i]["task"] == task
                                and self.modeindex_map[i]["original_mode_index"] == p_s.task_mode[task]]
                     if len(indexes) >= 0:
-                        print("Index found : ", len(indexes))
                         string = "constraint mrun[" + str(indexes[0]) + "] == 1;"
                         self.instance.add_string(string)
                         constraint_strings += [string]
@@ -779,12 +740,9 @@ class CP_MRCPSP_MZN_MODES:
         timeout = parameters_cp.TimeLimit
         intermediate_solutions = parameters_cp.intermediate_solution
         result = self.instance.solve(timeout=timedelta(seconds=timeout),
-                                     # nr_solutions=1000,
-                                     # nr_solutions=1,
                                      nr_solutions=parameters_cp.nr_solutions
                                      if not parameters_cp.all_solutions else None,
                                      all_solutions=parameters_cp.all_solutions)
-                                     #intermediate_solutions=intermediate_solutions)
         verbose = args.get("verbose", False)
         if verbose:
             print(result.status)

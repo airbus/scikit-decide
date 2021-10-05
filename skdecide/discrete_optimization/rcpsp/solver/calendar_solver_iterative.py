@@ -58,12 +58,10 @@ def get_ressource_breaks(problem_calendar, problem_no_calendar, solution: RCPSPS
     for r in ressource_arrays:
         index = np.argwhere(ressource_arrays[r] > problem_calendar.resources[r])
         index_ressource[r] = index
-        #print("Constraints broken : ", r, index)
         task_concerned[r] = [j for j in range(ressource_arrays_usage[r].shape[1])
                              if any(ressource_arrays_usage[r][ind[0], j] == 1
                                     for ind in index
                                     if problem_calendar.resources[r][ind[0]] == 0)]
-        #print("Concerned : ", task_concerned[r])
         task_concerned[r] = [sorted_keys_schedule[rr] for rr in task_concerned[r]]
         constraints[r] = {}
         for t in task_concerned[r]:
@@ -76,10 +74,7 @@ def get_ressource_breaks(problem_calendar, problem_no_calendar, solution: RCPSPS
                                                if problem_calendar.resources[r][st]
                                                 >= problem_calendar.mode_details[t][1][r]),
                                                None)
-            #if first_possible_start_before is not None:
-            #    first_possible_start_before = \
-            #        max(0,
-            #            first_possible_start_before-problem_calendar.mode_details[t][1]["duration"]+1)
+
             constraints[r][t] = (first_possible_start_before, first_possible_start_future)
     return index_ressource, constraints
 
@@ -125,7 +120,6 @@ class PostProcessSolutionNonFeasible(PostProcessSolution):
                 rb, constraints = get_ressource_breaks(self.problem_calendar, self.problem_no_calendar, sol[0])
                 sol[0].satisfy = not(any(len(rb[r]) > 0 for r in rb))
                 sol[0].constraints = constraints
-                print("Check Ressource : ", sol[0].satisfy)
             if sol[0].satisfy is False:
                 if self.partial_solution is None:
                     solution = RCPSPSolution(problem=self.problem_calendar,
@@ -135,8 +129,7 @@ class PostProcessSolutionNonFeasible(PostProcessSolution):
                     solution.satisfy = self.check_sol(self.problem_calendar, solution)
                     result_storage.list_solution_fits += [(solution,
                                                            -self.problem_calendar.evaluate(solution)["makespan"])]
-        # result_storage.list_solution_fits = [r for r in result_storage.list_solution_fits
-        #                                      if r[0].satisfy]
+
         return result_storage
 
 
@@ -153,7 +146,6 @@ class ConstraintHandlerAddCalendarConstraint(ConstraintHandler):
                                              result_storage: ResultStorage) -> Iterable[Any]:
         solution, fit = result_storage.get_best_solution_fit()
         if ("satisfy" in solution.__dict__.keys() and solution.satisfy):
-            print("adding the other constraints !")
             return self.other_constraint.adding_constraint_from_results_store(cp_solver, child_instance, result_storage)
         ressource_breaks, constraints = get_ressource_breaks(self.problem_calendar,
                                                              self.problem_no_calendar,
@@ -185,22 +177,6 @@ class ConstraintHandlerAddCalendarConstraint(ConstraintHandler):
                     child_instance.add_string(s)
                     list_strings += [s]
 
-        # for r in ressource_breaks:
-        #     index_ressource = cp_solver.resources_index.index(r)
-        #     for t in range(len(self.problem_calendar.resources[r])):
-        #         rq = self.problem_calendar.resources[r][t]
-        #         if t<max_time:
-        #             if isinstance(cp_solver, CP_MRCPSP_MZN):
-        #                 s = """constraint """ + str(rq) + """>=sum( i in Act ) (
-        #                                 bool2int(start[i] <=""" + str(t) + """ /\ """ + str(t) \
-        #                     + """< start[i] + adur[i]) * arreq[""" + str(index_ressource + 1) + """,i]);\n"""
-        #             elif isinstance(cp_solver, CP_RCPSP_MZN):
-        #                 s = """constraint """ + str(rq) + """>=sum( i in Tasks ) (
-        #                                                     bool2int(s[i] <=""" + str(t) + """ /\ """ + str(t) \
-        #                     + """< s[i] + d[i]) * rr[""" + str(index_ressource + 1) + """,i]);\n"""
-        #             child_instance.add_string(s)
-        #             list_strings += [s]
-
         for r in ressource_breaks:
             index_ressource = cp_solver.resources_index.index(r)
             for index in ressource_breaks[r]:
@@ -208,8 +184,7 @@ class ConstraintHandlerAddCalendarConstraint(ConstraintHandler):
                     continue
                 ind = index[0]
                 rq = self.problem_calendar.resources[r][ind]
-                # if random.random() <= 0.3:
-                #    continue
+
                 if isinstance(cp_solver, CP_MRCPSP_MZN):
                     s = """constraint """+str(rq)+""">=sum( i in Act ) (
                                     bool2int(start[i] <="""+str(ind)+""" /\ """+str(ind)\
@@ -220,8 +195,7 @@ class ConstraintHandlerAddCalendarConstraint(ConstraintHandler):
                         + """< s[i] + d[i]) * rr[""" + str(index_ressource + 1) + """,i]);\n"""
                 child_instance.add_string(s)
                 list_strings += [s]
-                # print("Res", r)
-                # print("Time", index)
+
         satisfiable = [(s,f) for s, f in result_storage.list_solution_fits if "satisfy" in s.__dict__.keys()
                        and s.satisfy]
         if len(satisfiable) > 0:
@@ -254,37 +228,36 @@ class SolverWithCalendarIterative(SolverDO):
                                               successors=self.problem_calendar.successors,
                                               horizon=self.problem_calendar.horizon,
                                               name_task=self.problem_calendar.name_task)
-        # solver = CP_MRCPSP_MZN(rcpsp_model=self.problem_no_calendar,
-        #                        cp_solver_name=CPSolverName.CHUFFED)
-        # solver = CP_RCPSP_MZN(rcpsp_model=self.problem_no_calendar,
-        #                       cp_solver_name=CPSolverName.CHUFFED)
+
         solver = CP_MRCPSP_MZN(rcpsp_model=self.problem_no_calendar,
                                cp_solver_name=CPSolverName.CHUFFED)
+
         solver.init_model(output_type=True,
                           model_type="multi",
                           partial_solution=partial_solution)
+
         parameters_cp = ParametersCP.default()
         parameters_cp.TimeLimit = 500
         parameters_cp.TimeLimit_iter0 = 500
         params_objective_function = get_default_objective_setup(problem=self.problem_no_calendar)
-        # constraint_handler = ConstraintHandlerFixStartTime(problem=rcpsp_problem,
-        #                                                    fraction_fix_start_time=0.5)
+
         constraint_handler = ConstraintHandlerStartTimeInterval_CP(problem=self.problem_no_calendar,
                                                                    fraction_to_fix=0.99,
                                                                    minus_delta=10,
                                                                    plus_delta=10,
                                                                    delta_time_from_makepan_to_not_fix=5)
-        # constraint_handler = ConstraintHandlerAddCalendarConstraint(self.problem_calendar,
-        #                                                             self.problem_no_calendar,
-        #                                                             constraint_handler)
+
         constraint_handler = build_neighbor_operator(option_neighbor=OptionNeighbor.MIX_LARGE_NEIGH,
                                                      rcpsp_model=self.problem_no_calendar)
+
         constraint_handler = ConstraintHandlerAddCalendarConstraint(self.problem_calendar,
                                                                     self.problem_no_calendar,
                                                                     constraint_handler)
+
         initial_solution_provider = InitialSolutionRCPSP(problem=self.problem_calendar,
                                                          initial_method=InitialMethodRCPSP.PILE_CALENDAR,
                                                          params_objective_function=params_objective_function)
+
         self.initial_solution_provider = initial_solution_provider
         self.constraint_handler = constraint_handler
         self.params_objective_function = params_objective_function
@@ -300,13 +273,18 @@ class SolverWithCalendarIterative(SolverDO):
               max_time_seconds: Optional[int] = None,
               skip_first_iteration: bool = False,
               **args) -> ResultStorage:
+
         sense = self.params_objective_function.sense_function
+
         if max_time_seconds is None:
             max_time_seconds = 3600 * 24  # One day
+
         if nb_iteration_no_improvement is None:
             nb_iteration_no_improvement = 2 * nb_iteration_lns
+
         current_nb_iteration_no_improvement = 0
         deb_time = time.time()
+
         if not skip_first_iteration:
             store_lns = self.initial_solution_provider.get_starting_solution()
             store_lns = self.post_process_solution.build_other_solution(store_lns)
@@ -315,7 +293,6 @@ class SolverWithCalendarIterative(SolverDO):
             init_solution, objective = store_lns.get_best_solution_fit()
             best_solution = init_solution.copy()
             satisfy = self.problem_calendar.satisfy(init_solution)
-            print("Satisfy ", satisfy)
             best_objective = objective
         else:
             best_objective = float('inf') if sense == ModeOptim.MINIMIZATION else -float("inf")
@@ -323,15 +300,10 @@ class SolverWithCalendarIterative(SolverDO):
             constraint_iterable = {"empty": []}
             store_lns = None
             store_with_all = None
+
         constraint_to_keep = set()
+
         for iteration in range(nb_iteration_lns):
-            print('Starting iteration n°', iteration,
-                  " current objective ", best_objective)
-            try:
-                print("Best feasible solution ", max([f for s, f in store_with_all.list_solution_fits
-                                                      if "satisfy" in s.__dict__.keys() and s.satisfy]))
-            except:
-                print("No Feasible solution yet")
             with self.cp_solver.instance.branch() as child:
                 if iteration == 0 and not skip_first_iteration or iteration >= 1:
                     for c in constraint_to_keep:
@@ -351,18 +323,14 @@ class SolverWithCalendarIterative(SolverDO):
                         result = child.solve(timeout=timedelta(seconds=parameters_cp.TimeLimit),
                                              intermediate_solutions=parameters_cp.intermediate_solution)
                     result_store = self.cp_solver.retrieve_solutions(result, parameters_cp=parameters_cp)
-                    print("iteration n°", iteration, "Solved !!!")
-                    print(result.status)
+
                     if len(result_store.list_solution_fits) > 0:
-                        print("Solved !!!")
+
                         bsol, fit = result_store.get_best_solution_fit()
-                        print("Fitness = ", fit)
-                        print("Post Process..")
-                        print("Satisfy best current sol : ")
-                        print(self.problem_calendar.satisfy(bsol))
+
                         result_store = self.post_process_solution.build_other_solution(result_store)
                         bsol, fit = result_store.get_best_solution_fit()
-                        print("After postpro = ", fit)
+
                         if sense == ModeOptim.MAXIMIZATION and fit >= best_objective:
                             if fit > best_objective:
                                 current_nb_iteration_no_improvement = 0
@@ -391,41 +359,20 @@ class SolverWithCalendarIterative(SolverDO):
                         for s, f in store_with_all.list_solution_fits:
                             #if s.satisfy:
                             store_lns.list_solution_fits += [(s, f)]
-                        print("Satisfy : ", self.problem_calendar.satisfy(best_solution))
                     else:
                         current_nb_iteration_no_improvement += 1
                     if skip_first_iteration and result.status == Status.OPTIMAL_SOLUTION and iteration == 0\
                             and best_solution.satisfy:
-                        print("Finish LNS because found optimal solution")
                         break
                 else:
-                #except Exception as e:
                     current_nb_iteration_no_improvement += 1
-                    print("Failed ! reason : ", e)
+
                 if time.time() - deb_time > max_time_seconds:
                     print("Finish LNS with time limit reached")
                     break
-                print(current_nb_iteration_no_improvement, "/", nb_iteration_no_improvement)
+
                 if current_nb_iteration_no_improvement > nb_iteration_no_improvement:
                     print("Finish LNS with maximum no improvement iteration ")
                     break
 
-                # Useless to remove the constraints with the "with", the constraints are only active inside the with.
-                # print('Removing constraint:')
-                # # self.constraint_handler.remove_constraints_from_previous_iteration(cp_solver=self.cp_solver,
-                # #                                                                    child_instance=child,
-                # #                                                                    previous_constraints=constraint_iterable)
-                # print('Adding constraint:')
-                # constraint_iterable = self.constraint_handler.adding_constraint_from_results_store(cp_solver=
-                #                                                                                    self.cp_solver,
-                #                                                                                    child_instance=child,
-                #                                                                                    result_storage=
-                #                                                                                    store_lns)
         return store_with_all
-
-
-
-
-
-
-

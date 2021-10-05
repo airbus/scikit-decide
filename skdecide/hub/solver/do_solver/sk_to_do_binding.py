@@ -137,7 +137,6 @@ def build_do_domain(scheduling_domain: Union[SingleModeRCPSP,
         employees_dict = {}
         employees = scheduling_domain.get_resource_units_names()
         sorted_employees = sorted(employees)
-        print(sorted_employees)
         for employee, i in zip(sorted_employees, range(len(sorted_employees))):
             skills = scheduling_domain.get_skills_of_resource(resource=employee)
             skills_details = {r: SkillDetail(skill_value=skills[r],

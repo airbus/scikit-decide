@@ -101,13 +101,10 @@ class LNS_MILP(SolverDO):
         for iteration in range(nb_iteration_lns):
             result_store = self.milp_solver.solve(parameters_milp=parameters_milp,
                                                   **args)
-            print("Solved !!!")
             bsol, fit = result_store.get_best_solution_fit()
-            print("Fitness = ", fit)
-            print("Post Process..")
+
             result_store = self.post_process_solution.build_other_solution(result_store)
             bsol, fit = result_store.get_best_solution_fit()
-            print("After postpro = ", fit)
             if sense == ModeOptim.MAXIMIZATION and fit >= best_objective:
                 if fit > best_objective:
                     current_nb_iteration_no_improvement = 0
@@ -126,19 +123,15 @@ class LNS_MILP(SolverDO):
                 store_lns = result_store
             for s, f in result_store.list_solution_fits:
                 store_lns.add_solution(solution=s, fitness=f)
-            print('Removing constraint:')
             self.constraint_handler.remove_constraints_from_previous_iteration(milp_solver=self.milp_solver,
                                                                                previous_constraints=constraint_iterable)
-            print('Adding constraint:')
             constraint_iterable = self.constraint_handler.adding_constraint_from_results_store(milp_solver=
                                                                                                self.milp_solver,
                                                                                                result_storage=
                                                                                                result_store)
             if time.time()-deb_time > max_time_seconds:
-                print("Finish LNS with time limit reached")
                 break
             if current_nb_iteration_no_improvement > nb_iteration_no_improvement:
-                print("Finish LNS with maximum no improvement iteration ")
                 break
         return store_lns
 

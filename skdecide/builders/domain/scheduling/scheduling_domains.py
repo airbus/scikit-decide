@@ -646,28 +646,6 @@ class SchedulingDomain(WithPrecedence,
                                     if all(m in state.tasks_complete
                                            for m in set(self.ancestors[n]).intersection(self.get_available_tasks(state)))]
 
-        # possible_task_precedence = [(n, mode)
-        #                             for n in state.tasks_remaining
-        #                             for mode in self.get_task_modes(n).keys()
-        #                             if all(m in state.tasks_complete
-        #                                    for m in self.ancestors[n])]
-
-        # print("Possible task precedence : ", possible_task_precedence)
-
-        # possible_with_time_window_start = [(n, mode)
-        #                                 for n, mode in possible_task_precedence
-        #                                 if (state.t >= self.get_time_window()[n].earliest_start)
-        #                                    and (state.t <= self.get_time_window()[n].latest_start)
-        #                                        ]
-
-        # TODO: Below - Make sure the foreseen end time of task is within the end TW - how to sample the duration for uncertain env?
-        # should we add a function get_latest_sampled_duration() to state ?
-        # possible_with_time_window_end = [(n, mode)
-        #                                    for n, mode in possible_with_time_window_start
-        #                                    if (state.t+state.tasks_details[n].sampled_duration >= self.get_time_window()[n].earliest_end)
-        #                                    and (state.t+state.tasks_details[n].sampled_duration <= self.get_time_window()[n].latest_end)
-        #                                    ]
-
         possible_task_with_ressource = [(n, mode)
                                         for n, mode in possible_task_precedence
                                         if all(state.resource_availability[key] -
@@ -887,7 +865,7 @@ class DeterministicSchedulingDomain(SchedulingDomain,
         return DeterministicTransitions._get_next_state_distribution(self, memory, action)
 
 """
-Scheduling action space that will work for domains that don't require any 
+Scheduling action space that will work for domains that don't require any
 ressource unit allocation in its formulation.
 """
 class SchedulingActionSpace(EnumerableSpace[SchedulingAction], SamplableSpace[SchedulingAction]):

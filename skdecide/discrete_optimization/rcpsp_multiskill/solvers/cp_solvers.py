@@ -34,7 +34,6 @@ class MS_RCPSPSolCP:
     def __init__(self, objective, _output_item, **kwargs):
         self.objective = objective
         self.dict = kwargs
-        print("One solution ", self.objective)
 
     def check(self) -> bool:
         return True
@@ -71,12 +70,10 @@ class CP_MS_MRCPSP_MZN(CPSolver):
             self.custom_output_type = True
 
         solver = Solver.lookup(map_cp_solver_name[self.cp_solver_name])
-        # solver = Solver.lookup("")
         resources_list = sorted(list(self.rcpsp_model.resources_availability.keys()))
         self.resources_index = resources_list
         instance = Instance(solver, model)
         n_res = len(resources_list)
-        # print('n_res: ', n_res)
         keys = []
         if not no_ressource:
             instance["n_res"] = n_res
@@ -89,17 +86,12 @@ class CP_MS_MRCPSP_MZN(CPSolver):
         instance["exact_skills_need"] = exact_skills_need
         instance["one_ressource_per_task"] = self.one_ressource_per_task
         keys += ["one_ressource_per_task"]
-        # rc = [val for val in self.rcpsp_model.resources.values()]
-        # # print('rc: ', rc)
-        # instance["rc"] = rc
+
         n_tasks = self.rcpsp_model.n_jobs_non_dummy + 2
-        # print('n_tasks: ', n_tasks)
         instance["n_tasks"] = n_tasks
         keys += ["n_tasks"]
         sorted_tasks = sorted(self.rcpsp_model.mode_details.keys())
-        # print('mode_details: ', self.rcpsp_model.mode_details)
         n_opt = sum([len(list(self.rcpsp_model.mode_details[key].keys())) for key in sorted_tasks])
-        # print('n_opt: ', n_opt)
         instance["n_opt"] = n_opt
         keys += ["n_opt"]
         modes = []
@@ -119,10 +111,8 @@ class CP_MS_MRCPSP_MZN(CPSolver):
             dur = dur + [self.rcpsp_model.mode_details[act][key]['duration']
                          for key in sorted(self.rcpsp_model.mode_details[act].keys())]
 
-        # print('modes: ', modes)
         instance['modes'] = modes
         keys += ["modes"]
-        # print('dur: ', dur)
         instance['dur'] = dur
         keys += ["dur"]
 
@@ -160,9 +150,7 @@ class CP_MS_MRCPSP_MZN(CPSolver):
                                             for x in
                                             self.rcpsp_model.resources_availability[res][:(instance["max_time"]+1)]]
                                            for res in resources_list]
-                # print(instance["max_time"])
-                # print(len(ressource_capacity_time))
-                # print([len(x) for x in ressource_capacity_time])
+
                 instance["ressource_capacity_time"] = ressource_capacity_time
                 keys += ["ressource_capacity_time"]
         instance["nb_skill"] = len(self.rcpsp_model.skills_set)
@@ -183,7 +171,6 @@ class CP_MS_MRCPSP_MZN(CPSolver):
         instance["ressource_unit_capacity_time"] = ressource_unit_capacity_time
         instance["skillunits"] = skillunits
         keys += ["skillunits", "ressource_unit_capacity_time"]
-        print("Employee position CP ", self.employees_position)
 
         # print('rreq: ', rreq)
         if not no_ressource:
@@ -191,19 +178,15 @@ class CP_MS_MRCPSP_MZN(CPSolver):
             keys += ["rreq"]
 
             rcap = [int(max(self.rcpsp_model.resources_availability[x])) for x in resources_list]
-            # print('rcap: ', rcap)
             instance["rcap"] = rcap
             keys += ["rcap"]
-            # print('non_renewable_resources:', self.rcpsp_model.non_renewable_resources)
             rtype = [2 if res in self.rcpsp_model.non_renewable_resources else 1
                      for res in resources_list]
 
-            # print('rtype: ', rtype)
             instance["rtype"] = rtype
             keys += ["rtype"]
 
         succ = [set(self.rcpsp_model.successors[task]) for task in sorted_tasks]
-        # print('succ: ', succ)
 
         instance["succ"] = succ
         keys += ["succ"]
@@ -274,8 +257,7 @@ class CP_MS_MRCPSP_MZN(CPSolver):
                     starts += [result[i, "start"]]
                     mruns += [result[i, "mrun"]]
                     units_used += [result[i, "unit_used"]]
-                # array_skill = result[i, "array_skills_required"]
-                # print("Objective : ", result[i, "objective"])
+
         else:
             if isinstance(result, MS_RCPSPSolCP):
                 starts += [result.dict["start"]]
@@ -287,7 +269,6 @@ class CP_MS_MRCPSP_MZN(CPSolver):
                 units_used += [result["unit_used"]]
             # array_skill = result["array_skills_required"]
         for start_times, mrun, unit_used in zip(starts, mruns, units_used):
-            #print("New Solution")
             modes = []
             usage = {}
             for i in range(len(mrun)):
@@ -301,8 +282,6 @@ class CP_MS_MRCPSP_MZN(CPSolver):
                 for task in range(len(unit_used[w])):
                     if unit_used[w][task] == 1:
                         task_id = task+1
-                        #print("Unit used : , ", w, "taskid : ",
-                        #      task_id, unit_used[w][task])
                         mode = modes[task_id-1]
                         skills_needed = set([s #, self.rcpsp_model.mode_details[task_id][mode][s])
                                              for s in self.rcpsp_model.skills_set

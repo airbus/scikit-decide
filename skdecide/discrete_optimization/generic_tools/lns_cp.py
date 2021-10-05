@@ -75,7 +75,6 @@ class LNS_CP(SolverDO):
             best_solution = init_solution.copy()
 
             satisfy = self.problem.satisfy(init_solution)
-            print("Satisfy ", satisfy)
             best_objective = objective
         else:
             best_objective = float('inf') if sense==ModeOptim.MINIMIZATION else -float("inf")
@@ -83,8 +82,6 @@ class LNS_CP(SolverDO):
             constraint_iterable = {"empty": []}
             store_lns = None
         for iteration in range(nb_iteration_lns):
-            print('Starting iteration n°', iteration,
-                  " current objective ", best_objective)
             with self.cp_solver.instance.branch() as child:
                 if iteration == 0 and not skip_first_iteration or iteration >= 1:
                     constraint_iterable = self.constraint_handler \
@@ -99,16 +96,10 @@ class LNS_CP(SolverDO):
                         result = child.solve(timeout=timedelta(seconds=parameters_cp.TimeLimit),
                                              intermediate_solutions=parameters_cp.intermediate_solution)
                     result_store = self.cp_solver.retrieve_solutions(result, parameters_cp=parameters_cp)
-                    print("iteration n°", iteration, "Solved !!!")
-                    print(result.status)
                     if len(result_store.list_solution_fits) > 0:
-                        print("Solved !!!")
                         bsol, fit = result_store.get_best_solution_fit()
-                        print("Fitness = ", fit)
-                        print("Post Process..")
                         result_store = self.post_process_solution.build_other_solution(result_store)
                         bsol, fit = result_store.get_best_solution_fit()
-                        print("After postpro = ", fit)
                         if sense == ModeOptim.MAXIMIZATION and fit >= best_objective:
                             if fit > best_objective:
                                 current_nb_iteration_no_improvement = 0
@@ -131,30 +122,15 @@ class LNS_CP(SolverDO):
                             store_lns = result_store
                         for s, f in result_store.list_solution_fits:
                             store_lns.add_solution(solution=s, fitness=f)
-                        print("Satisfy : ", self.problem.satisfy(best_solution))
                     else:
                         current_nb_iteration_no_improvement += 1
                 except Exception as e:
                     current_nb_iteration_no_improvement += 1
-                    print("Failed ! reason : ", e)
                 if time.time() - deb_time > max_time_seconds:
-                    print("Finish LNS with time limit reached")
                     break
-                print(current_nb_iteration_no_improvement, "/", nb_iteration_no_improvement)
                 if current_nb_iteration_no_improvement > nb_iteration_no_improvement:
-                    print("Finish LNS with maximum no improvement iteration ")
                     break
-                # Useless to remove the constraints with the "with", the constraints are only active inside the with.
-                # print('Removing constraint:')
-                # # self.constraint_handler.remove_constraints_from_previous_iteration(cp_solver=self.cp_solver,
-                # #                                                                    child_instance=child,
-                # #                                                                    previous_constraints=constraint_iterable)
-                # print('Adding constraint:')
-                # constraint_iterable = self.constraint_handler.adding_constraint_from_results_store(cp_solver=
-                #                                                                                    self.cp_solver,
-                #                                                                                    child_instance=child,
-                #                                                                                    result_storage=
-                #                                                                                    store_lns)
+
         return store_lns
 
 
