@@ -285,7 +285,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: true
+          fetch-depth: 0
 
       - name: Setup python
         uses: actions/setup-python@v2
@@ -305,16 +305,21 @@ jobs:
         run: |
           (cd docs; python autodoc.py)
 
-      - name: generate documentation
-        run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
+      - name: Install dependencies
+        run: yarn install --immutable
 
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
+      - name: Build documentation site
+        run: yarn docs:build
+
+      - name: Create DOCS_VERSION_PATH
+        run: |
+            echo DOCS_VERSION_PATH=/version/$(echo ${{ github.ref }} | cut -d / -f 3 | cut -d v -f 2- | cut -d . -f 1,2)/ >> $GITHUB_ENV
+
+      - name: Deploy to GitHub Pages 🚀
+        uses: JamesIves/github-pages-deploy-action@v4.1.5
         with:
-          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
-          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
-          COMMIT_MESSAGE: publish documentation
-          CLEAN: true
-          SINGLE_COMMIT: true
+          token: ${{ secrets.gh_access_token }}
+          branch: gh-pages # The branch the action should deploy to.
+          folder: docs/.vuepress/dist # The folder the action should deploy.
+          target-folder: ${{ env.DOCS_VERSION_PATH }}
+          commit-message: Publish documentation

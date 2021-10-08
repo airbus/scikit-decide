@@ -10,6 +10,7 @@
 
 # Python
 __pycache__/
+.python-version
 
 # Temp files
 *.tmp
@@ -17,6 +18,13 @@ __pycache__/
 # Build files
 build/
 dist/
+docs/guide/_examples.md
+docs/.vuepress/_state.json
+docs/.vuepress/public/notebooks/
+docs/guide/_domainspec.md
+ocs/guide/_examples.md
+docs/guide/_solverspec.md
+docs/reference/
 
 # Web docs
 node_modules/

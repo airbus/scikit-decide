@@ -227,6 +227,7 @@ jobs:
 
   build-docs:
     needs: [test-unix, test-macos, test-windows]
+    if: ${{ github.ref == 'refs/heads/master' }}
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -236,7 +237,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: true
+          fetch-depth: 0
 
       - name: Setup python
         uses: actions/setup-python@v2
@@ -256,5 +257,18 @@ jobs:
         run: |
           (cd docs; python autodoc.py)
 
-      - name: generate documentation
-        run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build documentation site
+        run: yarn docs:build
+
+      - name: Deploy to GitHub Pages 🚀
+        uses: JamesIves/github-pages-deploy-action@v4.1.5
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          branch: gh-pages # The branch the action should deploy to.
+          folder: docs/.vuepress/dist # The folder the action should deploy.
+          commit-message: Publish documentation
+          clean: true # Automatically remove deleted files from the deploy branch
+          clean-exclude: '["version"]'
