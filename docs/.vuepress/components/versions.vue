@@ -41,7 +41,7 @@ export default {
         }
         return e1.text === e2.text ? 0 : e2.text < e1.text ? -1 : 1;
       });
-      this.options.unshift({ value: "main", text: "main" });
+      this.options.unshift({ value: "main", text: "dev" });
       const path = window.location.pathname.toLowerCase();
       if (path.startsWith("/scikit-decide/version/")) {
         const start = 23;

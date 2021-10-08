@@ -2,11 +2,7 @@ module.exports = {
     lang: 'en-US',
     title: 'Scikit-decide',
     description: 'This is scikit-decide documentation site',
-    base: `/scikit-decide/${process.env.DOCS_VERSION_PATH || '/'}`,
-
-    head: [
-        ['script', {}, `console.log('base -> ' + process.env.DOCS_VERSION_PATH);`],
-    ],
+    base: `/scikit-decide${process.env.DOCS_VERSION_PATH || '/'}`,
 
     locales: {
         '/': {
