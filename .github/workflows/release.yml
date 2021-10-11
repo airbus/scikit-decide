@@ -309,12 +309,9 @@ jobs:
         run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
 
       - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
+        uses: JamesIves/github-pages-deploy-action@v4.1.5
         with:
-          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
-          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
-          COMMIT_MESSAGE: publish documentation
-          CLEAN: true
-          SINGLE_COMMIT: true
+          token: ${{ secrets.gh_access_token }}
+          branch: gh-pages # The branch the action should deploy to.
+          folder: docs/.vuepress/dist # The folder the action should deploy.
+          commit_message: Publish documentation
