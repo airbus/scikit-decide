@@ -158,6 +158,13 @@ Here are the steps to follow:
         poetry install --extras all
         ```
         
+Now you are able to use the library in developer mode (i.e. with code modifications directly taken into account) 
+by prefixing all commands with `poetry run`. 
+For instance:
+
+- to see the list of installed packages: `poetry run pip list`  (NB: you can also use `poetry show`)
+- to run the tutorial script from examples: `poetry run python examples/tutorial.py`
+
 
 ## Documentation
 
