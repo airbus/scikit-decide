@@ -1,7 +1,7 @@
 {
   "scripts": {
-    "docs:dev": "vuepress dev docs",
-    "docs:build": "vuepress build docs"
+    "docs:dev": "(cd docs && python autodoc.py) && vuepress dev docs",
+    "docs:build": "(cd docs && python autodoc.py) && vuepress build docs"
   },
   "devDependencies": {
     "@vuepress/plugin-back-to-top": "^1.8.2",
