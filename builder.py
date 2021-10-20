@@ -207,18 +207,6 @@ def build(setup_kwargs: Dict[str, Any]) -> None:
         )
     ext_modules = cython_modules + cmake_modules
 
-    f = "cpp/deps/gecode/CMakeLists.txt"
-    if os.path.isfile(f):
-        with fileinput.FileInput(os.path.abspath(f), inplace=True) as file:
-            for line in file:
-                print(
-                    line.replace(
-                        "CMAKE_RUNTIME_OUTPUT_DIRECTORY",
-                        "_CMAKE_RUNTIME_OUTPUT_DIRECTORY_",
-                    ),
-                    end="",
-                )
-
     setup_kwargs.update(
         {
             "ext_modules": ext_modules,
