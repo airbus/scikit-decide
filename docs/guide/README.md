@@ -27,46 +27,35 @@ Scikit-decide provides a meaningful API to interact with domains at the expected
 ### 1. Make sure to have a Python 3.7+ environment
   
 The use of a virtual environment for scikit-decide is recommended, and you will need to ensure the environment use a Python version greater than 3.7.
-This can be achieved by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win)) and [venv](https://docs.python.org/fr/3/library/venv.html) module as follows:
+This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows) 
+and [venv](https://docs.python.org/fr/3/library/venv.html) module.
 
-#### On Linux/MacOS
+The following examples show how to create a virtual environment with Python version 3.8.11 with the mentioned methods. 
 
-- <a name="use-pyenv"></a>Use pyenv to install an appropriate python version (3.7+).
-    
-    - Install the [Python build dependencies](https://github.com/pyenv/pyenv/wiki#suggested-build-environment) as suggested on pyenv github.
-    - Install pyenv using [pyenv-installer](https://github.com/pyenv/pyenv-installer):
-        ```shell
-        curl https://pyenv.run | bash
-        exec $SHELL
-        ```
-    - Install the chosen python version (e.g. 3.8.11):
-        ```shell
-        pyenv install 3.8.11
-        ```
-      
-- Create the virtual environment with the installed python version, and activate it.
-    ```shell
-    pyenv shell 3.8.11
-    python -m venv skdecide-venv
-    source skdecide-venv
-    ```   
+#### With conda (all platforms) 
+ 
+```shell
+conda create -n skdecide python=3.8.11
+conda activate skdecide
+```
 
-#### On Windows
+#### With pyenv + venv (Linux/MacOS)
+ 
+```shell
+pyenv install 3.8.11
+pyenv shell 3.8.11
+python -m venv skdecide-venv
+source skdecide-venv
+```   
 
-- Use pyenv-win to install an appropriate python version (3.7+).
-    
-    - Install pyenv-win following one of the [several official methods](https://github.com/pyenv-win/pyenv-win#installation).
-    - Install the chosen python version (e.g. 3.8.11):
-        ```shell
-        pyenv install 3.8.11
-        ```
-      
-- Create the virtual environment with the installed python version, and activate it.
-    ```shell
-    pyenv shell 3.8.11
-    python -m venv skdecide-venv
-    skdecide-venv\Scripts\activate
-    ```   
+#### With pyenv-win + venv (Windows)
+
+```shell
+pyenv install 3.8.11
+pyenv shell 3.8.11
+python -m venv skdecide-venv
+skdecide-venv\Scripts\activate
+```   
 
 ### 2. Install scikit-decide library
 

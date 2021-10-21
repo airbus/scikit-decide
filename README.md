@@ -55,46 +55,35 @@ Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning 
 #### 1. Make sure to have a Python 3.7+ environment
   
 The use of a virtual environment for scikit-decide is recommended, and you will need to ensure the environment use a Python version greater than 3.7.
-This can be achieved by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win)) and [venv](https://docs.python.org/fr/3/library/venv.html) module as follows:
+This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows) 
+and [venv](https://docs.python.org/fr/3/library/venv.html) module.
 
-##### On Linux/MacOS
+The following examples show how to create a virtual environment with Python version 3.8.11 with the mentioned methods. 
 
-- <a name="use-pyenv"></a>Use pyenv to install an appropriate python version (3.7+).
-    
-    - Install the [Python build dependencies](https://github.com/pyenv/pyenv/wiki#suggested-build-environment) as suggested on pyenv github.
-    - Install pyenv using [pyenv-installer](https://github.com/pyenv/pyenv-installer):
-        ```shell
-        curl https://pyenv.run | bash
-        exec $SHELL
-        ```
-    - Install the chosen python version (e.g. 3.8.11):
-        ```shell
-        pyenv install 3.8.11
-        ```
-      
-- Create the virtual environment with the installed python version, and activate it.
-    ```shell
-    pyenv shell 3.8.11
-    python -m venv skdecide-venv
-    source skdecide-venv
-    ```   
+##### With conda (all platforms) 
+ 
+```shell
+conda create -n skdecide python=3.8.11
+conda activate skdecide
+```
 
-##### On Windows
+##### With pyenv + venv (Linux/MacOS)
+ 
+```shell
+pyenv install 3.8.11
+pyenv shell 3.8.11
+python -m venv skdecide-venv
+source skdecide-venv
+```   
 
-- Use pyenv-win to install an appropriate python version (3.7+).
-    
-    - Install pyenv-win following one of the [several official methods](https://github.com/pyenv-win/pyenv-win#installation).
-    - Install the chosen python version (e.g. 3.8.11):
-        ```shell
-        pyenv install 3.8.11
-        ```
-      
-- Create the virtual environment with the installed python version, and activate it.
-    ```shell
-    pyenv shell 3.8.11
-    python -m venv skdecide-venv
-    skdecide-venv\Scripts\activate
-    ```   
+##### With pyenv-win + venv (Windows)
+
+```shell
+pyenv install 3.8.11
+pyenv shell 3.8.11
+python -m venv skdecide-venv
+skdecide-venv\Scripts\activate
+```   
 
 #### 2. Install scikit-decide library
 
@@ -115,13 +104,25 @@ pip install -U scikit-decide
   
 ### Installing from source [Developer mode]
 
-> **Disclaimer**: The following process has only been tested on Linux/MacOS platforms. For windows, you will need at least to use pyenv-win instead of pyenv. 
+> **Disclaimer**: The following process has only been tested on Linux/MacOS platforms.
+
+#### Prerequisites 
+In order to build the library from the source and especially the c++ part, 
+you need a minimal environment with c++ compiler, cmake, and boost. 
+To be able to use parallelism based on openMP, you should also install libomp.
+For instance, on macOS it is done via:
+```shell
+xcode-select --install
+brew install cmake
+brew install boost
+brew install libomp
+```
+
+
+#### Installation with pyenv + poetry
 
 In order to install scikit-decide from the source so that your modification to the library are taken into account, we recommmend using poetry.
-
 Here are the steps to follow:
-
-- Use pyenv to install an appropriate python version (3.7+) as explained [above](#use-pyenv).
 
 - Clone the source and got to the "scikit-decide" root directory.
     ```shell
@@ -157,7 +158,42 @@ Here are the steps to follow:
         rm -rf build  # removing previous build
         poetry install --extras all
         ```
-        
+
+#### Alternate installation with conda + poetry
+
+You can also use conda rather than pyenv. It can be useful when you cannot install poetry via the above method,
+as it can also be installed by conda via the conda-forge channel.
+
+- Clone the source and got to the "scikit-decide" root directory.
+    ```shell
+    git clone --recurse-submodules -j8 https://github.com/Airbus/scikit-decide.git
+    cd scikit-decide
+    ```
+  
+- Create and activate a conda environment with the proper python version for the scikit-decide project.
+    ```shell
+    conda create -n test_dev_skdecide python=3.8.11
+    conda activate test_dev_skdecide
+    ```
+- Update pip installer
+    ```shell
+    pip install -U pip
+    ```
+
+- Install poetry in the environment
+    ```shell
+    conda install -c conda-forge poetry
+    ```
+
+- Install all dependencies as defined in `poetry.lock`.
+    ```shell
+    rm -rf build  # removing previous build
+    poetry install --extras all
+    ```
+
+
+#### Use of developer mode installation
+
 Now you are able to use the library in developer mode (i.e. with code modifications directly taken into account) 
 by prefixing all commands with `poetry run`. 
 For instance:
