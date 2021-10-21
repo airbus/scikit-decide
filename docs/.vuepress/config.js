@@ -39,6 +39,11 @@ module.exports = {
             },
         ],
         sidebar: 'auto',
+        markdown: {
+            toc: {
+                includeLevel: [2]
+            }
+        },
     },
 
     plugins: {
