@@ -35,7 +35,7 @@ repos:
         name: clang-format
         description: Format files with ClangFormat
         language: system
-        entry: clang-format-9 -i --style=file # LLVM style stored in .clang-format
+        entry: clang-format -i --style=file # LLVM style stored in .clang-format
         files: ^cpp/src/.*\.[ch]{2}$
 
   - repo: https://github.com/pycqa/isort
