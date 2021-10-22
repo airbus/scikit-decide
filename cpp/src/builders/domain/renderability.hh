@@ -11,12 +11,10 @@ namespace skdecide {
 
 template <typename Tstate>
 class RenderableDomain : public virtual HistoryDomain<Tstate> {
-public :
-    virtual void render(const Memory<Tstate>& memory) = 0;
+public:
+  virtual void render(const Memory<Tstate> &memory) = 0;
 
-    inline void render() {
-        render(_memory);
-    }
+  inline void render() { render(_memory); }
 };
 
 } // namespace skdecide

@@ -9,21 +9,17 @@
 
 namespace skdecide {
 
-template <typename Tvalue>
-class RewardDomain {
-public :
-    inline virtual bool check_value(const Value<Tvalue>& value) {
-        return true;
-    }
+template <typename Tvalue> class RewardDomain {
+public:
+  inline virtual bool check_value(const Value<Tvalue> &value) { return true; }
 };
-
 
 template <typename Tvalue>
 class PositiveCostDomain : public RewardDomain<Tvalue> {
-public :
-    inline virtual bool check_value(const Value<Tvalue>& value) {
-        return value.cost >= 0;
-    }
+public:
+  inline virtual bool check_value(const Value<Tvalue> &value) {
+    return value.cost >= 0;
+  }
 };
 
 } // namespace skdecide

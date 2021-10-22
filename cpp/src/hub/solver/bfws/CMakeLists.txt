@@ -9,7 +9,7 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Texecution" "skdecide::SequentialExecution!Seq;skdecide::ParallelExecution!Par"
         "Thashing_policy" "skdecide::StateFeatureHash!Sfa;skdecide::DomainStateHash!Dsh")
-    
+
     ADD_LIBRARY(py_bfws STATIC
                 ${CMAKE_CURRENT_SOURCE_DIR}/py_bfws.cc
                 ${PYTHON_BFWS_SOLVER_TEMPLATE_FILES})

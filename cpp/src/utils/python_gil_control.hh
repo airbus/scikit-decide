@@ -15,33 +15,34 @@ namespace skdecide {
 
 template <typename Texecution> struct GilControl;
 
-template <>
-struct GilControl<skdecide::SequentialExecution> {
-    struct Acquire { Acquire() {} };
-    struct Release { Release() {} };
+template <> struct GilControl<skdecide::SequentialExecution> {
+  struct Acquire {
+    Acquire() {}
+  };
+  struct Release {
+    Release() {}
+  };
 };
 
-template <>
-struct GilControl<skdecide::ParallelExecution> {
-    
-    template <typename GilScopedType>
-    struct GilManager {
-        std::unique_ptr<GilScopedType> _gil;
-        inline static skdecide::ParallelExecution::RecursiveMutex _mutex;
+template <> struct GilControl<skdecide::ParallelExecution> {
 
-        GilManager() {
-            _mutex.lock();
-            _gil = std::make_unique<GilScopedType>();
-        }
+  template <typename GilScopedType> struct GilManager {
+    std::unique_ptr<GilScopedType> _gil;
+    inline static skdecide::ParallelExecution::RecursiveMutex _mutex;
 
-        ~GilManager() {
-            _gil.reset();
-            _mutex.unlock();
-        }
-    };
+    GilManager() {
+      _mutex.lock();
+      _gil = std::make_unique<GilScopedType>();
+    }
 
-    typedef GilManager<py::gil_scoped_release> Release;
-    typedef GilManager<py::gil_scoped_acquire> Acquire;
+    ~GilManager() {
+      _gil.reset();
+      _mutex.unlock();
+    }
+  };
+
+  typedef GilManager<py::gil_scoped_release> Release;
+  typedef GilManager<py::gil_scoped_acquire> Acquire;
 };
 
 } // namespace skdecide

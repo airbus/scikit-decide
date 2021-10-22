@@ -19,61 +19,63 @@
 
 namespace skdecide {
 
-template <typename Tdomain,
-          typename Texecution_policy = SequentialExecution>
+template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class AStarSolver {
-public :
-    typedef Tdomain Domain;
-    typedef typename Domain::State State;
-    typedef typename Domain::Action Action;
-    typedef typename Domain::Predicate Predicate;
-    typedef typename Domain::Value Value;
-    typedef Texecution_policy ExecutionPolicy;
+public:
+  typedef Tdomain Domain;
+  typedef typename Domain::State State;
+  typedef typename Domain::Action Action;
+  typedef typename Domain::Predicate Predicate;
+  typedef typename Domain::Value Value;
+  typedef Texecution_policy ExecutionPolicy;
 
-    AStarSolver(Domain& domain,
-                const std::function<Predicate (Domain&, const State&)>& goal_checker,
-                const std::function<Value (Domain&, const State&)>& heuristic,
-                bool debug_logs = false);
-    
-    // clears the solver (clears the search graph, thus preventing from reusing
-    // previous search results)
-    void clear();
-    
-    // solves from state s using heuristic function h
-    void solve(const State& s);
+  AStarSolver(
+      Domain &domain,
+      const std::function<Predicate(Domain &, const State &)> &goal_checker,
+      const std::function<Value(Domain &, const State &)> &heuristic,
+      bool debug_logs = false);
 
-    bool is_solution_defined_for(const State& s) const;
-    const Action& get_best_action(const State& s) const;
-    const double& get_best_value(const State& s) const;
+  // clears the solver (clears the search graph, thus preventing from reusing
+  // previous search results)
+  void clear();
 
-private :
-    Domain& _domain;
-    std::function<bool (Domain&, const State&)> _goal_checker;
-    std::function<Value (Domain&, const State&)> _heuristic;
-    bool _debug_logs;
-    ExecutionPolicy _execution_policy;
+  // solves from state s using heuristic function h
+  void solve(const State &s);
 
-    struct Node {
-        State state;
-        std::tuple<Node*, Action, double> best_parent;
-        double gscore;
-        double fscore;
-        Action* best_action; // computed only when constructing the solution path backward from the goal state
-        bool solved; // set to true if on the solution path constructed backward from the goal state
+  bool is_solution_defined_for(const State &s) const;
+  const Action &get_best_action(const State &s) const;
+  const double &get_best_value(const State &s) const;
 
-        Node(const State& s);
-        
-        struct Key {
-            const State& operator()(const Node& sn) const;
-        };
+private:
+  Domain &_domain;
+  std::function<bool(Domain &, const State &)> _goal_checker;
+  std::function<Value(Domain &, const State &)> _heuristic;
+  bool _debug_logs;
+  ExecutionPolicy _execution_policy;
+
+  struct Node {
+    State state;
+    std::tuple<Node *, Action, double> best_parent;
+    double gscore;
+    double fscore;
+    Action *best_action; // computed only when constructing the solution path
+                         // backward from the goal state
+    bool solved; // set to true if on the solution path constructed backward
+                 // from the goal state
+
+    Node(const State &s);
+
+    struct Key {
+      const State &operator()(const Node &sn) const;
     };
+  };
 
-    struct NodeCompare {
-        bool operator()(Node*& a, Node*& b) const;
-    };
+  struct NodeCompare {
+    bool operator()(Node *&a, Node *&b) const;
+  };
 
-    typedef typename SetTypeDeducer<Node, State>::Set Graph;
-    Graph _graph;
+  typedef typename SetTypeDeducer<Node, State>::Set Graph;
+  Graph _graph;
 };
 
 } // namespace skdecide

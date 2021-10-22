@@ -24,237 +24,246 @@ namespace skdecide {
 template <typename Texecution>
 using PyILAOStarDomain = PythonDomainProxy<Texecution>;
 
-
 class PyILAOStarSolver {
-private :
+private:
+  class BaseImplementation {
+  public:
+    virtual ~BaseImplementation() {}
+    virtual void close() = 0;
+    virtual void clear() = 0;
+    virtual void solve(const py::object &s) = 0;
+    virtual py::bool_ is_solution_defined_for(const py::object &s) = 0;
+    virtual py::object get_next_action(const py::object &s) = 0;
+    virtual py::float_ get_utility(const py::object &s) = 0;
+    virtual py::int_ get_nb_of_explored_states() = 0;
+    virtual py::int_ best_solution_graph_size() = 0;
+    virtual py::dict get_policy() = 0;
+  };
 
-    class BaseImplementation {
-    public :
-        virtual ~BaseImplementation() {}
-        virtual void close() = 0;
-        virtual void clear() = 0;
-        virtual void solve(const py::object& s) = 0;
-        virtual py::bool_ is_solution_defined_for(const py::object& s) = 0;
-        virtual py::object get_next_action(const py::object& s) = 0;
-        virtual py::float_ get_utility(const py::object& s) = 0;
-        virtual py::int_ get_nb_of_explored_states() = 0;
-        virtual py::int_ best_solution_graph_size() = 0;
-        virtual py::dict get_policy() = 0;
-    };
-
-    template <typename Texecution>
-    class Implementation : public BaseImplementation {
-    public :
-        Implementation(py::object& domain,
-                       const std::function<py::object (const py::object&, const py::object&)>& goal_checker,
-                       const std::function<py::object (const py::object&, const py::object&)>& heuristic,
-                       double discount = 1.0,
-                       double epsilon = 0.001,
-                       bool debug_logs = false)
+  template <typename Texecution>
+  class Implementation : public BaseImplementation {
+  public:
+    Implementation(
+        py::object &domain,
+        const std::function<py::object(const py::object &, const py::object &)>
+            &goal_checker,
+        const std::function<py::object(const py::object &, const py::object &)>
+            &heuristic,
+        double discount = 1.0, double epsilon = 0.001, bool debug_logs = false)
         : _goal_checker(goal_checker), _heuristic(heuristic) {
 
-            check_domain(domain);
-            _domain = std::make_unique<PyILAOStarDomain<Texecution>>(domain);
-            _solver = std::make_unique<skdecide::ILAOStarSolver<PyILAOStarDomain<Texecution>, Texecution>>(
-                *_domain,
-                [this](PyILAOStarDomain<Texecution>& d, const typename PyILAOStarDomain<Texecution>::State& s) -> typename PyILAOStarDomain<Texecution>::Predicate {
-                    try {
-                        auto fgc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
-                            return _goal_checker(dd, ss);
-                        };
-                        std::unique_ptr<py::object> r = d.call(nullptr, fgc, s.pyobj());
-                        typename skdecide::GilControl<Texecution>::Acquire acquire;
-                        bool rr = r->template cast<bool>();
-                        r.reset();
-                        return  rr;
-                    } catch (const std::exception& e) {
-                        Logger::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
-                        throw;
-                    }
-                },
-                [this](PyILAOStarDomain<Texecution>& d, const typename PyILAOStarDomain<Texecution>::State& s) -> typename PyILAOStarDomain<Texecution>::Value {
-                    try {
-                        auto fh = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
-                            return _heuristic(dd, ss);
-                        };
-                        return typename PyILAOStarDomain<Texecution>::Value(d.call(nullptr, fh, s.pyobj()));
-                    } catch (const std::exception& e) {
-                        Logger::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
-                        throw;
-                    }
-                },
-                discount,
-                epsilon,
-                debug_logs);
-            _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
-                                                                             py::module::import("sys").attr("stdout"));
-            _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
-                                                                             py::module::import("sys").attr("stderr"));
-        }
-
-        virtual ~Implementation() {}
-
-        void check_domain(py::object& domain) {
-            if (!py::hasattr(domain, "get_applicable_actions")) {
-                throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_applicable_actions()");
-            }
-            if (!py::hasattr(domain, "get_next_state_distribution")) {
-                throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_next_state_distribution()");
-            }
-            if (!py::hasattr(domain, "get_transition_value")) {
-                throw std::invalid_argument("SKDECIDE exception: AO* algorithm needs python domain for implementing get_transition_value()");
-            }
-        }
-
-        virtual void close() {
-            _domain->close();
-        }
-
-        virtual void clear() {
-            _solver->clear();
-        }
-
-        virtual void solve(const py::object& s) {
-            typename skdecide::GilControl<Texecution>::Release release;
-            _solver->solve(s);
-        }
-
-        virtual py::bool_ is_solution_defined_for(const py::object& s) {
-            return _solver->is_solution_defined_for(s);
-        }
-
-        virtual py::object get_next_action(const py::object& s) {
+      check_domain(domain);
+      _domain = std::make_unique<PyILAOStarDomain<Texecution>>(domain);
+      _solver = std::make_unique<
+          skdecide::ILAOStarSolver<PyILAOStarDomain<Texecution>, Texecution>>(
+          *_domain,
+          [this](PyILAOStarDomain<Texecution> &d,
+                 const typename PyILAOStarDomain<Texecution>::State &s) ->
+          typename PyILAOStarDomain<Texecution>::Predicate {
             try {
-                return _solver->get_best_action(s).pyobj();
-            } catch (const std::runtime_error&) {
-                return py::none();
+              auto fgc = [this](const py::object &dd, const py::object &ss,
+                                [[maybe_unused]] const py::object &ii) {
+                return _goal_checker(dd, ss);
+              };
+              std::unique_ptr<py::object> r = d.call(nullptr, fgc, s.pyobj());
+              typename skdecide::GilControl<Texecution>::Acquire acquire;
+              bool rr = r->template cast<bool>();
+              r.reset();
+              return rr;
+            } catch (const std::exception &e) {
+              Logger::error(
+                  std::string(
+                      "SKDECIDE exception when calling goal checker: ") +
+                  e.what());
+              throw;
             }
-        }
-
-        virtual py::float_ get_utility(const py::object& s) {
+          },
+          [this](PyILAOStarDomain<Texecution> &d,
+                 const typename PyILAOStarDomain<Texecution>::State &s) ->
+          typename PyILAOStarDomain<Texecution>::Value {
             try {
-                return _solver->get_best_value(s);
-            } catch (const std::runtime_error&) {
-                return py::none();
+              auto fh = [this](const py::object &dd, const py::object &ss,
+                               [[maybe_unused]] const py::object &ii) {
+                return _heuristic(dd, ss);
+              };
+              return typename PyILAOStarDomain<Texecution>::Value(
+                  d.call(nullptr, fh, s.pyobj()));
+            } catch (const std::exception &e) {
+              Logger::error(
+                  std::string(
+                      "SKDECIDE exception when calling heuristic estimator: ") +
+                  e.what());
+              throw;
             }
+          },
+          discount, epsilon, debug_logs);
+      _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
+          std::cout, py::module::import("sys").attr("stdout"));
+      _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
+          std::cerr, py::module::import("sys").attr("stderr"));
+    }
+
+    virtual ~Implementation() {}
+
+    void check_domain(py::object &domain) {
+      if (!py::hasattr(domain, "get_applicable_actions")) {
+        throw std::invalid_argument(
+            "SKDECIDE exception: AO* algorithm needs python domain for "
+            "implementing get_applicable_actions()");
+      }
+      if (!py::hasattr(domain, "get_next_state_distribution")) {
+        throw std::invalid_argument(
+            "SKDECIDE exception: AO* algorithm needs python domain for "
+            "implementing get_next_state_distribution()");
+      }
+      if (!py::hasattr(domain, "get_transition_value")) {
+        throw std::invalid_argument(
+            "SKDECIDE exception: AO* algorithm needs python domain for "
+            "implementing get_transition_value()");
+      }
+    }
+
+    virtual void close() { _domain->close(); }
+
+    virtual void clear() { _solver->clear(); }
+
+    virtual void solve(const py::object &s) {
+      typename skdecide::GilControl<Texecution>::Release release;
+      _solver->solve(s);
+    }
+
+    virtual py::bool_ is_solution_defined_for(const py::object &s) {
+      return _solver->is_solution_defined_for(s);
+    }
+
+    virtual py::object get_next_action(const py::object &s) {
+      try {
+        return _solver->get_best_action(s).pyobj();
+      } catch (const std::runtime_error &) {
+        return py::none();
+      }
+    }
+
+    virtual py::float_ get_utility(const py::object &s) {
+      try {
+        return _solver->get_best_value(s);
+      } catch (const std::runtime_error &) {
+        return py::none();
+      }
+    }
+
+    virtual py::int_ get_nb_of_explored_states() {
+      return _solver->get_nb_of_explored_states();
+    }
+
+    virtual py::int_ best_solution_graph_size() {
+      return _solver->best_solution_graph_size();
+    }
+
+    virtual py::dict get_policy() {
+      py::dict d;
+      auto &&p = _solver->policy();
+      for (auto &e : p) {
+        d[e.first.pyobj()] =
+            py::make_tuple(e.second.first.pyobj(), e.second.second);
+      }
+      return d;
+    }
+
+  private:
+    std::unique_ptr<PyILAOStarDomain<Texecution>> _domain;
+    std::unique_ptr<
+        skdecide::ILAOStarSolver<PyILAOStarDomain<Texecution>, Texecution>>
+        _solver;
+
+    std::function<py::object(const py::object &, const py::object &)>
+        _goal_checker;
+    std::function<py::object(const py::object &, const py::object &)>
+        _heuristic;
+
+    std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
+    std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
+  };
+
+  struct ExecutionSelector {
+    bool _parallel;
+
+    ExecutionSelector(bool parallel) : _parallel(parallel) {}
+
+    template <typename Propagator> struct Select {
+      template <typename... Args>
+      Select(ExecutionSelector &This, Args... args) {
+        if (This._parallel) {
+          Propagator::template PushType<ParallelExecution>::Forward(args...);
+        } else {
+          Propagator::template PushType<SequentialExecution>::Forward(args...);
         }
-
-        virtual py::int_ get_nb_of_explored_states() {
-            return _solver->get_nb_of_explored_states();
-        }
-
-        virtual py::int_ best_solution_graph_size() {
-            return _solver->best_solution_graph_size();
-        }
-
-        virtual py::dict get_policy() {
-            py::dict d;
-            auto&& p = _solver->policy();
-            for (auto& e : p) {
-                d[e.first.pyobj()] = py::make_tuple(e.second.first.pyobj(), e.second.second);
-            }
-            return d;
-        }
-
-    private :
-        std::unique_ptr<PyILAOStarDomain<Texecution>> _domain;
-        std::unique_ptr<skdecide::ILAOStarSolver<PyILAOStarDomain<Texecution>, Texecution>> _solver;
-
-        std::function<py::object (const py::object&, const py::object&)> _goal_checker;
-        std::function<py::object (const py::object&, const py::object&)> _heuristic;
-
-        std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
-        std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
+      }
     };
+  };
 
-    struct ExecutionSelector {
-        bool _parallel;
-        
-        ExecutionSelector(bool parallel) : _parallel(parallel) {}
+  struct SolverInstantiator {
+    std::unique_ptr<BaseImplementation> &_implementation;
 
-        template <typename Propagator>
-        struct Select {
-            template <typename... Args>
-            Select(ExecutionSelector& This, Args... args) {
-                if (This._parallel) {
-                    Propagator::template PushType<ParallelExecution>::Forward(args...);
-                } else {
-                    Propagator::template PushType<SequentialExecution>::Forward(args...);
-                }
-            }
-        };
-    };
-
-    struct SolverInstantiator {
-        std::unique_ptr<BaseImplementation>& _implementation;
-
-        SolverInstantiator(std::unique_ptr<BaseImplementation>& implementation)
+    SolverInstantiator(std::unique_ptr<BaseImplementation> &implementation)
         : _implementation(implementation) {}
 
-        template <typename... TypeInstantiations>
-        struct Instantiate {
-            template <typename... Args>
-            Instantiate(SolverInstantiator& This, Args... args) {
-                This._implementation = std::make_unique<Implementation<TypeInstantiations...>>(args...);
-            }
-        };
+    template <typename... TypeInstantiations> struct Instantiate {
+      template <typename... Args>
+      Instantiate(SolverInstantiator &This, Args... args) {
+        This._implementation =
+            std::make_unique<Implementation<TypeInstantiations...>>(args...);
+      }
     };
+  };
 
-    std::unique_ptr<BaseImplementation> _implementation;
+  std::unique_ptr<BaseImplementation> _implementation;
 
-public :
-    PyILAOStarSolver(py::object& domain,
-                   const std::function<py::object (const py::object&, const py::object&)>& goal_checker,
-                   const std::function<py::object (const py::object&, const py::object&)>& heuristic,
-                   double discount = 1.0,
-                   double epsilon = 0.001,
-                   bool parallel = false,
-                   bool debug_logs = false) {
-        
-        TemplateInstantiator::select(
-            ExecutionSelector(parallel),
-            SolverInstantiator(_implementation)).instantiate(
-                domain, goal_checker, heuristic, discount, epsilon, debug_logs);
-        
-    }
+public:
+  PyILAOStarSolver(
+      py::object &domain,
+      const std::function<py::object(const py::object &, const py::object &)>
+          &goal_checker,
+      const std::function<py::object(const py::object &, const py::object &)>
+          &heuristic,
+      double discount = 1.0, double epsilon = 0.001, bool parallel = false,
+      bool debug_logs = false) {
 
-    void close() {
-        _implementation->close();
-    }
+    TemplateInstantiator::select(ExecutionSelector(parallel),
+                                 SolverInstantiator(_implementation))
+        .instantiate(domain, goal_checker, heuristic, discount, epsilon,
+                     debug_logs);
+  }
 
-    void clear() {
-        _implementation->clear();
-    }
+  void close() { _implementation->close(); }
 
-    void solve(const py::object& s) {
-        _implementation->solve(s);
-    }
+  void clear() { _implementation->clear(); }
 
-    py::bool_ is_solution_defined_for(const py::object& s) {
-        return _implementation->is_solution_defined_for(s);
-    }
+  void solve(const py::object &s) { _implementation->solve(s); }
 
-    py::object get_next_action(const py::object& s) {
-        return _implementation->get_next_action(s);
-    }
+  py::bool_ is_solution_defined_for(const py::object &s) {
+    return _implementation->is_solution_defined_for(s);
+  }
 
-    py::float_ get_utility(const py::object& s) {
-        return _implementation->get_utility(s);
-    }
+  py::object get_next_action(const py::object &s) {
+    return _implementation->get_next_action(s);
+  }
 
-    py::int_ get_nb_of_explored_states() {
-        return _implementation->get_nb_of_explored_states();
-    }
+  py::float_ get_utility(const py::object &s) {
+    return _implementation->get_utility(s);
+  }
 
-    py::int_ best_solution_graph_size() {
-        return _implementation->best_solution_graph_size();
-    }
+  py::int_ get_nb_of_explored_states() {
+    return _implementation->get_nb_of_explored_states();
+  }
 
-    py::dict get_policy() {
-        return _implementation->get_policy();
-    }
+  py::int_ best_solution_graph_size() {
+    return _implementation->best_solution_graph_size();
+  }
+
+  py::dict get_policy() { return _implementation->get_policy(); }
 };
 
-}
+} // namespace skdecide
 
 #endif // SKDECIDE_PY_ILAOSTAR_HH

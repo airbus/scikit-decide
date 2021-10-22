@@ -10,7 +10,7 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         "Texecution" "skdecide::SequentialExecution!Seq;skdecide::ParallelExecution!Par"
         "Thashing_policy" "skdecide::StateFeatureHash!Sfa;skdecide::DomainStateHash!Dsh"
         "Trollout_policy" "skdecide::SimulationRollout!Sim;skdecide::EnvironmentRollout!Env")
-    
+
     ADD_LIBRARY(py_riw STATIC
                 ${CMAKE_CURRENT_SOURCE_DIR}/py_riw.cc
                 ${PYTHON_RIW_SOLVER_TEMPLATE_FILES})

@@ -97,7 +97,7 @@ FUNCTION(generate_template_instantiation_files)
 
     SET(GTIF_TEMPLATE_NAMES)
     MATH(EXPR ARGC_BY_TWO "((${ARGC} - 1) / 2) - 1" OUTPUT_FORMAT DECIMAL)
-    
+
     FOREACH(index RANGE 1 ${ARGC_BY_TWO})
         MATH(EXPR odd_index "(${index} * 2) + 1" OUTPUT_FORMAT DECIMAL)
         SET(ODD_ARG ${ARGV${odd_index}})

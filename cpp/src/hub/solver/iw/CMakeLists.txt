@@ -9,7 +9,7 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Texecution" "skdecide::SequentialExecution!Seq;skdecide::ParallelExecution!Par"
         "Thashing_policy" "skdecide::StateFeatureHash!Sfa;skdecide::DomainStateHash!Dsh")
-    
+
     ADD_LIBRARY(py_iw STATIC
                 ${CMAKE_CURRENT_SOURCE_DIR}/py_iw.cc
                 ${PYTHON_IW_SOLVER_TEMPLATE_FILES})
