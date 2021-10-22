@@ -8,7 +8,7 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         "${CMAKE_CURRENT_SOURCE_DIR}/impl/py_aostar_solver.cc.in"
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Texecution" "skdecide::SequentialExecution!Seq;skdecide::ParallelExecution!Par")
-    
+
     ADD_LIBRARY(py_aostar STATIC
                 ${CMAKE_CURRENT_SOURCE_DIR}/py_aostar.cc
                 ${PYTHON_AOSTAR_SOLVER_TEMPLATE_FILES})

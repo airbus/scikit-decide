@@ -26,7 +26,7 @@ TEST_CASE("Event domain", "[event-domain]") {
     private :
         std::set<char> _alphabet;
     };
-    
+
     class TestEventDomain : public skdecide::EventDomain<int, char,
                                                         AlphabetSpace, AlphabetSpace,
                                                         skdecide::ImplicitSpace<char>, skdecide::ImplicitSpace<char>> {
@@ -44,7 +44,7 @@ TEST_CASE("Event domain", "[event-domain]") {
                        (this->get_action_space().contains(c));
             });
         }
-    
+
     private :
         inline virtual std::unique_ptr<AlphabetSpace> make_event_space() {
             return std::make_unique<AlphabetSpace>(true);

@@ -24,263 +24,272 @@ namespace skdecide {
 template <typename Texecution>
 using PyLRTDPDomain = PythonDomainProxy<Texecution>;
 
-
 class PyLRTDPSolver {
-private :
+private:
+  class BaseImplementation {
+  public:
+    virtual ~BaseImplementation() {}
+    virtual void close() = 0;
+    virtual void clear() = 0;
+    virtual void solve(const py::object &s) = 0;
+    virtual py::bool_ is_solution_defined_for(const py::object &s) = 0;
+    virtual py::object get_next_action(const py::object &s) = 0;
+    virtual py::float_ get_utility(const py::object &s) = 0;
+    virtual py::int_ get_nb_of_explored_states() = 0;
+    virtual py::int_ get_nb_rollouts() = 0;
+    virtual py::dict get_policy() = 0;
+  };
 
-    class BaseImplementation {
-    public :
-        virtual ~BaseImplementation() {}
-        virtual void close() = 0;
-        virtual void clear() = 0;
-        virtual void solve(const py::object& s) = 0;
-        virtual py::bool_ is_solution_defined_for(const py::object& s) = 0;
-        virtual py::object get_next_action(const py::object& s) = 0;
-        virtual py::float_ get_utility(const py::object& s) = 0;
-        virtual py::int_ get_nb_of_explored_states() = 0;
-        virtual py::int_ get_nb_rollouts() = 0;
-        virtual py::dict get_policy() = 0;
-    };
+  template <typename Texecution>
+  class Implementation : public BaseImplementation {
+  public:
+    Implementation(
+        py::object &domain,
+        const std::function<py::object(py::object &, const py::object &,
+                                       const py::object &)>
+            &goal_checker, // last arg used for optional thread_id
+        const std::function<py::object(py::object &, const py::object &,
+                                       const py::object &)>
+            &heuristic, // last arg used for optional thread_id
+        bool use_labels = true, std::size_t time_budget = 3600000,
+        std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
+        std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
+        double discount = 1.0, bool online_node_garbage = false,
+        bool debug_logs = false,
+        const std::function<bool(const std::size_t &, const std::size_t &,
+                                 const double &, const double &)> &watchdog =
+            nullptr)
+        : _goal_checker(goal_checker), _heuristic(heuristic),
+          _watchdog(watchdog) {
 
-    template <typename Texecution>
-    class Implementation : public BaseImplementation {
-    public :
-
-        Implementation(py::object& domain,
-                       const std::function<py::object (py::object&, const py::object&, const py::object&)>& goal_checker,  // last arg used for optional thread_id
-                       const std::function<py::object (py::object&, const py::object&, const py::object&)>& heuristic,  // last arg used for optional thread_id
-                       bool use_labels = true,
-                       std::size_t time_budget = 3600000,
-                       std::size_t rollout_budget = 100000,
-                       std::size_t max_depth = 1000,
-                       std::size_t epsilon_moving_average_window = 100,
-                       double epsilon = 0.001,
-                       double discount = 1.0,
-                       bool online_node_garbage = false,
-                       bool debug_logs = false,
-                       const std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)>& watchdog = nullptr)
-        : _goal_checker(goal_checker), _heuristic(heuristic), _watchdog(watchdog) {
-            
-            check_domain(domain);
-            _domain = std::make_unique<PyLRTDPDomain<Texecution>>(domain);
-            _solver = std::make_unique<skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>>(
-                *_domain,
-                [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id) -> typename PyLRTDPDomain<Texecution>::Predicate {
-                    try {
-                        std::unique_ptr<py::object> r = d.call(thread_id, _goal_checker, s.pyobj());
-                        typename skdecide::GilControl<Texecution>::Acquire acquire;
-                        bool rr = r->template cast<bool>();
-                        r.reset();
-                        return  rr;
-                    } catch (const std::exception& e) {
-                        Logger::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
-                        throw;
-                    }
-                },
-                [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id) -> typename PyLRTDPDomain<Texecution>::Value {
-                    try {
-                        return typename PyLRTDPDomain<Texecution>::Value(d.call(thread_id, _heuristic, s.pyobj()));
-                    } catch (const std::exception& e) {
-                        Logger::error(std::string("SKDECIDE exception when calling heuristic: ") + e.what());
-                        throw;
-                    }
-                },
-                use_labels,
-                time_budget,
-                rollout_budget,
-                max_depth,
-                epsilon_moving_average_window,
-                epsilon,
-                discount,
-                online_node_garbage,
-                debug_logs,
-                [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& best_value, const double& epsilon_moving_average)->bool{
-                    if (_watchdog) {
-                        typename skdecide::GilControl<Texecution>::Acquire acquire;
-                        return _watchdog(elapsed_time, nb_rollouts, best_value, epsilon_moving_average);
-                    } else {
-                        return true;
-                    }
-                });
-            _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
-                                                                            py::module::import("sys").attr("stdout"));
-            _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
-                                                                            py::module::import("sys").attr("stderr"));
-        }
-
-        virtual ~Implementation() {}
-
-        void check_domain(py::object& domain) {
-            if (!py::hasattr(domain, "get_applicable_actions")) {
-                throw std::invalid_argument("SKDECIDE exception: LRTDP algorithm needs python domain for implementing get_applicable_actions()");
-            }
-            if (!py::hasattr(domain, "get_next_state_distribution")) {
-                throw std::invalid_argument("SKDECIDE exception: LRTDP algorithm needs python domain for implementing get_next_state_distribution()");
-            }
-            if (!py::hasattr(domain, "get_transition_value")) {
-                throw std::invalid_argument("SKDECIDE exception: LRTDP algorithm needs python domain for implementing get_transition_value()");
-            }
-        }
-
-        virtual void close() {
-            _domain->close();
-        }
-
-        virtual void clear() {
-            _solver->clear();
-        }
-
-        virtual void solve(const py::object& s) {
-            typename skdecide::GilControl<Texecution>::Release release;
-            _solver->solve(s);
-        }
-
-        virtual py::bool_ is_solution_defined_for(const py::object& s) {
-            return _solver->is_solution_defined_for(s);
-        }
-
-        virtual py::object get_next_action(const py::object& s) {
+      check_domain(domain);
+      _domain = std::make_unique<PyLRTDPDomain<Texecution>>(domain);
+      _solver = std::make_unique<
+          skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>>(
+          *_domain,
+          [this](PyLRTDPDomain<Texecution> &d,
+                 const typename PyLRTDPDomain<Texecution>::State &s,
+                 const std::size_t *thread_id) ->
+          typename PyLRTDPDomain<Texecution>::Predicate {
             try {
-                return _solver->get_best_action(s).pyobj();
-            } catch (const std::runtime_error&) {
-                return py::none();
+              std::unique_ptr<py::object> r =
+                  d.call(thread_id, _goal_checker, s.pyobj());
+              typename skdecide::GilControl<Texecution>::Acquire acquire;
+              bool rr = r->template cast<bool>();
+              r.reset();
+              return rr;
+            } catch (const std::exception &e) {
+              Logger::error(
+                  std::string(
+                      "SKDECIDE exception when calling goal checker: ") +
+                  e.what());
+              throw;
             }
-        }
-
-        virtual py::float_ get_utility(const py::object& s) {
+          },
+          [this](PyLRTDPDomain<Texecution> &d,
+                 const typename PyLRTDPDomain<Texecution>::State &s,
+                 const std::size_t *thread_id) ->
+          typename PyLRTDPDomain<Texecution>::Value {
             try {
-                return _solver->get_best_value(s);
-            } catch (const std::runtime_error&) {
-                return py::none();
+              return typename PyLRTDPDomain<Texecution>::Value(
+                  d.call(thread_id, _heuristic, s.pyobj()));
+            } catch (const std::exception &e) {
+              Logger::error(
+                  std::string("SKDECIDE exception when calling heuristic: ") +
+                  e.what());
+              throw;
             }
-        }
-
-        virtual py::int_ get_nb_of_explored_states() {
-            return _solver->get_nb_of_explored_states();
-        }
-
-        virtual py::int_ get_nb_rollouts() {
-            return _solver->get_nb_rollouts();
-        }
-
-        virtual py::dict get_policy() {
-            py::dict d;
-            auto&& p = _solver->policy();
-            for (auto& e : p) {
-                d[e.first.pyobj()] = py::make_tuple(e.second.first.pyobj(), e.second.second);
+          },
+          use_labels, time_budget, rollout_budget, max_depth,
+          epsilon_moving_average_window, epsilon, discount, online_node_garbage,
+          debug_logs,
+          [this](const std::size_t &elapsed_time,
+                 const std::size_t &nb_rollouts, const double &best_value,
+                 const double &epsilon_moving_average) -> bool {
+            if (_watchdog) {
+              typename skdecide::GilControl<Texecution>::Acquire acquire;
+              return _watchdog(elapsed_time, nb_rollouts, best_value,
+                               epsilon_moving_average);
+            } else {
+              return true;
             }
-            return d;
+          });
+      _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
+          std::cout, py::module::import("sys").attr("stdout"));
+      _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
+          std::cerr, py::module::import("sys").attr("stderr"));
+    }
+
+    virtual ~Implementation() {}
+
+    void check_domain(py::object &domain) {
+      if (!py::hasattr(domain, "get_applicable_actions")) {
+        throw std::invalid_argument(
+            "SKDECIDE exception: LRTDP algorithm needs python domain for "
+            "implementing get_applicable_actions()");
+      }
+      if (!py::hasattr(domain, "get_next_state_distribution")) {
+        throw std::invalid_argument(
+            "SKDECIDE exception: LRTDP algorithm needs python domain for "
+            "implementing get_next_state_distribution()");
+      }
+      if (!py::hasattr(domain, "get_transition_value")) {
+        throw std::invalid_argument(
+            "SKDECIDE exception: LRTDP algorithm needs python domain for "
+            "implementing get_transition_value()");
+      }
+    }
+
+    virtual void close() { _domain->close(); }
+
+    virtual void clear() { _solver->clear(); }
+
+    virtual void solve(const py::object &s) {
+      typename skdecide::GilControl<Texecution>::Release release;
+      _solver->solve(s);
+    }
+
+    virtual py::bool_ is_solution_defined_for(const py::object &s) {
+      return _solver->is_solution_defined_for(s);
+    }
+
+    virtual py::object get_next_action(const py::object &s) {
+      try {
+        return _solver->get_best_action(s).pyobj();
+      } catch (const std::runtime_error &) {
+        return py::none();
+      }
+    }
+
+    virtual py::float_ get_utility(const py::object &s) {
+      try {
+        return _solver->get_best_value(s);
+      } catch (const std::runtime_error &) {
+        return py::none();
+      }
+    }
+
+    virtual py::int_ get_nb_of_explored_states() {
+      return _solver->get_nb_of_explored_states();
+    }
+
+    virtual py::int_ get_nb_rollouts() { return _solver->get_nb_rollouts(); }
+
+    virtual py::dict get_policy() {
+      py::dict d;
+      auto &&p = _solver->policy();
+      for (auto &e : p) {
+        d[e.first.pyobj()] =
+            py::make_tuple(e.second.first.pyobj(), e.second.second);
+      }
+      return d;
+    }
+
+  private:
+    std::unique_ptr<PyLRTDPDomain<Texecution>> _domain;
+    std::unique_ptr<
+        skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>>
+        _solver;
+
+    std::function<py::object(py::object &, const py::object &,
+                             const py::object &)>
+        _goal_checker; // last arg used for optional thread_id
+    std::function<py::object(py::object &, const py::object &,
+                             const py::object &)>
+        _heuristic; // last arg used for optional thread_id
+    std::function<bool(const std::size_t &, const std::size_t &, const double &,
+                       const double &)>
+        _watchdog;
+
+    std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
+    std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
+  };
+
+  struct ExecutionSelector {
+    bool _parallel;
+
+    ExecutionSelector(bool parallel) : _parallel(parallel) {}
+
+    template <typename Propagator> struct Select {
+      template <typename... Args>
+      Select(ExecutionSelector &This, Args... args) {
+        if (This._parallel) {
+          Propagator::template PushType<ParallelExecution>::Forward(args...);
+        } else {
+          Propagator::template PushType<SequentialExecution>::Forward(args...);
         }
-
-    private :
-        std::unique_ptr<PyLRTDPDomain<Texecution>> _domain;
-        std::unique_ptr<skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>> _solver;
-        
-        std::function<py::object (py::object&, const py::object&, const py::object&)> _goal_checker;  // last arg used for optional thread_id
-        std::function<py::object (py::object&, const py::object&, const py::object&)> _heuristic;  // last arg used for optional thread_id
-        std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)> _watchdog;
-
-        std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
-        std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
+      }
     };
+  };
 
-    struct ExecutionSelector {
-        bool _parallel;
-        
-        ExecutionSelector(bool parallel) : _parallel(parallel) {}
+  struct SolverInstantiator {
+    std::unique_ptr<BaseImplementation> &_implementation;
 
-        template <typename Propagator>
-        struct Select {
-            template <typename... Args>
-            Select(ExecutionSelector& This, Args... args) {
-                if (This._parallel) {
-                    Propagator::template PushType<ParallelExecution>::Forward(args...);
-                } else {
-                    Propagator::template PushType<SequentialExecution>::Forward(args...);
-                }
-            }
-        };
-    };
-
-    struct SolverInstantiator {
-        std::unique_ptr<BaseImplementation>& _implementation;
-
-        SolverInstantiator(std::unique_ptr<BaseImplementation>& implementation)
+    SolverInstantiator(std::unique_ptr<BaseImplementation> &implementation)
         : _implementation(implementation) {}
 
-        template <typename... TypeInstantiations>
-        struct Instantiate {
-            template <typename... Args>
-            Instantiate(SolverInstantiator& This, Args... args) {
-                This._implementation = std::make_unique<Implementation<TypeInstantiations...>>(args...);
-            }
-        };
+    template <typename... TypeInstantiations> struct Instantiate {
+      template <typename... Args>
+      Instantiate(SolverInstantiator &This, Args... args) {
+        This._implementation =
+            std::make_unique<Implementation<TypeInstantiations...>>(args...);
+      }
     };
+  };
 
-    std::unique_ptr<BaseImplementation> _implementation;
+  std::unique_ptr<BaseImplementation> _implementation;
 
-public :
+public:
+  PyLRTDPSolver(
+      py::object &domain,
+      const std::function<py::object(py::object &, const py::object &,
+                                     const py::object &)>
+          &goal_checker, // last arg used for optional thread_id
+      const std::function<py::object(py::object &, const py::object &,
+                                     const py::object &)>
+          &heuristic, // last arg used for optional thread_id
+      bool use_labels = true, std::size_t time_budget = 3600000,
+      std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
+      std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
+      double discount = 1.0, bool online_node_garbage = false,
+      bool parallel = false, bool debug_logs = false,
+      const std::function<bool(const std::size_t &, const std::size_t &,
+                               const double &, const double &)> &watchdog =
+          nullptr) {
 
-    PyLRTDPSolver(py::object& domain,
-                 const std::function<py::object (py::object&, const py::object&, const py::object&)>& goal_checker,  // last arg used for optional thread_id
-                 const std::function<py::object (py::object&, const py::object&, const py::object&)>& heuristic,  // last arg used for optional thread_id
-                 bool use_labels = true,
-                 std::size_t time_budget = 3600000,
-                 std::size_t rollout_budget = 100000,
-                 std::size_t max_depth = 1000,
-                 std::size_t epsilon_moving_average_window = 100,
-                 double epsilon = 0.001,
-                 double discount = 1.0,
-                 bool online_node_garbage = false,
-                 bool parallel = false,
-                 bool debug_logs = false,
-                 const std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)>& watchdog = nullptr) {
-        
-        TemplateInstantiator::select(
-            ExecutionSelector(parallel),
-            SolverInstantiator(_implementation)).instantiate(
-                domain, goal_checker, heuristic, use_labels,
-                time_budget, rollout_budget, max_depth,
-                epsilon_moving_average_window, epsilon,
-                discount, online_node_garbage, debug_logs, watchdog);
-        
-    }
+    TemplateInstantiator::select(ExecutionSelector(parallel),
+                                 SolverInstantiator(_implementation))
+        .instantiate(domain, goal_checker, heuristic, use_labels, time_budget,
+                     rollout_budget, max_depth, epsilon_moving_average_window,
+                     epsilon, discount, online_node_garbage, debug_logs,
+                     watchdog);
+  }
 
-    void close() {
-        _implementation->close();
-    }
+  void close() { _implementation->close(); }
 
-    void clear() {
-        _implementation->clear();
-    }
+  void clear() { _implementation->clear(); }
 
-    void solve(const py::object& s) {
-        _implementation->solve(s);
-    }
+  void solve(const py::object &s) { _implementation->solve(s); }
 
-    py::bool_ is_solution_defined_for(const py::object& s) {
-        return _implementation->is_solution_defined_for(s);
-    }
+  py::bool_ is_solution_defined_for(const py::object &s) {
+    return _implementation->is_solution_defined_for(s);
+  }
 
-    py::object get_next_action(const py::object& s) {
-        return _implementation->get_next_action(s);
-    }
+  py::object get_next_action(const py::object &s) {
+    return _implementation->get_next_action(s);
+  }
 
-    py::float_ get_utility(const py::object& s) {
-        return _implementation->get_utility(s);
-    }
+  py::float_ get_utility(const py::object &s) {
+    return _implementation->get_utility(s);
+  }
 
-    py::int_ get_nb_of_explored_states() {
-        return _implementation->get_nb_of_explored_states();
-    }
+  py::int_ get_nb_of_explored_states() {
+    return _implementation->get_nb_of_explored_states();
+  }
 
-    py::int_ get_nb_rollouts() {
-        return _implementation->get_nb_rollouts();
-    }
+  py::int_ get_nb_rollouts() { return _implementation->get_nb_rollouts(); }
 
-    py::dict get_policy() {
-        return _implementation->get_policy();
-    }
+  py::dict get_policy() { return _implementation->get_policy(); }
 };
 
 } // namespace skdecide

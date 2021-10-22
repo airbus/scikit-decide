@@ -8,29 +8,33 @@
 namespace skdecide {
 
 template <typename... TypeInstantiations>
-template<template <typename...> class... TemplateInstantiations>
+template <template <typename...> class... TemplateInstantiations>
 PyMCTSSolver::PartialSolverInstantiator::TypeList<TypeInstantiations...>::
-                                         TemplateList<TemplateInstantiations...>::
-              Instantiate::Instantiate(PartialSolverInstantiator& This, MCTS_SOLVER_DECL_ARGS) {
-    TemplateInstantiator::select(
-        ActionSelector(This._action_selector_optimization),
-        ActionSelector(This._action_selector_execution),
-        RolloutPolicySelector(This._rollout_policy, This._custom_policy_functor),
-        BackPropagatorSelector(This._back_propagator),
-        typename FullSolverInstantiator::template TypeList<TypeInstantiations...>::
-                                         template TemplateList<TemplateInstantiations...>(
-                                         This._implementation)).instantiate(MCTS_SOLVER_ARGS);
+    TemplateList<TemplateInstantiations...>::Instantiate::Instantiate(
+        PartialSolverInstantiator &This, MCTS_SOLVER_DECL_ARGS) {
+  TemplateInstantiator::select(
+      ActionSelector(This._action_selector_optimization),
+      ActionSelector(This._action_selector_execution),
+      RolloutPolicySelector(This._rollout_policy, This._custom_policy_functor),
+      BackPropagatorSelector(This._back_propagator),
+      typename FullSolverInstantiator::
+          template TypeList<TypeInstantiations...>::template TemplateList<
+              TemplateInstantiations...>(This._implementation))
+      .instantiate(MCTS_SOLVER_ARGS);
 }
 
 template <typename... PartialTypeInstantiations>
-template<template <typename...> class... PartialTemplateInstantiations>
-template<template <typename...> class... TemplateInstantiations>
-PyMCTSSolver::FullSolverInstantiator::
-              TypeList<PartialTypeInstantiations...>::TemplateList<PartialTemplateInstantiations...>::
-              Instantiate<TemplateInstantiations...>::Instantiate(TemplateList& This, MCTS_SOLVER_DECL_ARGS) {
-    This._implementation = std::make_unique<Implementation<PartialTypeInstantiations...,
-                                                           PartialTemplateInstantiations...,
-                                                           TemplateInstantiations...>>(MCTS_SOLVER_ARGS);
+template <template <typename...> class... PartialTemplateInstantiations>
+template <template <typename...> class... TemplateInstantiations>
+PyMCTSSolver::FullSolverInstantiator::TypeList<PartialTypeInstantiations...>::
+    TemplateList<PartialTemplateInstantiations...>::Instantiate<
+        TemplateInstantiations...>::Instantiate(TemplateList &This,
+                                                MCTS_SOLVER_DECL_ARGS) {
+  This._implementation =
+      std::make_unique<Implementation<PartialTypeInstantiations...,
+                                      PartialTemplateInstantiations...,
+                                      TemplateInstantiations...>>(
+          MCTS_SOLVER_ARGS);
 }
 
 } // namespace skdecide

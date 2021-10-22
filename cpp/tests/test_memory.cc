@@ -20,7 +20,7 @@ TEST_CASE("History Domain", "[history-domain]") {
         std::size_t get_memory_length() const {
             return this->_memory->size();
         }
-    
+
     private :
         inline virtual std::size_t _get_memory_maxlen() {
             return 50;

@@ -37,7 +37,7 @@ TEST_CASE("UncertainInitializedDomain", "[uncertain-initialized-domain]") {
         virtual std::unique_ptr<skdecide::Distribution<char>> make_initial_state_distribution() {
             return std::make_unique<skdecide::DiscreteDistribution<char>>(std::initializer_list<std::pair<char, double> >{{'a', 0.5}, {'b', 0.5}});
         }
-    
+
     private :
         virtual std::unique_ptr<skdecide::Space<char>> make_state_space() {
             return std::make_unique<skdecide::ImplicitSpace<char>>([](const char& s)->bool{return s == 'a' || s == 'b';});
