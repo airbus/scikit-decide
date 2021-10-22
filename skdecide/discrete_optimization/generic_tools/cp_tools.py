@@ -49,7 +49,7 @@ class ParametersCP:
         :param pool_solutions: TODO remove it it's not used
         :param intermediate_solution: retrieve intermediate solutions
         :param all_solutions: returns all solutions found by the cp solver
-        :param nr_solutions: max number of solution returned
+        :param nr_solutions: the requested number of solutions
         """
         self.TimeLimit = time_limit
         self.TimeLimit_iter0 = time_limit
