@@ -21,6 +21,8 @@ repos:
     -   id: end-of-file-fixer
     -   id: check-yaml
     -   id: check-added-large-files
+    -   id: pretty-format-json
+        args: ["--autofix", "--no-sort-keys", "--indent", "4"]
 
   - repo: https://github.com/psf/black
     rev: 21.7b0 # Replace by any tag/version: https://github.com/psf/black/tags
