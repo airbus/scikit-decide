@@ -281,6 +281,8 @@ jobs:
   build-docs:
     needs: [deploy]
     runs-on: ubuntu-latest
+    env:
+      DOCS_VERSION_PATH: /
 
     steps:
       - name: Set env variables for github+binder links in doc
@@ -289,6 +291,11 @@ jobs:
           echo "AUTODOC_BINDER_ENV_GH_BRANCH=binder" >> $GITHUB_ENV
           echo "AUTODOC_NOTEBOOKS_REPO_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" >> $GITHUB_ENV
           echo "AUTODOC_NOTEBOOKS_BRANCH=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+
+      - name: Update DOCS_VERSION_PATH
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+            echo DOCS_VERSION_PATH=/version/${GITHUB_REF/refs\/tags\/v}/ >> $GITHUB_ENV
 
       - uses: actions/checkout@v2
         with:
@@ -317,7 +324,7 @@ jobs:
           ACCESS_TOKEN: ${{ secrets.gh_access_token }}
           BRANCH: gh-pages # The branch the action should deploy to.
           FOLDER: docs/.vuepress/dist # The folder the action should deploy.
+          TARGET_FOLDER: ${{ env.DOCS_VERSION_PATH }} # The folder the action should deploy to.
           GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
           COMMIT_MESSAGE: publish documentation
-          CLEAN: true
-          SINGLE_COMMIT: true
+          CLEAN: false # Releasing a new version is about creating a new directory, so we don't want to clean up the root.
