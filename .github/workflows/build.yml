@@ -245,6 +245,7 @@ jobs:
         python-version: ["3.7"]
       fail-fast: false
     runs-on: ${{ matrix.os }}
+
     steps:
       - name: Set env variables for github+binder links in doc
         run: |
@@ -296,3 +297,14 @@ jobs:
         with:
           name: doc
           path: docs/.vuepress/dist
+
+      - name: Deploy documentation in root folder on GH pages 🚀
+        if: github.ref == 'refs/heads/master'
+        uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
+          BRANCH: gh-pages # The branch the action should deploy to.
+          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
+          TARGET_FOLDER: / # The folder the action should deploy to.
+          COMMIT_MESSAGE: publish documentation
+          CLEAN_EXCLUDE: ["version/*"] # The directories to exclude from the clean.
