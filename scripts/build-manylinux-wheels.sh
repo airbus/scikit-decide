@@ -25,6 +25,16 @@ mkdir -p /io/temp-wheels
 # Clean out any old existing wheels.
 find /io/temp-wheels/ -type f -delete
 
+
+#ccache setup
+if test -d .ccache; then
+    export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+    export CMAKE_C_COMPILER_LAUNCHER=ccache
+    ccache --set-config cache_dir=$PWD/.ccache
+    ccache --set-config max_size=80M
+    ccache --set-config compression=true
+fi
+
 # pip upgrade and install cmake and auditwheel if it isn't already
 $(dirname $(realpath "$0"))/build-pip-install.sh
 

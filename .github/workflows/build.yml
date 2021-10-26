@@ -87,6 +87,19 @@ jobs:
         if: matrix.os == 'macos-10.15'
         run: brew install libomp
 
+      - name: Install and restore ccache for macOs
+        if: matrix.os == 'macos-10.15'
+        uses: hendrikmuhs/ccache-action@v1.0.5
+        with:
+          key: ${{ runner.os }}-py${{ matrix.python-version }}
+          max-size: 80M
+
+      - name: Let cmake use ccache for macOs
+        if: matrix.os == 'macos-10.15'
+        run: |
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
+          echo "CMAKE_C_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
+
       - name: Build macOS/Windows wheel
         if: matrix.os != 'ubuntu-latest'
         run: |
@@ -103,6 +116,15 @@ jobs:
           path: /tmp/docker
           key: dev-deps-${{ runner.os }}-${{ hashFiles('scripts/build-skdecide_dev.sh', 'scripts/build-pip-install.sh', 'scripts/Dockerfile_x86_64_dev') }}
 
+      - name: Restore ccache cache for Linux
+        id: ccache-restore
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/cache@v2.1.4
+        with:
+          path: .ccache
+          key: ccache-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.run_id }}-${{github.run_number}}
+          restore-keys: ccache-${{ runner.os }}-py${{ matrix.python-version }}
+
       - name: Build x86 Linux wheels
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -114,9 +136,13 @@ jobs:
             mkdir -p /tmp/docker
             docker image save -o /tmp/docker/skdecide_dev.tar skdecide_dev
           fi
+          # The existence of .ccache directory triggers ccache use in builds-manylinux-wheels.sh
+          test -d .ccache || mkdir .ccache
           docker build -f scripts/Dockerfile_x86_64 -t skdecide_x86_64 --build-arg PYTHON_VERSION=${{matrix.python-version}} --build-arg SKDECIDE_SKIP_DEPS=${SKDECIDE_SKIP_DEPS} --build-arg BOOST_DIR=${BOOST_DIR} .
           # Fetch wheels from Docker
           docker run --rm -v $PWD:/mytmp skdecide_x86_64 cp -r /io/dist /mytmp
+          # Fetch ccache from Docker
+          docker run --rm -v $PWD:/mytmp skdecide_x86_64 cp -r /io/.ccache /mytmp
 
       - name: Update build cache from wheels
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
