@@ -246,6 +246,30 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Set env variables for github+binder links in doc
+        run: |
+          # binder environment repo and branch
+          AUTODOC_BINDER_ENV_GH_REPO_NAME="airbus/scikit-decide"
+          AUTODOC_BINDER_ENV_GH_BRANCH="binder"
+          # notebooks source repo and branch depending if it is a commit push or a PR
+          if [[ $GITHUB_REF == refs/pull* ]];
+          then
+              AUTODOC_NOTEBOOKS_REPO_URL="${GITHUB_SERVER_URL}/${{ github.event.pull_request.head.repo.full_name }}"
+              AUTODOC_NOTEBOOKS_BRANCH=${GITHUB_HEAD_REF}
+          elif [[ $GITHUB_REF == refs/heads* ]];
+          then
+              AUTODOC_NOTEBOOKS_REPO_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}
+              AUTODOC_NOTEBOOKS_BRANCH=${GITHUB_REF/refs\/heads\//}
+          fi
+          # export in GITHUB_ENV for next steps
+          echo "AUTODOC_BINDER_ENV_GH_REPO_NAME=${AUTODOC_BINDER_ENV_GH_REPO_NAME}" >> $GITHUB_ENV
+          echo "AUTODOC_BINDER_ENV_GH_BRANCH=${AUTODOC_BINDER_ENV_GH_BRANCH}" >> $GITHUB_ENV
+          echo "AUTODOC_NOTEBOOKS_REPO_URL=${AUTODOC_NOTEBOOKS_REPO_URL}" >> $GITHUB_ENV
+          echo "AUTODOC_NOTEBOOKS_BRANCH=${AUTODOC_NOTEBOOKS_BRANCH}" >> $GITHUB_ENV
+          # check computed variables
+          echo "Binder env: ${AUTODOC_BINDER_ENV_GH_REPO_NAME}/${AUTODOC_BINDER_ENV_GH_BRANCH}"
+          echo "Notebooks source: ${AUTODOC_NOTEBOOKS_REPO_URL}/tree/${AUTODOC_NOTEBOOKS_BRANCH}"
+
       - uses: actions/checkout@v2
         with:
           submodules: true
