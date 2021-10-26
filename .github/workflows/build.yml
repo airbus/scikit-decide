@@ -270,3 +270,9 @@ jobs:
 
       - name: generate documentation
         run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
+
+      - name: upload as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: doc
+          path: docs/.vuepress/dist
