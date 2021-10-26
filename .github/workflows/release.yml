@@ -283,6 +283,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Set env variables for github+binder links in doc
+        run: |
+          echo "AUTODOC_BINDER_ENV_GH_REPO_NAME=airbus/scikit-decide" >> $GITHUB_ENV
+          echo "AUTODOC_BINDER_ENV_GH_BRANCH=binder" >> $GITHUB_ENV
+          echo "AUTODOC_NOTEBOOKS_REPO_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" >> $GITHUB_ENV
+          echo "AUTODOC_NOTEBOOKS_BRANCH=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+
       - uses: actions/checkout@v2
         with:
           submodules: true
