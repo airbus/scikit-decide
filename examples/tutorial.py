@@ -5,9 +5,9 @@
 """Example 4: Create a maze domain and solve it"""
 
 # %%
-'''
+"""
 Import modules.
-'''
+"""
 
 # %%
 from enum import Enum
@@ -15,14 +15,14 @@ from typing import *
 
 from skdecide import *
 from skdecide.builders.domain import *
-from skdecide.utils import rollout
-from skdecide.hub.space.gym import ListSpace, EnumSpace
 from skdecide.hub.solver.lazy_astar import LazyAstar
+from skdecide.hub.space.gym import EnumSpace, ListSpace
+from skdecide.utils import rollout
 
 # %%
-'''
+"""
 Define your state space (agent positions) & action space (agent movements).
-'''
+"""
 
 # %%
 class State(NamedTuple):
@@ -36,10 +36,11 @@ class Action(Enum):
     left = 2
     right = 3
 
+
 # %%
-'''
+"""
 Define your domain type from a base template (DeterministicPlanningDomain here) with optional refinements (UnrestrictedActions & Renderable here).
-'''
+"""
 
 # %%
 class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
@@ -50,14 +51,14 @@ class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
     T_predicate = bool  # Type of logical checks
     T_info = None  # Type of additional information in environment outcome
 
+
 # %%
-'''
+"""
 Implement the maze domain by filling all non-implemented methods and adding a constructor to define the maze & start/end positions.
-'''
+"""
 
 # %%
 class MyDomain(D):
-
     def __init__(self, start, end, maze_str):
         self.start = start
         self.end = end
@@ -75,10 +76,14 @@ class MyDomain(D):
             next_y -= 1
         if action == Action.right:
             next_y += 1
-        return State(next_x, next_y) if self.maze[next_x][next_y] != '.' else memory
+        return State(next_x, next_y) if self.maze[next_x][next_y] != "." else memory
 
-    def _get_transition_value(self, memory: D.T_state, action: D.T_event, next_state: Optional[D.T_state] = None) -> \
-            Value[D.T_value]:
+    def _get_transition_value(
+        self,
+        memory: D.T_state,
+        action: D.T_event,
+        next_state: Optional[D.T_state] = None,
+    ) -> Value[D.T_value]:
         # Set cost to 1 when moving (energy cost) and to 2 when bumping into a wall (damage cost)
         return Value(cost=1 if next_state != memory else 2)
 
@@ -106,17 +111,18 @@ class MyDomain(D):
         # Print the maze in console with agent represented by 'o'
         cols = len(self.maze[0]) + 1
         pos = memory.x * cols + memory.y
-        render = self.maze_str[:pos] + 'o' + self.maze_str[pos+1:]
+        render = self.maze_str[:pos] + "o" + self.maze_str[pos + 1 :]
         print(render)
 
+
 # %%
-'''
+"""
 Define a maze and test a random walk inside.
-'''
+"""
 
 # %%
 # Maze example ('.' represent walls, ' ' represent free space)
-maze_str = '''
+maze_str = """
 .....................
 .   .             . .
 . . . ....... ... . .
@@ -138,7 +144,7 @@ maze_str = '''
 . ... ......... . . .
 .   .       .     . .
 .....................
-'''
+"""
 
 # Start top-left, try to reach bottom-right of this maze
 domain = MyDomain(State(1, 1), State(19, 19), maze_str)
@@ -147,9 +153,9 @@ domain = MyDomain(State(1, 1), State(19, 19), maze_str)
 rollout(domain, max_steps=100, render=False)
 
 # %%
-'''
+"""
 Pick a solver (lazy A*) and solve the maze optimally.
-'''
+"""
 
 # %%
 # Check solver compatibility with the domain
