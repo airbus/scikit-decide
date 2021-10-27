@@ -30,8 +30,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      BOOST_ROOT: ${{github.workspace}}/3rdparty/boost
-      BOOST_URL: https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.bz2
+      BOOST_DIR: 3rdparty/boost
+      BOOST_VERSION: "1.76.0"
       SKDECIDE_SKIP_DEPS: 1
 
     steps:
@@ -57,22 +57,16 @@ jobs:
         uses: actions/cache@v2.1.4
         id: cache-boost
         with:
-          path: ${{env.BOOST_ROOT}}
-          key: boost
+          path: ${{env.BOOST_DIR}}
+          key: BOOST_${{env.BOOST_VERSION}}
 
       - name: Install Boost
         if: steps.cache-boost.outputs.cache-hit != 'true'
         run: |
-          if [ "$OS" == "Windows_NT" ]; then
-            # fix up paths to be forward slashes consistently
-            BOOST_ROOT=$(echo $BOOST_ROOT | sed 's/\\/\//g')
-          fi
-          mkdir -p $BOOST_ROOT
-          curl --progress-bar --location --output $BOOST_ROOT/download.tar.bz2 $BOOST_URL
-          7z -o$BOOST_ROOT x $BOOST_ROOT/download.tar.bz2 -y -bd
-          7z -o$BOOST_ROOT x $BOOST_ROOT/download.tar -y -bd
-          cd $BOOST_ROOT && cp -r boost_*/* .
-          rm -rf boost_*/* download.tar.bz2 download.tar
+          mkdir -p $BOOST_DIR
+          curl --silent --location --output - \
+            https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION/source/boost_${BOOST_VERSION//./_}.tar.bz2 |\
+            tar jxf - -C $BOOST_DIR --strip-components=1 boost_${BOOST_VERSION//./_}/boost
         shell: bash
 
       - name: Restore build dependencies
@@ -89,14 +83,14 @@ jobs:
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
         run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
 
-      - name: Install boost & omp on MacOS
+      - name: Install omp on MacOS
         if: matrix.os == 'macos-10.15'
         run: brew install libomp
 
       - name: Build macOS/Windows wheel
         if: matrix.os != 'ubuntu-latest'
         run: |
-          echo $BOOST_ROOT
+          export "BOOST_ROOT=$PWD/$BOOST_DIR"
           python -m pip install --upgrade pip
           pip install build poetry-dynamic-versioning
           python -m build --sdist --wheel
@@ -120,7 +114,7 @@ jobs:
             mkdir -p /tmp/docker
             docker image save -o /tmp/docker/skdecide_dev.tar skdecide_dev
           fi
-          docker build -f scripts/Dockerfile_x86_64 -t skdecide_x86_64 --build-arg PYTHON_VERSION=${{matrix.python-version}} --build-arg SKDECIDE_SKIP_DEPS=${SKDECIDE_SKIP_DEPS} .
+          docker build -f scripts/Dockerfile_x86_64 -t skdecide_x86_64 --build-arg PYTHON_VERSION=${{matrix.python-version}} --build-arg SKDECIDE_SKIP_DEPS=${SKDECIDE_SKIP_DEPS} --build-arg BOOST_DIR=${BOOST_DIR} .
           # Fetch wheels from Docker
           docker run --rm -v $PWD:/mytmp skdecide_x86_64 cp -r /io/dist /mytmp
 
