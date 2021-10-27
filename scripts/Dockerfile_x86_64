@@ -1,6 +1,9 @@
-FROM quay.io/pypa/manylinux2014_x86_64 as build
+ARG BASE_IMAGE=skdecide_dev
+
+FROM $BASE_IMAGE as build
 
 ENV PLAT=manylinux2014_x86_64
+
 RUN mkdir -p /io/
 COPY . /io/
 WORKDIR /io/
@@ -9,18 +12,5 @@ ARG CONDA_PREFIX=/opt/conda
 ARG PYTHON_VERSION=3.8
 ARG SKDECIDE_SKIP_DEPS=0
 ENV SKDECIDE_SKIP_DEPS=$SKDECIDE_SKIP_DEPS
-
-RUN yum install -y git zlib-devel
-# Install the latest boost library
-RUN curl -L https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz -o boost-1.76.0.tar.gz \
-    && tar xfz boost-1.76.0.tar.gz \
-    && rm boost-1.76.0.tar.gz \
-    && cd boost_1_76_0 \
-    && ./bootstrap.sh --help \
-    && ./bootstrap.sh --without-icu --with-libraries=headers --prefix=/usr/local \
-    && ./b2 install
 #
 RUN ./scripts/build-manylinux-wheels.sh $PYTHON_VERSION
-#
-FROM scratch as release
-COPY --from=build /io/dist /wheelhouse
