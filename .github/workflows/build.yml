@@ -89,11 +89,6 @@ jobs:
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
         run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
 
-      - name: Set up Docker Buildx
-        if: matrix.os == 'ubuntu-latest'
-        id: buildx
-        uses: docker/setup-buildx-action@v1
-
       - name: Install boost & omp on MacOS
         if: matrix.os == 'macos-10.15'
         run: brew install libomp
@@ -106,12 +101,28 @@ jobs:
           pip install build poetry-dynamic-versioning
           python -m build --sdist --wheel
 
+      - name: Restore docker dev image for Linux
+        id: cache-dev-deps
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/cache@v2.1.4
+        with:
+          path: /tmp/docker
+          key: dev-deps-${{ runner.os }}-${{ hashFiles('scripts/build-skdecide_dev.sh', 'scripts/build-pip-install.sh', 'scripts/Dockerfile_x86_64_dev') }}
+
       - name: Build x86 Linux wheels
         if: matrix.os == 'ubuntu-latest'
         run: |
-          DOCKER_BUILDKIT=1 docker build -t skdecide_x86_64 --build-arg PYTHON_VERSION=${{matrix.python-version}} --build-arg SKDECIDE_SKIP_DEPS=${{env.SKDECIDE_SKIP_DEPS}} --output type=local,dest=tmpwheelhouse -f scripts/Dockerfile_x86_64 .
-          mkdir -p dist
-          mv tmpwheelhouse/wheelhouse/*.whl dist/
+          # Load skdecide_dev image from cache, or build it if not found
+          if test -f /tmp/docker/skdecide_dev.tar; then
+            docker image load -i /tmp/docker/skdecide_dev.tar
+          else
+            docker build -f scripts/Dockerfile_x86_64_dev -t skdecide_dev .
+            mkdir -p /tmp/docker
+            docker image save -o /tmp/docker/skdecide_dev.tar skdecide_dev
+          fi
+          docker build -f scripts/Dockerfile_x86_64 -t skdecide_x86_64 --build-arg PYTHON_VERSION=${{matrix.python-version}} --build-arg SKDECIDE_SKIP_DEPS=${SKDECIDE_SKIP_DEPS} .
+          # Fetch wheels from Docker
+          docker run --rm -v $PWD:/mytmp skdecide_x86_64 cp -r /io/dist /mytmp
 
       - name: Update build cache from wheels
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
