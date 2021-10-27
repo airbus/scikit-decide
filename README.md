@@ -228,8 +228,24 @@ Make sure you are in the "scikit-decide" root directory and install documentatio
 yarn install
 ```
 
+#### 3. Define environment variables for binder links
 
-#### 3. Build the docs
+In order to define appropriate links for notebooks (github source + launching on binder), we need several environment variables:
+- AUTODOC_BINDER_ENV_GH_REPO_NAME: name of the github repository hosting the binder environment
+- AUTODOC_BINDER_ENV_GH_BRANCH: branch hosting the binder environment
+- AUTODOC_NOTEBOOKS_REPO_URL: url of the content repository for the notebooks 
+- AUTODOC_NOTEBOOKS_BRANCH: branch containing the notebooks
+
+For instance:
+```shell
+export AUTODOC_BINDER_ENV_GH_REPO_NAME="airbus/scikit-decide"
+export AUTODOC_BINDER_ENV_GH_BRANCH="binder"
+current_repo_url_withdotgit=$(git remote get-url origin)
+export AUTODOC_NOTEBOOKS_REPO_URL=${current_repo_url_withdotgit/.git/}
+export AUTODOC_NOTEBOOKS_BRANCH=$(git branch --show-current)
+```
+
+#### 4. Build the docs
 
 Make sure you are in the "scikit-decide" root directory and using the virtual environment where you installed scikit-decide. 
 If you used poetry, that means prepending python commands with `poetry run`.
@@ -239,7 +255,7 @@ Then generate doc with:
 poetry run python docs/autodoc.py
 ```
  
-#### 4. Access the documentation
+#### 5. Access the documentation
 
 Make sure you are in the "scikit-decide" root directory and start the local documentation server:
 
@@ -251,9 +267,13 @@ Open your web browser to access the documentation (by default on http://localhos
 
 ## Examples
 
-The examples can be found in the `/examples` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on scikit-decide Hub, an extensible catalog of domains/solvers.
+### Notebooks
 
-Some examples are automatically embedded as Python notebooks in the `Examples` section of the documentation.
+A curated list of notebooks recommended to start with scikit-decide can be found in `notebooks/` folder.
+
+### Python scripts
+
+More examples can be found in the `examples/` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on scikit-decide Hub, an extensible catalog of domains/solvers.
 
 ### Playground
 
