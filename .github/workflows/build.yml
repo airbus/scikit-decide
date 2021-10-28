@@ -2,6 +2,8 @@ name: 🔨 Build scikit-decide
 
 on:
   push:
+    branches:
+      - "*"
   pull_request:
   workflow_dispatch:
 
