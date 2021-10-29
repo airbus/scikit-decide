@@ -42,7 +42,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
             for a in self._domain.get_applicable_actions(node):
                 n = self._domain.get_next_state(node, a)
                 if n not in explored:
-                    yield (n, self._domain.get_transition_cost(node, a, n), {'action': a})
+                    yield (n, self._domain.get_transition_value(node, a, n).cost, {'action': a})
 
 
         push = heappush

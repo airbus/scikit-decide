@@ -317,51 +317,6 @@ class UncertainTransitions(Simulation):
         raise NotImplementedError
 
     @autocastable
-    def get_transition_cost(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                            next_state: Optional[D.T_state] = None) -> D.T_agent[D.T_value]:
-        """Get the value (reward or cost) of a transition.
-
-        The transition to consider is defined by the function parameters.
-
-        !!! tip
-            If this function never depends on the next_state parameter for its computation, it is recommended to
-            indicate it by overriding #UncertainTransitions._is_transition_value_dependent_on_next_state_() to return
-            False. This information can then be exploited by solvers to avoid computing next state to evaluate a
-            transition value (more efficient).
-
-        # Parameters
-        memory: The source memory (state or history) of the transition.
-        action: The action taken in the given memory (state or history) triggering the transition.
-        next_state: The next state in which the transition ends (if needed for the computation).
-
-        # Returns
-        The transition value (reward or cost).
-        """
-        return self._get_transition_cost(memory, action, next_state)
-
-    def _get_transition_cost(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                             next_state: Optional[D.T_state] = None) -> D.T_agent[D.T_value]:
-        """Get the cost of a transition.
-
-        The transition to consider is defined by the function parameters.
-
-        !!! tip
-            If this function never depends on the next_state parameter for its computation, it is recommended to
-            indicate it by overriding #UncertainTransitions._is_transition_value_dependent_on_next_state_() to return
-            False. This information can then be exploited by solvers to avoid computing next state to evaluate a
-            transition value (more efficient).
-        
-        # Parameters
-        memory: The source memory (state or history) of the transition.
-        action: The action taken in the given memory (state or history) triggering the transition.
-        next_state: The next state in which the transition ends (if needed for the computation).
-        
-        # Returns
-        The transition value (reward or cost).
-        """
-        raise NotImplementedError
-
-    @autocastable
     def is_transition_value_dependent_on_next_state(self) -> bool:
         """Indicate whether get_transition_value() requires the next_state parameter for its computation (cached).
 
