@@ -47,7 +47,7 @@ class Castable:
 
 
 # Space
-class Space(Generic[T]):
+class Space:
     """A space representing a finite or infinite set.
 
     This class (or any of its descendant) is typically used to specify action, observation or goal spaces.
@@ -68,7 +68,7 @@ class Space(Generic[T]):
         return self.contains(item)
 
 
-class ImplicitSpace(Space[T]):
+class ImplicitSpace(Space):
     """A space formalized implicitly, i.e. by a black-box contains() function."""
 
     def __init__(self, contains_function: Callable[[T], bool]) -> None:
@@ -88,7 +88,7 @@ class ImplicitSpace(Space[T]):
         return self.contains_function(x)
 
 
-class EnumerableSpace(Space[T]):
+class EnumerableSpace(Space):
     """A space which elements can be enumerated."""
 
     def get_elements(self) -> Iterable[T]:
@@ -103,14 +103,14 @@ class EnumerableSpace(Space[T]):
         return x in self.get_elements()
 
 
-class EmptySpace(Space[T]):
+class EmptySpace(Space):
     """A space which elements can be enumerated."""
 
     def get_elements(self) -> Iterable[T]:
         return ()
 
 
-class SamplableSpace(Space[T]):
+class SamplableSpace(Space):
     """A space which can be sampled (uniformly randomly)."""
 
     def sample(self) -> T:
@@ -122,7 +122,7 @@ class SamplableSpace(Space[T]):
         raise NotImplementedError
 
 
-class SerializableSpace(Space[T]):
+class SerializableSpace(Space):
     """A space which can be serialized (to/from JSON)."""
 
     def to_jsonable(self, sample_n: Iterable[T]) -> Sequence:
