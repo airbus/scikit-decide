@@ -359,6 +359,61 @@ class UncertainTransitions(Simulation):
         return True
 
     @autocastable
+    def value_factory(self) -> Value[D.T_value]:
+        """Value factory."""
+        return self._value_factory()
+
+    def _value_factory(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
+                             next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
+        """Value factory."""
+        raise NotImplementedError
+
+    @autocastable
+    def compute_transition_value(self, out: D.T_agent[Value[D.T_value]], memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
+                             next_state: Optional[D.T_state] = None) -> None:
+        """Compute the value (reward or cost) of a transition.
+
+        The transition to consider is defined by the function parameters.
+
+        !!! tip
+            If this function never depends on the next_state parameter for its computation, it is recommended to
+            indicate it by overriding #UncertainTransitions._is_transition_value_dependent_on_next_state_() to return
+            False. This information can then be exploited by solvers to avoid computing next state to evaluate a
+            transition value (more efficient).
+
+        # Parameters
+        memory: The source memory (state or history) of the transition.
+        action: The action taken in the given memory (state or history) triggering the transition.
+        next_state: The next state in which the transition ends (if needed for the computation).
+
+        # Returns
+        The transition value (reward or cost).
+        """
+        self._compute_transition_value(out, memory, action, next_state)
+
+    def _compute_transition_value(self, out: D.T_agent[Value[D.T_value]], memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
+                             next_state: Optional[D.T_state] = None) -> None:
+        """Compute the value (reward or cost) of a transition.
+
+        The transition to consider is defined by the function parameters.
+
+        !!! tip
+            If this function never depends on the next_state parameter for its computation, it is recommended to
+            indicate it by overriding #UncertainTransitions._is_transition_value_dependent_on_next_state_() to return
+            False. This information can then be exploited by solvers to avoid computing next state to evaluate a
+            transition value (more efficient).
+        
+        # Parameters
+        memory: The source memory (state or history) of the transition.
+        action: The action taken in the given memory (state or history) triggering the transition.
+        next_state: The next state in which the transition ends (if needed for the computation).
+        
+        # Returns
+        The transition value (reward or cost).
+        """
+        raise NotImplementedError
+
+    @autocastable
     def is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
         """Indicate whether a state is terminal.
 

@@ -69,6 +69,14 @@ class GraphDomain(D):
     def _get_next_state(self, memory: D.T_memory[D.T_state], event: D.T_event) -> D.T_state:
         return self.next_state_map[memory][event]
 
+    def _value_factory(self) -> Value[D.T_value]:
+        return Value()
+
+    def _compute_transition_value(self, out: Value[D.T_value], memory: D.T_memory[D.T_state],
+                              event: D.T_event,
+                              next_state: Optional[D.T_state] = None) -> None:
+        out.cost = self.next_state_attributes[memory][event][self.attribute_weight]
+
     def _get_transition_value(self, memory: D.T_memory[D.T_state],
                               event: D.T_event,
                               next_state: Optional[D.T_state] = None) \

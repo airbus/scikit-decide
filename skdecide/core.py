@@ -274,7 +274,6 @@ class ExtendedDataclass:
 
 
 # Value
-@dataclass
 class Value(Generic[D.T_value]):
     """A value (reward or cost).
 
@@ -297,23 +296,37 @@ class Value(Generic[D.T_value]):
     assert value_1.cost == value_2.cost == 5  # True
     ```
     """
-    reward: Optional[D.T_value] = None
-    cost: Optional[D.T_value] = None
+    _reward: D.T_value
+    _cost: D.T_value
 
-    def __post_init__(self) -> None:
-        if self.reward is not None:
-            self.cost = self._reward_to_cost(self.reward)
-        elif self.cost is not None:
-            self.reward = self._cost_to_reward(self.cost)
+    def __init__(self, reward: Optional[D.T_value] = None, cost: Optional[D.T_value] = None) -> None:
+        if reward is not None:
+            self.reward = reward
+        elif cost is not None:
+            self.cost = cost
         else:
-            self.reward = 0
             self.cost = 0
 
-    def _cost_to_reward(self, cost: D.T_value) -> D.T_value:
-        return -cost
+    def __repr__(self):
+        print(f"Value(reward={self._reward}, cost={self._cost}")
 
-    def _reward_to_cost(self, reward: D.T_value) -> D.T_value:
-        return -reward
+    @property
+    def cost(self) -> D.T_value:
+        return self._cost
+
+    @cost.setter
+    def cost(self, val) -> None:
+        self._cost = val
+        self._reward = -val
+
+    @property
+    def reward(self) -> D.T_value:
+        return self._reward
+
+    @reward.setter
+    def reward(self, val) -> None:
+        self._reward = val
+        self._cost = -val
 
 
 # EnvironmentOutcome
