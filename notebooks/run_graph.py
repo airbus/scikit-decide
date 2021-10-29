@@ -1,17 +1,17 @@
 import argparse
 import logging
 import networkx as nx
+import numpy as np
 import random
 import time
 import tqdm
+from typing import Sequence
 
 from graph_domain import GraphDomain
 from skdecide.hub.solver.lazy_astar import LazyAstar
 
-from stateful_graph import GraphState, GraphDomainStateful
 
-
-def parse_gr(file:str = None):
+def parse_gr(file: str = None):
     with open(file, "r") as input_data:
         lines = input_data.read().split('\n')
         graph = nx.Graph()
@@ -37,9 +37,7 @@ def parse_gr(file:str = None):
     return graph, dict_graph
 
 
-def run(file:str = None):
-
-    assert file != None, "No file provided"
+def run(file: str, repeat: int, seed: int, algos: Sequence[str]) -> np.array:
 
     graph, dict_graph = parse_gr(file)
     logging.info("Graph loaded")
@@ -52,42 +50,48 @@ def run(file:str = None):
                                                       for n1 in dict_graph},
                                targets=None, attribute_weight="weight")
 
-    stateful_graph_domain = GraphDomainStateful(next_state_map={n1: {n2: n2 for n2 in dict_graph[n1]}
-                                                          for n1 in dict_graph},
-                                          next_state_attributes={n1: {n2: {"weight": dict_graph[n1][n2]}
-                                                                      for n2 in dict_graph[n1]}
-                                                                 for n1 in dict_graph},
-                                          targets=None,
-                                          attribute_weight="weight")
+    if seed >= 0:
+        random.seed(a=seed)
 
-    for k in range(50):
+    timings = np.zeros((repeat, 3), dtype=float)
+    print("repeat=", repeat)
+    for k in range(repeat):
         dep = random.choice(list_nodes)
         arr = random.choice(list_nodes)
 
-        logging.info("Starting from {} to {}".format(dep, arr))
+        logging.info(f"Starting from {dep} to {arr} ({k+1}/{repeat})")
 
-        t = time.time()
-        path = nx.astar_path(graph, dep, arr, weight="weight")
-        length = sum(graph[n1][n2]["weight"] for n1, n2 in zip(path[:-1], path[1:]))
-        logging.info(f"time: {time.time()-t}, astar networkx - length : {length}")
+        if algos is None or "networkx" in algos:
+            name = "astar networkx"
+            t = time.time()
+            path = nx.astar_path(graph, dep, arr, weight="weight")
+            timings[k, 1] = time.time()-t
+            timings[k, 0] = sum(graph[n1][n2]["weight"] for n1, n2 in zip(path[:-1], path[1:]))
+            logging.info(f"time: {timings[k, 1]}, {name} - length : {timings[k, 0]}")
 
-        t = time.time()
-        l = LazyAstar(from_state=dep)
-        graph_domain.targets = {arr}
-        l.solve(domain_factory=lambda: graph_domain)
-        logging.info(f"time: {time.time()-t}, scikit-decide - length : {l._values[dep]}")
+        if algos is None or "astar" in algos:
+            name = "scikit-decide"
+            t = time.time()
+            l = LazyAstar(from_state=dep)
+            graph_domain.targets = {arr}
+            l.solve(domain_factory=lambda: graph_domain)
+            timings[k, 2] = time.time()-t
+            timings[k, 0] = l._values[dep]
+            logging.info(f"time: {timings[k, 2]}, {name} - length : {timings[k, 0]}")
 
-        t = time.time()
-        l = LazyAstar(from_state=GraphState(dep))
-        stateful_graph_domain.targets = {arr}
-        l.solve(domain_factory=lambda: stateful_graph_domain)
-        logging.info(f"time: {time.time()-t}, scikit-decide stateful - length : {l._values[GraphState(dep)]}")
+    return timings
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser(description="Solve Graph problem using various algorithms")
     parser.add_argument("--graph_file", type=str, required=True, help="SM file")
+    parser.add_argument("--repeat", type=int, required=False, default=50, help="number of runs")
+    parser.add_argument("--seed", type=int, required=False, default=-1, help="random seed (by default, seed is not fixed)")
+    parser.add_argument("--output", type=str, required=False, help="CSV file containing timing results")
+    parser.add_argument("--algo", type=str, action="append", required=False, choices=["networkx", "astar"], help="algorithm to run (can be repeated)")
     args = parser.parse_args()
 
-    run(args.graph_file)
+    results = run(file=args.graph_file, repeat=args.repeat, seed=args.seed, algos=args.algo)
+    if args.output:
+        np.savetxt(args.output, results, fmt="%8.3e")
