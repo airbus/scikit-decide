@@ -3,14 +3,13 @@
 # LICENSE file in the root directory of this source tree.
 
 from __future__ import annotations
-from typing import Any, Dict, List, Iterable, Optional, Union, Tuple, Generic
+from typing import Any, Dict, List, Iterable, Optional, Union, Tuple
 from skdecide import Memory, Space, Value, EnumerableSpace, SamplableSpace, T, ImplicitSpace, Distribution
 import random
 from skdecide.builders.domain import DeterministicTransitions, Actions, Goals, Markovian, \
     FullyObservable, PositiveCosts, UncertainTransitions
 from skdecide import Domain, DeterministicPlanningDomain #, D
 import networkx as nx
-from dataclasses import dataclass
 
 
 class ActionSpace(EnumerableSpace, SamplableSpace):
@@ -30,9 +29,9 @@ class ActionSpace(EnumerableSpace, SamplableSpace):
         return self.l
 
 
-@dataclass
-class GraphState(Generic[T]):
-    id: T
+class GraphState:
+    def __init__(self, id):
+        self.id = id
 
     def __hash__(self):
         return self.id
