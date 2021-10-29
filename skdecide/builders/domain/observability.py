@@ -94,9 +94,9 @@ class PartiallyObservable:
         """
         observation_space = self._get_observation_space()
         if self.T_agent == Union:
-            return observation_space.contains(observation)
+            return observation in observation_space
         else:  # StrDict
-            return all(observation_space[k].contains(v) for k, v in observation.items())
+            return all(v in observation_space[k] for k, v in observation.items())
 
     @autocastable
     def get_observation_distribution(self, state: D.T_state,

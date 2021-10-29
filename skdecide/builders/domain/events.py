@@ -117,7 +117,7 @@ class Events:
         # Returns
         True if the event is enabled (False otherwise).
         """
-        return self._get_enabled_events_from(memory).contains(event)
+        return event in self._get_enabled_events_from(memory)
 
     @autocastable
     def get_action_space(self) -> D.T_agent[Space[D.T_event]]:
@@ -189,7 +189,7 @@ class Events:
         # Returns
         True if the event is an action (False otherwise).
         """
-        return self._get_action_space().contains(event)
+        return event in self._get_action_space()
 
     @autocastable
     def get_applicable_actions(self, memory: Optional[D.T_memory[D.T_state]] = None) -> D.T_agent[Space[D.T_event]]:
@@ -296,9 +296,9 @@ class Events:
         """
         applicable_actions = self._get_applicable_actions_from(memory)
         if self.T_agent == Union:
-            return applicable_actions.contains(action)
+            return action in applicable_actions
         else:  # StrDict
-            return all(applicable_actions[k].contains(v) for k, v in action.items())
+            return all(v in applicable_actions[k] for k, v in action.items())
 
 
 class Actions(Events):

@@ -33,8 +33,8 @@ class GymSpace(Generic[T], SamplableSpace[T], SerializableSpace[T]):
         self.shape = gym_space.shape  # TODO: remove if unnecessary?
         self.dtype = gym_space.dtype  # TODO: remove if unnecessary?
 
-    def contains(self, x: T) -> bool:
-        return self._gym_space.contains(x)
+    def __contains__(self, x: T) -> bool:
+        return x in self._gym_space
 
     def sample(self) -> T:
         return self._gym_space.sample()
@@ -145,7 +145,7 @@ class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
         gym_space = gym_spaces.Discrete(len(enum_class))
         super().__init__(gym_space)
 
-    def contains(self, x: T) -> bool:
+    def __contains__(self, x: T) -> bool:
         return isinstance(x, self._enum_class)
 
     def get_elements(self) -> Iterable[T]:
@@ -193,7 +193,7 @@ class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
         gym_space = gym_spaces.Discrete(len(self._elements))
         super().__init__(gym_space)
 
-    def contains(self, x: T) -> bool:
+    def __contains__(self, x: T) -> bool:
         return x in self._elements
 
     def get_elements(self) -> Iterable[T]:
@@ -253,11 +253,11 @@ class DataSpace(GymSpace[T]):
         gym_space = gym_spaces.Dict(spaces)
         super().__init__(gym_space)
 
-    def contains(self, x: T) -> bool:
+    def __contains__(self, x: T) -> bool:
         # works even when fields of the dataclass have been recast (e.g. numpy 0-dimensional array to scalar)
-        return super().contains(super().from_jsonable(self.to_jsonable([x]))[0])
+        return super().__contains__(super().from_jsonable(self.to_jsonable([x]))[0])
         # # bug: does not work when fields of the dataclass have been recast (e.g. numpy 0-dimensional array to scalar)
-        # return super().contains(asdict(x))
+        # return super().__contains__(asdict(x))
 
     def sample(self) -> T:
         # TODO: convert to simple types (get rid of ndarray created by gym dict space...)?

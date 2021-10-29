@@ -53,7 +53,7 @@ class Space:
     This class (or any of its descendant) is typically used to specify action, observation or goal spaces.
     """
 
-    def contains(self, x: T) -> bool:
+    def __contains__(self, x: T) -> bool:
         """Check whether x is a valid member of this space.
 
         # Parameters
@@ -64,12 +64,9 @@ class Space:
         """
         raise NotImplementedError
 
-    def __contains__(self, item: T) -> bool:
-        return self.contains(item)
-
 
 class ImplicitSpace(Space):
-    """A space formalized implicitly, i.e. by a black-box contains() function."""
+    """A space formalized implicitly, i.e. by a black-box __contains__() function."""
 
     def __init__(self, contains_function: Callable[[T], bool]) -> None:
         """Initialize ImplicitSpace.
@@ -84,7 +81,7 @@ class ImplicitSpace(Space):
         """
         self.contains_function = contains_function
 
-    def contains(self, x: T) -> bool:
+    def __contains__(self, x: T) -> bool:
         return self.contains_function(x)
 
 
@@ -99,7 +96,7 @@ class EnumerableSpace(Space):
         """
         raise NotImplementedError
 
-    def contains(self, x: T) -> bool:
+    def __contains__(self, x: T) -> bool:
         return x in self.get_elements()
 
 

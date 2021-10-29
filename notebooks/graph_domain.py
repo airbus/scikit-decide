@@ -87,8 +87,8 @@ class GraphDomain(D):
     def _get_action_space_(self) -> Space[D.T_event]:
         return ImplicitSpace(lambda x: True)
 
-    def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> Space[D.T_event]:
-        return ActionSpace(self.next_state_map[memory].keys())
+    def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> Iterable[D.T_event]:
+        return self.next_state_map[memory]
 
     def _get_goals_(self) -> Space[D.T_observation]:
         return ImplicitSpace(lambda x: (x in self.targets))

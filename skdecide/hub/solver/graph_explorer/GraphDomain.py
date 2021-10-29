@@ -16,7 +16,7 @@ class ActionSpace(EnumerableSpace, SamplableSpace):
     def sample(self) -> T:
         return random.choice(self.l)
 
-    def contains(self, x: T) -> bool:
+    def __contains__(self, x: T) -> bool:
         pass
 
     def __init__(self, l: List[object]):

@@ -1103,7 +1103,7 @@ class SchedulingActionSpaceWithResourceUnitSamplable(SamplableSpace[SchedulingAc
                                     mode=None,
                                     time_progress=True)
 
-    def contains(self, x: T) -> bool:
+    def __contains__(self, x: T) -> bool:
         return True
 
 

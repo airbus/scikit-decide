@@ -97,6 +97,6 @@ class Goals:
         """
         goals = self._get_goals()
         if self.T_agent == Union:
-            return goals.contains(observation)
+            return observation in goals
         else:  # StrDict
-            return {k: goals[k].contains(v) for k, v in observation.items()}
+            return {k: v in goals[k] for k, v in observation.items()}

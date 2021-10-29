@@ -39,7 +39,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
         self._domain = domain_factory()
 
         def extender(node, label, explored):
-            for a in self._domain.get_applicable_actions(node).get_elements():
+            for a in self._domain.get_applicable_actions(node):
                 n = self._domain.get_next_state(node, a)
                 if n not in explored:
                     yield (n, self._domain.get_transition_cost(node, a, n), {'action': a})
