@@ -314,7 +314,6 @@ jobs:
           ACCESS_TOKEN: ${{ secrets.gh_access_token }}
           BRANCH: gh-pages # The branch the action should deploy to.
           FOLDER: docs/.vuepress/dist # The folder the action should deploy.
-          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
           COMMIT_MESSAGE: publish documentation
           CLEAN: true
           SINGLE_COMMIT: true
