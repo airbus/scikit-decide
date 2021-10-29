@@ -7,7 +7,7 @@ import time
 import tqdm
 from typing import Sequence
 
-from graph_domain import GraphDomain, GraphState
+from graph_domain import GraphDomain
 from skdecide.hub.solver.lazy_astar import LazyAstar
 
 
@@ -72,11 +72,11 @@ def run(file: str, repeat: int, seed: int, algos: Sequence[str]) -> np.array:
         if algos is None or "astar" in algos:
             name = "scikit-decide"
             t = time.time()
-            l = LazyAstar(from_state=GraphState(dep))
+            l = LazyAstar(from_state=dep)
             graph_domain.targets = {arr}
             l.solve(domain_factory=lambda: graph_domain)
             timings[k, 2] = time.time()-t
-            timings[k, 0] = l._values[GraphState(dep)]
+            timings[k, 0] = l._values[dep]
             logging.info(f"time: {timings[k, 2]}, {name} - length : {timings[k, 0]}")
 
     return timings

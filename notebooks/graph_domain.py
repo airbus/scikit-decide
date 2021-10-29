@@ -29,18 +29,8 @@ class ActionSpace(EnumerableSpace, SamplableSpace):
         return self.l
 
 
-class GraphState:
-    def __init__(self, id):
-        self.id = id
-
-    def __hash__(self):
-        return self.id
-
-    def __eq__(self, other):
-        return self.id == other.id
-
 class D(DeterministicPlanningDomain):
-    T_state = GraphState
+    T_state = int
     T_observation = T_state  # Type of observations
     T_event = int  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
@@ -77,28 +67,28 @@ class GraphDomain(D):
         self.attribute_weight = attribute_weight
 
     def _get_next_state(self, memory: D.T_memory[D.T_state], event: D.T_event) -> D.T_state:
-        return GraphState(id=self.next_state_map[memory.id][event])
+        return self.next_state_map[memory][event]
 
     def _get_transition_value(self, memory: D.T_memory[D.T_state],
                               event: D.T_event,
                               next_state: Optional[D.T_state] = None) \
             -> Value[D.T_value]:
-        return Value(cost=self.next_state_attributes[memory.id][event][self.attribute_weight])
+        return Value(cost=self.next_state_attributes[memory][event][self.attribute_weight])
 
     def is_terminal(self, state: D.T_state) -> bool:
-        return state.id in self.targets
+        return state in self.targets
 
     def _get_action_space_(self) -> Space[D.T_event]:
         return ImplicitSpace(lambda x: True)
 
     def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> Space[D.T_event]:
-        return ActionSpace(list(self.next_state_map[memory.id].keys()))
+        return ActionSpace(list(self.next_state_map[memory].keys()))
 
     def _get_goals_(self) -> Space[D.T_observation]:
-        return ImplicitSpace(lambda x: (x.id in self.targets))
+        return ImplicitSpace(lambda x: (x in self.targets))
 
     def is_goal(self, state: D.T_state) -> bool:
-        return state.id in self.targets
+        return state in self.targets
 
     def _get_observation_space_(self) -> Space[D.T_observation]:
         pass
