@@ -75,6 +75,12 @@ class GraphDomain(D):
             -> Value[D.T_value]:
         return Value(cost=self.next_state_attributes[memory][event][self.attribute_weight])
 
+    def _get_transition_cost(self, memory: D.T_memory[D.T_state],
+                             event: D.T_event,
+                             next_state: Optional[D.T_state] = None) \
+            -> D.T_value:
+        return self.next_state_attributes[memory][event][self.attribute_weight]
+
     def is_terminal(self, state: D.T_state) -> bool:
         return state in self.targets
 
