@@ -319,12 +319,11 @@ jobs:
         run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
 
       - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
+        uses: JamesIves/github-pages-deploy-action@4.1.5
         with:
-          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
-          TARGET_FOLDER: ${{ env.DOCS_VERSION_PATH }} # The folder the action should deploy to.
-          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
-          COMMIT_MESSAGE: publish documentation
-          CLEAN: false # Releasing a new version is about creating a new directory, so we don't want to clean up the root.
+          tokem: ${{ secrets.gh_access_token }}
+          branch: gh-pages # The branch the action should deploy to.
+          folder: docs/.vuepress/dist # The folder the action should deploy.
+          target-folder: ${{ env.DOCS_VERSION_PATH }} # The folder the action should deploy to.
+          commit-message: publish documentation
+          clean: false # Releasing a new version is about creating a new directory, so we don't want to clean up the root.
