@@ -22,31 +22,29 @@ Scikit-decide supports formalizing the problem one characteristic at a time with
 Scikit-decide provides a meaningful API to interact with domains at the expected level of information, as well as a catalog of domains/solvers to test/benchmark new algorithms.
 :::
 
-## Installation
-
 ### 1. Make sure to have a Python 3.7+ environment
-  
+
 The use of a virtual environment for scikit-decide is recommended, and you will need to ensure the environment use a Python version greater than 3.7.
-This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows) 
+This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows)
 and [venv](https://docs.python.org/fr/3/library/venv.html) module.
 
-The following examples show how to create a virtual environment with Python version 3.8.11 with the mentioned methods. 
+The following examples show how to create a virtual environment with Python version 3.8.11 with the mentioned methods.
 
-#### With conda (all platforms) 
- 
+#### With conda (all platforms)
+
 ```shell
 conda create -n skdecide python=3.8.11
 conda activate skdecide
 ```
 
 #### With pyenv + venv (Linux/MacOS)
- 
+
 ```shell
 pyenv install 3.8.11
 pyenv shell 3.8.11
 python -m venv skdecide-venv
 source skdecide-venv
-```   
+```
 
 #### With pyenv-win + venv (Windows)
 
@@ -55,7 +53,7 @@ pyenv install 3.8.11
 pyenv shell 3.8.11
 python -m venv skdecide-venv
 skdecide-venv\Scripts\activate
-```   
+```
 
 ### 2. Install scikit-decide library
 
@@ -67,7 +65,7 @@ pip install -U pip
 pip install -U scikit-decide[all]
 ```
 
-#### Minimal install  
+#### Minimal install
 Alternatively you can choose to only install the core library, which is enough if you intend to create your own domain and solver.
 ```shell
 pip install -U pip
@@ -193,7 +191,7 @@ These combinations are particularly efficient if you want to try them out:
 - ATARI Pacman -> Random walk
 
 ::: warning
-Some domains/solvers might require extra manual setup steps to work at 100%. 
+Some domains/solvers might require extra manual setup steps to work at 100%.
 In the future, each scikit-decide hub entry might have a dedicated help page to list them, but in the meantime please refer to this:
 - OpenAI Gym domains: [OpenAI Gym](http://gym.openai.com/docs/#installation) for loading Gym environments not included by default (e.g. atari games).
 :::
