@@ -300,11 +300,12 @@ jobs:
 
       - name: Deploy documentation in root folder on GH pages 🚀
         if: github.ref == 'refs/heads/master'
-        uses: JamesIves/github-pages-deploy-action@releases/v3
+        uses: JamesIves/github-pages-deploy-action@4.1.5
         with:
-          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
-          TARGET_FOLDER: / # The folder the action should deploy to.
-          COMMIT_MESSAGE: publish documentation
-          CLEAN_EXCLUDE: ["version/*"] # The directories to exclude from the clean.
+          token: ${{ secrets.gh_access_token }}
+          branch: gh-pages # The branch the action should deploy to.
+          folder: docs/.vuepress/dist # The folder the action should deploy.
+          target-folder: / # The folder the action should deploy to.
+          commit-message: publish documentation
+          clean-exclude: |
+            "version/*"
