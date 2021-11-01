@@ -5,8 +5,12 @@ themeConfig:
   nav:
   - text: 'Home'
     link: '/'
+  - text: 'Install'
+    link: '/installation/'
   - text: 'Guide'
     link: '/guide/'
+  - text: 'Examples'
+    link: '/examples/'
   - text: 'Reference'
     link: '/reference/'
   sidebar: 'auto'
