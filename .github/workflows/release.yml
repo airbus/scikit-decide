@@ -301,10 +301,6 @@ jobs:
         run: |
           pip install --pre --find-links ./wheels "scikit-decide[all]"
 
-      - name: Generate
-        run: |
-          (cd docs; python autodoc.py)
-
       - name: generate documentation
         run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
 
