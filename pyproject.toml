@@ -37,14 +37,16 @@ script = "builder.py"
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
-bum = true
 format-jinja = """
     {%- if distance == 0 -%}
         {{ base }}
     {%- else -%}
-        {{ bump_version(base) }}-dev
+        {{ serialize_pep440(bump_version(base), stage, revision, dev=distance, metadata=[commit]) }}
     {%- endif -%}
 """
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ["skdecide/__init__.py"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
