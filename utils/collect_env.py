@@ -18,6 +18,11 @@ try:
 except (ImportError, NameError, AttributeError, OSError):
     TORCH_AVAILABLE = False
 
+try:
+    from skdecide import __version__ as skdecide_version
+except (ImportError):
+    skdecide_version = "Not available"
+
 # System Environment Information
 SystemEnv = namedtuple('SystemEnv', [
     'torch_version',
@@ -42,6 +47,7 @@ SystemEnv = namedtuple('SystemEnv', [
     'hip_runtime_version',
     'miopen_runtime_version',
     'caching_allocator_config',
+    'skdecide_version',
 ])
 
 
@@ -339,6 +345,7 @@ def get_env_info():
         clang_version=get_clang_version(run_lambda),
         cmake_version=get_cmake_version(run_lambda),
         caching_allocator_config=get_cachingallocator_config(),
+        skdecide_version=skdecide_version,
     )
 
 env_info_fmt = """
@@ -366,6 +373,8 @@ MIOpen runtime version: {miopen_runtime_version}
 Versions of relevant libraries:
 {pip_packages}
 {conda_packages}
+
+Skdecide version: {skdecide_version}
 """.strip()
 
 

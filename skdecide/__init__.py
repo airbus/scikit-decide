@@ -7,3 +7,5 @@ from skdecide.domains import *
 from skdecide.solvers import *
 from skdecide.utils import *
 from skdecide import hub
+
+__version__ = "0.0.0"
