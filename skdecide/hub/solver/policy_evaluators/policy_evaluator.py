@@ -4,18 +4,18 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+from typing import Any, Dict, List, Set, Tuple
+
 from skdecide import GoalMDPDomain
 from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
 from skdecide.builders.solver.policy import DeterministicPolicies
-from collections import defaultdict
-from typing import Tuple, Dict, Any, Set, List
 
 
 # Adapted from skdecide/hub/solver/cssp/utils/cost_shift_solver.py works.
-def construct_dict_policy(domain: GoalMDPDomain, policy: DeterministicPolicies)->Tuple[Dict[Any, Any],
-                                                                                       Dict[Any, Set[Any]],
-                                                                                       Dict[Any,
-                                                                                            List[Tuple[Any, float]]]]:
+def construct_dict_policy(
+    domain: GoalMDPDomain, policy: DeterministicPolicies
+) -> Tuple[Dict[Any, Any], Dict[Any, Set[Any]], Dict[Any, List[Tuple[Any, float]]]]:
     stack = [domain.get_initial_state()]
     # We store predecessors to make it easier to retrieve the expected costs
     # later on
@@ -37,14 +37,11 @@ def construct_dict_policy(domain: GoalMDPDomain, policy: DeterministicPolicies)-
     # Sanity check that successors and predecessors are equal
     for state, successor_pairs in succs.items():
         for succ, prob in successor_pairs:
-            assert (state in preds[succ])
+            assert state in preds[succ]
     return policy_dict, preds, succs
 
 
-def expected_costs_for_policy(domain,
-                              policy_dict,
-                              preds,
-                              succs):
+def expected_costs_for_policy(domain, policy_dict, preds, succs):
     # Compute value function for states that are explored by the policy.
     opt_val = dict()
     # Initialize states where all successors have potentially known values
@@ -78,7 +75,7 @@ def compute_expected_cost_for_policy(domain, policy):
 def my_custom_rollout(domain: GoalMDPDomain, state, policy: DeterministicPolicies):
     states = [state]
     values = []
-    summed_value = 0.
+    summed_value = 0.0
     actions = []
     while True:
         action = policy.get_next_action(states[-1])
@@ -95,17 +92,15 @@ def my_custom_rollout(domain: GoalMDPDomain, state, policy: DeterministicPolicie
             break
     return states, summed_value, values, actions
 
+
 # for uncertain domain leading to intractable number of states. which is the case for non trivial scheduling domains
 # for example
 import numpy as np
-def rollout_based_policy_estimation(domain: GoalMDPDomain, policy: DeterministicPolicies, nb_rollout:int=1) \
-        ->Tuple[Dict[Any,
-                     Any],
-                Dict[Any, Any],
-                Dict[Any,
-                     Set[Any]],
-                Dict[Any,
-                     Set[Any]]]:
+
+
+def rollout_based_policy_estimation(
+    domain: GoalMDPDomain, policy: DeterministicPolicies, nb_rollout: int = 1
+) -> Tuple[Dict[Any, Any], Dict[Any, Any], Dict[Any, Set[Any]], Dict[Any, Set[Any]]]:
     policy_dict = {}
     nb_visit_dict = {}
     summed_value = {}
@@ -113,10 +108,12 @@ def rollout_based_policy_estimation(domain: GoalMDPDomain, policy: Deterministic
     preds = {}
     succs = {}
     for rollout in range(nb_rollout):
-        states, summed_value_rollout, values, actions = my_custom_rollout(domain, domain.get_initial_state(), policy)
+        states, summed_value_rollout, values, actions = my_custom_rollout(
+            domain, domain.get_initial_state(), policy
+        )
         values_np = np.array(values[::-1]).cumsum()
         k = 0
-        for j in range(len(states)-2, -1, -1):
+        for j in range(len(states) - 2, -1, -1):
             if states[j] not in nb_visit_dict:
                 nb_visit_dict[states[j]] = 0
                 summed_value[states[j]] = 0
@@ -127,23 +124,16 @@ def rollout_based_policy_estimation(domain: GoalMDPDomain, policy: Deterministic
             summed_value[states[j]] += values_np[k]
             nb_visit_dict[states[j]] += 1
             if j > 0:
-                preds[states[j]].add(states[j-1])
-            succs[states[j]].add(states[j+1])
+                preds[states[j]].add(states[j - 1])
+            succs[states[j]].add(states[j + 1])
             k += 1
-    final_value = {st: summed_value[st]/nb_visit_dict[st] for st in summed_value}
+    final_value = {st: summed_value[st] / nb_visit_dict[st] for st in summed_value}
     return final_value, policy_dict, preds, succs
 
 
-def rollout_based_policy_estimation_fast_scheduling(domain: SchedulingDomain,
-                                                    policy: DeterministicPolicies,
-                                                    nb_rollout:int=1) \
-        ->Tuple[Dict[Any,
-                     Any],
-                Dict[Any, Any],
-                Dict[Any,
-                     Set[Any]],
-                Dict[Any,
-                     Set[Any]]]:
+def rollout_based_policy_estimation_fast_scheduling(
+    domain: SchedulingDomain, policy: DeterministicPolicies, nb_rollout: int = 1
+) -> Tuple[Dict[Any, Any], Dict[Any, Any], Dict[Any, Set[Any]], Dict[Any, Set[Any]]]:
     policy_dict = {}
     nb_visit_dict = {}
     summed_value = {}
@@ -155,27 +145,35 @@ def rollout_based_policy_estimation_fast_scheduling(domain: SchedulingDomain,
     nb_visit_dict[s] = 0
     domain.set_inplace_environment(True)
     for rollout in range(nb_rollout):
-        states, summed_value_rollout, values, actions = my_custom_rollout(domain,
-                                                                          s.copy(),
-                                                                          policy)
-        summed_value[s] += states[-1].t-s.t
+        states, summed_value_rollout, values, actions = my_custom_rollout(
+            domain, s.copy(), policy
+        )
+        summed_value[s] += states[-1].t - s.t
         nb_visit_dict[s] += 1
-    final_value = {st: summed_value[st]/nb_visit_dict[st] for st in summed_value}
+    final_value = {st: summed_value[st] / nb_visit_dict[st] for st in summed_value}
     return final_value, policy_dict, preds, succs
 
 
 def rollout_based_compute_expected_cost_for_policy(domain, policy, nb_rollout=100):
-    final_value, policy_dict, preds, succs = rollout_based_policy_estimation(domain=domain,
-                                                                             policy=policy,
-                                                                             nb_rollout=nb_rollout)
+    final_value, policy_dict, preds, succs = rollout_based_policy_estimation(
+        domain=domain, policy=policy, nb_rollout=nb_rollout
+    )
     return final_value, policy_dict, preds, succs
 
 
-def rollout_based_compute_expected_cost_for_policy_scheduling(domain, policy, nb_rollout=100):
-    final_value, policy_dict, preds, succs = rollout_based_policy_estimation_fast_scheduling(domain=domain,
-                                                                                             policy=policy,
-                                                                                             nb_rollout=nb_rollout)
+def rollout_based_compute_expected_cost_for_policy_scheduling(
+    domain, policy, nb_rollout=100
+):
+    (
+        final_value,
+        policy_dict,
+        preds,
+        succs,
+    ) = rollout_based_policy_estimation_fast_scheduling(
+        domain=domain, policy=policy, nb_rollout=nb_rollout
+    )
     return final_value, policy_dict, preds, succs
+
 
 def successor_value_is_known(successors, opt_val):
     for succ, prob in successors:

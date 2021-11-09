@@ -4,16 +4,19 @@
 
 from __future__ import annotations
 
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
-from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import MS_RCPSPModel, \
-    Employee, SkillDetail
+from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
+    Employee,
+    MS_RCPSPModel,
+    SkillDetail,
+)
 
 
 def parse_imopse(input_data, max_horizon=None):
     # parse the input
     # print('input_data\n',input_data)
-    lines = input_data.split('\n')
+    lines = input_data.split("\n")
 
     # "General characteristics:
     #     Tasks: 161
@@ -74,7 +77,7 @@ def parse_imopse(input_data, max_horizon=None):
                     if word[0] == "Q":
                         current_skill = word[:-1]
                         continue
-                    resource_dict[id_worker][current_skill] = int(word)+1
+                    resource_dict[id_worker][current_skill] = int(word) + 1
                     real_skills_found.add(current_skill)
         if task_zone:
             if words[0][0] == "=":
@@ -89,16 +92,20 @@ def parse_imopse(input_data, max_horizon=None):
             while i < len(words):
                 if words[i][0] == "Q":
                     current_skill = words[i][:-1]
-                    task_dict[task_id]["skills"][current_skill] = int(words[i+1])+1
+                    task_dict[task_id]["skills"][current_skill] = int(words[i + 1]) + 1
                     real_skills_found.add(current_skill)
-                    i = i+2
+                    i = i + 2
                     continue
                 else:
                     if "precedence" not in task_dict[task_id]:
                         task_dict[task_id]["precedence"] = []
                     task_dict[task_id]["precedence"] += [int(words[i])]
                     if int(words[i]) not in task_dict:
-                        task_dict[int(words[i])] = {"id": int(words[i]), "successors": [], "skills": {}}
+                        task_dict[int(words[i])] = {
+                            "id": int(words[i]),
+                            "successors": [],
+                            "skills": {},
+                        }
                     if "successors" not in task_dict[int(words[i])]:
                         task_dict[int(words[i])]["successors"] = []
                     task_dict[int(words[i])]["successors"] += [task_id]
@@ -106,57 +113,79 @@ def parse_imopse(input_data, max_horizon=None):
     # print(resource_dict)
     # print(task_dict)
     sorted_task_names = sorted(task_dict.keys())
-    task_id_to_new_name = {sorted_task_names[i]: i+2 for i in range(len(sorted_task_names))}
-    new_tame_to_original_task_id = {task_id_to_new_name[ind]: ind for ind in task_id_to_new_name}
-    mode_details = {task_id_to_new_name[task_id]:
-                    {1: {"duration": task_dict[task_id]["duration"]}}
-                    for task_id in task_dict}
+    task_id_to_new_name = {
+        sorted_task_names[i]: i + 2 for i in range(len(sorted_task_names))
+    }
+    new_tame_to_original_task_id = {
+        task_id_to_new_name[ind]: ind for ind in task_id_to_new_name
+    }
+    mode_details = {
+        task_id_to_new_name[task_id]: {1: {"duration": task_dict[task_id]["duration"]}}
+        for task_id in task_dict
+    }
     resource_dict = {int(i): resource_dict[i] for i in resource_dict}
     # skills = set(["Q"+str(i) for i in range(nb_skills)])
     skills = real_skills_found
     for task_id in task_dict:
         for skill in skills:
-            req_squill = task_dict[task_id]["skills"].get(skill, 0.)
+            req_squill = task_dict[task_id]["skills"].get(skill, 0.0)
             mode_details[task_id_to_new_name[task_id]][1][skill] = req_squill
     mode_details[1] = {1: {"duration": 0}}
     for skill in skills:
         mode_details[1][1][skill] = int(0)
     max_t = max(mode_details)
-    mode_details[max_t+1] = {1: {"duration": 0}}
+    mode_details[max_t + 1] = {1: {"duration": 0}}
     for skill in skills:
-        mode_details[max_t+1][1][skill] = int(0)
-    successors = {task_id_to_new_name[task_id]:
-                      [task_id_to_new_name[t]
-                       for t in task_dict[task_id]["successors"]]+[max_t+1]
-                  for task_id in task_dict}
-    successors[max_t+1] = []
+        mode_details[max_t + 1][1][skill] = int(0)
+    successors = {
+        task_id_to_new_name[task_id]: [
+            task_id_to_new_name[t] for t in task_dict[task_id]["successors"]
+        ]
+        + [max_t + 1]
+        for task_id in task_dict
+    }
+    successors[max_t + 1] = []
     successors[1] = [k for k in successors]
     # max_horizon = 2*sum([task_dict[task_id]["duration"] for task_id in task_dict])
     max_horizon = 300 if max_horizon is None else max_horizon
-    return MS_RCPSPModel(skills_set=set(real_skills_found),
-                         resources_set=set(),
-                         non_renewable_resources=set(),
-                         resources_availability={},
-                         employees={res: Employee(dict_skill={skill: SkillDetail(skill_value=resource_dict[res][skill],
-                                                                                 efficiency_ratio=1., experience=1.)
-                                                              for skill in resource_dict[res] if skill != "salary"},
-                                                  salary=resource_dict[res]["salary"],
-                                                  calendar_employee=[True]*max_horizon)
-                                    for res in resource_dict},
-                         employees_availability=[len(resource_dict)]*max_horizon,
-                         mode_details=mode_details,
-                         successors=successors,
-                         horizon=max_horizon,
-                         source_task=1,
-                         sink_task=max_t+1, one_unit_per_task_max=True), new_tame_to_original_task_id
+    return (
+        MS_RCPSPModel(
+            skills_set=set(real_skills_found),
+            resources_set=set(),
+            non_renewable_resources=set(),
+            resources_availability={},
+            employees={
+                res: Employee(
+                    dict_skill={
+                        skill: SkillDetail(
+                            skill_value=resource_dict[res][skill],
+                            efficiency_ratio=1.0,
+                            experience=1.0,
+                        )
+                        for skill in resource_dict[res]
+                        if skill != "salary"
+                    },
+                    salary=resource_dict[res]["salary"],
+                    calendar_employee=[True] * max_horizon,
+                )
+                for res in resource_dict
+            },
+            employees_availability=[len(resource_dict)] * max_horizon,
+            mode_details=mode_details,
+            successors=successors,
+            horizon=max_horizon,
+            source_task=1,
+            sink_task=max_t + 1,
+            one_unit_per_task_max=True,
+        ),
+        new_tame_to_original_task_id,
+    )
 
 
-def parse_file(file_path, max_horizon=None)->Tuple[MS_RCPSPModel, Dict]:
-    with open(file_path, 'r') as input_data_file:
+def parse_file(file_path, max_horizon=None) -> Tuple[MS_RCPSPModel, Dict]:
+    with open(file_path, "r") as input_data_file:
         input_data = input_data_file.read()
-        rcpsp_model, new_tame_to_original_task_id = parse_imopse(input_data, max_horizon)
+        rcpsp_model, new_tame_to_original_task_id = parse_imopse(
+            input_data, max_horizon
+        )
         return rcpsp_model, new_tame_to_original_task_id
-
-
-
-

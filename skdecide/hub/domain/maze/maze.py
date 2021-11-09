@@ -6,16 +6,15 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import Enum
-from typing import NamedTuple, Optional, Any
+from typing import Any, NamedTuple, Optional
 
 import matplotlib.pyplot as plt
 
-from skdecide import DeterministicPlanningDomain, Value, Space
-from skdecide.builders.domain import UnrestrictedActions, Renderable
-from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
+from skdecide import DeterministicPlanningDomain, Space, Value
+from skdecide.builders.domain import Renderable, UnrestrictedActions
+from skdecide.hub.space.gym import EnumSpace, ListSpace, MultiDiscreteSpace
 
-
-DEFAULT_MAZE = '''
+DEFAULT_MAZE = """
 +-+-+-+-+o+-+-+-+-+-+
 |   |             | |
 + + + +-+-+-+ +-+ + +
@@ -37,7 +36,7 @@ DEFAULT_MAZE = '''
 + +-+ +-+-+-+-+ + + +
 |   |       |     | |
 +-+-+-+-+-+x+-+-+-+-+
-'''
+"""
 
 
 class State(NamedTuple):
@@ -58,22 +57,23 @@ class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
     T_event = Action  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
     T_predicate = bool  # Type of logical checks
-    T_info = None  # Type of additional information given as part of an environment outcome
+    T_info = (
+        None  # Type of additional information given as part of an environment outcome
+    )
 
 
 class Maze(D):
-
     def __init__(self, maze_str: str = DEFAULT_MAZE):
         maze = []
-        for y, line in enumerate(maze_str.strip().split('\n')):
+        for y, line in enumerate(maze_str.strip().split("\n")):
             line = line.rstrip()
             row = []
             for x, c in enumerate(line):
-                if c in {' ', 'o', 'x'}:
+                if c in {" ", "o", "x"}:
                     row.append(1)  # spaces are 1s
-                    if c == 'o':
+                    if c == "o":
                         self._start = State(x, y)
-                    if c == 'x':
+                    if c == "x":
                         self._goal = State(x, y)
                 else:
                     row.append(0)  # walls are 0s
@@ -85,9 +85,11 @@ class Maze(D):
         self._ax = None
         self._image = None
 
-
-    def _get_next_state(self, memory: D.T_memory[D.T_state],
-                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+    def _get_next_state(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> D.T_state:
 
         if action == Action.left:
             next_state = State(memory.x - 1, memory.y)
@@ -99,19 +101,28 @@ class Maze(D):
             next_state = State(memory.x, memory.y + 1)
 
         # If candidate next state is valid
-        if 0 <= next_state.x < self._num_cols and 0 <= next_state.y < self._num_rows and self._maze[next_state.y][
-                next_state.x] == 1:
+        if (
+            0 <= next_state.x < self._num_cols
+            and 0 <= next_state.y < self._num_rows
+            and self._maze[next_state.y][next_state.x] == 1
+        ):
             return next_state
         else:
             return memory
 
-    def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
+    def _get_transition_value(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+        next_state: Optional[D.T_state] = None,
+    ) -> D.T_agent[Value[D.T_value]]:
 
         if next_state.x == memory.x and next_state.y == memory.y:
             cost = 2  # big penalty when hitting a wall
         else:
-            cost = abs(next_state.x - memory.x) + abs(next_state.y - memory.y)  # every move costs 1
+            cost = abs(next_state.x - memory.x) + abs(
+                next_state.y - memory.y
+            )  # every move costs 1
 
         return Value(cost=cost)
 
@@ -133,10 +144,10 @@ class Maze(D):
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
         if self._ax is None:
             # fig = plt.gcf()
-            fig, ax  = plt.subplots(1)
-            fig.canvas.set_window_title('Maze')
+            fig, ax = plt.subplots(1)
+            fig.canvas.set_window_title("Maze")
             # ax = plt.axes()
-            ax.set_aspect('equal')  # set the x and y axes to the same scale
+            ax.set_aspect("equal")  # set the x and y axes to the same scale
             plt.xticks([])  # remove the tick marks by setting to an empty list
             plt.yticks([])  # remove the tick marks by setting to an empty list
             ax.invert_yaxis()  # invert the y-axis so the first row of data is at the top

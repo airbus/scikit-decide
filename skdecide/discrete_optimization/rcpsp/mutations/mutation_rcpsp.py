@@ -4,23 +4,28 @@
 
 from __future__ import annotations
 
+from typing import Dict, Tuple
+
 from skdecide.discrete_optimization.generic_tools.do_mutation import LocalMove
-from skdecide.discrete_optimization.generic_tools.mutations.permutation_mutations import PermutationShuffleMutation, \
-    Mutation, Problem, Solution
-from typing import Tuple, Dict
+from skdecide.discrete_optimization.generic_tools.mutations.permutation_mutations import (
+    Mutation,
+    PermutationShuffleMutation,
+    Problem,
+    Solution,
+)
 from skdecide.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
 
 
 class PermutationMutationRCPSP(Mutation):
     @staticmethod
     def build(problem: Problem, solution: Solution, **kwargs):
-        other_mutation = kwargs.get('other_mutation', PermutationShuffleMutation)
+        other_mutation = kwargs.get("other_mutation", PermutationShuffleMutation)
         other_mutation = other_mutation.build(problem, solution, **kwargs)
-        return PermutationMutationRCPSP(problem, solution, other_mutation=other_mutation)
+        return PermutationMutationRCPSP(
+            problem, solution, other_mutation=other_mutation
+        )
 
-    def __init__(self, problem: Problem,
-                 solution: Solution,
-                 other_mutation: Mutation):
+    def __init__(self, problem: Problem, solution: Solution, other_mutation: Mutation):
         self.problem = problem
         self.solution = solution
         self.other_mutation = other_mutation
@@ -34,7 +39,9 @@ class PermutationMutationRCPSP(Mutation):
             pass
         return s, lm
 
-    def mutate_and_compute_obj(self, solution: Solution) -> Tuple[Solution, LocalMove, Dict[str, float]]:
+    def mutate_and_compute_obj(
+        self, solution: Solution
+    ) -> Tuple[Solution, LocalMove, Dict[str, float]]:
         s, lm, fit = self.other_mutation.mutate_and_compute_obj(solution)
         try:
             s._schedule_to_recompute = True
@@ -42,4 +49,3 @@ class PermutationMutationRCPSP(Mutation):
         except:
             pass
         return s, lm, fit
-

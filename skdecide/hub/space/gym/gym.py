@@ -4,15 +4,15 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from enum import EnumMeta
-from typing import Union, Generic, Iterable, Sequence, Tuple, List, Dict
+from typing import Dict, Generic, Iterable, List, Sequence, Tuple, Union
 
 import gym
 import gym.spaces as gym_spaces
 import numpy as np
 
-from skdecide import T, EnumerableSpace, SamplableSpace, SerializableSpace
-from dataclasses import asdict
+from skdecide import EnumerableSpace, SamplableSpace, SerializableSpace, T
 
 
 class GymSpace(Generic[T], SamplableSpace[T], SerializableSpace[T]):
@@ -230,7 +230,11 @@ class DataSpace(GymSpace[T]):
         Using this class requires OpenAI Gym to be installed.
     """
 
-    def __init__(self, data_class: type, spaces: Union[Dict[str, gym.Space], List[Tuple[str, gym.Space]]]) -> None:
+    def __init__(
+        self,
+        data_class: type,
+        spaces: Union[Dict[str, gym.Space], List[Tuple[str, gym.Space]]],
+    ) -> None:
         """Initialize DataSpace.
 
         # Parameters

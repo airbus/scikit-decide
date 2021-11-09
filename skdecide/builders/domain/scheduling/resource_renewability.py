@@ -5,9 +5,10 @@
 from __future__ import annotations
 
 from typing import Dict
+
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import State
 
-__all__ = ['MixedRenewable', 'RenewableOnly']
+__all__ = ["MixedRenewable", "RenewableOnly"]
 
 
 class MixedRenewable:
@@ -41,7 +42,9 @@ class MixedRenewable:
                 for res in self.get_resource_types_names():
                     if not self.get_resource_renewability()[res]:
                         need = self.get_task_modes(task_id)[mode].get_resource_need(res)
-                        avail = state.resource_availability[res] - state.resource_used[res]
+                        avail = (
+                            state.resource_availability[res] - state.resource_used[res]
+                        )
                         if avail - need < 0:
                             mode_possible = False
                             break
@@ -58,7 +61,9 @@ class RenewableOnly(MixedRenewable):
     def _get_resource_renewability(self) -> Dict[str, bool]:
         """Return a dictionary where the key is a resource name (string)
         and the value whether this resource is renewable (True) or not (False)."""
-        names = self.get_resource_types_names() + self.get_resource_units_names() # comes from resource_handling...
+        names = (
+            self.get_resource_types_names() + self.get_resource_units_names()
+        )  # comes from resource_handling...
         renewability = {}
         for name in names:
             renewability[name] = True

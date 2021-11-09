@@ -3,13 +3,34 @@
 # LICENSE file in the root directory of this source tree.
 
 from __future__ import annotations
-from typing import Any, Dict, List, Iterable, Optional, Union, Tuple
-from skdecide import Memory, Space, Value, EnumerableSpace, SamplableSpace, T, ImplicitSpace, Distribution
+
 import random
-from skdecide.builders.domain import DeterministicTransitions, Actions, Goals, Markovian, \
-    FullyObservable, PositiveCosts, UncertainTransitions
-from skdecide import Domain, DeterministicPlanningDomain, D
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+
 import networkx as nx
+
+from skdecide import (
+    D,
+    DeterministicPlanningDomain,
+    Distribution,
+    Domain,
+    EnumerableSpace,
+    ImplicitSpace,
+    Memory,
+    SamplableSpace,
+    Space,
+    T,
+    Value,
+)
+from skdecide.builders.domain import (
+    Actions,
+    DeterministicTransitions,
+    FullyObservable,
+    Goals,
+    Markovian,
+    PositiveCosts,
+    UncertainTransitions,
+)
 
 
 class ActionSpace(EnumerableSpace, SamplableSpace):
@@ -26,13 +47,15 @@ class ActionSpace(EnumerableSpace, SamplableSpace):
         return self.l
 
 
-class GraphDomainUncertain(Domain,
-                           UncertainTransitions,
-                           Actions,
-                           Goals,
-                           Markovian,
-                           FullyObservable,
-                           PositiveCosts):
+class GraphDomainUncertain(
+    Domain,
+    UncertainTransitions,
+    Actions,
+    Goals,
+    Markovian,
+    FullyObservable,
+    PositiveCosts,
+):
     # def merge(self, graph_domain):
     #     next_state_map = self.next_state_map
     #     next_state_attributes = self.next_state_attributes
@@ -47,10 +70,14 @@ class GraphDomainUncertain(Domain,
     #                     next_state_attributes[k][action] = graph_domain.next_state_attributes[k][action]
     #     return GraphDomain(next_state_map, next_state_attributes, self.targets, self.attribute_weight)
 
-    def __init__(self,
-                 next_state_map: Dict[D.T_state, Dict[D.T_event, Dict[D.T_state, Tuple[float, float]]]],
-                 state_terminal: Dict[D.T_state, bool],
-                 state_goal: Dict[D.T_state, bool]):
+    def __init__(
+        self,
+        next_state_map: Dict[
+            D.T_state, Dict[D.T_event, Dict[D.T_state, Tuple[float, float]]]
+        ],
+        state_terminal: Dict[D.T_state, bool],
+        state_goal: Dict[D.T_state, bool],
+    ):
         self.next_state_map = next_state_map  # State, action, -> next state
         self.state_terminal = state_terminal
         self.state_goal = state_goal
@@ -65,25 +92,35 @@ class GraphDomainUncertain(Domain,
         for state in self.next_state_map:
             for action in self.next_state_map[state]:
                 for next_state in self.next_state_map[state][action]:
-                    graph.add_edge(state_to_id[state], state_to_id[next_state],
-                                   action=action,
-                                   proba=self.next_state_map[state][action][next_state][0],
-                                   cost=self.next_state_map[state][action][next_state][1])
+                    graph.add_edge(
+                        state_to_id[state],
+                        state_to_id[next_state],
+                        action=action,
+                        proba=self.next_state_map[state][action][next_state][0],
+                        cost=self.next_state_map[state][action][next_state][1],
+                    )
         return graph
 
-    def _get_transition_value(self, memory: D.T_memory[D.T_state],
-                              event: D.T_event,
-                              next_state: Optional[D.T_state] = None) \
-            -> Value[D.T_value]:
+    def _get_transition_value(
+        self,
+        memory: D.T_memory[D.T_state],
+        event: D.T_event,
+        next_state: Optional[D.T_state] = None,
+    ) -> Value[D.T_value]:
         return Value(cost=self.next_state_map[memory][event][next_state][1])
 
     def _is_terminal(self, state: D.T_state) -> bool:
-        return self.state_terminal[state] or len(self._get_applicable_actions_from(state).l)==0
+        return (
+            self.state_terminal[state]
+            or len(self._get_applicable_actions_from(state).l) == 0
+        )
 
     def _get_action_space_(self) -> Space[D.T_event]:
         return ImplicitSpace(lambda x: True)
 
-    def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state])-> Space[D.T_event]:
+    def _get_applicable_actions_from(
+        self, memory: D.T_memory[D.T_state]
+    ) -> Space[D.T_event]:
         return ActionSpace(list(self.next_state_map.get(memory, {}).keys()))
 
     def _get_goals_(self) -> Space[D.T_observation]:
@@ -92,21 +129,29 @@ class GraphDomainUncertain(Domain,
     def _is_goal(self, state: D.T_state) -> bool:
         return self.state_goal[state]
 
-    def _get_next_state_distribution(self, memory: D.T_memory[D.T_state],
-                                     action: D.T_agent[D.T_concurrency[D.T_event]]) -> Distribution[D.T_state]:
-        possible_states = [(s, self.next_state_map[memory][action][s][0])
-                           for s in self.next_state_map[memory][action]]
-        return random.choices(possible_states, weights=[p[1] for p in possible_states], k=1)[0]
+    def _get_next_state_distribution(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> Distribution[D.T_state]:
+        possible_states = [
+            (s, self.next_state_map[memory][action][s][0])
+            for s in self.next_state_map[memory][action]
+        ]
+        return random.choices(
+            possible_states, weights=[p[1] for p in possible_states], k=1
+        )[0]
 
 
-class GraphDomain(Domain,
-                  DeterministicTransitions,
-                  Actions,
-                  Goals,
-                  Markovian,
-                  FullyObservable,
-                  PositiveCosts):
-
+class GraphDomain(
+    Domain,
+    DeterministicTransitions,
+    Actions,
+    Goals,
+    Markovian,
+    FullyObservable,
+    PositiveCosts,
+):
     def merge(self, graph_domain):
         next_state_map = self.next_state_map
         next_state_attributes = self.next_state_attributes
@@ -117,15 +162,23 @@ class GraphDomain(Domain,
             else:
                 for action in graph_domain.next_state_map[k]:
                     if action not in next_state_map[k]:
-                        next_state_map[k][action] = graph_domain.next_state_map[k][action]
-                        next_state_attributes[k][action] = graph_domain.next_state_attributes[k][action]
-        return GraphDomain(next_state_map, next_state_attributes, self.targets, self.attribute_weight)
+                        next_state_map[k][action] = graph_domain.next_state_map[k][
+                            action
+                        ]
+                        next_state_attributes[k][
+                            action
+                        ] = graph_domain.next_state_attributes[k][action]
+        return GraphDomain(
+            next_state_map, next_state_attributes, self.targets, self.attribute_weight
+        )
 
-    def __init__(self,
-                 next_state_map,
-                 next_state_attributes,
-                 targets=None,
-                 attribute_weight="weight"):
+    def __init__(
+        self,
+        next_state_map,
+        next_state_attributes,
+        targets=None,
+        attribute_weight="weight",
+    ):
         self.next_state_map = next_state_map  # State, action, -> next state
         self.next_state_attributes = next_state_attributes
         if targets is None:
@@ -134,14 +187,20 @@ class GraphDomain(Domain,
             self.targets = set(targets)
         self.attribute_weight = attribute_weight
 
-    def _get_next_state(self, memory: D.T_memory[D.T_state], event: D.T_event) -> D.T_state:
+    def _get_next_state(
+        self, memory: D.T_memory[D.T_state], event: D.T_event
+    ) -> D.T_state:
         return self.next_state_map[memory[-1]][event]
 
-    def _get_transition_value(self, memory: D.T_memory[D.T_state],
-                              event: D.T_event,
-                              next_state: Optional[D.T_state] = None) \
-            -> Value[D.T_value]:
-        return Value(cost=self.next_state_attributes[memory[-1]][event][self.attribute_weight])
+    def _get_transition_value(
+        self,
+        memory: D.T_memory[D.T_state],
+        event: D.T_event,
+        next_state: Optional[D.T_state] = None,
+    ) -> Value[D.T_value]:
+        return Value(
+            cost=self.next_state_attributes[memory[-1]][event][self.attribute_weight]
+        )
 
     def is_terminal(self, state: D.T_state) -> bool:
         return state in self.targets
@@ -149,7 +208,9 @@ class GraphDomain(Domain,
     def _get_action_space_(self) -> Space[D.T_event]:
         return ImplicitSpace(lambda x: True)
 
-    def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state])-> Space[D.T_event]:
+    def _get_applicable_actions_from(
+        self, memory: D.T_memory[D.T_state]
+    ) -> Space[D.T_event]:
         return ActionSpace(list(self.next_state_map[memory[-1]].keys()))
 
     def _get_goals_(self) -> Space[D.T_observation]:

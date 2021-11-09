@@ -5,10 +5,13 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage
+
+from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import (
+    ResultStorage,
+)
 
 
 class SolverDO:
     @abstractmethod
-    def solve(self, **kwargs)->ResultStorage:
+    def solve(self, **kwargs) -> ResultStorage:
         ...

@@ -5,12 +5,15 @@
 # Original code by Patrik Haslum
 from __future__ import annotations
 
-from typing import NamedTuple, Tuple, Optional
+from typing import NamedTuple, Optional, Tuple
 
-from skdecide import GoalPOMDPDomain, Value, Space, DiscreteDistribution, Distribution
-from skdecide.builders.domain import DeterministicTransitions, UnrestrictedActions, TransformedObservable
+from skdecide import DiscreteDistribution, Distribution, GoalPOMDPDomain, Space, Value
+from skdecide.builders.domain import (
+    DeterministicTransitions,
+    TransformedObservable,
+    UnrestrictedActions,
+)
 from skdecide.hub.space.gym import ListSpace, MultiDiscreteSpace
-
 
 Row = Tuple[int]  # a row of code pegs (solution or guess)
 
@@ -25,32 +28,47 @@ class State(NamedTuple):
     score: Score
 
 
-class D(GoalPOMDPDomain, DeterministicTransitions, UnrestrictedActions, TransformedObservable):
+class D(
+    GoalPOMDPDomain,
+    DeterministicTransitions,
+    UnrestrictedActions,
+    TransformedObservable,
+):
     T_state = State  # Type of states
     T_observation = Score  # Type of observations
     T_event = Row  # Type of events (a row guess in this case)
     T_value = int  # Type of transition values (costs)
     T_predicate = bool  # Type of logical checks
-    T_info = None  # Type of additional information given as part of an environment outcome
+    T_info = (
+        None  # Type of additional information given as part of an environment outcome
+    )
 
 
 class MasterMind(D):
-
     def __init__(self, n_colours=2, n_positions=2):
         self._n_colours = n_colours
         self._n_positions = n_positions
         self._h_solutions = self._list_hidden_solutions()
 
-    def _get_next_state(self, memory: D.T_memory[D.T_state],
-                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+    def _get_next_state(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> D.T_state:
         # Input is a state and an action; output is a next state.
-        if action is None:  # TODO: handle this option on algo side rather than domain; here action should never be None
+        if (
+            action is None
+        ):  # TODO: handle this option on algo side rather than domain; here action should never be None
             return memory
         else:
             return State(memory.solution, self._calc_score(memory, action))
 
-    def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
+    def _get_transition_value(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+        next_state: Optional[D.T_state] = None,
+    ) -> D.T_agent[Value[D.T_value]]:
         return Value(cost=1)
 
     # Overridden to help some solvers compute more efficiently (not mandatory, but good practice)
@@ -71,10 +89,15 @@ class MasterMind(D):
     def _get_initial_state_distribution_(self) -> Distribution[D.T_state]:
         # Return a uniform distribution over all initial states
         n = len(self._h_solutions)
-        return DiscreteDistribution([(State(solution=s, score=Score(0, 0)), 1/n) for s in self._h_solutions])
+        return DiscreteDistribution(
+            [(State(solution=s, score=Score(0, 0)), 1 / n) for s in self._h_solutions]
+        )
 
-    def _get_observation(self, state: D.T_state, action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> \
-            D.T_agent[D.T_observation]:
+    def _get_observation(
+        self,
+        state: D.T_state,
+        action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None,
+    ) -> D.T_agent[D.T_observation]:
         # `action` is the last applied action (or None if the state is an initial state)
         # `state` is the state to observe (that resulted from applying the action)
         if action is None:
@@ -88,7 +111,9 @@ class MasterMind(D):
         """Return a list of all possible hidden solutions (n_colours ** n_positions)."""
         h_solutions = [tuple()]
         for i in range(self._n_positions):
-            h_solutions = [s + (c,) for s in h_solutions for c in range(self._n_colours)]
+            h_solutions = [
+                s + (c,) for s in h_solutions for c in range(self._n_colours)
+            ]
         return h_solutions
 
     def _calc_score(self, state, guess):
@@ -108,8 +133,12 @@ class MasterMind(D):
         return Score(total_bulls=sum(bulls), total_cows=sum(cows))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from skdecide.utils import rollout
 
     domain = MasterMind(3, 3)
-    rollout(domain, max_steps=1000, outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    rollout(
+        domain,
+        max_steps=1000,
+        outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
+    )

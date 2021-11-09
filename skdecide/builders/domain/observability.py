@@ -5,11 +5,11 @@
 from __future__ import annotations
 
 import functools
-from typing import Union, Optional
+from typing import Optional, Union
 
-from skdecide.core import D, Space, Distribution, SingleValueDistribution, autocastable
+from skdecide.core import D, Distribution, SingleValueDistribution, Space, autocastable
 
-__all__ = ['PartiallyObservable', 'TransformedObservable', 'FullyObservable']
+__all__ = ["PartiallyObservable", "TransformedObservable", "FullyObservable"]
 
 
 class PartiallyObservable:
@@ -99,9 +99,11 @@ class PartiallyObservable:
             return all(observation_space[k].contains(v) for k, v in observation.items())
 
     @autocastable
-    def get_observation_distribution(self, state: D.T_state,
-                                     action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> Distribution[
-            D.T_agent[D.T_observation]]:
+    def get_observation_distribution(
+        self,
+        state: D.T_state,
+        action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None,
+    ) -> Distribution[D.T_agent[D.T_observation]]:
         """Get the probability distribution of the observation given a state and action.
 
         In mathematical terms (discrete case), given an action $a$, this function represents: $P(O|s, a)$,
@@ -116,9 +118,11 @@ class PartiallyObservable:
         """
         return self._get_observation_distribution(state, action)
 
-    def _get_observation_distribution(self, state: D.T_state,
-                                      action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> Distribution[
-            D.T_agent[D.T_observation]]:
+    def _get_observation_distribution(
+        self,
+        state: D.T_state,
+        action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None,
+    ) -> Distribution[D.T_agent[D.T_observation]]:
         """Get the probability distribution of the observation given a state and action.
 
         In mathematical terms (discrete case), given an action $a$, this function represents: $P(O|s, a)$,
@@ -141,14 +145,19 @@ class TransformedObservable(PartiallyObservable):
     generally not equal to) the internal state of the domain.
     """
 
-    def _get_observation_distribution(self, state: D.T_state,
-                                      action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> Distribution[
-            D.T_agent[D.T_observation]]:
+    def _get_observation_distribution(
+        self,
+        state: D.T_state,
+        action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None,
+    ) -> Distribution[D.T_agent[D.T_observation]]:
         return SingleValueDistribution(self._get_observation(state, action))
 
     @autocastable
-    def get_observation(self, state: D.T_state, action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> \
-            D.T_agent[D.T_observation]:
+    def get_observation(
+        self,
+        state: D.T_state,
+        action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None,
+    ) -> D.T_agent[D.T_observation]:
         """Get the deterministic observation given a state and action.
 
         # Parameters
@@ -160,8 +169,11 @@ class TransformedObservable(PartiallyObservable):
         """
         return self._get_observation(state, action)
 
-    def _get_observation(self, state: D.T_state, action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> \
-            D.T_agent[D.T_observation]:
+    def _get_observation(
+        self,
+        state: D.T_state,
+        action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None,
+    ) -> D.T_agent[D.T_observation]:
         """Get the deterministic observation given a state and action.
 
         # Parameters
@@ -184,6 +196,9 @@ class FullyObservable(TransformedObservable):
         state type D.T_state.
     """
 
-    def _get_observation(self, state: D.T_state, action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None) -> \
-            D.T_agent[D.T_observation]:
+    def _get_observation(
+        self,
+        state: D.T_state,
+        action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None,
+    ) -> D.T_agent[D.T_observation]:
         return state

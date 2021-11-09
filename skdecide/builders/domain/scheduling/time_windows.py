@@ -6,13 +6,32 @@ from __future__ import annotations
 
 from typing import Dict
 
-__all__ = ['TimeWindow', 'ClassicTimeWindow', 'StartFromOnlyTimeWindow', 'StartBeforeOnlyTimeWindow', 'EndFromOnlyTimeWindow','EndBeforeOnlyTimeWindow', 'StartTimeWindow', 'EndTimeWindow', 'EmptyTimeWindow', 'WithTimeWindow', 'WithoutTimeWindow']
+__all__ = [
+    "TimeWindow",
+    "ClassicTimeWindow",
+    "StartFromOnlyTimeWindow",
+    "StartBeforeOnlyTimeWindow",
+    "EndFromOnlyTimeWindow",
+    "EndBeforeOnlyTimeWindow",
+    "StartTimeWindow",
+    "EndTimeWindow",
+    "EmptyTimeWindow",
+    "WithTimeWindow",
+    "WithoutTimeWindow",
+]
 
 
 class TimeWindow:
     """Defines a time window with earliest start, latest start, earliest end and latest end only."""
 
-    def __init__(self, earliest_start: int, latest_start: int, earliest_end: int, latest_end: int, max_horizon: int) -> None:
+    def __init__(
+        self,
+        earliest_start: int,
+        latest_start: int,
+        earliest_end: int,
+        latest_end: int,
+        max_horizon: int,
+    ) -> None:
         self.earliest_start = earliest_start
         self.latest_start = latest_start
         self.earliest_end = earliest_end
@@ -72,7 +91,9 @@ class EndBeforeOnlyTimeWindow(TimeWindow):
 class StartTimeWindow(TimeWindow):
     """Defines a time window with an earliest start and a latest start only."""
 
-    def __init__(self, earliest_start: int, latest_start: int, max_horizon: int) -> None:
+    def __init__(
+        self, earliest_start: int, latest_start: int, max_horizon: int
+    ) -> None:
         self.earliest_start = earliest_start
         self.latest_start = latest_start
         self.earliest_end = 0

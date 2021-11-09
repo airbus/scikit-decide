@@ -5,10 +5,14 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage
-from skdecide.discrete_optimization.generic_tools.do_solver import SolverDO
 from enum import Enum
+
 import mip
+
+from skdecide.discrete_optimization.generic_tools.do_solver import SolverDO
+from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import (
+    ResultStorage,
+)
 
 
 class MilpSolverName(Enum):
@@ -16,25 +20,27 @@ class MilpSolverName(Enum):
     GRB = 1
 
 
-map_solver = {MilpSolverName.GRB: mip.GRB,
-              MilpSolverName.CBC: mip.CBC}
+map_solver = {MilpSolverName.GRB: mip.GRB, MilpSolverName.CBC: mip.CBC}
 
 
 class ParametersMilp:
-    TimeLimit: int 
+    TimeLimit: int
     PoolSolutions: int
     MIPGapAbs: float
     MIPGap: float
     retrieve_all_solution: bool
     pool_search_mode: int
 
-    def __init__(self,
-                 time_limit,
-                 pool_solutions,
-                 mip_gap_abs,
-                 mip_gap,
-                 retrieve_all_solution: bool,
-                 n_solutions_max: int, pool_search_mode: int=0):
+    def __init__(
+        self,
+        time_limit,
+        pool_solutions,
+        mip_gap_abs,
+        mip_gap,
+        retrieve_all_solution: bool,
+        n_solutions_max: int,
+        pool_search_mode: int = 0,
+    ):
         self.TimeLimit = time_limit
         self.PoolSolutions = pool_solutions
         self.MIPGapAbs = mip_gap_abs
@@ -45,12 +51,14 @@ class ParametersMilp:
 
     @staticmethod
     def default():
-        return ParametersMilp(time_limit=30,
-                              pool_solutions=10000,
-                              mip_gap_abs=0.0000001,
-                              mip_gap=0.000001,
-                              retrieve_all_solution=True,
-                              n_solutions_max=10000)
+        return ParametersMilp(
+            time_limit=30,
+            pool_solutions=10000,
+            mip_gap_abs=0.0000001,
+            mip_gap=0.000001,
+            retrieve_all_solution=True,
+            n_solutions_max=10000,
+        )
 
 
 class MilpSolver(SolverDO):

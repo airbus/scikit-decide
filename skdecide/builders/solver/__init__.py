@@ -3,6 +3,6 @@
 # LICENSE file in the root directory of this source tree.
 
 from skdecide.builders.solver.assessability import *
+from skdecide.builders.solver.parallelability import *
 from skdecide.builders.solver.policy import *
 from skdecide.builders.solver.restorability import *
-from skdecide.builders.solver.parallelability import *

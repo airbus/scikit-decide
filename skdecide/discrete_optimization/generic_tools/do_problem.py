@@ -4,11 +4,15 @@
 
 from __future__ import annotations
 
-from enum import Enum
 from abc import abstractmethod
-from typing import Dict, Any, List
-from skdecide.discrete_optimization.generic_tools.result_storage.multiobj_utils import TupleFitness
+from enum import Enum
+from typing import Any, Dict, List
+
 import numpy as np
+
+from skdecide.discrete_optimization.generic_tools.result_storage.multiobj_utils import (
+    TupleFitness,
+)
 
 
 class TypeAttribute(Enum):
@@ -35,11 +39,14 @@ class EncodingRegister:
         self.dict_attribute_to_type = dict_attribute_to_type
 
     def get_types(self):
-        return [t for k in self.dict_attribute_to_type
-                for t in self.dict_attribute_to_type[k]["type"]]
+        return [
+            t
+            for k in self.dict_attribute_to_type
+            for t in self.dict_attribute_to_type[k]["type"]
+        ]
 
     def __str__(self):
-        return "Encoding : "+str(self.dict_attribute_to_type)
+        return "Encoding : " + str(self.dict_attribute_to_type)
 
 
 class ObjectiveHandling(Enum):
@@ -58,23 +65,28 @@ class ObjectiveRegister:
     objective_handling: ObjectiveHandling
     dict_objective_to_doc: Dict[str, Any]
 
-    def __init__(self,
-                 objective_sense: ModeOptim,
-                 objective_handling: ObjectiveHandling,
-                 dict_objective_to_doc: Dict[str, Any]):
+    def __init__(
+        self,
+        objective_sense: ModeOptim,
+        objective_handling: ObjectiveHandling,
+        dict_objective_to_doc: Dict[str, Any],
+    ):
         self.objective_sense = objective_sense
         self.objective_handling = objective_handling
         self.dict_objective_to_doc = dict_objective_to_doc
 
     def get_list_objective_and_default_weight(self):
-        d = [(k, self.dict_objective_to_doc[k]["default_weight"]) for k in self.dict_objective_to_doc]
+        d = [
+            (k, self.dict_objective_to_doc[k]["default_weight"])
+            for k in self.dict_objective_to_doc
+        ]
         return [s[0] for s in d], [s[1] for s in d]
 
     def __str__(self):
         s = "Objective Register :\n"
-        s += "Obj sense : "+str(self.objective_sense)+"\n"
-        s += "Obj handling : "+str(self.objective_handling)+"\n"
-        s += "detail : "+str(self.dict_objective_to_doc)
+        s += "Obj sense : " + str(self.objective_sense) + "\n"
+        s += "Obj handling : " + str(self.objective_handling) + "\n"
+        s += "detail : " + str(self.dict_objective_to_doc)
         return s
 
 
@@ -86,7 +98,7 @@ class Solution:
     def lazy_copy(self):
         return self.copy()
 
-    def get_attribute_register(self, problem)->EncodingRegister:
+    def get_attribute_register(self, problem) -> EncodingRegister:
         return problem.get_attribute_register()
 
     @abstractmethod
@@ -97,10 +109,10 @@ class Solution:
 # TODO see if a repair function can be added to repair a solution, as a new class like mutation
 class Problem:
     @abstractmethod
-    def evaluate(self, variable: Solution)->Dict[str, float]:
+    def evaluate(self, variable: Solution) -> Dict[str, float]:
         ...
 
-    def evaluate_mobj(self, variable: Solution)->TupleFitness:
+    def evaluate_mobj(self, variable: Solution) -> TupleFitness:
         # Default implementation of multiobjective.
         # you should probably custom this for your specific domain !
         obj_register = self.get_objective_register()
@@ -114,11 +126,11 @@ class Problem:
         return TupleFitness(np.array([dict_values[k] for k in keys]), len(keys))
 
     @abstractmethod
-    def satisfy(self, variable: Solution)->bool:
+    def satisfy(self, variable: Solution) -> bool:
         ...
 
     @abstractmethod
-    def get_attribute_register(self)->EncodingRegister:
+    def get_attribute_register(self) -> EncodingRegister:
         ...
 
     @abstractmethod
@@ -126,7 +138,7 @@ class Problem:
         ...
 
     @abstractmethod
-    def get_objective_register(self)->ObjectiveRegister:
+    def get_objective_register(self) -> ObjectiveRegister:
         ...
 
 
@@ -140,35 +152,53 @@ class BaseMethodAggregating(Enum):
 
 
 class MethodAggregating:
-    def __init__(self,
-                 base_method_aggregating: BaseMethodAggregating,
-                 percentile: float=90.,
-                 ponderation: np.array=None):
+    def __init__(
+        self,
+        base_method_aggregating: BaseMethodAggregating,
+        percentile: float = 90.0,
+        ponderation: np.array = None,
+    ):
         self.base_method_aggregating = base_method_aggregating
         self.percentile = percentile
         self.ponderation = ponderation
 
 
 class RobustProblem(Problem):
-    def __init__(self,
-                 list_problem: List[Problem],
-                 method_aggregating: MethodAggregating):
+    def __init__(
+        self, list_problem: List[Problem], method_aggregating: MethodAggregating
+    ):
         self.list_problem = list_problem
         self.method_aggregating = method_aggregating
         self.nb_problem = len(self.list_problem)
         self.agg_vec = self.aggregate_vector()
 
     def aggregate_vector(self):
-        if self.method_aggregating.base_method_aggregating == BaseMethodAggregating.MEAN:
+        if (
+            self.method_aggregating.base_method_aggregating
+            == BaseMethodAggregating.MEAN
+        ):
             func = np.mean
-        if self.method_aggregating.base_method_aggregating == BaseMethodAggregating.MEDIAN:
+        if (
+            self.method_aggregating.base_method_aggregating
+            == BaseMethodAggregating.MEDIAN
+        ):
             func = np.median
-        if self.method_aggregating.base_method_aggregating == BaseMethodAggregating.PERCENTILE:
+        if (
+            self.method_aggregating.base_method_aggregating
+            == BaseMethodAggregating.PERCENTILE
+        ):
+
             def func(x):
                 return np.percentile(x, q=[self.method_aggregating.percentile])[0]
-        if self.method_aggregating.base_method_aggregating == BaseMethodAggregating.PONDERATION:
+
+        if (
+            self.method_aggregating.base_method_aggregating
+            == BaseMethodAggregating.PONDERATION
+        ):
+
             def func(x):
                 return np.dot(x, self.method_aggregating.ponderation)
+
         if self.method_aggregating.base_method_aggregating == BaseMethodAggregating.MIN:
             func = np.min
         if self.method_aggregating.base_method_aggregating == BaseMethodAggregating.MAX:
@@ -203,11 +233,13 @@ class ParamsObjectiveFunction:
     weights: List[float]
     sense_function: ModeOptim
 
-    def __init__(self,
-                 objective_handling: ObjectiveHandling,
-                 objectives: List[str],
-                 weights: List[float],
-                 sense_function: ModeOptim):
+    def __init__(
+        self,
+        objective_handling: ObjectiveHandling,
+        objectives: List[str],
+        weights: List[float],
+        sense_function: ModeOptim,
+    ):
         self.objective_handling = objective_handling
         self.objectives = objectives
         self.weights = weights
@@ -215,35 +247,40 @@ class ParamsObjectiveFunction:
 
     def __str__(self):
         s = "Params objective function :  \n"
-        s += "Sense : "+str(self.sense_function)+"\n"
-        s += "Objective handling "+str(self.objective_handling)+"\n"
-        s += "Objectives "+str(self.objectives)+'\n'
-        s += "weights : "+str(self.weights)
+        s += "Sense : " + str(self.sense_function) + "\n"
+        s += "Objective handling " + str(self.objective_handling) + "\n"
+        s += "Objectives " + str(self.objectives) + "\n"
+        s += "weights : " + str(self.weights)
         return s
 
 
-def get_default_objective_setup(problem: Problem)->ParamsObjectiveFunction:
+def get_default_objective_setup(problem: Problem) -> ParamsObjectiveFunction:
     register_objective = problem.get_objective_register()
     objs, weights = register_objective.get_list_objective_and_default_weight()
     sense = register_objective.objective_sense
 
-    return ParamsObjectiveFunction(objective_handling=register_objective.objective_handling,
-                                   objectives=objs,
-                                   weights=weights,
-                                   sense_function=sense)
+    return ParamsObjectiveFunction(
+        objective_handling=register_objective.objective_handling,
+        objectives=objs,
+        weights=weights,
+        sense_function=sense,
+    )
 
 
-def build_aggreg_function_and_params_objective(problem: Problem,
-                                               params_objective_function: ParamsObjectiveFunction=None):
+def build_aggreg_function_and_params_objective(
+    problem: Problem, params_objective_function: ParamsObjectiveFunction = None
+):
     if params_objective_function is None:
         params_objective_function = get_default_objective_setup(problem)
-    eval_sol, eval_dict = build_evaluate_function_aggregated(problem=problem,
-                                                             params_objective_function=params_objective_function)
+    eval_sol, eval_dict = build_evaluate_function_aggregated(
+        problem=problem, params_objective_function=params_objective_function
+    )
     return eval_sol, eval_dict, params_objective_function
 
 
-def build_evaluate_function_aggregated(problem: Problem,
-                                       params_objective_function: ParamsObjectiveFunction=None):
+def build_evaluate_function_aggregated(
+    problem: Problem, params_objective_function: ParamsObjectiveFunction = None
+):
     if params_objective_function is None:
         params_objective_function = get_default_objective_setup(problem)
     sense_problem = problem.get_objective_register().objective_sense
@@ -258,32 +295,45 @@ def build_evaluate_function_aggregated(problem: Problem,
 
         def eval(solution: Solution):
             dict_values = problem.evaluate(solution)
-            val = sum([dict_values[objectives[i]] * weights[i]
-                       for i in range(length)])
-            return sign*val
+            val = sum([dict_values[objectives[i]] * weights[i] for i in range(length)])
+            return sign * val
 
         def eval_from_dict_values(dict_values):
-            val = sum([dict_values[objectives[i]] * weights[i]
-                      for i in range(length)])
-            return sign*val
+            val = sum([dict_values[objectives[i]] * weights[i] for i in range(length)])
+            return sign * val
+
     if objective_handling == ObjectiveHandling.SINGLE:
         length = len(objectives)
 
         def eval(solution: Solution):
             dict_values = problem.evaluate(solution)
-            return sign*dict_values[objectives[0]]*weights[0]
+            return sign * dict_values[objectives[0]] * weights[0]
 
         def eval_from_dict_values(dict_values):
-            return sign*dict_values[objectives[0]] * weights[0]
+            return sign * dict_values[objectives[0]] * weights[0]
+
     if objective_handling == ObjectiveHandling.MULTI_OBJ:
         length = len(objectives)
 
         def eval(solution: Solution):
             d = problem.evaluate(solution)
-            return TupleFitness(np.array([weights[i]*d[objectives[i]] for i in range(length)]), length)*sign
+            return (
+                TupleFitness(
+                    np.array([weights[i] * d[objectives[i]] for i in range(length)]),
+                    length,
+                )
+                * sign
+            )
 
         def eval_from_dict_values(dict_values):
-            return TupleFitness(np.array([weights[i]*dict_values[objectives[i]] for i in range(length)]), length)*sign
+            return (
+                TupleFitness(
+                    np.array(
+                        [weights[i] * dict_values[objectives[i]] for i in range(length)]
+                    ),
+                    length,
+                )
+                * sign
+            )
+
     return eval, eval_from_dict_values
-
-

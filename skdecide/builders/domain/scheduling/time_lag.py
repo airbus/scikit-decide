@@ -6,7 +6,13 @@ from __future__ import annotations
 
 from typing import Dict
 
-__all__ = ['TimeLag', 'MinimumOnlyTimeLag', 'MaximumOnlyTimeLag', 'WithTimeLag', 'WithoutTimeLag']
+__all__ = [
+    "TimeLag",
+    "MinimumOnlyTimeLag",
+    "MaximumOnlyTimeLag",
+    "WithTimeLag",
+    "WithoutTimeLag",
+]
 
 
 class TimeLag:
@@ -87,9 +93,8 @@ class WithoutTimeLag(WithTimeLag):
 
     def _get_time_lags(self) -> Dict[int, Dict[int, TimeLag]]:
         """
-         Return nested dictionaries where the first key is the id of a task (int)
-         and the second key is the id of another task (int).
-         The value is a TimeLag object containing the MINIMUM and MAXIMUM time (int) that needs to separate the end
-         of the first task to the start of the second task."""
+        Return nested dictionaries where the first key is the id of a task (int)
+        and the second key is the id of another task (int).
+        The value is a TimeLag object containing the MINIMUM and MAXIMUM time (int) that needs to separate the end
+        of the first task to the start of the second task."""
         return {}
-

@@ -4,18 +4,18 @@
 
 from __future__ import annotations
 
+from typing import Any, Dict, Hashable, List, Tuple
+
 import networkx as nx
-from typing import Dict, List, Any, Tuple, Hashable
 
 
 class Graph:
-    def __init__(self,
-                 nodes: List[Tuple[Hashable,
-                                   Dict[str, Any]]],
-                 edges: List[Tuple[Hashable,
-                                   Hashable,
-                                   Dict[str, Any]]],
-                 undirected=True):
+    def __init__(
+        self,
+        nodes: List[Tuple[Hashable, Dict[str, Any]]],
+        edges: List[Tuple[Hashable, Hashable, Dict[str, Any]]],
+        undirected=True,
+    ):
         self.nodes = nodes
         self.edges = edges
         self.undirected = undirected
@@ -76,7 +76,7 @@ class Graph:
 
     def check_loop(self):
         try:
-            cycles = nx.find_cycle(self.graph_nx, orientation='original')
+            cycles = nx.find_cycle(self.graph_nx, orientation="original")
         except:
             cycles = None
         return cycles
@@ -85,37 +85,33 @@ class Graph:
         return nx.algorithms.ancestors(self.graph_nx, n)
 
     def ancestors_map(self):
-        return {n: nx.algorithms.ancestors(self.graph_nx, n)
-                for n in self.graph_nx.nodes()}
+        return {
+            n: nx.algorithms.ancestors(self.graph_nx, n) for n in self.graph_nx.nodes()
+        }
 
     def descendants_map(self):
-        return {n: nx.algorithms.descendants(self.graph_nx, n)
-                for n in self.graph_nx.nodes()}
+        return {
+            n: nx.algorithms.descendants(self.graph_nx, n)
+            for n in self.graph_nx.nodes()
+        }
 
     def successors_map(self):
-        return {n: list(nx.neighbors(self.graph_nx, n))
-                for n in self.graph_nx.nodes()}
+        return {n: list(nx.neighbors(self.graph_nx, n)) for n in self.graph_nx.nodes()}
 
     def predecessors_map(self):
-        return {n: list(self.graph_nx.predecessors(n))
-                for n in self.graph_nx.nodes()}
+        return {n: list(self.graph_nx.predecessors(n)) for n in self.graph_nx.nodes()}
 
 
 if __name__ == "__main__":
-    nodes = [(0, {"name": 0}), (1, {"name":1})]
+    nodes = [(0, {"name": 0}), (1, {"name": 1})]
     edges = [(0, 1, {"weight": 1.1}), (1, 0, {"weight": 2})]
     graph = Graph(nodes, edges, False)
     graph_nx = graph.to_networkx()
     print(graph.get_attr_edge(0, 1, "weight"))
     print(graph.get_attr_edge(1, 0, "weight"))
-    print(graph.get_attr_edge(0, 0, "weight")) # None
+    print(graph.get_attr_edge(0, 0, "weight"))  # None
 
     print(graph_nx.size())
     print(nx.number_of_nodes(graph_nx), nx.number_of_edges(graph_nx))
     print(graph_nx[0][1]["weight"])
     print(graph_nx[1][0]["weight"])
-
-
-
-
-

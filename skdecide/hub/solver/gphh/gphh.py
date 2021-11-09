@@ -4,42 +4,50 @@
 
 from __future__ import annotations
 
-from typing import List, Dict, Callable, Set
-from skdecide.builders.solver.policy import DeterministicPolicies
-from skdecide import Solver
-from skdecide.builders.domain.scheduling.modes import SingleMode
-from skdecide.builders.domain.scheduling.scheduling_domains_modelling import State, SchedulingAction
-from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain, D
-from skdecide.hub.solver.do_solver.do_solver_scheduling import PolicyRCPSP, DOSolver, PolicyMethodParams, SolvingMethod
-from skdecide.hub.solver.sgs_policies.sgs_policies import BasePolicyMethod
-from skdecide.discrete_optimization.rcpsp.solver.cpm import CPM
-from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
-from skdecide.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
-from enum import Enum
-from deap.gp import PrimitiveSet, PrimitiveTree, genHalfAndHalf
-from deap import gp
-from deap import algorithms
-from deap.base import Toolbox, Fitness
-from deap import creator
-from deap import tools
-
 import operator
-import numpy as np
 import random
+from enum import Enum
+from typing import Callable, Dict, List, Set
+
+import numpy as np
+from deap import algorithms, creator, gp, tools
+from deap.base import Fitness, Toolbox
+from deap.gp import PrimitiveSet, PrimitiveTree, genHalfAndHalf
 from scipy import stats
 from scipy.spatial import distance
 
+from skdecide import Solver
+from skdecide.builders.domain.scheduling.modes import SingleMode
+from skdecide.builders.domain.scheduling.scheduling_domains import D, SchedulingDomain
+from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
+    SchedulingAction,
+    State,
+)
+from skdecide.builders.solver.policy import DeterministicPolicies
+from skdecide.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
+from skdecide.discrete_optimization.rcpsp.solver.cpm import CPM
+from skdecide.hub.solver.do_solver.do_solver_scheduling import (
+    DOSolver,
+    PolicyMethodParams,
+    PolicyRCPSP,
+    SolvingMethod,
+)
+from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
+from skdecide.hub.solver.sgs_policies.sgs_policies import BasePolicyMethod
+
 
 def if_then_else(input, output1, output2):
-    if input: return output1
-    else: return output2
+    if input:
+        return output1
+    else:
+        return output2
 
 
 def protected_div(left, right):
-    if right != 0.:
-        return left/right
+    if right != 0.0:
+        return left / right
     else:
-        return 1.
+        return 1.0
 
 
 def max_operator(left, right):
@@ -50,11 +58,13 @@ def min_operator(left, right):
     return min(left, right)
 
 
-def feature_task_duration(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
+def feature_task_duration(
+    domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs
+):
     return domain.sample_task_duration(task_id)
 
 
-def feature_total_n_res(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
+def feature_total_n_res(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
     val = 0
     mode_consumption = domain.get_task_modes(task_id)[1]
     for res in mode_consumption.get_ressource_names():
@@ -62,70 +72,92 @@ def feature_total_n_res(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  *
     return val
 
 
-def feature_n_successors(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
-    return len(domain.get_successors_task(task_id))/ len(domain.get_tasks_ids())
+def feature_n_successors(
+    domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs
+):
+    return len(domain.get_successors_task(task_id)) / len(domain.get_tasks_ids())
 
 
-def feature_n_predecessors(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
-    return len(domain.get_predecessors_task(task_id))/ len(domain.get_tasks_ids())
+def feature_n_predecessors(
+    domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs
+):
+    return len(domain.get_predecessors_task(task_id)) / len(domain.get_tasks_ids())
 
 
-def get_resource_requirements_across_duration(domain: SchedulingDomain, task_id: int,  **kwargs):
+def get_resource_requirements_across_duration(
+    domain: SchedulingDomain, task_id: int, **kwargs
+):
     values = []
     mode_consumption = domain.get_task_modes(task_id)[1]
-    duration = domain.get_latest_sampled_duration(task_id, 1, 0.)
+    duration = domain.get_latest_sampled_duration(task_id, 1, 0.0)
     if duration > 0:
         for res in mode_consumption.get_ressource_names():
             tmp = 0
             for t in range(duration):
-                need = domain.get_task_modes(task_id)[1].get_resource_need_at_time(res, t)
+                need = domain.get_task_modes(task_id)[1].get_resource_need_at_time(
+                    res, t
+                )
                 total = domain.sample_quantity_resource(res, t)
                 tmp += need / total
-            values.append(tmp/duration)
+            values.append(tmp / duration)
     else:
-        values = [0.]
+        values = [0.0]
     # print(task_id,':', values)
     return values
 
 
-def feature_average_resource_requirements(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
+def feature_average_resource_requirements(
+    domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs
+):
     values = get_resource_requirements_across_duration(domain=domain, task_id=task_id)
     val = np.mean(values)
     return val
 
 
-def feature_minimum_resource_requirements(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
+def feature_minimum_resource_requirements(
+    domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs
+):
     values = get_resource_requirements_across_duration(domain=domain, task_id=task_id)
     val = np.min(values)
     return val
 
 
-def feature_non_zero_minimum_resource_requirements(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
+def feature_non_zero_minimum_resource_requirements(
+    domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs
+):
     values = get_resource_requirements_across_duration(domain=domain, task_id=task_id)
-    if np.sum(values) > 0.:
-        val = np.min([x for x in values if x > 0.])
+    if np.sum(values) > 0.0:
+        val = np.min([x for x in values if x > 0.0])
     else:
         val = np.min(values)
     return val
 
 
-def feature_maximum_resource_requirements(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
+def feature_maximum_resource_requirements(
+    domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs
+):
     values = get_resource_requirements_across_duration(domain=domain, task_id=task_id)
     val = np.max(values)
     return val
 
 
-def feature_resource_requirements(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
+def feature_resource_requirements(
+    domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs
+):
     values = get_resource_requirements_across_duration(domain=domain, task_id=task_id)
-    val = len([x for x in values if x > 0.]) / len(values)
+    val = len([x for x in values if x > 0.0]) / len(values)
     return val
 
 
-def feature_all_descendants(domain: SchedulingDomain, cpm, cpm_esd, task_id: int,  **kwargs):
+def feature_all_descendants(
+    domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs
+):
     return len(domain.full_successors[task_id]) / len(domain.get_tasks_ids())
 
 
-def feature_precedence_done(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, state: State,  **kwargs):
+def feature_precedence_done(
+    domain: SchedulingDomain, cpm, cpm_esd, task_id: int, state: State, **kwargs
+):
     return task_id in domain.task_possible_to_launch_precedence(state=state)
 
 
@@ -133,28 +165,28 @@ def compute_cpm(do_domain):
     cpm_solver = CPM(do_domain)
     path = cpm_solver.run_classic_cpm()
     cpm = cpm_solver.map_node
-    cpm_esd = cpm[path[-1]]._ESD # to normalize...
+    cpm_esd = cpm[path[-1]]._ESD  # to normalize...
     return cpm, cpm_esd
 
 
 def feature_esd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
-    """ Will only work if you store cpm results into the object. dirty trick"""
-    return cpm[task_id]._ESD/cpm_esd
+    """Will only work if you store cpm results into the object. dirty trick"""
+    return cpm[task_id]._ESD / cpm_esd
 
 
 def feature_lsd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
-    """ Will only work if you store cpm results into the object. dirty trick"""
-    return cpm[task_id]._LSD/cpm_esd
+    """Will only work if you store cpm results into the object. dirty trick"""
+    return cpm[task_id]._LSD / cpm_esd
 
 
 def feature_efd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
-    """ Will only work if you store cpm results into the object. dirty trick"""
-    return cpm[task_id]._EFD/cpm_esd
+    """Will only work if you store cpm results into the object. dirty trick"""
+    return cpm[task_id]._EFD / cpm_esd
 
 
 def feature_lfd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
-    """ Will only work if you store cpm results into the object. dirty trick"""
-    return cpm[task_id]._LFD/cpm_esd
+    """Will only work if you store cpm results into the object. dirty trick"""
+    return cpm[task_id]._LFD / cpm_esd
 
 
 class D(SchedulingDomain, SingleMode):
@@ -179,37 +211,41 @@ class FeatureEnum(Enum):
     LATEST_FINISH_DATE = "LFD"
 
 
-feature_function_map = {FeatureEnum.TASK_DURATION: feature_task_duration,
-                        FeatureEnum.RESSOURCE_TOTAL: feature_total_n_res,
-                        FeatureEnum.N_SUCCESSORS: feature_n_successors,
-                        FeatureEnum.N_PREDECESSORS: feature_n_predecessors, #
-                        FeatureEnum.RESSOURCE_REQUIRED: feature_resource_requirements, #
-                        FeatureEnum.RESSOURCE_AVG: feature_average_resource_requirements, #
-                        FeatureEnum.RESSOURCE_MIN: feature_minimum_resource_requirements, #
-                        FeatureEnum.RESSOURCE_NZ_MIN: feature_non_zero_minimum_resource_requirements,  #
-                        FeatureEnum.RESSOURCE_MAX: feature_maximum_resource_requirements, #
-                        FeatureEnum.ALL_DESCENDANTS: feature_all_descendants, #
-                        FeatureEnum.PRECEDENCE_DONE: feature_precedence_done,
-                        FeatureEnum.EARLIEST_START_DATE: feature_esd,  #
-                        FeatureEnum.EARLIEST_FINISH_DATE: feature_efd,  #
-                        FeatureEnum.LATEST_START_DATE: feature_lsd,  #
-                        FeatureEnum.LATEST_FINISH_DATE: feature_lfd}  #
+feature_function_map = {
+    FeatureEnum.TASK_DURATION: feature_task_duration,
+    FeatureEnum.RESSOURCE_TOTAL: feature_total_n_res,
+    FeatureEnum.N_SUCCESSORS: feature_n_successors,
+    FeatureEnum.N_PREDECESSORS: feature_n_predecessors,  #
+    FeatureEnum.RESSOURCE_REQUIRED: feature_resource_requirements,  #
+    FeatureEnum.RESSOURCE_AVG: feature_average_resource_requirements,  #
+    FeatureEnum.RESSOURCE_MIN: feature_minimum_resource_requirements,  #
+    FeatureEnum.RESSOURCE_NZ_MIN: feature_non_zero_minimum_resource_requirements,  #
+    FeatureEnum.RESSOURCE_MAX: feature_maximum_resource_requirements,  #
+    FeatureEnum.ALL_DESCENDANTS: feature_all_descendants,  #
+    FeatureEnum.PRECEDENCE_DONE: feature_precedence_done,
+    FeatureEnum.EARLIEST_START_DATE: feature_esd,  #
+    FeatureEnum.EARLIEST_FINISH_DATE: feature_efd,  #
+    FeatureEnum.LATEST_START_DATE: feature_lsd,  #
+    FeatureEnum.LATEST_FINISH_DATE: feature_lfd,
+}  #
 
-feature_static_map = {FeatureEnum.TASK_DURATION: True,
-                        FeatureEnum.RESSOURCE_TOTAL: True,
-                        FeatureEnum.N_SUCCESSORS: True,
-                        FeatureEnum.N_PREDECESSORS: True, #
-                        FeatureEnum.RESSOURCE_REQUIRED: True, #
-                        FeatureEnum.RESSOURCE_AVG: True, #
-                        FeatureEnum.RESSOURCE_MIN: True, #
-                        FeatureEnum.RESSOURCE_NZ_MIN: True, #
-                        FeatureEnum.RESSOURCE_MAX: True, #
-                        FeatureEnum.ALL_DESCENDANTS: True, #
-                        FeatureEnum.PRECEDENCE_DONE: False,
-                        FeatureEnum.EARLIEST_START_DATE: True,  #
-                        FeatureEnum.EARLIEST_FINISH_DATE: True,  #
-                        FeatureEnum.LATEST_START_DATE: True,  #
-                        FeatureEnum.LATEST_FINISH_DATE: True}  #
+feature_static_map = {
+    FeatureEnum.TASK_DURATION: True,
+    FeatureEnum.RESSOURCE_TOTAL: True,
+    FeatureEnum.N_SUCCESSORS: True,
+    FeatureEnum.N_PREDECESSORS: True,  #
+    FeatureEnum.RESSOURCE_REQUIRED: True,  #
+    FeatureEnum.RESSOURCE_AVG: True,  #
+    FeatureEnum.RESSOURCE_MIN: True,  #
+    FeatureEnum.RESSOURCE_NZ_MIN: True,  #
+    FeatureEnum.RESSOURCE_MAX: True,  #
+    FeatureEnum.ALL_DESCENDANTS: True,  #
+    FeatureEnum.PRECEDENCE_DONE: False,
+    FeatureEnum.EARLIEST_START_DATE: True,  #
+    FeatureEnum.EARLIEST_FINISH_DATE: True,  #
+    FeatureEnum.LATEST_START_DATE: True,  #
+    FeatureEnum.LATEST_FINISH_DATE: True,
+}  #
 
 
 class EvaluationGPHH(Enum):
@@ -241,11 +277,24 @@ class ParametersGPHH:
     evaluation: EvaluationGPHH = None
     permutation_distance = PermutationDistance.KTD
 
-    def __init__(self,
-                 set_feature,
-                 set_primitves,
-                 tournament_ratio, pop_size, n_gen, min_tree_depth, max_tree_depth, crossover_rate, mutation_rate, base_policy_method, delta_index_freedom, delta_time_freedom, deap_verbose, evaluation, permutation_distance
-                 ):
+    def __init__(
+        self,
+        set_feature,
+        set_primitves,
+        tournament_ratio,
+        pop_size,
+        n_gen,
+        min_tree_depth,
+        max_tree_depth,
+        crossover_rate,
+        mutation_rate,
+        base_policy_method,
+        delta_index_freedom,
+        delta_time_freedom,
+        deap_verbose,
+        evaluation,
+        permutation_distance,
+    ):
         self.set_feature = set_feature
         self.set_primitves = set_primitves
         self.tournament_ratio = tournament_ratio
@@ -264,19 +313,20 @@ class ParametersGPHH:
 
     @staticmethod
     def default():
-        set_feature = {FeatureEnum.EARLIEST_FINISH_DATE,
-                       FeatureEnum.EARLIEST_START_DATE,
-                       FeatureEnum.LATEST_FINISH_DATE,
-                       FeatureEnum.LATEST_START_DATE,
-                       FeatureEnum.N_PREDECESSORS,
-                       FeatureEnum.N_SUCCESSORS,
-                       FeatureEnum.ALL_DESCENDANTS,
-                       FeatureEnum.RESSOURCE_REQUIRED,
-                       FeatureEnum.RESSOURCE_AVG,
-                       FeatureEnum.RESSOURCE_MAX,
-                       # FeatureEnum.RESSOURCE_MIN
-                       FeatureEnum.RESSOURCE_NZ_MIN
-                       }
+        set_feature = {
+            FeatureEnum.EARLIEST_FINISH_DATE,
+            FeatureEnum.EARLIEST_START_DATE,
+            FeatureEnum.LATEST_FINISH_DATE,
+            FeatureEnum.LATEST_START_DATE,
+            FeatureEnum.N_PREDECESSORS,
+            FeatureEnum.N_SUCCESSORS,
+            FeatureEnum.ALL_DESCENDANTS,
+            FeatureEnum.RESSOURCE_REQUIRED,
+            FeatureEnum.RESSOURCE_AVG,
+            FeatureEnum.RESSOURCE_MAX,
+            # FeatureEnum.RESSOURCE_MIN
+            FeatureEnum.RESSOURCE_NZ_MIN,
+        }
 
         pset = PrimitiveSet("main", len(set_feature))
         pset.addPrimitive(operator.add, 2)
@@ -289,7 +339,6 @@ class ParametersGPHH:
 
         return ParametersGPHH(
             set_feature=set_feature,
-
             set_primitves=pset,
             tournament_ratio=0.1,
             pop_size=40,
@@ -304,23 +353,25 @@ class ParametersGPHH:
             deap_verbose=True,
             # evaluation=EvaluationGPHH.PERMUTATION_DISTANCE,
             evaluation=EvaluationGPHH.SGS,
-            permutation_distance=PermutationDistance.KTD)
+            permutation_distance=PermutationDistance.KTD,
+        )
 
     @staticmethod
     def fast_test():
-        set_feature = {FeatureEnum.EARLIEST_FINISH_DATE,
-                       FeatureEnum.EARLIEST_START_DATE,
-                       FeatureEnum.LATEST_FINISH_DATE,
-                       FeatureEnum.LATEST_START_DATE,
-                       FeatureEnum.N_PREDECESSORS,
-                       FeatureEnum.N_SUCCESSORS,
-                       FeatureEnum.ALL_DESCENDANTS,
-                       FeatureEnum.RESSOURCE_REQUIRED,
-                       FeatureEnum.RESSOURCE_AVG,
-                       FeatureEnum.RESSOURCE_MAX,
-                       # FeatureEnum.RESSOURCE_MIN
-                       FeatureEnum.RESSOURCE_NZ_MIN
-                       }
+        set_feature = {
+            FeatureEnum.EARLIEST_FINISH_DATE,
+            FeatureEnum.EARLIEST_START_DATE,
+            FeatureEnum.LATEST_FINISH_DATE,
+            FeatureEnum.LATEST_START_DATE,
+            FeatureEnum.N_PREDECESSORS,
+            FeatureEnum.N_SUCCESSORS,
+            FeatureEnum.ALL_DESCENDANTS,
+            FeatureEnum.RESSOURCE_REQUIRED,
+            FeatureEnum.RESSOURCE_AVG,
+            FeatureEnum.RESSOURCE_MAX,
+            # FeatureEnum.RESSOURCE_MIN
+            FeatureEnum.RESSOURCE_NZ_MIN,
+        }
 
         pset = PrimitiveSet("main", len(set_feature))
         pset.addPrimitive(operator.add, 2)
@@ -347,7 +398,8 @@ class ParametersGPHH:
             deap_verbose=True,
             evaluation=EvaluationGPHH.SGS,
             # evaluation=EvaluationGPHH.PERMUTATION_DISTANCE,
-            permutation_distance=PermutationDistance.KTD)
+            permutation_distance=PermutationDistance.KTD,
+        )
 
     @staticmethod
     def default_for_set_features(set_feature: Set[FeatureEnum]):
@@ -375,7 +427,8 @@ class ParametersGPHH:
             delta_time_freedom=0,
             deap_verbose=True,
             evaluation=EvaluationGPHH.PERMUTATION_DISTANCE,
-            permutation_distance=PermutationDistance.KTD)
+            permutation_distance=PermutationDistance.KTD,
+        )
 
 
 class GPHH(Solver, DeterministicPolicies):
@@ -393,23 +446,25 @@ class GPHH(Solver, DeterministicPolicies):
     reference_permutations: Dict
     permutation_distance: PermutationDistance
 
-    def __init__(self,
-                 training_domains: List[T_domain],
-                 domain_model: SchedulingDomain,
-                 weight: int,
-                 # set_feature: Set[FeatureEnum]=None,
-                 params_gphh: ParametersGPHH=ParametersGPHH.default(),
-                 reference_permutations=None,
-                 # reference_makespans=None,
-                 training_domains_names=None,
-                 verbose: bool=False):
+    def __init__(
+        self,
+        training_domains: List[T_domain],
+        domain_model: SchedulingDomain,
+        weight: int,
+        # set_feature: Set[FeatureEnum]=None,
+        params_gphh: ParametersGPHH = ParametersGPHH.default(),
+        reference_permutations=None,
+        # reference_makespans=None,
+        training_domains_names=None,
+        verbose: bool = False,
+    ):
         self.training_domains = training_domains
         self.domain_model = domain_model
         self.params_gphh = params_gphh
         # self.set_feature = set_feature
         self.set_feature = self.params_gphh.set_feature
-        print('self.set_feature: ', self.set_feature)
-        print('Evaluation: ', self.params_gphh.evaluation)
+        print("self.set_feature: ", self.set_feature)
+        print("Evaluation: ", self.params_gphh.evaluation)
         # if set_feature is None:
         #     self.set_feature = {FeatureEnum.RESSOURCE_TOTAL,
         #                         FeatureEnum.TASK_DURATION,
@@ -423,12 +478,16 @@ class GPHH(Solver, DeterministicPolicies):
         self.evaluation_method = self.params_gphh.evaluation
         self.initialize_cpm_data_for_training()
         if self.evaluation_method == EvaluationGPHH.PERMUTATION_DISTANCE:
-            self.init_reference_permutations(reference_permutations, training_domains_names)
+            self.init_reference_permutations(
+                reference_permutations, training_domains_names
+            )
             self.permutation_distance = self.params_gphh.permutation_distance
         # if self.evaluation_method == EvaluationGPHH.SGS_DEVIATION:
         #     self.init_reference_makespans(reference_makespans, training_domains_names)
 
-    def init_reference_permutations(self, reference_permutations={}, training_domains_names=[]) -> None:
+    def init_reference_permutations(
+        self, reference_permutations={}, training_domains_names=[]
+    ) -> None:
         self.reference_permutations = {}
         for i in range(len(self.training_domains)):
             td = self.training_domains[i]
@@ -436,16 +495,20 @@ class GPHH(Solver, DeterministicPolicies):
             if td_name not in reference_permutations.keys():
                 # Run CP
                 td.set_inplace_environment(False)
-                solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
-                                                              delta_index_freedom=0,
-                                                              delta_time_freedom=0),
-                                  method=SolvingMethod.CP)
+                solver = DOSolver(
+                    policy_method_params=PolicyMethodParams(
+                        base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
+                        delta_index_freedom=0,
+                        delta_time_freedom=0,
+                    ),
+                    method=SolvingMethod.CP,
+                )
                 solver.solve(domain_factory=lambda: td)
                 raw_permutation = solver.best_solution.rcpsp_permutation
-                full_permutation = [x+2 for x in raw_permutation]
+                full_permutation = [x + 2 for x in raw_permutation]
                 full_permutation.insert(0, 1)
-                full_permutation.append(np.max(full_permutation)+1)
-                print('full_perm: ', full_permutation)
+                full_permutation.append(np.max(full_permutation) + 1)
+                print("full_perm: ", full_permutation)
                 self.reference_permutations[td] = full_permutation
             else:
                 self.reference_permutations[td] = reference_permutations[td_name]
@@ -495,26 +558,50 @@ class GPHH(Solver, DeterministicPolicies):
         creator.create("Individual", PrimitiveTree, fitness=creator.FitnessMin)
 
         self.toolbox = Toolbox()
-        self.toolbox.register("expr", genHalfAndHalf, pset=self.pset, min_=min_tree_depth, max_=max_tree_depth)
-        self.toolbox.register("individual", tools.initIterate, creator.Individual, self.toolbox.expr)
-        self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual)
+        self.toolbox.register(
+            "expr",
+            genHalfAndHalf,
+            pset=self.pset,
+            min_=min_tree_depth,
+            max_=max_tree_depth,
+        )
+        self.toolbox.register(
+            "individual", tools.initIterate, creator.Individual, self.toolbox.expr
+        )
+        self.toolbox.register(
+            "population", tools.initRepeat, list, self.toolbox.individual
+        )
         self.toolbox.register("compile", gp.compile, pset=self.pset)
 
         if self.evaluation_method == EvaluationGPHH.SGS:
-            self.toolbox.register("evaluate", self.evaluate_heuristic, domains=self.training_domains)
+            self.toolbox.register(
+                "evaluate", self.evaluate_heuristic, domains=self.training_domains
+            )
         # if self.evaluation_method == EvaluationGPHH.SGS_DEVIATION:
         #     self.toolbox.register("evaluate", self.evaluate_heuristic_sgs_deviation, domains=self.training_domains)
         elif self.evaluation_method == EvaluationGPHH.PERMUTATION_DISTANCE:
-            self.toolbox.register("evaluate", self.evaluate_heuristic_permutation, domains=self.training_domains)
+            self.toolbox.register(
+                "evaluate",
+                self.evaluate_heuristic_permutation,
+                domains=self.training_domains,
+            )
         # self.toolbox.register("evaluate", self.evaluate_heuristic, domains=[self.training_domains[1]])
 
-        self.toolbox.register("select", tools.selTournament, tournsize=int(tournament_ratio * pop_size))
+        self.toolbox.register(
+            "select", tools.selTournament, tournsize=int(tournament_ratio * pop_size)
+        )
         self.toolbox.register("mate", gp.cxOnePoint)
         self.toolbox.register("expr_mut", gp.genFull, min_=0, max_=max_tree_depth)
-        self.toolbox.register("mutate", gp.mutUniform, expr=self.toolbox.expr_mut, pset=self.pset)
+        self.toolbox.register(
+            "mutate", gp.mutUniform, expr=self.toolbox.expr_mut, pset=self.pset
+        )
 
-        self.toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=17))
-        self.toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=17))
+        self.toolbox.decorate(
+            "mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=17)
+        )
+        self.toolbox.decorate(
+            "mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=17)
+        )
 
         stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
         stats_size = tools.Statistics(len)
@@ -527,20 +614,33 @@ class GPHH(Solver, DeterministicPolicies):
         pop = self.toolbox.population(n=pop_size)
         hof = tools.HallOfFame(1)
         self.hof = hof
-        pop, log = algorithms.eaSimple(pop, self.toolbox, crossover_rate, mutation_rate, n_gen, stats=mstats,
-                                       halloffame=hof, verbose=True)
+        pop, log = algorithms.eaSimple(
+            pop,
+            self.toolbox,
+            crossover_rate,
+            mutation_rate,
+            n_gen,
+            stats=mstats,
+            halloffame=hof,
+            verbose=True,
+        )
 
         self.best_heuristic = hof[0]
-        print('best_heuristic: ', self.best_heuristic)
+        print("best_heuristic: ", self.best_heuristic)
 
         self.func_heuristic = self.toolbox.compile(expr=self.best_heuristic)
-        self.policy = GPHHPolicy(self.domain, self.domain_model,
-                                 self.func_heuristic,
-                                 features=self.list_feature,
-                                 params_gphh=self.params_gphh,
-                                 recompute_cpm=True)
+        self.policy = GPHHPolicy(
+            self.domain,
+            self.domain_model,
+            self.func_heuristic,
+            features=self.list_feature,
+            params_gphh=self.params_gphh,
+            recompute_cpm=True,
+        )
 
-    def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+    def _get_next_action(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         action = self.policy.sample_action(observation)
         # print('action_1: ', action.action)
         return action
@@ -550,7 +650,7 @@ class GPHH(Solver, DeterministicPolicies):
 
     def init_primitives(self, pset) -> PrimitiveSet:
         for i in range(len(self.list_feature)):
-            pset.renameArguments(**{"ARG"+str(i): self.list_feature[i].value})
+            pset.renameArguments(**{"ARG" + str(i): self.list_feature[i].value})
         return pset
 
     def evaluate_heuristic(self, individual, domains) -> float:
@@ -563,34 +663,49 @@ class GPHH(Solver, DeterministicPolicies):
             initial_state = domain.get_initial_state()
 
             do_model = build_do_domain(domain)
-            modes = [initial_state.tasks_mode.get(j, 1) for j in sorted(domain.get_tasks_ids())]
+            modes = [
+                initial_state.tasks_mode.get(j, 1)
+                for j in sorted(domain.get_tasks_ids())
+            ]
             modes = modes[1:-1]
 
-            cpm = self.cpm_data[domain]['cpm']
-            cpm_esd = self.cpm_data[domain]['cpm_esd']
+            cpm = self.cpm_data[domain]["cpm"]
+            cpm_esd = self.cpm_data[domain]["cpm_esd"]
 
             raw_values = []
             for task_id in domain.get_available_tasks(initial_state):
-                input_features = [feature_function_map[lf](domain=domain,
-                                                           cpm=cpm,
-                                                           cpm_esd=cpm_esd,
-                                                           task_id=task_id,
-                                                           state=initial_state)
-                                  for lf in self.list_feature]
+                input_features = [
+                    feature_function_map[lf](
+                        domain=domain,
+                        cpm=cpm,
+                        cpm_esd=cpm_esd,
+                        task_id=task_id,
+                        state=initial_state,
+                    )
+                    for lf in self.list_feature
+                ]
                 output_value = func_heuristic(*input_features)
                 raw_values.append(output_value)
 
-            normalized_values = [x + 1 for x in sorted(range(len(raw_values)), key=lambda k: raw_values[k],
-                                                       reverse=False)]
-            normalized_values_for_do = [normalized_values[i] - 2 for i in range(len(normalized_values)) if
-                                        normalized_values[i] not in {1, len(normalized_values)}]
+            normalized_values = [
+                x + 1
+                for x in sorted(
+                    range(len(raw_values)), key=lambda k: raw_values[k], reverse=False
+                )
+            ]
+            normalized_values_for_do = [
+                normalized_values[i] - 2
+                for i in range(len(normalized_values))
+                if normalized_values[i] not in {1, len(normalized_values)}
+            ]
 
-            solution = RCPSPSolution(problem=do_model,
-                                     rcpsp_permutation=normalized_values_for_do,
-                                     rcpsp_modes=modes,
-                                     )
+            solution = RCPSPSolution(
+                problem=do_model,
+                rcpsp_permutation=normalized_values_for_do,
+                rcpsp_modes=modes,
+            )
             last_activity = max(list(solution.rcpsp_schedule.keys()))
-            do_makespan = solution.rcpsp_schedule[last_activity]['end_time']
+            do_makespan = solution.rcpsp_schedule[last_activity]["end_time"]
             vals.append(do_makespan)
 
         fitness = [np.mean(vals)]
@@ -635,9 +750,7 @@ class GPHH(Solver, DeterministicPolicies):
         for domain in self.training_domains:
             do_model = build_do_domain(domain)
             cpm, cpm_esd = compute_cpm(do_model)
-            self.cpm_data[domain] = {'cpm': cpm,
-                                     'cpm_esd': cpm_esd}
-
+            self.cpm_data[domain] = {"cpm": cpm, "cpm_esd": cpm_esd}
 
     def evaluate_heuristic_permutation(self, individual, domains) -> float:
         vals = []
@@ -654,36 +767,52 @@ class GPHH(Solver, DeterministicPolicies):
                 do_model = build_do_domain(domain)
                 cpm, cpm_esd = compute_cpm(do_model)
             else:
-                cpm = self.cpm_data[domain]['cpm']
-                cpm_esd = self.cpm_data[domain]['cpm_esd']
+                cpm = self.cpm_data[domain]["cpm"]
+                cpm_esd = self.cpm_data[domain]["cpm_esd"]
 
             for task_id in domain.get_available_tasks(state=initial_state):
 
-                input_features = [feature_function_map[lf](domain=domain,
-                                                       cpm = cpm,
-                                                        cpm_esd=cpm_esd,
-                                                           task_id=task_id,
-                                                           state=initial_state)
-                                  for lf in self.list_feature]
+                input_features = [
+                    feature_function_map[lf](
+                        domain=domain,
+                        cpm=cpm,
+                        cpm_esd=cpm_esd,
+                        task_id=task_id,
+                        state=initial_state,
+                    )
+                    for lf in self.list_feature
+                ]
                 output_value = func_heuristic(*input_features)
                 raw_values.append(output_value)
 
             most_common_raw_val = max(raw_values, key=raw_values.count)
             most_common_count = raw_values.count(most_common_raw_val)
 
-            heuristic_permutation = [x + 1 for x in sorted(range(len(raw_values)), key=lambda k: raw_values[k],
-                                                       reverse=False)]
+            heuristic_permutation = [
+                x + 1
+                for x in sorted(
+                    range(len(raw_values)), key=lambda k: raw_values[k], reverse=False
+                )
+            ]
 
             if self.permutation_distance == PermutationDistance.KTD:
-                dist, p_value = stats.kendalltau(heuristic_permutation, self.reference_permutations[domain])
+                dist, p_value = stats.kendalltau(
+                    heuristic_permutation, self.reference_permutations[domain]
+                )
                 dist = -dist
 
             if self.permutation_distance == PermutationDistance.HAMMING:
-                dist = distance.hamming(heuristic_permutation, self.reference_permutations[domain])
+                dist = distance.hamming(
+                    heuristic_permutation, self.reference_permutations[domain]
+                )
 
             if self.permutation_distance == PermutationDistance.KTD_HAMMING:
-                ktd, _ = stats.kendalltau(heuristic_permutation, self.reference_permutations[domain])
-                dist = -ktd + distance.hamming(heuristic_permutation, self.reference_permutations[domain])
+                ktd, _ = stats.kendalltau(
+                    heuristic_permutation, self.reference_permutations[domain]
+                )
+                dist = -ktd + distance.hamming(
+                    heuristic_permutation, self.reference_permutations[domain]
+                )
 
             penalty = most_common_count / len(raw_values)
             # penalty = 0.
@@ -695,11 +824,11 @@ class GPHH(Solver, DeterministicPolicies):
 
     def test_features(self, domain, task_id, observation):
         for f in FeatureEnum:
-            print('feature: ', f)
-            calculated_feature = feature_function_map[f](domain=domain,
-                                                   task_id=task_id,
-                                                   state=observation)
-            print('\tcalculated_feature: ',calculated_feature)
+            print("feature: ", f)
+            calculated_feature = feature_function_map[f](
+                domain=domain, task_id=task_id, state=observation
+            )
+            print("\tcalculated_feature: ", calculated_feature)
 
     def set_domain(self, domain):
         self.domain = domain
@@ -708,8 +837,16 @@ class GPHH(Solver, DeterministicPolicies):
 
 
 class GPHHPolicy(DeterministicPolicies):
-
-    def __init__(self, domain: SchedulingDomain, domain_model: SchedulingDomain, func_heuristic, features: List[FeatureEnum]=None, params_gphh=None, recompute_cpm=True, cpm_data=None):
+    def __init__(
+        self,
+        domain: SchedulingDomain,
+        domain_model: SchedulingDomain,
+        func_heuristic,
+        features: List[FeatureEnum] = None,
+        params_gphh=None,
+        recompute_cpm=True,
+        cpm_data=None,
+    ):
         self.domain = domain
         self.domain_model = domain_model
         self.func_heuristic = func_heuristic
@@ -721,12 +858,17 @@ class GPHHPolicy(DeterministicPolicies):
     def reset(self):
         pass
 
-    def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+    def _get_next_action(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         run_sgs = True
         cheat_mode = False
 
         do_model = build_do_domain(self.domain_model)
-        modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        modes = [
+            observation.tasks_mode.get(j, 1)
+            for j in sorted(self.domain.get_tasks_ids())
+        ]
         modes = modes[1:-1]
 
         if run_sgs:
@@ -734,7 +876,9 @@ class GPHHPolicy(DeterministicPolicies):
             for j in observation.tasks_details.keys():
                 if observation.tasks_details[j].start is not None:
                     scheduled_tasks_start_times[j] = observation.tasks_details[j].start
-                    do_model.mode_details[j][1]['duration'] = observation.tasks_details[j].sampled_duration
+                    do_model.mode_details[j][1]["duration"] = observation.tasks_details[
+                        j
+                    ].sampled_duration
 
         # do_model = build_do_domain(self.domain)
         # modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
@@ -752,61 +896,77 @@ class GPHHPolicy(DeterministicPolicies):
         if self.recompute_cpm:
             cpm, cpm_esd = compute_cpm(do_model)
         else:
-            cpm = self.cpm_data[self.domain]['cpm']
-            cpm_esd = self.cpm_data[self.domain]['cpm_esd']
+            cpm = self.cpm_data[self.domain]["cpm"]
+            cpm_esd = self.cpm_data[self.domain]["cpm_esd"]
 
         t = observation.t
         raw_values = []
         for task_id in self.domain.get_available_tasks(observation):
-            input_features = [feature_function_map[lf](domain=self.domain,
-                                                       cpm = cpm,
-                                                        cpm_esd=cpm_esd,
-                                                       task_id=task_id,
-                                                       state=observation)
-                              for lf in self.list_feature]
+            input_features = [
+                feature_function_map[lf](
+                    domain=self.domain,
+                    cpm=cpm,
+                    cpm_esd=cpm_esd,
+                    task_id=task_id,
+                    state=observation,
+                )
+                for lf in self.list_feature
+            ]
             output_value = self.func_heuristic(*input_features)
             raw_values.append(output_value)
 
-        normalized_values = [x+1 for x in sorted(range(len(raw_values)), key=lambda k: raw_values[k],
-                                                 reverse=False)]
-        normalized_values_for_do = [normalized_values[i] - 2 for i in range(len(normalized_values)) if
-                                    normalized_values[i] not in {1, len(normalized_values)}]
-
+        normalized_values = [
+            x + 1
+            for x in sorted(
+                range(len(raw_values)), key=lambda k: raw_values[k], reverse=False
+            )
+        ]
+        normalized_values_for_do = [
+            normalized_values[i] - 2
+            for i in range(len(normalized_values))
+            if normalized_values[i] not in {1, len(normalized_values)}
+        ]
 
         # print(t, ': ', normalized_values)
         # print('normalized_values_for_do: ', normalized_values_for_do)
 
         modes_dictionnary = {}
         for i in range(len(normalized_values)):
-            modes_dictionnary[i+1] = 1
+            modes_dictionnary[i + 1] = 1
 
         if run_sgs:
 
-            solution = RCPSPSolution(problem=do_model,
-                                     rcpsp_permutation=normalized_values_for_do,
-                                     rcpsp_modes=modes,
-                                     )
+            solution = RCPSPSolution(
+                problem=do_model,
+                rcpsp_permutation=normalized_values_for_do,
+                rcpsp_modes=modes,
+            )
 
-            solution.generate_schedule_from_permutation_serial_sgs_2(current_t=t,
-                                                                     completed_tasks=
-                                                                     {j: observation.tasks_details[j]
-                                                                      for j in observation.tasks_complete},
-                                                                     scheduled_tasks_start_times=scheduled_tasks_start_times)
+            solution.generate_schedule_from_permutation_serial_sgs_2(
+                current_t=t,
+                completed_tasks={
+                    j: observation.tasks_details[j] for j in observation.tasks_complete
+                },
+                scheduled_tasks_start_times=scheduled_tasks_start_times,
+            )
 
             schedule = solution.rcpsp_schedule
         else:
             schedule = None
 
-        sgs_policy = PolicyRCPSP(domain=self.domain,
-                                 schedule=schedule,
-                                 policy_method_params=PolicyMethodParams(
-                                     # base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
-                                     # base_policy_method=BasePolicyMethod.SGS_READY,
-                                     base_policy_method=self.params_gphh.base_policy_method,
-                                     delta_index_freedom=self.params_gphh.delta_index_freedom,
-                                     delta_time_freedom=self.params_gphh.delta_time_freedom),
-                                 permutation_task=normalized_values,
-                                 modes_dictionnary=modes_dictionnary)
+        sgs_policy = PolicyRCPSP(
+            domain=self.domain,
+            schedule=schedule,
+            policy_method_params=PolicyMethodParams(
+                # base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
+                # base_policy_method=BasePolicyMethod.SGS_READY,
+                base_policy_method=self.params_gphh.base_policy_method,
+                delta_index_freedom=self.params_gphh.delta_index_freedom,
+                delta_time_freedom=self.params_gphh.delta_time_freedom,
+            ),
+            permutation_task=normalized_values,
+            modes_dictionnary=modes_dictionnary,
+        )
         action: SchedulingAction = sgs_policy.sample_action(observation)
         # print('action_2: ', action.action)
         return action
@@ -816,14 +976,22 @@ class GPHHPolicy(DeterministicPolicies):
 
 
 class PoolAggregationMethod(Enum):
-    MEAN  = "mean"
+    MEAN = "mean"
     MEDIAN = "median"
     RANDOM = "random"
 
 
 class PooledGPHHPolicy(DeterministicPolicies):
-
-    def __init__(self, domain: SchedulingDomain, domain_model: SchedulingDomain, func_heuristics, pool_aggregation_method: PoolAggregationMethod = PoolAggregationMethod.MEAN, remove_extremes_values:int = 0, features: List[FeatureEnum]=None, params_gphh=None):
+    def __init__(
+        self,
+        domain: SchedulingDomain,
+        domain_model: SchedulingDomain,
+        func_heuristics,
+        pool_aggregation_method: PoolAggregationMethod = PoolAggregationMethod.MEAN,
+        remove_extremes_values: int = 0,
+        features: List[FeatureEnum] = None,
+        params_gphh=None,
+    ):
         self.domain = domain
         self.domain_model = domain_model
         self.func_heuristics = func_heuristics
@@ -835,14 +1003,19 @@ class PooledGPHHPolicy(DeterministicPolicies):
     def reset(self):
         pass
 
-    def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+    def _get_next_action(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_concurrency[D.T_event]]:
 
         run_sgs = True
         cheat_mode = False
         regenerate_cpm = True
 
         do_model = build_do_domain(self.domain_model)
-        modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        modes = [
+            observation.tasks_mode.get(j, 1)
+            for j in sorted(self.domain.get_tasks_ids())
+        ]
         modes = modes[1:-1]
 
         if run_sgs:
@@ -850,7 +1023,9 @@ class PooledGPHHPolicy(DeterministicPolicies):
             for j in observation.tasks_details.keys():
                 if observation.tasks_details[j].start is not None:
                     scheduled_tasks_start_times[j] = observation.tasks_details[j].start
-                    do_model.mode_details[j][1]['duration'] = observation.tasks_details[j].sampled_duration
+                    do_model.mode_details[j][1]["duration"] = observation.tasks_details[
+                        j
+                    ].sampled_duration
 
         # do_model = build_do_domain(self.domain)
         # modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
@@ -875,13 +1050,16 @@ class PooledGPHHPolicy(DeterministicPolicies):
         t = observation.t
         raw_values = []
         for task_id in self.domain.get_available_tasks(observation):
-            input_features = [feature_function_map[lf](
-                                                    domain=self.domain,
-                                                       cpm = cpm,
-                                                        cpm_esd=cpm_esd,
-                                                       task_id=task_id,
-                                                       state=observation)
-                              for lf in self.list_feature]
+            input_features = [
+                feature_function_map[lf](
+                    domain=self.domain,
+                    cpm=cpm,
+                    cpm_esd=cpm_esd,
+                    task_id=task_id,
+                    state=observation,
+                )
+                for lf in self.list_feature
+            ]
             output_values = []
             for f in self.func_heuristics:
                 output_value = f(*input_features)
@@ -909,46 +1087,58 @@ class PooledGPHHPolicy(DeterministicPolicies):
             # print('agg_value: ', agg_value)
             raw_values.append(agg_value)
 
-        normalized_values = [x+1 for x in sorted(range(len(raw_values)), key=lambda k: raw_values[k],
-                                                 reverse=False)]
-        normalized_values_for_do = [normalized_values[i] - 2 for i in range(len(normalized_values)) if
-                                    normalized_values[i] not in {1, len(normalized_values)}]
-
+        normalized_values = [
+            x + 1
+            for x in sorted(
+                range(len(raw_values)), key=lambda k: raw_values[k], reverse=False
+            )
+        ]
+        normalized_values_for_do = [
+            normalized_values[i] - 2
+            for i in range(len(normalized_values))
+            if normalized_values[i] not in {1, len(normalized_values)}
+        ]
 
         # print('normalized_values: ', normalized_values)
         # print('normalized_values_for_do: ', normalized_values_for_do)
 
         modes_dictionnary = {}
         for i in range(len(normalized_values)):
-            modes_dictionnary[i+1] = 1
+            modes_dictionnary[i + 1] = 1
 
         if run_sgs:
 
-            solution = RCPSPSolution(problem=do_model,
-                                     rcpsp_permutation=normalized_values_for_do,
-                                     rcpsp_modes=modes,
-                                     )
+            solution = RCPSPSolution(
+                problem=do_model,
+                rcpsp_permutation=normalized_values_for_do,
+                rcpsp_modes=modes,
+            )
 
-            solution.generate_schedule_from_permutation_serial_sgs_2(current_t=t,
-                                                                     completed_tasks=
-                                                                     {j: observation.tasks_details[j]
-                                                                      for j in observation.tasks_complete},
-                                                                     scheduled_tasks_start_times=scheduled_tasks_start_times)
+            solution.generate_schedule_from_permutation_serial_sgs_2(
+                current_t=t,
+                completed_tasks={
+                    j: observation.tasks_details[j] for j in observation.tasks_complete
+                },
+                scheduled_tasks_start_times=scheduled_tasks_start_times,
+            )
 
             schedule = solution.rcpsp_schedule
         else:
             schedule = None
 
-        sgs_policy = PolicyRCPSP(domain=self.domain,
-                                 schedule=schedule,
-                                 policy_method_params=PolicyMethodParams(
-                                     # base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
-                                     # base_policy_method=BasePolicyMethod.SGS_READY,
-                                     base_policy_method=self.params_gphh.base_policy_method,
-                                     delta_index_freedom=self.params_gphh.delta_index_freedom,
-                                     delta_time_freedom=self.params_gphh.delta_time_freedom),
-                                 permutation_task=normalized_values,
-                                 modes_dictionnary=modes_dictionnary)
+        sgs_policy = PolicyRCPSP(
+            domain=self.domain,
+            schedule=schedule,
+            policy_method_params=PolicyMethodParams(
+                # base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
+                # base_policy_method=BasePolicyMethod.SGS_READY,
+                base_policy_method=self.params_gphh.base_policy_method,
+                delta_index_freedom=self.params_gphh.delta_index_freedom,
+                delta_time_freedom=self.params_gphh.delta_time_freedom,
+            ),
+            permutation_task=normalized_values,
+            modes_dictionnary=modes_dictionnary,
+        )
         action: SchedulingAction = sgs_policy.sample_action(observation)
         # print('action_2: ', action.action)
         return action
@@ -958,8 +1148,9 @@ class PooledGPHHPolicy(DeterministicPolicies):
 
 
 class FixedPermutationPolicy(DeterministicPolicies):
-
-    def __init__(self, domain: SchedulingDomain, domain_model: SchedulingDomain, fixed_perm):
+    def __init__(
+        self, domain: SchedulingDomain, domain_model: SchedulingDomain, fixed_perm
+    ):
         self.domain = domain
         self.domain_model = domain_model
         self.fixed_perm = fixed_perm
@@ -967,12 +1158,17 @@ class FixedPermutationPolicy(DeterministicPolicies):
     def reset(self):
         pass
 
-    def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+    def _get_next_action(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         run_sgs = True
         cheat_mode = False
 
         do_model = build_do_domain(self.domain_model)
-        modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
+        modes = [
+            observation.tasks_mode.get(j, 1)
+            for j in sorted(self.domain.get_tasks_ids())
+        ]
         modes = modes[1:-1]
 
         if run_sgs:
@@ -980,7 +1176,9 @@ class FixedPermutationPolicy(DeterministicPolicies):
             for j in observation.tasks_details.keys():
                 if observation.tasks_details[j].start is not None:
                     scheduled_tasks_start_times[j] = observation.tasks_details[j].start
-                    do_model.mode_details[j][1]['duration'] = observation.tasks_details[j].sampled_duration
+                    do_model.mode_details[j][1]["duration"] = observation.tasks_details[
+                        j
+                    ].sampled_duration
 
         # do_model = build_do_domain(self.domain)
         # modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
@@ -1002,8 +1200,11 @@ class FixedPermutationPolicy(DeterministicPolicies):
 
         normalized_values = self.fixed_perm
 
-        normalized_values_for_do = [normalized_values[i] - 2 for i in range(len(normalized_values)) if
-                                    normalized_values[i] not in {1, len(normalized_values)}]
+        normalized_values_for_do = [
+            normalized_values[i] - 2
+            for i in range(len(normalized_values))
+            if normalized_values[i] not in {1, len(normalized_values)}
+        ]
 
         # print('normalized_values: ', normalized_values)
         # print('normalized_values_for_do: ', normalized_values_for_do)
@@ -1011,36 +1212,41 @@ class FixedPermutationPolicy(DeterministicPolicies):
 
         modes_dictionnary = {}
         for i in range(len(normalized_values)):
-            modes_dictionnary[i+1] = 1
+            modes_dictionnary[i + 1] = 1
 
         if run_sgs:
 
-            solution = RCPSPSolution(problem=do_model,
-                                     rcpsp_permutation=normalized_values_for_do,
-                                     rcpsp_modes=modes,
-                                     )
+            solution = RCPSPSolution(
+                problem=do_model,
+                rcpsp_permutation=normalized_values_for_do,
+                rcpsp_modes=modes,
+            )
 
-            solution.generate_schedule_from_permutation_serial_sgs_2(current_t=t,
-                                                                     completed_tasks=
-                                                                     {j: observation.tasks_details[j]
-                                                                      for j in observation.tasks_complete},
-                                                                     scheduled_tasks_start_times=scheduled_tasks_start_times)
+            solution.generate_schedule_from_permutation_serial_sgs_2(
+                current_t=t,
+                completed_tasks={
+                    j: observation.tasks_details[j] for j in observation.tasks_complete
+                },
+                scheduled_tasks_start_times=scheduled_tasks_start_times,
+            )
 
             schedule = solution.rcpsp_schedule
         else:
             schedule = None
 
-        sgs_policy = PolicyRCPSP(domain=self.domain,
-                                 schedule=schedule,
-                                 policy_method_params=PolicyMethodParams(
-                                     # base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
-                                     # base_policy_method=BasePolicyMethod.SGS_READY,
-                                     base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
-                                     # delta_index_freedom=self.params_gphh.delta_index_freedom,
-                                     # delta_time_freedom=self.params_gphh.delta_time_freedom
-                                 ),
-                                 permutation_task=normalized_values,
-                                 modes_dictionnary=modes_dictionnary)
+        sgs_policy = PolicyRCPSP(
+            domain=self.domain,
+            schedule=schedule,
+            policy_method_params=PolicyMethodParams(
+                # base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
+                # base_policy_method=BasePolicyMethod.SGS_READY,
+                base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
+                # delta_index_freedom=self.params_gphh.delta_index_freedom,
+                # delta_time_freedom=self.params_gphh.delta_time_freedom
+            ),
+            permutation_task=normalized_values,
+            modes_dictionnary=modes_dictionnary,
+        )
         action: SchedulingAction = sgs_policy.sample_action(observation)
         # print('action_2: ', action.action)
         return action

@@ -4,22 +4,29 @@
 
 from __future__ import annotations
 
-from skdecide.hub.solver.graph_explorer.GraphDomain import GraphDomain, GraphDomainUncertain
-from skdecide.hub.solver.graph_explorer.GraphExploration import GraphExploration
-from skdecide import DeterministicPlanningDomain, Memory, MDPDomain, GoalMDPDomain, D
-from typing import Any, Dict, Tuple
 from heapq import heappop, heappush
 from itertools import count
+from typing import Any, Dict, Tuple
+
+from skdecide import D, DeterministicPlanningDomain, GoalMDPDomain, MDPDomain, Memory
+from skdecide.hub.solver.graph_explorer.GraphDomain import (
+    GraphDomain,
+    GraphDomainUncertain,
+)
+from skdecide.hub.solver.graph_explorer.GraphExploration import GraphExploration
 
 # WARNING : adapted for the scheduling domains.
 
 
 class DFSExploration(GraphExploration):
-    def __init__(self, domain: GoalMDPDomain,
-                 score_function=None,
-                 max_edges=None,
-                 max_nodes=None,
-                 max_path=None):
+    def __init__(
+        self,
+        domain: GoalMDPDomain,
+        score_function=None,
+        max_edges=None,
+        max_nodes=None,
+        max_path=None,
+    ):
         self.domain = domain
         self.score_function = score_function
         self.c = count()
@@ -34,8 +41,7 @@ class DFSExploration(GraphExploration):
             initial_state = self.domain.get_initial_state()
         else:
             initial_state = init_state
-        stack = [(self.score_function(initial_state),
-                  initial_state)]
+        stack = [(self.score_function(initial_state), initial_state)]
         domain = self.domain
         goal_states = set()
         terminal_states = set()
@@ -44,7 +50,9 @@ class DFSExploration(GraphExploration):
         nb_states = 1
         nb_edges = 0
         result = {initial_state}
-        next_state_map: Dict[D.T_state, Dict[D.T_event, Dict[D.T_state, Tuple[float, float]]]] = {}
+        next_state_map: Dict[
+            D.T_state, Dict[D.T_event, Dict[D.T_state, Tuple[float, float]]]
+        ] = {}
         state_terminal: Dict[D.T_state, bool] = {}
         state_goal: Dict[D.T_state, bool] = {}
         state_terminal[initial_state] = self.domain.is_terminal(initial_state)
@@ -75,16 +83,15 @@ class DFSExploration(GraphExploration):
                         nb_states += 1
                         nb_edges += 1
                         result.add(succ)
-                        heappush(stack, (self.score_function(succ),
-                                         succ))
+                        heappush(stack, (self.score_function(succ), succ))
                         cost = domain.get_transition_value(s, action, succ)
                         next_state_map[s][action][succ] = (prob, cost.cost)
                         state_goal[succ] = domain.is_goal(succ)
                         state_terminal[succ] = domain.is_terminal(succ)
-            if (nb_states > self.max_nodes) \
-                or (nb_edges > self.max_edges):
+            if (nb_states > self.max_nodes) or (nb_edges > self.max_edges):
                 break
-        return GraphDomainUncertain(next_state_map=next_state_map,
-                                    state_terminal=state_terminal,
-                                    state_goal=state_goal)
-
+        return GraphDomainUncertain(
+            next_state_map=next_state_map,
+            state_terminal=state_terminal,
+            state_goal=state_goal,
+        )

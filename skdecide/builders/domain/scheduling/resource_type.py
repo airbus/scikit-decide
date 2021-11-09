@@ -4,10 +4,15 @@
 
 from __future__ import annotations
 
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-__all__ = ['WithResourceTypes', 'WithoutResourceTypes',
-           'WithResourceUnits', 'SingleResourceUnit', 'WithoutResourceUnit']
+__all__ = [
+    "WithResourceTypes",
+    "WithoutResourceTypes",
+    "WithResourceUnits",
+    "SingleResourceUnit",
+    "WithoutResourceUnit",
+]
 
 
 class WithResourceTypes:
@@ -56,7 +61,7 @@ class SingleResourceUnit(WithResourceUnits):
     """A domain must inherit this class if there is no allocation to be done (i.e. there is a single resource)."""
 
     def _get_resource_units_names(self) -> List[str]:
-        return ['single_resource']
+        return ["single_resource"]
 
     def _get_resource_type_for_unit(self) -> Dict[str, str]:
         return {}

@@ -8,7 +8,7 @@ import functools
 
 from skdecide.core import D, Distribution, SingleValueDistribution, autocastable
 
-__all__ = ['Initializable', 'UncertainInitialized', 'DeterministicInitialized']
+__all__ = ["Initializable", "UncertainInitialized", "DeterministicInitialized"]
 
 
 class Initializable:

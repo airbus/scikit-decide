@@ -5,16 +5,17 @@
 from __future__ import annotations
 
 import functools
-from typing import Union, Optional
+from typing import Optional, Union
 
 from skdecide.core import D, Memory
 
-__all__ = ['History', 'FiniteHistory', 'Markovian', 'Memoryless']
+__all__ = ["History", "FiniteHistory", "Markovian", "Memoryless"]
 
 
 class History:
     """A domain must inherit this class if its full state history must be stored to compute its dynamics (non-Markovian
     domain)."""
+
     _memory: D.T_memory[D.T_state]
     T_memory = Memory
 
@@ -51,6 +52,7 @@ class FiniteHistory(History):
 
     N is specified by the return value of the #FiniteHistory._get_memory_maxlen() function.
     """
+
     T_memory = Memory
 
     @functools.lru_cache()
@@ -85,6 +87,7 @@ class FiniteHistory(History):
 class Markovian(FiniteHistory):
     """A domain must inherit this class if only its last state must be stored to compute its dynamics (pure Markovian
     domain)."""
+
     T_memory = Union
 
     def _init_memory(self, state: Optional[D.T_state] = None) -> D.T_memory[D.T_state]:
@@ -105,6 +108,7 @@ class Memoryless(Markovian):
         scikit-decide (e.g. compiled ATARI games), Memoryless can be used because the domain memory (if any) would
         be handled externally.
     """
+
     T_memory = Union
 
     def _init_memory(self, state: Optional[D.T_state] = None) -> D.T_memory[D.T_state]:

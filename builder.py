@@ -3,13 +3,13 @@ Adapted from https://github.com/pybind/cmake_example
 """
 import fileinput
 import os
-from pathlib import Path
 import platform
 import re
 import subprocess
 import sys
 import sysconfig
 from distutils.version import LooseVersion
+from pathlib import Path
 from typing import Any, Dict, List
 
 from setuptools.command.build_ext import build_ext
@@ -116,18 +116,24 @@ class ExtensionBuilder(build_ext):
         """
 
         # Get the absolute path to the build folder
-        build_folder = str(Path('.').absolute() / f"{self.build_temp}_{ext.name}")
+        build_folder = str(Path(".").absolute() / f"{self.build_temp}_{ext.name}")
 
         # Make sure the build folder exists
         Path(build_folder).mkdir(exist_ok=True, parents=True)
 
-        configure_command = ['cmake', '-S', ext.source_dir, '-B', build_folder] + configure_args
+        configure_command = [
+            "cmake",
+            "-S",
+            ext.source_dir,
+            "-B",
+            build_folder,
+        ] + configure_args
 
-        build_command = ['cmake', '--build', build_folder] + build_args
+        build_command = ["cmake", "--build", build_folder] + build_args
 
-        install_command = ['cmake', '--install',  build_folder]
+        install_command = ["cmake", "--install", build_folder]
         if ext.cmake_component is not None:
-            install_command.extend(['--component', ext.cmake_component])
+            install_command.extend(["--component", ext.cmake_component])
 
         print(f"$ {' '.join(configure_command)}")
         print(f"$ {' '.join(build_command)}")
@@ -143,7 +149,8 @@ class ExtensionBuilder(build_ext):
     def copy_extensions_to_source(self):
         original_extensions = list(self.extensions)
         self.extensions = [
-            ext for ext in self.extensions
+            ext
+            for ext in self.extensions
             if not isinstance(ext, CMakeExtension) or not ext.disable_editable
         ]
         super().copy_extensions_to_source()
@@ -159,37 +166,45 @@ def build(setup_kwargs: Dict[str, Any]) -> None:
             source_dir="cpp",
             install_prefix="",
             cmake_configure_options=[
-                           f"-DPYTHON_EXECUTABLE={Path(sys.executable)}",
-                           f"-DONLY_PYTHON=ON",
-                       ]),
+                f"-DPYTHON_EXECUTABLE={Path(sys.executable)}",
+                f"-DONLY_PYTHON=ON",
+            ],
+        ),
     ]
-    if 'SKDECIDE_SKIP_DEPS' not in os.environ or os.environ['SKDECIDE_SKIP_DEPS'] == '0':
-        cmake_modules.extend([
-            CMakeExtension(
-                name="chuffed",
-                disable_editable=True,
-                source_dir="cpp/deps/chuffed",
-                install_prefix="skdecide/hub",
-                cmake_configure_options=[
-                           f"-DBISON_EXECUTABLE=false",
-                           f"-DFLEX_EXECUTABLE=false",
-                           ]),
-            CMakeExtension(
-                name="gecode",
-                disable_editable=True,
-                source_dir="cpp/deps/gecode",
-                install_prefix="skdecide/hub",
-                cmake_configure_options=[
-                           ]),
-            CMakeExtension(
-                name="libminizinc",
-                disable_editable=True,
-                source_dir="cpp/deps/libminizinc",
-                install_prefix="skdecide/hub",
-                cmake_configure_options=[
-                               f"-DBUILD_SHARED_LIBS:BOOL=OFF",
-                           ]),
-        ])
+    if (
+        "SKDECIDE_SKIP_DEPS" not in os.environ
+        or os.environ["SKDECIDE_SKIP_DEPS"] == "0"
+    ):
+        cmake_modules.extend(
+            [
+                CMakeExtension(
+                    name="chuffed",
+                    disable_editable=True,
+                    source_dir="cpp/deps/chuffed",
+                    install_prefix="skdecide/hub",
+                    cmake_configure_options=[
+                        f"-DBISON_EXECUTABLE=false",
+                        f"-DFLEX_EXECUTABLE=false",
+                    ],
+                ),
+                CMakeExtension(
+                    name="gecode",
+                    disable_editable=True,
+                    source_dir="cpp/deps/gecode",
+                    install_prefix="skdecide/hub",
+                    cmake_configure_options=[],
+                ),
+                CMakeExtension(
+                    name="libminizinc",
+                    disable_editable=True,
+                    source_dir="cpp/deps/libminizinc",
+                    install_prefix="skdecide/hub",
+                    cmake_configure_options=[
+                        f"-DBUILD_SHARED_LIBS:BOOL=OFF",
+                    ],
+                ),
+            ]
+        )
     ext_modules = cython_modules + cmake_modules
 
     f = "cpp/deps/gecode/CMakeLists.txt"

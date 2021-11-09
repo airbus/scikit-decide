@@ -8,32 +8,66 @@ import functools
 import inspect
 import random
 import re
-from dataclasses import dataclass, asdict, astuple, replace
-from typing import TypeVar, Generic, Union, Optional, Iterable, Sequence, List, Tuple, Dict, Deque, Callable
+from dataclasses import asdict, astuple, dataclass, replace
+from typing import (
+    Callable,
+    Deque,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
-__all__ = ['T', 'D', 'Space', 'ImplicitSpace', 'EnumerableSpace', 'EmptySpace', 'SamplableSpace', 'SerializableSpace',
-           'Distribution', 'ImplicitDistribution', 'DiscreteDistribution', 'SingleValueDistribution', 'Value',
-           'EnvironmentOutcome', 'TransitionOutcome', 'Memory', 'StrDict', 'Constraint', 'ImplicitConstraint',
-           'BoundConstraint', 'autocast_all', 'autocastable', 'nocopy']
+__all__ = [
+    "T",
+    "D",
+    "Space",
+    "ImplicitSpace",
+    "EnumerableSpace",
+    "EmptySpace",
+    "SamplableSpace",
+    "SerializableSpace",
+    "Distribution",
+    "ImplicitDistribution",
+    "DiscreteDistribution",
+    "SingleValueDistribution",
+    "Value",
+    "EnvironmentOutcome",
+    "TransitionOutcome",
+    "Memory",
+    "StrDict",
+    "Constraint",
+    "ImplicitConstraint",
+    "BoundConstraint",
+    "autocast_all",
+    "autocastable",
+    "nocopy",
+]
 
-T = TypeVar('T')  # Any type
+T = TypeVar("T")  # Any type
 
 
 class D:
-    T_state = TypeVar('T_state')  # Type of states
-    T_observation = TypeVar('T_observation')  # Type of observations
-    T_event = TypeVar('T_event')  # Type of events
-    T_value = TypeVar('T_value')  # Type of transition values (rewards or costs)
-    T_predicate = TypeVar('T_predicate')  # Type of logical checks
-    T_info = TypeVar('T_info')  # Type of additional information given as part of an environment outcome
-    T_memory = TypeVar('T_memory')
-    T_agent = TypeVar('T_agent')
-    T_concurrency = TypeVar('T_concurrency')
+    T_state = TypeVar("T_state")  # Type of states
+    T_observation = TypeVar("T_observation")  # Type of observations
+    T_event = TypeVar("T_event")  # Type of events
+    T_value = TypeVar("T_value")  # Type of transition values (rewards or costs)
+    T_predicate = TypeVar("T_predicate")  # Type of logical checks
+    T_info = TypeVar(
+        "T_info"
+    )  # Type of additional information given as part of an environment outcome
+    T_memory = TypeVar("T_memory")
+    T_agent = TypeVar("T_agent")
+    T_concurrency = TypeVar("T_concurrency")
 
 
 # Tree (utility class)
 class Tree:
-
     def __init__(self, type_: object, sub: List[Tree] = []):
         self.type = type_
         self.sub = sub
@@ -41,7 +75,6 @@ class Tree:
 
 # Castable (utility class)
 class Castable:
-
     def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
         raise NotImplementedError
 
@@ -189,6 +222,7 @@ class ImplicitDistribution(Distribution[T]):
         def cast_sample_function():
             result = self._sample_function()
             return cast(result, src_sub[0], dst_sub[0])
+
         return ImplicitDistribution(cast_sample_function)
 
 
@@ -228,7 +262,9 @@ class DiscreteDistribution(Distribution[T]):
         return self._values
 
     def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
-        return DiscreteDistribution([(cast(e, src_sub[0], dst_sub[0]), p) for e, p in self._values])
+        return DiscreteDistribution(
+            [(cast(e, src_sub[0], dst_sub[0]), p) for e, p in self._values]
+        )
 
 
 class SingleValueDistribution(DiscreteDistribution[T]):
@@ -262,7 +298,6 @@ class SingleValueDistribution(DiscreteDistribution[T]):
 
 # ExtendedDataclass (dataclasses can inherit from it to extended their methods with useful utilities)
 class ExtendedDataclass:
-
     def asdict(self):
         """Return the fields of the instance as a new dictionary mapping field names to field values."""
         return asdict(self)
@@ -300,6 +335,7 @@ class Value(Generic[D.T_value]):
     assert value_1.cost == value_2.cost == 5  # True
     ```
     """
+
     reward: Optional[D.T_value] = None
     cost: Optional[D.T_value] = None
 
@@ -321,7 +357,11 @@ class Value(Generic[D.T_value]):
 
 # EnvironmentOutcome
 @dataclass
-class EnvironmentOutcome(Generic[D.T_observation, D.T_value, D.T_predicate, D.T_info], Castable, ExtendedDataclass):
+class EnvironmentOutcome(
+    Generic[D.T_observation, D.T_value, D.T_predicate, D.T_info],
+    Castable,
+    ExtendedDataclass,
+):
     """An environment outcome for an internal transition.
 
     # Parameters
@@ -330,6 +370,7 @@ class EnvironmentOutcome(Generic[D.T_observation, D.T_value, D.T_predicate, D.T_
     termination: Whether the episode has ended, in which case further step() calls will return undefined results.
     info: Optional auxiliary diagnostic information (helpful for debugging, and sometimes learning).
     """
+
     observation: D.T_observation
     value: Optional[D.T_value] = None
     termination: Optional[D.T_predicate] = None
@@ -337,24 +378,38 @@ class EnvironmentOutcome(Generic[D.T_observation, D.T_value, D.T_predicate, D.T_
 
     def __post_init__(self) -> None:
         if self.value is None:
-            self.value = {k: Value() for k in self.observation} if isinstance(self.observation,
-                                                                                        dict) else Value()
+            self.value = (
+                {k: Value() for k in self.observation}
+                if isinstance(self.observation, dict)
+                else Value()
+            )
         if self.termination is None:
-            self.termination = {k: False for k in self.observation} if isinstance(self.observation,
-                                                                                        dict) else False
+            self.termination = (
+                {k: False for k in self.observation}
+                if isinstance(self.observation, dict)
+                else False
+            )
         if self.info is None:
-            self.info = {k: None for k in self.observation} if isinstance(self.observation, dict) else None
+            self.info = (
+                {k: None for k in self.observation}
+                if isinstance(self.observation, dict)
+                else None
+            )
 
     def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
-        return EnvironmentOutcome(cast(self.observation, src_sub[0], dst_sub[0]),
-                                  cast(self.value, src_sub[1], dst_sub[1]),
-                                  cast(self.termination, src_sub[2], dst_sub[2]),
-                                  cast(self.info, src_sub[3], dst_sub[3]))
+        return EnvironmentOutcome(
+            cast(self.observation, src_sub[0], dst_sub[0]),
+            cast(self.value, src_sub[1], dst_sub[1]),
+            cast(self.termination, src_sub[2], dst_sub[2]),
+            cast(self.info, src_sub[3], dst_sub[3]),
+        )
 
 
 # TransitionOutcome
 @dataclass
-class TransitionOutcome(Generic[D.T_state, D.T_value, D.T_predicate, D.T_info], Castable, ExtendedDataclass):
+class TransitionOutcome(
+    Generic[D.T_state, D.T_value, D.T_predicate, D.T_info], Castable, ExtendedDataclass
+):
     """A transition outcome.
 
     # Parameters
@@ -363,6 +418,7 @@ class TransitionOutcome(Generic[D.T_state, D.T_value, D.T_predicate, D.T_info], 
     termination: Whether the episode has ended, in which case further step() calls will return undefined results.
     info: Optional auxiliary diagnostic information (helpful for debugging, and sometimes learning).
     """
+
     state: D.T_state
     value: Optional[D.T_value] = None
     termination: Optional[D.T_predicate] = None
@@ -370,20 +426,30 @@ class TransitionOutcome(Generic[D.T_state, D.T_value, D.T_predicate, D.T_info], 
 
     def __post_init__(self) -> None:
         if self.value is None:
-            self.value = {k: Value() for k in self.state} if isinstance(self.state,
-                                                                                  dict) else Value()
+            self.value = (
+                {k: Value() for k in self.state}
+                if isinstance(self.state, dict)
+                else Value()
+            )
         if self.termination is None:
-            self.termination = {k: False for k in self.observation} if isinstance(self.observation,
-                                                                                        dict) else False
+            self.termination = (
+                {k: False for k in self.observation}
+                if isinstance(self.observation, dict)
+                else False
+            )
 
         if self.info is None:
-            self.info = {k: None for k in self.state} if isinstance(self.state, dict) else None
+            self.info = (
+                {k: None for k in self.state} if isinstance(self.state, dict) else None
+            )
 
     def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
-        return TransitionOutcome(cast(self.state, src_sub[0], dst_sub[0]),
-                                 cast(self.value, src_sub[1], dst_sub[1]),
-                                 cast(self.termination, src_sub[2], dst_sub[2]),
-                                 cast(self.info, src_sub[3], dst_sub[3]))
+        return TransitionOutcome(
+            cast(self.state, src_sub[0], dst_sub[0]),
+            cast(self.value, src_sub[1], dst_sub[1]),
+            cast(self.termination, src_sub[2], dst_sub[2]),
+            cast(self.info, src_sub[3], dst_sub[3]),
+        )
 
 
 # Memory
@@ -394,6 +460,7 @@ class Memory(Deque[T]):
 # StrDict
 class StrDict(Generic[T], Dict[str, T]):
     """A dictionary with String keys (e.g. agent names)."""
+
     pass
 
 
@@ -401,7 +468,12 @@ class StrDict(Generic[T], Dict[str, T]):
 class Constraint(Generic[D.T_memory, D.T_event, D.T_state], Castable):
     """A constraint."""
 
-    def check(self, memory: D.T_memory, action: D.T_event, next_state: Optional[D.T_state] = None) -> bool:
+    def check(
+        self,
+        memory: D.T_memory,
+        action: D.T_event,
+        next_state: Optional[D.T_state] = None,
+    ) -> bool:
         """Check this constraint.
 
         !!! tip
@@ -452,8 +524,11 @@ class Constraint(Generic[D.T_memory, D.T_event, D.T_state], Castable):
 class ImplicitConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
     """A constraint formalized implicitly, i.e. by a black-box check() function."""
 
-    def __init__(self, check_function: Callable[[D.T_memory, D.T_event, Optional[D.T_state]], bool],
-                 depends_on_next_state: bool = True) -> None:
+    def __init__(
+        self,
+        check_function: Callable[[D.T_memory, D.T_event, Optional[D.T_state]], bool],
+        depends_on_next_state: bool = True,
+    ) -> None:
         """Initialize ImplicitConstraint.
 
         # Parameters
@@ -468,7 +543,12 @@ class ImplicitConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
         self._check_function = check_function
         self._depends_on_next_state = depends_on_next_state
 
-    def check(self, memory: D.T_memory, action: D.T_event, next_state: Optional[D.T_state] = None) -> bool:
+    def check(
+        self,
+        memory: D.T_memory,
+        action: D.T_event,
+        next_state: Optional[D.T_state] = None,
+    ) -> bool:
         return self._check_function(memory, action, next_state)
 
     def _is_constraint_dependent_on_next_state_(self) -> bool:
@@ -480,6 +560,7 @@ class ImplicitConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
             cast_action = cast(action, dst_sub[1], src_sub[1])
             cast_next_state = cast(next_state, dst_sub[2], src_sub[2])
             return self._check_function(cast_memory, cast_action, cast_next_state)
+
         return ImplicitConstraint(cast_check_function, self._depends_on_next_state)
 
 
@@ -491,8 +572,15 @@ class BoundConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
     a float greater than or equal to its bound.
     """
 
-    def __init__(self, evaluate_function: Callable[[D.T_memory, D.T_event, Optional[D.T_state]], float],
-                 inequality: str, bound: float, depends_on_next_state: bool = True) -> None:
+    def __init__(
+        self,
+        evaluate_function: Callable[
+            [D.T_memory, D.T_event, Optional[D.T_state]], float
+        ],
+        inequality: str,
+        bound: float,
+        depends_on_next_state: bool = True,
+    ) -> None:
         """Initialize BoundConstraint.
 
         # Parameters
@@ -511,19 +599,34 @@ class BoundConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
         self._bound = bound
         self._depends_on_next_state = depends_on_next_state
 
-        assert inequality in ['<', '<=', '>', '>=']
-        inequality_functions = {'<': (lambda val, bnd: val < bnd), '<=': (lambda val, bnd: val <= bnd),
-                                '>': (lambda val, bnd: val > bnd), '>=': (lambda val, bnd: val >= bnd)}
+        assert inequality in ["<", "<=", ">", ">="]
+        inequality_functions = {
+            "<": (lambda val, bnd: val < bnd),
+            "<=": (lambda val, bnd: val <= bnd),
+            ">": (lambda val, bnd: val > bnd),
+            ">=": (lambda val, bnd: val >= bnd),
+        }
         self._check_function = inequality_functions[inequality]
 
-    def check(self, memory: D.T_memory, action: D.T_event, next_state: Optional[D.T_state] = None) -> bool:
-        return self._check_function(self.evaluate(memory, action, next_state), self._bound)
+    def check(
+        self,
+        memory: D.T_memory,
+        action: D.T_event,
+        next_state: Optional[D.T_state] = None,
+    ) -> bool:
+        return self._check_function(
+            self.evaluate(memory, action, next_state), self._bound
+        )
 
     def _is_constraint_dependent_on_next_state_(self) -> bool:
         return self._depends_on_next_state
 
-    def evaluate(self, memory: D.T_memory, action: D.T_event,
-                 next_state: Optional[D.T_state] = None) -> float:
+    def evaluate(
+        self,
+        memory: D.T_memory,
+        action: D.T_event,
+        next_state: Optional[D.T_state] = None,
+    ) -> float:
         """Evaluate the left side of this BoundConstraint.
 
         !!! tip
@@ -564,17 +667,29 @@ class BoundConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
             cast_action = cast(action, dst_sub[1], src_sub[1])
             cast_next_state = cast(next_state, dst_sub[2], src_sub[2])
             return self._evaluate_function(cast_memory, cast_action, cast_next_state)
-        return BoundConstraint(cast_evaluate_function, self._inequality, self._bound, self._depends_on_next_state)
+
+        return BoundConstraint(
+            cast_evaluate_function,
+            self._inequality,
+            self._bound,
+            self._depends_on_next_state,
+        )
 
 
 # (auto)cast-related objects/functions
 cast_dict = {
     (Memory, Union): lambda obj, src, dst: cast(obj[0], src[0], dst[0]),
     (Union, Memory): lambda obj, src, dst: Memory([cast(obj, src[0], dst[0])]),
-    (Memory, Memory): lambda obj, src, dst: Memory([cast(x, src[0], dst[0]) for x in obj]),
-    (StrDict, Union): lambda obj, src, dst: cast(next(iter(obj.values())), src[0], dst[0]),
-    (Union, StrDict): lambda obj, src, dst: {'agent': cast(obj, src[0], dst[0])},
-    (StrDict, StrDict): lambda obj, src, dst: {k: cast(v, src[0], dst[0]) for k, v in obj.items()},
+    (Memory, Memory): lambda obj, src, dst: Memory(
+        [cast(x, src[0], dst[0]) for x in obj]
+    ),
+    (StrDict, Union): lambda obj, src, dst: cast(
+        next(iter(obj.values())), src[0], dst[0]
+    ),
+    (Union, StrDict): lambda obj, src, dst: {"agent": cast(obj, src[0], dst[0])},
+    (StrDict, StrDict): lambda obj, src, dst: {
+        k: cast(v, src[0], dst[0]) for k, v in obj.items()
+    },
     # (Set, Union): lambda obj, src, dst: cast(next(iter(obj)), src[0], dst[0]),
     # (Union, Set): lambda obj, src, dst: {cast(obj, src[0], dst[0])},
     # (Set, Set): lambda obj, src, dst: {cast(x, src[0], dst[0]) for x in obj},
@@ -582,32 +697,44 @@ cast_dict = {
     (Union, List): lambda obj, src, dst: [cast(obj, src[0], dst[0])],
     (List, List): lambda obj, src, dst: [cast(x, src[0], dst[0]) for x in obj],
     (Union, Union): lambda obj, src, dst: cast(obj, src[0], dst[0]),
-    (Optional, Optional): lambda obj, src, dst: cast(obj, src[0], dst[0]) if obj is not None else None
+    (Optional, Optional): lambda obj, src, dst: cast(obj, src[0], dst[0])
+    if obj is not None
+    else None,
 }  # (src_type, dst_type): (obj: src_type, src_sub_hintrees: List[Tree], dst_sub_hintrees: List[Tree]) -> dst_type
 
-default_cast = lambda obj, src, dst: obj._cast(src, dst) if isinstance(obj, Castable) else obj
+default_cast = (
+    lambda obj, src, dst: obj._cast(src, dst) if isinstance(obj, Castable) else obj
+)
 
 
 def parse_hint(obj: object, hint: str, hint_obj: str) -> Tree:
     # note: hint is assumed to contain no whitespace (which will be true by construction)
-    match = re.match(rf'^(?P<hint_obj>{hint_obj}\.)?(?P<type>\w+)(?:\[(?P<generics>.+)\])?$', hint)
+    match = re.match(
+        rf"^(?P<hint_obj>{hint_obj}\.)?(?P<type>\w+)(?:\[(?P<generics>.+)\])?$", hint
+    )
     groups = match.groupdict()
-    type_ = getattr(obj, groups['type']) if groups['hint_obj'] else eval(groups['type'])
-    if groups['generics']:
-        generics = groups['generics'].split(',')
-        if all(g.count('[') == g.count(']') for g in generics):  # check that the generics split is not at a sub-level
+    type_ = getattr(obj, groups["type"]) if groups["hint_obj"] else eval(groups["type"])
+    if groups["generics"]:
+        generics = groups["generics"].split(",")
+        if all(
+            g.count("[") == g.count("]") for g in generics
+        ):  # check that the generics split is not at a sub-level
             sub = [parse_hint(obj, h, hint_obj) for h in generics]
         else:
-            sub = [parse_hint(obj, groups['generics'], hint_obj)]
+            sub = [parse_hint(obj, groups["generics"], hint_obj)]
     else:
         sub = []
     return Tree(type_, sub)
 
 
 def get_args_dict(func: Callable, args: Tuple, kwargs: Dict) -> Dict:
-    while hasattr(func, '__wrapped__'):  # get to the core function even if it was decorated
+    while hasattr(
+        func, "__wrapped__"
+    ):  # get to the core function even if it was decorated
         func = func.__wrapped__
-    args_names = func.__code__.co_varnames[inspect.ismethod(func):func.__code__.co_argcount]
+    args_names = func.__code__.co_varnames[
+        inspect.ismethod(func) : func.__code__.co_argcount
+    ]
     return {**dict(zip(args_names, args)), **kwargs}
 
 
@@ -621,47 +748,62 @@ def cast_needed(src_hintree: Tree, dst_hintree: Tree) -> bool:
     else:
         src_sub_hintrees = src_hintree.sub
         dst_sub_hintrees = dst_hintree.sub
-        return any(cast_needed(src_sub_hintrees[i], dst_sub_hintrees[i]) for i in range(len(src_sub_hintrees)))
+        return any(
+            cast_needed(src_sub_hintrees[i], dst_sub_hintrees[i])
+            for i in range(len(src_sub_hintrees))
+        )
 
 
 def cast(obj: object, src_hintree: Tree, dst_hintree: Tree):
     # print('> Cast', obj, src_hintree.type, dst_hintree.type)
     if cast_needed(src_hintree, dst_hintree):
         cast_pair = (src_hintree.type, dst_hintree.type)
-        return cast_dict.get(cast_pair, default_cast)(obj, src_hintree.sub, dst_hintree.sub)
+        return cast_dict.get(cast_pair, default_cast)(
+            obj, src_hintree.sub, dst_hintree.sub
+        )
     else:
         return obj
 
 
-def autocast(func: Callable, src: object, dst: object, hint_obj: str = 'D') -> Callable:
+def autocast(func: Callable, src: object, dst: object, hint_obj: str = "D") -> Callable:
     hints = func.__annotations__
     cast_args = []
     src_hintrees = {}
     dst_hintrees = {}
     for arg, hint in hints.items():
         # if hint depends on a hint_obj attribute at least once (e.g. 'D.T_state')
-        if re.search(rf'(?<=\b{hint_obj}\.)\w+', hint):
-            formatted_hint = re.sub(r'\s+', '', hint)
+        if re.search(rf"(?<=\b{hint_obj}\.)\w+", hint):
+            formatted_hint = re.sub(r"\s+", "", hint)
             src_hintrees[arg] = parse_hint(src, formatted_hint, hint_obj)
             dst_hintrees[arg] = parse_hint(dst, formatted_hint, hint_obj)
             if cast_needed(src_hintrees[arg], dst_hintrees[arg]):
                 cast_args.append(arg)
 
     @functools.wraps(func)
-    def wrapper_autocast(*args, **kwargs):  # TODO: raise autocast exception when problem inside wrapper?
+    def wrapper_autocast(
+        *args, **kwargs
+    ):  # TODO: raise autocast exception when problem inside wrapper?
         # print('Wrapper used for:', func, src_hintrees, dst_hintrees)
         args_dict = get_args_dict(func, args, kwargs)
-        cast_args_dict = {k: (cast(v, dst_hintrees[k], src_hintrees[k]) if k in cast_args else v) for k, v in
-                          args_dict.items()}
+        cast_args_dict = {
+            k: (cast(v, dst_hintrees[k], src_hintrees[k]) if k in cast_args else v)
+            for k, v in args_dict.items()
+        }
         result = func(**cast_args_dict)
-        return cast(result, src_hintrees['return'], dst_hintrees['return']) if 'return' in cast_args else result
+        return (
+            cast(result, src_hintrees["return"], dst_hintrees["return"])
+            if "return" in cast_args
+            else result
+        )
 
     return wrapper_autocast if len(cast_args) > 0 else func
 
 
 def autocast_all(obj: object, src: object, dst: object):
-    for name, f in inspect.getmembers(obj, lambda x: inspect.isfunction(x) or inspect.ismethod(x)):
-        if getattr(f, '_autocastable', None):
+    for name, f in inspect.getmembers(
+        obj, lambda x: inspect.isfunction(x) or inspect.ismethod(x)
+    ):
+        if getattr(f, "_autocastable", None):
             setattr(obj, name, autocast(f, src, dst))
 
 

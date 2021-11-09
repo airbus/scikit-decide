@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from skdecide.core import D, Value, autocastable
 
-__all__ = ['Rewards', 'PositiveCosts']
+__all__ = ["Rewards", "PositiveCosts"]
 
 
 class Rewards:

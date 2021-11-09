@@ -4,29 +4,33 @@
 
 from __future__ import annotations
 
-from skdecide.discrete_optimization.generic_tools.do_problem import Problem, Solution, TupleFitness, \
-    ModeOptim
-from typing import List, Tuple, Dict, Union, Optional
-from heapq import heappushpop, heappush, heapify, \
-    nlargest, nsmallest
 import random
+from heapq import heapify, heappush, heappushpop, nlargest, nsmallest
+from typing import Dict, List, Optional, Tuple, Union
+
+from skdecide.discrete_optimization.generic_tools.do_problem import (
+    ModeOptim,
+    Problem,
+    Solution,
+    TupleFitness,
+)
 
 fitness_class = Union[float, TupleFitness]
 
 
 class ResultStorage:
-    list_solution_fits: List[Tuple[Solution,
-                                   fitness_class]]
+    list_solution_fits: List[Tuple[Solution, fitness_class]]
     best_solution: Tuple[Solution, fitness_class]
     map_solutions: Dict[Solution, fitness_class]
 
-    def __init__(self,
-                 list_solution_fits: List[Tuple[Solution,
-                                                fitness_class]],
-                 best_solution: Solution=None,
-                 mode_optim: ModeOptim=ModeOptim.MAXIMIZATION,
-                 limit_store: bool=True,
-                 nb_best_store: int=1000):
+    def __init__(
+        self,
+        list_solution_fits: List[Tuple[Solution, fitness_class]],
+        best_solution: Solution = None,
+        mode_optim: ModeOptim = ModeOptim.MAXIMIZATION,
+        limit_store: bool = True,
+        nb_best_store: int = 1000,
+    ):
         self.list_solution_fits = list_solution_fits
         self.best_solution = best_solution
         self.mode_optim = mode_optim
@@ -38,12 +42,17 @@ class ResultStorage:
         self.map_solutions = {}
         for i in range(len(self.list_solution_fits)):
             if self.list_solution_fits[i][0] not in self.map_solutions:
-                self.map_solutions[self.list_solution_fits[i][0]] = self.list_solution_fits[i][1]
+                self.map_solutions[
+                    self.list_solution_fits[i][0]
+                ] = self.list_solution_fits[i][1]
                 heappush(self.heap, self.list_solution_fits[i][1])
                 self.size_heap += 1
         if self.size_heap >= self.nb_best_score and self.limit_store:
-            self.heap = nsmallest(self.nb_best_score, self.heap) if not self.maximize else \
-                nlargest(self.nb_best_score, self.heap)
+            self.heap = (
+                nsmallest(self.nb_best_score, self.heap)
+                if not self.maximize
+                else nlargest(self.nb_best_score, self.heap)
+            )
             heapify(self.heap)
             self.size_heap = self.nb_best_score
         if len(self.heap) > 0:
@@ -53,16 +62,21 @@ class ResultStorage:
                 f = min if not self.maximize else max
                 self.best_solution = f(self.list_solution_fits, key=lambda x: x[1])[0]
 
-    def add_solution(self, solution: Solution,
-                     fitness: fitness_class):
+    def add_solution(self, solution: Solution, fitness: fitness_class):
         if solution not in self.map_solutions:
             self.map_solutions[solution] = fitness
             self.list_solution_fits += [(solution, fitness)]
-        if self.maximize and fitness > self.max \
-                or (not self.maximize and fitness < self.min):
+        if (
+            self.maximize
+            and fitness > self.max
+            or (not self.maximize and fitness < self.min)
+        ):
             self.best_solution = solution
-        if self.maximize and fitness >= self.min or \
-                (not self.maximize and fitness <= self.max):
+        if (
+            self.maximize
+            and fitness >= self.min
+            or (not self.maximize and fitness <= self.max)
+        ):
             if self.size_heap >= self.nb_best_score and self.limit_store:
                 heappushpop(self.heap, fitness)
                 self.min = min(fitness, self.min)
@@ -83,22 +97,33 @@ class ResultStorage:
     def get_last_best_solution(self):
         f = max if self.maximize else min
         best = f(self.list_solution_fits, key=lambda x: x[1])[1]
-        sol = max([i
-                   for i in range(len(self.list_solution_fits))
-                   if self.list_solution_fits[i][1] == best])
+        sol = max(
+            [
+                i
+                for i in range(len(self.list_solution_fits))
+                if self.list_solution_fits[i][1] == best
+            ]
+        )
         return self.list_solution_fits[sol]
 
     def get_random_best_solution(self):
         f = max if self.maximize else min
         best = f(self.list_solution_fits, key=lambda x: x[1])[1]
-        sol = random.choice([i
-                            for i in range(len(self.list_solution_fits))
-                            if self.list_solution_fits[i][1] == best])
+        sol = random.choice(
+            [
+                i
+                for i in range(len(self.list_solution_fits))
+                if self.list_solution_fits[i][1] == best
+            ]
+        )
         return self.list_solution_fits[sol]
 
     def get_random_solution(self):
-        s = [l for l in self.list_solution_fits
-             if l[1] != self.get_best_solution_fit()[1]]
+        s = [
+            l
+            for l in self.list_solution_fits
+            if l[1] != self.get_best_solution_fit()[1]
+        ]
         if len(s) > 0:
             return random.choice(s)
         else:
@@ -112,13 +137,15 @@ class ResultStorage:
 
     def get_n_best_solution(self, n_solutions: int):
         n = min(n_solutions, len(self.list_solution_fits))
-        return sorted(self.list_solution_fits, key=lambda x: -x[1] if self.maximize else x[1])[:n]
+        return sorted(
+            self.list_solution_fits, key=lambda x: -x[1] if self.maximize else x[1]
+        )[:n]
 
     def remove_duplicate_solutions(self, var_name):
         index_to_remove = []
-        for i in range(len(self.list_solution_fits)-1):
+        for i in range(len(self.list_solution_fits) - 1):
             sol1 = getattr(self.list_solution_fits[i][0], var_name)
-            for j in range(i+1, len(self.list_solution_fits)):
+            for j in range(i + 1, len(self.list_solution_fits)):
                 sol2 = getattr(self.list_solution_fits[j][0], var_name)
                 all_similar = True
                 for k in range(len(sol1)):
@@ -128,50 +155,58 @@ class ResultStorage:
                 if all_similar:
                     if j not in index_to_remove:
                         index_to_remove.append(j)
-        print('number of duplicate solutions in result storage: ', len(index_to_remove))
-        self.list_solution_fits = [self.list_solution_fits[i] for i in range(len(self.list_solution_fits)) if i not in index_to_remove]
+        print("number of duplicate solutions in result storage: ", len(index_to_remove))
+        self.list_solution_fits = [
+            self.list_solution_fits[i]
+            for i in range(len(self.list_solution_fits))
+            if i not in index_to_remove
+        ]
 
 
-def result_storage_to_pareto_front(result_storage: ResultStorage, problem: Problem=None):
+def result_storage_to_pareto_front(
+    result_storage: ResultStorage, problem: Problem = None
+):
     list_solution_fitness = result_storage.list_solution_fits
     if problem is None:
         l = result_storage.list_solution_fits
     else:
         l = [(li[0], problem.evaluate_mobj(li[0])) for li in list_solution_fitness]
-    pf = ParetoFront(list_solution_fits=l,
-                     best_solution=None,
-                     mode_optim=result_storage.mode_optim,
-                     limit_store=result_storage.limit_store,
-                     nb_best_store=result_storage.nb_best_score)
+    pf = ParetoFront(
+        list_solution_fits=l,
+        best_solution=None,
+        mode_optim=result_storage.mode_optim,
+        limit_store=result_storage.limit_store,
+        nb_best_store=result_storage.nb_best_score,
+    )
     pf.finalize()
     return pf
 
 
 class ParetoFront(ResultStorage):
-    def __init__(self,
-                 list_solution_fits: List[Tuple[Solution,
-                                                fitness_class]],
-                 best_solution: Optional[Solution],
-                 mode_optim: ModeOptim = ModeOptim.MAXIMIZATION,
-                 limit_store: bool = True,
-                 nb_best_store: int = 1000):
-        super().__init__(list_solution_fits=list_solution_fits,
-                         best_solution=best_solution,
-                         mode_optim=mode_optim,
-                         limit_store=limit_store,
-                         nb_best_store=nb_best_store)
+    def __init__(
+        self,
+        list_solution_fits: List[Tuple[Solution, fitness_class]],
+        best_solution: Optional[Solution],
+        mode_optim: ModeOptim = ModeOptim.MAXIMIZATION,
+        limit_store: bool = True,
+        nb_best_store: int = 1000,
+    ):
+        super().__init__(
+            list_solution_fits=list_solution_fits,
+            best_solution=best_solution,
+            mode_optim=mode_optim,
+            limit_store=limit_store,
+            nb_best_store=nb_best_store,
+        )
         self.paretos: List[Tuple[Solution, TupleFitness]] = []
         for s, t in list_solution_fits:
             self.add_solution(solution=s, fitness=t)
 
-    def add_solution(self, solution: Solution,
-                     fitness: fitness_class):
+    def add_solution(self, solution: Solution, fitness: fitness_class):
         super().add_solution(solution=solution, fitness=fitness)
         # self.add_point(solution, fitness)
 
-    def add_point(self,
-                  solution,
-                  tuple_fitness: TupleFitness):
+    def add_point(self, solution, tuple_fitness: TupleFitness):
         # self.list_solution_fits += [(solution, tuple_fitness)]
         if self.maximize:
             if all(tuple_fitness >= t[1] for t in self.paretos):
@@ -204,8 +239,7 @@ class ParetoFront(ResultStorage):
         self.paretos = []
         # print("Number : ", len(self.list_solution_fits))
         for s, t in self.list_solution_fits:
-            self.add_point(solution=s,
-                           tuple_fitness=t)
+            self.add_point(solution=s, tuple_fitness=t)
 
     def compute_extreme_points(self):
         function_used = max if self.maximize else min
@@ -215,8 +249,3 @@ class ParetoFront(ResultStorage):
             extr = function_used(self.paretos, key=lambda x: x[1].vector_fitness[i])
             extreme_points += [extr]
         return extreme_points
-
-
-
-
-

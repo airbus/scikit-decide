@@ -4,9 +4,13 @@
 
 from __future__ import annotations
 
-from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage, result_storage_to_pareto_front
 from typing import List
+
 from skdecide.discrete_optimization.generic_tools.do_problem import Problem
+from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import (
+    ResultStorage,
+    result_storage_to_pareto_front,
+)
 
 
 class ResultComparator:
@@ -18,11 +22,14 @@ class ResultComparator:
     super_pareto: ResultStorage
 
     # If test problem is None, then we use the fitnesses from the ResultStorage
-    def __init__(self, list_result_storage: List[ResultStorage],
-                 result_storage_names: List[str],
-                 objectives_str: List[str],
-                 objective_weights: List[int],
-                 test_problems=None):
+    def __init__(
+        self,
+        list_result_storage: List[ResultStorage],
+        result_storage_names: List[str],
+        objectives_str: List[str],
+        objective_weights: List[int],
+        test_problems=None,
+    ):
         self.list_result_storage = list_result_storage
         self.result_storage_names = result_storage_names
         self.objectives_str = objectives_str
@@ -43,8 +50,10 @@ class ResultComparator:
                     # val = scenario.evaluate(res.list_solution_fits[0][0])[obj]
                     res.get_best_solution().change_problem(scenario)
                     val = scenario.evaluate(res.get_best_solution())[obj]
-                    self.reevaluated_results[self.list_result_storage.index(res)][obj].append(val)
-        print('reevaluated_results: ', self.reevaluated_results)
+                    self.reevaluated_results[self.list_result_storage.index(res)][
+                        obj
+                    ].append(val)
+        print("reevaluated_results: ", self.reevaluated_results)
 
     def print_test_distribution(self):
         ...
@@ -54,8 +63,12 @@ class ResultComparator:
         # print('obj_index: ', obj_index)
         val = {}
         for i in range(len(self.list_result_storage)):
-            fit_array = [self.list_result_storage[i].list_solution_fits[j][1].vector_fitness[obj_index]
-                         for j in range(len(self.list_result_storage[i].list_solution_fits))] # create fit array
+            fit_array = [
+                self.list_result_storage[i]
+                .list_solution_fits[j][1]
+                .vector_fitness[obj_index]
+                for j in range(len(self.list_result_storage[i].list_solution_fits))
+            ]  # create fit array
             # self.objective_weights[obj_index] > 0:
             if self.list_result_storage[i].maximize:
                 best_fit = max(fit_array)
@@ -78,6 +91,3 @@ class ResultComparator:
         rs = ResultStorage(list_solution_fits=sols, best_solution=None)
         pareto_store = result_storage_to_pareto_front(result_storage=rs, problem=None)
         return pareto_store
-
-
-

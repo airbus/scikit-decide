@@ -4,12 +4,17 @@
 
 from __future__ import annotations
 
-from typing import Callable, Any, Dict
+from typing import Any, Callable, Dict
 
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from skdecide import Domain, Solver
-from skdecide.builders.domain import SingleAgent, Sequential, UnrestrictedActions, Initializable
+from skdecide.builders.domain import (
+    Initializable,
+    Sequential,
+    SingleAgent,
+    UnrestrictedActions,
+)
 from skdecide.builders.solver import Policies, Restorable
 from skdecide.hub.domain.gym import AsGymEnv
 from skdecide.hub.space.gym import GymSpace
@@ -25,9 +30,16 @@ class StableBaseline(Solver, Policies, Restorable):
     !!! warning
         Using this class requires Stable Baselines 3 to be installed.
     """
+
     T_domain = D
 
-    def __init__(self, algo_class: type, baselines_policy: Any, learn_config: Dict = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        algo_class: type,
+        baselines_policy: Any,
+        learn_config: Dict = None,
+        **kwargs: Any
+    ) -> None:
         """Initialize StableBaselines.
 
         # Parameters
@@ -41,20 +53,30 @@ class StableBaseline(Solver, Policies, Restorable):
 
     @classmethod
     def _check_domain_additional(cls, domain: Domain) -> bool:
-        return isinstance(domain.get_action_space(), GymSpace) and isinstance(domain.get_observation_space(), GymSpace)
+        return isinstance(domain.get_action_space(), GymSpace) and isinstance(
+            domain.get_observation_space(), GymSpace
+        )
 
     def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
         # TODO: improve code for parallelism
         #  (https://stable-baselines3.readthedocs.io/en/master/guide/examples.html
         #  #multiprocessing-unleashing-the-power-of-vectorized-environments)?
-        if not hasattr(self, '_algo'):  # reuse algo if possible (enables further learning)
+        if not hasattr(
+            self, "_algo"
+        ):  # reuse algo if possible (enables further learning)
             domain = domain_factory()
-            env = DummyVecEnv([lambda: AsGymEnv(domain)])  # the algorithms require a vectorized environment to run
-            self._algo = self._algo_class(self._baselines_policy, env, **self._algo_kwargs)
+            env = DummyVecEnv(
+                [lambda: AsGymEnv(domain)]
+            )  # the algorithms require a vectorized environment to run
+            self._algo = self._algo_class(
+                self._baselines_policy, env, **self._algo_kwargs
+            )
             self._init_algo(domain)
         self._algo.learn(**self._learn_config)
 
-    def _sample_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+    def _sample_action(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         action, _ = self._algo.predict(observation)
         return self._wrap_action(action)
 
@@ -69,4 +91,6 @@ class StableBaseline(Solver, Policies, Restorable):
         self._init_algo(domain_factory())
 
     def _init_algo(self, domain: D):
-        self._wrap_action = lambda a: next(iter(domain.get_action_space().from_unwrapped([a])))
+        self._wrap_action = lambda a: next(
+            iter(domain.get_action_space().from_unwrapped([a]))
+        )
