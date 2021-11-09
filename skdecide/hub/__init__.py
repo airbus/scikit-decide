@@ -4,12 +4,11 @@
 
 import fnmatch
 import os
-import sys
-
 import platform
-from pathlib import Path
-from ctypes.util import find_library
 import shutil
+import sys
+from ctypes.util import find_library
+from pathlib import Path
 
 pl = []
 
@@ -17,7 +16,7 @@ for p in sys.path:
     for dirpath, dirs, files in os.walk(p):
         for filename in fnmatch.filter(files, "__skdecide_hub_cpp*"):
             pl.append(dirpath)
-            pl.append(os.path.join(dirpath, 'bin'))
+            pl.append(os.path.join(dirpath, "bin"))
             os.environ["MZN_SOLVER_PATH"] = dirpath
 
 

@@ -9,27 +9,31 @@ Constraint programming common utilities and class that should be used by any sol
 from __future__ import annotations
 
 from abc import abstractmethod
-from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage
-from skdecide.discrete_optimization.generic_tools.do_solver import SolverDO
 from enum import Enum
+
+from skdecide.discrete_optimization.generic_tools.do_solver import SolverDO
+from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import (
+    ResultStorage,
+)
 
 
 class CPSolverName(Enum):
     """
     Enum choice of underlying CP solver used by Minizinc typically
     """
+
     CHUFFED = 0
     GECODE = 1
 
 
-map_cp_solver_name = {CPSolverName.CHUFFED: "chuffed",
-                      CPSolverName.GECODE: "gecode"}
+map_cp_solver_name = {CPSolverName.CHUFFED: "chuffed", CPSolverName.GECODE: "gecode"}
 
 
 class ParametersCP:
     """
     Parameters that can be used by any cp - solver
     """
+
     TimeLimit: int
     TimeLimit_iter0: int
     PoolSolutions: int
@@ -37,12 +41,14 @@ class ParametersCP:
     all_solutions: bool
     nr_solutions: int
 
-    def __init__(self,
-                 time_limit,
-                 pool_solutions,
-                 intermediate_solution: bool,
-                 all_solutions: bool,
-                 nr_solutions: int):
+    def __init__(
+        self,
+        time_limit,
+        pool_solutions,
+        intermediate_solution: bool,
+        all_solutions: bool,
+        nr_solutions: int,
+    ):
         """
 
         :param time_limit: in seconds, the time limit of solving the cp model
@@ -60,17 +66,20 @@ class ParametersCP:
 
     @staticmethod
     def default():
-        return ParametersCP(time_limit=30,
-                            pool_solutions=10000,
-                            intermediate_solution=True,
-                            all_solutions=False,
-                            nr_solutions=1000)
+        return ParametersCP(
+            time_limit=30,
+            pool_solutions=10000,
+            intermediate_solution=True,
+            all_solutions=False,
+            nr_solutions=1000,
+        )
 
 
 class CPSolver(SolverDO):
     """
     Additional function to be implemented by a CP Solver.
     """
+
     @abstractmethod
     def init_model(self, **args):
         """

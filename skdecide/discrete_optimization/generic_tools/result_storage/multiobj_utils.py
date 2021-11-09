@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import Tuple, List, Any
+from typing import Any, List, Tuple
+
 import numpy as np
 
 
@@ -17,11 +18,11 @@ class TupleFitness:
         self.size = size
 
     def distance(self, other):
-        return np.linalg.norm(self.vector_fitness-other.vector_fitness, ord=2)
+        return np.linalg.norm(self.vector_fitness - other.vector_fitness, ord=2)
 
     # if none of the two solution dominates the other one.
     def __eq__(self, other):
-        return not(self < other) and not(self > other)
+        return not (self < other) and not (self > other)
 
     def __le__(self, other):
         return self < other or self == other
@@ -30,20 +31,17 @@ class TupleFitness:
         return self > other or self == other
 
     def __lt__(self, other):
-        return (self.vector_fitness <= other.vector_fitness).all() \
-               and (self.vector_fitness < other.vector_fitness).any()
+        return (self.vector_fitness <= other.vector_fitness).all() and (
+            self.vector_fitness < other.vector_fitness
+        ).any()
 
     def __gt__(self, other):
-        return (self.vector_fitness >= other.vector_fitness).all() \
-               and (self.vector_fitness > other.vector_fitness).any()
+        return (self.vector_fitness >= other.vector_fitness).all() and (
+            self.vector_fitness > other.vector_fitness
+        ).any()
 
     def __str__(self):
         return str(self.vector_fitness)
 
     def __mul__(self, other):
-        return TupleFitness(other*self.vector_fitness, self.size)
-
-
-
-
-
+        return TupleFitness(other * self.vector_fitness, self.size)

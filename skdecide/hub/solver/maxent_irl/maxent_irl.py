@@ -12,7 +12,7 @@ import gym
 import numpy as np
 import pylab
 
-from skdecide import RLDomain, Solver, D
+from skdecide import D, RLDomain, Solver
 from skdecide.builders.solver import Policies, Restorable
 from skdecide.hub.solver.cgp import cgp
 
@@ -24,16 +24,17 @@ class D(RLDomain):
 class MaxentIRL(Solver, Policies, Restorable):
     T_domain = D
 
-    def __init__(self,
-                 n_states = 400,
-                 n_actions = 3,
-                 one_feature = 20,
-                 gamma = 0.99,
-                 q_learning_rate = 0.03,
-                 theta_learning_rate = 0.05,
-                 n_epochs=20000,
-                 expert_trajectories = "maxent_expert_demo.npy"
-                 ) -> None:
+    def __init__(
+        self,
+        n_states=400,
+        n_actions=3,
+        one_feature=20,
+        gamma=0.99,
+        q_learning_rate=0.03,
+        theta_learning_rate=0.05,
+        n_epochs=20000,
+        expert_trajectories="maxent_expert_demo.npy",
+    ) -> None:
         self.n_states = n_states
         self.feature_matrix = np.eye(self.n_states)
         self.n_actions = n_actions
@@ -50,7 +51,9 @@ class MaxentIRL(Solver, Policies, Restorable):
 
         self.score = 0
         if os.path.isfile(expert_trajectories[:-4] + "_maxent_q_table.npy"):
-            self.q_table = np.load(file=expert_trajectories[:-4] + "_maxent_q_table.npy")
+            self.q_table = np.load(
+                file=expert_trajectories[:-4] + "_maxent_q_table.npy"
+            )
         else:
             self.q_table = None
 
@@ -74,7 +77,7 @@ class MaxentIRL(Solver, Policies, Restorable):
         return state_index
 
     def index_to_state(self, observation_space, state):
-        """ Convert pos and vel about mounting car environment to the integer value"""
+        """Convert pos and vel about mounting car environment to the integer value"""
         env_low = observation_space.low
         env_high = observation_space.high
         env_distance = (env_high - env_low) / self.one_feature
@@ -93,11 +96,9 @@ class MaxentIRL(Solver, Policies, Restorable):
 
     def adapt_action_to_environment(self, vals, types):
 
-        if not isinstance(types, Iterable) and \
-                not isinstance(types, gym.spaces.Tuple):
+        if not isinstance(types, Iterable) and not isinstance(types, gym.spaces.Tuple):
             types = [types]
-        if not isinstance(vals, Iterable) and \
-                not isinstance(vals, gym.spaces.Tuple):
+        if not isinstance(vals, Iterable) and not isinstance(vals, gym.spaces.Tuple):
             vals = [vals]
         out = []
         index = 0
@@ -106,7 +107,9 @@ class MaxentIRL(Solver, Policies, Restorable):
             if isinstance(t, gym.spaces.Box):
                 out_temp = []
                 for j in range(len(t.low)):
-                    out_temp += [cgp.change_interval(vals[index], -1, 1, t.low[j], t.high[j])]
+                    out_temp += [
+                        cgp.change_interval(vals[index], -1, 1, t.low[j], t.high[j])
+                    ]
                     index += 1
                 out += [out_temp]
             elif isinstance(t, gym.spaces.Discrete):
@@ -134,23 +137,27 @@ class MaxentIRL(Solver, Policies, Restorable):
             for y in range(traj_length):
                 demonstrations[x][y][0] = index
                 demonstrations[x][y][1] = rawFile["actions"][index]
-                index+=1
+                index += 1
 
     def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
         self.env = domain_factory()
-        if self.q_table is not None:            
+        if self.q_table is not None:
             return
         self.q_table = np.zeros((self.n_states, self.n_actions))
-        #raw_demo2 = np.load(file=self.expert_trajectories)
-        #if isinstance(raw_demo, np.lib.npyio.NpzFile):
+        # raw_demo2 = np.load(file=self.expert_trajectories)
+        # if isinstance(raw_demo, np.lib.npyio.NpzFile):
 
         if not os.path.isfile(self.expert_trajectories):
             print("file with expert trajectories not found")
             return
         if not isinstance(self.env.get_action_space().unwrapped(), gym.spaces.Discrete):
-            print("Warning! This IRL method relies on Q-tables so the action space is treated as discrete")
+            print(
+                "Warning! This IRL method relies on Q-tables so the action space is treated as discrete"
+            )
         raw_demo = np.load(file=self.expert_trajectories)
-        demonstrations = np.zeros((raw_demo.shape[0], raw_demo.shape[1], raw_demo.shape[2]))
+        demonstrations = np.zeros(
+            (raw_demo.shape[0], raw_demo.shape[1], raw_demo.shape[2])
+        )
         env_low = self.env.get_observation_space().unwrapped().low
         env_high = self.env.get_observation_space().unwrapped().high
         env_distance = (env_high - env_low) / self.one_feature
@@ -175,20 +182,26 @@ class MaxentIRL(Solver, Policies, Restorable):
             state = self.env.reset()
             score = 0
 
-            if (episode != 0 and episode == 10000) or (episode > 10000 and episode % 5000 == 0):
+            if (episode != 0 and episode == 10000) or (
+                episode > 10000 and episode % 5000 == 0
+            ):
                 learner = learner_feature_expectations / episode
                 self.gradient_vector(expert, learner, theta)
 
             while True:
-                state_index = self.state_to_index(self.env.get_observation_space().unwrapped(), state)
+                state_index = self.state_to_index(
+                    self.env.get_observation_space().unwrapped(), state
+                )
                 action = np.argmax(self.q_table[state_index])
                 next_state, transition_value, done, _ = self.env.step(action).astuple()
                 reward = transition_value[0]  # TODO: correct Gym wrapper
 
                 irl_rewards = self.feature_matrix.dot(theta).reshape((self.n_states,))
                 irl_reward = irl_rewards[state_index]
-                
-                next_state_index = self.state_to_index(self.env.get_observation_space().unwrapped(), next_state)
+
+                next_state_index = self.state_to_index(
+                    self.env.get_observation_space().unwrapped(), next_state
+                )
 
                 q_1 = self.q_table[state_index][action]
                 q_2 = irl_reward + self.gamma * max(self.q_table[next_state_index])
@@ -206,18 +219,29 @@ class MaxentIRL(Solver, Policies, Restorable):
 
             if episode % 1000 == 0:
                 score_avg = np.mean(scores)
-                print('{} episode score is {:.2f}'.format(episode, score_avg))
-                pylab.plot(episodes, scores, 'b')
+                print("{} episode score is {:.2f}".format(episode, score_avg))
+                pylab.plot(episodes, scores, "b")
                 pylab.savefig("./maxent.png")
-                np.save("./" + self.expert_trajectories[:-4] + "_maxent_q_table", arr=self.q_table)
+                np.save(
+                    "./" + self.expert_trajectories[:-4] + "_maxent_q_table",
+                    arr=self.q_table,
+                )
 
-        self.q_table = np.load(file= self.expert_trajectories[:-4] + "_maxent_q_table.npy")
+        self.q_table = np.load(
+            file=self.expert_trajectories[:-4] + "_maxent_q_table.npy"
+        )
 
-    def _sample_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+    def _sample_action(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_concurrency[D.T_event]]:
 
-        state_idx = self.index_to_state(self.env.get_observation_space().unwrapped(), observation)
+        state_idx = self.index_to_state(
+            self.env.get_observation_space().unwrapped(), observation
+        )
         action = np.argmax(self.q_table[state_idx])
-        return self.adapt_action_to_environment(action, self.env.get_action_space().unwrapped())
+        return self.adapt_action_to_environment(
+            action, self.env.get_action_space().unwrapped()
+        )
 
     def _reset(self) -> None:
         self.state = self.env.reset()

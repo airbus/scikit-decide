@@ -4,16 +4,18 @@
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import List, Dict, Tuple, Set
 import random
+from enum import Enum
+from typing import Dict, List, Set, Tuple
+
 from skdecide.core import Distribution
-#from skdecide.builders.scheduling.scheduling_domains import State
 
-__all__ = ['WithConditionalTasks', 'WithoutConditionalTasks']
+# from skdecide.builders.scheduling.scheduling_domains import State
+
+__all__ = ["WithConditionalTasks", "WithoutConditionalTasks"]
 
 
-class WithConditionalTasks():
+class WithConditionalTasks:
     """A domain must inherit this class if some tasks only need be executed under some conditions
     and that the condition model can be expressed with Distribution objects."""
 
@@ -39,7 +41,7 @@ class WithConditionalTasks():
                     NC_PART_2_OPERATION_2 = 4
                     HARDWARE_ISSUE_MACHINE_A = 5
                     HARDWARE_ISSUE_MACHINE_B = 6
-            """
+        """
         return self._get_all_condition_items()
 
     def _get_all_condition_items(self) -> Enum:
@@ -60,7 +62,7 @@ class WithConditionalTasks():
                         DiscreteDistribution([(ConditionElementsExample.HARDWARE_ISSUE_MACHINE_A, 0.05), ('paper', 0.1), (ConditionElementsExample.OK, 0.95)])
                         ]
                 }
-            """
+        """
         return self._get_task_on_completion_added_conditions()
 
     def _get_task_on_completion_added_conditions(self) -> Dict[int, List[Distribution]]:
@@ -82,16 +84,16 @@ class WithConditionalTasks():
 
     def _get_task_existence_conditions(self) -> Dict[int, List[int]]:
         """Return a dictionary where the key is a task id and the value a list of conditions to be respected (True)
-                for the task to be part of the schedule. If a task has no entry in the dictionary,
-                there is no conditions for that task.
+        for the task to be part of the schedule. If a task has no entry in the dictionary,
+        there is no conditions for that task.
 
-                Example:
-                    return
-                         {
-                            20: [get_all_condition_items().NC_PART_1_OPERATION_1],
-                            21: [get_all_condition_items().HARDWARE_ISSUE_MACHINE_A]
-                            22: [get_all_condition_items().NC_PART_1_OPERATION_1, get_all_condition_items().NC_PART_1_OPERATION_2]
-                         }e
+        Example:
+            return
+                 {
+                    20: [get_all_condition_items().NC_PART_1_OPERATION_1],
+                    21: [get_all_condition_items().HARDWARE_ISSUE_MACHINE_A]
+                    22: [get_all_condition_items().NC_PART_1_OPERATION_1, get_all_condition_items().NC_PART_1_OPERATION_2]
+                 }e
 
         """
         raise NotImplementedError
@@ -109,19 +111,19 @@ class WithConditionalTasks():
                     22: [get_all_condition_items().NC_PART_1_OPERATION_1, get_all_condition_items().NC_PART_1_OPERATION_2]
                  }e
 
-         """
+        """
         return self._get_task_existence_conditions()
 
     def _add_to_current_conditions(self, task: int, state):
         """Samples completion conditions for a given task and add these conditions to the list of conditions in the
-         given state. This function should be called when a task complete."""
+        given state. This function should be called when a task complete."""
         conditions_to_add = self.sample_completion_conditions(task)
         for x in conditions_to_add:
             state._current_conditions.add(x)
 
     def add_to_current_conditions(self, task: int, state):
         """Samples completion conditions for a given task and add these conditions to the list of conditions in the
-         given state. This function should be called when a task complete."""
+        given state. This function should be called when a task complete."""
         return self._add_to_current_conditions(task=task, state=state)
 
     def _get_available_tasks(self, state) -> Set[int]:
@@ -151,17 +153,19 @@ class WithConditionalTasks():
 
     def _get_all_unconditional_tasks(self) -> Set[int]:
         """Returns the set of all task ids for which there are no conditions. These tasks are to be considered at
-         the start of a project (i.e. in the initial state). """
+        the start of a project (i.e. in the initial state)."""
         all_ids = self.get_tasks_ids()
         available_ids = set()
         for id in all_ids:
-            if (id not in self.get_task_existence_conditions().keys()) or (len(self.get_task_existence_conditions()[id]) == 0):
+            if (id not in self.get_task_existence_conditions().keys()) or (
+                len(self.get_task_existence_conditions()[id]) == 0
+            ):
                 available_ids.add(id)
         return available_ids
 
     def get_all_unconditional_tasks(self) -> Set[int]:
         """Returns the set of all task ids for which there are no conditions. These tasks are to be considered at
-         the start of a project (i.e. in the initial state). """
+        the start of a project (i.e. in the initial state)."""
         return self._get_all_unconditional_tasks()
 
 
@@ -171,9 +175,10 @@ class WithoutConditionalTasks(WithConditionalTasks):
     def _get_all_condition_items(self) -> Enum:
         return None
 
-    def _get_task_on_completion_added_conditions(self) -> Dict[int, List[List[Tuple[float, int]]]]:
+    def _get_task_on_completion_added_conditions(
+        self,
+    ) -> Dict[int, List[List[Tuple[float, int]]]]:
         return {}
 
     def _get_task_existence_conditions(self) -> Dict[int, List[int]]:
         return {}
-

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 # __all__ = ['Task', 'Status']
 #
@@ -26,7 +26,7 @@ class Task:
     mode: int
     paused: List[int]
     resumed: List[int]
-    resources: Dict[int, List['str']]
+    resources: Dict[int, List["str"]]
 
     def __init__(self, id: int):
         self.id = id

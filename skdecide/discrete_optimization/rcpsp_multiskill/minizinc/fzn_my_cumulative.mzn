@@ -43,7 +43,7 @@ predicate cumulative_time_calendar(array[int] of var int: s,
 
 % predicate fzn_cumulative_task(array[int] of var int: s,
 %                               array[int] of var int: d,
-%                               array[int] of var int: r, 
+%                               array[int] of var int: r,
 %                               array[int] of var int: b) =
 %     let {
 %         set of int: Tasks =

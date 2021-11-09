@@ -8,7 +8,7 @@ from typing import Callable
 
 from skdecide.core import D, autocastable
 
-__all__ = ['Restorable']
+__all__ = ["Restorable"]
 
 
 class Restorable:

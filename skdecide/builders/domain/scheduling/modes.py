@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
-from typing import List, Dict, Union, Set, Any
+from typing import Any, Dict, List, Set, Union
 
-__all__ = ['MultiMode', 'SingleMode']
+__all__ = ["MultiMode", "SingleMode"]
 
 
 class ModeConsumption:
@@ -35,6 +35,7 @@ class ModeConsumption:
 
 class VaryingModeConsumption(ModeConsumption):
     """Defines the most generic type of mode."""
+
     def __init__(self, mode_dict: Dict[str, List[int]]):
         self.mode_details = mode_dict
 
@@ -46,8 +47,10 @@ class VaryingModeConsumption(ModeConsumption):
         else:
             return 0
 
-    def _get_non_zero_ressource_need_names(self, time: int=0):
-        return [r for r in self.mode_details if self.get_resource_need_at_time(r, time) > 0]
+    def _get_non_zero_ressource_need_names(self, time: int = 0):
+        return [
+            r for r in self.mode_details if self.get_resource_need_at_time(r, time) > 0
+        ]
 
     def _get_ressource_names(self):
         return self.mode_details.keys()
@@ -55,7 +58,7 @@ class VaryingModeConsumption(ModeConsumption):
 
 class ConstantModeConsumption(VaryingModeConsumption):
     """Defines a mode where the resource consumption is constant throughout
-     the duration of the task."""
+    the duration of the task."""
 
     def __init__(self, mode_dict: Dict[str, int]):
         self.mode_details = {}
@@ -79,11 +82,12 @@ class ConstantModeConsumption(VaryingModeConsumption):
 
 class MultiMode:
     """A domain must inherit this class if tasks can be done in 1 or more modes."""
+
     def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
         """Return a set or dict of int = id of tasks"""
         raise NotImplementedError
 
-    def get_tasks_ids(self)-> Union[Set[int], Dict[int, Any], List[int]]:
+    def get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
         return self._get_tasks_ids()
 
     def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
@@ -126,11 +130,17 @@ class MultiMode:
     def get_task_modes(self, task_id: int):
         return self._get_task_modes(task_id=task_id)
 
-    def _get_task_consumption(self, task: int, mode: int, resource_name: str, time: int):
-        return self.get_task_modes(task)[mode].get_resource_need_at_time(resource_name=resource_name, time=time)
+    def _get_task_consumption(
+        self, task: int, mode: int, resource_name: str, time: int
+    ):
+        return self.get_task_modes(task)[mode].get_resource_need_at_time(
+            resource_name=resource_name, time=time
+        )
 
     def get_task_consumption(self, task: int, mode: int, resource_name: str, time: int):
-        return self._get_task_consumption(task=task, mode=mode, resource_name=resource_name, time=time)
+        return self._get_task_consumption(
+            task=task, mode=mode, resource_name=resource_name, time=time
+        )
 
 
 class SingleMode(MultiMode):
@@ -138,7 +148,7 @@ class SingleMode(MultiMode):
 
     def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
         """Return a nested dictionary where the first key is a task id and the second key is a mode id.
-         The value is a Mode object defining the resource consumption."""
+        The value is a Mode object defining the resource consumption."""
         modes = {}
         tmp_dict = self.get_tasks_mode()
         for key in tmp_dict:
@@ -174,4 +184,3 @@ class SingleMode(MultiMode):
 
     def get_tasks_mode(self) -> Dict[int, ModeConsumption]:
         return self._get_tasks_mode()
-

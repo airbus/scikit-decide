@@ -5,16 +5,17 @@
 """This module contains base classes for quickly building solvers."""
 from __future__ import annotations
 
-from typing import List, Callable
+from typing import Callable, List
 
+from skdecide.builders.solver.policy import DeterministicPolicies
 from skdecide.core import D, autocast_all, autocastable
 from skdecide.domains import Domain
-from skdecide.builders.solver.policy import DeterministicPolicies
 
-__all__ = ['Solver', 'DeterministicPolicySolver']
+__all__ = ["Solver", "DeterministicPolicySolver"]
 
 
 # MAIN BASE CLASS
+
 
 class Solver:
     """This is the highest level solver class (inheriting top-level class for each mandatory solver characteristic).
@@ -33,6 +34,7 @@ class Solver:
     - **(policy)**: Policies -> UncertainPolicies -> DeterministicPolicies
     - **(restorability)**: Restorable
     """
+
     T_domain = Domain
 
     @classmethod
@@ -56,7 +58,9 @@ class Solver:
         A list of classes to inherit from.
         """
 
-        def is_domain_builder(cls):  # detected by having only single-'base class' ancestors until root
+        def is_domain_builder(
+            cls,
+        ):  # detected by having only single-'base class' ancestors until root
             remove_ancestors = []
             while True:
                 bases = cls.__bases__
@@ -74,7 +78,9 @@ class Solver:
             ancestor = sorted_ancestors[i]
             is_builder, remove_ancestors = is_domain_builder(ancestor)
             if is_builder:
-                sorted_ancestors = [a for a in sorted_ancestors if a not in remove_ancestors]
+                sorted_ancestors = [
+                    a for a in sorted_ancestors if a not in remove_ancestors
+                ]
                 i += 1
             else:
                 sorted_ancestors.remove(ancestor)
@@ -112,7 +118,9 @@ class Solver:
         # Returns
         True if the domain is compliant with the solver type (False otherwise).
         """
-        check_requirements = all(isinstance(domain, req) for req in cls._get_domain_requirements())
+        check_requirements = all(
+            isinstance(domain, req) for req in cls._get_domain_requirements()
+        )
         return check_requirements and cls._check_domain_additional(domain)
 
     @classmethod
@@ -228,7 +236,7 @@ class Solver:
             #policy and #assessibility.
         """
         pass
-    
+
     def _initialize(self):
         """Runs long-lasting initialization code here, or code to be executed at the
         entering of a 'with' context statement.
@@ -240,7 +248,7 @@ class Solver:
         'with' context statement.
         """
         pass
-    
+
     def __enter__(self):
         """Allow for calling the solver within a 'with' context statement.
         Note that some solvers require such context statements to properly
@@ -249,7 +257,7 @@ class Solver:
         """
         self._initialize()
         return self
-    
+
     def __exit__(self, type, value, tb):
         """Allow for calling the solver within a 'with' context statement.
         Note that some solvers require such context statements to properly
@@ -260,6 +268,7 @@ class Solver:
 
 
 # ALTERNATE BASE CLASSES (for typical combinations)
+
 
 class DeterministicPolicySolver(Solver, DeterministicPolicies):
     """This is a typical deterministic policy solver class.
@@ -280,4 +289,5 @@ class DeterministicPolicySolver(Solver, DeterministicPolicies):
         class MySolver(DeterministicPolicySolver, QValues)
         ```
     """
+
     pass

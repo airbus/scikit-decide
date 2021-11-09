@@ -4,12 +4,12 @@
 
 from __future__ import annotations
 
-from typing import List, Dict
+from typing import Dict, List
 
 from skdecide.builders.domain.scheduling.graph_toolbox import Graph
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import State
 
-__all__ = ['WithPrecedence', 'WithoutPrecedence']
+__all__ = ["WithPrecedence", "WithoutPrecedence"]
 
 
 class WithPrecedence:
@@ -47,30 +47,39 @@ class WithPrecedence:
         task_ids = self.get_tasks_ids()
         successors = self.get_successors()
         mode_details = self.get_tasks_modes()
-        nodes = [(n, {mode: self.sample_task_duration(task=n, mode=mode)
-                      for mode in mode_details[n]})
-                 for n in task_ids]
+        nodes = [
+            (
+                n,
+                {
+                    mode: self.sample_task_duration(task=n, mode=mode)
+                    for mode in mode_details[n]
+                },
+            )
+            for n in task_ids
+        ]
         edges = []
         for n in successors:
-           for succ in successors[n]:
-               edges += [(n, succ, {})]
+            for succ in successors[n]:
+                edges += [(n, succ, {})]
         return Graph(nodes, edges, False)
 
     def _task_modes_possible_to_launch(self, state: State):
-        return [(n, mode)
-                for n in state.tasks_remaining
-                for mode in self.get_task_modes(n).keys()
-                if all(m in state.tasks_complete
-                       for m in self.ancestors[n])]
+        return [
+            (n, mode)
+            for n in state.tasks_remaining
+            for mode in self.get_task_modes(n).keys()
+            if all(m in state.tasks_complete for m in self.ancestors[n])
+        ]
 
     def task_modes_possible_to_launch(self, state: State):
         return self._task_modes_possible_to_launch(state=state)
 
     def _task_possible_to_launch_precedence(self, state: State):
-        return [n
-                for n in state.tasks_remaining
-                if all(m in state.tasks_complete
-                       for m in self.ancestors[n])]
+        return [
+            n
+            for n in state.tasks_remaining
+            if all(m in state.tasks_complete for m in self.ancestors[n])
+        ]
 
     def task_possible_to_launch_precedence(self, state: State):
         return self._task_possible_to_launch_precedence(state=state)
@@ -94,4 +103,3 @@ class WithoutPrecedence(WithPrecedence):
         for id in ids:
             prec[id] = []
         return prec
-

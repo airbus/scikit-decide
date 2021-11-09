@@ -8,7 +8,7 @@ from typing import Union
 
 from skdecide.core import StrDict
 
-__all__ = ['MultiAgent', 'SingleAgent']
+__all__ = ["MultiAgent", "SingleAgent"]
 
 
 class MultiAgent:
@@ -16,9 +16,11 @@ class MultiAgent:
 
     Agents are identified by (string) agent names.
     """
+
     T_agent = StrDict
 
 
 class SingleAgent(MultiAgent):
     """A domain must inherit this class if it is single-agent (i.e hosting only one agent)."""
+
     T_agent = Union

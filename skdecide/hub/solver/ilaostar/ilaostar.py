@@ -6,14 +6,21 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Optional, Callable, Dict, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
-from skdecide import Domain, Solver
-from skdecide import hub
+from skdecide import Domain, Solver, hub
+from skdecide.builders.domain import (
+    Actions,
+    EnumerableTransitions,
+    FullyObservable,
+    Goals,
+    Markovian,
+    PositiveCosts,
+    Sequential,
+    SingleAgent,
+)
+from skdecide.builders.solver import DeterministicPolicies, ParallelSolver, Utilities
 from skdecide.core import Value
-from skdecide.builders.domain import SingleAgent, Sequential, EnumerableTransitions, Actions, Goals, Markovian, \
-    FullyObservable, PositiveCosts
-from skdecide.builders.solver import ParallelSolver, DeterministicPolicies, Utilities
 
 record_sys_path = sys.path
 skdecide_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
@@ -25,25 +32,40 @@ try:
     from __skdecide_hub_cpp import _ILAOStarSolver_ as ilaostar_solver
 
     # TODO: remove Markovian req?
-    class D(Domain, SingleAgent, Sequential, EnumerableTransitions, Actions, Goals, Markovian, FullyObservable,
-            PositiveCosts):
+    class D(
+        Domain,
+        SingleAgent,
+        Sequential,
+        EnumerableTransitions,
+        Actions,
+        Goals,
+        Markovian,
+        FullyObservable,
+        PositiveCosts,
+    ):
         pass
 
     class ILAOstar(ParallelSolver, Solver, DeterministicPolicies, Utilities):
         T_domain = D
-        
-        def __init__(self,
-                     domain_factory: Callable[[], Domain],
-                     heuristic: Optional[Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]] = None,
-                     discount: float = 1.,
-                     epsilon: float = 0.001,
-                     parallel: bool = False,
-                     shared_memory_proxy = None,
-                     debug_logs: bool = False) -> None:
-            ParallelSolver.__init__(self,
-                                    domain_factory=domain_factory,
-                                    parallel=parallel,
-                                    shared_memory_proxy=shared_memory_proxy)
+
+        def __init__(
+            self,
+            domain_factory: Callable[[], Domain],
+            heuristic: Optional[
+                Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]
+            ] = None,
+            discount: float = 1.0,
+            epsilon: float = 0.001,
+            parallel: bool = False,
+            shared_memory_proxy=None,
+            debug_logs: bool = False,
+        ) -> None:
+            ParallelSolver.__init__(
+                self,
+                domain_factory=domain_factory,
+                parallel=parallel,
+                shared_memory_proxy=shared_memory_proxy,
+            )
             self._solver = None
             self._discount = discount
             self._epsilon = epsilon
@@ -63,45 +85,61 @@ try:
             if self._parallel:
                 self._solver.close()
             ParallelSolver.close(self)
-        
+
         def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
             self._domain_factory = domain_factory
-            self._solver = ilaostar_solver(domain=self.get_domain(),
-                                           goal_checker=lambda d, s: d.is_goal(s),
-                                           heuristic=lambda d, s: self._heuristic(d, s) if not self._parallel else d.call(None, 0, s),
-                                           discount=self._discount,
-                                           epsilon=self._epsilon,
-                                           parallel=self._parallel,
-                                           debug_logs=self._debug_logs)
+            self._solver = ilaostar_solver(
+                domain=self.get_domain(),
+                goal_checker=lambda d, s: d.is_goal(s),
+                heuristic=lambda d, s: self._heuristic(d, s)
+                if not self._parallel
+                else d.call(None, 0, s),
+                discount=self._discount,
+                epsilon=self._epsilon,
+                parallel=self._parallel,
+                debug_logs=self._debug_logs,
+            )
             self._solver.clear()
-        
+
         def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
             self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             self._solver.solve(memory)
-        
-        def _is_solution_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
+
+        def _is_solution_defined_for(
+            self, observation: D.T_agent[D.T_observation]
+        ) -> bool:
             return self._solver.is_solution_defined_for(observation)
-        
-        def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+
+        def _get_next_action(
+            self, observation: D.T_agent[D.T_observation]
+        ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
             return self._solver.get_next_action(observation)
-        
+
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             return self._solver.get_utility(observation)
-        
+
         def get_nb_of_explored_states(self) -> int:
             return self._solver.get_nb_of_explored_states()
-        
+
         def best_solution_graph_size(self) -> int:
             return self._solver.best_solution_graph_size()
-        
-        def get_policy(self) -> Dict[D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], float]]:
+
+        def get_policy(
+            self,
+        ) -> Dict[
+            D.T_agent[D.T_observation],
+            Tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+        ]:
             return self._solver.get_policy()
+
 
 except ImportError:
     sys.path = record_sys_path
-    print('Scikit-decide C++ hub library not found. Please check it is installed in "skdecide/hub".')
+    print(
+        'Scikit-decide C++ hub library not found. Please check it is installed in "skdecide/hub".'
+    )
     raise

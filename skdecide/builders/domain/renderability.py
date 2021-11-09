@@ -8,14 +8,16 @@ from typing import Any, Optional
 
 from skdecide.core import D, autocastable
 
-__all__ = ['Renderable']
+__all__ = ["Renderable"]
 
 
 class Renderable:
     """A domain must inherit this class if it can be rendered with any kind of visualization."""
 
     @autocastable
-    def render(self, memory: Optional[D.T_memory[D.T_state]] = None, **kwargs: Any) -> Any:
+    def render(
+        self, memory: Optional[D.T_memory[D.T_state]] = None, **kwargs: Any
+    ) -> Any:
         """Compute a visual render of the given memory (state or history), or the internal one if omitted.
 
         By default, #Renderable.render() provides some boilerplate code and internally calls #Renderable._render(). The
@@ -30,7 +32,9 @@ class Renderable:
         """
         return self._render(memory, **kwargs)
 
-    def _render(self, memory: Optional[D.T_memory[D.T_state]] = None, **kwargs: Any) -> Any:
+    def _render(
+        self, memory: Optional[D.T_memory[D.T_state]] = None, **kwargs: Any
+    ) -> Any:
         """Compute a visual render of the given memory (state or history), or the internal one if omitted.
 
         By default, #Renderable._render() provides some boilerplate code and internally

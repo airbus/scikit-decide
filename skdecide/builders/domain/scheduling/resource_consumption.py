@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
-from typing import List, Dict, Union, Set, Any
+from typing import Any, Dict, List, Set, Union
 
-__all__ = ['VariableResourceConsumption', 'ConstantResourceConsumption']
+__all__ = ["VariableResourceConsumption", "ConstantResourceConsumption"]
 
 
 class VariableResourceConsumption:
@@ -30,4 +30,3 @@ class ConstantResourceConsumption(VariableResourceConsumption):
         """Return true if the domain has variable resource consumption,
         false if the consumption of resource does not vary in time for any of the tasks"""
         return False
-

@@ -7,17 +7,22 @@ from __future__ import annotations
 import functools
 from typing import List
 
-from skdecide.core import D, Constraint, autocastable
+from skdecide.core import Constraint, D, autocastable
 
-__all__ = ['Constrained']
+__all__ = ["Constrained"]
 
 
 class Constrained:
     """A domain must inherit this class if it has constraints."""
 
     @autocastable
-    def get_constraints(self) -> List[
-            Constraint[D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state]]:
+    def get_constraints(
+        self,
+    ) -> List[
+        Constraint[
+            D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state
+        ]
+    ]:
         """Get the (cached) domain constraints.
 
         By default, #Constrained.get_constraints() internally calls #Constrained._get_constraints_() the first time and
@@ -30,8 +35,13 @@ class Constrained:
         return self._get_constraints()
 
     @functools.lru_cache()
-    def _get_constraints(self) -> List[
-            Constraint[D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state]]:
+    def _get_constraints(
+        self,
+    ) -> List[
+        Constraint[
+            D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state
+        ]
+    ]:
         """Get the (cached) domain constraints.
 
         By default, #Constrained._get_constraints() internally calls #Constrained._get_constraints_() the first time and
@@ -43,8 +53,13 @@ class Constrained:
         """
         return self._get_constraints_()
 
-    def _get_constraints_(self) -> List[
-            Constraint[D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state]]:
+    def _get_constraints_(
+        self,
+    ) -> List[
+        Constraint[
+            D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state
+        ]
+    ]:
         """Get the domain constraints.
 
         This is a helper function called by default from #Constrained.get_constraints(), the difference being that the

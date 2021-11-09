@@ -4,31 +4,57 @@
 
 from __future__ import annotations
 
-from heapq import heappush, heappop
+from heapq import heappop, heappush
 from itertools import count
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 from skdecide import Domain, Solver, Value
-from skdecide.builders.domain import SingleAgent, Sequential, DeterministicTransitions, Actions, Goals, Markovian, \
-    FullyObservable, PositiveCosts
+from skdecide.builders.domain import (
+    Actions,
+    DeterministicTransitions,
+    FullyObservable,
+    Goals,
+    Markovian,
+    PositiveCosts,
+    Sequential,
+    SingleAgent,
+)
 from skdecide.builders.solver import DeterministicPolicies, Utilities
 
 
 # TODO: remove Markovian req?
-class D(Domain, SingleAgent, Sequential, DeterministicTransitions, Actions, Goals, Markovian, FullyObservable,
-        PositiveCosts):
+class D(
+    Domain,
+    SingleAgent,
+    Sequential,
+    DeterministicTransitions,
+    Actions,
+    Goals,
+    Markovian,
+    FullyObservable,
+    PositiveCosts,
+):
     pass
 
 
 class LazyAstar(Solver, DeterministicPolicies, Utilities):
     T_domain = D
 
-    def __init__(self, from_state: Optional[D.T_state] = None,
-                 heuristic: Optional[Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]] = None, weight: float = 1.,
-                 verbose: bool = False, render: bool = False) -> None:
+    def __init__(
+        self,
+        from_state: Optional[D.T_state] = None,
+        heuristic: Optional[
+            Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]
+        ] = None,
+        weight: float = 1.0,
+        verbose: bool = False,
+        render: bool = False,
+    ) -> None:
 
         self._from_state = from_state
-        self._heuristic = (lambda _, __: Value(cost=0.)) if heuristic is None else heuristic
+        self._heuristic = (
+            (lambda _, __: Value(cost=0.0)) if heuristic is None else heuristic
+        )
         self._weight = weight
         self._verbose = verbose
         self._render = render
@@ -39,11 +65,15 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
         self._domain = domain_factory()
 
         def extender(node, label, explored):
-            neigh = [(self._domain.get_next_state(node, a), a)
-                     for a in self._domain.get_applicable_actions(node).get_elements()]
+            neigh = [
+                (self._domain.get_next_state(node, a), a)
+                for a in self._domain.get_applicable_actions(node).get_elements()
+            ]
             neigh_not_explored = [(n, a) for n, a in neigh if n not in explored]
-            cost_labels = [(n, self._domain.get_transition_value(node, a, n).cost, {'action': a})
-                           for n, a in neigh_not_explored]
+            cost_labels = [
+                (n, self._domain.get_transition_value(node, a, n).cost, {"action": a})
+                for n, a in neigh_not_explored
+            ]
             return cost_labels
 
         push = heappush
@@ -68,25 +98,33 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
         # Maps enqueued nodes to distance of discovered paths and the
         # computed heuristics to target. We avoid computing the heuristics
         # more than once and inserting the node into the queue too many times.
-        enqueued = {source: (0, self._weight * self._heuristic(self._domain, source).cost) for source in sources}
+        enqueued = {
+            source: (0, self._weight * self._heuristic(self._domain, source).cost)
+            for source in sources
+        }
         # enqueued = {source: min([(0, self._weight * self._heuristic(source, target, initial_label[source]).cost)
         # for target in targets], key=lambda x: x[1]) for source in sources}
-        queue = [(enqueued[source][1], next(c), source, 0, None, initial_label[source]) for source in sources]
+        queue = [
+            (enqueued[source][1], next(c), source, 0, None, initial_label[source])
+            for source in sources
+        ]
         # The explored dict is the CLOSED list.
         # It maps explored nodes to a pair of parent closest to the source and label of transition from parent.
         explored = {}
         path = []
-        estim_total = 0.
+        estim_total = 0.0
         while queue:
             # Pop the smallest item from queue, i.e. with smallest f-value
             estim_total, __, curnode, dist, parent, label = pop(queue)
             if self._render:
                 self._domain.render(curnode)
             if self._verbose:
-                print(curnode, f'- cumulated cost: {dist} - estimated total cost: {estim_total}')
+                print(
+                    curnode,
+                    f"- cumulated cost: {dist} - estimated total cost: {estim_total}",
+                )
             if self._domain.is_goal(curnode):
-                path = [(parent, label),
-                        (curnode, None)]
+                path = [(parent, label), (curnode, None)]
                 node = parent
                 while node is not None:
                     (parent, label) = explored[node]
@@ -113,16 +151,28 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
                     # h = min([self._heuristic(neighbor, target, lbl).cost for target in targets])
                     h = self._heuristic(self._domain, neighbor).cost
                 enqueued[neighbor] = ncost, h
-                push(queue, (ncost + (self._weight * h), next(c), neighbor, ncost, curnode, lbl))
+                push(
+                    queue,
+                    (
+                        ncost + (self._weight * h),
+                        next(c),
+                        neighbor,
+                        ncost,
+                        curnode,
+                        lbl,
+                    ),
+                )
         self._policy = {}
         for node, label in path:
-            self._policy[node] = label['action'] if label is not None else None
+            self._policy[node] = label["action"] if label is not None else None
             self._values[node] = estim_total - enqueued[node][0]
             if self._policy[node] is not None:
                 self._plan.append(self._policy[node])
         # return estim_total, path  # TODO: find a way to expose these things through public API?
 
-    def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+    def _get_next_action(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         return self._policy[observation]
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:

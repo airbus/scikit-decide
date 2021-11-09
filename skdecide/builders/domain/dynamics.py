@@ -7,10 +7,24 @@ from __future__ import annotations
 import functools
 from typing import Optional
 
-from skdecide.core import D, Distribution, DiscreteDistribution, SingleValueDistribution, Value, \
-    EnvironmentOutcome, TransitionOutcome, autocastable
+from skdecide.core import (
+    D,
+    DiscreteDistribution,
+    Distribution,
+    EnvironmentOutcome,
+    SingleValueDistribution,
+    TransitionOutcome,
+    Value,
+    autocastable,
+)
 
-__all__ = ['Environment', 'Simulation', 'UncertainTransitions', 'EnumerableTransitions', 'DeterministicTransitions']
+__all__ = [
+    "Environment",
+    "Simulation",
+    "UncertainTransitions",
+    "EnumerableTransitions",
+    "DeterministicTransitions",
+]
 
 
 class Environment:
@@ -24,8 +38,14 @@ class Environment:
     """
 
     @autocastable
-    def step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> EnvironmentOutcome[
-            D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
+    def step(
+        self, action: D.T_agent[D.T_concurrency[D.T_event]]
+    ) -> EnvironmentOutcome[
+        D.T_agent[D.T_observation],
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
         """Run one step of the environment's dynamics.
 
         By default, #Environment.step() provides some boilerplate code and internally calls #Environment._step() (which
@@ -49,8 +69,14 @@ class Environment:
         """
         return self._step(action)
 
-    def _step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> EnvironmentOutcome[
-            D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
+    def _step(
+        self, action: D.T_agent[D.T_concurrency[D.T_event]]
+    ) -> EnvironmentOutcome[
+        D.T_agent[D.T_observation],
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
         """Run one step of the environment's dynamics.
 
         By default, #Environment._step() provides some boilerplate code and internally
@@ -79,11 +105,21 @@ class Environment:
             self._memory = next_state
         elif self._get_memory_maxlen() > 1:
             self._memory.append(next_state)
-        return EnvironmentOutcome(observation, transition_outcome.value, transition_outcome.termination,
-                                  transition_outcome.info)
+        return EnvironmentOutcome(
+            observation,
+            transition_outcome.value,
+            transition_outcome.termination,
+            transition_outcome.info,
+        )
 
-    def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
+    def _state_step(
+        self, action: D.T_agent[D.T_concurrency[D.T_event]]
+    ) -> TransitionOutcome[
+        D.T_state,
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
         """Compute one step of the transition's dynamics.
 
         This is a helper function called by default from #Environment._step(). It focuses on the state level, as opposed
@@ -110,8 +146,14 @@ class Simulation(Environment):
         are used as environments (e.g. via #Initializable.reset() and #Environment.step() functions).
     """
 
-    def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
+    def _state_step(
+        self, action: D.T_agent[D.T_concurrency[D.T_event]]
+    ) -> TransitionOutcome[
+        D.T_state,
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
         return self._state_sample(self._memory, action)
 
     @autocastable
@@ -158,8 +200,16 @@ class Simulation(Environment):
         self._memory = memory
 
     @autocastable
-    def sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
-            EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
+    def sample(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> EnvironmentOutcome[
+        D.T_agent[D.T_observation],
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
         """Sample one transition of the simulator's dynamics.
 
         By default, #Simulation.sample() provides some boilerplate code and internally calls #Simulation._sample()
@@ -180,8 +230,16 @@ class Simulation(Environment):
         """
         return self._sample(memory, action)
 
-    def _sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
-            EnvironmentOutcome[D.T_agent[D.T_observation], D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
+    def _sample(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> EnvironmentOutcome[
+        D.T_agent[D.T_observation],
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
         """Sample one transition of the simulator's dynamics.
 
         By default, #Simulation._sample() provides some boilerplate code and internally
@@ -203,11 +261,23 @@ class Simulation(Environment):
         transition_outcome = self._state_sample(memory, action)
         next_state = transition_outcome.state
         observation = self._get_observation_distribution(next_state, action).sample()
-        return EnvironmentOutcome(observation, transition_outcome.value, transition_outcome.termination,
-                                  transition_outcome.info)
+        return EnvironmentOutcome(
+            observation,
+            transition_outcome.value,
+            transition_outcome.termination,
+            transition_outcome.info,
+        )
 
-    def _state_sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
-            TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
+    def _state_sample(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> TransitionOutcome[
+        D.T_state,
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
         """Compute one sample of the transition's dynamics.
 
         This is a helper function called by default from #Simulation._sample(). It focuses on the state level, as
@@ -235,8 +305,16 @@ class UncertainTransitions(Simulation):
         whenever they are used as environments (e.g. via #Initializable.reset() and #Environment.step() functions).
     """
 
-    def _state_sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
-            TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
+    def _state_sample(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> TransitionOutcome[
+        D.T_state,
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
         next_state = self._get_next_state_distribution(memory, action).sample()
         value = self._get_transition_value(memory, action, next_state)
         # Termination could be inferred using get_next_state_distribution based on next_state,
@@ -245,8 +323,11 @@ class UncertainTransitions(Simulation):
         return TransitionOutcome(next_state, value, termination, None)
 
     @autocastable
-    def get_next_state_distribution(self, memory: D.T_memory[D.T_state],
-                                    action: D.T_agent[D.T_concurrency[D.T_event]]) -> Distribution[D.T_state]:
+    def get_next_state_distribution(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> Distribution[D.T_state]:
         """Get the probability distribution of next state given a memory and action.
 
         # Parameters
@@ -258,8 +339,11 @@ class UncertainTransitions(Simulation):
         """
         return self._get_next_state_distribution(memory, action)
 
-    def _get_next_state_distribution(self, memory: D.T_memory[D.T_state],
-                                    action: D.T_agent[D.T_concurrency[D.T_event]]) -> Distribution[D.T_state]:
+    def _get_next_state_distribution(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> Distribution[D.T_state]:
         """Get the probability distribution of next state given a memory and action.
 
         # Parameters
@@ -272,8 +356,12 @@ class UncertainTransitions(Simulation):
         raise NotImplementedError
 
     @autocastable
-    def get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                             next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
+    def get_transition_value(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+        next_state: Optional[D.T_state] = None,
+    ) -> D.T_agent[Value[D.T_value]]:
         """Get the value (reward or cost) of a transition.
 
         The transition to consider is defined by the function parameters.
@@ -294,8 +382,12 @@ class UncertainTransitions(Simulation):
         """
         return self._get_transition_value(memory, action, next_state)
 
-    def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                             next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
+    def _get_transition_value(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+        next_state: Optional[D.T_state] = None,
+    ) -> D.T_agent[Value[D.T_value]]:
         """Get the value (reward or cost) of a transition.
 
         The transition to consider is defined by the function parameters.
@@ -305,12 +397,12 @@ class UncertainTransitions(Simulation):
             indicate it by overriding #UncertainTransitions._is_transition_value_dependent_on_next_state_() to return
             False. This information can then be exploited by solvers to avoid computing next state to evaluate a
             transition value (more efficient).
-        
+
         # Parameters
         memory: The source memory (state or history) of the transition.
         action: The action taken in the given memory (state or history) triggering the transition.
         next_state: The next state in which the transition ends (if needed for the computation).
-        
+
         # Returns
         The transition value (reward or cost).
         """
@@ -400,8 +492,11 @@ class EnumerableTransitions(UncertainTransitions):
     """
 
     @autocastable
-    def get_next_state_distribution(self, memory: D.T_memory[D.T_state],
-                                    action: D.T_agent[D.T_concurrency[D.T_event]]) -> DiscreteDistribution[D.T_state]:
+    def get_next_state_distribution(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> DiscreteDistribution[D.T_state]:
         """Get the discrete probability distribution of next state given a memory and action.
 
         !!! tip
@@ -417,8 +512,11 @@ class EnumerableTransitions(UncertainTransitions):
         """
         return self._get_next_state_distribution(memory, action)
 
-    def _get_next_state_distribution(self, memory: D.T_memory[D.T_state],
-                                    action: D.T_agent[D.T_concurrency[D.T_event]]) -> DiscreteDistribution[D.T_state]:
+    def _get_next_state_distribution(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> DiscreteDistribution[D.T_state]:
         """Get the discrete probability distribution of next state given a memory and action.
 
         !!! tip
@@ -447,13 +545,19 @@ class DeterministicTransitions(EnumerableTransitions):
         whenever they are used as environments (e.g. via #Initializable.reset() and #Environment.step() functions).
     """
 
-    def _get_next_state_distribution(self, memory: D.T_memory[D.T_state],
-                                     action: D.T_agent[D.T_concurrency[D.T_event]]) -> SingleValueDistribution[
-            D.T_state]:
+    def _get_next_state_distribution(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> SingleValueDistribution[D.T_state]:
         return SingleValueDistribution(self._get_next_state(memory, action))
 
     @autocastable
-    def get_next_state(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+    def get_next_state(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> D.T_state:
         """Get the next state given a memory and action.
 
         # Parameters
@@ -465,8 +569,11 @@ class DeterministicTransitions(EnumerableTransitions):
         """
         return self._get_next_state(memory, action)
 
-    def _get_next_state(self, memory: D.T_memory[D.T_state],
-                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+    def _get_next_state(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> D.T_state:
         """Get the next state given a memory and action.
 
         # Parameters

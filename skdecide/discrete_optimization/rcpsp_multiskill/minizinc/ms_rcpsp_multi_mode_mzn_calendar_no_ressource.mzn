@@ -80,7 +80,7 @@ endif
 );
 
 % Unit used available
-constraint 
+constraint
 if not ressource_always_here then
 forall(i in Act)(
      forall(w in Units)(

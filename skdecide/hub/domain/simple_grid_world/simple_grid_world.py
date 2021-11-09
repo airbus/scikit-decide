@@ -7,9 +7,9 @@ from __future__ import annotations
 from enum import Enum
 from typing import NamedTuple, Optional
 
-from skdecide import DeterministicPlanningDomain, Value, Space
+from skdecide import DeterministicPlanningDomain, Space, Value
 from skdecide.builders.domain import UnrestrictedActions
-from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
+from skdecide.hub.space.gym import EnumSpace, ListSpace, MultiDiscreteSpace
 
 
 class State(NamedTuple):
@@ -30,17 +30,21 @@ class D(DeterministicPlanningDomain, UnrestrictedActions):
     T_event = Action  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
     T_predicate = bool  # Type of logical checks
-    T_info = None  # Type of additional information given as part of an environment outcome
+    T_info = (
+        None  # Type of additional information given as part of an environment outcome
+    )
 
 
 class SimpleGridWorld(D):
-
     def __init__(self, num_cols=10, num_rows=10):
         self.num_cols = num_cols
         self.num_rows = num_rows
 
-    def _get_next_state(self, memory: D.T_memory[D.T_state],
-                        action: D.T_agent[D.T_concurrency[D.T_event]]) -> D.T_state:
+    def _get_next_state(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> D.T_state:
 
         if action == Action.left:
             next_state = State(max(memory.x - 1, 0), memory.y)
@@ -53,13 +57,19 @@ class SimpleGridWorld(D):
 
         return next_state
 
-    def _get_transition_value(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]],
-                              next_state: Optional[D.T_state] = None) -> D.T_agent[Value[D.T_value]]:
+    def _get_transition_value(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+        next_state: Optional[D.T_state] = None,
+    ) -> D.T_agent[Value[D.T_value]]:
 
         if next_state.x == memory.x and next_state.y == memory.y:
             cost = 2  # big penalty when hitting a wall
         else:
-            cost = abs(next_state.x - memory.x) + abs(next_state.y - memory.y)  # every move costs 1
+            cost = abs(next_state.x - memory.x) + abs(
+                next_state.y - memory.y
+            )  # every move costs 1
 
         return Value(cost=cost)
 

@@ -7,16 +7,18 @@ from __future__ import annotations
 import functools
 from typing import Optional, Union
 
-from skdecide.core import D, Space, EmptySpace, autocastable
+from skdecide.core import D, EmptySpace, Space, autocastable
 
-__all__ = ['Events', 'Actions', 'UnrestrictedActions']
+__all__ = ["Events", "Actions", "UnrestrictedActions"]
 
 
 class Events:
     """A domain must inherit this class if it handles events (controllable or not not by the agents)."""
 
     @autocastable
-    def get_enabled_events(self, memory: Optional[D.T_memory[D.T_state]] = None) -> Space[D.T_event]:
+    def get_enabled_events(
+        self, memory: Optional[D.T_memory[D.T_state]] = None
+    ) -> Space[D.T_event]:
         """Get the space (finite or infinite set) of enabled uncontrollable events in the given memory (state or
         history), or in the internal one if omitted.
 
@@ -32,7 +34,9 @@ class Events:
         """
         return self._get_enabled_events(memory)
 
-    def _get_enabled_events(self, memory: Optional[D.T_memory[D.T_state]] = None) -> Space[D.T_event]:
+    def _get_enabled_events(
+        self, memory: Optional[D.T_memory[D.T_state]] = None
+    ) -> Space[D.T_event]:
         """Get the space (finite or infinite set) of enabled uncontrollable events in the given memory (state or
         history), or in the internal one if omitted.
 
@@ -50,7 +54,9 @@ class Events:
             memory = self._memory
         return self._get_enabled_events_from(memory)
 
-    def _get_enabled_events_from(self, memory: D.T_memory[D.T_state]) -> Space[D.T_event]:
+    def _get_enabled_events_from(
+        self, memory: D.T_memory[D.T_state]
+    ) -> Space[D.T_event]:
         """Get the space (finite or infinite set) of enabled uncontrollable events in the given memory (state or
         history).
 
@@ -66,7 +72,9 @@ class Events:
         raise NotImplementedError
 
     @autocastable
-    def is_enabled_event(self, event: D.T_event, memory: Optional[D.T_memory[D.T_state]] = None) -> bool:
+    def is_enabled_event(
+        self, event: D.T_event, memory: Optional[D.T_memory[D.T_state]] = None
+    ) -> bool:
         """Indicate whether an uncontrollable event is enabled in the given memory (state or history), or in the
         internal one if omitted.
 
@@ -82,7 +90,9 @@ class Events:
         """
         return self._is_enabled_event(event, memory)
 
-    def _is_enabled_event(self, event: D.T_event, memory: Optional[D.T_memory[D.T_state]] = None) -> bool:
+    def _is_enabled_event(
+        self, event: D.T_event, memory: Optional[D.T_memory[D.T_state]] = None
+    ) -> bool:
         """Indicate whether an uncontrollable event is enabled in the given memory (state or history), or in the
         internal one if omitted.
 
@@ -100,7 +110,9 @@ class Events:
             memory = self._memory
         return self._is_enabled_event_from(event, memory)
 
-    def _is_enabled_event_from(self, event: D.T_event, memory: D.T_memory[D.T_state]) -> bool:
+    def _is_enabled_event_from(
+        self, event: D.T_event, memory: D.T_memory[D.T_state]
+    ) -> bool:
         """Indicate whether an event is enabled in the given memory (state or history).
 
         This is a helper function called by default from #Events._is_enabled_event(), the difference being that the
@@ -192,7 +204,9 @@ class Events:
         return self._get_action_space().contains(event)
 
     @autocastable
-    def get_applicable_actions(self, memory: Optional[D.T_memory[D.T_state]] = None) -> D.T_agent[Space[D.T_event]]:
+    def get_applicable_actions(
+        self, memory: Optional[D.T_memory[D.T_state]] = None
+    ) -> D.T_agent[Space[D.T_event]]:
         """Get the space (finite or infinite set) of applicable actions in the given memory (state or history), or in
         the internal one if omitted.
 
@@ -208,7 +222,9 @@ class Events:
         """
         return self._get_applicable_actions(memory)
 
-    def _get_applicable_actions(self, memory: Optional[D.T_memory[D.T_state]] = None) -> D.T_agent[Space[D.T_event]]:
+    def _get_applicable_actions(
+        self, memory: Optional[D.T_memory[D.T_state]] = None
+    ) -> D.T_agent[Space[D.T_event]]:
         """Get the space (finite or infinite set) of applicable actions in the given memory (state or history), or in
         the internal one if omitted.
 
@@ -226,7 +242,9 @@ class Events:
             memory = self._memory
         return self._get_applicable_actions_from(memory)
 
-    def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
+    def _get_applicable_actions_from(
+        self, memory: D.T_memory[D.T_state]
+    ) -> D.T_agent[Space[D.T_event]]:
         """Get the space (finite or infinite set) of applicable actions in the given memory (state or history).
 
         This is a helper function called by default from #Events._get_applicable_actions(), the difference being that
@@ -241,8 +259,11 @@ class Events:
         raise NotImplementedError
 
     @autocastable
-    def is_applicable_action(self, action: D.T_agent[D.T_event],
-                             memory: Optional[D.T_memory[D.T_state]] = None) -> bool:
+    def is_applicable_action(
+        self,
+        action: D.T_agent[D.T_event],
+        memory: Optional[D.T_memory[D.T_state]] = None,
+    ) -> bool:
         """Indicate whether an action is applicable in the given memory (state or history), or in the internal one if
         omitted.
 
@@ -258,8 +279,11 @@ class Events:
         """
         return self._is_applicable_action(action, memory)
 
-    def _is_applicable_action(self, action: D.T_agent[D.T_event],
-                             memory: Optional[D.T_memory[D.T_state]] = None) -> bool:
+    def _is_applicable_action(
+        self,
+        action: D.T_agent[D.T_event],
+        memory: Optional[D.T_memory[D.T_state]] = None,
+    ) -> bool:
         """Indicate whether an action is applicable in the given memory (state or history), or in the internal one if
         omitted.
 
@@ -277,7 +301,9 @@ class Events:
             memory = self._memory
         return self._is_applicable_action_from(action, memory)
 
-    def _is_applicable_action_from(self, action: D.T_agent[D.T_event], memory: D.T_memory[D.T_state]) -> bool:
+    def _is_applicable_action_from(
+        self, action: D.T_agent[D.T_event], memory: D.T_memory[D.T_state]
+    ) -> bool:
         """Indicate whether an action is applicable in the given memory (state or history).
 
         This is a helper function called by default from #Events._is_applicable_action(), the difference being that the
@@ -304,7 +330,9 @@ class Events:
 class Actions(Events):
     """A domain must inherit this class if it handles only actions (i.e. controllable events)."""
 
-    def _get_enabled_events_from(self, memory: D.T_memory[D.T_state]) -> Space[D.T_event]:
+    def _get_enabled_events_from(
+        self, memory: D.T_memory[D.T_state]
+    ) -> Space[D.T_event]:
         # TODO: check definition of enabled events (only uncontrollable?)
         # return self._get_enabled_actions_from(memory)
         return EmptySpace()
@@ -315,5 +343,7 @@ class UnrestrictedActions(Actions):
     applicable.
     """
 
-    def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
+    def _get_applicable_actions_from(
+        self, memory: D.T_memory[D.T_state]
+    ) -> D.T_agent[Space[D.T_event]]:
         return self._get_action_space()

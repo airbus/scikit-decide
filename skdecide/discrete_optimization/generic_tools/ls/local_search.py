@@ -5,9 +5,12 @@
 from __future__ import annotations
 
 from enum import Enum
-from skdecide.discrete_optimization.generic_tools.do_problem import Solution
-from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import ResultStorage
 from typing import Tuple
+
+from skdecide.discrete_optimization.generic_tools.do_problem import Solution
+from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import (
+    ResultStorage,
+)
 
 
 class ModeMutation(Enum):
@@ -28,10 +31,9 @@ class RestartHandler:
         self.nb_iteration_no_local_improve = 0
         self.nb_iteration_no_global_improve = 0
 
-    def update(self, nv: Solution,
-               fitness: float,
-               improved_global: bool, 
-               improved_local: bool):
+    def update(
+        self, nv: Solution, fitness: float, improved_global: bool, improved_local: bool
+    ):
         self.nb_iteration += 1
         if improved_global:
             self.nb_iteration_no_global_improve = 0
@@ -44,20 +46,28 @@ class RestartHandler:
         else:
             self.nb_iteration_no_local_improve += 1
 
-    def restart(self, cur_solution: Solution, cur_objective: float)->Tuple[Solution, float]:
+    def restart(
+        self, cur_solution: Solution, cur_objective: float
+    ) -> Tuple[Solution, float]:
         return cur_solution, cur_objective
 
 
 class RestartHandlerLimit(RestartHandler):
-    def __init__(self, nb_iteration_no_improvement, cur_solution: Solution, cur_objective):
+    def __init__(
+        self, nb_iteration_no_improvement, cur_solution: Solution, cur_objective
+    ):
         RestartHandler.__init__(self)
         self.nb_iteration_no_improvement = nb_iteration_no_improvement
         self.solution_best = cur_solution.copy()
         self.best_fitness = cur_objective
 
-    def restart(self, cur_solution: Solution, cur_objective: float)->Tuple[Solution, float]:
-        if self.nb_iteration_no_global_improve > self.nb_iteration_no_improvement \
-                or self.nb_iteration_no_local_improve > self.nb_iteration_no_improvement:
+    def restart(
+        self, cur_solution: Solution, cur_objective: float
+    ) -> Tuple[Solution, float]:
+        if (
+            self.nb_iteration_no_global_improve > self.nb_iteration_no_improvement
+            or self.nb_iteration_no_local_improve > self.nb_iteration_no_improvement
+        ):
             self.nb_iteration_no_global_improve = 0
             self.nb_iteration_no_local_improve = 0
             # print("restart  ", self.variable_best, self.best_fitness)
@@ -67,9 +77,9 @@ class RestartHandlerLimit(RestartHandler):
 
 
 class ResultLS(ResultStorage):
-    def __init__(self, result_storage: ResultStorage,
-                 best_solution: Solution,
-                 best_objective):
+    def __init__(
+        self, result_storage: ResultStorage, best_solution: Solution, best_objective
+    ):
         self.result_storage = result_storage
         self.list_solution_fits = result_storage.list_solution_fits
         self.maximize = result_storage.maximize

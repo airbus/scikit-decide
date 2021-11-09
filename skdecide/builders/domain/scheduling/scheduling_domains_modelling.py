@@ -6,19 +6,20 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import Enum
-from typing import Set, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Set, Union
 
 from skdecide.builders.domain.scheduling.task import Task
 
 
 class SchedulingActionEnum(Enum):
     """
-        Enum defining the different types of scheduling actions:
-        - START: start a task
-        - PAUSE: pause a task
-        - RESUME: resume a task
-        - TIME_PR: do not apply actions on tasks and progress in time
+    Enum defining the different types of scheduling actions:
+    - START: start a task
+    - PAUSE: pause a task
+    - RESUME: resume a task
+    - TIME_PR: do not apply actions on tasks and progress in time
     """
+
     START = 0
     PAUSE = 1
     RESUME = 2
@@ -59,6 +60,7 @@ class State:
             properties
 
     """
+
     # TODO : code efficient hash/eq functions. will probably be mandatory in some planning algo.
     t: int
     tasks_remaining: Set[int]
@@ -71,11 +73,13 @@ class State:
     resource_availability: Dict[str, int]
     resource_used: Dict[str, int]
     resource_used_for_task = Dict[int, Dict[str, int]]
-    tasks_details: Dict[int, Task]  # Use to store task stats, resource used etc... for post-processing purposes
+    tasks_details: Dict[
+        int, Task
+    ]  # Use to store task stats, resource used etc... for post-processing purposes
     _current_conditions: Set
 
     # TODO : put the attributes in the __init__ ?!
-    def __init__(self, task_ids: List[int], tasks_available: Set[int]=None):
+    def __init__(self, task_ids: List[int], tasks_available: Set[int] = None):
         """Initialize a scheduling state.
 
         # Parameters
@@ -119,13 +123,13 @@ class State:
         return s
 
     def __str__(self):
-        s = "State : "+"\n"
+        s = "State : " + "\n"
         for key in sorted(self.__dict__.keys()):
-            if key == 'tasks_details':
+            if key == "tasks_details":
                 for key2 in sorted(self.tasks_details.keys()):
-                    s += str(self.tasks_details[key2])+"\t"
+                    s += str(self.tasks_details[key2]) + "\t"
             else:
-                s += str(key)+":"+str(getattr(self, key))+"\n"
+                s += str(key) + ":" + str(getattr(self, key)) + "\n"
         return s
 
     def __repr__(self):
@@ -163,16 +167,20 @@ class SchedulingAction:
         mode = None
         time_progress = True
     """
+
     task: int
     action: SchedulingActionEnum
     mode: int
     time_progress: bool
 
-    def __init__(self, task: Union[int, None],
-                 action: SchedulingActionEnum,
-                 mode: Union[int, None],
-                 time_progress: bool,
-                 resource_unit_names: Optional[Set[str]]=None):
+    def __init__(
+        self,
+        task: Union[int, None],
+        action: SchedulingActionEnum,
+        mode: Union[int, None],
+        time_progress: bool,
+        resource_unit_names: Optional[Set[str]] = None,
+    ):
         self.task = task
         self.action = action
         self.mode = mode
@@ -180,12 +188,12 @@ class SchedulingAction:
         self.resource_unit_names = resource_unit_names
 
     def __str__(self):
-        s = 'Action \n'
-        s += "Task : "+str(self.task)+"\n"
-        s += "Mode : "+str(self.mode)+"\n"
-        s += "Action type "+str(self.action.name)+"\n"
-        s += "Time progress "+str(self.time_progress)+"\n"
-        s += "Resource : "+str(self.resource_unit_names)
+        s = "Action \n"
+        s += "Task : " + str(self.task) + "\n"
+        s += "Mode : " + str(self.mode) + "\n"
+        s += "Action type " + str(self.action.name) + "\n"
+        s += "Time progress " + str(self.time_progress) + "\n"
+        s += "Resource : " + str(self.resource_unit_names)
         return s
 
     def __repr__(self):

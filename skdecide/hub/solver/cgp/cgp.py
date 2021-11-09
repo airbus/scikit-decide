@@ -4,33 +4,72 @@
 
 from __future__ import annotations
 
-from typing import Callable
 from collections.abc import Iterable
+from typing import Callable
 
 import gym
 import numpy as np
 
 from skdecide import Domain, Solver
-from skdecide.builders.domain import SingleAgent, Sequential, Environment, UnrestrictedActions, Initializable, History, \
-    PartiallyObservable, Rewards
+from skdecide.builders.domain import (
+    Environment,
+    History,
+    Initializable,
+    PartiallyObservable,
+    Rewards,
+    Sequential,
+    SingleAgent,
+    UnrestrictedActions,
+)
 from skdecide.builders.solver import DeterministicPolicies, Restorable
 from skdecide.hub.space.gym import GymSpace
+
 from .pycgp.cgpes import CGP, CGPES, Evaluator
-from .pycgp.cgpfunctions import f_sum, f_aminus, f_mult, f_exp, f_abs, f_sqrt, f_sqrtxy, f_squared, f_pow, f_one, \
-    f_zero, f_inv, f_gt, f_acos, f_asin, f_atan, f_min, f_max, f_round, f_floor, f_ceil
+from .pycgp.cgpfunctions import (
+    f_abs,
+    f_acos,
+    f_aminus,
+    f_asin,
+    f_atan,
+    f_ceil,
+    f_exp,
+    f_floor,
+    f_gt,
+    f_inv,
+    f_max,
+    f_min,
+    f_mult,
+    f_one,
+    f_pow,
+    f_round,
+    f_sqrt,
+    f_sqrtxy,
+    f_squared,
+    f_sum,
+    f_zero,
+)
 
 
-class D(Domain, SingleAgent, Sequential, Environment, UnrestrictedActions, Initializable, History, PartiallyObservable,
-        Rewards):
+class D(
+    Domain,
+    SingleAgent,
+    Sequential,
+    Environment,
+    UnrestrictedActions,
+    Initializable,
+    History,
+    PartiallyObservable,
+    Rewards,
+):
     pass
 
 
 def change_interval(x, inmin, inmax, outmin, outmax):
     # redefine interval if min, max are set to +-infinity by the GYM environment
     # TODO: maybe we could reject those environments in the future.
-    if (inmin == -np.inf):
+    if inmin == -np.inf:
         inmin = -1
-    if (inmax == np.inf):
+    if inmax == np.inf:
         inmax = 1
     # making sure x is in the interval
     x = max(inmin, min(inmax, x))
@@ -70,11 +109,9 @@ def norm_and_flatten(vals, types):
     :return: a flatten array with normalised vals
     """
 
-    if not isinstance(types, Iterable) and \
-            not isinstance(types, gym.spaces.Tuple):
+    if not isinstance(types, Iterable) and not isinstance(types, gym.spaces.Tuple):
         types = [types]
-    if not isinstance(vals, Iterable) and \
-            not isinstance(vals, gym.spaces.Tuple):
+    if not isinstance(vals, Iterable) and not isinstance(vals, gym.spaces.Tuple):
         vals = [vals]
 
     flat_vals = list(flatten(vals))
@@ -85,7 +122,9 @@ def norm_and_flatten(vals, types):
             lows = list(flatten(t.low))
             highs = list(flatten(t.high))
             for j in range(len(lows)):
-                flat_vals[index] = change_interval(flat_vals[index], lows[j], highs[j], -1, 1)
+                flat_vals[index] = change_interval(
+                    flat_vals[index], lows[j], highs[j], -1, 1
+                )
                 index += 1
         elif isinstance(t, gym.spaces.Discrete):
             flat_vals[index] = change_interval(flat_vals[index], 0, t.n - 1, -1, 1)
@@ -115,7 +154,9 @@ def norm(vals, types):
             lows = list(flatten(t.low))
             highs = list(flatten(t.high))
             for j in range(len(lows)):
-                temp_vals[i][j] = change_interval(temp_vals[i][j], lows[j], highs[j], -1, 1)
+                temp_vals[i][j] = change_interval(
+                    temp_vals[i][j], lows[j], highs[j], -1, 1
+                )
         elif isinstance(t, gym.spaces.Discrete):
             temp_vals[i] = change_interval(temp_vals[i], 0, t.n - 1, -1, 1)
         else:
@@ -134,11 +175,9 @@ def denorm(vals, types):
     :param types: the gym types corresponding to vals
     :return: the same vals array with denormalised values
     """
-    if not isinstance(types, Iterable) and \
-            not isinstance(types, gym.spaces.Tuple):
+    if not isinstance(types, Iterable) and not isinstance(types, gym.spaces.Tuple):
         types = [types]
-    if not isinstance(vals, Iterable) and \
-            not isinstance(vals, gym.spaces.Tuple):
+    if not isinstance(vals, Iterable) and not isinstance(vals, gym.spaces.Tuple):
         vals = [vals]
     out = []
     index = 0
@@ -165,8 +204,20 @@ def denorm(vals, types):
 class CGPWrapper(Solver, DeterministicPolicies, Restorable):
     T_domain = D
 
-    def __init__(self, folder_name, library=None, col=100, row=1, nb_ind=4, mutation_rate_nodes=0.1,
-                 mutation_rate_outputs=0.3, n_cpus=1, n_it=1000000, genome=None, verbose=True):
+    def __init__(
+        self,
+        folder_name,
+        library=None,
+        col=100,
+        row=1,
+        nb_ind=4,
+        mutation_rate_nodes=0.1,
+        mutation_rate_outputs=0.3,
+        n_cpus=1,
+        n_it=1000000,
+        genome=None,
+        verbose=True,
+    ):
 
         if library is None:
             library = self._get_default_function_lib()
@@ -191,9 +242,13 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
         action_space = domain.get_action_space().unwrapped()
         observation_space = domain.get_observation_space().unwrapped()
 
-        if not isinstance(action_space, Iterable) and not isinstance(action_space, gym.spaces.Tuple):
+        if not isinstance(action_space, Iterable) and not isinstance(
+            action_space, gym.spaces.Tuple
+        ):
             action_space = [action_space]
-        if not isinstance(observation_space, Iterable) and not isinstance(observation_space, gym.spaces.Tuple):
+        if not isinstance(observation_space, Iterable) and not isinstance(
+            observation_space, gym.spaces.Tuple
+        ):
             observation_space = [observation_space]
 
         flat_action_space = list(flatten(action_space))
@@ -204,14 +259,18 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
 
         valide_action_space = True
         for x in flat_action_space:
-            valide_action_space = isinstance(x,(gym.spaces.Tuple, gym.spaces.Discrete, gym.spaces.Box))
-        
+            valide_action_space = isinstance(
+                x, (gym.spaces.Tuple, gym.spaces.Discrete, gym.spaces.Box)
+            )
+
         validate_observation_space = True
         for x in flat_observation_space:
-            validate_observation_space = isinstance(x,(gym.spaces.Tuple, gym.spaces.Discrete, gym.spaces.Box))
-        
+            validate_observation_space = isinstance(
+                x, (gym.spaces.Tuple, gym.spaces.Discrete, gym.spaces.Box)
+            )
+
         return valide_action_space and validate_observation_space
-        
+
     def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
         domain = domain_factory()
 
@@ -227,27 +286,42 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
                 num_inputs = len(b)
             else:
                 num_inputs = 1
-            cgpFather = CGP.random(num_inputs,
-                                   num_outputs, self._col, self._row, self._library, 1.0)
+            cgpFather = CGP.random(
+                num_inputs, num_outputs, self._col, self._row, self._library, 1.0
+            )
         else:
             cgpFather = CGP.load_from_file(self._genome, self._library)
 
         if self._verbose:
             print(cgpFather.genome)
 
-        es = CGPES(self._nb_ind, self._mutation_rate_nodes, self._mutation_rate_outputs, cgpFather, evaluator,
-                   self._folder_name, self._n_cpus)
+        es = CGPES(
+            self._nb_ind,
+            self._mutation_rate_nodes,
+            self._mutation_rate_outputs,
+            cgpFather,
+            evaluator,
+            self._folder_name,
+            self._n_cpus,
+        )
         es.run(self._n_it)
 
         self._domain = domain
         self._es = es
         self._evaluator = evaluator
 
-    def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+    def _get_next_action(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_concurrency[D.T_event]]:
 
         return denorm(
-            self._es.father.run(norm_and_flatten(observation, self._domain.get_observation_space().unwrapped())),
-            self._domain.get_action_space().unwrapped())
+            self._es.father.run(
+                norm_and_flatten(
+                    observation, self._domain.get_observation_space().unwrapped()
+                )
+            ),
+            self._domain.get_action_space().unwrapped(),
+        )
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
         return True
@@ -259,32 +333,32 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
         pass  # TODO
 
     def _get_default_function_lib(self):
-        return [CGP.CGPFunc(f_sum, 'sum', 2),
-                CGP.CGPFunc(f_aminus, 'aminus', 2),
-                CGP.CGPFunc(f_mult, 'mult', 2),
-                CGP.CGPFunc(f_exp, 'exp', 2),
-                CGP.CGPFunc(f_abs, 'abs', 1),
-                CGP.CGPFunc(f_sqrt, 'sqrt', 1),
-                CGP.CGPFunc(f_sqrtxy, 'sqrtxy', 2),
-                CGP.CGPFunc(f_squared, 'squared', 1),
-                CGP.CGPFunc(f_pow, 'pow', 2),
-                CGP.CGPFunc(f_one, 'one', 0),
-                CGP.CGPFunc(f_zero, 'zero', 0),
-                CGP.CGPFunc(f_inv, 'inv', 1),
-                CGP.CGPFunc(f_gt, 'gt', 2),
-                CGP.CGPFunc(f_asin, 'asin', 1),
-                CGP.CGPFunc(f_acos, 'acos', 1),
-                CGP.CGPFunc(f_atan, 'atan', 1),
-                CGP.CGPFunc(f_min, 'min', 2),
-                CGP.CGPFunc(f_max, 'max', 2),
-                CGP.CGPFunc(f_round, 'round', 1),
-                CGP.CGPFunc(f_floor, 'floor', 1),
-                CGP.CGPFunc(f_ceil, 'ceil', 1)
-                ]
+        return [
+            CGP.CGPFunc(f_sum, "sum", 2),
+            CGP.CGPFunc(f_aminus, "aminus", 2),
+            CGP.CGPFunc(f_mult, "mult", 2),
+            CGP.CGPFunc(f_exp, "exp", 2),
+            CGP.CGPFunc(f_abs, "abs", 1),
+            CGP.CGPFunc(f_sqrt, "sqrt", 1),
+            CGP.CGPFunc(f_sqrtxy, "sqrtxy", 2),
+            CGP.CGPFunc(f_squared, "squared", 1),
+            CGP.CGPFunc(f_pow, "pow", 2),
+            CGP.CGPFunc(f_one, "one", 0),
+            CGP.CGPFunc(f_zero, "zero", 0),
+            CGP.CGPFunc(f_inv, "inv", 1),
+            CGP.CGPFunc(f_gt, "gt", 2),
+            CGP.CGPFunc(f_asin, "asin", 1),
+            CGP.CGPFunc(f_acos, "acos", 1),
+            CGP.CGPFunc(f_atan, "atan", 1),
+            CGP.CGPFunc(f_min, "min", 2),
+            CGP.CGPFunc(f_max, "max", 2),
+            CGP.CGPFunc(f_round, "round", 1),
+            CGP.CGPFunc(f_floor, "floor", 1),
+            CGP.CGPFunc(f_ceil, "ceil", 1),
+        ]
 
 
 class SkDecideEvaluator(Evaluator):
-
     def __init__(self, domain, it_max=10000, ep_max=1):
         super().__init__()
         self.it_max = it_max
@@ -312,13 +386,19 @@ class SkDecideEvaluator(Evaluator):
             states = self.domain.reset()
             step = 0
             while not end and step < self.it_max:
-                actions = denorm(cgp.run(norm_and_flatten(states, self.domain.get_observation_space().unwrapped())),
-                                 self.domain.get_action_space().unwrapped())
+                actions = denorm(
+                    cgp.run(
+                        norm_and_flatten(
+                            states, self.domain.get_observation_space().unwrapped()
+                        )
+                    ),
+                    self.domain.get_action_space().unwrapped(),
+                )
                 states, transition_value, end, _ = self.domain.step(actions).astuple()
                 reward = transition_value[0]  # TODO: correct Gym wrapper
 
                 if verbose:
-                    print(states, '=>', actions)
+                    print(states, "=>", actions)
 
                 fit += reward
                 step += 1

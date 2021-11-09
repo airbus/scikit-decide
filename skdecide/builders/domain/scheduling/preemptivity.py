@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
-from typing import List, Dict
-__all__ = ['WithPreemptivity', 'WithoutPreemptivity']
+from typing import Dict, List
+
+__all__ = ["WithPreemptivity", "WithoutPreemptivity"]
 
 from enum import Enum
 

@@ -9,7 +9,7 @@ from typing import Union
 
 from skdecide.core import D, Space, autocastable
 
-__all__ = ['Goals']
+__all__ = ["Goals"]
 
 
 class Goals:
@@ -67,7 +67,9 @@ class Goals:
         raise NotImplementedError
 
     @autocastable
-    def is_goal(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_predicate]:
+    def is_goal(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_predicate]:
         """Indicate whether an observation belongs to the goals.
 
         !!! tip
@@ -82,7 +84,9 @@ class Goals:
         """
         return self._is_goal(observation)
 
-    def _is_goal(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_predicate]:
+    def _is_goal(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_predicate]:
         """Indicate whether an observation belongs to the goals.
 
         !!! tip
