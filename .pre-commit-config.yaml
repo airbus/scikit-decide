@@ -31,13 +31,11 @@ repos:
         language_version: python3
         exclude: ^cpp/
 
-  - repo: local
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v13.0.0
     hooks:
       - id: clang-format
-        name: clang-format
-        description: Format files with ClangFormat
-        language: system
-        entry: clang-format -i --style=file # LLVM style stored in .clang-format
+        args: [-i, -style=file]
         files: ^cpp/src/.*\.[ch]{2}$
 
   - repo: https://github.com/pycqa/isort
