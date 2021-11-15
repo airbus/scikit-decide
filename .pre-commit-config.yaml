@@ -17,7 +17,7 @@ repos:
     rev: v3.2.0
     hooks:
     -   id: trailing-whitespace
-        exclude: ^examples/discrete_optimization/data/
+        exclude: "^(examples/discrete_optimization/data/|notebooks/.*\\.sm$|notebooks/data/)"
     -   id: end-of-file-fixer
     -   id: check-yaml
     -   id: check-added-large-files
