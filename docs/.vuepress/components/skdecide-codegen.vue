@@ -1,6 +1,6 @@
 <template>
   <div style="margin-top: 30px">
-  
+
   <el-row type="flex" justify="space-between" align="middle">
     <el-switch v-model="isSolver" inactive-text="Create Domain" active-text="Create Solver" inactive-color="#409EFF" active-color="#409EFF"></el-switch>
 
@@ -14,7 +14,7 @@
   <pre>
   <code id="gencode" class="language-python"><template v-if="!isSolver"><span class="token keyword">from</span> enum <span class="token keyword">import</span> Enum</template>
   <span class="token keyword">from</span> typing <span class="token keyword">import</span> <span class="token operator">*</span>
-  
+
   <span class="token keyword">from</span> skdecide <span class="token keyword">import</span> <span class="token operator">*</span>
   <span class="token keyword">from</span> skdecide.builders.domain <span class="token keyword">import</span> <span class="token operator">*</span><template v-if="isSolver">
   <span class="token keyword">from</span> skdecide.builders.solver <span class="token keyword">import</span> <span class="token operator">*</span></template>
@@ -24,7 +24,7 @@
   <span class="token keyword">class</span> <span class="token class-name">State</span>(NamedTuple):
       x: <span class="token builtin">int</span>
       y: <span class="token builtin">int</span>
-  
+
 
   <span class="token comment"># Example of Action type (adapt to your needs)</span>
   <span class="token keyword">class</span> <span class="token class-name">Action</span>(Enum):
@@ -32,7 +32,7 @@
       down <span class="token operator">=</span> <span class="token number">1</span>
       left <span class="token operator">=</span> <span class="token number">2</span>
       right <span class="token operator">=</span> <span class="token number">3</span>
-  
+
   </template>
   <span class="token keyword">class</span> <span class="token class-name">D</span>({{ domainInheritance }}):
       <template v-if="isSolver">pass</template><template v-else>T_state <span class="token operator">=</span> State  <span class="token comment"># Type of states</span>
@@ -40,8 +40,8 @@
       T_event <span class="token operator">=</span> Action  <span class="token comment"># Type of events</span>
       T_value <span class="token operator">=</span> <span class="token builtin">float</span>  <span class="token comment"># Type of transition values (rewards or costs)</span>
       T_info <span class="token operator">=</span> <span class="token boolean">None</span>  <span class="token comment"># Type of additional information in environment outcome</span></template>
-  
-  
+
+
   <span class="token keyword">class</span> <template v-if="isSolver"><span class="token class-name">MySolver</span>({{ solverInheritance }}):
       T_domain <span class="token operator">=</span> D</template><template v-else><span class="token class-name">MyDomain</span>(D):</template>
       <template v-for="[characteristic, level] in Object.entries({...{'default': domainOrSolver}, ...selection[domainOrSolver].characteristics}).filter(([k, v]) => v != '(none)')"><template v-for="method in methods[domainOrSolver][level]">

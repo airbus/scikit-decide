@@ -1,6 +1,6 @@
 
-                    _  __    _  __              __             _      __    
-       _____ _____ (_)/ /__ (_)/ /_        ____/ /___   _____ (_)____/ /___ 
+                    _  __    _  __              __             _      __
+       _____ _____ (_)/ /__ (_)/ /_        ____/ /___   _____ (_)____/ /___
       / ___// ___// // //_// // __/______ / __  // _ \ / ___// // __  // _ \
      (__  )/ /__ / // ,<  / // /_ /_____// /_/ //  __// /__ / // /_/ //  __/
     /____/ \___//_//_/|_|/_/ \__/        \__,_/ \___/ \___//_/ \__,_/ \___/
@@ -53,28 +53,28 @@ Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning 
 ### Installing the latest release
 
 #### 1. Make sure to have a Python 3.7+ environment
-  
+
 The use of a virtual environment for scikit-decide is recommended, and you will need to ensure the environment use a Python version greater than 3.7.
-This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows) 
+This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows)
 and [venv](https://docs.python.org/fr/3/library/venv.html) module.
 
-The following examples show how to create a virtual environment with Python version 3.8.11 with the mentioned methods. 
+The following examples show how to create a virtual environment with Python version 3.8.11 with the mentioned methods.
 
-##### With conda (all platforms) 
- 
+##### With conda (all platforms)
+
 ```shell
 conda create -n skdecide python=3.8.11
 conda activate skdecide
 ```
 
 ##### With pyenv + venv (Linux/MacOS)
- 
+
 ```shell
 pyenv install 3.8.11
 pyenv shell 3.8.11
 python -m venv skdecide-venv
 source skdecide-venv
-```   
+```
 
 ##### With pyenv-win + venv (Windows)
 
@@ -83,7 +83,7 @@ pyenv install 3.8.11
 pyenv shell 3.8.11
 python -m venv skdecide-venv
 skdecide-venv\Scripts\activate
-```   
+```
 
 #### 2. Install scikit-decide library
 
@@ -95,20 +95,20 @@ pip install -U pip
 pip install -U scikit-decide[all]
 ```
 
-##### Minimal install  
+##### Minimal install
 Alternatively you can choose to only install the core library, which is enough if you intend to create your own domain and solver.
 ```shell
 pip install -U pip
 pip install -U scikit-decide
 ```
-  
+
 ### Installing from source [Developer mode]
 
 > **Disclaimer**: The following process has only been tested on Linux/MacOS platforms.
 
-#### Prerequisites 
-In order to build the library from the source and especially the c++ part, 
-you need a minimal environment with c++ compiler, cmake, and boost. 
+#### Prerequisites
+In order to build the library from the source and especially the c++ part,
+you need a minimal environment with c++ compiler, cmake, and boost.
 To be able to use parallelism based on openMP, you should also install libomp.
 For instance, on macOS it is done via:
 ```shell
@@ -129,12 +129,12 @@ Here are the steps to follow:
     git clone --recurse-submodules -j8 https://github.com/Airbus/scikit-decide.git
     cd scikit-decide
     ```
-    
+
 - Set proper python version (e.g. 3.8.11) for the scikit-decide project.
     ```shell
     pyenv local 3.8.11
     ```
-  
+
 - Update pip installer (the one that `pyenv` makes you use).
     ```shell
     pip install -U pip
@@ -147,12 +147,12 @@ Here are the steps to follow:
         curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python -
         export PATH="$HOME/.local/bin:$PATH"  # add path to poetry
         ```
-    
+
     - Specify to poetry the python version to use so that it creates the appropriate virtual environment.
         ```shell
         poetry env use 3.8.11
         ```
-      
+
     - Install all dependencies as defined in `poetry.lock`.
         ```shell
         rm -rf build  # removing previous build
@@ -169,7 +169,7 @@ as it can also be installed by conda via the conda-forge channel.
     git clone --recurse-submodules -j8 https://github.com/Airbus/scikit-decide.git
     cd scikit-decide
     ```
-  
+
 - Create and activate a conda environment with the proper python version for the scikit-decide project.
     ```shell
     conda create -n test_dev_skdecide python=3.8.11
@@ -194,8 +194,8 @@ as it can also be installed by conda via the conda-forge channel.
 
 #### Use of developer mode installation
 
-Now you are able to use the library in developer mode (i.e. with code modifications directly taken into account) 
-by prefixing all commands with `poetry run`. 
+Now you are able to use the library in developer mode (i.e. with code modifications directly taken into account)
+by prefixing all commands with `poetry run`.
 For instance:
 
 - to see the list of installed packages: `poetry run pip list`  (NB: you can also use `poetry show`)
@@ -231,14 +231,14 @@ yarn install
 
 #### 3. Build the docs
 
-Make sure you are in the "scikit-decide" root directory and using the virtual environment where you installed scikit-decide. 
+Make sure you are in the "scikit-decide" root directory and using the virtual environment where you installed scikit-decide.
 If you used poetry, that means prepending python commands with `poetry run`.
 Then generate doc with:
-    
+
 ```shell
 poetry run python docs/autodoc.py
 ```
- 
+
 #### 4. Access the documentation
 
 Make sure you are in the "scikit-decide" root directory and start the local documentation server:
@@ -287,7 +287,7 @@ These combinations are particularly efficient if you want to try them out:
 - Mountain Car continuous -> CGP: Cartesian Genetic Programming
 - ATARI Pacman -> Random walk
 
-> **Warning**: some domains/solvers might require extra manual setup steps to work at 100%. 
+> **Warning**: some domains/solvers might require extra manual setup steps to work at 100%.
 > In the future, each scikit-decide hub entry might have a dedicated help page to list them, but in the meantime please refer to this:
 > - OpenAI Gym domains: [OpenAI Gym](http://gym.openai.com/docs/#installation) for loading Gym environments not included by default (e.g. atari games).
 
