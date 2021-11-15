@@ -54,6 +54,7 @@ repos:
         name: nbqa-pycln
         alias: nbqa-pycln
         additional_dependencies: [pycln]
+        args: ["--all"]
 
   - repo: https://github.com/kynan/nbstripout
     rev: 0.5.0
