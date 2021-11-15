@@ -1,17 +1,17 @@
 {
-  "scripts": {
-    "docs:dev": "(cd docs && python autodoc.py) && vuepress dev docs",
-    "docs:build": "(cd docs && python autodoc.py) && vuepress build docs"
-  },
-  "devDependencies": {
-    "@vuepress/plugin-back-to-top": "^1.8.2",
-    "vuepress": "^1.0.2"
-  },
-  "dependencies": {
-    "async-validator": "^1.11.5",
-    "axios": "^0.23.0",
-    "element-ui": "^2.10.1",
-    "vuepress-plugin-mathjax": "^1.2.8",
-    "vuex": "^3.1.1"
-  }
+    "scripts": {
+        "docs:dev": "(cd docs && python autodoc.py) && vuepress dev docs",
+        "docs:build": "(cd docs && python autodoc.py) && vuepress build docs"
+    },
+    "devDependencies": {
+        "@vuepress/plugin-back-to-top": "^1.8.2",
+        "vuepress": "^1.0.2"
+    },
+    "dependencies": {
+        "async-validator": "^1.11.5",
+        "axios": "^0.23.0",
+        "element-ui": "^2.10.1",
+        "vuepress-plugin-mathjax": "^1.2.8",
+        "vuex": "^3.1.1"
+    }
 }
