@@ -3,6 +3,10 @@
         "docs:dev": "(cd docs && python autodoc.py) && vuepress dev docs",
         "docs:build": "(cd docs && python autodoc.py) && vuepress build docs"
     },
+    "resolutions": {
+        "glob-parent": "^5.1.2",
+        "nth-check": "^2.0.1"
+    },
     "devDependencies": {
         "@vuepress/plugin-back-to-top": "^1.8.2",
         "vuepress": "^1.0.2"
