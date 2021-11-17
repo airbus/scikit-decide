@@ -1,13 +1,7 @@
+import argparse
 import time
+from typing import Optional
 
-from examples.discrete_optimization.rcpsp_multiskill_parser_example import (
-    get_complete_path_ms,
-    get_data_available_ms,
-)
-from examples.discrete_optimization.rcpsp_parser_example import (
-    get_complete_path,
-    get_data_available,
-)
 from skdecide import DiscreteDistribution, rollout_episode
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     SchedulingAction,
@@ -47,45 +41,79 @@ def do_rollout_comparaison(domain: RCPSP, solver, inplace: bool = True):
     return states
 
 
-def run_expe():
+def run_expe(path: str, inplace, makespan: int, plot: bool, output: Optional[str]):
     do_solver = SolvingMethod.PILE  # Greedy solver.
-    domain: RCPSP = load_domain(get_complete_path("j1201_1.sm"))
-    solver = DOSolver(
-        policy_method_params=PolicyMethodParams(
-            base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
-            # policy will just follow the output gantt of the greedy solver
-            delta_index_freedom=0,
-            delta_time_freedom=0,
-        ),
-        method=do_solver,
-    )
-    solver.solve(domain_factory=lambda: domain)
-    states_deepcopy = do_rollout_comparaison(domain, solver, False)
-    states_inplace = do_rollout_comparaison(domain, solver, True)
-
-    # main difference is that in the inplace environment, the object are overwritten as you can see
-    print([id(s) for s in states_inplace])
-    # Where as the deepcopy solution is creating each time a new object :
-    print([id(s) for s in states_deepcopy])
-
-    # There is a 20 factor speedup, and it's even more when the makespan is large, let's try :
-    domain: RCPSP = load_domain(get_complete_path("j1201_1.sm"))
+    domain: RCPSP = load_domain(path)
     for task in domain.duration_dict:
         for mode in domain.duration_dict[task]:
-            domain.duration_dict[task][mode] *= 20
-    domain.set_inplace_environment(False)
-    solver = DOSolver(
-        policy_method_params=PolicyMethodParams(
-            base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
-            delta_index_freedom=0,
-            delta_time_freedom=0,
-        ),
-        method=do_solver,
-    )
-    solver.solve(domain_factory=lambda: domain)
-    states_deepcopy = do_rollout_comparaison(domain, solver, False)
-    states_inplace = do_rollout_comparaison(domain, solver, True)
+            domain.duration_dict[task][mode] *= makespan
+    if inplace is None:
+        inplace = [0, 1]
+    for flag in inplace:
+        solver = DOSolver(
+            policy_method_params=PolicyMethodParams(
+                base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
+                # policy will just follow the output gantt of the greedy solver
+                delta_index_freedom=0,
+                delta_time_freedom=0,
+            ),
+            method=do_solver,
+        )
+        solver.solve(domain_factory=lambda: domain)
+        states = do_rollout_comparaison(domain, solver, flag != 0)
+        if output:
+            with open(output, "wt") as f:
+                for state in states:
+                    f.write(f"{state.t}\n")
+
+        # print([id(s) for s in states])
+
+        if plot:
+            import matplotlib.pylab as plt
+
+            from skdecide.hub.solver.do_solver.sk_to_do_binding import (
+                from_last_state_to_solution,
+            )
+
+            do_sol = from_last_state_to_solution(states[-1], domain)
+            from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import (
+                plot_ressource_view,
+                plot_task_gantt,
+            )
+
+            # Each line of the plot is a task
+            plot_task_gantt(do_sol.problem, do_sol)
+            # Plot resource consumption plot
+            plot_ressource_view(do_sol.problem, do_sol)
+            plt.show()
 
 
 if __name__ == "__main__":
-    run_expe()
+
+    parser = argparse.ArgumentParser(
+        description="Solve Graph problem using various algorithms"
+    )
+    parser.add_argument("--graph_file", type=str, required=True, help="SM file")
+    parser.add_argument(
+        "--inplace",
+        type=int,
+        action="append",
+        required=False,
+        help="set inplace (can be repeated)",
+    )
+    parser.add_argument(
+        "--makespan", type=int, required=False, default=1, help="makespan"
+    )
+    parser.add_argument(
+        "--plot",
+        action="store_true",
+        required=False,
+        default=False,
+        help="plot Gantt graph",
+    )
+    parser.add_argument(
+        "--output", type=str, required=False, help="store solution in a text file"
+    )
+    args = parser.parse_args()
+
+    run_expe(args.graph_file, args.inplace, args.makespan, args.plot, args.output)
