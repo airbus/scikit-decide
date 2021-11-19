@@ -152,13 +152,13 @@ In the example of the Maze solved with Lazy A*, the goal (in green) should be re
 
 ## Examples
 
-**Go to <router-link to="_examples">Examples</router-link> for a curated list of Python notebooks (recommended to start).**
+### Notebooks
 
-More examples can be found in the `/examples` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on scikit-decide Hub, an extensible catalog of domains/solvers.
+Go to the dedicated <router-link to="codegen">Notebooks</router-link> page to see a curated list of notebooks recommended to start with scikit-decide.
 
-**Warning**: the examples whose filename starts with an underscore are currently being migrated to the new API and might not be working in the meantime (same goes for domains/solvers inside `skdecide/hub`).
+### Python scripts
 
-**Warning**: some content currently in the hub (especially the MasterMind domain and the POMCP/CGP solvers) will require permission from their original authors before entering the public hub when open sourced.
+More examples can be found in the `examples/` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on scikit-decide Hub, an extensible catalog of domains/solvers.
 
 ### Playground
 
