@@ -6,77 +6,22 @@ import ast
 import importlib
 import inspect
 import json
+import logging
 import os
 import pkgutil
 import re
 import sys
+import urllib
 from functools import lru_cache
 from glob import glob
+from typing import List, Tuple
 
 import skdecide
 
+NOTEBOOKS_LIST_PLACEHOLDER = "[[notebooks-list]]"
+
+logger = logging.getLogger(__name__)
 refs = set()
-header_comment = "# %%\n"
-
-
-# https://github.com/kiwi0fruit/ipynb-py-convert/blob/master/ipynb_py_convert/__main__.py
-def py2nb(py_str, title=None):
-    cells = []
-    if title is not None:
-        # first cell = title
-        cell = {
-            "cell_type": "markdown",
-            "metadata": {},
-            "source": [f"# {title}"],
-        }
-        cells.append(cell)
-
-    chunks = py_str.split(f"\n\n{header_comment}")[1:]
-    for chunk in chunks:
-        cell_type = "code"
-        chunk = chunk.strip()
-        if chunk.startswith('"""'):
-            chunk = chunk.strip('"\n')
-            cell_type = "markdown"
-        elif chunk.startswith("# %"):
-            # magic commands
-            chunk = chunk[2:]
-
-        cell = {
-            "cell_type": cell_type,
-            "metadata": {},
-            "source": chunk.splitlines(True),
-        }
-
-        if cell_type == "code":
-            cell.update({"outputs": [], "execution_count": None})
-
-        cells.append(cell)
-
-    notebook = {
-        "cells": cells,
-        "metadata": {
-            "anaconda-cloud": {},
-            "kernelspec": {
-                "display_name": "Python 3",
-                "language": "python",
-                "name": "python3",
-            },
-            "language_info": {
-                "codemirror_mode": {"name": "ipython", "version": 3},
-                "file_extension": ".py",
-                "mimetype": "text/x-python",
-                "name": "python",
-                "nbconvert_exporter": "python",
-                "pygments_lexer": "ipython3",
-                "version": "3.6.1",
-            },
-        },
-        "nbformat": 4,
-        "nbformat_minor": 1,
-    }
-
-    return notebook
 
 
 # https://stackoverflow.com/questions/48879353/how-do-you-recursively-get-all-submodules-in-a-python-package
@@ -225,6 +170,110 @@ def write_signature(md, member):
 
 def is_implemented(func_code):
     return not func_code.strip().endswith("raise NotImplementedError")
+
+
+def get_binder_link(
+    binder_env_repo_name: str,
+    binder_env_branch: str,
+    notebooks_repo_url: str,
+    notebooks_branch: str,
+    notebook_relative_path: str,
+) -> str:
+    # binder hub url
+    jupyterhub = urllib.parse.urlsplit("https://mybinder.org")
+
+    # path to the binder env
+    binder_path = f"v2/gh/{binder_env_repo_name}/{binder_env_branch}"
+
+    # nbgitpuller query
+    notebooks_repo_basename = os.path.basename(notebooks_repo_url)
+    urlpath = f"tree/{notebooks_repo_basename}/{notebook_relative_path}"
+    next_url_params = urllib.parse.urlencode(
+        {
+            "repo": notebooks_repo_url,
+            "urlpath": urlpath,
+            "branch": notebooks_branch,
+        }
+    )
+    next_url = f"git-pull?{next_url_params}"
+    query = urllib.parse.urlencode({"urlpath": next_url})
+
+    # full link
+    link = urllib.parse.urlunsplit(
+        urllib.parse.SplitResult(
+            scheme=jupyterhub.scheme,
+            netloc=jupyterhub.netloc,
+            path=binder_path,
+            query=query,
+            fragment="",
+        )
+    )
+
+    return link
+
+
+def get_github_link(
+    notebooks_repo_url: str,
+    notebooks_branch: str,
+    notebook_relative_path: str,
+) -> str:
+    return f"{notebooks_repo_url}/blob/{notebooks_branch}/{notebook_relative_path}"
+
+
+def get_repo_n_branches_for_binder_n_github_links() -> Tuple[bool, str, str, str, str]:
+    # repos + branches to use for binder environment and notebooks content.
+    creating_links = True
+    try:
+        binder_env_repo_name = os.environ["AUTODOC_BINDER_ENV_GH_REPO_NAME"]
+    except KeyError:
+        binder_env_repo_name = "airbus/scikit-decide"
+    try:
+        binder_env_branch = os.environ["AUTODOC_BINDER_ENV_GH_BRANCH"]
+    except KeyError:
+        binder_env_branch = "binder"
+    try:
+        notebooks_repo_url = os.environ["AUTODOC_NOTEBOOKS_REPO_URL"]
+        notebooks_branch = os.environ["AUTODOC_NOTEBOOKS_BRANCH"]
+    except KeyError:
+        # missing environment variables => no github and binder links creation
+        notebooks_repo_url = ""
+        notebooks_branch = ""
+        creating_links = False
+        logger.warning(
+            "Missing environment variables AUTODOC_NOTEBOOKS_REPO_URL "
+            "or AUTODOC_NOTEBOOKS_BRANCH to create github and binder links for notebooks."
+        )
+    return (
+        creating_links,
+        notebooks_repo_url,
+        notebooks_branch,
+        binder_env_repo_name,
+        binder_env_branch,
+    )
+
+
+def extract_notebook_title_n_description(
+    notebook_filepath: str,
+) -> Tuple[str, List[str]]:
+    # load notebook
+    with open(notebook_filepath, "rt") as f:
+        notebook = json.load(f)
+
+    # find title + description: from first cell,  h1 title + remaining text.
+    # or title from filename else
+    title = ""
+    description_lines: List[str] = []
+    cell = notebook["cells"][0]
+    if cell["cell_type"] == "markdown":
+        if cell["source"][0].startswith("# "):
+            title = cell["source"][0][2:].strip()
+            description_lines = cell["source"][1:]
+        else:
+            description_lines = cell["source"]
+    if not title:
+        title = os.path.splitext(os.path.basename(notebook_filepath))[0]
+
+    return title, description_lines
 
 
 if __name__ == "__main__":
@@ -570,35 +619,57 @@ if __name__ == "__main__":
     with open(f"{docdir}/.vuepress/_state.json", "w") as f:
         json.dump(state, f)
 
-    # Convert selected examples to notebooks & write Examples page (guide/_examples.md)
-    examples = "# Examples\n\n"
+    # List existing notebooks and and write Notebooks page
+    rootdir = os.path.abspath(f"{docdir}/..")
+    notebook_filepaths = sorted(glob(f"{rootdir}/notebooks/*.ipynb"))
+    notebooks_list_text = ""
+    (
+        creating_links,
+        notebooks_repo_url,
+        notebooks_branch,
+        binder_env_repo_name,
+        binder_env_branch,
+    ) = get_repo_n_branches_for_binder_n_github_links()
+    # loop on notebooks sorted alphabetically by filenames
+    for notebook_filepath in notebook_filepaths:
+        title, description_lines = extract_notebook_title_n_description(
+            notebook_filepath
+        )
+        # subsection title
+        notebooks_list_text += f"## {title}\n\n"
+        # links
+        if creating_links:
+            notebook_path_prefix_len = len(f"{rootdir}/")
+            notebook_relative_path = notebook_filepath[notebook_path_prefix_len:]
+            binder_link = get_binder_link(
+                binder_env_repo_name=binder_env_repo_name,
+                binder_env_branch=binder_env_branch,
+                notebooks_repo_url=notebooks_repo_url,
+                notebooks_branch=notebooks_branch,
+                notebook_relative_path=notebook_relative_path,
+            )
+            binder_badge = (
+                f"[![Binder](https://mybinder.org/badge_logo.svg)]({binder_link})"
+            )
+            github_link = get_github_link(
+                notebooks_repo_url=notebooks_repo_url,
+                notebooks_branch=notebooks_branch,
+                notebook_relative_path=notebook_relative_path,
+            )
+            github_badge = f"[![Github](https://img.shields.io/badge/see-Github-579aca?logo=github)]({github_link})"
 
-    selected_examples = []
-    for example in glob(f"{docdir}/../examples/*.py"):
-        docstr, name, code = py_parse(example)
-        if docstr.startswith("Example "):
-            selected_examples.append((docstr, name, code))
+            # markdown item
+            notebooks_list_text += f"{github_badge}\n{binder_badge}\n\n"
+        # description
+        notebooks_list_text += "".join(description_lines)
+        notebooks_list_text += "\n\n"
 
-    os.makedirs(f"{docdir}/.vuepress/public/notebooks", exist_ok=True)
-    sorted_examples = sorted(selected_examples)
-    for docstr, name, code in sorted_examples:
-        title = docstr[docstr.index(":") + 1 :]
-        examples += f"## {title}\n\n"
-        examples += f'<el-link type="primary" icon="el-icon-bottom" :underline="false" style="margin: 10px" href="../notebooks/{name}.ipynb">Download Notebook</el-link>\n'
-        examples += f'<el-link type="warning" icon="el-icon-cloudy" :underline="false" style="margin: 10px" href="https://colab.research.google.com/github/airbus/scikit-decide/blob/gh-pages/notebooks/{name}.ipynb">Run in Google Colab</el-link>\n\n'
-        notebook = py2nb(code, title=title)
+    with open(f"{docdir}/notebooks/README.md.template", "rt") as f:
+        readme_template_text = f.read()
 
-        # Render cells, except for first cell with title
-        for cell in notebook["cells"][1:]:
-            cell_type = cell["cell_type"]
-            cell_source = "".join(cell["source"])
-            if cell_type == "markdown":
-                examples += f"{cell_source}\n\n"
-            elif cell_type == "code":
-                examples += f"``` py\n{cell_source}\n```\n\n"
+    readme_text = readme_template_text.replace(
+        NOTEBOOKS_LIST_PLACEHOLDER, notebooks_list_text
+    )
 
-        with open(f"{docdir}/.vuepress/public/notebooks/{name}.ipynb", "w") as f:
-            json.dump(notebook, f, indent=2)
-
-    with open(f"{docdir}/guide/_examples.md", "w") as f:
-        f.write(examples)
+    with open(f"{docdir}/notebooks/README.md", "wt") as f:
+        f.write(readme_text)

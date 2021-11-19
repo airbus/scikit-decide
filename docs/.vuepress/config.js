@@ -34,6 +34,10 @@ module.exports = {
                 link: '/guide/'
             },
             {
+                text: 'Notebooks',
+                link: '/notebooks/'
+            },
+            {
                 text: 'Reference',
                 link: '/reference/'
             },
