@@ -17,6 +17,7 @@
         >{{ $siteTitle }}</span
       >
     </RouterLink>
+    <versions />
 
     <div
       class="links"
