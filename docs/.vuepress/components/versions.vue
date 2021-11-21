@@ -41,21 +41,21 @@ export default {
         }
         return e1.text === e2.text ? 0 : e2.text < e1.text ? -1 : 1;
       });
-      this.options.unshift({ value: "main", text: "dev" });
+      this.options.unshift({ value: "master", text: "dev" });
       const path = window.location.pathname.toLowerCase();
       if (path.startsWith("/scikit-decide/version/")) {
-        const start = 23;
+        const start = 23; // len("/version/scikit-decide/")
         const end = path.indexOf("/", start);
         this.selected = path.substring(start, end);
       } else {
-        this.selected = "main";
+        this.selected = "master";
       }
     } catch (ex) {}
   },
   methods: {
     onChange(event) {
       const targetVersionPath =
-        this.selected === "main" ? "" : `/version/${this.selected}`;
+        this.selected === "master" ? "" : `/version/${this.selected}`;
       const path = window.location.pathname.toLowerCase();
       let startIdx = 14; // len("/scikit-decide")
       const versionIdx = path.indexOf("/version/");
