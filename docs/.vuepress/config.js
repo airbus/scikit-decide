@@ -45,6 +45,10 @@ module.exports = {
                 text: 'Reference',
                 link: '/reference/'
             },
+            {
+                text: 'Contribute',
+                link: '/contribute'
+            },
         ],
         sidebar: 'auto',
         markdown: {
