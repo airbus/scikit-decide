@@ -30,6 +30,10 @@ module.exports = {
                 link: '/'
             },
             {
+                text: 'Install',
+                link: '/install'
+            },
+            {
                 text: 'Guide',
                 link: '/guide/'
             },
