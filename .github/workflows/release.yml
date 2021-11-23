@@ -321,7 +321,6 @@ jobs:
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@4.1.5
         with:
-          tokem: ${{ secrets.gh_access_token }}
           branch: gh-pages # The branch the action should deploy to.
           folder: docs/.vuepress/dist # The folder the action should deploy.
           target-folder: ${{ env.DOCS_VERSION_PATH }} # The folder the action should deploy to.
