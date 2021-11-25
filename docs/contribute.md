@@ -1,17 +1,36 @@
 # Contributing to scikit-decide
 
-This page is intended to help people wanting to contribute to the library.
+We welcome all contributions to scikit-decide.
 
-For now is it mainly about how to test locally changes made to the library.
-In the future, it will also cover guidelines to follow when contributing.
+You can help by:
 
-## Installing from source in developer mode
+- fixing bugs (see [issues](https://github.com/airbus/scikit-decide/issues) with label "bug"),
+- adding new domains or solvers to the hub in `skdecide/hub/`,
+- improving the documentation,
+- adding and improving educational notebooks in `notebooks/`.
+
+This is not exhaustive.
+
+The project is hosted on [https://github.com/airbus/scikit-decide](https://github.com/airbus/scikit-decide).
+Contributions to the repository are made by submitting pull requests.
+
+
+This guide is organized as follows:
+
+- [Setting up your development environment](#setting-up-your-development-environment)
+- [Guidelines to follow when preparing a contribution](#guidelines-to-follow-when-preparing-a-contribution)
+- [Submitting pull requests](#submitting-pull-requests) to put your contribution in the main repository
+
+
+## Setting up your development environment
+
+### Installing from source in developer mode
 
 > **Disclaimer**: The following process has only been tested on Linux/MacOS platforms.
 
 In order to install scikit-decide from the source so that your modification to the library are taken into account, we recommmend using poetry.
 
-###  Prerequisites for C++
+####  Prerequisites for C++
 To build the  c++ part of the library,
 you need a minimal environment with c++ compiler, cmake, and boost.
 To be able to use parallelism based on openMP, you should also install libomp.
@@ -23,13 +42,13 @@ brew install boost
 brew install libomp
 ```
 
-### Installation with pyenv + poetry
+#### Installation with pyenv + poetry
 
 Here are the steps to follow:
 
 - Clone the source and got to the "scikit-decide" root directory.
     ```shell
-    git clone --recurse-submodules -j8 https://github.com/Airbus/scikit-decide.git
+    git clone --recurse-submodules -j8 https://github.com/airbus/scikit-decide.git
     cd scikit-decide
     ```
 
@@ -62,14 +81,14 @@ Here are the steps to follow:
         poetry install --extras all
         ```
 
-### Alternate installation with conda + poetry
+#### Alternate installation with conda + poetry
 
 You can also use conda rather than pyenv. It can be useful when you cannot install poetry via the above method,
 as it can also be installed by conda via the conda-forge channel.
 
 - Clone the source and got to the "scikit-decide" root directory.
     ```shell
-    git clone --recurse-submodules -j8 https://github.com/Airbus/scikit-decide.git
+    git clone --recurse-submodules -j8 https://github.com/airbus/scikit-decide.git
     cd scikit-decide
     ```
 
@@ -94,7 +113,7 @@ as it can also be installed by conda via the conda-forge channel.
     poetry install --extras all
     ```
 
-### Use of developer mode installation
+#### Use of developer mode installation
 
 Now you are able to use the library in developer mode (i.e. with code modifications directly taken into account)
 by prefixing all commands with `poetry run`.
@@ -103,16 +122,16 @@ For instance:
 - to see the list of installed packages: `poetry run pip list`  (NB: you can also use `poetry show`)
 - to run the tutorial script from examples: `poetry run python examples/tutorial.py`
 
-## Building the docs locally
+### Building the docs locally
 
 The documentation is using [VuePress](https://v1.vuepress.vuejs.org) to generate an interactive static website.
 Some pages are generated from code thanks to the Python script `docs/autodoc.py`.
 
-### Install the library in developer mode.
+#### Install the library in developer mode.
 
 See [above](#installing-from-source-developer-mode) to install scikit-decide with poetry.
 
-### Install the documentation dependencies
+#### Install the documentation dependencies
 
 The Python dependencies should have been installed in previous step,
 but you still need to install the JavaScript ones (including VuePress).
@@ -125,7 +144,7 @@ Make sure you are in the "scikit-decide" root directory and install documentatio
 yarn install
 ```
 
-### Define environment variables for binder links
+#### Define environment variables for binder links
 
 In order to define appropriate links for notebooks (github source + launching on binder), we need several environment variables:
 - AUTODOC_BINDER_ENV_GH_REPO_NAME: name of the github repository hosting the binder environment
@@ -142,7 +161,7 @@ export AUTODOC_NOTEBOOKS_REPO_URL=${current_repo_url_withdotgit/.git/}
 export AUTODOC_NOTEBOOKS_BRANCH=$(git branch --show-current)
 ```
 
-### Build the docs
+#### Build the docs
 
 Make sure you are in the "scikit-decide" root directory and using the virtual environment where you installed scikit-decide.
 If you used poetry, that means prepending python commands with `poetry run`.
@@ -157,16 +176,56 @@ NB: The above command will call  `python docs/autodoc.py` hence the use of `poe
 
 Open your web browser to access the documentation (by default on http://localhost:8080/scikit-decide/).
 
-## Notebooks
+### Running unit tests
+
+The unit tests are gathered in `tests/` folder and run with [pytest](https://docs.pytest.org/).
+Providing you installed the library in developer mode as described [above](#installing-from-source-in-developer-mode),
+pytest should have been already installed by poetry.
+
+From the "scikit-decide" root directory, run unit tests with:
+
+ ```shell
+ poetry run pytest tests
+```
+
+## Guidelines to follow when preparing a contribution
+
+### Coding style and code linting
+
+To help maintaining the same coding style across the project, some code linters are used via [pre-commit](https://pre-commit.com/).
+
+It is used by CI to run checks at each push, but can also be used locally.
+
+Once installed, you can run it on all files with
+```shell
+pre-commit run --all-files
+```
+Beware that doing so, you are actually modifying the files.
+
+You can also use it when committing:
+
+- Stage your changes: `git add your_files`
+- Run pre-commit on the staged files: `pre-commit run`
+- Check the changes made
+- Accept them by adding modified files: `git add -u`
+- Commit: `git commit`
+
+This can also be done automatically at each commit if you add pre-commit to git hooks with `pre-commit install`.
+Beware that when doing so,
+- the changes will be refused if pre-commit actually modifies the files
+- you can then accept the modifications with `git add -u`
+- you can still force a commit that violates pre-commit checks with `git commit -n` or `git commit --no-verify`
+
+If you prefer run pre-commit manually, you can remove the hooks with `pre-commit uninstall`.
+
+### Notebooks
 
 We try to give some introductory examples via notebooks available in the corresponding `notebooks/` directory.
-
-### Integration in the documentation
 
 The list of these notebooks is automatically inserted in the documentation with a title and a description.
 These are actually extracted from the first cell. To enable that, each notebook should
 
-- starts with a markdown cell,
+- start with a markdown cell,
 - its first line being the title starting with one number sign ("# "),
 - the remaining lines being used as the description.
 
@@ -182,12 +241,60 @@ Can include a nice thumbnail.
 ![Notebook_thumbnail](https://airbus.github.io/scikit-decide/maze.png)
 ```
 
-## Unit tests
+### Adding unit tests
 
-Pytest is required to run unit tests. Providing you installed the library in developer mode as described [above](#installing-from-source-in-developer-mode), it should have been already installed by poetry.
+- Whenever adding some code, think to add some tests to the `tests/` folder.
+- Whenever fixing a bug, think to add a test that crashes before fixing the bug and does not afterwards.
 
-From the "scikit-decide" root directory, run unit tests (the "-vv" verbose mode is optional but gives additional details) with:
+Follow [above instructions](#running-unit-tests) to run them with pytest.
 
- ```shell
- poetry run pytest -vv -s tests/solvers/cpp
+## Submitting pull requests
+
+When you think you are ready to merge your modifications into the main repository, you will have to open a pull request (PR).
+We can summarize the process as follows:
+
+- Fork the repository on github.
+- Clone your fork on your computer.
+- Create a branch with a self-explanatory branch, e.g. `xx/add-solver-crazyalgoname` where "xx" stands for your initials,
+  and "crazyalgoname" for the name of the hypothetic solver you are adding.
+- Make your changes in this branch and push it to your fork.
+- Do the necessary checks (see [below](#prior-checks)).
+- Reorganize your commits (see [below](#reorganizing-commits)).
+- Submit your pull request (see [github documentation](https://help.github.com/articles/creating-a-pull-request-from-a-fork/)).
+- See if all CI checks passed on your PR
+- Wait for a review
+- Take the comments and required changes into account
+
+Note that a PR needs at least one review by a core developer to be merged.
+
+
+You may want to add a reference to the main repository to fetch from it and (re)base your changes on it:
+```shell
+git remote add upstream https://github.com/airbus/scikit-decide
 ```
+
+This [post](https://medium.com/google-developer-experts/how-to-pull-request-d75ac81449a5) points out good practices to follow to submit great pull requests and review them efficiently.
+
+
+### Prior checks
+
+Before submitting your pull request, think to
+- [run the unit tests](#running-unit-tests)
+- [check the documentation locally](#building-the-docs-locally) if you modified it
+- check you respect the coding styles by [running linters](#coding-style-and-code-linting)
+
+I you do not, you will still be able to see the status of your PR as CI will do that checks for you.
+
+### Reorganizing commits
+
+On your way to implement your contribution, you will probably have lots of commits,
+some modifying other ones from the same PR, or only modidying the code style.
+
+At the end of your work, consider reorganizing them by
+- squashing them into one or only a few logical commits
+- having a separate commit to reformat previous existing code if necessary
+- rewritting commit messages so that it explains the changes made and why, the "how" part being explained by the code itself
+  (see this [post](https://chris.beams.io/posts/git-commit/) about what a commit message should and should not contain)
+- rebasing on main repository main branch if it diverged too much by the time you finished
+
+You can use `git rebase -i` to do that, as explained in [git documentation](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History).
