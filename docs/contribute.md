@@ -255,9 +255,7 @@ We can summarize the process as follows:
 
 - Fork the repository on github.
 - Clone your fork on your computer.
-- Create a branch with a self-explanatory branch, e.g. `xx/add-solver-crazyalgoname` where "xx" stands for your initials,
-  and "crazyalgoname" for the name of the hypothetic solver you are adding.
-- Make your changes in this branch and push it to your fork.
+- Make your changes and push them to your fork.
 - Do the necessary checks (see [below](#prior-checks)).
 - Reorganize your commits (see [below](#reorganizing-commits)).
 - Submit your pull request (see [github documentation](https://help.github.com/articles/creating-a-pull-request-from-a-fork/)).
@@ -283,7 +281,7 @@ Before submitting your pull request, think to
 - [check the documentation locally](#building-the-docs-locally) if you modified it
 - check you respect the coding styles by [running linters](#coding-style-and-code-linting)
 
-I you do not, you will still be able to see the status of your PR as CI will do that checks for you.
+If you do not, you will still be able to see the status of your PR as CI will do these checks for you.
 
 ### Reorganizing commits
 
@@ -295,6 +293,6 @@ At the end of your work, consider reorganizing them by
 - having a separate commit to reformat previous existing code if necessary
 - rewritting commit messages so that it explains the changes made and why, the "how" part being explained by the code itself
   (see this [post](https://chris.beams.io/posts/git-commit/) about what a commit message should and should not contain)
-- rebasing on main repository main branch if it diverged too much by the time you finished
+- rebasing on upstream repository master branch if it diverged too much by the time you finished
 
 You can use `git rebase -i` to do that, as explained in [git documentation](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History).
