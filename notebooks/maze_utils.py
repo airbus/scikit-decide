@@ -66,7 +66,7 @@ class Maze:
             # pick a cell
             current_cell = stack.pop()
             i, j = current_cell
-            #  find unvisited neighbours
+            # find unvisited neighbours
             neighbours = [(i + di, j + dj) for (di, dj) in _deltas_neighbour]
             neighbours = [
                 (i, j)
@@ -74,7 +74,7 @@ class Maze:
                 if (i > 0) and (i < height) and (j > 0) and (j < width)
             ]
             unvisited_neighbours = [cell for cell in neighbours if cell not in visited]
-            #  remove a wall towards an unvisited cell
+            # remove a wall towards an unvisited cell
             if len(unvisited_neighbours) > 0:
                 stack.append(current_cell)
                 next_cell = random.choice(unvisited_neighbours)

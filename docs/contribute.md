@@ -171,7 +171,7 @@ Then generate and serve locally the documentation with:
 poetry run yarn docs:dev
 ```
 
-NB: The above command will call  `python docs/autodoc.py` hence the use of `poetry run`.
+NB: The above command will call `python docs/autodoc.py` hence the use of `poetry run`.
 
 
 Open your web browser to access the documentation (by default on http://localhost:8080/scikit-decide/).
