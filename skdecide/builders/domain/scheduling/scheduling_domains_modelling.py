@@ -6,9 +6,29 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import Enum
+from time import time
 from typing import Dict, List, Optional, Set, Union
 
 from skdecide.builders.domain.scheduling.task import Task
+
+
+class Timer:
+    def __init__(self):
+        self.c = [0] * 15
+        self.v = [0] * 15
+
+    def start(self):
+        self.__i = 0
+        self.__tic = time()
+
+    def register(self, count: int = 0):
+        self.v[self.__i] += time() - self.__tic
+        self.c[self.__i] += count
+        self.__i += 1
+        self.__tic = time()
+
+    def __str__(self):
+        return f"Times: {self.v.__str__()} total = {sum(self.v)}\nCount: {self.c}"
 
 
 class SchedulingActionEnum(Enum):
@@ -24,6 +44,9 @@ class SchedulingActionEnum(Enum):
     PAUSE = 1
     RESUME = 2
     TIME_PR = 3
+
+
+timer = Timer()
 
 
 class State:
@@ -108,18 +131,32 @@ class State:
     def copy(self):
         s = State(task_ids=self.task_ids)
         s.t = self.t
+        global timer
+        timer.start()
         s.tasks_remaining = deepcopy(self.tasks_remaining)
+        timer.register(len(s.tasks_remaining))
         s.tasks_ongoing = deepcopy(self.tasks_ongoing)
-        s.tasks_complete = deepcopy(self.tasks_complete)
+        timer.register(len(s.tasks_ongoing))
         s.tasks_paused = deepcopy(self.tasks_paused)
+        timer.register(len(s.tasks_paused))
         s.tasks_progress = deepcopy(self.tasks_progress)
+        timer.register(len(s.tasks_progress))
         s.tasks_mode = deepcopy(self.tasks_mode)
+        timer.register(len(s.tasks_mode))
+        s.tasks_complete = deepcopy(self.tasks_complete)
+        timer.register(len(s.tasks_complete))
         s.resource_to_task = deepcopy(self.resource_to_task)
+        timer.register(len(s.resource_to_task))
         s.resource_availability = deepcopy(self.resource_availability)
+        timer.register(len(s.resource_availability))
         s.resource_used = deepcopy(self.resource_used)
+        timer.register(len(s.resource_used))
         s.resource_used_for_task = deepcopy(self.resource_used_for_task)
-        s.tasks_details = deepcopy(self.tasks_details)
+        timer.register(len(s.resource_used_for_task))
         s._current_conditions = deepcopy(self._current_conditions)
+        timer.register(len(s._current_conditions))
+        s.tasks_details = deepcopy(self.tasks_details)
+        timer.register(len(s.tasks_details))
         return s
 
     def __str__(self):
