@@ -777,7 +777,6 @@ class SchedulingDomain(
             next_state.tasks_ongoing.add(started_task)
             next_state.tasks_remaining.remove(started_task)
             next_state.tasks_details[started_task].start = next_state.t
-            next_state.tasks_details[started_task].resources = resource_to_use
             next_state.tasks_details[
                 started_task
             ].sampled_duration = self.get_latest_sampled_duration(

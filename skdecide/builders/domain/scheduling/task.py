@@ -26,7 +26,6 @@ class Task:
     mode: int
     paused: List[int]
     resumed: List[int]
-    resources: Dict[int, List["str"]]
 
     def __init__(self, id: int):
         self.id = id
@@ -36,7 +35,6 @@ class Task:
         self.mode = None
         self.paused = []
         self.resumed = []
-        self.resources = {}
 
     def get_task_active_time(self, t: Optional[int] = None):
         tt = t
