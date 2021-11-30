@@ -81,6 +81,7 @@ from skdecide.builders.domain.scheduling.skills import (
     WithoutResourceSkills,
     WithResourceSkills,
 )
+from skdecide.builders.domain.scheduling.task import Task
 from skdecide.builders.domain.scheduling.task_duration import (
     DeterministicTaskDuration,
     SimulatedTaskDuration,
@@ -669,9 +670,6 @@ class SchedulingDomain(
             next_state.tasks_details[resumed_task].resumed.append(
                 next_state.t
             )  # Need to call this before get_task_active_time()
-            time_since_start = next_state.tasks_details[
-                resumed_task
-            ].get_task_active_time(next_state.t)
             b, resource_to_use = self.check_if_action_can_be_started(
                 next_state, action=action
             )
@@ -722,19 +720,20 @@ class SchedulingDomain(
         self, state: State, action: SchedulingAction
     ) -> Tuple[bool, Dict[str, int]]:
         """Check if a start or resume action can be applied. It returns a boolean and a dictionary of resources to use."""
-        if (
-            not action.action == SchedulingActionEnum.START
-            and not action.action == SchedulingActionEnum.RESUME
-        ):
-            return True, {}
         started_task = action.task
+        if action.action == SchedulingActionEnum.START:
+            time_since_start = state.t
+        elif action.action == SchedulingActionEnum.RESUME:
+            time_since_start = state.tasks_details[started_task].get_task_active_time(
+                state.t
+            )
+        else:
+            return True, {}
         resource_to_use = self.get_resource_used(
             task=started_task,
             mode=action.mode,
             resource_unit_names=action.resource_unit_names,
-            time_since_start=state.tasks_details[started_task].get_task_active_time(
-                state.t
-            ),
+            time_since_start=time_since_start,
         )
         if any(
             resource_to_use[r] > state.resource_availability[r] - state.resource_used[r]
@@ -776,12 +775,12 @@ class SchedulingDomain(
             next_state.tasks_mode[started_task] = mode
             next_state.tasks_ongoing.add(started_task)
             next_state.tasks_remaining.remove(started_task)
-            next_state.tasks_details[started_task].start = next_state.t
-            next_state.tasks_details[
-                started_task
-            ].sampled_duration = self.get_latest_sampled_duration(
+            sampled_duration = self.get_latest_sampled_duration(
                 task=started_task, mode=mode, progress_from=0.0
             )  # TODO: what to do with this, so far the sample is stored and then used by get_task_progress()
+            next_state.tasks_details[started_task] = Task(
+                started_task, next_state.t, sampled_duration
+            )
             for res in resource_to_use:
                 next_state.resource_used[res] += resource_to_use[res]
             next_state.resource_used_for_task[started_task] = resource_to_use
@@ -813,10 +812,9 @@ class SchedulingDomain(
                 next_state.tasks_mode[started_task] = mode
                 next_state.tasks_ongoing.add(started_task)
                 next_state.tasks_remaining.remove(started_task)
-                next_state.tasks_details[started_task].start = next_state.t
-                next_state.tasks_details[
-                    started_task
-                ].sampled_duration = value_duration[0]
+                next_state.tasks_details[started_task] = Task(
+                    started_task, state.t, value_duration[0]
+                )
                 for res in resource_to_use:
                     next_state.resource_used[res] += resource_to_use[res]
                 next_state.resource_used_for_task[started_task] = resource_to_use

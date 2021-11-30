@@ -124,8 +124,6 @@ class State:
         self.resource_used = {}
         self.resource_used_for_task = {}
         self.tasks_details = {}
-        for task_id in task_ids:
-            self.tasks_details[task_id] = Task(task_id)
         self._current_conditions = set()
 
     def copy(self):

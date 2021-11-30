@@ -27,11 +27,11 @@ class Task:
     paused: List[int]
     resumed: List[int]
 
-    def __init__(self, id: int):
+    def __init__(self, id: int, start: int, sampled_duration: int):
         self.id = id
-        self.start = None
+        self.start = start
         self.end = None
-        self.sampled_duration = None
+        self.sampled_duration = sampled_duration
         self.mode = None
         self.paused = []
         self.resumed = []
