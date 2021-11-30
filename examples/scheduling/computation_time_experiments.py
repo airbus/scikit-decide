@@ -7,6 +7,7 @@ from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     SchedulingAction,
     SchedulingActionEnum,
     State,
+    timer,
 )
 from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP, RCPSP
 from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import (
@@ -67,6 +68,7 @@ def run_expe(path: str, inplace, makespan: int, plot: bool, output: Optional[str
                     f.write(f"{state.t}\n")
 
         # print([id(s) for s in states])
+        print(f"Timers deepcopy {timer}")
 
         if plot:
             import matplotlib.pylab as plt
