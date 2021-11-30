@@ -34,7 +34,7 @@ pip install scikit-decide[all]
 ```
 For more details, see the [online documentation](https://airbus.github.io/scikit-decide/install).
 
-## Documentation
+## Documentation
 
 The latest documentation is available [online](https://airbus.github.io/scikit-decide).
 
