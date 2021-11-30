@@ -1,40 +1,64 @@
-from skdecide.builders.domain.scheduling.scheduling_domains_modelling import SchedulingAction, SchedulingActionEnum, State
-from skdecide import rollout_episode, DiscreteDistribution
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain, load_multiskill_domain
-from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP, MSRCPSP
-from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
-from skdecide.hub.solver.sgs_policies.sgs_policies import PolicyMethodParams, BasePolicyMethod
-from examples.discrete_optimization.rcpsp_parser_example import get_complete_path, get_data_available
-from examples.discrete_optimization.rcpsp_multiskill_parser_example import get_data_available_ms, \
-    get_complete_path_ms
 import time
+
+from examples.discrete_optimization.rcpsp_multiskill_parser_example import (
+    get_complete_path_ms,
+    get_data_available_ms,
+)
+from examples.discrete_optimization.rcpsp_parser_example import (
+    get_complete_path,
+    get_data_available,
+)
+from skdecide import DiscreteDistribution, rollout_episode
+from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
+    SchedulingAction,
+    SchedulingActionEnum,
+    State,
+)
+from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP, RCPSP
+from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import (
+    load_domain,
+    load_multiskill_domain,
+)
+from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
+from skdecide.hub.solver.sgs_policies.sgs_policies import (
+    BasePolicyMethod,
+    PolicyMethodParams,
+)
 
 
 def do_rollout_comparaison(domain: RCPSP, solver, inplace: bool = True):
     domain.set_inplace_environment(inplace)
     tic = time.perf_counter()
-    states, actions, values = rollout_episode(domain=domain,
-                                                       solver=solver,
-                                                       from_memory=domain.get_initial_state(),
-                                                       max_steps=1000,
-                                                       outcome_formatter=None,
-                                                       action_formatter=None,
-                                                       verbose=False)
+    states, actions, values = rollout_episode(
+        domain=domain,
+        solver=solver,
+        from_memory=domain.get_initial_state(),
+        max_steps=1000,
+        outcome_formatter=None,
+        action_formatter=None,
+        verbose=False,
+    )
     toc = time.perf_counter()
-    print(f"{toc - tic:0.4f} seconds to rollout policy with inplace={inplace} environment, "
-          f"Final time of the schedule : "
-          f"{states[-1].t}")
+    print(
+        f"{toc - tic:0.4f} seconds to rollout policy with inplace={inplace} environment, "
+        f"Final time of the schedule : "
+        f"{states[-1].t}"
+    )
     return states
 
 
 def run_expe():
     do_solver = SolvingMethod.PILE  # Greedy solver.
     domain: RCPSP = load_domain(get_complete_path("j1201_1.sm"))
-    solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
-                                                              # policy will just follow the output gantt of the greedy solver
-                                                              delta_index_freedom=0,
-                                                              delta_time_freedom=0),
-                      method=do_solver)
+    solver = DOSolver(
+        policy_method_params=PolicyMethodParams(
+            base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
+            # policy will just follow the output gantt of the greedy solver
+            delta_index_freedom=0,
+            delta_time_freedom=0,
+        ),
+        method=do_solver,
+    )
     solver.solve(domain_factory=lambda: domain)
     states_deepcopy = do_rollout_comparaison(domain, solver, False)
     states_inplace = do_rollout_comparaison(domain, solver, True)
@@ -50,10 +74,14 @@ def run_expe():
         for mode in domain.duration_dict[task]:
             domain.duration_dict[task][mode] *= 20
     domain.set_inplace_environment(False)
-    solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
-                                                              delta_index_freedom=0,
-                                                              delta_time_freedom=0),
-                      method=do_solver)
+    solver = DOSolver(
+        policy_method_params=PolicyMethodParams(
+            base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
+            delta_index_freedom=0,
+            delta_time_freedom=0,
+        ),
+        method=do_solver,
+    )
     solver.solve(domain_factory=lambda: domain)
     states_deepcopy = do_rollout_comparaison(domain, solver, False)
     states_inplace = do_rollout_comparaison(domain, solver, True)
