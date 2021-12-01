@@ -41,6 +41,10 @@ class MixedRenewable:
             for res, renewable in self.get_resource_renewability().items()
             if res in resource_types_names and not renewable
         )
+        avail = {
+            res: state.resource_availability[res] - state.resource_used[res]
+            for res in resource_not_renewable
+        }
         modes_details = self.get_tasks_modes()
         remaining_tasks = (
             state.task_ids.difference(state.tasks_complete)
@@ -49,18 +53,14 @@ class MixedRenewable:
         )
         for task_id in remaining_tasks:
             for mode_consumption in modes_details[task_id].values():
-                for res in resource_not_renewable:
-                    need = mode_consumption.get_resource_need(res)
-                    avail = state.resource_availability[res] - state.resource_used[res]
-                    if avail - need < 0:
-                        break
-                else:
-                    # The else-clause runs if loop completes normally, which means
-                    # that we found a mode for which all resources are available, and
-                    # we can exit from the loop on modes.
+                if all(
+                    avail[res] - mode_consumption.get_resource_need(res) >= 0
+                    for res in resource_not_renewable
+                ):
                     break
             else:
-                # This task is not possible
+                # The else-clause runs if loop completes normally, which means
+                # that we did not find a mode for which all resources are available.
                 return False
         return True
 

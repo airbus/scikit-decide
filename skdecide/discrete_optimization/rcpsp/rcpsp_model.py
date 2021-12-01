@@ -146,49 +146,38 @@ class RCPSPSolution(Solution):
     def compute_mean_resource_reserve(self):
         if not self.rcpsp_schedule_feasible:
             return 0.0
-        last_activity = max(list(self.rcpsp_schedule.keys()))
+        last_activity = max(self.rcpsp_schedule)
         makespan = self.rcpsp_schedule[last_activity]["end_time"]
-        resource_avail_in_time = {}
-        for res in list(self.problem.resources.keys()):
-            if isinstance(self.problem, RCPSPModelCalendar):
-                resource_avail_in_time[res] = self.problem.resources[res][
-                    : makespan + 1
-                ]
-            else:
-                resource_avail_in_time[res] = np.full(
-                    makespan, self.problem.resources[res], dtype=int
-                ).tolist()
-        for act_id in self.problem.mode_details.keys():
+        if isinstance(self.problem, RCPSPModelCalendar):
+            resource_avail_in_time = {
+                res: np.array(self.problem.resources[res][: makespan + 1], dtype=int)
+                for res in self.problem.resources
+            }
+        else:
+            resource_avail_in_time = {
+                res: np.full(makespan, self.problem.resources[res], dtype=int)
+                for res in self.problem.resources
+            }
+        for act_id in self.problem.mode_details:
             # if act_id not in self.rcpsp_schedule:
             #     continue
             if (act_id != 1) and (act_id != self.problem.n_jobs + 2):
                 start_time = self.rcpsp_schedule[act_id]["start_time"]
                 end_time = self.rcpsp_schedule[act_id]["end_time"]
                 mode = self.rcpsp_modes[act_id - 2]
-
-                for t in range(start_time, end_time):
-                    for res in resource_avail_in_time.keys():
-                        resource_avail_in_time[res][t] -= self.problem.mode_details[
-                            act_id
-                        ][mode][
-                            res
-                        ]  # 17
-                        if (
-                            res in self.problem.non_renewable_resources
-                            and t == end_time
-                        ):
-                            for tt in range(end_time + 1, makespan):
-                                resource_avail_in_time[res][
-                                    tt
-                                ] -= self.problem.mode_details[act_id][mode][res]
-        mean_avail = {}
-        for res in list(self.problem.resources.keys()):
-            mean_avail[res] = np.mean(resource_avail_in_time[res])
+                mode_details = self.problem.mode_details[act_id][mode]
+                for res in resource_avail_in_time:
+                    resource_avail_in_time[res][start_time:end_time] -= mode_details[
+                        res
+                    ]  # 17
+        mean_avail = {
+            res: np.mean(resource_avail_in_time[res]) for res in self.problem.resources
+        }
 
         mean_resource_reserve = np.mean(
             [
                 mean_avail[res] / self.problem.resources[res]
-                for res in list(self.problem.resources.keys())
+                for res in self.problem.resources
             ]
         )
 
@@ -578,7 +567,7 @@ class RCPSPModel(Problem):
     def evaluate_function(self, rcpsp_sol: RCPSPSolution):
         if rcpsp_sol._schedule_to_recompute:
             rcpsp_sol.generate_schedule_from_permutation_serial_sgs()
-        last_activity = max(list(rcpsp_sol.rcpsp_schedule.keys()))
+        last_activity = max(rcpsp_sol.rcpsp_schedule.keys())
         makespan = rcpsp_sol.rcpsp_schedule[last_activity]["end_time"]
         obj_mean_resource_reserve = rcpsp_sol.compute_mean_resource_reserve()
         return makespan, obj_mean_resource_reserve
