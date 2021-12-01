@@ -21,11 +21,11 @@ class Node:
         self.next_node = next_node
 
 
-class TaskLinkedList(Collection):
+class SinglyLinkedList(Collection):
     def __init__(self, head=None):
         self.head = head
 
-    def push_front(self, value: Task):
+    def push_front(self, value: Union[int, float, Task]):
         self.head = Node(value, self.head)
 
     def __iter__(self):
@@ -37,14 +37,14 @@ class TaskLinkedList(Collection):
     def __len__(self) -> int:
         return sum(1 for _ in iter(self))
 
-    def __contains__(self, value: Task) -> bool:
+    def __contains__(self, value: Union[int, float, Task]) -> bool:
         for node in iter(self):
             if node.value == value:
                 return True
         return False
 
     def __copy__(self):
-        return TaskLinkedList(self.head)
+        return SinglyLinkedList(self.head)
 
 
 class Timer:
@@ -134,7 +134,9 @@ class State:
     tasks_details: Dict[
         int, Task
     ]  # Use to store task stats, resource used etc... for post-processing purposes
-    tasks_complete_details: TaskLinkedList
+    tasks_complete_details: SinglyLinkedList
+    tasks_complete_progress: SinglyLinkedList
+    tasks_complete_mode: SinglyLinkedList
     _current_conditions: Set
 
     # TODO : put the attributes in the __init__ ?!
@@ -160,7 +162,9 @@ class State:
         self.resource_used = {}
         self.resource_used_for_task = {}
         self.tasks_details = {}
-        self.tasks_complete_details = TaskLinkedList()
+        self.tasks_complete_details = SinglyLinkedList()
+        self.tasks_complete_progress = SinglyLinkedList()
+        self.tasks_complete_mode = SinglyLinkedList()
         self._current_conditions = set()
 
     def copy(self):
@@ -194,6 +198,10 @@ class State:
         timer.register(len(s.tasks_details))
         s.tasks_complete_details = copy(self.tasks_complete_details)
         timer.register(len(s.tasks_complete_details))
+        s.tasks_complete_progress = copy(self.tasks_complete_progress)
+        timer.register(len(s.tasks_complete_progress))
+        s.tasks_complete_mode = copy(self.tasks_complete_mode)
+        timer.register(len(s.tasks_complete_mode))
         return s
 
     def __str__(self):
@@ -202,8 +210,8 @@ class State:
             if key == "tasks_details":
                 for key2 in sorted(self.tasks_details.keys()):
                     s += str(self.tasks_details[key2]) + "\t"
-            elif key == "tasks_complete_details":
-                for node in self.tasks_complete_details:
+            elif key.startswith("tasks_complete_"):
+                for node in getattr(self, key):
                     s += str(node.value) + "\t"
             else:
                 s += str(key) + ":" + str(getattr(self, key)) + "\n"

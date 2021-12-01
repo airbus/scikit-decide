@@ -486,6 +486,14 @@ class SchedulingDomain(
                 next_state.tasks_details[completed_task]
             )
             del next_state.tasks_details[completed_task]
+            next_state.tasks_complete_progress.push_front(
+                next_state.tasks_progress[completed_task]
+            )
+            del next_state.tasks_progress[completed_task]
+            next_state.tasks_complete_mode.push_front(
+                next_state.tasks_mode[completed_task]
+            )
+            del next_state.tasks_mode[completed_task]
 
         return next_state
 
@@ -524,6 +532,14 @@ class SchedulingDomain(
                     next_state.tasks_details[completed_task]
                 )
                 del next_state.tasks_details[completed_task]
+                next_state.tasks_complete_progress.push_front(
+                    next_state.tasks_progress[completed_task]
+                )
+                del next_state.tasks_progress[completed_task]
+                next_state.tasks_complete_mode.push_front(
+                    next_state.tasks_mode[completed_task]
+                )
+                del next_state.tasks_mode[completed_task]
                 if completed_task in self.get_task_on_completion_added_conditions():
                     all_models[completed_task] = []
                     for i in range(
@@ -606,6 +622,12 @@ class SchedulingDomain(
                     next_state.tasks_details[task]
                 )
                 del next_state.tasks_details[task]
+                next_state.tasks_complete_progress.push_front(
+                    next_state.tasks_progress[task]
+                )
+                del next_state.tasks_progress[task]
+                next_state.tasks_complete_mode.push_front(next_state.tasks_mode[task])
+                del next_state.tasks_mode[task]
                 next_state.resource_used_for_task.pop(task)
         return next_state
 
@@ -629,6 +651,14 @@ class SchedulingDomain(
                         next_state.tasks_details[task]
                     )
                     del next_state.tasks_details[task]
+                    next_state.tasks_complete_progress.push_front(
+                        next_state.tasks_progress[task]
+                    )
+                    del next_state.tasks_progress[task]
+                    next_state.tasks_complete_mode.push_front(
+                        next_state.tasks_mode[task]
+                    )
+                    del next_state.tasks_mode[task]
                     next_state.resource_used_for_task.pop(task)
         return next_states
 
