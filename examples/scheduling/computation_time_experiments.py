@@ -77,6 +77,10 @@ def run_expe(path: str, inplace, makespan: int, plot: bool, output: Optional[str
                 from_last_state_to_solution,
             )
 
+            #  Copy tasks_complete_details back into tasks_details in order to use existing tools
+            states[-1].tasks_details = {
+                n.value.id: n.value for n in states[-1].tasks_complete_details
+            }
             do_sol = from_last_state_to_solution(states[-1], domain)
             from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import (
                 plot_ressource_view,
