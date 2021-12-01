@@ -35,27 +35,32 @@ class MixedRenewable:
         If this function returns False, the scheduling problem is unsolvable from this state.
         This is to cope with the use of non-renable resources that may lead to state from which a
         task will not be possible anymore."""
+        resource_types_names = self.get_resource_types_names()
+        resource_not_renewable = set(
+            res
+            for res, renewable in self.get_resource_renewability().items()
+            if res in resource_types_names and not renewable
+        )
+        modes_details = self.get_tasks_modes()
         remaining_tasks = (
             state.task_ids.difference(state.tasks_complete)
             .difference(state.tasks_progress)
             .difference(state.tasks_unsatisfiable)
         )
         for task_id in remaining_tasks:
-            task_possible = True
-            for mode in self.get_task_modes(task_id).keys():
-                mode_possible = True
-                for res in self.get_resource_types_names():
-                    if not self.get_resource_renewability()[res]:
-                        need = self.get_task_modes(task_id)[mode].get_resource_need(res)
-                        avail = (
-                            state.resource_availability[res] - state.resource_used[res]
-                        )
-                        if avail - need < 0:
-                            mode_possible = False
-                            break
-                if mode_possible is True:
+            for mode_consumption in modes_details[task_id].values():
+                for res in resource_not_renewable:
+                    need = mode_consumption.get_resource_need(res)
+                    avail = state.resource_availability[res] - state.resource_used[res]
+                    if avail - need < 0:
+                        break
+                else:
+                    # The else-clause runs if loop completes normally, which means
+                    # that we found a mode for which all resources are available, and
+                    # we can exit from the loop on modes.
                     break
-            if not mode_possible:
+            else:
+                # This task is not possible
                 return False
         return True
 
