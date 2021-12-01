@@ -482,6 +482,10 @@ class SchedulingDomain(
             next_state.resource_used_for_task.pop(completed_task)
             next_state.tasks_details[completed_task].end = next_state.t + 1
             # WARNING : considering how it's coded, we should put +1 here. could be ccleaner if it was done in the update_progress.
+            next_state.tasks_complete_details[
+                completed_task
+            ] = next_state.tasks_details[completed_task]
+            del next_state.tasks_details[completed_task]
 
         return next_state
 
@@ -516,6 +520,10 @@ class SchedulingDomain(
                 next_state.tasks_details[completed_task].end = (
                     next_state.t + 1
                 )  # WARNING : considering how it's coded, we should put +1 here.
+                next_state.tasks_complete_details[
+                    completed_task
+                ] = next_state.tasks_details[completed_task]
+                del next_state.tasks_details[completed_task]
                 if completed_task in self.get_task_on_completion_added_conditions():
                     all_models[completed_task] = []
                     for i in range(
@@ -594,6 +602,8 @@ class SchedulingDomain(
                 next_state.tasks_progress[task] = 1
                 next_state.tasks_ongoing.remove(task)
                 next_state.tasks_details[task].end = next_state.t
+                next_state.tasks_complete_details[task] = next_state.tasks_details[task]
+                del next_state.tasks_details[task]
                 next_state.resource_used_for_task.pop(task)
         return next_state
 
@@ -613,6 +623,10 @@ class SchedulingDomain(
                     next_state.tasks_progress[task] = 1
                     next_state.tasks_ongoing.remove(task)
                     next_state.tasks_details[task].end = next_state.t
+                    next_state.tasks_complete_details[task] = next_state.tasks_details[
+                        task
+                    ]
+                    del next_state.tasks_details[task]
                     next_state.resource_used_for_task.pop(task)
         return next_states
 

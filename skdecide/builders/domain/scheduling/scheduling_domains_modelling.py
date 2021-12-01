@@ -99,6 +99,7 @@ class State:
     tasks_details: Dict[
         int, Task
     ]  # Use to store task stats, resource used etc... for post-processing purposes
+    tasks_complete_details: Dict[int, Task]
     _current_conditions: Set
 
     # TODO : put the attributes in the __init__ ?!
@@ -124,6 +125,7 @@ class State:
         self.resource_used = {}
         self.resource_used_for_task = {}
         self.tasks_details = {}
+        self.tasks_complete_details = {}
         self._current_conditions = set()
 
     def copy(self):
@@ -155,6 +157,8 @@ class State:
         timer.register(len(s._current_conditions))
         s.tasks_details = deepcopy(self.tasks_details)
         timer.register(len(s.tasks_details))
+        s.tasks_complete_details = deepcopy(self.tasks_complete_details)
+        timer.register(len(s.tasks_complete_details))
         return s
 
     def __str__(self):
@@ -163,6 +167,9 @@ class State:
             if key == "tasks_details":
                 for key2 in sorted(self.tasks_details.keys()):
                     s += str(self.tasks_details[key2]) + "\t"
+            elif key == "tasks_complete_details":
+                for key2 in sorted(self.tasks_complete_details.keys()):
+                    s += str(self.tasks_complete_details[key2]) + "\t"
             else:
                 s += str(key) + ":" + str(getattr(self, key)) + "\n"
         return s
