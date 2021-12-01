@@ -173,38 +173,21 @@ class State:
     def copy(self):
         s = State(task_ids=self.task_ids)
         s.t = self.t
-        global timer
-        timer.start()
         s.tasks_unsatisfiable = deepcopy(self.tasks_unsatisfiable)
-        timer.register(len(s.tasks_unsatisfiable))
         s.tasks_ongoing = deepcopy(self.tasks_ongoing)
-        timer.register(len(s.tasks_ongoing))
         s.tasks_paused = deepcopy(self.tasks_paused)
-        timer.register(len(s.tasks_paused))
         s.tasks_progress = deepcopy(self.tasks_progress)
-        timer.register(len(s.tasks_progress))
         s.tasks_mode = deepcopy(self.tasks_mode)
-        timer.register(len(s.tasks_mode))
         s.tasks_complete = deepcopy(self.tasks_complete)
-        timer.register(len(s.tasks_complete))
         s.resource_to_task = deepcopy(self.resource_to_task)
-        timer.register(len(s.resource_to_task))
         s.resource_availability = deepcopy(self.resource_availability)
-        timer.register(len(s.resource_availability))
         s.resource_used = deepcopy(self.resource_used)
-        timer.register(len(s.resource_used))
         s.resource_used_for_task = deepcopy(self.resource_used_for_task)
-        timer.register(len(s.resource_used_for_task))
         s._current_conditions = deepcopy(self._current_conditions)
-        timer.register(len(s._current_conditions))
         s.tasks_details = deepcopy(self.tasks_details)
-        timer.register(len(s.tasks_details))
         s.tasks_complete_details = copy(self.tasks_complete_details)
-        timer.register(len(s.tasks_complete_details))
         s.tasks_complete_progress = copy(self.tasks_complete_progress)
-        timer.register(len(s.tasks_complete_progress))
         s.tasks_complete_mode = copy(self.tasks_complete_mode)
-        timer.register(len(s.tasks_complete_mode))
         return s
 
     @property
