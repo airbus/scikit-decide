@@ -94,9 +94,7 @@ def get_resource_requirements_across_duration(
         for res in mode_consumption.get_ressource_names():
             tmp = 0
             for t in range(duration):
-                need = domain.get_task_modes(task_id)[1].get_resource_need_at_time(
-                    res, t
-                )
+                need = mode_consumption.get_resource_need_at_time(res, t)
                 total = domain.sample_quantity_resource(res, t)
                 tmp += need / total
             values.append(tmp / duration)

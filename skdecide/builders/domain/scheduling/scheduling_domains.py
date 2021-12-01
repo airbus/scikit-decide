@@ -796,10 +796,11 @@ class SchedulingDomain(
         self, task: int, mode: int, resource_unit_names: Set[str], time_since_start: int
     ):
         r_used = {}
+        mode_details = self.get_tasks_modes()
         for res in self.get_resource_types_names():
-            res_consumption = self.get_tasks_modes()[task][
-                mode
-            ].get_resource_need_at_time(resource_name=res, time=time_since_start)
+            res_consumption = mode_details[task][mode].get_resource_need_at_time(
+                resource_name=res, time=time_since_start
+            )
             # next_state.resource_availability[res] -= res_consumption
             r_used[res] = res_consumption
         if resource_unit_names is not None:
@@ -878,10 +879,10 @@ class SchedulingDomain(
 
     def get_possible_starting_tasks(self, state: State):
 
+        mode_details = self.get_tasks_modes()
         possible_task_precedence = [
-            (n, mode)
+            (n, mode_details[n])
             for n in state.tasks_remaining
-            for mode in self.get_task_modes(n).keys()
             if all(
                 m in state.tasks_complete
                 for m in set(self.ancestors[n]).intersection(
@@ -891,12 +892,13 @@ class SchedulingDomain(
         ]
 
         possible_task_with_ressource = [
-            (n, mode)
-            for n, mode in possible_task_precedence
+            (n, mode, mode_consumption)
+            for n, modes in possible_task_precedence
+            for mode, mode_consumption in modes.items()
             if all(
                 state.resource_availability[key]
                 - state.resource_used[key]
-                - self.get_task_modes(n)[mode].get_resource_need_at_time(
+                - mode_consumption.get_resource_need_at_time(
                     resource_name=key, time=state.t
                 )
                 >= 0
@@ -905,25 +907,26 @@ class SchedulingDomain(
         ]
         # print("Possible task with ressource : ", possible_task_with_ressource)
         return {
-            n: {mode: self.get_task_modes(n)[mode].get_non_zero_ressource_need_names(0)}
-            for n, mode in possible_task_with_ressource
+            n: {mode: mode_consumption.get_non_zero_ressource_need_names(0)}
+            for n, mode, mode_consumption in possible_task_with_ressource
         }
 
     def get_possible_resume_tasks(self, state: State):
+        mode_details = self.get_tasks_modes()
         possible_task_precedence = [
-            (n, mode)
+            (n, mode_details[n])
             for n in state.tasks_paused
-            for mode in self.get_task_modes(n).keys()
             if all(m in state.tasks_complete for m in self.ancestors[n])
         ]
         # print("Possible task precedence : ", possible_task_precedence)
         possible_task_with_ressource = [
-            (n, mode)
-            for n, mode in possible_task_precedence
+            (n, mode, mode_consumption)
+            for n, modes in possible_task_precedence
+            for mode, mode_consumption in modes.items()
             if all(
                 state.resource_availability[key]
                 - state.resource_used[key]
-                - self.get_task_modes(n)[mode].get_resource_need_at_time(
+                - mode_consumption.get_resource_need_at_time(
                     resource_name=key, time=state.t
                 )
                 >= 0
@@ -932,8 +935,8 @@ class SchedulingDomain(
         ]
         # print("Possible task with ressource : ", possible_task_with_ressource)
         return {
-            n: {mode: self.get_task_modes(n)[mode].get_non_zero_ressource_need_names(0)}
-            for n, mode in possible_task_with_ressource
+            n: {mode: mode_consumption.get_non_zero_ressource_need_names(0)}
+            for n, mode, mode_consumption in possible_task_with_ressource
         }
 
     def state_is_overconsuming(self, state: State):

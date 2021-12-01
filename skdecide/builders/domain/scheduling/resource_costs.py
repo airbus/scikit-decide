@@ -43,10 +43,8 @@ class WithoutModeCosts(WithModeCosts):
 
     def _get_mode_costs(self) -> Dict[int, Dict[int, float]]:
         cost_dict = {}
-        for task_id in self.get_tasks_modes().keys():
-            cost_dict[task_id] = {}
-            for mode_id in self.get_tasks_modes()[task_id].keys():
-                cost_dict[task_id][mode_id] = 0.0
+        for task_id, modes in self.get_tasks_modes().items():
+            cost_dict[task_id] = {mode_id: 0.0 for mode_id in modes}
         return cost_dict
 
 
