@@ -168,11 +168,12 @@ def next_action_sgs_first_task_precedence_ready(
     possible_task_to_launch = policy_rcpsp.domain.task_possible_to_launch_precedence(
         state=state
     )
+    tasks_remaining = set(task for task in state.tasks_remaining)
     sorted_task_not_done = sorted(
         [
             (index, policy_rcpsp.permutation_task[index])
             for index in range(len(policy_rcpsp.permutation_task))
-            if policy_rcpsp.permutation_task[index] in state.tasks_remaining
+            if policy_rcpsp.permutation_task[index] in tasks_remaining
         ],
         key=lambda x: x[0],
     )
@@ -248,11 +249,12 @@ def next_action_sgs_first_task_ready(
 ):
     obs: State = state
     t = obs.t
+    tasks_remaining = set(task for task in state.tasks_remaining)
     sorted_task_not_done = sorted(
         [
             (index, policy_rcpsp.permutation_task[index])
             for index in range(len(policy_rcpsp.permutation_task))
-            if policy_rcpsp.permutation_task[index] in state.tasks_remaining
+            if policy_rcpsp.permutation_task[index] in tasks_remaining
         ],
         key=lambda x: x[0],
     )
@@ -302,11 +304,12 @@ def next_action_sgs_strict(
     possible_task_to_launch = policy_rcpsp.domain.task_possible_to_launch_precedence(
         state=state
     )
+    tasks_remaining = set(task for task in state.tasks_remaining)
     sorted_task_not_done = sorted(
         [
             (index, policy_rcpsp.permutation_task[index])
             for index in range(len(policy_rcpsp.permutation_task))
-            if policy_rcpsp.permutation_task[index] in state.tasks_remaining
+            if policy_rcpsp.permutation_task[index] in tasks_remaining
             and policy_rcpsp.permutation_task[index] in possible_task_to_launch
         ],
         key=lambda x: x[0],
@@ -366,11 +369,12 @@ def next_action_sgs_time_freedom(
     possible_task_to_launch = policy_rcpsp.domain.task_possible_to_launch_precedence(
         state=state
     )
+    tasks_remaining = set(task for task in state.tasks_remaining)
     sorted_task_not_done = sorted(
         [
             (index, policy_rcpsp.permutation_task[index])
             for index in range(len(policy_rcpsp.permutation_task))
-            if policy_rcpsp.permutation_task[index] in state.tasks_remaining
+            if policy_rcpsp.permutation_task[index] in tasks_remaining
             and policy_rcpsp.permutation_task[index] in possible_task_to_launch
         ],
         key=lambda x: x[0],
@@ -432,11 +436,12 @@ def next_action_sgs_index_freedom(
     possible_task_to_launch = policy_rcpsp.domain.task_possible_to_launch_precedence(
         state=state
     )
+    tasks_remaining = set(task for task in state.tasks_remaining)
     sorted_task_not_done = sorted(
         [
             (index, policy_rcpsp.permutation_task[index])
             for index in range(len(policy_rcpsp.permutation_task))
-            if policy_rcpsp.permutation_task[index] in state.tasks_remaining
+            if policy_rcpsp.permutation_task[index] in tasks_remaining
             and policy_rcpsp.permutation_task[index] in possible_task_to_launch
         ],
         key=lambda x: x[0],

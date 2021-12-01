@@ -288,7 +288,8 @@ class SchedulingDomain(
     def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
         return ImplicitSpace(
             lambda state: (
-                len(state.tasks_remaining) == 0
+                len(state.task_ids)
+                == len(state.tasks_complete) + len(state.tasks_unsatisfiable)
                 and (len(state.tasks_ongoing) == 0)
                 and (len(state.tasks_paused) == 0)
             )
@@ -820,7 +821,6 @@ class SchedulingDomain(
             mode = action.mode
             next_state.tasks_mode[started_task] = mode
             next_state.tasks_ongoing.add(started_task)
-            next_state.tasks_remaining.remove(started_task)
             sampled_duration = self.get_latest_sampled_duration(
                 task=started_task, mode=mode, progress_from=0.0
             )  # TODO: what to do with this, so far the sample is stored and then used by get_task_progress()
@@ -857,7 +857,6 @@ class SchedulingDomain(
                 next_state: State = state.copy()
                 next_state.tasks_mode[started_task] = mode
                 next_state.tasks_ongoing.add(started_task)
-                next_state.tasks_remaining.remove(started_task)
                 next_state.tasks_details[started_task] = Task(
                     started_task, state.t, value_duration[0]
                 )
@@ -1010,16 +1009,14 @@ class SchedulingDomain(
         if action.time_progress:
             for next_state, _ in next_states.get_values():
                 all_available_tasks = self.get_available_tasks(next_state)
-                all_considered_tasks = (
-                    next_state.tasks_remaining.union(next_state.tasks_ongoing)
-                    .union(next_state.tasks_progress)
-                    .union(next_state.tasks_complete)
+                all_considered_tasks = next_state.task_ids.difference(
+                    next_state.tasks_unsatisfiable
                 )
                 new_tasks = all_available_tasks.symmetric_difference(
                     all_considered_tasks
                 )
                 for task in new_tasks:
-                    next_state.tasks_remaining.add(task)
+                    next_state.tasks_unsatisfiable.remove(task)
             return next_states
         return next_states
 
@@ -1097,7 +1094,8 @@ class SchedulingDomain(
             state.t > self.get_max_horizon()
             or (not all_task_possible)
             or (
-                len(state.tasks_remaining) == 0
+                len(state.task_ids)
+                == len(state.tasks_complete) + len(state.tasks_unsatisfiable)
                 and (len(state.tasks_ongoing) == 0)
                 and (len(state.tasks_paused) == 0)
             )

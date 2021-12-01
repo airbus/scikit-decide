@@ -8,7 +8,7 @@ from collections.abc import Collection
 from copy import copy, deepcopy
 from enum import Enum
 from time import time
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, Iterable, List, Optional, Set, Union
 
 from skdecide.builders.domain.scheduling.task import Task
 
@@ -90,7 +90,7 @@ class State:
     It contains the following information:
         t: the timestamp.
         task_ids: a list of all task ids in the scheduling domain.
-        tasks_remaining: a set containing the ids of tasks still to be started
+        tasks_unsatisfiable: a set containing the ids of tasks for which canditions are not fulfilled
         tasks_ongoing: a set containing the ids of tasks started and not paused and still to be completed
         tasks_complete: a set containing the ids of tasks that have been completed
         tasks_paused: a set containing the ids of tasks that have been started and paused but not resumed yet
@@ -121,7 +121,7 @@ class State:
 
     # TODO : code efficient hash/eq functions. will probably be mandatory in some planning algo.
     t: int
-    tasks_remaining: Set[int]
+    tasks_unsatisfiable: Set[int]
     tasks_ongoing: Set[int]
     tasks_complete: Set[int]
     tasks_paused: Set[int]
@@ -140,7 +140,7 @@ class State:
     _current_conditions: Set
 
     # TODO : put the attributes in the __init__ ?!
-    def __init__(self, task_ids: List[int], tasks_available: Set[int] = None):
+    def __init__(self, task_ids: Iterable[int], tasks_available: Set[int] = None):
         """Initialize a scheduling state.
 
         # Parameters
@@ -149,9 +149,12 @@ class State:
          domain contains conditional tasks.
         """
         self.t = 0
-        self.task_ids = task_ids
-        # self.tasks_remaining = set()
-        self.tasks_remaining = tasks_available
+        self.task_ids = task_ids if isinstance(task_ids, set) else set(task_ids)
+        self.tasks_unsatisfiable = (
+            set()
+            if tasks_available is None
+            else set(t for t in self.task_ids if t not in tasks_available)
+        )
         self.tasks_ongoing = set()
         self.tasks_complete = set()
         self.tasks_paused = set()
@@ -172,8 +175,8 @@ class State:
         s.t = self.t
         global timer
         timer.start()
-        s.tasks_remaining = deepcopy(self.tasks_remaining)
-        timer.register(len(s.tasks_remaining))
+        s.tasks_unsatisfiable = deepcopy(self.tasks_unsatisfiable)
+        timer.register(len(s.tasks_unsatisfiable))
         s.tasks_ongoing = deepcopy(self.tasks_ongoing)
         timer.register(len(s.tasks_ongoing))
         s.tasks_paused = deepcopy(self.tasks_paused)
@@ -203,6 +206,16 @@ class State:
         s.tasks_complete_mode = copy(self.tasks_complete_mode)
         timer.register(len(s.tasks_complete_mode))
         return s
+
+    @property
+    def tasks_remaining(self):
+        for task in self.task_ids:
+            if (
+                task not in self.tasks_complete
+                and task not in self.tasks_progress
+                and task not in self.tasks_unsatisfiable
+            ):
+                yield task
 
     def __str__(self):
         s = "State : " + "\n"

@@ -35,7 +35,12 @@ class MixedRenewable:
         If this function returns False, the scheduling problem is unsolvable from this state.
         This is to cope with the use of non-renable resources that may lead to state from which a
         task will not be possible anymore."""
-        for task_id in state.tasks_remaining:
+        remaining_tasks = (
+            state.task_ids.difference(state.tasks_complete)
+            .difference(state.tasks_progress)
+            .difference(state.tasks_unsatisfiable)
+        )
+        for task_id in remaining_tasks:
             task_possible = True
             for mode in self.get_task_modes(task_id).keys():
                 mode_possible = True

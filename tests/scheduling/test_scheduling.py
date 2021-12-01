@@ -852,8 +852,10 @@ def test_compute_all_graph(domain):
 
     c = count()
     score_state = lambda x: (
-        len(x.tasks_remaining) + len(x.tasks_ongoing) + len(x.tasks_complete),
-        len(x.tasks_remaining),
+        sum(1 for _ in x.tasks_remaining)
+        + len(x.tasks_ongoing)
+        + len(x.tasks_complete),
+        sum(1 for _ in x.tasks_remaining),
         -len(x.tasks_complete),
         -len(x.tasks_ongoing),
         x.t,
