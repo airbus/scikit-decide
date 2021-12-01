@@ -4,12 +4,47 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
+from collections.abc import Collection
+from copy import copy, deepcopy
 from enum import Enum
 from time import time
 from typing import Dict, List, Optional, Set, Union
 
 from skdecide.builders.domain.scheduling.task import Task
+
+
+class Node:
+    __slots__ = ("value", "next_node")
+
+    def __init__(self, value: Task = None, next_node=None):
+        self.value = value
+        self.next_node = next_node
+
+
+class TaskLinkedList(Collection):
+    def __init__(self, head=None):
+        self.head = head
+
+    def push_front(self, value: Task):
+        self.head = Node(value, self.head)
+
+    def __iter__(self):
+        current = self.head
+        while current:
+            yield current
+            current = current.next_node
+
+    def __len__(self) -> int:
+        return sum(1 for _ in iter(self))
+
+    def __contains__(self, value: Task) -> bool:
+        for node in iter(self):
+            if node.value == value:
+                return True
+        return False
+
+    def __copy__(self):
+        return TaskLinkedList(self.head)
 
 
 class Timer:
@@ -95,11 +130,11 @@ class State:
     resource_to_task: Dict[str, int]
     resource_availability: Dict[str, int]
     resource_used: Dict[str, int]
-    resource_used_for_task = Dict[int, Dict[str, int]]
+    resource_used_for_task: Dict[int, Dict[str, int]]
     tasks_details: Dict[
         int, Task
     ]  # Use to store task stats, resource used etc... for post-processing purposes
-    tasks_complete_details: Dict[int, Task]
+    tasks_complete_details: TaskLinkedList
     _current_conditions: Set
 
     # TODO : put the attributes in the __init__ ?!
@@ -125,7 +160,7 @@ class State:
         self.resource_used = {}
         self.resource_used_for_task = {}
         self.tasks_details = {}
-        self.tasks_complete_details = {}
+        self.tasks_complete_details = TaskLinkedList()
         self._current_conditions = set()
 
     def copy(self):
@@ -157,7 +192,7 @@ class State:
         timer.register(len(s._current_conditions))
         s.tasks_details = deepcopy(self.tasks_details)
         timer.register(len(s.tasks_details))
-        s.tasks_complete_details = deepcopy(self.tasks_complete_details)
+        s.tasks_complete_details = copy(self.tasks_complete_details)
         timer.register(len(s.tasks_complete_details))
         return s
 
@@ -168,8 +203,8 @@ class State:
                 for key2 in sorted(self.tasks_details.keys()):
                     s += str(self.tasks_details[key2]) + "\t"
             elif key == "tasks_complete_details":
-                for key2 in sorted(self.tasks_complete_details.keys()):
-                    s += str(self.tasks_complete_details[key2]) + "\t"
+                for node in self.tasks_complete_details:
+                    s += str(node.value) + "\t"
             else:
                 s += str(key) + ":" + str(getattr(self, key)) + "\n"
         return s
