@@ -285,6 +285,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
       - name: Download artifacts
         uses: actions/download-artifact@v1.0.0
         with:
