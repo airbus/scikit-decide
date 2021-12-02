@@ -303,8 +303,7 @@ jobs:
 
       - name: Update scikit-decide dependency and tag the environement
         run: |
-          sed -e "s/scikit-decide\[all\]==.*/scikit-decide\[all\]==${SKDECIDE_VERSION}/" environment.yml > environment.yml.new
-          mv environment.yml.new environment.yml
+          sed -i -e "s/scikit-decide\[all\]==.*/scikit-decide[all]==${SKDECIDE_VERSION}/" environment.yml
           git config user.name "Binder Bot"
           git config user.email "binder@bot.com"
           git commit environment.yml -m "Update scikit-decide dependency"
