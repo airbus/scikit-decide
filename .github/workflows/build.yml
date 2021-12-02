@@ -6,6 +6,8 @@ on:
       - "**"
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron:  '45 1 * * *'
 
 jobs:
 
@@ -298,7 +300,7 @@ jobs:
           echo "AUTODOC_BINDER_ENV_GH_BRANCH=${AUTODOC_BINDER_ENV_GH_BRANCH}" >> $GITHUB_ENV
           echo "AUTODOC_NOTEBOOKS_REPO_URL=${AUTODOC_NOTEBOOKS_REPO_URL}" >> $GITHUB_ENV
           echo "AUTODOC_NOTEBOOKS_BRANCH=${AUTODOC_NOTEBOOKS_BRANCH}" >> $GITHUB_ENV
-          # check computed variables
+          # check computed variables
           echo "Binder env: ${AUTODOC_BINDER_ENV_GH_REPO_NAME}/${AUTODOC_BINDER_ENV_GH_BRANCH}"
           echo "Notebooks source: ${AUTODOC_NOTEBOOKS_REPO_URL}/tree/${AUTODOC_NOTEBOOKS_BRANCH}"
 
@@ -343,3 +345,148 @@ jobs:
           commit-message: publish documentation
           clean-exclude: |
             "version/*"
+
+  upload-nightly:
+    if: (github.ref == 'refs/heads/master') && (github.event_name == 'schedule')
+    needs: [test-unix, test-macos, test-windows]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: wheels
+        path: dist/
+
+    - run: |
+        zip -r dist.zip dist/
+
+    - uses: actions/github-script@v5
+      id: asset
+      with:
+        github-token: ${{ secrets.gh_access_token }}
+        script: |
+          const fs = require('fs');
+
+          // Get the ref for master
+          const master_sha = '${{ github.sha }}';
+          console.log(`master reference ${master_sha}`);
+
+          // Retrieve ref for tag `nightly`
+          let ref_nightly = null;
+          try {
+            ref_nightly = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'tags/nightly',
+            });
+
+            if (ref_nightly.data.object.sha === master_sha) {
+              return "No new nightly release";
+            }
+          } catch (err) {
+            // The tag does not exist so let's create it
+            ref_nightly = await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/nightly',
+              sha: master_sha,
+            });
+          }
+
+          // Call the GitHub API to get a release by tag
+          let release = null;
+          try {
+            release = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: 'nightly',
+            });
+            console.log(`Found release ${release.data.tag_name} ${release.data.draft} ${release.data.prerelease}`);
+          } catch (err) {
+            console.log(`Release 'nightly' not found`);
+
+            // If the release doesn't exist, create it
+            release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: 'nightly',
+              name: 'nightly',
+              body: 'Nightly release crafted with ♥️ somewhere on 🌎',
+              draft: false,
+              prerelease: true,
+            });
+
+            console.log(`Created release ${release.data.tag_name} ${release.data.draft} ${release.data.prerelease} ${doIProceed}`);
+          }
+          console.log(`Release does exist with tag ${release.data.tag_name} [${release.data.draft} ${release.data.prerelease}]`);
+
+          // At this stage both tag & release exist
+
+          // Update nightly tag
+          await github.rest.git.updateRef({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: 'tags/nightly',
+            sha: master_sha,
+            force: true,
+          });
+          console.log(`Updated tag with sha ${ref_nightly.data.object.sha}`);
+
+          // Update the release
+          await github.rest.repos.updateRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: release.data.id,
+            tag_name: 'nightly',
+            name: 'nightly',
+            body: 'Nightly release crafted with ♥️ somewhere on 🌎',
+            draft: false,
+            prerelease: true,
+          });
+          console.log(`Updated ${release.data.tag_name} nightly release  ${release.data.draft} ${release.data.prerelease}`);
+
+          // Get all tags and keep the newest one starting by v
+          let newest_tag = { name: 'v0.0.0' };
+
+          const tags = await github.rest.repos.listTags({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          });
+
+          // Keep latest tag
+          for (const tag of tags.data) {
+            if (tag.name.startsWith('v')) {
+              if (tag.name.localeCompare(newest_tag.name, undefined, { numeric: true}) > 0) {
+                newest_tag = tag;
+              }
+            }
+          }
+          console.log(`Previous release has tag ${newest_tag.name} → ${newest_tag.commit.sha}`);
+
+          // Count all commits between HEAD and newest tag
+          // Limited to 250 commits
+          const distance = await github.rest.repos.compareCommitsWithBasehead({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            basehead: `${newest_tag.commit.sha}...${master_sha}`,
+          }).then(d => d.data.total_commits);
+
+          // Zip a zip file from dist directory
+          let release_name = `nightly_${distance}_${master_sha.substring(0,8)}` + '.zip';
+          console.log(`Release file name: ${release_name}`);
+          fs.renameSync('dist.zip', release_name);
+
+          // Upload the zip file to GitHub
+          const uploadedAsset = await github.rest.repos.uploadReleaseAsset({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: release.data.id,
+            name: release_name,
+            data: fs.readFileSync(release_name),
+            headers: {
+              'content-type': 'application/zip',
+            },
+          });
+
+          return uploadedAsset.data.browser_download_url;
+        result-encoding: string
