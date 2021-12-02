@@ -335,3 +335,32 @@ jobs:
           target-folder: ${{ env.DOCS_VERSION_PATH }} # The folder the action should deploy to.
           commit-message: publish documentation
           clean: false # Releasing a new version is about creating a new directory, so we don't want to clean up the root.
+
+  delete-nightly-release:
+    runs-on: ubuntu-latest
+    needs: [deploy]
+
+    steps:
+      - name: Delete nightly release
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{ secrets.gh_access_token }}
+          script: |
+            const releases = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            })
+
+            const nightlyRelease = releases.data.find(r => r.tag_name === 'nightly'))
+
+            if (nightlyRelease) {
+              await github.rest.repos.deleteRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: nightlyRelease.id,
+              })
+              console.log(`${nightlyRelease.tag_name} release has been deleted`)
+
+            } else {
+              console.log('No nightly release found')
+            }
