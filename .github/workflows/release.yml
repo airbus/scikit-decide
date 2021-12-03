@@ -283,63 +283,52 @@ jobs:
           packages_dir: wheels/
           repository_url: https://test.pypi.org/legacy/
 
-  create-binder-env:
-    needs: [deploy]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get scikit-decide release version and define new binder env tag
-        run: |
-          TAG_NAME=${GITHUB_REF/refs\/tags\//}  # stripping "refs/tags/"
-          SKDECIDE_VERSION=${TAG_NAME/v/}  # stripping "v"
-          BINDER_TAG=binder_${TAG_NAME}
-          echo "BINDER_TAG=${BINDER_TAG}" >> $GITHUB_ENV
-          echo "SKDECIDE_VERSION=${SKDECIDE_VERSION}" >> $GITHUB_ENV
-
-      # Checks-out binder branch
-      - name: checkout binder branch
-        uses: actions/checkout@v2
-        with:
-          ref: binder
-
-      - name: Update scikit-decide dependency and tag the environement
-        run: |
-          sed -i -e "s/scikit-decide\[all\]==.*/scikit-decide[all]==${SKDECIDE_VERSION}/" environment.yml
-          git config user.name "Binder Bot"
-          git config user.email "binder@bot.com"
-          git commit environment.yml -m "Update scikit-decide dependency"
-          git tag -a ${BINDER_TAG} -m "Release binder environment for scikit-decide ${SKDECIDE_VERSION}"
-          git push origin ${BINDER_TAG}
-
-      - name: Cache binder build on mybinder.org
-        uses: jupyterhub/repo2docker-action@master
-        with:
-          NO_PUSH: true
-          MYBINDERORG_TAG: ${{ env.BINDER_TAG }}
-
   build-docs:
-    needs: [create-binder-env]
+    needs: [deploy]
     runs-on: ubuntu-latest
     env:
       DOCS_VERSION_PATH: /
 
     steps:
-      - name: Set env variables for github+binder links in doc
+      - name: Get scikit-decide release version and update online docs path
         run: |
           TAG_NAME=${GITHUB_REF/refs\/tags\//}  # stripping "refs/tags/"
-          BINDER_TAG=binder_${TAG_NAME}
-          echo "AUTODOC_BINDER_ENV_GH_REPO_NAME=airbus/scikit-decide" >> $GITHUB_ENV
-          echo "AUTODOC_BINDER_ENV_GH_BRANCH=${BINDER_TAG}" >> $GITHUB_ENV
-          echo "AUTODOC_NOTEBOOKS_REPO_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" >> $GITHUB_ENV
-          echo "AUTODOC_NOTEBOOKS_BRANCH=${TAG_NAME}" >> $GITHUB_ENV
+          SKDECIDE_VERSION=${TAG_NAME/v/}  # stripping "v"
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
+          echo "SKDECIDE_VERSION=${SKDECIDE_VERSION}" >> $GITHUB_ENV
+          echo "DOCS_VERSION_PATH=/version/$SKDECIDE_VERSION/" >> $GITHUB_ENV
 
-      - name: Update DOCS_VERSION_PATH
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        run: |
-            echo DOCS_VERSION_PATH=/version/${GITHUB_REF/refs\/tags\/v}/ >> $GITHUB_ENV
-
-      - uses: actions/checkout@v2
+      - name: Checkout all branches
+        uses: actions/checkout@v2
         with:
           submodules: true
+          fetch-depth: 0  # fetch all branches
+
+      - name: Create binder environment for the release
+        run: |
+          git checkout binder
+          # Specify scikit-decide dependency for the release binder env
+          sed -i -e "s/scikit-decide\[all\]==.*/scikit-decide[all]==${SKDECIDE_VERSION}/" environment.yml
+          git config user.name "Actions"
+          git config user.email "actions@github.com"
+          git commit environment.yml -m "Specify scikit-decide used by binder for release ${SKDECIDE_VERSION}"
+          # get sha1 to be used by binder for the environment
+          BINDER_RELEASE_ENV_SHA1=$(git rev-parse --verify HEAD)
+          echo "BINDER_RELEASE_ENV_SHA1=${BINDER_RELEASE_ENV_SHA1}" >> $GITHUB_ENV
+          # revert for the master binder env
+          git revert HEAD -n
+          git commit -m "Revert to binder environment for master branch"
+          # push binder branch so that reference to release binder env exists on remote
+          git push origin binder
+          # switch back to original branch
+          git checkout $TAG_NAME
+
+      - name: Set env variables for github+binder links in doc
+        run: |
+          echo "AUTODOC_BINDER_ENV_GH_REPO_NAME=${GITHUB_REPOSITORY}" >> $GITHUB_ENV
+          echo "AUTODOC_BINDER_ENV_GH_BRANCH=${BINDER_RELEASE_ENV_SHA1}" >> $GITHUB_ENV
+          echo "AUTODOC_NOTEBOOKS_REPO_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" >> $GITHUB_ENV
+          echo "AUTODOC_NOTEBOOKS_BRANCH=${TAG_NAME}" >> $GITHUB_ENV
 
       - name: Setup python
         uses: actions/setup-python@v2
