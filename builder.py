@@ -201,6 +201,7 @@ def build(setup_kwargs: Dict[str, Any]) -> None:
                     install_prefix="skdecide/hub",
                     cmake_configure_options=[
                         f"-DBUILD_SHARED_LIBS:BOOL=OFF",
+                        f"-DUSE_CCACHE:BOOL=OFF",
                     ],
                 ),
             ]
