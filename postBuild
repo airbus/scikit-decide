@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Last nightly build
+NIGHTLY_TAG="nightly"
+NIGHTLY_REPO="galleon/scikit-decide"
+
+# Install scikit-decide from last nightly build if not yet installed
+skdecide_version=$(pip list | grep "scikit-decide")
+if [ -z "${skdecide_version}" ]; then
+  echo "Scikit-decide not found: installing from last nightly build."
+  # get last nightly build asset url
+  asset_url=$(\
+    curl -s https://api.github.com/repos/${NIGHTLY_REPO}/releases \
+    | jq -c ".[] | select( .tag_name == \"$NIGHTLY_TAG\" ) | .assets|sort_by(.createdAt)|.[-1].browser_download_url" \
+    | sed -e 's/\"//g'
+  )
+  # check that it exists (either "null" is no asset in nightly or "" if no tag nightly at all)
+  if  [ $asset_url == "null" ] || [ $asset_url == "" ]; then
+    echo "No nightly build available. Falling back to last version in pypi."
+    pip install sickit-decide[all]
+  else
+    # download and unzip
+    wget --output-document=nightly.zip ${asset_url}
+    unzip nightly.zip
+    # get the appropriate wheel from python version
+    wheel_pythonversion_tag=$(python -c 'import sys; print(f"cp{sys.version_info.major}{sys.version_info.minor}")')
+    wheel_path=$(ls dist/scikit_decide*${wheel_pythonversion_tag}*manylinux*.whl)
+    # install scikit-decide with all extras
+    pip install ${wheel_path}[all]
+  fi
+else
+  echo "Scikit-decide already installed."
+fi

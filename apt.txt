@@ -1,3 +1,4 @@
+jq
 ffmpeg
 freeglut3-dev
 xvfb
