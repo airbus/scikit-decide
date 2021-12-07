@@ -15,6 +15,39 @@ concurrency:
 
 jobs:
 
+  init:
+    runs-on: ubuntu-latest
+    outputs:
+      python_versions: ${{ steps.generate-matrix.outputs.python_versions }}
+      build_windows: ${{ steps.generate-matrix.outputs.build_windows }}
+      test_windows: ${{ steps.generate-matrix.outputs.test_windows }}
+      build_macos: ${{ steps.generate-matrix.outputs.build_macos }}
+      test_macos: ${{ steps.generate-matrix.outputs.test_macos }}
+      build_linux: ${{ steps.generate-matrix.outputs.build_linux }}
+      test_linux: ${{ steps.generate-matrix.outputs.test_linux }}
+    steps:
+      - name: Generate Matrix
+        id: generate-matrix
+        run: |
+          echo "Set Matrix"
+          echo "::set-output name=python_versions::['3.7', '3.8', '3.9']"
+          echo "::set-output name=build_windows::[]"
+          echo "::set-output name=test_windows::[]"
+          echo "::set-output name=build_windows::['windows-2016']"
+          echo "::set-output name=test_windows::['windows-2016', 'windows-2019']"
+          echo "::set-output name=build_macos::['macos-latest']"
+          echo "::set-output name=test_macos::['macos-10.15', 'macos-11']"
+          echo "::set-output name=build_linux::['ubuntu-latest']"
+          echo "::set-output name=test_linux::['ubuntu-18.04', 'ubuntu-20.04']"
+
+  my_echo:
+    runs-on: ubuntu-latest
+    needs:
+      - init
+    steps:
+      - name: Echo previous outputs
+        run: echo "${{ toJSON(needs.init.outputs) }}"
+
   lint-sources:
     runs-on: ubuntu-latest
     steps:
@@ -24,12 +57,98 @@ jobs:
           python-version: "3.8"
       - uses: pre-commit/action@v2.0.0
 
-  build:
+  build-windows:
+    needs:
+      - init
     strategy:
-      fail-fast: false
       matrix:
-        os: [windows-2016, macos-10.15, ubuntu-latest]
-        python-version: ["3.7", "3.8", "3.9"]
+        os: ${{ fromJSON(needs.init.outputs.build_windows) }}
+        python-version: ${{ fromJSON(needs.init.outputs.python_versions) }}
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+    runs-on: ${{ matrix.os }}
+
+    env:
+      BOOST_DIR: 3rdparty/boost
+      BOOST_VERSION: "1.76.0"
+      SKDECIDE_SKIP_DEPS: 1
+
+    steps:
+      - name: Checkout scikit-decide source code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Load cached venv
+        id: cached-pip-wheels
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Restore Boost cache
+        uses: actions/cache@v2.1.4
+        id: cache-boost
+        with:
+          path: ${{env.BOOST_DIR}}
+          key: BOOST_${{env.BOOST_VERSION}}
+
+      - name: Install Boost
+        if: steps.cache-boost.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p $BOOST_DIR
+          curl --silent --location --output - \
+            https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION/source/boost_${BOOST_VERSION//./_}.tar.bz2 |\
+            tar jxf - -C $BOOST_DIR --strip-components=1 boost_${BOOST_VERSION//./_}/boost
+        shell: bash
+
+      - name: Restore build dependencies
+        id: cache-build-dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            skdecide/hub/bin
+            skdecide/hub/share
+            skdecide/hub/*.msc
+          key: ${{ runner.os }}-cache-deps-${{ hashFiles('cpp/deps/chuffed', 'cpp/deps/gecode', 'cpp/deps/libminizinc') }}
+
+      - name: Update SKDECIDE_SKIP_DEPS
+        if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
+        run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
+
+      - name: Build Windows wheel
+        run: |
+          export "BOOST_ROOT=$PWD/$BOOST_DIR"
+          python -m pip install --upgrade pip
+          pip install build poetry-dynamic-versioning
+          python -m build --sdist --wheel
+
+      - name: Update build cache from wheels
+        if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
+        run: 7z x dist/*.whl -y
+
+      - name: Upload as build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist/*.whl
+
+  build-macos:
+    needs:
+      - init
+    strategy:
+      matrix:
+        os: ${{ fromJSON(needs.init.outputs.build_macos) }}
+        python-version: ${{ fromJSON(needs.init.outputs.python_versions) }}
+      fail-fast: false
     defaults:
       run:
         shell: bash
@@ -90,33 +209,105 @@ jobs:
         run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
 
       - name: Install omp on MacOS
-        if: matrix.os == 'macos-10.15'
         run: brew install libomp
 
       - name: Install and restore ccache for macOs
-        if: matrix.os == 'macos-10.15'
         uses: hendrikmuhs/ccache-action@v1.0.5
         with:
           key: ${{ runner.os }}-py${{ matrix.python-version }}
           max-size: 80M
 
       - name: Let cmake use ccache for macOs
-        if: matrix.os == 'macos-10.15'
         run: |
           echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
           echo "CMAKE_C_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
 
-      - name: Build macOS/Windows wheel
-        if: matrix.os != 'ubuntu-latest'
+      - name: Build macOS wheel
         run: |
           export "BOOST_ROOT=$PWD/$BOOST_DIR"
           python -m pip install --upgrade pip
           pip install build poetry-dynamic-versioning
           python -m build --sdist --wheel
 
+      - name: Update build cache from wheels
+        if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
+        run: 7z x dist/*.whl -y
+
+      - name: Upload as build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist/*.whl
+
+  build-linux:
+    needs:
+      - init
+    strategy:
+      matrix:
+        os: ${{ fromJSON(needs.init.outputs.build_linux) }}
+        python-version: ${{ fromJSON(needs.init.outputs.python_versions) }}
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+    runs-on: ${{ matrix.os }}
+
+    env:
+      BOOST_DIR: 3rdparty/boost
+      BOOST_VERSION: "1.76.0"
+      SKDECIDE_SKIP_DEPS: 1
+
+    steps:
+      - name: Checkout scikit-decide source code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Load cached venv
+        id: cached-pip-wheels
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Restore Boost cache
+        uses: actions/cache@v2.1.4
+        id: cache-boost
+        with:
+          path: ${{env.BOOST_DIR}}
+          key: BOOST_${{env.BOOST_VERSION}}
+
+      - name: Install Boost
+        if: steps.cache-boost.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p $BOOST_DIR
+          curl --silent --location --output - \
+            https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION/source/boost_${BOOST_VERSION//./_}.tar.bz2 |\
+            tar jxf - -C $BOOST_DIR --strip-components=1 boost_${BOOST_VERSION//./_}/boost
+        shell: bash
+
+      - name: Restore build dependencies
+        id: cache-build-dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            skdecide/hub/bin
+            skdecide/hub/share
+            skdecide/hub/*.msc
+          key: ${{ runner.os }}-cache-deps-${{ hashFiles('cpp/deps/chuffed', 'cpp/deps/gecode', 'cpp/deps/libminizinc') }}
+
+      - name: Update SKDECIDE_SKIP_DEPS
+        if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
+        run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
+
       - name: Restore docker dev image for Linux
         id: cache-dev-deps
-        if: matrix.os == 'ubuntu-latest'
         uses: actions/cache@v2.1.4
         with:
           path: /tmp/docker
@@ -124,7 +315,6 @@ jobs:
 
       - name: Restore ccache cache for Linux
         id: ccache-restore
-        if: matrix.os == 'ubuntu-latest'
         uses: actions/cache@v2.1.4
         with:
           path: .ccache
@@ -132,7 +322,6 @@ jobs:
           restore-keys: ccache-${{ runner.os }}-py${{ matrix.python-version }}
 
       - name: Build x86 Linux wheels
-        if: matrix.os == 'ubuntu-latest'
         run: |
           # Load skdecide_dev image from cache, or build it if not found
           if test -f /tmp/docker/skdecide_dev.tar; then
@@ -160,18 +349,24 @@ jobs:
           name: wheels
           path: dist/*.whl
 
-  test-unix:
-    needs: build
+  test-windows:
+    needs:
+      - build-windows
+      - init
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.7", "3.8", "3.9"]
-        compiler: [gnu]
+        os: ${{ fromJSON(needs.init.outputs.test_windows) }}
+        python-version: ${{ fromJSON(needs.init.outputs.python_versions) }}
       fail-fast: true
+    defaults:
+      run:
+        shell: bash
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: true
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -197,13 +392,17 @@ jobs:
           pytest -v -s tests/scheduling
 
   test-macos:
-    needs: build
+    needs:
+      - build-macos
+      - init
     strategy:
       matrix:
-        os: [macos-latest]
-        python-version: ["3.7", "3.8", "3.9"]
-        compiler: [gnu]
+        os: ${{ fromJSON(needs.init.outputs.test_macos) }}
+        python-version: ${{ fromJSON(needs.init.outputs.python_versions) }}
       fail-fast: true
+    defaults:
+      run:
+        shell: bash
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -236,20 +435,22 @@ jobs:
           pytest -v -s tests/solvers/python
           pytest -v -s tests/scheduling
 
-  test-windows:
-    needs: build
+  test-linux:
+    needs:
+      - build-linux
+      - init
     strategy:
       matrix:
-        os: [windows-latest]
-        python-version: ["3.7", "3.8", "3.9"]
-        compiler: [gnu]
+        os: ${{ fromJSON(needs.init.outputs.test_linux) }}
+        python-version: ${{ fromJSON(needs.init.outputs.python_versions) }}
       fail-fast: true
+    defaults:
+      run:
+        shell: bash
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -275,7 +476,7 @@ jobs:
           pytest -v -s tests/scheduling
 
   build-docs:
-    needs: [test-unix, test-macos, test-windows]
+    needs: [test-linux]
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -352,7 +553,7 @@ jobs:
 
   upload-nightly:
     if: (github.ref == 'refs/heads/master') && (github.repository == 'airbus/scikit-decide') && (github.event_name == 'schedule')
-    needs: [test-unix, test-macos, test-windows]
+    needs: [build-docs, test-macos, test-windows]
     runs-on: ubuntu-latest
 
     steps:
