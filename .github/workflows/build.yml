@@ -9,6 +9,10 @@ on:
   schedule:
     - cron:  '45 1 * * *'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   lint-sources:
