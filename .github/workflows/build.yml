@@ -381,7 +381,7 @@ jobs:
             });
 
             if (ref_nightly.data.object.sha === master_sha) {
-              return "No new nightly release";
+              return '';
             }
           } catch (err) {
             // The tag does not exist so let's create it
@@ -488,5 +488,21 @@ jobs:
             },
           });
 
-          return uploadedAsset.data.browser_download_url;
+          return relase_name;
         result-encoding: string
+
+    - uses: actions/checkout@v2
+      # only if a nightly release occured
+      if: ${{ steps.asset.outputs.result != '' }}
+      with:
+        ref: binder
+
+    - name: Force a rebuild of binder environment
+      # only if a nightly release occured
+      if: ${{ steps.asset.outputs.result != '' }}
+      run: |
+        sed -i -e "s/^# Last nightly build.*/# Last nightly build: ${{ steps.asset.outputs.result }}/" postBuild
+        git config user.name "Actions"
+        git config user.email "actions@github.com"
+        git commit postBuild -m "Use scikit-decide nightly build ${{ steps.asset.outputs.result }}"
+        git push origin binder
