@@ -505,6 +505,13 @@ jobs:
           # switch back to original branch
           git checkout $TAG_NAME
 
+      - name: Trigger a build on each BinderHub deployments in the mybinder.org federation
+        run: |
+          bash scripts/trigger_binder.sh https://gke.mybinder.org/build/gh/nhuet/scikit-decide/${BINDER_RELEASE_ENV_SHA1}
+          bash scripts/trigger_binder.sh https://ovh.mybinder.org/build/gh/nhuet/scikit-decide/${BINDER_RELEASE_ENV_SHA1}
+          bash scripts/trigger_binder.sh https://turing.mybinder.org/build/gh/nhuet/scikit-decide/${BINDER_RELEASE_ENV_SHA1}
+          bash scripts/trigger_binder.sh https://gesis.mybinder.org/build/gh/nhuet/scikit-decide/${BINDER_RELEASE_ENV_SHA1}
+
       - name: Set env variables for github+binder links in doc
         run: |
           echo "AUTODOC_BINDER_ENV_GH_REPO_NAME=${GITHUB_REPOSITORY}" >> $GITHUB_ENV
