@@ -29,7 +29,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2016, macos-10.15, ubuntu-latest]
-        python-version: ["3.7", "3.8"]
+        python-version: ["3.7", "3.8", "3.9"]
     defaults:
       run:
         shell: bash
@@ -165,7 +165,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.7", "3.8"]
+        python-version: ["3.7", "3.8", "3.9"]
         compiler: [gnu]
       fail-fast: true
     runs-on: ${{ matrix.os }}
@@ -201,7 +201,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest]
-        python-version: ["3.7", "3.8"]
+        python-version: ["3.7", "3.8", "3.9"]
         compiler: [gnu]
       fail-fast: true
     runs-on: ${{ matrix.os }}
@@ -241,7 +241,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest]
-        python-version: ["3.7", "3.8"]
+        python-version: ["3.7", "3.8", "3.9"]
         compiler: [gnu]
       fail-fast: true
     runs-on: ${{ matrix.os }}
