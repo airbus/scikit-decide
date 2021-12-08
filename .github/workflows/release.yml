@@ -308,7 +308,7 @@ jobs:
         run: |
           git checkout binder
           # Specify scikit-decide dependency for the release binder env
-          sed -i -e "s/scikit-decide\[all\]==.*/scikit-decide[all]==${SKDECIDE_VERSION}/" environment.yml
+          echo "    - scikit-decide[all]==${SKDECIDE_VERSION}" >> environment.yml
           git config user.name "Actions"
           git config user.email "actions@github.com"
           git commit environment.yml -m "Specify scikit-decide used by binder for release ${SKDECIDE_VERSION}"
