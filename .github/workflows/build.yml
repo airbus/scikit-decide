@@ -367,7 +367,6 @@ jobs:
     - uses: actions/github-script@v5
       id: asset
       with:
-        github-token: ${{ secrets.gh_access_token }}
         script: |
           const fs = require('fs');
 
