@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Last nightly build
+# Last nightly build: No new nightly release
 NIGHTLY_TAG="nightly"
 NIGHTLY_REPO="galleon/scikit-decide"
 
