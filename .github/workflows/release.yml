@@ -89,7 +89,7 @@ jobs:
         uses: actions/cache@v2.1.4
         with:
           path: /tmp/docker
-          key: dev-deps-${{ runner.os }}-${{ hashFiles('scripts/build-skdecide_dev.sh', 'scripts/build-pip-install.sh', 'scripts/Dockerfile_x86_64_dev') }}
+          key: dev-deps-${{ runner.os }}-${{ hashFiles('scripts/build-skdecide_dev.sh', 'scripts/Dockerfile_x86_64_dev') }}
 
       - name: Build x86 Linux wheels
         if: matrix.os == 'ubuntu-latest'
