@@ -188,6 +188,14 @@ From the "scikit-decide" root directory, run unit tests with:
  poetry run pytest tests
 ```
 
+### Running notebooks as tests
+
+One can test programmatically that notebooks are not broken thanks to [nbmake](https://github.com/treebeardtech/nbmake) extension for pytest.
+
+```shell
+poetry run pytest --nbmake notebooks -v
+```
+
 ## Guidelines to follow when preparing a contribution
 
 ### Coding style and code linting
