@@ -35,9 +35,6 @@ if test -d .ccache; then
     ccache --set-config compression=true
 fi
 
-# pip upgrade and install cmake and auditwheel if it isn't already
-$(dirname $(realpath "$0"))/build-pip-install.sh
-
 # Uses the Python version requested as first argument, otherwise use 3.8 by default
 PYTHON_VERSION=${1:-3.8}
 #
