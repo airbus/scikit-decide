@@ -420,7 +420,7 @@ jobs:
               prerelease: true,
             });
 
-            console.log(`Created release ${release.data.tag_name} ${release.data.draft} ${release.data.prerelease} ${doIProceed}`);
+            console.log(`Created release ${release.data.tag_name} ${release.data.draft} ${release.data.prerelease}`);
           }
           console.log(`Release does exist with tag ${release.data.tag_name} [${release.data.draft} ${release.data.prerelease}]`);
 
