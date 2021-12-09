@@ -1,23 +1,26 @@
 #!/bin/bash
 
+# Stops if an error occurs
+set -e
+
 # Last nightly build: No new nightly release
 NIGHTLY_TAG="nightly"
 NIGHTLY_REPO="galleon/scikit-decide"
 
 # Install scikit-decide from last nightly build if not yet installed
-skdecide_version=$(pip list | grep "scikit-decide")
+skdecide_version=$(pip list | grep "scikit-decide" | head -n 1)
 if [ -z "${skdecide_version}" ]; then
   echo "Scikit-decide not found: installing from last nightly build."
   # get last nightly build asset url
   asset_url=$(\
     curl -s https://api.github.com/repos/${NIGHTLY_REPO}/releases \
     | jq -c ".[] | select( .tag_name == \"$NIGHTLY_TAG\" ) | .assets|sort_by(.createdAt)|.[-1].browser_download_url" \
-    | sed -e 's/\"//g'
+    | sed -e 's/"//g'
   )
   # check that it exists (either "null" is no asset in nightly or "" if no tag nightly at all)
   if  [ $asset_url == "null" ] || [ $asset_url == "" ]; then
     echo "No nightly build available. Falling back to last version in pypi."
-    pip install sickit-decide[all]
+    pip install scikit-decide[all]
   else
     # download and unzip
     wget --output-document=nightly.zip ${asset_url}
