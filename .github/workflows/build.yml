@@ -35,6 +35,10 @@ jobs:
           echo "::set-output name=test_windows::[]"
           echo "::set-output name=build_windows::['windows-2016']"
           echo "::set-output name=test_windows::['windows-2016', 'windows-2019']"
+          if test "${{ contains(github.event.head_commit.message, '[ci: skip-windows]') }}" = "true"; then
+            echo "::set-output name=build_windows::[]"
+            echo "::set-output name=test_windows::[]"
+          fi
           echo "::set-output name=build_macos::['macos-latest']"
           echo "::set-output name=test_macos::['macos-10.15', 'macos-11']"
           echo "::set-output name=build_linux::['ubuntu-latest']"
