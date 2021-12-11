@@ -375,7 +375,7 @@ jobs:
               repo: context.repo.repo,
             })
 
-            const nightlyRelease = releases.data.find(r => r.tag_name === 'nightly'))
+            const nightlyRelease = releases.data.find(r => r.tag_name === 'nightly')
 
             if (nightlyRelease) {
               await github.rest.repos.deleteRelease({
