@@ -34,7 +34,7 @@ jobs:
         run: |
           python_version = ["3.7", "3.8", "3.9"]
           build = { "macos": ["macos-10.15"], "linux": ["ubuntu-latest"], "windows": ["windows-2016"] }
-          test = { "macos": ["macos-latest"], "linux": ["ubuntu-latest"], "windows": ["windows-latest"] }
+          test = { "macos": ["macos-10.15", "macos-11"], "linux": ["ubuntu-18.04", "ubuntu-20.04"], "windows": ["windows-2016", "windows-2019", "windows-2022"] }
           print(f"::set-output name=python_version::{python_version}")
           print(f"::set-output name=build::{build}")
           print(f"::set-output name=test::{test}")
