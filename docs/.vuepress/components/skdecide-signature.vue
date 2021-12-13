@@ -11,6 +11,9 @@ export default {
     sig: {type: Object, default: () => ({params: []})},
     name: {type: String, default: ''}
   },
+  mounted() {
+    this.updateLinks()
+  },
   data () {
     return {
       needsLinksUpdate: false
@@ -63,7 +66,6 @@ export default {
       //adaptedAnnotation = adaptedAnnotation.replace(/\w+/g, match => (this.objects[match] !== undefined ? ('<a href="' + this.objects[match] + '">' + match + '</a>') : match))
       adaptedAnnotation = adaptedAnnotation.replace(/\w+/g, match => (this.objects[match] !== undefined ? ('<a class="linkto" data-link="' + this.objects[match] + '">' + match + '</a>') : match))
       this.needsLinksUpdate = true
-      this.$nextTick(this.updateLinks)
       return adaptedAnnotation
     },
     updateLinks () {
