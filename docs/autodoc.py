@@ -123,7 +123,12 @@ def add_func_method_infos(func_method, autodoc):
     for k, v in parameters.items():
         if not (k == "self" and func_method.__name__ == "__init__"):
             parameter = parameters[k]
-            param = {"name": k}
+            if parameter.kind == inspect.Parameter.VAR_POSITIONAL:
+                param = {"name": "*" + k}
+            elif parameter.kind == inspect.Parameter.VAR_KEYWORD:
+                param = {"name": "**" + k}
+            else:
+                param = {"name": k}
             if parameter.default != signature.empty:
                 param["default"] = str(parameter.default)
                 if "lambda" in param["default"]:
