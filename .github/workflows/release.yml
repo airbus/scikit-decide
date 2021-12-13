@@ -18,6 +18,7 @@ jobs:
       python_version: ${{ steps.generate-matrix.outputs.python_version }}
       build: ${{ steps.generate-matrix.outputs.build}}
       test: ${{ steps.generate-matrix.outputs.test}}
+      deploy_test_pypi: ${{ steps.generate-matrix.outputs.deploy_test_pypi}}
     steps:
       - uses: actions/setup-python@v2
       - name: Generate Matrix
@@ -25,11 +26,17 @@ jobs:
         shell: python3 {0}
         run: |
           python_version = ["3.7", "3.8", "3.9"]
-          build = { "macos": ["macos-10.15"], "linux": ["ubuntu-latest"], "windows": ["windows-2016"] }
-          test = { "macos": ["macos-10.15", "macos-11"], "linux": ["ubuntu-18.04", "ubuntu-20.04"], "windows": ["windows-2016", "windows-2019", "windows-2022"] }
+          build_dict = { "macos":["macos-10.15"], "ubuntu":["ubuntu-latest"], "windows":["windows-2016"] }
+          test_dict = { "macos":["macos-10.15", "macos-11"], "ubuntu":["ubuntu-18.04", "ubuntu-20.04"], "windows":["windows-2016", "windows-2019", "windows-2022" ]}
+          deploy_test_pypi = "true"
+
+          if "${{ contains(github.event.head_commit.message, '[ci: skip-deploy-test-pypi]') }}" == "true":
+              deploy_test_pypi = "false"
+
+          print(f"::set-output name=build::{build_dict}")
+          print(f"::set-output name=test::{test_dict}")
           print(f"::set-output name=python_version::{python_version}")
-          print(f"::set-output name=build::{build}")
-          print(f"::set-output name=test::{test}")
+          print(f"::set-output name=deploy_test_pypi::{deploy_test_pypi}")
 
   lint-sources:
     runs-on: ubuntu-latest
@@ -41,8 +48,7 @@ jobs:
       - uses: pre-commit/action@v2.0.0
 
   build-windows:
-    needs:
-      - setup
+    needs: [setup]
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.build).windows }}
@@ -120,8 +126,7 @@ jobs:
           path: dist/*.whl
 
   build-macos:
-    needs:
-      - setup
+    needs: [setup]
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.build).macos }}
@@ -201,12 +206,11 @@ jobs:
           name: wheels
           path: dist/*.whl
 
-  build-linux:
-    needs:
-      - setup
+  build-ubuntu:
+    needs: [setup]
     strategy:
       matrix:
-        os: ${{ fromJSON(needs.setup.outputs.build).linux }}
+        os: ${{ fromJSON(needs.setup.outputs.build).ubuntu }}
         python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
       fail-fast: false
     defaults:
@@ -295,9 +299,7 @@ jobs:
           path: dist/*.whl
 
   test-windows:
-    needs:
-      - build-windows
-      - setup
+    needs: [build-windows, setup]
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).windows }}
@@ -335,9 +337,7 @@ jobs:
           pytest -v -s tests/scheduling
 
   test-macos:
-    needs:
-      - build-macos
-      - setup
+    needs: [build-macos, setup]
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).macos }}
@@ -375,13 +375,11 @@ jobs:
           pytest -v -s tests/solvers/python
           pytest -v -s tests/scheduling
 
-  test-linux:
-    needs:
-      - build-linux
-      - setup
+  test-ubuntu:
+    needs: [build-ubuntu, setup]
     strategy:
       matrix:
-        os: ${{ fromJSON(needs.setup.outputs.test).linux }}
+        os: ${{ fromJSON(needs.setup.outputs.test).ubuntu }}
         python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
       fail-fast: true
     runs-on: ${{ matrix.os }}
@@ -413,7 +411,7 @@ jobs:
           pytest -v -s tests/scheduling
 
   upload:
-    needs: [test-linux, test-macos, test-windows]
+    needs: [test-ubuntu, test-macos, test-windows]
     runs-on: ubuntu-latest
 
     steps:
@@ -437,7 +435,7 @@ jobs:
           file_glob: true
 
   deploy:
-    needs: [upload]
+    needs: [upload, setup]
     runs-on: ubuntu-latest
 
     steps:
@@ -458,14 +456,14 @@ jobs:
       - name: Publish distribution 📦 to Test PyPI
         env:
           TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_PASSWORD }}
-        if: env.TEST_PYPI_TOKEN != ''
+        if: env.TEST_PYPI_TOKEN != '' && needs.setup.outputs.deploy_test_pypi == 'true'
         uses: pypa/gh-action-pypi-publish@master
         with:
           password: ${{ secrets.TEST_PYPI_PASSWORD }}
           packages_dir: wheels/
           repository_url: https://test.pypi.org/legacy/
 
-  build-docs:
+  build-doc:
     needs: [deploy]
     runs-on: ubuntu-latest
     env:
