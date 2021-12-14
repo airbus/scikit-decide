@@ -1,7 +1,12 @@
 name: nb-skdecide092-py38
+channels:
+  - pytorch
+  - defaults
 dependencies:
   - python=3.8
   - pip
+  - pytorch::cpuonly
+  - pytorch::pytorch
   - pip:
     - matplotlib
     - ipywidgets
