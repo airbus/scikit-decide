@@ -42,6 +42,10 @@ module.exports = {
                 link: '/notebooks/'
             },
             {
+                text: 'Code generators',
+                link: '/codegen/'
+            },
+            {
                 text: 'Reference',
                 link: '/reference/'
             },

@@ -105,7 +105,7 @@ In the example of the Maze solved with Lazy A*, the goal (in green) should be re
 
 ### Notebooks
 
-Go to the dedicated <router-link to="codegen">Notebooks</router-link> page to see a curated list of notebooks recommended to start with scikit-decide.
+Go to the dedicated <router-link to="/notebooks">Notebooks</router-link> page to see a curated list of notebooks recommended to start with scikit-decide.
 
 ### Python scripts
 
@@ -151,7 +151,7 @@ In the future, each scikit-decide hub entry might have a dedicated help page to 
 
 ## Code generators
 
-**Go to <router-link to="codegen">Code generators</router-link> for assistance when creating a new domain or solver.**
+Go to <router-link to="/codegen">Code generators</router-link> for assistance when creating a new domain or solver.
 
 ## Roadmap
 
