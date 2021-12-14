@@ -1,6 +1,6 @@
 # Code generators
 
-::: tip
+::: tip Domain specification
 <skdecide-summary></skdecide-summary>
 :::
 
@@ -8,7 +8,7 @@
 
 <template v-slot:SolverSummary>
 
-::: warning
+::: warning Solver specification
 <skdecide-summary isSolver></skdecide-summary>
 :::
 

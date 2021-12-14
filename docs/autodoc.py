@@ -409,7 +409,7 @@ if __name__ == "__main__":
             md += f'{module["doc"]}\n\n'
 
         # Write domain spec summary
-        md += "::: tip\n<skdecide-summary></skdecide-summary>\n:::\n\n"
+        md += "::: tip Domain specification\n<skdecide-summary></skdecide-summary>\n:::\n\n"
 
         # Write members
         for member in module["members"]:
