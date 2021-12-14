@@ -563,7 +563,7 @@ if __name__ == "__main__":
         )
         spec += "</skdecide-spec>\n\n"
 
-        with open(f"{docdir}/guide/_{element}spec.md", "w") as f:
+        with open(f"{docdir}/codegen/_{element}spec.md", "w") as f:
             f.write(spec)
 
     # Write Json state (.vuepress/_state.json)

@@ -26,7 +26,5 @@ yarn-debug.log*
 yarn-error.log*
 docs/.vuepress/_state.json
 docs/.vuepress/public/notebooks/
-docs/guide/_domainspec.md
-docs/guide/_examples.md
-docs/guide/_solverspec.md
-docs/reference/
+docs/*/_*.md
+docs/notebooks/README.md
