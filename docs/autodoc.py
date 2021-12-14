@@ -408,9 +408,6 @@ if __name__ == "__main__":
         if "doc" in module:
             md += f'{module["doc"]}\n\n'
 
-        # Write Table Of Content
-        md += "[[toc]]\n\n"
-
         # Write domain spec summary
         md += "::: tip\n<skdecide-summary></skdecide-summary>\n:::\n\n"
 
