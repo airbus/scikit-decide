@@ -1,7 +1,5 @@
 <template>
   <div style="margin: 10px 0px">
-    <span>{{ isSolver ? 'Solver' : 'Domain' }} specification:</span>
-
     <div style="margin-top: 5px; margin-bottom: 10px">
     <!-- Template -->
     <el-tag type="danger" effect="dark" style="margin-bottom: 5px">
