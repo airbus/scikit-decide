@@ -72,34 +72,58 @@ compatible_solvers = utils.match_solvers(MyDomain())
 print(compatible_solvers)
 # prints: [<class 'skdecide.hub.solver.lazy_astar.lazy_astar.LazyAstar'>, ...]
 
-MySolver = compatible_solvers[0]  # selecting Lazy A* solver here
+# select Lazy A* solver and instanciate with default parameters
+from skdecide.hub.solver.lazy_astar import LazyAstar
+mysolver = LazyAstar()
 ```
 
 ### Compute a solution
 
-Here is how to solve `MyDomain` with `MySolver`:
+Here is how to solve `MyDomain` with `mysolver`:
 
 ```python
-# Simple case (no arguments for domain nor solver)
-solution = MyDomain.solve_with(MySolver)
-
-# Case with solver arguments
-solution = MyDomain.solve_with(lambda: MySolver(verbose=True))
+MyDomain.solve_with(mysolver)
 ```
 
 ### Test the solution
 
 ```python
 # Simple case (one basic rollout)
-utils.rollout(MyDomain(), solution)
+utils.rollout(MyDomain(), mysolver)
 
 # Example of additional rollout parameters
-utils.rollout(MyDomain(), solution, num_episodes=3, max_steps=1000, max_framerate=30)
+utils.rollout(MyDomain(), mysolver, num_episodes=3, max_steps=1000, max_framerate=30)
 ```
 
 In the example of the Maze solved with Lazy A*, the goal (in green) should be reached by the agent (in blue):
 
 <img :src="$withBase('/maze.png')" alt="Maze">
+
+::: tip
+The rendering of the maze is done in a separate window when running in a local python script.
+To get a similar result in a jupyter notebook, add a line
+```jupyter
+%matplotlib qt
+```
+before calling `rollout()`. See also the available <router-link to="/notebooks">tutorial notebooks</router-link>
+to know how to render the maze inline.
+:::
+
+### Clean up the solver
+
+Some solvers (especially parallel C++ ones) need to be properly cleaned once used.
+```python
+mysolver._cleanup()
+```
+
+::: tip
+Note that this is automatically done if you use the solver within a `with` statement:
+```python
+with LazyAstar() as mysolver:
+    MyDomain.solve_with(mysolver)
+    utils.rollout(MyDomain(), mysolver)
+```
+:::
 
 ## Examples
 
