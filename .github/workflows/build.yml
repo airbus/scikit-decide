@@ -467,7 +467,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest tqdm
+          python -m pip install pytest tqdm docopt commonmark
 
       - name: Download artifacts
         uses: actions/download-artifact@v1.0.0
@@ -481,6 +481,11 @@ jobs:
           pytest -v -s tests/solvers/cpp
           pytest -v -s tests/solvers/python
           pytest -v -s tests/scheduling
+
+      - name: Test python block codes from guide
+        run: |
+          python scripts/md2py.py docs/guide/README.md tests/test_guide.py
+          python tests/test_guide.py
 
   build-doc:
     needs: [test-ubuntu, setup]
