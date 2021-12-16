@@ -110,6 +110,8 @@ pytest-cov = "^2.11.1"
 simplejson = "^3.17.2"
 tqdm = "^4.59.0"
 nbmake = "^1.0"
+docopt = ">=0.6.2"
+commonmark = ">=0.9.1"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
