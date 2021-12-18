@@ -495,9 +495,6 @@ jobs:
           # get sha1 to be used by binder for the environment
           BINDER_RELEASE_ENV_SHA1=$(git rev-parse --verify HEAD)
           echo "BINDER_RELEASE_ENV_SHA1=${BINDER_RELEASE_ENV_SHA1}" >> $GITHUB_ENV
-          # revert for the master binder env
-          git revert HEAD -n
-          git commit -m "Revert to binder environment for master branch"
           # push binder branch so that reference to release binder env exists on remote
           git push origin binder
           # switch back to original branch
