@@ -19,6 +19,13 @@ def rebuild_tasks_complete_details_dict(state: State) -> Dict[int, Task]:
     return tasks_complete_details
 
 
+def rebuild_all_tasks_dict(state: State) -> Dict[int, Task]:
+    tasks_details = {p.value.id: p.value
+                     for p in state.tasks_complete_details}
+    tasks_details.update(state.tasks_details)
+    return tasks_details
+
+
 def rebuild_tasks_modes_dict(state: State) -> Dict[int, int]:
     tasks_modes = {p.value[0]: p.value[1]
                    for p in state.tasks_complete_mode}
