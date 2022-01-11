@@ -28,7 +28,7 @@ from skdecide.builders.domain.scheduling.scheduling_domains import (
     State,
 )
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
-    SchedulingActionEnum, rebuild_tasks_modes_dict, rebuild_tasks_complete_details_dict, rebuild_schedule_dict,
+    SchedulingActionEnum, rebuild_tasks_modes_dict, rebuild_tasks_complete_details_dict,
     rebuild_all_tasks_dict
 )
 from skdecide.builders.domain.scheduling.task_duration import DeterministicTaskDuration
