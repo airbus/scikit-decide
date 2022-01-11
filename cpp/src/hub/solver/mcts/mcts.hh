@@ -101,10 +101,10 @@ public:
           [](typename Tsolver::Domain &domain,
              const typename Tsolver::Domain::State &state,
              const std::size_t *thread_id) {
-            // MSVC cannot catch Tsolver::Domain::Value inside the lambda
-            // function but can only catch types through FullExpand<Tsolver>
-            // thus we must get the state value type from
-            // FullExpand<Tsolver>::HeuristicFunctor
+            // MSVC versions earlier than 2019 cannot catch
+            // Tsolver::Domain::Value inside the lambda function but can only
+            // catch types through FullExpand<Tsolver> thus we must get the
+            // state value type from FullExpand<Tsolver>::HeuristicFunctor
             typedef typename FullExpand<
                 Tsolver>::HeuristicFunctor::result_type::first_type StateValue;
             return std::make_pair(StateValue(), 0);
