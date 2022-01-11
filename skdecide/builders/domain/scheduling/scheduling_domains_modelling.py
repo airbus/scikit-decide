@@ -13,6 +13,27 @@ from typing import Dict, Iterable, List, Optional, Set, Union, Tuple
 from skdecide.builders.domain.scheduling.task import Task
 
 
+def rebuild_tasks_complete_details_dict(state: State) -> Dict[int, Task]:
+    tasks_complete_details = {p.value.id: p.value
+                              for p in state.tasks_complete_details}
+    return tasks_complete_details
+
+
+def rebuild_tasks_modes_dict(state: State) -> Dict[int, int]:
+    tasks_modes = {p.value[0]: p.value[1]
+                   for p in state.tasks_complete_mode}
+    return tasks_modes
+
+
+def rebuild_schedule_dict(state: State) -> Dict[int, Dict[str, int]]:
+    schedule = {
+         p.value.id: {"start_time": p.value.start,
+                      "end_time": p.value.end}
+         for p in state.tasks_complete_details
+     }
+    return schedule
+
+
 class Node:
     __slots__ = ("value", "next_node")
 
