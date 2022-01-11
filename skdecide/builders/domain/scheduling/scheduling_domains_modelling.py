@@ -8,7 +8,7 @@ from collections.abc import Collection
 from copy import copy, deepcopy
 from enum import Enum
 from time import time
-from typing import Dict, Iterable, List, Optional, Set, Union
+from typing import Dict, Iterable, List, Optional, Set, Union, Tuple
 
 from skdecide.builders.domain.scheduling.task import Task
 
@@ -25,7 +25,7 @@ class SinglyLinkedList(Collection):
     def __init__(self, head=None):
         self.head = head
 
-    def push_front(self, value: Union[int, float, Task]):
+    def push_front(self, value: Union[int, float, Task, Tuple[int, int]]):
         self.head = Node(value, self.head)
 
     def __iter__(self):

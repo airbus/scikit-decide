@@ -492,7 +492,7 @@ class SchedulingDomain(
             )
             del next_state.tasks_progress[completed_task]
             next_state.tasks_complete_mode.push_front(
-                next_state.tasks_mode[completed_task]
+                (completed_task, next_state.tasks_mode[completed_task])
             )
             del next_state.tasks_mode[completed_task]
 
@@ -538,7 +538,7 @@ class SchedulingDomain(
                 )
                 del next_state.tasks_progress[completed_task]
                 next_state.tasks_complete_mode.push_front(
-                    next_state.tasks_mode[completed_task]
+                    (completed_task, next_state.tasks_mode[completed_task])
                 )
                 del next_state.tasks_mode[completed_task]
                 if completed_task in self.get_task_on_completion_added_conditions():
@@ -627,7 +627,7 @@ class SchedulingDomain(
                     next_state.tasks_progress[task]
                 )
                 del next_state.tasks_progress[task]
-                next_state.tasks_complete_mode.push_front(next_state.tasks_mode[task])
+                next_state.tasks_complete_mode.push_front((task, next_state.tasks_mode[task]))
                 del next_state.tasks_mode[task]
                 next_state.resource_used_for_task.pop(task)
         return next_state
@@ -657,7 +657,7 @@ class SchedulingDomain(
                     )
                     del next_state.tasks_progress[task]
                     next_state.tasks_complete_mode.push_front(
-                        next_state.tasks_mode[task]
+                        (task, next_state.tasks_mode[task])
                     )
                     del next_state.tasks_mode[task]
                     next_state.resource_used_for_task.pop(task)
