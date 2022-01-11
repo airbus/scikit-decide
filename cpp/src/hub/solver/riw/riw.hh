@@ -215,6 +215,12 @@ private:
     typedef Trollout_policy<Domain> RolloutPolicy;
     typedef Texecution_policy ExecutionPolicy;
 
+    typedef typename ExecutionPolicy::template atomic<std::size_t>
+        atomic_size_t;
+    typedef typename ExecutionPolicy::template atomic<double> atomic_double;
+    typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
+
+  public:
     WidthSolver(
         RIWSolver &parent_solver, Domain &domain,
         const StateFeatureFunctor &state_features,
@@ -239,11 +245,6 @@ private:
                atomic_size_t &nb_rollouts, TupleVector &feature_tuples);
 
   private:
-    typedef typename ExecutionPolicy::template atomic<std::size_t>
-        atomic_size_t;
-    typedef typename ExecutionPolicy::template atomic<double> atomic_double;
-    typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
-
     RIWSolver &_parent_solver;
     Domain &_domain;
     const StateFeatureFunctor &_state_features;
