@@ -44,11 +44,8 @@ def from_last_state_to_solution(state: State, domain: SchedulingDomain):
     modes = [state.tasks_mode.get(j, 1) for j in sorted(domain.get_tasks_ids())]
     modes = modes[1:-1]
     schedule = {
-        j: {
-            "start_time": state.tasks_details[j].start,
-            "end_time": state.tasks_details[j].end,
-        }
-        for j in state.tasks_details
+        p.value.id: {"start_time": p.value.start, "end_time": p.value.end}
+        for p in state.tasks_complete_details
     }
     return RCPSPSolution(
         problem=build_do_domain(domain),

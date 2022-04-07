@@ -29,6 +29,9 @@ from skdecide.builders.domain.scheduling.scheduling_domains import (
 )
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     SchedulingActionEnum,
+    rebuild_all_tasks_dict,
+    rebuild_tasks_complete_details_dict,
+    rebuild_tasks_modes_dict,
 )
 from skdecide.builders.domain.scheduling.task_duration import DeterministicTaskDuration
 from skdecide.discrete_optimization.generic_tools.cp_tools import CPSolverName
@@ -491,12 +494,13 @@ def check_rollout_consistency(domain, states: List[State]):
 
 def check_precedence(domain, states: List[State]):
     # Check precedence
+    tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
     for id in domain.get_tasks_ids():
         if id in states[-1].tasks_complete:  # needed for conditional tasks
-            start_1 = states[-1].tasks_details[id].start
+            start_1 = tasks_complete_dict[id].start
             for pred_id in domain.get_predecessors_task(id):
                 if pred_id in states[-1].tasks_complete:  # needed for conditional tasks
-                    end_0 = states[-1].tasks_details[pred_id].end
+                    end_0 = tasks_complete_dict[pred_id].end
                     assert start_1 >= end_0, (
                         "precedence constraints not respecetd between tasks "
                         + str(id)
@@ -508,25 +512,24 @@ def check_precedence(domain, states: List[State]):
 def check_task_duration(domain, states: List[State]):
     # Check task durations on deterministic domains
     if isinstance(domain, DeterministicTaskDuration):
+        tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
+        tasks_mode_dict = rebuild_tasks_modes_dict(states[-1])
         for id in domain.get_tasks_ids():
             if id in states[-1].tasks_complete:  # needed for conditional tasks
-                expected_duration = domain.get_task_duration(
-                    id, states[-1].tasks_mode[id]
-                )
+                expected_duration = domain.get_task_duration(id, tasks_mode_dict[id])
                 actual_duration = (
-                    states[-1].tasks_details[id].end
-                    - states[-1].tasks_details[id].start
+                    tasks_complete_dict[id].end - tasks_complete_dict[id].start
                 )
                 assert (
                     actual_duration == expected_duration
                 ), "duration different than expected for task " + str(id)
     else:
+        tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
         for id in domain.get_tasks_ids():
             if id in states[-1].tasks_complete:  # needed for conditional tasks
-                expected_duration = states[-1].tasks_details[id].sampled_duration
+                expected_duration = tasks_complete_dict[id].sampled_duration
                 actual_duration = (
-                    states[-1].tasks_details[id].end
-                    - states[-1].tasks_details[id].start
+                    tasks_complete_dict[id].end - tasks_complete_dict[id].start
                 )
                 assert (
                     actual_duration == expected_duration
@@ -540,22 +543,26 @@ def check_resource_constraints(domain, states: List[State]):
         and isinstance(domain, WithoutPreemptivity)
         and isinstance(domain, WithoutConditionalTasks)
     ):
+        tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
+        tasks_modes_dict = rebuild_tasks_modes_dict(states[-1])
         for t in range(states[-1].t):
+
             for res in domain.get_resource_types_names():
                 total_available = domain.get_quantity_resource(res, t)
                 total_consumed = 0
                 for id in domain.get_tasks_ids():
                     if (
-                        states[-1].tasks_details[id].start is not None
-                        and states[-1].tasks_details[id].end is not None
+                        tasks_complete_dict[id].start is not None
+                        and tasks_complete_dict[id].end is not None
                     ):
                         # The task had been scheduled.
                         if (
-                            states[-1].tasks_details[id].start <= t
-                            and states[-1].tasks_details[id].end > t
+                            tasks_complete_dict[id].start
+                            <= t
+                            < tasks_complete_dict[id].end
                         ):
                             total_consumed += domain.get_task_consumption(
-                                id, states[-1].tasks_mode[id], res, t
+                                id, tasks_modes_dict[id], res, t
                             )
                 assert total_consumed <= total_available, (
                     "over consumption at t=" + str(t) + " for res " + res
@@ -565,6 +572,8 @@ def check_resource_constraints(domain, states: List[State]):
 def check_skills(domain, states: List[State]):
     if isinstance(domain, ToyMS_RCPSPDomain):
         ressource_units = domain.get_resource_units_names()
+        tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
+        tasks_modes_dict = rebuild_tasks_modes_dict(states[-1])
         for state in states:
             from skdecide.builders.domain.scheduling.scheduling_domains import State
 
@@ -574,7 +583,7 @@ def check_skills(domain, states: List[State]):
                 if task in task_checked:
                     continue
                 skill_asked = domain.get_skills_of_task(
-                    task=task, mode=st.tasks_mode[task]
+                    task=task, mode=tasks_modes_dict[task]
                 )
                 if len(skill_asked) > 0:  # this task require some skills !
                     res_unit_used = [
@@ -786,16 +795,11 @@ def test_optimality(domain, do_solver):
         outcome_formatter=None,
         verbose=False,
     )
-
+    tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
+    makespan = max([tasks_complete_dict[x].end for x in states[-1].tasks_complete])
     if isinstance(domain, ToyRCPSPDomain):
-        makespan = max(
-            [states[-1].tasks_details[x].end for x in states[-1].tasks_complete]
-        )
         assert makespan == optimal_solutions["ToyRCPSPDomain"]["makespan"]
     if isinstance(domain, ToyMS_RCPSPDomain):
-        makespan = max(
-            [states[-1].tasks_details[x].end for x in states[-1].tasks_complete]
-        )
         assert makespan == optimal_solutions["ToyMS_RCPSPDomain"]["makespan"]
 
 
@@ -832,15 +836,11 @@ def test_gecode_optimality(domain, do_solver):
         verbose=False,
     )
 
+    tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
+    makespan = max([tasks_complete_dict[x].end for x in states[-1].tasks_complete])
     if isinstance(domain, ToyRCPSPDomain):
-        makespan = max(
-            [states[-1].tasks_details[x].end for x in states[-1].tasks_complete]
-        )
         assert makespan == optimal_solutions["ToyRCPSPDomain"]["makespan"]
     if isinstance(domain, ToyMS_RCPSPDomain):
-        makespan = max(
-            [states[-1].tasks_details[x].end for x in states[-1].tasks_complete]
-        )
         assert makespan == optimal_solutions["ToyMS_RCPSPDomain"]["makespan"]
 
 
@@ -852,8 +852,10 @@ def test_compute_all_graph(domain):
 
     c = count()
     score_state = lambda x: (
-        len(x.tasks_remaining) + len(x.tasks_ongoing) + len(x.tasks_complete),
-        len(x.tasks_remaining),
+        sum(1 for _ in x.tasks_remaining)
+        + len(x.tasks_ongoing)
+        + len(x.tasks_complete),
+        sum(1 for _ in x.tasks_remaining),
         -len(x.tasks_complete),
         -len(x.tasks_ongoing),
         x.t,
@@ -884,8 +886,9 @@ def test_compute_all_graph(domain):
                 )  # as many states as possible task duration
                 for ns in new_states:
                     ns: State = ns
+                    tasks_details = rebuild_all_tasks_dict(ns)
                     prob, cost = graph_exploration.next_state_map[state][action][ns]
-                    duration_task_for_ns = ns.tasks_details[task].sampled_duration
+                    duration_task_for_ns = tasks_details[task].sampled_duration
                     assert (
                         duration_task_for_ns in task_duration
                         and prob == task_duration[duration_task_for_ns]
