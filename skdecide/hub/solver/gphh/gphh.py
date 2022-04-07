@@ -22,6 +22,8 @@ from skdecide.builders.domain.scheduling.scheduling_domains import D, Scheduling
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     SchedulingAction,
     State,
+    rebuild_all_tasks_dict,
+    rebuild_tasks_complete_details_dict,
 )
 from skdecide.builders.solver.policy import DeterministicPolicies
 from skdecide.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
@@ -94,9 +96,7 @@ def get_resource_requirements_across_duration(
         for res in mode_consumption.get_ressource_names():
             tmp = 0
             for t in range(duration):
-                need = domain.get_task_modes(task_id)[1].get_resource_need_at_time(
-                    res, t
-                )
+                need = mode_consumption.get_resource_need_at_time(res, t)
                 total = domain.sample_quantity_resource(res, t)
                 tmp += need / total
             values.append(tmp / duration)
@@ -873,10 +873,11 @@ class GPHHPolicy(DeterministicPolicies):
 
         if run_sgs:
             scheduled_tasks_start_times = {}
-            for j in observation.tasks_details.keys():
-                if observation.tasks_details[j].start is not None:
-                    scheduled_tasks_start_times[j] = observation.tasks_details[j].start
-                    do_model.mode_details[j][1]["duration"] = observation.tasks_details[
+            tasks_details = rebuild_all_tasks_dict(observation)
+            for j in tasks_details:
+                if tasks_details[j].start is not None:
+                    scheduled_tasks_start_times[j] = tasks_details[j].start
+                    do_model.mode_details[j][1]["duration"] = tasks_details[
                         j
                     ].sampled_duration
 
@@ -941,12 +942,10 @@ class GPHHPolicy(DeterministicPolicies):
                 rcpsp_permutation=normalized_values_for_do,
                 rcpsp_modes=modes,
             )
-
+            tasks_complete_dict = rebuild_tasks_complete_details_dict(observation)
             solution.generate_schedule_from_permutation_serial_sgs_2(
                 current_t=t,
-                completed_tasks={
-                    j: observation.tasks_details[j] for j in observation.tasks_complete
-                },
+                completed_tasks=tasks_complete_dict,
                 scheduled_tasks_start_times=scheduled_tasks_start_times,
             )
 
@@ -1020,10 +1019,11 @@ class PooledGPHHPolicy(DeterministicPolicies):
 
         if run_sgs:
             scheduled_tasks_start_times = {}
-            for j in observation.tasks_details.keys():
-                if observation.tasks_details[j].start is not None:
-                    scheduled_tasks_start_times[j] = observation.tasks_details[j].start
-                    do_model.mode_details[j][1]["duration"] = observation.tasks_details[
+            tasks_details = rebuild_all_tasks_dict(observation)
+            for j in tasks_details:
+                if tasks_details[j].start is not None:
+                    scheduled_tasks_start_times[j] = tasks_details[j].start
+                    do_model.mode_details[j][1]["duration"] = tasks_details[
                         j
                     ].sampled_duration
 
@@ -1113,12 +1113,10 @@ class PooledGPHHPolicy(DeterministicPolicies):
                 rcpsp_permutation=normalized_values_for_do,
                 rcpsp_modes=modes,
             )
-
+            tasks_complete_dict = rebuild_tasks_complete_details_dict(observation)
             solution.generate_schedule_from_permutation_serial_sgs_2(
                 current_t=t,
-                completed_tasks={
-                    j: observation.tasks_details[j] for j in observation.tasks_complete
-                },
+                completed_tasks=tasks_complete_dict,
                 scheduled_tasks_start_times=scheduled_tasks_start_times,
             )
 
@@ -1173,10 +1171,11 @@ class FixedPermutationPolicy(DeterministicPolicies):
 
         if run_sgs:
             scheduled_tasks_start_times = {}
-            for j in observation.tasks_details.keys():
-                if observation.tasks_details[j].start is not None:
-                    scheduled_tasks_start_times[j] = observation.tasks_details[j].start
-                    do_model.mode_details[j][1]["duration"] = observation.tasks_details[
+            tasks_details = rebuild_all_tasks_dict(observation)
+            for j in tasks_details.keys():
+                if tasks_details[j].start is not None:
+                    scheduled_tasks_start_times[j] = tasks_details[j].start
+                    do_model.mode_details[j][1]["duration"] = tasks_details[
                         j
                     ].sampled_duration
 
@@ -1221,12 +1220,10 @@ class FixedPermutationPolicy(DeterministicPolicies):
                 rcpsp_permutation=normalized_values_for_do,
                 rcpsp_modes=modes,
             )
-
+            tasks_details_complete = rebuild_tasks_complete_details_dict(observation)
             solution.generate_schedule_from_permutation_serial_sgs_2(
                 current_t=t,
-                completed_tasks={
-                    j: observation.tasks_details[j] for j in observation.tasks_complete
-                },
+                completed_tasks=tasks_details_complete,
                 scheduled_tasks_start_times=scheduled_tasks_start_times,
             )
 

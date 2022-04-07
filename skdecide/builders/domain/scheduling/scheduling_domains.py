@@ -81,6 +81,7 @@ from skdecide.builders.domain.scheduling.skills import (
     WithoutResourceSkills,
     WithResourceSkills,
 )
+from skdecide.builders.domain.scheduling.task import Task
 from skdecide.builders.domain.scheduling.task_duration import (
     DeterministicTaskDuration,
     SimulatedTaskDuration,
@@ -287,7 +288,8 @@ class SchedulingDomain(
     def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
         return ImplicitSpace(
             lambda state: (
-                len(state.tasks_remaining) == 0
+                len(state.task_ids)
+                == len(state.tasks_complete) + len(state.tasks_unsatisfiable)
                 and (len(state.tasks_ongoing) == 0)
                 and (len(state.tasks_paused) == 0)
             )
@@ -481,6 +483,18 @@ class SchedulingDomain(
             next_state.resource_used_for_task.pop(completed_task)
             next_state.tasks_details[completed_task].end = next_state.t + 1
             # WARNING : considering how it's coded, we should put +1 here. could be ccleaner if it was done in the update_progress.
+            next_state.tasks_complete_details.push_front(
+                next_state.tasks_details[completed_task]
+            )
+            del next_state.tasks_details[completed_task]
+            next_state.tasks_complete_progress.push_front(
+                next_state.tasks_progress[completed_task]
+            )
+            del next_state.tasks_progress[completed_task]
+            next_state.tasks_complete_mode.push_front(
+                (completed_task, next_state.tasks_mode[completed_task])
+            )
+            del next_state.tasks_mode[completed_task]
 
         return next_state
 
@@ -515,6 +529,18 @@ class SchedulingDomain(
                 next_state.tasks_details[completed_task].end = (
                     next_state.t + 1
                 )  # WARNING : considering how it's coded, we should put +1 here.
+                next_state.tasks_complete_details.push_front(
+                    next_state.tasks_details[completed_task]
+                )
+                del next_state.tasks_details[completed_task]
+                next_state.tasks_complete_progress.push_front(
+                    next_state.tasks_progress[completed_task]
+                )
+                del next_state.tasks_progress[completed_task]
+                next_state.tasks_complete_mode.push_front(
+                    (completed_task, next_state.tasks_mode[completed_task])
+                )
+                del next_state.tasks_mode[completed_task]
                 if completed_task in self.get_task_on_completion_added_conditions():
                     all_models[completed_task] = []
                     for i in range(
@@ -593,6 +619,18 @@ class SchedulingDomain(
                 next_state.tasks_progress[task] = 1
                 next_state.tasks_ongoing.remove(task)
                 next_state.tasks_details[task].end = next_state.t
+                next_state.tasks_complete_details.push_front(
+                    next_state.tasks_details[task]
+                )
+                del next_state.tasks_details[task]
+                next_state.tasks_complete_progress.push_front(
+                    next_state.tasks_progress[task]
+                )
+                del next_state.tasks_progress[task]
+                next_state.tasks_complete_mode.push_front(
+                    (task, next_state.tasks_mode[task])
+                )
+                del next_state.tasks_mode[task]
                 next_state.resource_used_for_task.pop(task)
         return next_state
 
@@ -612,6 +650,18 @@ class SchedulingDomain(
                     next_state.tasks_progress[task] = 1
                     next_state.tasks_ongoing.remove(task)
                     next_state.tasks_details[task].end = next_state.t
+                    next_state.tasks_complete_details.push_front(
+                        next_state.tasks_details[task]
+                    )
+                    del next_state.tasks_details[task]
+                    next_state.tasks_complete_progress.push_front(
+                        next_state.tasks_progress[task]
+                    )
+                    del next_state.tasks_progress[task]
+                    next_state.tasks_complete_mode.push_front(
+                        (task, next_state.tasks_mode[task])
+                    )
+                    del next_state.tasks_mode[task]
                     next_state.resource_used_for_task.pop(task)
         return next_states
 
@@ -669,9 +719,6 @@ class SchedulingDomain(
             next_state.tasks_details[resumed_task].resumed.append(
                 next_state.t
             )  # Need to call this before get_task_active_time()
-            time_since_start = next_state.tasks_details[
-                resumed_task
-            ].get_task_active_time(next_state.t)
             b, resource_to_use = self.check_if_action_can_be_started(
                 next_state, action=action
             )
@@ -722,19 +769,20 @@ class SchedulingDomain(
         self, state: State, action: SchedulingAction
     ) -> Tuple[bool, Dict[str, int]]:
         """Check if a start or resume action can be applied. It returns a boolean and a dictionary of resources to use."""
-        if (
-            not action.action == SchedulingActionEnum.START
-            and not action.action == SchedulingActionEnum.RESUME
-        ):
-            return True, {}
         started_task = action.task
+        if action.action == SchedulingActionEnum.START:
+            time_since_start = state.t
+        elif action.action == SchedulingActionEnum.RESUME:
+            time_since_start = state.tasks_details[started_task].get_task_active_time(
+                state.t
+            )
+        else:
+            return True, {}
         resource_to_use = self.get_resource_used(
             task=started_task,
             mode=action.mode,
             resource_unit_names=action.resource_unit_names,
-            time_since_start=state.tasks_details[started_task].get_task_active_time(
-                state.t
-            ),
+            time_since_start=time_since_start,
         )
         if any(
             resource_to_use[r] > state.resource_availability[r] - state.resource_used[r]
@@ -750,10 +798,11 @@ class SchedulingDomain(
         self, task: int, mode: int, resource_unit_names: Set[str], time_since_start: int
     ):
         r_used = {}
+        mode_details = self.get_tasks_modes()
         for res in self.get_resource_types_names():
-            res_consumption = self.get_tasks_modes()[task][
-                mode
-            ].get_resource_need_at_time(resource_name=res, time=time_since_start)
+            res_consumption = mode_details[task][mode].get_resource_need_at_time(
+                resource_name=res, time=time_since_start
+            )
             # next_state.resource_availability[res] -= res_consumption
             r_used[res] = res_consumption
         if resource_unit_names is not None:
@@ -775,14 +824,12 @@ class SchedulingDomain(
             mode = action.mode
             next_state.tasks_mode[started_task] = mode
             next_state.tasks_ongoing.add(started_task)
-            next_state.tasks_remaining.remove(started_task)
-            next_state.tasks_details[started_task].start = next_state.t
-            next_state.tasks_details[started_task].resources = resource_to_use
-            next_state.tasks_details[
-                started_task
-            ].sampled_duration = self.get_latest_sampled_duration(
+            sampled_duration = self.get_latest_sampled_duration(
                 task=started_task, mode=mode, progress_from=0.0
             )  # TODO: what to do with this, so far the sample is stored and then used by get_task_progress()
+            next_state.tasks_details[started_task] = Task(
+                started_task, next_state.t, sampled_duration
+            )
             for res in resource_to_use:
                 next_state.resource_used[res] += resource_to_use[res]
             next_state.resource_used_for_task[started_task] = resource_to_use
@@ -813,11 +860,9 @@ class SchedulingDomain(
                 next_state: State = state.copy()
                 next_state.tasks_mode[started_task] = mode
                 next_state.tasks_ongoing.add(started_task)
-                next_state.tasks_remaining.remove(started_task)
-                next_state.tasks_details[started_task].start = next_state.t
-                next_state.tasks_details[
-                    started_task
-                ].sampled_duration = value_duration[0]
+                next_state.tasks_details[started_task] = Task(
+                    started_task, state.t, value_duration[0]
+                )
                 for res in resource_to_use:
                     next_state.resource_used[res] += resource_to_use[res]
                 next_state.resource_used_for_task[started_task] = resource_to_use
@@ -836,10 +881,10 @@ class SchedulingDomain(
 
     def get_possible_starting_tasks(self, state: State):
 
+        mode_details = self.get_tasks_modes()
         possible_task_precedence = [
-            (n, mode)
+            (n, mode_details[n])
             for n in state.tasks_remaining
-            for mode in self.get_task_modes(n).keys()
             if all(
                 m in state.tasks_complete
                 for m in set(self.ancestors[n]).intersection(
@@ -849,12 +894,13 @@ class SchedulingDomain(
         ]
 
         possible_task_with_ressource = [
-            (n, mode)
-            for n, mode in possible_task_precedence
+            (n, mode, mode_consumption)
+            for n, modes in possible_task_precedence
+            for mode, mode_consumption in modes.items()
             if all(
                 state.resource_availability[key]
                 - state.resource_used[key]
-                - self.get_task_modes(n)[mode].get_resource_need_at_time(
+                - mode_consumption.get_resource_need_at_time(
                     resource_name=key, time=state.t
                 )
                 >= 0
@@ -863,25 +909,26 @@ class SchedulingDomain(
         ]
         # print("Possible task with ressource : ", possible_task_with_ressource)
         return {
-            n: {mode: self.get_task_modes(n)[mode].get_non_zero_ressource_need_names(0)}
-            for n, mode in possible_task_with_ressource
+            n: {mode: mode_consumption.get_non_zero_ressource_need_names(0)}
+            for n, mode, mode_consumption in possible_task_with_ressource
         }
 
     def get_possible_resume_tasks(self, state: State):
+        mode_details = self.get_tasks_modes()
         possible_task_precedence = [
-            (n, mode)
+            (n, mode_details[n])
             for n in state.tasks_paused
-            for mode in self.get_task_modes(n).keys()
             if all(m in state.tasks_complete for m in self.ancestors[n])
         ]
         # print("Possible task precedence : ", possible_task_precedence)
         possible_task_with_ressource = [
-            (n, mode)
-            for n, mode in possible_task_precedence
+            (n, mode, mode_consumption)
+            for n, modes in possible_task_precedence
+            for mode, mode_consumption in modes.items()
             if all(
                 state.resource_availability[key]
                 - state.resource_used[key]
-                - self.get_task_modes(n)[mode].get_resource_need_at_time(
+                - mode_consumption.get_resource_need_at_time(
                     resource_name=key, time=state.t
                 )
                 >= 0
@@ -890,8 +937,8 @@ class SchedulingDomain(
         ]
         # print("Possible task with ressource : ", possible_task_with_ressource)
         return {
-            n: {mode: self.get_task_modes(n)[mode].get_non_zero_ressource_need_names(0)}
-            for n, mode in possible_task_with_ressource
+            n: {mode: mode_consumption.get_non_zero_ressource_need_names(0)}
+            for n, mode, mode_consumption in possible_task_with_ressource
         }
 
     def state_is_overconsuming(self, state: State):
@@ -967,16 +1014,14 @@ class SchedulingDomain(
         if action.time_progress:
             for next_state, _ in next_states.get_values():
                 all_available_tasks = self.get_available_tasks(next_state)
-                all_considered_tasks = (
-                    next_state.tasks_remaining.union(next_state.tasks_ongoing)
-                    .union(next_state.tasks_progress)
-                    .union(next_state.tasks_complete)
+                all_considered_tasks = next_state.task_ids.difference(
+                    next_state.tasks_unsatisfiable
                 )
                 new_tasks = all_available_tasks.symmetric_difference(
                     all_considered_tasks
                 )
                 for task in new_tasks:
-                    next_state.tasks_remaining.add(task)
+                    next_state.tasks_unsatisfiable.remove(task)
             return next_states
         return next_states
 
@@ -1054,7 +1099,8 @@ class SchedulingDomain(
             state.t > self.get_max_horizon()
             or (not all_task_possible)
             or (
-                len(state.tasks_remaining) == 0
+                len(state.task_ids)
+                == len(state.tasks_complete) + len(state.tasks_unsatisfiable)
                 and (len(state.tasks_ongoing) == 0)
                 and (len(state.tasks_paused) == 0)
             )

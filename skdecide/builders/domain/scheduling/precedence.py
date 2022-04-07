@@ -64,10 +64,11 @@ class WithPrecedence:
         return Graph(nodes, edges, False)
 
     def _task_modes_possible_to_launch(self, state: State):
+        mode_details = self.get_tasks_modes()
         return [
             (n, mode)
             for n in state.tasks_remaining
-            for mode in self.get_task_modes(n).keys()
+            for mode in mode_details[n]
             if all(m in state.tasks_complete for m in self.ancestors[n])
         ]
 

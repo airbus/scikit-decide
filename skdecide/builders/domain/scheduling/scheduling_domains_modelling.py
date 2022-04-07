@@ -4,11 +4,70 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
+from collections.abc import Collection
+from copy import copy, deepcopy
 from enum import Enum
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, Iterable, Optional, Set, Tuple, Union
 
 from skdecide.builders.domain.scheduling.task import Task
+
+
+def rebuild_tasks_complete_details_dict(state: State) -> Dict[int, Task]:
+    tasks_complete_details = {p.value.id: p.value for p in state.tasks_complete_details}
+    return tasks_complete_details
+
+
+def rebuild_all_tasks_dict(state: State) -> Dict[int, Task]:
+    tasks_details = {p.value.id: p.value for p in state.tasks_complete_details}
+    tasks_details.update(state.tasks_details)
+    return tasks_details
+
+
+def rebuild_tasks_modes_dict(state: State) -> Dict[int, int]:
+    tasks_modes = {p.value[0]: p.value[1] for p in state.tasks_complete_mode}
+    return tasks_modes
+
+
+def rebuild_schedule_dict(state: State) -> Dict[int, Dict[str, int]]:
+    schedule = {
+        p.value.id: {"start_time": p.value.start, "end_time": p.value.end}
+        for p in state.tasks_complete_details
+    }
+    return schedule
+
+
+class Node:
+    __slots__ = ("value", "next_node")
+
+    def __init__(self, value: Task = None, next_node=None):
+        self.value = value
+        self.next_node = next_node
+
+
+class SinglyLinkedList(Collection):
+    def __init__(self, head=None):
+        self.head = head
+
+    def push_front(self, value: Union[int, float, Task, Tuple[int, int]]):
+        self.head = Node(value, self.head)
+
+    def __iter__(self):
+        current = self.head
+        while current:
+            yield current
+            current = current.next_node
+
+    def __len__(self) -> int:
+        return sum(1 for _ in iter(self))
+
+    def __contains__(self, value: Union[int, float, Task]) -> bool:
+        for node in iter(self):
+            if node.value == value:
+                return True
+        return False
+
+    def __copy__(self):
+        return SinglyLinkedList(self.head)
 
 
 class SchedulingActionEnum(Enum):
@@ -32,7 +91,7 @@ class State:
     It contains the following information:
         t: the timestamp.
         task_ids: a list of all task ids in the scheduling domain.
-        tasks_remaining: a set containing the ids of tasks still to be started
+        tasks_unsatisfiable: a set containing the ids of tasks for which canditions are not fulfilled
         tasks_ongoing: a set containing the ids of tasks started and not paused and still to be completed
         tasks_complete: a set containing the ids of tasks that have been completed
         tasks_paused: a set containing the ids of tasks that have been started and paused but not resumed yet
@@ -63,7 +122,7 @@ class State:
 
     # TODO : code efficient hash/eq functions. will probably be mandatory in some planning algo.
     t: int
-    tasks_remaining: Set[int]
+    tasks_unsatisfiable: Set[int]
     tasks_ongoing: Set[int]
     tasks_complete: Set[int]
     tasks_paused: Set[int]
@@ -72,14 +131,17 @@ class State:
     resource_to_task: Dict[str, int]
     resource_availability: Dict[str, int]
     resource_used: Dict[str, int]
-    resource_used_for_task = Dict[int, Dict[str, int]]
+    resource_used_for_task: Dict[int, Dict[str, int]]
     tasks_details: Dict[
         int, Task
     ]  # Use to store task stats, resource used etc... for post-processing purposes
+    tasks_complete_details: SinglyLinkedList
+    tasks_complete_progress: SinglyLinkedList
+    tasks_complete_mode: SinglyLinkedList
     _current_conditions: Set
 
     # TODO : put the attributes in the __init__ ?!
-    def __init__(self, task_ids: List[int], tasks_available: Set[int] = None):
+    def __init__(self, task_ids: Iterable[int], tasks_available: Set[int] = None):
         """Initialize a scheduling state.
 
         # Parameters
@@ -88,9 +150,12 @@ class State:
          domain contains conditional tasks.
         """
         self.t = 0
-        self.task_ids = task_ids
-        # self.tasks_remaining = set()
-        self.tasks_remaining = tasks_available
+        self.task_ids = task_ids if isinstance(task_ids, set) else set(task_ids)
+        self.tasks_unsatisfiable = (
+            set()
+            if tasks_available is None
+            else set(t for t in self.task_ids if t not in tasks_available)
+        )
         self.tasks_ongoing = set()
         self.tasks_complete = set()
         self.tasks_paused = set()
@@ -101,14 +166,15 @@ class State:
         self.resource_used = {}
         self.resource_used_for_task = {}
         self.tasks_details = {}
-        for task_id in task_ids:
-            self.tasks_details[task_id] = Task(task_id)
+        self.tasks_complete_details = SinglyLinkedList()
+        self.tasks_complete_progress = SinglyLinkedList()
+        self.tasks_complete_mode = SinglyLinkedList()
         self._current_conditions = set()
 
     def copy(self):
         s = State(task_ids=self.task_ids)
         s.t = self.t
-        s.tasks_remaining = deepcopy(self.tasks_remaining)
+        s.tasks_unsatisfiable = deepcopy(self.tasks_unsatisfiable)
         s.tasks_ongoing = deepcopy(self.tasks_ongoing)
         s.tasks_complete = deepcopy(self.tasks_complete)
         s.tasks_paused = deepcopy(self.tasks_paused)
@@ -120,7 +186,20 @@ class State:
         s.resource_used_for_task = deepcopy(self.resource_used_for_task)
         s.tasks_details = deepcopy(self.tasks_details)
         s._current_conditions = deepcopy(self._current_conditions)
+        s.tasks_complete_details = copy(self.tasks_complete_details)
+        s.tasks_complete_progress = copy(self.tasks_complete_progress)
+        s.tasks_complete_mode = copy(self.tasks_complete_mode)
         return s
+
+    @property
+    def tasks_remaining(self):
+        for task in self.task_ids:
+            if (
+                task not in self.tasks_complete
+                and task not in self.tasks_progress
+                and task not in self.tasks_unsatisfiable
+            ):
+                yield task
 
     def __str__(self):
         s = "State : " + "\n"
@@ -128,6 +207,9 @@ class State:
             if key == "tasks_details":
                 for key2 in sorted(self.tasks_details.keys()):
                     s += str(self.tasks_details[key2]) + "\t"
+            elif key.startswith("tasks_complete_"):
+                for node in getattr(self, key):
+                    s += str(node.value) + "\t"
             else:
                 s += str(key) + ":" + str(getattr(self, key)) + "\n"
         return s
