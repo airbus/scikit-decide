@@ -56,6 +56,11 @@ optimal_solutions = {
 }
 
 
+@pytest.fixture
+def random_seed():
+    random.seed(0)
+
+
 class ToyRCPSPDomain(SingleModeRCPSP):
     def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
@@ -471,7 +476,7 @@ class ToySimulatedCondSRCPSPDomain(
         (ToySimulatedCondSRCPSPDomain()),
     ],
 )
-def test_rollout(domain):
+def test_rollout(domain, random_seed):
     state = domain.get_initial_state()
     states, actions, values = rollout_episode(
         domain=domain,
@@ -546,7 +551,6 @@ def check_resource_constraints(domain, states: List[State]):
         tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
         tasks_modes_dict = rebuild_tasks_modes_dict(states[-1])
         for t in range(states[-1].t):
-
             for res in domain.get_resource_types_names():
                 total_available = domain.get_quantity_resource(res, t)
                 total_consumed = 0
