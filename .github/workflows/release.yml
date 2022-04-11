@@ -553,7 +553,7 @@ jobs:
           branch: gh-pages # The branch the action should deploy to.
           folder: docs/.vuepress/dist # The folder the action should deploy.
           target-folder: ${{ env.DOCS_VERSION_PATH }} # The folder the action should deploy to.
-          commit-message: publish documentation
+          commit-message: publish documentation for release ${{ env.SKDECIDE_VERSION }}
           clean: false # Releasing a new version is about creating a new directory, so we don't want to clean up the root.
 
   delete-nightly-release:

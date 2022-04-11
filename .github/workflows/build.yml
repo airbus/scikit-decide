@@ -567,17 +567,6 @@ jobs:
           name: doc
           path: docs/.vuepress/dist
 
-      - name: Deploy documentation in root folder on GH pages 🚀
-        if: github.ref == 'refs/heads/master'
-        uses: JamesIves/github-pages-deploy-action@4.1.5
-        with:
-          branch: gh-pages # The branch the action should deploy to.
-          folder: docs/.vuepress/dist # The folder the action should deploy.
-          target-folder: / # The folder the action should deploy to.
-          commit-message: publish documentation
-          clean-exclude: |
-            "version/*"
-
   upload-doc:
     needs: [build-doc, test-windows, test-macos]
     if: github.ref == 'refs/heads/master'
@@ -589,7 +578,11 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout all branches
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          fetch-depth: 0  # fetch all branches
 
       - name: Download artifacts
         uses: actions/download-artifact@v1.0.0
@@ -603,9 +596,32 @@ jobs:
           branch: gh-pages # The branch the action should deploy to.
           folder: docs/.vuepress/dist # The folder the action should deploy.
           target-folder: / # The folder the action should deploy to.
-          commit-message: publish documentation
+          commit-message: publish documentation for master
           clean-exclude: |
             "version/*"
+
+      - name: Checkout all branches  # needed because deploy action may corrupt the git arborescence
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          fetch-depth: 0  # fetch all branches
+
+      - name: Squash last master doc commits on gh_pages
+        run: |
+          git checkout gh-pages
+          # check if two last commits are for same doc
+          last_commit_title=$(git log HEAD -1 --format=%s)
+          second_to_last_commit_title=$(git log HEAD~1 -1 --format=%s)
+          echo $last_commit_title
+          echo $second_to_last_commit_title
+          if [[ $last_commit_title == $second_to_last_commit_title ]]; then
+            echo "Merge two last commits"
+            git reset --soft HEAD~
+            git config user.name "Actions"
+            git config user.email "actions@github.com"
+            git commit --amend --no-edit
+            git push -f origin gh-pages
+          fi
 
   upload-nightly:
     if: (github.ref == 'refs/heads/master') && (github.repository == 'airbus/scikit-decide') && (github.event_name == 'schedule')
