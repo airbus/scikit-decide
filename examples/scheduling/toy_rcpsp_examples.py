@@ -471,7 +471,7 @@ def run_astar():
     )
 
     do_sol = from_last_state_to_solution(states[-1], domain)
-    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import (
+    from discrete_optimization.rcpsp.rcpsp_plot_utils import (
         plot_resource_individual_gantt,
         plot_ressource_view,
         plot_task_gantt,
@@ -520,7 +520,7 @@ def run_do():
     )
 
     do_sol = from_last_state_to_solution(states[-1], domain)
-    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import (
+    from discrete_optimization.rcpsp.rcpsp_plot_utils import (
         plot_resource_individual_gantt,
         plot_ressource_view,
         plot_task_gantt,

@@ -6,6 +6,20 @@ from __future__ import annotations
 
 from typing import Union
 
+from discrete_optimization.rcpsp.rcpsp_model import (
+    MultiModeRCPSPModel,
+    RCPSPModel,
+    RCPSPModelCalendar,
+    RCPSPSolution,
+    SingleModeRCPSPModel,
+)
+from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
+    Employee,
+    MS_RCPSPModel,
+    MS_RCPSPModel_Variant,
+    SkillDetail,
+)
+
 from skdecide.builders.domain.scheduling.scheduling_domains import (
     MultiModeMultiSkillRCPSP,
     MultiModeMultiSkillRCPSPCalendar,
@@ -17,19 +31,6 @@ from skdecide.builders.domain.scheduling.scheduling_domains import (
     SingleModeRCPSP_Stochastic_Durations,
     SingleModeRCPSPCalendar,
     State,
-)
-from skdecide.discrete_optimization.rcpsp.rcpsp_model import (
-    MultiModeRCPSPModel,
-    RCPSPModel,
-    RCPSPModelCalendar,
-    RCPSPSolution,
-    SingleModeRCPSPModel,
-)
-from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
-    Employee,
-    MS_RCPSPModel,
-    MS_RCPSPModel_Variant,
-    SkillDetail,
 )
 from skdecide.hub.domain.rcpsp.rcpsp_sk import (
     MRCPSP,

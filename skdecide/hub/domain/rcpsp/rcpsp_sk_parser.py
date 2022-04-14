@@ -12,11 +12,12 @@ from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP
 
 
 def load_domain(file_path):
-    from skdecide.discrete_optimization.rcpsp.parser.rcpsp_parser import (
+    from discrete_optimization.rcpsp.rcpsp_model import (
         MultiModeRCPSPModel,
         SingleModeRCPSPModel,
-        parse_file,
     )
+    from discrete_optimization.rcpsp.rcpsp_parser import parse_file
+
     from skdecide.hub.domain.rcpsp.rcpsp_sk import MRCPSP, RCPSP
 
     rcpsp_model: Union[SingleModeRCPSPModel, MultiModeRCPSPModel] = parse_file(
@@ -53,7 +54,7 @@ def load_domain(file_path):
 
 
 def load_multiskill_domain(file_path):
-    from skdecide.discrete_optimization.rcpsp_multiskill.parser.rcpsp_multiskill_parser import (
+    from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_parser import (
         parse_file,
     )
 

@@ -13,13 +13,12 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns  # You'd need seaborn for this example.
-
-from skdecide.discrete_optimization.generic_tools.result_storage.result_storage import (
+from discrete_optimization.generic_tools.result_storage.result_storage import (
     ParetoFront,
     ResultStorage,
     result_storage_to_pareto_front,
 )
-from skdecide.discrete_optimization.generic_tools.result_storage.resultcomparator import (
+from discrete_optimization.generic_tools.result_storage.resultcomparator import (
     ResultComparator,
 )
 

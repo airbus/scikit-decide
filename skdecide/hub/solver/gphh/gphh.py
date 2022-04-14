@@ -13,6 +13,8 @@ import numpy as np
 from deap import algorithms, creator, gp, tools
 from deap.base import Fitness, Toolbox
 from deap.gp import PrimitiveSet, PrimitiveTree, genHalfAndHalf
+from discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
+from discrete_optimization.rcpsp.solver.cpm import CPM
 from scipy import stats
 from scipy.spatial import distance
 
@@ -26,8 +28,6 @@ from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     rebuild_tasks_complete_details_dict,
 )
 from skdecide.builders.solver.policy import DeterministicPolicies
-from skdecide.discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
-from skdecide.discrete_optimization.rcpsp.solver.cpm import CPM
 from skdecide.hub.solver.do_solver.do_solver_scheduling import (
     DOSolver,
     PolicyMethodParams,

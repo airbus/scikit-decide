@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 
 import pytest
+from discrete_optimization.generic_tools.cp_tools import CPSolverName
 
 from skdecide import DiscreteDistribution, Distribution, rollout_episode
 from skdecide.builders.domain.scheduling.conditional_tasks import (
@@ -34,7 +35,6 @@ from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     rebuild_tasks_modes_dict,
 )
 from skdecide.builders.domain.scheduling.task_duration import DeterministicTaskDuration
-from skdecide.discrete_optimization.generic_tools.cp_tools import CPSolverName
 from skdecide.hub.domain.rcpsp.rcpsp_sk import (
     MRCPSP,
     RCPSP,

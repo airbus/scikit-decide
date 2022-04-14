@@ -7,19 +7,20 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Callable, Dict, Union
 
-from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
-from skdecide.discrete_optimization.rcpsp.rcpsp_model import (
+from discrete_optimization.rcpsp.rcpsp_model import (
     MultiModeRCPSPModel,
     RCPSPModel,
     RCPSPModelCalendar,
     RCPSPSolution,
     SingleModeRCPSPModel,
 )
-from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
+from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
     MS_RCPSPModel,
     MS_RCPSPSolution,
     MS_RCPSPSolution_Variant,
 )
+
+from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
 from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
 from skdecide.hub.solver.sgs_policies.sgs_policies import (
     BasePolicyMethod,
@@ -47,7 +48,7 @@ class SolvingMethod(Enum):
 
 def build_solver(solving_method: SolvingMethod, do_domain):
     if isinstance(do_domain, (RCPSPModelCalendar, RCPSPModel, MultiModeRCPSPModel)):
-        from skdecide.discrete_optimization.rcpsp.rcpsp_solvers import (
+        from discrete_optimization.rcpsp.rcpsp_solvers import (
             look_for_solver,
             solvers_map,
         )
@@ -71,7 +72,7 @@ def build_solver(solving_method: SolvingMethod, do_domain):
         if len(smap) > 0:
             return smap[0]
     if isinstance(do_domain, (MS_RCPSPModel, MS_RCPSPModel, MultiModeRCPSPModel)):
-        from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
+        from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
             look_for_solver,
             solvers_map,
         )
@@ -180,7 +181,7 @@ class DOSolver(Solver, DeterministicPolicies):
     def get_available_methods(self, domain: SchedulingDomain):
         do_domain = build_do_domain(domain)
         if isinstance(do_domain, (MS_RCPSPModel)):
-            from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
+            from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
                 look_for_solver,
                 solvers_map,
             )
@@ -189,7 +190,7 @@ class DOSolver(Solver, DeterministicPolicies):
         elif isinstance(
             do_domain, (SingleModeRCPSPModel, RCPSPModel, MultiModeRCPSPModel)
         ):
-            from skdecide.discrete_optimization.rcpsp.rcpsp_solvers import (
+            from discrete_optimization.rcpsp.rcpsp_solvers import (
                 look_for_solver,
                 solvers_map,
             )
