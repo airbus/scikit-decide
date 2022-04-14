@@ -40,12 +40,13 @@ def random_walk():
     print("end times: ")
     for task_id in states[-1].tasks_details.keys():
         print("end task", task_id, ": ", states[-1].tasks_details[task_id].end)
-    from skdecide.discrete_optimization.rcpsp.rcpsp_plot_utils import (
+    from discrete_optimization.rcpsp.rcpsp_plot_utils import (
         plot_resource_individual_gantt,
         plot_ressource_view,
         plot_task_gantt,
         plt,
     )
+
     from skdecide.hub.solver.do_solver.sk_to_do_binding import (
         from_last_state_to_solution,
     )
