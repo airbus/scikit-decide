@@ -65,14 +65,18 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
         self._domain = domain_factory()
 
         def extender(node, label, explored):
+            result = []
             for a in self._domain.get_applicable_actions(node).get_elements():
                 n = self._domain.get_next_state(node, a)
                 if n not in explored:
-                    yield (
-                        n,
-                        self._domain.get_transition_value(node, a, n).cost,
-                        {"action": a},
+                    result.append(
+                        (
+                            n,
+                            self._domain.get_transition_value(node, a, n).cost,
+                            {"action": a},
+                        )
                     )
+            return result
 
         push = heappush
         pop = heappop
