@@ -118,8 +118,9 @@ def from_solution_to_policy(
         )
         schedule = solution.rcpsp_schedule
         modes_dictionnary = {}
+        # set modes for start and end (dummy) jobs
         modes_dictionnary[1] = 1
-        modes_dictionnary[solution.problem.n_jobs + 2] = 1
+        modes_dictionnary[solution.problem.n_jobs_non_dummy + 2] = 1
         for i in range(len(solution.rcpsp_modes)):
             modes_dictionnary[i + 2] = solution.rcpsp_modes[i]
     if isinstance(solution, MS_RCPSPSolution):
