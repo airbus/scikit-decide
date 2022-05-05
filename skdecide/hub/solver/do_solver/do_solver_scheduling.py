@@ -123,7 +123,7 @@ def from_solution_to_policy(
         modes_dictionnary[solution.problem.n_jobs_non_dummy + 2] = 1
         for i in range(len(solution.rcpsp_modes)):
             modes_dictionnary[i + 2] = solution.rcpsp_modes[i]
-    if isinstance(solution, MS_RCPSPSolution):
+    elif isinstance(solution, MS_RCPSPSolution):
         permutation_task = sorted(
             solution.schedule, key=lambda x: (solution.schedule[x]["start_time"], x)
         )
@@ -135,24 +135,17 @@ def from_solution_to_policy(
             ]  # warning here...
             for task in solution.employee_usage
         }
-        modes_dictionnary = solution.modes
-    if isinstance(solution, MS_RCPSPSolution_Variant):
-        resource_allocation_priority = solution.priority_worker_per_task
-        permutation_task = sorted(
-            solution.schedule, key=lambda x: (solution.schedule[x]["start_time"], x)
-        )
-        modes_dictionnary = {}
-        modes_dictionnary[1] = 1
-        modes_dictionnary[solution.problem.n_jobs_non_dummy + 2] = 1
-        for i in range(len(solution.modes_vector)):
-            modes_dictionnary[i + 2] = solution.modes_vector[i]
-        employees = sorted(domain.get_resource_units_names())
-        resource_allocation = {
-            task: [
-                employees[i] for i in solution.employee_usage[task].keys()
-            ]  # warning here...
-            for task in solution.employee_usage
-        }
+        if isinstance(solution, MS_RCPSPSolution_Variant):
+            resource_allocation_priority = solution.priority_worker_per_task
+            modes_dictionnary = {}
+            # set modes for start and end (dummy) jobs
+            modes_dictionnary[1] = 1
+            modes_dictionnary[solution.problem.n_jobs_non_dummy + 2] = 1
+            for i in range(len(solution.modes_vector)):
+                modes_dictionnary[i + 2] = solution.modes_vector[i]
+        else:
+            modes_dictionnary = solution.modes
+
     return PolicyRCPSP(
         domain=domain,
         policy_method_params=policy_method_params,
