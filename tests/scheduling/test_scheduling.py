@@ -609,18 +609,15 @@ def check_skills(domain, states: List[State]):
 @pytest.mark.parametrize(
     "domain",
     [
-        # (ToyRCPSPDomain()),
-        # (ToyMRCPSPDomain_WithCost()),
-        (ToyMS_RCPSPDomain())
+        (ToyRCPSPDomain()),
+        (ToyMRCPSPDomain_WithCost()),
     ],
 )
 @pytest.mark.parametrize(
     "do_solver",
     [
-        # (SolvingMethod.PILE),
-        # (SolvingMethod.CP),
-        # (SolvingMethod.LP), # Runs on Popo but not ORC
-        # (SolvingMethod.LNS_CP), # long to run ...
+        (SolvingMethod.PILE),
+        (SolvingMethod.LS),
         (SolvingMethod.GA),
     ],
 )
@@ -661,13 +658,7 @@ def test_do(domain, do_solver):
 )
 @pytest.mark.parametrize(
     "do_solver_multiskill",
-    [
-        # (SolvingMethod.CP),
-        # (SolvingMethod.LS),
-        # (SolvingMethod.LP),
-        # (SolvingMethod.LNS_CP)
-        (SolvingMethod.GA)
-    ],
+    [(SolvingMethod.LS), (SolvingMethod.GA)],
 )
 def test_do_mskill(domain_multiskill, do_solver_multiskill):
     domain_multiskill.set_inplace_environment(False)
