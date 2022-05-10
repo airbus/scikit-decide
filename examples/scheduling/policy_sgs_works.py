@@ -1,4 +1,4 @@
-from examples.discrete_optimization.rcpsp_parser_example import get_complete_path
+from examples.scheduling.rcpsp_datasets import get_complete_path
 from skdecide.hub.domain.rcpsp.rcpsp_sk import (
     RCPSP,
     build_n_determinist_from_stochastic,

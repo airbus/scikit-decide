@@ -1,13 +1,7 @@
 import time
 
-from examples.discrete_optimization.rcpsp_multiskill_parser_example import (
-    get_complete_path_ms,
-    get_data_available_ms,
-)
-from examples.discrete_optimization.rcpsp_parser_example import (
-    get_complete_path,
-    get_data_available,
-)
+from rcpsp_datasets import get_complete_path
+
 from skdecide import DiscreteDistribution, rollout_episode
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     SchedulingAction,

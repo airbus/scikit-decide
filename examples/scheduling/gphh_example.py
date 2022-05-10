@@ -5,10 +5,7 @@ import pickle
 
 import numpy as np
 
-from examples.discrete_optimization.rcpsp_parser_example import (
-    get_complete_path,
-    get_data_available,
-)
+from examples.scheduling.rcpsp_datasets import get_complete_path, get_data_available
 from skdecide import rollout_episode
 from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP
 from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
@@ -744,7 +741,7 @@ def run_comparaison_stochastic():
 def run_comparaison():
     import os
 
-    from examples.discrete_optimization.rcpsp_parser_example import get_data_available
+    from examples.scheduling.rcpsp_datasets import get_data_available
 
     files = get_data_available()
     all_single_mode = [os.path.basename(f) for f in files if "sm" in f]

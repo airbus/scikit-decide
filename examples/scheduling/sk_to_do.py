@@ -15,9 +15,7 @@ def create_do_from_sk():
     print(
         "Loading multimode-rcpsp domain : resulting class in DO : ", do_domain.__class__
     )
-    from examples.discrete_optimization.rcpsp_multiskill_parser_example import (
-        get_data_available_ms,
-    )
+    from examples.scheduling.rcpsp_multiskill_datasets import get_data_available_ms
     from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_multiskill_domain
 
     rcpsp_domain = load_multiskill_domain(get_data_available_ms()[0])
