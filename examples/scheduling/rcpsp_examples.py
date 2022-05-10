@@ -1,17 +1,6 @@
-from examples.discrete_optimization.rcpsp_multiskill_parser_example import (
-    get_complete_path_ms,
-    get_data_available_ms,
-)
-from examples.discrete_optimization.rcpsp_parser_example import (
-    get_complete_path,
-    get_data_available,
-)
-from skdecide import DiscreteDistribution, rollout_episode
-from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
-    SchedulingAction,
-    SchedulingActionEnum,
-    State,
-)
+from examples.scheduling.rcpsp_datasets import get_complete_path
+from examples.scheduling.rcpsp_multiskill_datasets import get_data_available_ms
+from skdecide import rollout_episode
 from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP, RCPSP
 from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import (
     load_domain,
@@ -40,7 +29,7 @@ def random_walk():
     print("end times: ")
     for task_id in states[-1].tasks_details.keys():
         print("end task", task_id, ": ", states[-1].tasks_details[task_id].end)
-    from discrete_optimization.rcpsp.rcpsp_plot_utils import (
+    from discrete_optimization.rcpsp.rcpsp_utils import (
         plot_resource_individual_gantt,
         plot_ressource_view,
         plot_task_gantt,
