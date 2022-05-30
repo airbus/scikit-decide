@@ -71,7 +71,7 @@ class CP_RCPSP_MZN(CPSolver):
         rcpsp_model: RCPSPModel,
         cp_solver_name: CPSolverName = CPSolverName.CHUFFED,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.instance: Instance = None
@@ -284,7 +284,7 @@ class CP_MRCPSP_MZN(CPSolver):
         rcpsp_model: RCPSPModel,
         cp_solver_name: CPSolverName = CPSolverName.CHUFFED,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.instance = None
@@ -613,7 +613,7 @@ class CP_MRCPSP_MZN_NOBOOL(CPSolver):
         rcpsp_model: RCPSPModel,
         cp_solver_name: CPSolverName = CPSolverName.CHUFFED,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.instance = None

@@ -399,7 +399,7 @@ class LNS_CP_RCPSP_SOLVER(SolverDO):
         self,
         rcpsp_model: RCPSPModel,
         option_neighbor: OptionNeighbor = OptionNeighbor.MIX_ALL,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.solver = CP_MRCPSP_MZN(

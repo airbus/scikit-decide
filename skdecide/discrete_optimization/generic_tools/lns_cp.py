@@ -77,7 +77,7 @@ class LNS_CP(SolverDO):
         nb_iteration_no_improvement: Optional[int] = None,
         max_time_seconds: Optional[int] = None,
         skip_first_iteration: bool = False,
-        **args
+        **args,
     ) -> ResultStorage:
         sense = self.params_objective_function.sense_function
         if max_time_seconds is None:

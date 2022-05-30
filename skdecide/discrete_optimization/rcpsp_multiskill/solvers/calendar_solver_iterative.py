@@ -482,7 +482,7 @@ class SolverWithCalendarIterative(SolverDO):
         problem_calendar: MS_RCPSPModel,
         partial_solution: PartialSolution = None,
         option_neighbor: OptionNeighbor = OptionNeighbor.MIX_FAST,
-        **kwargs
+        **kwargs,
     ):
         self.problem_calendar = problem_calendar
         self.problem_no_calendar = self.problem_calendar.copy()
@@ -555,7 +555,7 @@ class SolverWithCalendarIterative(SolverDO):
         nb_iteration_no_improvement: Optional[int] = None,
         max_time_seconds: Optional[int] = None,
         skip_first_iteration: bool = False,
-        **args
+        **args,
     ) -> ResultStorage:
         sense = self.params_objective_function.sense_function
         if max_time_seconds is None:

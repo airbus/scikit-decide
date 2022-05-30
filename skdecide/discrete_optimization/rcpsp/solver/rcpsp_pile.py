@@ -50,7 +50,7 @@ class PileSolverRCPSP(SolverDO):
         self,
         rcpsp_model: RCPSPModel,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.resources = rcpsp_model.resources
@@ -264,7 +264,7 @@ class PileSolverRCPSP_Calendar(SolverDO):
         self,
         rcpsp_model: RCPSPModelCalendar,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.resources = rcpsp_model.resources

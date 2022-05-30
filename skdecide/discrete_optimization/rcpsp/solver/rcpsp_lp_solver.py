@@ -54,7 +54,7 @@ class LP_RCPSP(MilpSolver):
         rcpsp_model: SingleModeRCPSPModel,
         lp_solver=LP_RCPSP_Solver.CBC,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.model: Model = None
@@ -320,7 +320,7 @@ class LP_MRCPSP(MilpSolver):
         rcpsp_model: MultiModeRCPSPModel,
         lp_solver=LP_RCPSP_Solver.CBC,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.model: Model = None
@@ -620,7 +620,7 @@ class LP_MRCPSP_GUROBI(MilpSolver):
         rcpsp_model: MultiModeRCPSPModel,
         lp_solver=LP_RCPSP_Solver.CBC,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.model: gurobi.Model = None

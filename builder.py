@@ -102,7 +102,7 @@ class ExtensionBuilder(build_ext):
         build_args = ["--config", ext.cmake_build_type]
 
         if platform.system() == "Windows":
-            if sys.maxsize > 2 ** 32:
+            if sys.maxsize > 2**32:
                 configure_args += ["-A", "x64"]
             build_args += ["--", "/m"]
         else:

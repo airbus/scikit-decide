@@ -129,7 +129,6 @@ try:
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             return self._solver.get_utility(observation)
 
-
 except ImportError:
     sys.path = record_sys_path
     print(

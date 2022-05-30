@@ -38,7 +38,7 @@ class StableBaseline(Solver, Policies, Restorable):
         algo_class: type,
         baselines_policy: Any,
         learn_config: Dict = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         """Initialize StableBaselines.
 

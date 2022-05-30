@@ -32,7 +32,7 @@ class LP_Solver_MRSCPSP(MilpSolver):
         rcpsp_model: MS_RCPSPModel,
         lp_solver: MilpSolverName = MilpSolverName.CBC,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.model: Model = None

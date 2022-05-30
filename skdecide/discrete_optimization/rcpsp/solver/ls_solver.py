@@ -55,7 +55,7 @@ class LS_RCPSP_Solver(SolverDO):
         model: Union[RCPSPModel, MS_RCPSPModel],
         params_objective_function: ParamsObjectiveFunction = None,
         ls_solver: LS_SOLVER = LS_SOLVER.SA,
-        **args
+        **args,
     ):
         self.model = model
         (
