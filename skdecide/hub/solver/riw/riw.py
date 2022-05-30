@@ -185,7 +185,6 @@ try:
         def get_action_prefix(self) -> List[D.T_agent[D.T_observation]]:
             return self._solver.get_action_prefix()
 
-
 except ImportError:
     sys.path = record_sys_path
     print(

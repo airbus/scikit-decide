@@ -136,7 +136,6 @@ try:
         ]:
             return self._solver.get_policy()
 
-
 except ImportError:
     sys.path = record_sys_path
     print(

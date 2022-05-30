@@ -131,7 +131,6 @@ try:
         def get_intermediate_scores(self) -> List[Tuple[int, float]]:
             return self._solver.get_intermediate_scores()
 
-
 except ImportError:
     sys.path = record_sys_path
     print(

@@ -398,7 +398,7 @@ class SolverWithCalendarIterative(SolverDO):
         self,
         problem_calendar: RCPSPModelCalendar,
         partial_solution: PartialSolution = None,
-        **kwargs
+        **kwargs,
     ):
         self.problem_calendar = problem_calendar
         if not isinstance(problem_calendar, RCPSPModelCalendar):
@@ -479,7 +479,7 @@ class SolverWithCalendarIterative(SolverDO):
         nb_iteration_no_improvement: Optional[int] = None,
         max_time_seconds: Optional[int] = None,
         skip_first_iteration: bool = False,
-        **args
+        **args,
     ) -> ResultStorage:
 
         sense = self.params_objective_function.sense_function

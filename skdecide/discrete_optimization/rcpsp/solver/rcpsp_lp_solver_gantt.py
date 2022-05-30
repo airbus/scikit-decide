@@ -72,7 +72,7 @@ class LP_MRCPSP_GANTT(MilpSolver):
         rcpsp_model: RCPSPModelCalendar,
         rcpsp_solution: RCPSPSolution,
         lp_solver=MilpSolverName.CBC,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.lp_solver = lp_solver
@@ -246,7 +246,7 @@ class LP_MRCPSP_GANTT_GUROBI(MilpSolver):
         rcpsp_model: RCPSPModelCalendar,
         rcpsp_solution: RCPSPSolution,
         lp_solver=MilpSolverName.CBC,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.lp_solver = lp_solver

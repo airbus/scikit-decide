@@ -63,7 +63,7 @@ class CP_MS_MRCPSP_MZN(CPSolver):
         rcpsp_model: MS_RCPSPModel,
         cp_solver_name: CPSolverName = CPSolverName.CHUFFED,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         self.instance: Instance = None

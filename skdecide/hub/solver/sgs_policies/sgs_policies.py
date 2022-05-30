@@ -245,7 +245,7 @@ def next_action_sgs_first_task_ready(
     state: State,
     check_if_applicable: bool = False,
     domain_sk_decide: Union[MultiModeRCPSP, SingleModeRCPSP] = None,
-    **kwargs
+    **kwargs,
 ):
     obs: State = state
     t = obs.t
@@ -297,7 +297,7 @@ def next_action_sgs_strict(
     state: State,
     check_if_applicable: bool = False,
     domain_sk_decide: Union[MultiModeRCPSP, SingleModeRCPSP] = None,
-    **kwargs
+    **kwargs,
 ):
     obs: State = state
     t = obs.t
@@ -363,7 +363,7 @@ def next_action_sgs_time_freedom(
     check_if_applicable: bool = False,
     domain_sk_decide: Union[MultiModeRCPSP, SingleModeRCPSP] = None,
     delta_time_freedom: int = 10,
-    **kwargs
+    **kwargs,
 ):
     obs: State = state
     possible_task_to_launch = policy_rcpsp.domain.task_possible_to_launch_precedence(
@@ -430,7 +430,7 @@ def next_action_sgs_index_freedom(
     check_if_applicable: bool = False,
     domain_sk_decide: Union[MultiModeRCPSP, SingleModeRCPSP] = None,
     delta_index_freedom: int = 10,
-    **kwargs
+    **kwargs,
 ):
     obs: State = state
     possible_task_to_launch = policy_rcpsp.domain.task_possible_to_launch_precedence(

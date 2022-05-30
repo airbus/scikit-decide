@@ -29,7 +29,7 @@ class Solver_RCPSP_Based(SolverDO):
         model: Union[MS_RCPSPModel, MS_RCPSPModel_Variant],
         method,
         params_objective_function: ParamsObjectiveFunction = None,
-        **args
+        **args,
     ):
         self.model = model
         self.model_rcpsp = model.build_multimode_rcpsp_calendar_representative()

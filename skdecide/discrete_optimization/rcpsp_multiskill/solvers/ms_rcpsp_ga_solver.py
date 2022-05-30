@@ -19,7 +19,7 @@ class GA_MSRCPSP_Solver(SolverDO):
         self,
         rcpsp_model: MultiModeRCPSPModel,
         params_objective_function: ParamsObjectiveFunction = None,
-        **kwargs
+        **kwargs,
     ):
         self.rcpsp_model = rcpsp_model
         (
