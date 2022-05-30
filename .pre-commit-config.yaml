@@ -25,7 +25,7 @@ repos:
         args: ["--autofix", "--no-sort-keys", "--indent", "4"]
 
   - repo: https://github.com/psf/black
-    rev: 21.7b0 # Replace by any tag/version: https://github.com/psf/black/tags
+    rev: 22.3.0 # Replace by any tag/version: https://github.com/psf/black/tags
     hooks:
       - id: black
         language_version: python3
