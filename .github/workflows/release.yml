@@ -307,6 +307,9 @@ jobs:
         compiler: [gnu]
       fail-fast: true
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - uses: actions/checkout@v2
@@ -328,9 +331,13 @@ jobs:
         with:
           name: wheels
 
+      - name: Install scikit-decide
+        run: |
+          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
+          pip install ${wheelfile}[all]
+
       - name: Test with pytest
         run: |
-          pip install --pre --find-links ./wheels/ "scikit-decide[all]"
           pytest -v -s tests/autocast
           pytest -v -s tests/solvers/cpp
           pytest -v -s tests/solvers/python
@@ -366,10 +373,13 @@ jobs:
         with:
           name: wheels
 
+      - name: Install scikit-decide
+        run: |
+          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*.whl)
+          pip install ${wheelfile}[all]
+
       - name: Test with pytest
         run: |
-          env
-          pip install --pre --find-links ./wheels/ "scikit-decide[all]"
           pytest -v -s tests/autocast
           pytest -v -s tests/solvers/cpp
           pytest -v -s tests/solvers/python
@@ -402,9 +412,13 @@ jobs:
         with:
           name: wheels
 
+      - name: Install scikit-decide
+        run: |
+          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
+          pip install ${wheelfile}[all]
+
       - name: Test with pytest
         run: |
-          pip install --pre --find-links ./wheels/ "scikit-decide[all]"
           pytest -v -s tests/autocast
           pytest -v -s tests/solvers/cpp
           pytest -v -s tests/solvers/python
@@ -468,6 +482,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOCS_VERSION_PATH: /
+      python_version: "3.7"
 
     steps:
       - name: Get scikit-decide release version and update online docs path
@@ -517,7 +532,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v2
         with:
-          python-version: "3.7"
+          python-version: ${{ env.python_version }}
 
       - name: Download artifacts
         uses: actions/download-artifact@v1.0.0
@@ -526,7 +541,8 @@ jobs:
 
       - name: Install scikit-decide
         run: |
-          pip install --pre --find-links ./wheels "scikit-decide[all]"
+          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
+          pip install ${wheelfile}[all]
 
       - name: generate documentation
         run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
