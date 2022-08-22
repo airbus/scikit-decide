@@ -136,8 +136,8 @@ class EnumerableSpace(Space[T]):
         return x in self.get_elements()
 
 
-class EmptySpace(Space[T]):
-    """A space which elements can be enumerated."""
+class EmptySpace(EnumerableSpace[T]):
+    """An (enumerable) empty space."""
 
     def get_elements(self) -> Iterable[T]:
         return ()
