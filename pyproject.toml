@@ -50,7 +50,7 @@ files = ["skdecide/__init__.py"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-pynng = "^0.6.2"
+pynng = ">=0.6.2"
 pathos = "^0.2.7"
 simplejson = {version = "^3.17.2", optional = true}
 gym = {version = "^0.18.0", optional = true}
