@@ -145,7 +145,8 @@ class Maze(D):
         if self._ax is None:
             # fig = plt.gcf()
             fig, ax = plt.subplots(1)
-            fig.canvas.set_window_title("Maze")
+            if fig.canvas.manager is not None:
+                fig.canvas.manager.set_window_title("Maze")
             # ax = plt.axes()
             ax.set_aspect("equal")  # set the x and y axes to the same scale
             plt.xticks([])  # remove the tick marks by setting to an empty list

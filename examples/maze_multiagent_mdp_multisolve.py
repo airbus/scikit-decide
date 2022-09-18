@@ -377,7 +377,8 @@ class MultiAgentMaze(D):
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
         if self._ax is None:
             fig = plt.gcf()
-            fig.canvas.set_window_title("Maze")
+            if fig.canvas.manager is not None:
+                fig.canvas.manager.set_window_title("Maze")
             ax = plt.axes()
             ax.set_aspect("equal")  # set the x and y axes to the same scale
             plt.xticks([])  # remove the tick marks by setting to an empty list
