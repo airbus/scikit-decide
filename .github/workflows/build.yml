@@ -395,7 +395,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest tqdm
+          python -m pip install pytest
 
       - name: Download artifacts
         uses: actions/download-artifact@v1.0.0
@@ -438,7 +438,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest tqdm
+          python -m pip install pytest
 
       - name: Download artifacts
         uses: actions/download-artifact@v1.0.0
@@ -478,7 +478,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest tqdm docopt commonmark
+          python -m pip install pytest docopt commonmark
 
       - name: Download artifacts
         uses: actions/download-artifact@v1.0.0
