@@ -211,10 +211,8 @@ class DOSolver(Solver, DeterministicPolicies):
 
         self.solver = solver_class(self.do_domain, **self.dict_params)
 
-        try:
+        if hasattr(self.solver, "init_model") and callable(self.solver.init_model):
             self.solver.init_model(**self.dict_params)
-        except:
-            pass
 
         result_storage = self.solver.solve(**self.dict_params)
         best_solution: RCPSPSolution = result_storage.get_best_solution()
