@@ -870,9 +870,8 @@ class GPHHPolicy(DeterministicPolicies):
             for j in sorted(self.domain.get_tasks_ids())
         ]
         modes = modes[1:-1]
-
+        scheduled_tasks_start_times = {}
         if run_sgs:
-            scheduled_tasks_start_times = {}
             tasks_details = rebuild_all_tasks_dict(observation)
             for j in tasks_details:
                 if tasks_details[j].start is not None:
@@ -880,6 +879,9 @@ class GPHHPolicy(DeterministicPolicies):
                     do_model.mode_details[j][1]["duration"] = tasks_details[
                         j
                     ].sampled_duration
+            # needed to update the numba functions to take into account
+            # the sampled durations of the current scheduling state.
+            do_model.update_functions()
 
         # do_model = build_do_domain(self.domain)
         # modes = [observation.tasks_mode.get(j, 1) for j in sorted(self.domain.get_tasks_ids())]
@@ -936,13 +938,20 @@ class GPHHPolicy(DeterministicPolicies):
             modes_dictionnary[i + 1] = 1
 
         if run_sgs:
-
+            tasks_complete_dict = rebuild_tasks_complete_details_dict(observation)
+            # Force the scheduler_tasks_start_times to be disjoint with the complete tasks,
+            # this avoid a corner effect giving wrong results in the numba SGS implementation
+            # (sgs_fast_partial_schedule_incomplete_permutation_tasks)
+            scheduled_tasks_start_times = {
+                j: scheduled_tasks_start_times[j]
+                for j in scheduled_tasks_start_times
+                if j not in tasks_complete_dict
+            }
             solution = RCPSPSolution(
                 problem=do_model,
                 rcpsp_permutation=normalized_values_for_do,
                 rcpsp_modes=modes,
             )
-            tasks_complete_dict = rebuild_tasks_complete_details_dict(observation)
             solution.generate_schedule_from_permutation_serial_sgs_2(
                 current_t=t,
                 completed_tasks=tasks_complete_dict,
