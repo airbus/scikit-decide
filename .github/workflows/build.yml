@@ -410,6 +410,16 @@ jobs:
 
       - name: Test with pytest
         run: |
+          # configure minizinc
+          cd tests  # avoid having directory skdecide in current path
+          minizinc_path=$(python -c "import skdecide.hub, os; print(os.path.abspath(skdecide.hub.__path__[0]))")
+          minizinc_path=$(cygpath --unix $minizinc_path)  # convert path to posix so that $PATH works ok
+          export MZN_SOLVER_PATH=$minizinc_path
+          export PATH="$minizinc_path/bin":$PATH
+          cd -  # get back to working directory
+          # test minizinc
+          python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
+          # run pytest
           pytest -v -s tests/autocast
           pytest -v -s tests/solvers/cpp
           pytest -v -s tests/solvers/python
@@ -453,6 +463,15 @@ jobs:
 
       - name: Test with pytest
         run: |
+          # configure minizinc
+          cd tests  # avoid having directory skdecide in current path
+          minizinc_path=$(python -c "import skdecide.hub, os; print(os.path.abspath(skdecide.hub.__path__[0]))")
+          export MZN_SOLVER_PATH=$minizinc_path
+          export PATH="$minizinc_path/bin":$PATH
+          cd -  # get back to working directory
+          # test minizinc
+          python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
+          # run pytest
           pytest -v -s tests/autocast
           pytest -v -s tests/solvers/cpp
           pytest -v -s tests/solvers/python
@@ -493,6 +512,15 @@ jobs:
 
       - name: Test with pytest
         run: |
+          # configure minizinc
+          cd tests  # avoid having directory skdecide in current path
+          minizinc_path=$(python -c "import skdecide.hub, os; print(os.path.abspath(skdecide.hub.__path__[0]))")
+          export MZN_SOLVER_PATH=$minizinc_path
+          export PATH="$minizinc_path/bin":$PATH
+          cd -  # get back to working directory
+          # test minizinc
+          python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
+          # run pytest
           pytest -v -s tests/autocast
           pytest -v -s tests/solvers/cpp
           pytest -v -s tests/solvers/python
