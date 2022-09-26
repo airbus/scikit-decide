@@ -18,7 +18,11 @@ def rebuild_tasks_complete_details_dict(state: State) -> Dict[int, Task]:
 
 
 def rebuild_all_tasks_dict(state: State) -> Dict[int, Task]:
-    tasks_details = {p.value.id: p.value for p in state.tasks_complete_details}
+    tasks_details = {
+        task_id: Task(id=task_id, start=None, sampled_duration=None)
+        for task_id in state.task_ids
+    }
+    tasks_details.update({p.value.id: p.value for p in state.tasks_complete_details})
     tasks_details.update(state.tasks_details)
     return tasks_details
 
@@ -115,6 +119,7 @@ class State:
         tasks_details: dictionary where the key is the id of a task (int) and the value a Task object. This Task object
             contains information about the task execution and can be used to post-process the run. It is only used
             by the domain to store execution information and not used by scheduling solvers.
+        tasks_full_details: like taks_details but containing all taks, even the ones not completed.
         _current_conditions: set of conditions observed so far, to be used by domains with WithConditionalTask
             properties
 
@@ -190,6 +195,10 @@ class State:
         s.tasks_complete_progress = copy(self.tasks_complete_progress)
         s.tasks_complete_mode = copy(self.tasks_complete_mode)
         return s
+
+    @property
+    def tasks_full_details(self) -> Dict[int, Task]:
+        return rebuild_all_tasks_dict(self)
 
     @property
     def tasks_remaining(self):
