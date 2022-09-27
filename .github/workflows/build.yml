@@ -38,7 +38,7 @@ jobs:
         run: |
           python_version = ["3.7", "3.8", "3.9"]
           build = [ "macos-latest", "ubuntu-latest", "windows-latest" ]
-          test = [ "macos-10.15", "macos-11", "ubuntu-18.04", "ubuntu-20.04", "windows-2019", "windows-2022"]
+          test = [ "macos-10.15", "macos-11", "macos-12", "ubuntu-18.04", "ubuntu-20.04", "windows-2019", "windows-2022"]
           build_doc = "true"
 
           if "${{ github.event_name }}" != "schedule":
@@ -53,6 +53,7 @@ jobs:
               os_filter = {
                   'macos-10.15'  : to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-10.15]') }}"),
                   'macos-11'     : to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-11]') }}"),
+                  'macos-12'     : to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-12]') }}"),
                   'ubuntu-18.04' : to_bool("${{ contains(github.event.head_commit.message, '[ci: ubuntu-18.04]') }}"),
                   'ubuntu-20.04' : to_bool("${{ contains(github.event.head_commit.message, '[ci: ubuntu-20.04]') }}"),
                   'windows-2019' : to_bool("${{ contains(github.event.head_commit.message, '[ci: windows-2019]') }}"),
