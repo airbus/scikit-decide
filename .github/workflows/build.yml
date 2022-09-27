@@ -37,7 +37,7 @@ jobs:
         shell: python3 {0}
         run: |
           python_version = ["3.7", "3.8", "3.9"]
-          build = [ "macos-10.15", "ubuntu-latest", "windows-latest" ]
+          build = [ "macos-latest", "ubuntu-latest", "windows-latest" ]
           test = [ "macos-10.15", "macos-11", "ubuntu-18.04", "ubuntu-20.04", "windows-2019", "windows-2022"]
           build_doc = "true"
 
@@ -252,7 +252,15 @@ jobs:
           export "BOOST_ROOT=$PWD/$BOOST_DIR"
           python -m pip install --upgrade pip
           pip install build poetry-dynamic-versioning
-          python -m build --sdist --wheel
+          # cross-compile for macosx-10.15
+          export MACOSX_DEPLOYMENT_TARGET=10.15
+          python -m build --sdist --wheel "--config-setting=--plat-name=macosx_10_15_x86_64"
+          # hack wheel name to be recognized by macos 10.15
+          wheel_name=$(ls dist/*.whl)
+          new_wheel_name=$(echo $wheel_name | sed -e 's/macosx_.*_x86_64.whl/macosx_10_15_x86_64.whl/')
+          echo "mv $wheel_name $new_wheel_name"
+          mv $wheel_name $new_wheel_name
+
 
       - name: Update build cache from wheels
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
