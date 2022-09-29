@@ -390,6 +390,12 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      minizinc_path: ~/AppData/Local/Programs/MiniZinc
+      minizinc_cache_path: ~/AppData/Local/Programs/MiniZinc
+      minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-bundled-setup-win64.exe
+      minizinc_downloaded_filepath: minizinc_setup.exe
+      minizinc_install_cmdline: cmd //c "minizinc_setup.exe /verysilent /currentuser /norestart /suppressmsgboxes /sp"
 
     steps:
       - uses: actions/checkout@v2
@@ -411,6 +417,32 @@ jobs:
         with:
           name: wheels
 
+      - name: get MininZinc path to cache
+        id: get-mzn-cache-path
+        run: |
+          echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
+      - name: Restore MiniZinc cache
+        id: cache-minizinc
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.get-mzn-cache-path.outputs.path }}
+          key: ${{ env.minizinc_url }}
+      - name: Download MiniZinc
+        if: steps.cache-minizinc.outputs.cache-hit != 'true'
+        run: |
+          curl -o "${{ env.minizinc_downloaded_filepath }}" -L ${{ env.minizinc_url }}
+      - name: Install MiniZinc
+        if: steps.cache-minizinc.outputs.cache-hit != 'true'
+        run: |
+          ${{ env.minizinc_install_cmdline }}
+      - name: Add MiniZinc to PATH
+        run: |
+          echo ${{ env.minizinc_path }}
+          echo ${{ env.minizinc_path }} >> $GITHUB_PATH
+      - name: Test minizinc install
+        run: |
+          minizinc --version
+
       - name: Install scikit-decide
         run: |
           python_version=${{ matrix.python-version }}
@@ -420,12 +452,7 @@ jobs:
       - name: Test with pytest
         run: |
           # configure minizinc
-          cd tests  # avoid having directory skdecide in current path
-          minizinc_path=$(python -c "import skdecide.hub, os; print(os.path.abspath(skdecide.hub.__path__[0]))")
-          minizinc_path=$(cygpath --unix $minizinc_path)  # convert path to posix so that $PATH works ok
-          export MZN_SOLVER_PATH=$minizinc_path
-          export PATH="$minizinc_path/bin":$PATH
-          cd -  # get back to working directory
+          export PATH=$PATH:${{ env.minizinc_path }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
@@ -442,6 +469,12 @@ jobs:
         python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
       fail-fast: true
     runs-on: ${{ matrix.os }}
+    env:
+      minizinc_path: $(pwd)/bin/MiniZincIDE.app/Contents/Resources
+      minizinc_cache_path: $(pwd)/bin/MiniZincIDE.app
+      minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-bundled.dmg
+      minizinc_downloaded_filepath: bin/minizinc.dmg
+      minizinc_install_cmdline: sudo hdiutil attach bin/minizinc.dmg; sudo cp -R /Volumes/MiniZinc*/MiniZincIDE.app bin/.
 
     steps:
       - uses: actions/checkout@v2
@@ -464,6 +497,34 @@ jobs:
         with:
           name: wheels
 
+      - name: Create bin/
+        run: mkdir -p bin
+      - name: get MininZinc path to cache
+        id: get-mzn-cache-path
+        run: |
+          echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
+      - name: Restore MiniZinc cache
+        id: cache-minizinc
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.get-mzn-cache-path.outputs.path }}
+          key: ${{ env.minizinc_url }}
+      - name: Download MiniZinc
+        if: steps.cache-minizinc.outputs.cache-hit != 'true'
+        run: |
+          curl -o "${{ env.minizinc_downloaded_filepath }}" -L ${{ env.minizinc_url }}
+      - name: Install MiniZinc
+        if: steps.cache-minizinc.outputs.cache-hit != 'true'
+        run: |
+          ${{ env.minizinc_install_cmdline }}
+      - name: Add MiniZinc to PATH
+        run: |
+          echo ${{ env.minizinc_path }}
+          echo ${{ env.minizinc_path }} >> $GITHUB_PATH
+      - name: Test minizinc install
+        run: |
+          minizinc --version
+
       - name: Install scikit-decide
         run: |
           python_version=${{ matrix.python-version }}
@@ -473,11 +534,7 @@ jobs:
       - name: Test with pytest
         run: |
           # configure minizinc
-          cd tests  # avoid having directory skdecide in current path
-          minizinc_path=$(python -c "import skdecide.hub, os; print(os.path.abspath(skdecide.hub.__path__[0]))")
-          export MZN_SOLVER_PATH=$minizinc_path
-          export PATH="$minizinc_path/bin":$PATH
-          cd -  # get back to working directory
+          export PATH=$PATH:${{ env.minizinc_path }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
@@ -494,6 +551,13 @@ jobs:
         python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
       fail-fast: true
     runs-on: ${{ matrix.os }}
+    env:
+      minizinc_path: $(pwd)/bin
+      minizinc_cache_path: $(pwd)/bin/minizinc
+      minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-x86_64.AppImage
+      minizinc_downloaded_filepath: bin/minizinc
+      minizinc_install_cmdline: sudo chmod +x bin/minizinc
+
 
     steps:
       - uses: actions/checkout@v2
@@ -513,6 +577,34 @@ jobs:
         with:
           name: wheels
 
+      - name: Create bin/
+        run: mkdir -p bin
+      - name: get MininZinc path to cache
+        id: get-mzn-cache-path
+        run: |
+          echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
+      - name: Restore MiniZinc cache
+        id: cache-minizinc
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.get-mzn-cache-path.outputs.path }}
+          key: ${{ env.minizinc_url }}
+      - name: Download MiniZinc
+        if: steps.cache-minizinc.outputs.cache-hit != 'true'
+        run: |
+          curl -o "${{ env.minizinc_downloaded_filepath }}" -L ${{ env.minizinc_url }}
+      - name: Install MiniZinc
+        if: steps.cache-minizinc.outputs.cache-hit != 'true'
+        run: |
+          ${{ env.minizinc_install_cmdline }}
+      - name: Add MiniZinc to PATH
+        run: |
+          echo ${{ env.minizinc_path }}
+          echo ${{ env.minizinc_path }} >> $GITHUB_PATH
+      - name: Test minizinc install
+        run: |
+          minizinc --version
+
       - name: Install scikit-decide
         run: |
           python_version=${{ matrix.python-version }}
@@ -522,11 +614,7 @@ jobs:
       - name: Test with pytest
         run: |
           # configure minizinc
-          cd tests  # avoid having directory skdecide in current path
-          minizinc_path=$(python -c "import skdecide.hub, os; print(os.path.abspath(skdecide.hub.__path__[0]))")
-          export MZN_SOLVER_PATH=$minizinc_path
-          export PATH="$minizinc_path/bin":$PATH
-          cd -  # get back to working directory
+          export PATH=$PATH:${{ env.minizinc_path }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
