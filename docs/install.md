@@ -1,21 +1,28 @@
 # Installation
 
-## 1. Make sure to have a Python 3.7+ environment
+## Prerequisites
 
-The use of a virtual environment for scikit-decide is recommended, and you will need to ensure the environment use a Python version greater than 3.7.
+### Minizinc 2.6+
+
+You need to install [minizinc](https://www.minizinc.org/) (version greater than 2.6) and update the `PATH` environment variable
+so that it can be found by Python. See [minizinc documentation](https://www.minizinc.org/doc-latest/en/installation.html) for more details.
+
+### Python 3.7+ environment
+
+The use of a virtual environment for scikit-decide is recommended, and you will need to ensure that the environment use a Python version greater than 3.7.
 This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows)
 and [venv](https://docs.python.org/fr/3/library/venv.html) module.
 
 The following examples show how to create a virtual environment with Python version 3.8.11 with the mentioned methods.
 
-### With conda (all platforms)
+#### With conda (all platforms)
 
 ```shell
 conda create -n skdecide python=3.8.11
 conda activate skdecide
 ```
 
-### With pyenv + venv (Linux/MacOS)
+#### With pyenv + venv (Linux/MacOS)
 
 ```shell
 pyenv install 3.8.11
@@ -24,7 +31,7 @@ python -m venv skdecide-venv
 source skdecide-venv
 ```
 
-### With pyenv-win + venv (Windows)
+#### With pyenv-win + venv (Windows)
 
 ```shell
 pyenv install 3.8.11
@@ -33,7 +40,7 @@ python -m venv skdecide-venv
 skdecide-venv\Scripts\activate
 ```
 
-## 2. Install scikit-decide library
+## Install scikit-decide library
 
 ### Full install [Recommended]
 
