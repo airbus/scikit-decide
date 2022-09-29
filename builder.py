@@ -171,41 +171,6 @@ def build(setup_kwargs: Dict[str, Any]) -> None:
             ],
         ),
     ]
-    if (
-        "SKDECIDE_SKIP_DEPS" not in os.environ
-        or os.environ["SKDECIDE_SKIP_DEPS"] == "0"
-    ):
-        cmake_modules.extend(
-            [
-                CMakeExtension(
-                    name="chuffed",
-                    disable_editable=True,
-                    source_dir="cpp/deps/chuffed",
-                    install_prefix="skdecide/hub",
-                    cmake_configure_options=[
-                        f"-DBISON_EXECUTABLE=false",
-                        f"-DFLEX_EXECUTABLE=false",
-                    ],
-                ),
-                CMakeExtension(
-                    name="gecode",
-                    disable_editable=True,
-                    source_dir="cpp/deps/gecode",
-                    install_prefix="skdecide/hub",
-                    cmake_configure_options=[],
-                ),
-                CMakeExtension(
-                    name="libminizinc",
-                    disable_editable=True,
-                    source_dir="cpp/deps/libminizinc",
-                    install_prefix="skdecide/hub",
-                    cmake_configure_options=[
-                        f"-DBUILD_SHARED_LIBS:BOOL=OFF",
-                        f"-DUSE_CCACHE:BOOL=OFF",
-                    ],
-                ),
-            ]
-        )
     ext_modules = cython_modules + cmake_modules
 
     setup_kwargs.update(

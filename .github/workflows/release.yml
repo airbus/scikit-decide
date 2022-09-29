@@ -102,7 +102,7 @@ jobs:
             skdecide/hub/bin
             skdecide/hub/share
             skdecide/hub/*.msc
-          key: ${{ runner.os }}-cache-deps-${{ hashFiles('cpp/deps/chuffed', 'cpp/deps/gecode', 'cpp/deps/libminizinc') }}
+          key: ${{ runner.os }}-cache-deps
 
       - name: Update SKDECIDE_SKIP_DEPS
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
@@ -180,7 +180,7 @@ jobs:
             skdecide/hub/bin
             skdecide/hub/share
             skdecide/hub/*.msc
-          key: ${{ runner.os }}-cache-deps-${{ hashFiles('cpp/deps/chuffed', 'cpp/deps/gecode', 'cpp/deps/libminizinc') }}
+          key: ${{ runner.os }}-cache-deps
 
       - name: Update SKDECIDE_SKIP_DEPS
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
@@ -261,7 +261,7 @@ jobs:
             skdecide/hub/bin
             skdecide/hub/share
             skdecide/hub/*.msc
-          key: ${{ runner.os }}-cache-deps-${{ hashFiles('cpp/deps/chuffed', 'cpp/deps/gecode', 'cpp/deps/libminizinc') }}
+          key: ${{ runner.os }}-cache-deps
 
       - name: Update SKDECIDE_SKIP_DEPS
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
