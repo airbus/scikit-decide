@@ -1,8 +1,8 @@
 # Installation
 
-## Prerequisites
+## Prerequisites
 
-### Minizinc 2.6+
+### Minizinc 2.6+
 
 You need to install [minizinc](https://www.minizinc.org/) (version greater than 2.6) and update the `PATH` environment variable
 so that it can be found by Python. See [minizinc documentation](https://www.minizinc.org/doc-latest/en/installation.html) for more details.
