@@ -13,29 +13,29 @@ The use of a virtual environment for scikit-decide is recommended, and you will 
 This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows)
 and [venv](https://docs.python.org/fr/3/library/venv.html) module.
 
-The following examples show how to create a virtual environment with Python version 3.8.11 with the mentioned methods.
+The following examples show how to create a virtual environment with Python version 3.8.13 with the mentioned methods.
 
 #### With conda (all platforms)
 
 ```shell
-conda create -n skdecide python=3.8.11
+conda create -n skdecide python=3.8.13
 conda activate skdecide
 ```
 
 #### With pyenv + venv (Linux/MacOS)
 
 ```shell
-pyenv install 3.8.11
-pyenv shell 3.8.11
+pyenv install 3.8.13
+pyenv shell 3.8.13
 python -m venv skdecide-venv
-source skdecide-venv
+source skdecide-venv/bin/activate
 ```
 
 #### With pyenv-win + venv (Windows)
 
 ```shell
-pyenv install 3.8.11
-pyenv shell 3.8.11
+pyenv install 3.8.13
+pyenv shell 3.8.13
 python -m venv skdecide-venv
 skdecide-venv\Scripts\activate
 ```
