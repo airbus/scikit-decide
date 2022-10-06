@@ -24,7 +24,7 @@ This guide is organized as follows:
 
 ## Setting up your development environment
 
-### Prerequisite: minizinc
+### Prerequisite: minizinc
 
 You need first to install [minizinc](https://www.minizinc.org/) (version greater than 2.6) and update the `PATH` environment variable
 so that it can be found by Python. See [minizinc documentation](https://www.minizinc.org/doc-latest/en/installation.html) for more details.
