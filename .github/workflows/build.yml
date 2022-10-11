@@ -692,17 +692,6 @@ jobs:
           name: doc
           path: docs/.vuepress/dist
 
-      - name: Deploy documentation in root folder on GH pages 🚀
-        if: github.ref == 'refs/heads/master'
-        uses: JamesIves/github-pages-deploy-action@4.1.5
-        with:
-          branch: gh-pages # The branch the action should deploy to.
-          folder: docs/.vuepress/dist # The folder the action should deploy.
-          target-folder: / # The folder the action should deploy to.
-          commit-message: publish documentation
-          clean-exclude: |
-            "version/*"
-
   upload-doc:
     needs: [build-doc, test-windows, test-macos]
     if: github.ref == 'refs/heads/master'
