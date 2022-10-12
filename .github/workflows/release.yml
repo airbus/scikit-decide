@@ -20,7 +20,7 @@ jobs:
       test: ${{ steps.generate-matrix.outputs.test}}
       deploy_test_pypi: ${{ steps.generate-matrix.outputs.deploy_test_pypi}}
     steps:
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
       - name: Generate Matrix
         id: generate-matrix
         shell: python3 {0}
@@ -41,8 +41,8 @@ jobs:
   lint-sources:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.8"
       - uses: pre-commit/action@v2.0.0
@@ -61,25 +61,25 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v2.1.4
+        uses: actions/cache@v3
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -96,7 +96,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             skdecide/hub/bin
@@ -120,7 +120,7 @@ jobs:
         run: 7z x dist/*.whl -y
 
       - name: Upload as build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist/*.whl
@@ -139,25 +139,25 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v2.1.4
+        uses: actions/cache@v3
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -174,7 +174,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             skdecide/hub/bin
@@ -201,7 +201,7 @@ jobs:
         run: 7z x dist/*.whl -y
 
       - name: Upload as build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist/*.whl
@@ -220,25 +220,25 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v2.1.4
+        uses: actions/cache@v3
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -255,7 +255,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             skdecide/hub/bin
@@ -269,7 +269,7 @@ jobs:
 
       - name: Restore docker dev image
         id: cache-dev-deps
-        uses: actions/cache@v2.1.4
+        uses: actions/cache@v3
         with:
           path: /tmp/docker
           key: dev-deps-${{ runner.os }}-${{ hashFiles('scripts/build-skdecide_dev.sh', 'scripts/Dockerfile_x86_64_dev') }}
@@ -293,7 +293,7 @@ jobs:
         run: 7z x dist/*.whl -y
 
       - name: Upload as build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist/*.whl
@@ -318,12 +318,12 @@ jobs:
       minizinc_install_cmdline: cmd //c "minizinc_setup.exe /verysilent /currentuser /norestart /suppressmsgboxes /sp"
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -333,9 +333,10 @@ jobs:
           python -m pip install pytest
 
       - name: Download artifacts
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: wheels
 
       - name: get MininZinc path to cache
         id: get-mzn-cache-path
@@ -343,7 +344,7 @@ jobs:
           echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -396,13 +397,13 @@ jobs:
       minizinc_install_cmdline: sudo hdiutil attach bin/minizinc.dmg; sudo cp -R /Volumes/MiniZinc*/MiniZincIDE.app bin/.
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install libomp package
         run: brew install libomp
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -412,9 +413,10 @@ jobs:
           python -m pip install pytest
 
       - name: Download artifacts
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: wheels
 
       - name: Create bin/
         run: mkdir -p bin
@@ -424,7 +426,7 @@ jobs:
           echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -477,10 +479,10 @@ jobs:
       minizinc_install_cmdline: sudo chmod +x bin/minizinc
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -490,9 +492,10 @@ jobs:
           python -m pip install pytest
 
       - name: Download artifacts
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: wheels
 
       - name: Create bin/
         run: mkdir -p bin
@@ -502,7 +505,7 @@ jobs:
           echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -545,9 +548,10 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: wheels
 
       - name: Get the version
         id: get_version
@@ -569,15 +573,16 @@ jobs:
 
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: wheels
 
       - name: Publish distribution 📦 to PyPI
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_PASSWORD }}
         if: github.repository == 'airbus/scikit-decide' && env.PYPI_TOKEN != ''
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_PASSWORD }}
           packages_dir: wheels/
@@ -586,7 +591,7 @@ jobs:
         env:
           TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_PASSWORD }}
         if: env.TEST_PYPI_TOKEN != '' && needs.setup.outputs.deploy_test_pypi == 'true'
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.TEST_PYPI_PASSWORD }}
           packages_dir: wheels/
@@ -609,7 +614,7 @@ jobs:
           echo "DOCS_VERSION_PATH=/version/$SKDECIDE_VERSION/" >> $GITHUB_ENV
 
       - name: Checkout all branches
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
           fetch-depth: 0  # fetch all branches
@@ -645,14 +650,15 @@ jobs:
           echo "AUTODOC_NOTEBOOKS_BRANCH=${TAG_NAME}" >> $GITHUB_ENV
 
       - name: Setup python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ env.python_version }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: wheels
 
       - name: Install scikit-decide
         run: |
@@ -663,7 +669,7 @@ jobs:
         run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
 
       - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@4.1.5
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages # The branch the action should deploy to.
           folder: docs/.vuepress/dist # The folder the action should deploy.
@@ -677,7 +683,7 @@ jobs:
 
     steps:
       - name: Delete nightly release
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         with:
           script: |
             const releases = await github.rest.repos.listReleases({
