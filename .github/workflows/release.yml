@@ -559,13 +559,12 @@ jobs:
           echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
 
       - name: Upload artifacts 📦 to release
-        uses: svenstaro/upload-release-action@v1-release
+        uses: ncipollo/release-action@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: wheels/*.whl
+          artifacts: wheels/*.whl
           tag: ${{ steps.get_version.outputs.VERSION }}
-          overwrite: true
-          file_glob: true
+          allowUpdates: true
+          generateReleaseNotes: true
 
   deploy:
     needs: [upload, setup]
