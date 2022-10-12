@@ -31,7 +31,7 @@ jobs:
       do_windows: ${{ steps.generate-matrix.outputs.do_windows}}
       build_doc: ${{ steps.generate-matrix.outputs.build_doc}}
     steps:
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
       - name: Generate Matrix
         id: generate-matrix
         shell: python3 {0}
@@ -87,8 +87,8 @@ jobs:
   lint-sources:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.8"
       - uses: pre-commit/action@v2.0.0
@@ -108,25 +108,25 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v2.1.4
+        uses: actions/cache@v3
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -143,7 +143,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             skdecide/hub/bin
@@ -167,7 +167,7 @@ jobs:
         run: 7z x dist/*.whl -y
 
       - name: Upload as build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist/*.whl
@@ -187,25 +187,25 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v2.1.4
+        uses: actions/cache@v3
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -222,7 +222,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             skdecide/hub/bin
@@ -238,7 +238,7 @@ jobs:
         run: brew install libomp
 
       - name: Install and restore ccache
-        uses: hendrikmuhs/ccache-action@v1.0.5
+        uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ runner.os }}-py${{ matrix.python-version }}
           max-size: 80M
@@ -268,7 +268,7 @@ jobs:
         run: 7z x dist/*.whl -y
 
       - name: Upload as build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist/*.whl
@@ -288,25 +288,25 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v2.1.4
+        uses: actions/cache@v3
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -323,7 +323,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             skdecide/hub/bin
@@ -337,14 +337,14 @@ jobs:
 
       - name: Restore docker dev image
         id: cache-dev-deps
-        uses: actions/cache@v2.1.4
+        uses: actions/cache@v3
         with:
           path: /tmp/docker
           key: dev-deps-${{ runner.os }}-${{ hashFiles('scripts/build-skdecide_dev.sh', 'scripts/Dockerfile_x86_64_dev') }}
 
       - name: Restore ccache cache
         id: ccache-restore
-        uses: actions/cache@v2.1.4
+        uses: actions/cache@v3
         with:
           path: .ccache
           key: ccache-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.run_id }}-${{github.run_number}}
@@ -373,7 +373,7 @@ jobs:
         run: 7z x dist/*.whl -y
 
       - name: Upload as build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist/*.whl
@@ -398,12 +398,12 @@ jobs:
       minizinc_install_cmdline: cmd //c "minizinc_setup.exe /verysilent /currentuser /norestart /suppressmsgboxes /sp"
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -413,9 +413,10 @@ jobs:
           python -m pip install pytest
 
       - name: Download artifacts
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: wheels
 
       - name: get MininZinc path to cache
         id: get-mzn-cache-path
@@ -423,7 +424,7 @@ jobs:
           echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -477,13 +478,13 @@ jobs:
       minizinc_install_cmdline: sudo hdiutil attach bin/minizinc.dmg; sudo cp -R /Volumes/MiniZinc*/MiniZincIDE.app bin/.
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install libomp package
         run: brew install libomp
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -493,9 +494,10 @@ jobs:
           python -m pip install pytest
 
       - name: Download artifacts
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: wheels
 
       - name: Create bin/
         run: mkdir -p bin
@@ -505,7 +507,7 @@ jobs:
           echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -560,10 +562,10 @@ jobs:
 
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -573,9 +575,10 @@ jobs:
           python -m pip install pytest docopt commonmark
 
       - name: Download artifacts
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: wheels
 
       - name: Create bin/
         run: mkdir -p bin
@@ -585,7 +588,7 @@ jobs:
           echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -663,19 +666,20 @@ jobs:
           echo "Binder env: ${AUTODOC_BINDER_ENV_GH_REPO_NAME}/${AUTODOC_BINDER_ENV_GH_BRANCH}"
           echo "Notebooks source: ${AUTODOC_NOTEBOOKS_REPO_URL}/tree/${AUTODOC_NOTEBOOKS_BRANCH}"
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
 
       - name: Setup python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: wheels
 
       - name: Install scikit-decide
         run: |
@@ -687,7 +691,7 @@ jobs:
         run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
 
       - name: upload as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: doc
           path: docs/.vuepress/dist
@@ -703,16 +707,16 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Download artifacts
-        uses: actions/download-artifact@v1.0.0
+        uses: actions/download-artifact@v3
         with:
           name: doc
           path: docs/.vuepress/dist
 
       - name: Deploy documentation in root folder on GH pages 🚀
-        uses: JamesIves/github-pages-deploy-action@4.1.5
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages # The branch the action should deploy to.
           folder: docs/.vuepress/dist # The folder the action should deploy.
@@ -727,7 +731,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: wheels
         path: dist/
@@ -735,7 +739,7 @@ jobs:
     - run: |
         zip -r dist.zip dist/
 
-    - uses: actions/github-script@v5
+    - uses: actions/github-script@v6
       id: asset
       with:
         script: |
