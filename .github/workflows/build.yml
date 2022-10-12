@@ -91,7 +91,15 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.8"
-      - uses: pre-commit/action@v2.0.0
+      - name: install pre-commit
+        run: python -m pip install pre-commit
+      - name: get cached pre-commit hooks
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
+      - name: pre-commit checks
+        run: pre-commit run --show-diff-on-failure --color=always
 
   build-windows:
     needs: [setup]
