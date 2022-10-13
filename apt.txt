@@ -1,4 +1,5 @@
 ffmpeg
 freeglut3-dev
+libeccodes-tools
 xvfb
 x11-utils

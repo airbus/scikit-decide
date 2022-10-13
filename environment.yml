@@ -3,16 +3,23 @@ channels:
   - pytorch
   - defaults
 dependencies:
+  - cartopy>=0.21
   - python=3.8
   - pip
   - pytorch::cpuonly
   - pytorch::pytorch
   - pip:
+    - cdsapi
+    - cfgrib
+    - cartopy
     - matplotlib
     - ipywidgets
     - ipympl
     - scikit-decide[all]==0.9.4
     - nbgitpuller
+    - openap
+    - pygeodesy
     - pyvirtualdisplay
     - PyOpenGL-accelerate
     - PyOpenGL
+    - xarray
