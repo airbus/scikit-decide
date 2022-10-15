@@ -25,6 +25,8 @@ jobs:
         id: generate-matrix
         shell: python3 {0}
         run: |
+          from os import environ
+
           python_version = ["3.7", "3.8", "3.9"]
           build_dict = { "macos":["macos-10.15"], "ubuntu":["ubuntu-latest"], "windows":["windows-latest"] }
           test_dict = { "macos":["macos-10.15", "macos-11"], "ubuntu":["ubuntu-18.04", "ubuntu-20.04"], "windows":["windows-2019", "windows-2022" ]}
@@ -33,10 +35,11 @@ jobs:
           if "${{ contains(github.event.head_commit.message, '[ci: skip-deploy-test-pypi]') }}" == "true":
               deploy_test_pypi = "false"
 
-          print(f"::set-output name=build::{build_dict}")
-          print(f"::set-output name=test::{test_dict}")
-          print(f"::set-output name=python_version::{python_version}")
-          print(f"::set-output name=deploy_test_pypi::{deploy_test_pypi}")
+          with open(environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"build={build_dict}\n")
+              f.write(f"test={test_dict}\n")
+              f.write(f"python_version={python_version}\n")
+              f.write(f"deploy_test_pypi={deploy_test_pypi}\n")
 
   lint-sources:
     runs-on: ubuntu-latest
@@ -349,25 +352,30 @@ jobs:
       - name: get MininZinc path to cache
         id: get-mzn-cache-path
         run: |
-          echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
+          echo "path=${{ env.minizinc_cache_path }}" >> $GITHUB_OUTPUT  # expands variables
+
       - name: Restore MiniZinc cache
         id: cache-minizinc
         uses: actions/cache@v3
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
+
       - name: Download MiniZinc
         if: steps.cache-minizinc.outputs.cache-hit != 'true'
         run: |
           curl -o "${{ env.minizinc_downloaded_filepath }}" -L ${{ env.minizinc_url }}
+
       - name: Install MiniZinc
         if: steps.cache-minizinc.outputs.cache-hit != 'true'
         run: |
           ${{ env.minizinc_install_cmdline }}
+
       - name: Add MiniZinc to PATH
         run: |
           echo ${{ env.minizinc_path }}
           echo ${{ env.minizinc_path }} >> $GITHUB_PATH
+
       - name: Test minizinc install
         run: |
           minizinc --version
@@ -431,25 +439,30 @@ jobs:
       - name: get MininZinc path to cache
         id: get-mzn-cache-path
         run: |
-          echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
+          echo "path=${{ env.minizinc_cache_path }}" >> $GITHUB_OUTPUT  # expands variables
+
       - name: Restore MiniZinc cache
         id: cache-minizinc
         uses: actions/cache@v3
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
+
       - name: Download MiniZinc
         if: steps.cache-minizinc.outputs.cache-hit != 'true'
         run: |
           curl -o "${{ env.minizinc_downloaded_filepath }}" -L ${{ env.minizinc_url }}
+
       - name: Install MiniZinc
         if: steps.cache-minizinc.outputs.cache-hit != 'true'
         run: |
           ${{ env.minizinc_install_cmdline }}
+
       - name: Add MiniZinc to PATH
         run: |
           echo ${{ env.minizinc_path }}
           echo ${{ env.minizinc_path }} >> $GITHUB_PATH
+
       - name: Test minizinc install
         run: |
           minizinc --version
@@ -507,28 +520,34 @@ jobs:
 
       - name: Create bin/
         run: mkdir -p bin
+
       - name: get MininZinc path to cache
         id: get-mzn-cache-path
         run: |
-          echo "::set-output name=path::${{ env.minizinc_cache_path }}"  # expands variables
+          echo "path=${{ env.minizinc_cache_path }}" >> $GITHUB_OUTPUT  # expands variables
+
       - name: Restore MiniZinc cache
         id: cache-minizinc
         uses: actions/cache@v3
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
+
       - name: Download MiniZinc
         if: steps.cache-minizinc.outputs.cache-hit != 'true'
         run: |
           curl -o "${{ env.minizinc_downloaded_filepath }}" -L ${{ env.minizinc_url }}
+
       - name: Install MiniZinc
         if: steps.cache-minizinc.outputs.cache-hit != 'true'
         run: |
           ${{ env.minizinc_install_cmdline }}
+
       - name: Add MiniZinc to PATH
         run: |
           echo ${{ env.minizinc_path }}
           echo ${{ env.minizinc_path }} >> $GITHUB_PATH
+
       - name: Test minizinc install
         run: |
           minizinc --version
@@ -564,7 +583,7 @@ jobs:
       - name: Get the version
         id: get_version
         run: |
-          echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+          echo "VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
 
       - name: Upload artifacts 📦 to release
         uses: ncipollo/release-action@v1
