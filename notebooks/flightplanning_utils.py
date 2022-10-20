@@ -1,3 +1,7 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 import time
 from datetime import datetime, timedelta
 from math import asin, atan2, cos, degrees, radians, sin, sqrt
@@ -470,19 +474,3 @@ def plot_trajectory(
     # data = base64.b64encode(buf.getbuffer()).decode("ascii")
 
     return fig
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
-    # wr = WeatherRetrieverFromEcmwf()
-    # now = datetime.now()
-    # print(now - timedelta(days=7))
-    # file = wr.get(now - timedelta(days=7))
-
-    file_path = "/Users/alleon_g/code/flight-planning/data/tmpm36v2epw.grib"
-    # file_path = f"{file.name}"
-    interpolator: WindInterpolator = WindInterpolator(file_path)
-    # interpolator.plot_wind(plot_wind=True, t=[3600 * i for i in range(7)], alt=10000.0)
-    interpolator.plot_wind(plot_wind=True, t=[0])
-    plt.show()
