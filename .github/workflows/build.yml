@@ -664,12 +664,7 @@ jobs:
   build-doc:
     needs: [test-ubuntu, setup]
     if: needs.setup.outputs.build_doc == 'true'
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.7"]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ fromJson(needs.setup.outputs.test).ubuntu[0] || fromJson(needs.setup.outputs.test).windows[0] || fromJson(needs.setup.outputs.test).macos[0]}}
 
     steps:
       - name: Set env variables for github+binder links in doc
