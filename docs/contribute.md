@@ -80,11 +80,10 @@ Here are the steps to follow:
         poetry env use 3.8.11
         ```
 
-    - Install all dependencies as defined in `poetry.lock`, build c++ libraries, and configure them.
+    - Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
         ```shell
         rm -rf build  # removing previous build
         poetry install --extras all
-        poetry run python postbuild_dev.py
         ```
 
 #### Alternate installation with conda + poetry
@@ -113,11 +112,10 @@ as it can also be installed by conda via the conda-forge channel.
     conda install -c conda-forge poetry
     ```
 
-- Install all dependencies as defined in `poetry.lock`, build c++ libraries, and configure them.
+- Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
     ```shell
     rm -rf build  # removing previous build
     poetry install --extras all
-    poetry run python postbuild_dev.py
     ```
 
 #### Use of developer mode installation
