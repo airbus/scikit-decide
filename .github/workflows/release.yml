@@ -638,9 +638,11 @@ jobs:
           git checkout binder
           # Specify scikit-decide dependency for the release binder env
           sed -i -e "s/\(scikit-decide[^=]*==\).*/\1${SKDECIDE_VERSION}/" environment.yml
+          # Unset nightly_build_url to avoid reinstalling master version over release
+          sed -i -e 's/nightly_build_url="[^"]*"/nightly_build_url=""/' postBuild
           git config user.name "Actions"
           git config user.email "actions@github.com"
-          git commit environment.yml -m "Specify scikit-decide used by binder for release ${SKDECIDE_VERSION}"
+          git commit environment.yml postBuild -m "Specify scikit-decide used by binder for release ${SKDECIDE_VERSION}"
           # get sha1 to be used by binder for the environment
           BINDER_RELEASE_ENV_SHA1=$(git rev-parse --verify HEAD)
           echo "BINDER_RELEASE_ENV_SHA1=${BINDER_RELEASE_ENV_SHA1}" >> $GITHUB_ENV
