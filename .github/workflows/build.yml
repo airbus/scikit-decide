@@ -663,7 +663,7 @@ jobs:
       - name: Set env variables for github+binder links in doc
         run: |
           # binder environment repo and branch
-          AUTODOC_BINDER_ENV_GH_REPO_NAME="airbus/scikit-decide"
+          AUTODOC_BINDER_ENV_GH_REPO_NAME=${GITHUB_REPOSITORY}
           AUTODOC_BINDER_ENV_GH_BRANCH="binder"
           # notebooks source repo and branch depending if it is a commit push or a PR
           if [[ $GITHUB_REF == refs/pull* ]];
@@ -779,7 +779,7 @@ jobs:
             });
 
             if (ref_nightly.data.object.sha === master_sha) {
-              return "No new nightly release";
+              return '';
             }
           } catch (err) {
             // The tag does not exist so let's create it
@@ -888,3 +888,33 @@ jobs:
 
           return uploadedAsset.data.browser_download_url;
         result-encoding: string
+
+    - uses: actions/checkout@v3
+      # only if a nightly release occured
+      if: ${{ steps.asset.outputs.result != '' }}
+      with:
+        ref: binder
+
+    - name: Force a rebuild of binder environment
+      # only if a nightly release occured
+      if: ${{ steps.asset.outputs.result != '' }}
+      run: |
+        # update nightly_build_url to install last nightly build over last release
+        sed -i -e 's|nightly_build_url="[^"]*"|nightly_build_url="${{ steps.asset.outputs.result }}"|' postBuild
+        git config user.name "Actions"
+        git config user.email "actions@github.com"
+        git commit postBuild -m "Use scikit-decide last nightly build"
+        git push origin binder
+
+    - uses: actions/checkout@v3  # checkout triggering branch to get scripts/trigger_binder.sh
+      # only if a nightly release occured
+      if: ${{ steps.asset.outputs.result != '' }}
+
+    - name: Trigger a build on each BinderHub deployments in the mybinder.org federation
+      # only if a nightly release occured
+      if: ${{ steps.asset.outputs.result != '' }}
+      run: |
+        bash scripts/trigger_binder.sh https://gke.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
+        bash scripts/trigger_binder.sh https://ovh.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
+        bash scripts/trigger_binder.sh https://turing.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
+        bash scripts/trigger_binder.sh https://gesis.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
