@@ -7,6 +7,72 @@
 You need to install [minizinc](https://www.minizinc.org/) (version greater than 2.6) and update the `PATH` environment variable
 so that it can be found by Python. See [minizinc documentation](https://www.minizinc.org/doc-latest/en/installation.html) for more details.
 
+::: tip
+You can easily install minizinc from the command line, which can be useful when on cloud.
+In order to make life easier to cloud users, we reproduce below the necessary lines. Please be careful that this
+is not an official documentation for minizinc and that the following lines can stop working without notice
+as we do not test them automatically.
+:::
+
+#### Linux command line
+On a Linux distribution, you can use the bundled [minizinc AppImage](https://www.minizinc.org/doc-latest/en/installation.html#appimage).
+
+If [FUSE](https://en.wikipedia.org/wiki/Filesystem_in_Userspace) is available:
+```
+mkdir minizinc_install
+curl -o minizinc_install/minizinc -L https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-x86_64.AppImage
+chmod +x minizinc_install/minizinc
+export PATH="$(pwd)/minizinc_install/":$PATH
+minizinc --version
+```
+Else, this is still possible by extracting the files:
+```
+mkdir minizinc_install
+cd minizinc_install
+curl -o minizinc.AppImage -L https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-x86_64.AppImage
+chmod +x minizinc.AppImage
+./minizinc.AppImage --appimage-extract
+cd ..
+export LD_LIBRARY_PATH="$(pwd)/minizinc_install/squashfs-root/usr/lib/":$LD_LIBRARY_PATH
+export PATH="$(pwd)/minizinc_install/squashfs-root/usr/bin/":$PATH
+minizinc --version
+```
+
+#### MacOs command line
+```
+mkdir minizinc_install
+curl -o minizinc.dmg -L https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-bundled.dmg
+hdiutil attach minizinc.dmg
+cp -R /Volumes/MiniZinc*/MiniZincIDE.app minizinc_install/.
+export PATH="$(pwd)/minizinc_install/MiniZincIDE.app/Contents/Resources":$PATH
+minizinc --version
+```
+
+#### Windows command line
+Works on Windows Server 2022 with bash shell:
+```
+mkdir minizinc_install
+curl -o minizinc_setup.exe -L https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-bundled-setup-win64.exe
+cmd //c "minizinc_setup.exe /verysilent /currentuser /norestart /suppressmsgboxes /sp"
+export PATH="~/AppData/Local/Programs/MiniZinc":$PATH
+minizinc --version
+```
+
+#### Skipping minizinc version check
+
+It may happen that you do not want to install minzinc.
+For instance if you need to use only a part of the library which is not relying on minizinc at all,
+especially when not relying on discrete-optimization which is the actual library depending on minizinc.
+
+This can be troublesome as the minizinc binary version is checked by [discrete-optimization](https://airbus.github.io/discrete-optimization) at library import.
+However discrete-optimization provides a way to bypass this check
+by setting the environment variable DO_SKIP_MZN_CHECK:
+```shell
+export DO_SKIP_MZN_CHECK=1
+```
+Please note however that the library is never tested without minizinc (or minizinc versions < 2.6).
+
+
 ### Python 3.7+ environment
 
 The use of a virtual environment for scikit-decide is recommended, and you will need to ensure that the environment use a Python version greater than 3.7.
