@@ -15,3 +15,17 @@ cd ..
 export PATH="$(pwd)/minizinc_install/squashfs-root/usr/bin/":$PATH
 export LD_LIBRARY_PATH="$(pwd)/minizinc_install/squashfs-root/usr/lib":$LD_LIBRARY_PATH
 minizinc --version
+
+# install nightly build (only for master version binder environment)
+nightly_build_url="https://github.com/airbus/scikit-decide/releases/download/nightly/nightly_57_46902c1e.zip"  # to be updated by nightly releases
+# skip if no nightly build set
+if [ ! -z ${nightly_build_url} ]; then
+    # download and unzip
+    wget --output-document=nightly.zip ${nightly_build_url}
+    unzip nightly.zip
+    # get the appropriate wheel from python version
+    wheel_pythonversion_tag=$(python -c 'import sys; print(f"cp{sys.version_info.major}{sys.version_info.minor}")')
+    wheel_path=$(ls dist/scikit_decide*${wheel_pythonversion_tag}*manylinux*.whl)
+    # install scikit-decide with all extras
+    pip install ${wheel_path}[all]
+fi
