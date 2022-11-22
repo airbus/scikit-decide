@@ -1,0 +1,17 @@
+ #!/bin/bash
+
+set -ex
+
+pwd
+ls
+
+# install minizinc
+mkdir minizinc_install
+cd minizinc_install
+curl -o minizinc.AppImage -L https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-x86_64.AppImage
+chmod +x minizinc.AppImage
+./minizinc.AppImage --appimage-extract
+cd ..
+export PATH="$(pwd)/minizinc_install/squashfs-root/usr/bin/":$PATH
+export LD_LIBRARY_PATH="$(pwd)/minizinc_install/squashfs-root/usr/lib":$LD_LIBRARY_PATH
+minizinc --version
