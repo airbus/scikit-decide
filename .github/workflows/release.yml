@@ -322,7 +322,7 @@ jobs:
       run:
         shell: bash
     env:
-      minizinc_path: ~/AppData/Local/Programs/MiniZinc
+      minizinc_config_cmdline: export PATH=$PATH:~/AppData/Local/Programs/MiniZinc
       minizinc_cache_path: ~/AppData/Local/Programs/MiniZinc
       minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-bundled-setup-win64.exe
       minizinc_downloaded_filepath: minizinc_setup.exe
@@ -371,13 +371,9 @@ jobs:
         run: |
           ${{ env.minizinc_install_cmdline }}
 
-      - name: Add MiniZinc to PATH
-        run: |
-          echo ${{ env.minizinc_path }}
-          echo ${{ env.minizinc_path }} >> $GITHUB_PATH
-
       - name: Test minizinc install
         run: |
+          ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
       - name: Install scikit-decide
@@ -388,7 +384,7 @@ jobs:
       - name: Test with pytest
         run: |
           # configure minizinc
-          export PATH=$PATH:${{ env.minizinc_path }}
+          ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
@@ -406,7 +402,7 @@ jobs:
       fail-fast: true
     runs-on: ${{ matrix.os }}
     env:
-      minizinc_path: $(pwd)/bin/MiniZincIDE.app/Contents/Resources
+      minizinc_config_cmdline: export PATH=$PATH:$(pwd)/bin/MiniZincIDE.app/Contents/Resources
       minizinc_cache_path: $(pwd)/bin/MiniZincIDE.app
       minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-bundled.dmg
       minizinc_downloaded_filepath: bin/minizinc.dmg
@@ -458,13 +454,9 @@ jobs:
         run: |
           ${{ env.minizinc_install_cmdline }}
 
-      - name: Add MiniZinc to PATH
-        run: |
-          echo ${{ env.minizinc_path }}
-          echo ${{ env.minizinc_path }} >> $GITHUB_PATH
-
       - name: Test minizinc install
         run: |
+          ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
       - name: Install scikit-decide
@@ -475,7 +467,7 @@ jobs:
       - name: Test with pytest
         run: |
           # configure minizinc
-          export PATH=$PATH:${{ env.minizinc_path }}
+          ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
@@ -493,11 +485,11 @@ jobs:
       fail-fast: true
     runs-on: ${{ matrix.os }}
     env:
-      minizinc_path: $(pwd)/bin
-      minizinc_cache_path: $(pwd)/bin/minizinc
+      minizinc_config_cmdline: export PATH=$PATH:$(pwd)/bin/squashfs-root/usr/bin; export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/bin/squashfs-root/usr/lib
+      minizinc_cache_path: $(pwd)/bin/squashfs-root
       minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-x86_64.AppImage
-      minizinc_downloaded_filepath: bin/minizinc
-      minizinc_install_cmdline: sudo chmod +x bin/minizinc
+      minizinc_downloaded_filepath: bin/minizinc.AppImage
+      minizinc_install_cmdline: cd bin; sudo chmod +x minizinc.AppImage; sudo ./minizinc.AppImage --appimage-extract; cd ..
 
     steps:
       - uses: actions/checkout@v3
@@ -543,13 +535,9 @@ jobs:
         run: |
           ${{ env.minizinc_install_cmdline }}
 
-      - name: Add MiniZinc to PATH
-        run: |
-          echo ${{ env.minizinc_path }}
-          echo ${{ env.minizinc_path }} >> $GITHUB_PATH
-
       - name: Test minizinc install
         run: |
+          ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
       - name: Install scikit-decide
@@ -560,7 +548,7 @@ jobs:
       - name: Test with pytest
         run: |
           # configure minizinc
-          export PATH=$PATH:${{ env.minizinc_path }}
+          ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
@@ -692,7 +680,9 @@ jobs:
           pip install ${wheelfile}[all]
 
       - name: generate documentation
-        run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
+        run: |
+          export DO_SKIP_MZN_CHECK=1  # avoid having to install minizinc for discrete-optimization
+          yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
