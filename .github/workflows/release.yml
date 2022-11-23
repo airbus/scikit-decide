@@ -378,6 +378,7 @@ jobs:
 
       - name: Install scikit-decide
         run: |
+          python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
           pip install ${wheelfile}[all]
 
@@ -461,6 +462,7 @@ jobs:
 
       - name: Install scikit-decide
         run: |
+          python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*.whl)
           pip install ${wheelfile}[all]
 
@@ -542,6 +544,7 @@ jobs:
 
       - name: Install scikit-decide
         run: |
+          python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
           pip install ${wheelfile}[all]
 
@@ -676,6 +679,7 @@ jobs:
 
       - name: Install scikit-decide
         run: |
+          python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
           pip install ${wheelfile}[all]
 
