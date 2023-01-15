@@ -28,19 +28,20 @@ void SK_MCTS_DEFAULT_ROLLOUT_POLICY_CLASS::operator()(
     typename Tsolver::StateNode &n, std::size_t d) const {
   try {
     typename Tsolver::Domain::State current_state;
+    bool termination;
 
     solver.execution_policy().protect(
-        [&solver, &n, &current_state]() {
+        [&solver, &n, &current_state, &termination]() {
           if (solver.debug_logs()) {
             Logger::debug("Launching default rollout policy from state " +
                           n.state.print() +
                           Tsolver::ExecutionPolicy::print_thread());
           }
           current_state = n.state;
+          termination = n.terminal;
         },
         n.mutex);
 
-    bool termination = false;
     std::size_t current_depth = d;
     double reward = 0.0;
     double gamma_n = 1.0;
