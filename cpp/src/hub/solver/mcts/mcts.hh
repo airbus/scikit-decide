@@ -220,8 +220,16 @@ private:
   PolicyFunctor _policy;
 };
 
-/** Graph backup: update Q values using the graph ancestors (rather than only
- * the trajectory leading to n) */
+/** Void rollout policy */
+template <typename Tsolver> class VoidRolloutPolicy {
+public:
+  VoidRolloutPolicy() {}
+  void operator()(Tsolver &solver, const std::size_t *thread_id,
+                  typename Tsolver::StateNode &n, std::size_t d) const {}
+};
+
+/** Graph backup: update Q values using the graph ancestors (rather than
+ * only the trajectory leading to n) */
 template <typename Tsolver> struct GraphBackup {
   void operator()(Tsolver &solver, const std::size_t *thread_id,
                   typename Tsolver::StateNode &n) const;

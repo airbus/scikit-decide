@@ -30,7 +30,7 @@ struct PyMCTSOptions {
 
   enum class ActionSelector { UCB1, BestQValue };
 
-  enum class RolloutPolicy { Random, Custom };
+  enum class RolloutPolicy { Random, Custom, None };
 
   enum class BackPropagator { Graph };
 };
@@ -223,6 +223,11 @@ private:
           skdecide::BestQValueActionSelector<PyMCTSSolver>>();
     }
 
+    template <typename TRolloutPolicy = TrolloutPolicy<PyMCTSSolver>,
+              std::enable_if_t<
+                  std::is_same<TRolloutPolicy, skdecide::DefaultRolloutPolicy<
+                                                   PyMCTSSolver>>::value,
+                  int> = 0>
     std::unique_ptr<TrolloutPolicy<PyMCTSSolver>>
     init_rollout_policy(const CustomPolicyFunctor &custom_policy) {
       if (!custom_policy) { // use random rollout policy
@@ -244,6 +249,16 @@ private:
               }
             });
       }
+    }
+
+    template <typename TRolloutPolicy = TrolloutPolicy<PyMCTSSolver>,
+              std::enable_if_t<
+                  std::is_same<TRolloutPolicy, skdecide::VoidRolloutPolicy<
+                                                   PyMCTSSolver>>::value,
+                  int> = 0>
+    std::unique_ptr<TrolloutPolicy<PyMCTSSolver>>
+    init_rollout_policy(const CustomPolicyFunctor &custom_policy) {
+      return std::make_unique<TrolloutPolicy<PyMCTSSolver>>();
     }
 
     std::unique_ptr<TbackPropagator<PyMCTSSolver>> init_back_propagator() {
@@ -507,11 +522,14 @@ private:
   struct RolloutPolicySelector {
     PyMCTSOptions::RolloutPolicy _rollout_policy;
     CustomPolicyFunctor &_custom_policy_functor;
+    const HeuristicFunctor &_heuristic_functor;
 
     RolloutPolicySelector(PyMCTSOptions::RolloutPolicy rollout_policy,
-                          CustomPolicyFunctor &custom_policy_functor)
+                          CustomPolicyFunctor &custom_policy_functor,
+                          const HeuristicFunctor &heuristic_functor)
         : _rollout_policy(rollout_policy),
-          _custom_policy_functor(custom_policy_functor) {}
+          _custom_policy_functor(custom_policy_functor),
+          _heuristic_functor(heuristic_functor) {}
 
     template <typename Propagator> struct Select {
       template <typename... Args>
@@ -537,9 +555,19 @@ private:
                 "rollout policy functor");
           }
           break;
+        case PyMCTSOptions::RolloutPolicy::None:
+          Propagator::template PushTemplate<VoidRolloutPolicy>::Forward(
+              args...);
+          if (!This._heuristic_functor) {
+            Logger::warn("Requesting MCTS void rollout policy but giving "
+                         "null heuristic functor: leaf node values will be "
+                         "initialized and back-propagated using only "
+                         "default values (e.g. 0)");
+          }
+          break;
         default:
           Logger::error("Available default policies: RolloutPolicy.Random, "
-                        "RolloutPolicy.Custom");
+                        "RolloutPolicy.Custom, RolloutPolicy.None");
           throw std::runtime_error(
               "Available default policies: RolloutPolicy.Random, "
               "RolloutPolicy.Custom");
@@ -581,6 +609,7 @@ private:
     PyMCTSOptions::RolloutPolicy _rollout_policy;
     PyMCTSOptions::BackPropagator _back_propagator;
     CustomPolicyFunctor &_custom_policy_functor;
+    const HeuristicFunctor &_heuristic_functor;
 
     PartialSolverInstantiator(
         std::unique_ptr<BaseImplementation> &implementation,
@@ -588,12 +617,14 @@ private:
         PyMCTSOptions::ActionSelector action_selector_execution,
         PyMCTSOptions::RolloutPolicy rollout_policy,
         PyMCTSOptions::BackPropagator back_propagator,
-        CustomPolicyFunctor &custom_policy_functor)
+        CustomPolicyFunctor &custom_policy_functor,
+        const HeuristicFunctor &heuristic_functor)
         : _implementation(implementation),
           _action_selector_optimization(action_selector_optimization),
           _action_selector_execution(action_selector_execution),
           _rollout_policy(rollout_policy), _back_propagator(back_propagator),
-          _custom_policy_functor(custom_policy_functor) {}
+          _custom_policy_functor(custom_policy_functor),
+          _heuristic_functor(heuristic_functor) {}
 
     template <typename... TypeInstantiations> struct TypeList {
       template <template <typename...> class... TemplateInstantiations>

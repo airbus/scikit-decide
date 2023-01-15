@@ -15,7 +15,8 @@ PyMCTSSolver::PartialSolverInstantiator::TypeList<TypeInstantiations...>::
   TemplateInstantiator::select(
       ActionSelector(This._action_selector_optimization),
       ActionSelector(This._action_selector_execution),
-      RolloutPolicySelector(This._rollout_policy, This._custom_policy_functor),
+      RolloutPolicySelector(This._rollout_policy, This._custom_policy_functor,
+                            This._heuristic_functor),
       BackPropagatorSelector(This._back_propagator),
       typename FullSolverInstantiator::
           template TypeList<TypeInstantiations...>::template TemplateList<
