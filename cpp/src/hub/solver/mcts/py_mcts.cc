@@ -30,7 +30,8 @@ PyMCTSSolver::PyMCTSSolver(
       TreePolicySelector(tree_policy), ExpanderSelector(expander),
       PartialSolverInstantiator(_implementation, action_selector_optimization,
                                 action_selector_execution, rollout_policy,
-                                back_propagator, _filtered_custom_policy))
+                                back_propagator, _filtered_custom_policy,
+                                heuristic))
       .instantiate(domain, time_budget, rollout_budget, max_depth,
                    epsilon_moving_average_window, epsilon, discount,
                    ucb_constant, online_node_garbage, _filtered_custom_policy,
@@ -65,7 +66,8 @@ void init_pymcts(py::module &m) {
   py::enum_<skdecide::PyMCTSOptions::RolloutPolicy>(py_mcts_options,
                                                     "RolloutPolicy")
       .value("Random", skdecide::PyMCTSOptions::RolloutPolicy::Random)
-      .value("Custom", skdecide::PyMCTSOptions::RolloutPolicy::Custom);
+      .value("Custom", skdecide::PyMCTSOptions::RolloutPolicy::Custom)
+      .value("None", skdecide::PyMCTSOptions::RolloutPolicy::None);
 
   py::enum_<skdecide::PyMCTSOptions::BackPropagator>(py_mcts_options,
                                                      "BackPropagator")
