@@ -67,7 +67,7 @@ void init_pymcts(py::module &m) {
                                                     "RolloutPolicy")
       .value("Random", skdecide::PyMCTSOptions::RolloutPolicy::Random)
       .value("Custom", skdecide::PyMCTSOptions::RolloutPolicy::Custom)
-      .value("None", skdecide::PyMCTSOptions::RolloutPolicy::None);
+      .value("Void", skdecide::PyMCTSOptions::RolloutPolicy::Void);
 
   py::enum_<skdecide::PyMCTSOptions::BackPropagator>(py_mcts_options,
                                                      "BackPropagator")

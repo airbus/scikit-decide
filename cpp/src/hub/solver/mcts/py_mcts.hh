@@ -30,7 +30,7 @@ struct PyMCTSOptions {
 
   enum class ActionSelector { UCB1, BestQValue };
 
-  enum class RolloutPolicy { Random, Custom, None };
+  enum class RolloutPolicy { Random, Custom, Void };
 
   enum class BackPropagator { Graph };
 };
@@ -555,7 +555,7 @@ private:
                 "rollout policy functor");
           }
           break;
-        case PyMCTSOptions::RolloutPolicy::None:
+        case PyMCTSOptions::RolloutPolicy::Void:
           Propagator::template PushTemplate<VoidRolloutPolicy>::Forward(
               args...);
           if (!This._heuristic_functor) {
@@ -567,7 +567,7 @@ private:
           break;
         default:
           Logger::error("Available default policies: RolloutPolicy.Random, "
-                        "RolloutPolicy.Custom, RolloutPolicy.None");
+                        "RolloutPolicy.Custom, RolloutPolicy.Void");
           throw std::runtime_error(
               "Available default policies: RolloutPolicy.Random, "
               "RolloutPolicy.Custom");
