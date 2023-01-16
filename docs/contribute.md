@@ -80,11 +80,33 @@ Here are the steps to follow:
         poetry env use 3.8.11
         ```
 
+<<<<<<< HEAD
     - Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
         ```shell
         rm -rf build  # removing previous build
         poetry install --extras all
         ```
+=======
+      - Specify to poetry the python version to use so that it creates the appropriate virtual environment.
+          ```shell
+          poetry env use 3.8.11
+          ```
+
+      - Preinstall gym 0.21.0 with appropriate option to avoid an error during installation
+        (see this [issue](https://github.com/openai/gym/issues/3176)
+        and this [solution](https://github.com/python-poetry/poetry/issues/3433#issuecomment-840509576)):
+          ```shell
+          poetry run python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+          poetry run python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
+          poetry run python -m pip install gym==0.21.0 --no-use-pep517
+          ```
+
+      - Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
+          ```shell
+          rm -rf build  # removing previous build
+          poetry install --extras all
+          ```
+>>>>>>> 8378ec8 (Run pre-commit)
 
 #### Alternate installation with conda + poetry
 
@@ -112,6 +134,23 @@ as it can also be installed by conda via the conda-forge channel.
     conda install -c conda-forge poetry
     ```
 
+<<<<<<< HEAD
+=======
+- Install poetry-dynamic-versioning in poetry root env
+    ```shell
+    poetry self add poetry-dynamic-versioning
+    ```
+
+- Preinstall gym 0.21.0 with appropriate option to avoid an error during installation
+  (see this [issue](https://github.com/openai/gym/issues/3176)
+  and this [solution](https://github.com/python-poetry/poetry/issues/3433#issuecomment-840509576)):
+    ```shell
+    poetry run python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+    poetry run python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
+    poetry run python -m pip install gym==0.21.0 --no-use-pep517
+    ```
+
+>>>>>>> 8378ec8 (Run pre-commit)
 - Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
     ```shell
     rm -rf build  # removing previous build

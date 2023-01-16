@@ -587,6 +587,14 @@ jobs:
 
       - name: Install dependencies
         run: |
+<<<<<<< HEAD
+=======
+          # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
+          python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+          python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
+          python -m pip install gym==0.21.0 --no-use-pep517
+          # install remaining dependencies
+>>>>>>> 8378ec8 (Run pre-commit)
           python -m pip install --upgrade pip
           python -m pip install pytest docopt commonmark
 
