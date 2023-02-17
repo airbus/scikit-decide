@@ -7,8 +7,8 @@
 
 <br>
 <p align="center">
-  <a href="https://github.com/airbus/scikit-decide/actions?query=workflow%3Abuild_test_deploy">
-    <img src="https://img.shields.io/github/workflow/status/airbus/scikit-decide/build_test_deploy?logo=github&label=CI%20status" alt="actions status">
+  <a href="https://github.com/airbus/scikit-decide/actions/workflows/build.yml?query=branch%3Amaster">
+    <img src="https://img.shields.io/github/actions/workflow/status/airbus/scikit-decide/build.yml?branch=master&logo=github&label=CI%20status" alt="actions status">
   </a>
   <a href="https://github.com/airbus/scikit-decide/tags">
     <img src="https://img.shields.io/github/tag/airbus/scikit-decide.svg?label=current%20version" alt="version">
