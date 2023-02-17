@@ -123,5 +123,5 @@ profile = "black"
 all = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "setuptools>=49.2.1", "poetry-dynamic-versioning>=0.13.0"]
+requires = ["poetry-core>=1.0.0,<1.5", "setuptools>=49.2.1", "poetry-dynamic-versioning>=0.13.0"]
 build-backend = "poetry.core.masonry.api"
