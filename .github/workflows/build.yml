@@ -707,8 +707,11 @@ jobs:
 
       - name: generate documentation
         run: |
+          yarn global add vuepress && yarn install
+          export NODE_OPTIONS=--openssl-legacy-provider  # avoid issue with node 18 and current dependencies (ok because no interaction with external network during the build)
           export DO_SKIP_MZN_CHECK=1  # avoid having to install minizinc for discrete-optimization
-          yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
+          yarn docs:build
+          touch docs/.vuepress/dist/.nojekyll
 
       - name: upload as artifact
         uses: actions/upload-artifact@v3
