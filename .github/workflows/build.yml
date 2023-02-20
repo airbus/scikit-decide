@@ -658,8 +658,36 @@ jobs:
         python-version: ["3.7"]
       fail-fast: false
     runs-on: ${{ matrix.os }}
+    env:
+      minizinc_config_cmdline: export PATH=$PATH:$(pwd)/bin/squashfs-root/usr/bin; export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/bin/squashfs-root/usr/lib
+      minizinc_cache_path: $(pwd)/bin/squashfs-root
+      minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-x86_64.AppImage
+      minizinc_downloaded_filepath: bin/minizinc.AppImage
+      minizinc_install_cmdline: cd bin; sudo chmod +x minizinc.AppImage; sudo ./minizinc.AppImage --appimage-extract; cd ..
 
     steps:
+      # install minizinc
+      - name: Create bin/
+        run: mkdir -p bin
+      - name: get MininZinc path to cache
+        id: get-mzn-cache-path
+        run: |
+          echo "path=${{ env.minizinc_cache_path }}" >> $GITHUB_OUTPUT  # expands variables
+      - name: Restore MiniZinc cache
+        id: cache-minizinc
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.get-mzn-cache-path.outputs.path }}
+          key: ${{ env.minizinc_url }}
+      - name: Download MiniZinc
+        if: steps.cache-minizinc.outputs.cache-hit != 'true'
+        run: |
+          curl -o "${{ env.minizinc_downloaded_filepath }}" -L ${{ env.minizinc_url }}
+      - name: Install MiniZinc
+        if: steps.cache-minizinc.outputs.cache-hit != 'true'
+        run: |
+          ${{ env.minizinc_install_cmdline }}
+
       - name: Set env variables for github+binder links in doc
         run: |
           # binder environment repo and branch
@@ -707,7 +735,8 @@ jobs:
 
       - name: generate documentation
         run: |
-          export DO_SKIP_MZN_CHECK=1  # avoid having to install minizinc for discrete-optimization
+          # configure minizinc
+          ${{ env.minizinc_config_cmdline }}
           yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
 
       - name: upload as artifact
