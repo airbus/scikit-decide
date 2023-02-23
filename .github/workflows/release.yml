@@ -27,7 +27,7 @@ jobs:
         run: |
           from os import environ
 
-          python_version = ["3.7", "3.8", "3.9"]
+          python_version = ["3.7", "3.8", "3.9", "3.10"]
           build_dict = { "macos":["macos-10.15"], "ubuntu":["ubuntu-latest"], "windows":["windows-latest"] }
           test_dict = { "macos":["macos-10.15", "macos-11"], "ubuntu":["ubuntu-18.04", "ubuntu-20.04"], "windows":["windows-2019", "windows-2022" ]}
           deploy_test_pypi = "true"
