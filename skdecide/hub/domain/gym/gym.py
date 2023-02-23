@@ -819,6 +819,12 @@ class D(
     pass
 
 
+def check_equality_state(st1, st2):
+    return (isinstance(st1, np.ndarray) and np.array_equal(st1, st2)) or (
+        not isinstance(st1, np.ndarray) and st1 == st2
+    )
+
+
 class DeterministicGymDomain(D):
     """This class wraps a deterministic OpenAI Gym environment (gym.env) as a scikit-decide domain.
 
@@ -869,7 +875,7 @@ class DeterministicGymDomain(D):
         env = memory._context[0]
         if self._set_state is None or self._get_state is None:
             env = deepcopy(env)
-        elif memory._context[4] != self._get_state(env):
+        elif not check_equality_state(memory._context[4], self._get_state(env)):
             self._set_state(env, memory._context[4])
         self._gym_env = env  # Just in case the simulation environment would be different from the planner's environment...
         obs, reward, done, info = env.step(action)
