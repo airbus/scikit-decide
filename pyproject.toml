@@ -101,7 +101,6 @@ all = [ "gym", "numpy", "matplotlib", "simplejson", "joblib", "ray", "stable-bas
   StableBaseline = "skdecide.hub.solver.stable_baselines:StableBaseline [solvers]"
 
 [tool.poetry.dev-dependencies]
-poetry-dynamic-versioning = "^0.13.0"
 pytest = "^6.2.2"
 pytest-cov = "^2.11.1"
 simplejson = "^3.17.2"

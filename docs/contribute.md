@@ -75,6 +75,11 @@ Here are the steps to follow:
         export PATH="$HOME/.local/bin:$PATH"  # add path to poetry
         ```
 
+    - Install poetry-dynamic-versioning in poetry root env
+        ```shell
+        poetry self add poetry-dynamic-versioning
+        ```
+
     - Specify to poetry the python version to use so that it creates the appropriate virtual environment.
         ```shell
         poetry env use 3.8.11
@@ -110,6 +115,11 @@ as it can also be installed by conda via the conda-forge channel.
 - Install poetry in the environment
     ```shell
     conda install -c conda-forge poetry
+    ```
+
+- Install poetry-dynamic-versioning in poetry root env
+    ```shell
+    poetry self add poetry-dynamic-versioning
     ```
 
 - Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
