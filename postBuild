@@ -17,7 +17,7 @@ export LD_LIBRARY_PATH="$(pwd)/minizinc_install/squashfs-root/usr/lib":$LD_LIBRA
 minizinc --version
 
 # install nightly build (only for master version binder environment)
-nightly_build_url=""  # to be updated by nightly releases
+nightly_build_url="https://github.com/airbus/scikit-decide/releases/download/nightly/nightly_77_c8c74467.zip"  # to be updated by nightly releases
 # skip if no nightly build set
 if [ ! -z ${nightly_build_url} ]; then
     # download and unzip
