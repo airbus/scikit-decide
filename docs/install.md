@@ -122,3 +122,25 @@ Alternatively you can choose to only install the core library, which is enough i
 pip install -U pip
 pip install -U scikit-decide
 ```
+
+## Troubleshooting
+
+You may encounter an [error when installing `gym==0.21.0`](https://github.com/openai/gym/issues/3176) which happens to be a dependency of `scikit-decide[all]`. 
+This is because its installation does not respect PEP 517 which is enforced by default by last versions of pip and setuptools. 
+The solution is to install it beforehand:
+```shell
+# preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
+python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
+python -m pip install gym==0.21.0 --no-use-pep517
+# upgrade pip
+python -m pip install --upgrade pip
+# install scikit-decide and remaining dependencies
+pip install -U scikit-decide[all]
+```
+
+::: tip Note
+Newer versions of gym or [gymnasium](https://gymnasium.farama.org/), typically greater than 0.26 are not yet possible 
+because of a conflict between [`ray[rllib]`](https://github.com/ray-project/ray/issues/34396) 
+and [`stable-baselines3`](https://github.com/DLR-RM/stable-baselines3/issues/1452).
+:::
