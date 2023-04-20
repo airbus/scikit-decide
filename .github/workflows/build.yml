@@ -271,7 +271,7 @@ jobs:
           # cross-compile for macosx-10.15
           export MACOSX_DEPLOYMENT_TARGET=10.15
           python -m build --sdist --wheel "--config-setting=--plat-name=macosx_10_15_x86_64"
-          # hack wheel name to be recognized by macos 10.15
+          # hack wheel name to be recognized by macos 10.15
           wheel_name=$(ls dist/*.whl)
           new_wheel_name=$(echo $wheel_name | sed -e 's/macosx_.*_x86_64.whl/macosx_10_15_x86_64.whl/')
           echo "mv $wheel_name $new_wheel_name"
@@ -424,6 +424,11 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
+          python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+          python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
+          python -m pip install gym==0.21.0 --no-use-pep517
+          # install remaining dependencies
           python -m pip install --upgrade pip
           python -m pip install pytest
 
@@ -506,6 +511,11 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
+          python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+          python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
+          python -m pip install gym==0.21.0 --no-use-pep517
+          # install remaining dependencies
           python -m pip install --upgrade pip
           python -m pip install pytest
 
@@ -588,6 +598,11 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
+          python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+          python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
+          python -m pip install gym==0.21.0 --no-use-pep517
+          # install remaining dependencies          
           python -m pip install --upgrade pip
           python -m pip install pytest docopt commonmark
 
@@ -681,7 +696,7 @@ jobs:
           echo "AUTODOC_BINDER_ENV_GH_BRANCH=${AUTODOC_BINDER_ENV_GH_BRANCH}" >> $GITHUB_ENV
           echo "AUTODOC_NOTEBOOKS_REPO_URL=${AUTODOC_NOTEBOOKS_REPO_URL}" >> $GITHUB_ENV
           echo "AUTODOC_NOTEBOOKS_BRANCH=${AUTODOC_NOTEBOOKS_BRANCH}" >> $GITHUB_ENV
-          # check computed variables
+          # check computed variables
           echo "Binder env: ${AUTODOC_BINDER_ENV_GH_REPO_NAME}/${AUTODOC_BINDER_ENV_GH_BRANCH}"
           echo "Notebooks source: ${AUTODOC_NOTEBOOKS_REPO_URL}/tree/${AUTODOC_NOTEBOOKS_BRANCH}"
 
@@ -702,6 +717,13 @@ jobs:
 
       - name: Install scikit-decide
         run: |
+          # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
+          python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+          python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
+          python -m pip install gym==0.21.0 --no-use-pep517
+          # upgrade pip
+          python -m pip install --upgrade pip
+          # find proper wheel and install it
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
           pip install ${wheelfile}[all]
@@ -903,7 +925,7 @@ jobs:
       # only if a nightly release occured
       if: ${{ steps.asset.outputs.result != '' }}
       run: |
-        # update nightly_build_url to install last nightly build over last release
+        # update nightly_build_url to install last nightly build over last release
         sed -i -e 's|nightly_build_url="[^"]*"|nightly_build_url="${{ steps.asset.outputs.result }}"|' postBuild
         git config user.name "Actions"
         git config user.email "actions@github.com"
