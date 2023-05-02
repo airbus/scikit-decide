@@ -133,8 +133,9 @@ The solution is to install it beforehand:
 python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
 python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
 python -m pip install gym==0.21.0 --no-use-pep517
-# upgrade pip
+# preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also install gym > 0.21
 python -m pip install --upgrade pip
+python -m pip install "ray[rllib]<2.3.0"
 # install scikit-decide and remaining dependencies
 pip install -U scikit-decide[all]
 ```
