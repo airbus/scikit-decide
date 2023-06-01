@@ -28,8 +28,8 @@ jobs:
           from os import environ
 
           python_version = ["3.7", "3.8", "3.9", "3.10"]
-          build_dict = { "macos":["macos-10.15"], "ubuntu":["ubuntu-latest"], "windows":["windows-latest"] }
-          test_dict = { "macos":["macos-10.15", "macos-11"], "ubuntu":["ubuntu-22.04", "ubuntu-20.04"], "windows":["windows-2019", "windows-2022" ]}
+          build_dict = { "macos":["macos-11"], "ubuntu":["ubuntu-latest"], "windows":["windows-latest"] }
+          test_dict = { "macos":["macos-12", "macos-11"], "ubuntu":["ubuntu-22.04", "ubuntu-20.04"], "windows":["windows-2019", "windows-2022" ]}
           deploy_test_pypi = "true"
 
           if "${{ contains(github.event.head_commit.message, '[ci: skip-deploy-test-pypi]') }}" == "true":
