@@ -131,6 +131,7 @@ The solution is to install it beforehand:
 ```shell
 # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
 python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+python -m pip install "setuptools<67"  # starting with setuptools 67, gym 0.21.0 is not intallable anymore
 python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
 python -m pip install gym==0.21.0 --no-use-pep517
 # preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also install gym > 0.21
