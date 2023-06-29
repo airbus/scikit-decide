@@ -90,6 +90,7 @@ Here are the steps to follow:
         and this [solution](https://github.com/python-poetry/poetry/issues/3433#issuecomment-840509576)):
           ```shell
           poetry run python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+          poetry run python -m pip install "setuptools<67"  # starting with setuptools 67, gym 0.21.0 is not intallable anymore
           poetry run python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
           poetry run python -m pip install gym==0.21.0 --no-use-pep517
           ```
@@ -136,6 +137,7 @@ as it can also be installed by conda via the conda-forge channel.
   and this [solution](https://github.com/python-poetry/poetry/issues/3433#issuecomment-840509576)):
     ```shell
     poetry run python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
+    poetry run python -m pip install "setuptools<67"  # starting with setuptools 67, gym 0.21.0 is not intallable anymore
     poetry run python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
     poetry run python -m pip install gym==0.21.0 --no-use-pep517
     ```
