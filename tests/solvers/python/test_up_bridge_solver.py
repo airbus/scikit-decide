@@ -5,15 +5,15 @@
 import pytest
 import sys
 
-from skdecide.hub.domain.up import UPDomain, SkUPAction
-from skdecide.hub.solver.up import UPSolver
-
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
 def test_up_bridge_solver_classic():
     noexcept = True
 
     try:
+        from skdecide.hub.domain.up import UPDomain, SkUPAction
+        from skdecide.hub.solver.up import UPSolver
+
         import unified_planning
         from unified_planning.shortcuts import UserType, BoolType, OneshotPlanner
         from unified_planning.plans import ActionInstance

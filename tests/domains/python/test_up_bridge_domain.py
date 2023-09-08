@@ -6,8 +6,6 @@ import pytest
 import sys
 
 import gym
-from skdecide.hub.domain.up import UPDomain
-from skdecide.hub.solver.lazy_astar import LazyAstar
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
@@ -15,6 +13,9 @@ def test_up_bridge_domain():
     noexcept = True
 
     try:
+        from skdecide.hub.domain.up import UPDomain
+        from skdecide.hub.solver.lazy_astar import LazyAstar
+
         import unified_planning
         from unified_planning.shortcuts import Fluent, InstantaneousAction, Not
 
