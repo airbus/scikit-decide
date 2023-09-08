@@ -70,13 +70,13 @@ def test_up_bridge_domain():
         print(e)
         noexcept = False
     assert (
-        LazyAstar.check_domain(domain)
+        noexcept
+        and LazyAstar.check_domain(domain)
         and len(action_space._elements) == 3
         and all(
             isinstance(s, gym.spaces.Discrete) and s.n == 2
             for s in observation_space._gym_space.spaces.values()
         )
-        and noexcept
         and step == 2
         and p[0].up_action == b
         and p[1].up_action == c

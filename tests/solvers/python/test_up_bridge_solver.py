@@ -70,7 +70,7 @@ def test_up_bridge_solver_classic():
     except Exception as e:
         print(e)
         noexcept = False
-    assert UPSolver.check_domain(domain) and noexcept and step == 9 and p == ep
+    assert noexcept and UPSolver.check_domain(domain) and step == 9 and p == ep
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
@@ -141,8 +141,8 @@ def test_up_bridge_solver_numeric():
         print(e)
         noexcept = False
     assert (
-        UPSolver.check_domain(domain)
-        and noexcept
+        noexcept
+        and UPSolver.check_domain(domain)
         and step == 2
         and p[0].up_action == b
         and p[1].up_action == c
