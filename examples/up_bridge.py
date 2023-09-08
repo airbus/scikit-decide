@@ -15,7 +15,6 @@ from unified_planning.shortcuts import (
     InstantaneousAction,
     Not,
 )
-from unified_planning.engines import PlanGenerationResultStatus
 
 from skdecide.utils import rollout
 

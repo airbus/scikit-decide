@@ -2,17 +2,18 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
+import gym
 
 import unified_planning as up
 from unified_planning.model.state import UPState
 
 from skdecide.core import ImplicitSpace, Space, Value
 from skdecide.domains import DeterministicPlanningDomain
-from skdecide.hub.space.gym import ListSpace, MultiBinarySpace
+from skdecide.hub.space.gym import ListSpace, DictSpace
 from skdecide.utils import logger
 
-from unified_planning.model import UPState, InstantaneousAction, Problem
+from unified_planning.model import Problem, UPState, InstantaneousAction, FNode
 from unified_planning.plans import ActionInstance
 from unified_planning.model.metrics import (
     MaximizeExpressionOnFinalState,
@@ -76,10 +77,21 @@ class SkUPAction:
         )
 
     def __hash__(self):
-        return hash(self.up_action)
+        return (
+            hash(self._up_action)
+            if isinstance(self._up_action, InstantaneousAction)
+            else hash(
+                tuple([self._up_action.action, self._up_action.actual_parameters])
+            )
+        )
 
     def __eq__(self, other):
-        return self.up_action == other.up_action
+        return (
+            self._up_action == other._up_action
+            if isinstance(self._up_action, InstantaneousAction)
+            else tuple([self._up_action.action, self._up_action.actual_parameters])
+            == tuple([other._up_action.action, other._up_action.actual_parameters])
+        )
 
     def __repr__(self) -> str:
         return repr(self._up_action)
@@ -103,11 +115,19 @@ class UPDomain(D):
         Using this class requires unified_planning to be installed.
     """
 
-    def __init__(self, problem: Problem, **params):
+    def __init__(
+        self,
+        problem: Problem,
+        int_fluent_domains: Dict[FNode, int] = None,
+        real_fluent_domains: Dict[FNode, Tuple[float, float]] = None,
+        **params,
+    ):
         """Initialize UPDomain.
 
         # Parameters
         problem: The Unified Planning problem (Problem) to wrap.
+        int_fluent_domains: The ranges of the int fluents (must be provided only if get_observation_space() is used)
+        real_fluent_domains: The (low, high) ranges of the real fluents (must be provided only if get_observation_space() is used)
         params: Optional parameters to pass to the UP sequential simulator
         """
         self._problem = problem
@@ -119,6 +139,8 @@ class UPDomain(D):
         except UPValueError:
             self._total_cost = None
         self._transition_costs = {}
+        self._int_fluent_domains = int_fluent_domains
+        self._real_fluent_domains = real_fluent_domains
 
     def _get_next_state(self, memory: D.T_state, action: D.T_event) -> D.T_state:
         if self._total_cost is not None:
@@ -174,18 +196,21 @@ class UPDomain(D):
     def _get_action_space_(self) -> Space[D.T_event]:
         return ListSpace(
             [
-                SkUPAction(a)
+                SkUPAction(a[2])
                 for a in GrounderHelper(self._problem).get_grounded_actions()
+                if a[2] is not None
             ]
         )
 
     def _get_applicable_actions_from(self, memory: D.T_state) -> Space[D.T_event]:
-        app_actions = []
-        for action, params in self._simulator.get_applicable_actions(memory.up_state):
-            app_actions.append(
+        return ListSpace(
+            [
                 SkUPAction(self._simulator._ground_action(action, params))
-            )
-        return ListSpace(app_actions)
+                for action, params in self._simulator.get_applicable_actions(
+                    memory.up_state
+                )
+            ]
+        )
 
     def _get_goals_(self) -> Space[D.T_observation]:
         return ImplicitSpace(lambda s: self._is_terminal(s))
@@ -194,5 +219,15 @@ class UPDomain(D):
         return SkUPState(self._simulator.get_initial_state())
 
     def _get_observation_space_(self) -> Space[D.T_observation]:
-        # TODO: not clear what to do here, it will depend on the algorithm
-        return MultiBinarySpace(len(self._initial_state_dict))
+        return DictSpace(
+            {
+                repr(k): gym.spaces.Discrete(2)
+                if v.is_bool_constant()
+                else gym.spaces.Discrete(self._int_fluent_domains[v])
+                if v.is_int_constant()
+                else gym.spaces.Box(
+                    self._real_fluent_domains[v][0], self._real_fluent_domains[v][1]
+                )
+                for k, v in self._simulator.get_initial_state()._values.items()
+            }
+        )
