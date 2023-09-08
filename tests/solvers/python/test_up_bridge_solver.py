@@ -127,7 +127,7 @@ def test_up_bridge_solver_numeric():
 
         with UPSolver(
             operation_mode=OneshotPlanner,
-            name="enhsp-opt",
+            name="fast-downward-opt",
         ) as solver:
             UPDomain.solve_with(solver, domain_factory)
             s = domain.get_initial_state()
