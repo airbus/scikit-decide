@@ -78,6 +78,9 @@ def test_up_bridge_solver_numeric():
     noexcept = True
 
     try:
+        from skdecide.hub.domain.up import UPDomain
+        from skdecide.hub.solver.up import UPSolver
+
         import unified_planning
         from unified_planning.shortcuts import (
             OneshotPlanner,
