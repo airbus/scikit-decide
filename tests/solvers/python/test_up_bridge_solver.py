@@ -2,25 +2,22 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import pytest
+import sys
+
 from skdecide.hub.domain.up import UPDomain, SkUPAction
 from skdecide.hub.solver.up import UPSolver
 
-import unified_planning
-from unified_planning.shortcuts import (
-    UserType,
-    BoolType,
-    OneshotPlanner,
-    Fluent,
-    InstantaneousAction,
-    Not,
-)
-from unified_planning.plans import ActionInstance
 
-
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
 def test_up_bridge_solver_classic():
     noexcept = True
 
     try:
+        import unified_planning
+        from unified_planning.shortcuts import UserType, BoolType, OneshotPlanner
+        from unified_planning.plans import ActionInstance
+
         Location = UserType("Location")
         robot_at = unified_planning.model.Fluent("robot_at", BoolType(), l=Location)
         connected = unified_planning.model.Fluent(
@@ -76,10 +73,19 @@ def test_up_bridge_solver_classic():
     assert UPSolver.check_domain(domain) and noexcept and step == 9 and p == ep
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
 def test_up_bridge_solver_numeric():
     noexcept = True
 
     try:
+        import unified_planning
+        from unified_planning.shortcuts import (
+            OneshotPlanner,
+            Fluent,
+            InstantaneousAction,
+            Not,
+        )
+
         x = Fluent("x")
         y = Fluent("y")
 
