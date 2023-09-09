@@ -120,7 +120,7 @@ class UPDomain(D):
         problem: Problem,
         int_fluent_domains: Dict[FNode, int] = None,
         real_fluent_domains: Dict[FNode, Tuple[float, float]] = None,
-        **params,
+        **simulator_params,
     ):
         """Initialize UPDomain.
 
@@ -128,11 +128,11 @@ class UPDomain(D):
         problem: The Unified Planning problem (Problem) to wrap.
         int_fluent_domains: The ranges of the int fluents (must be provided only if get_observation_space() is used)
         real_fluent_domains: The (low, high) ranges of the real fluents (must be provided only if get_observation_space() is used)
-        params: Optional parameters to pass to the UP sequential simulator
+        simulator_params: Optional parameters to pass to the UP sequential simulator
         """
         self._problem = problem
         self._simulator = UPSequentialSimulator(
-            problem, error_on_failed_checks=True, **params
+            problem, error_on_failed_checks=True, **simulator_params
         )
         try:
             self._total_cost = FluentExp(problem.fluent("total-cost"))

@@ -2,6 +2,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import sys
 from skdecide.hub.domain.up import UPDomain
 from skdecide.hub.solver.up import UPSolver
 from skdecide.hub.solver.lazy_astar import LazyAstar
@@ -64,7 +65,11 @@ domain = domain_factory()
 ## Step 3: solving the UP problem with scikit-decide's UP engine
 
 if UPSolver.check_domain(domain):
-    with UPSolver(operation_mode=OneshotPlanner, name="pyperplan") as solver:
+    with UPSolver(
+        operation_mode=OneshotPlanner,
+        name="pyperplan",
+        engine_params={"output_stream": sys.stdout},
+    ) as solver:
         UPDomain.solve_with(solver, domain_factory)
         rollout(
             domain,
@@ -128,6 +133,7 @@ if UPSolver.check_domain(domain):
     with UPSolver(
         operation_mode=OneshotPlanner,
         name="enhsp-opt",
+        engine_params={"output_stream": sys.stdout},
     ) as solver:
         UPDomain.solve_with(solver, domain_factory)
         rollout(
