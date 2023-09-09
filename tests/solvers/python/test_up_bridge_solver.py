@@ -2,6 +2,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import platform
 import pytest
 import sys
 
@@ -54,7 +55,11 @@ def test_up_bridge_solver_classic():
         domain_factory = lambda: UPDomain(problem)
         domain = domain_factory()
 
-        with UPSolver(operation_mode=OneshotPlanner, name="pyperplan") as solver:
+        with UPSolver(
+            operation_mode=OneshotPlanner,
+            name="pyperplan",
+            engine_params={"output_stream": sys.stdout},
+        ) as solver:
             UPDomain.solve_with(solver, domain_factory)
             s = domain.get_initial_state()
             step = 0
@@ -73,7 +78,10 @@ def test_up_bridge_solver_classic():
     assert noexcept and UPSolver.check_domain(domain) and step == 9 and p == ep
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
+@pytest.mark.skipif(
+    sys.version_info < (3, 10) or platform.system() == "Windows",
+    reason="requires python3.10 or higher and any OS different from Windows",
+)
 def test_up_bridge_solver_numeric():
     noexcept = True
 
@@ -125,9 +133,11 @@ def test_up_bridge_solver_numeric():
         domain_factory = lambda: UPDomain(problem)
         domain = domain_factory()
 
+        # Cannot run on Windows: see https://github.com/aiplan4eu/up-fast-downward/issues/15
         with UPSolver(
             operation_mode=OneshotPlanner,
             name="fast-downward-opt",
+            engine_params={"output_stream": sys.stdout},
         ) as solver:
             UPDomain.solve_with(solver, domain_factory)
             s = domain.get_initial_state()
