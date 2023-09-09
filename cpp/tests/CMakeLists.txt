@@ -16,7 +16,7 @@ MACRO(skdecide_test name)
     ADD_EXECUTABLE(test-${name} test_${name}.cc $<TARGET_OBJECTS:tests-main>)
     TARGET_INCLUDE_DIRECTORIES(test-${name} PRIVATE ${INCLUDE_DIRS})
     TARGET_LINK_LIBRARIES(test-${name}
-                            PRIVATE Catch2::Catch2 ${LIBS}
+                            PRIVATE Catch2::Catch2WithMain ${LIBS}
                             INTERFACE ${INTERFACES})
     CATCH_DISCOVER_TESTS(test-${name})
 ENDMACRO ()
