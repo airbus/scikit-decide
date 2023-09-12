@@ -145,7 +145,7 @@ if UPSolver.check_domain(domain):
             outcome_formatter=None,
         )
 
-## Step 4: solving the UP problem with scikit-decide's A* algorithm
+# Example 3: Solving the same UP numeric problem but with scikit-decide's A* algorithm
 
 print(
     "\n\n=== EXAMPLE 3: Solving UP's numeric example using skdecide's LazyAstar solver ===\n"
