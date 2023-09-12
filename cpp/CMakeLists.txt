@@ -82,7 +82,9 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
 ENDIF ()
 
 IF (BUILD_TESTS AND NOT ONLY_PYTHON)
-    SET(CATCH2_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/sdk/Catch2/single_include/catch2)
+    SET(CATCH2_INCLUDE_DIR
+        ${CMAKE_BINARY_DIR}/sdk/Catch2/generated-includes
+        ${CMAKE_SOURCE_DIR}/sdk/Catch2/src)
     ADD_SUBDIRECTORY(sdk/Catch2)
 ENDIF()
 
