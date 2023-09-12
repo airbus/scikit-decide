@@ -432,6 +432,8 @@ jobs:
           # preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also install gym > 0.21
           python -m pip install --upgrade pip
           python -m pip install "ray[rllib]<2.3.0"
+          # install shimmy because it is needed by stable baselines3 >= 2.0 to work wuth gym==0.21.0
+          python -m pip install shimmy
           # install remaining dependencies
           python -m pip install pytest
 
@@ -523,6 +525,8 @@ jobs:
           # preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also install gym > 0.21
           python -m pip install --upgrade pip
           python -m pip install "ray[rllib]<2.3.0"
+          # install shimmy because it is needed by stable baselines3 >= 2.0 to work wuth gym==0.21.0
+          python -m pip install shimmy
           # install remaining dependencies
           python -m pip install pytest
 
@@ -614,6 +618,8 @@ jobs:
           # preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also install gym > 0.21
           python -m pip install --upgrade pip
           python -m pip install "ray[rllib]<2.3.0"
+          # install shimmy because it is needed by stable baselines3 >= 2.0 to work wuth gym==0.21.0
+          python -m pip install shimmy
           # install remaining dependencies
           python -m pip install pytest docopt commonmark
 
@@ -737,6 +743,8 @@ jobs:
           # preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also install gym > 0.21
           python -m pip install --upgrade pip
           python -m pip install "ray[rllib]<2.3.0"
+          # install shimmy because it is needed by stable baselines3 >= 2.0 to work wuth gym==0.21.0
+          python -m pip install shimmy
           # find proper wheel and install it
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
