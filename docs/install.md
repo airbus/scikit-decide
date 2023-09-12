@@ -132,11 +132,14 @@ The solution is to install it beforehand:
 # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
 python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
 python -m pip install "setuptools<67"  # starting with setuptools 67, gym 0.21.0 is not intallable anymore
+python -m pip install "importlib-metadata<5" "virtualenv==20.16.6"  # cannot import gym with importlib-metadata >= 5 and python<3.8
 python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
 python -m pip install gym==0.21.0 --no-use-pep517
 # preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also install gym > 0.21
 python -m pip install --upgrade pip
 python -m pip install "ray[rllib]<2.3.0"
+# preinstall stable-baselines3<2.0.0 because starting from 2.0.0, stable-baselines3 requires gym > 0.26
+python -m pip install "stable-baselines3<2.0.0"
 # install scikit-decide and remaining dependencies
 pip install -U scikit-decide[all]
 ```
