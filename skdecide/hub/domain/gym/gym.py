@@ -710,7 +710,7 @@ class GymDiscreteActionDomain(UnrestrictedActions):
             bounded = action_space.bounded_below & action_space.bounded_above
 
             it = np.nditer(action_space.low, flags=["multi_index"])
-            for p in it:
+            for _ in it:
                 index = it.multi_index
 
                 if unbounded[index]:
