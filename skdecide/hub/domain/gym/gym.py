@@ -12,6 +12,8 @@ from collections import (  # TODO: replace with `from typing import NamedTuple`?
     namedtuple,
 )
 from copy import deepcopy
+from itertools import product
+from math import pi, tan
 from typing import Any, Callable, List, Optional
 
 import gym
@@ -700,30 +702,50 @@ class GymDiscreteActionDomain(UnrestrictedActions):
         self, action_space: gym.spaces.Space
     ) -> D.T_agent[Space[D.T_event]]:
         if isinstance(action_space, gym.spaces.box.Box):
-            nb_elements = 1
-            for dim in action_space.shape:
-                nb_elements *= dim
-            actions = []
-            for l, h in np.nditer([action_space.low, action_space.high]):
-                if l == -float("inf") or h == float("inf"):
-                    actions.append(
-                        [
-                            gym.spaces.box.Box(low=l, high=h).sample()
-                            for i in range(self._discretization_factor)
+            ticks = []
+
+            unbounded = ~action_space.bounded_below & ~action_space.bounded_above
+            upp_bounded = ~action_space.bounded_below & action_space.bounded_above
+            low_bounded = action_space.bounded_below & ~action_space.bounded_above
+            bounded = action_space.bounded_below & action_space.bounded_above
+
+            it = np.nditer(action_space.low, flags=["multi_index"])
+            for _ in it:
+                index = it.multi_index
+
+                if unbounded[index]:
+                    l = [
+                        tan(0.5 * pi * x)
+                        for x in np.linspace(-1, 1, self._discretization_factor + 2)[
+                            1:-1
                         ]
+                    ]
+                elif upp_bounded[index]:
+                    l = [
+                        action_space.high[index] + tan(0.5 * pi * x)
+                        for x in np.linspace(
+                            -1, 0, self._discretization_factor + 1, endpoint=True
+                        )[1:]
+                    ]
+                elif low_bounded[index]:
+                    l = [
+                        action_space.low[index] + tan(0.5 * pi * x)
+                        for x in np.linspace(
+                            0, 1, self._discretization_factor + 1, endpoint=True
+                        )[:-1]
+                    ]
+                elif bounded[index]:
+                    l = np.linspace(
+                        action_space.low[index],
+                        action_space.high[index],
+                        self._discretization_factor,
                     )
                 else:
-                    actions.append(
-                        [
-                            l + ((h - l) / (self._discretization_factor - 1)) * i
-                            for i in range(self._discretization_factor)
-                        ]
-                    )
-            alist = []
-            self._generate_box_action_combinations(
-                actions, action_space.shape, action_space.dtype, 0, [], alist
-            )
-            return ListSpace(alist)
+                    raise ValueError("Invalid case")
+
+                ticks.append(l)
+
+            return ListSpace(product(*ticks))
         elif isinstance(action_space, gym.spaces.discrete.Discrete):
             return ListSpace([i for i in range(action_space.n)])
         elif isinstance(action_space, gym.spaces.multi_discrete.MultiDiscrete):
@@ -780,28 +802,6 @@ class GymDiscreteActionDomain(UnrestrictedActions):
             raise RuntimeError(
                 "Unknown Gym space element of type " + str(type(action_space))
             )
-
-    def _generate_box_action_combinations(
-        self, actions, shape, dtype, index, alist, rlist
-    ):
-        if index < len(actions):
-            for a in actions[index]:
-                clist = list(alist)
-                clist.append(a)
-                self._generate_box_action_combinations(
-                    actions, shape, dtype, index + 1, clist, rlist
-                )
-        else:
-            ar = np.ndarray(shape=shape, dtype=dtype)
-            if len(shape) == 1:
-                ar[0] = alist[0]
-            else:
-                k = 0
-                for (i,) in np.nditer(ar, op_flags=["readwrite"]):
-                    print(str(i))
-                    i = alist[k]
-                    k += 1
-            rlist += [ar]
 
 
 class D(
