@@ -15,7 +15,7 @@ dependencies:
     - matplotlib
     - ipywidgets
     - ipympl
-    - scikit-decide[all]==0.9.6
+    - scikit-decide[all]==0.9.7
     - nbgitpuller
     - openap
     - pygeodesy
