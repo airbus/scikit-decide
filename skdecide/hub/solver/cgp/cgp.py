@@ -201,7 +201,7 @@ def denorm(vals, types):
         return out
 
 
-class CGPWrapper(Solver, DeterministicPolicies, Restorable):
+class CGPWrapper(Solver, DeterministicPolicies):
     T_domain = D
 
     def __init__(
@@ -326,12 +326,6 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
         return True
-
-    def _save(self, path: str) -> None:
-        pass  # TODO
-
-    def _load(self, path: str) -> None:
-        pass  # TODO
 
     def _get_default_function_lib(self):
         return [
