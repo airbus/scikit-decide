@@ -21,6 +21,7 @@ class CGPES:
         evaluator,
         folder="genomes",
         num_cpus=1,
+        verbose=True,
     ):
         self.num_offsprings = num_offsprings
         self.mutation_rate_nodes = mutation_rate_nodes
@@ -30,6 +31,7 @@ class CGPES:
         self.evaluator = evaluator
         self.num_cpus = num_cpus
         self.folder = folder
+        self.verbose = verbose
         if self.num_cpus > 1:
             self.evaluator_pool = []
             for i in range(self.num_offsprings):
@@ -82,15 +84,17 @@ class CGPES:
                 self.father = self.offsprings[best_offspring]
                 self.father_was_updated = True
             # display stats
-            print(
-                self.it,
-                "\t",
-                self.current_fitness,
-                "\t",
-                self.father_was_updated,
-                "\t",
-                self.offspring_fitnesses,
-            )
+            if self.verbose:
+                print(
+                    self.it,
+                    "\t",
+                    self.current_fitness,
+                    "\t",
+                    self.father_was_updated,
+                    "\t",
+                    self.offspring_fitnesses,
+                )
+                print("====================================================")
             self.logfile.write(
                 str(self.it)
                 + "\t"
@@ -102,7 +106,6 @@ class CGPES:
                 + "\n"
             )
             self.logfile.flush()
-            print("====================================================")
             if self.father_was_updated:
                 # print(self.father.genome)
                 self.father.save(
