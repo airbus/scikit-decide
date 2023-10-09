@@ -6,7 +6,8 @@ from __future__ import annotations
 
 from typing import Callable, List
 
-from skdecide.domains import Domain, PipeParallelDomain, ShmParallelDomain
+from skdecide.domains import Domain
+from skdecide.parallel_domains import PipeParallelDomain, ShmParallelDomain
 
 __all__ = ["ParallelSolver"]
 
