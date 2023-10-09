@@ -36,6 +36,7 @@ from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.space.gym import EnumSpace, ListSpace, MultiDiscreteSpace
 from skdecide.utils import match_solvers
 
+
 class WeatherDate:
     day: int
     month: int
@@ -159,7 +160,6 @@ class WeatherDate:
         return WeatherDate(day, month, year, forecast=self.forecast)
 
 
-
 class State:
     """
     Definition of a aircraft state during the flight plan
@@ -190,11 +190,12 @@ class State:
         return hash((self.pos, int(self.mass), self.alt, int(self.time)))
 
     def __eq__(self, other):
-        return (self.pos == other.pos
-                and int(self.mass) == int(other.mass)
-                and self.alt == other.alt
-                and int(self.time) == int(other.time)
-            )
+        return (
+            self.pos == other.pos
+            and int(self.mass) == int(other.mass)
+            and self.alt == other.alt
+            and int(self.time) == int(other.time)
+        )
 
     def __ne__(self, other):
         return (
@@ -774,7 +775,7 @@ class FlightPlanningDomain(
         half_vertical_points = nb_vertical_points // 2
 
         distp = (
-            graph_width * p0.distanceTo(p1) *0.022
+            graph_width * p0.distanceTo(p1) * 0.022
         )  # meters, around 2.2%*graphwidth of the p0 to p1 distance
 
         descent_dist = min(
@@ -785,20 +786,20 @@ class FlightPlanningDomain(
             ),
             p0.distanceTo(p1),
         )  # meters
-        
+
         climb_dist = 220_000 * (
             max(self.ac["cruise"]["height"] - p0.height, 0)
             / self.ac["cruise"]["height"]
         )  # meters
-        
+
         total_distance = p0.distanceTo(p1)
         if total_distance < (climb_dist + descent_dist):
             climb_dist = total_distance * max(
-                (climb_dist / (climb_dist + descent_dist)) - 0.1
-            ,0)
+                (climb_dist / (climb_dist + descent_dist)) - 0.1, 0
+            )
             descent_dist = total_distance * max(
-                descent_dist / (climb_dist + descent_dist) - 0.1
-            ,0)
+                descent_dist / (climb_dist + descent_dist) - 0.1, 0
+            )
             possible_altitudes = [cruise_alt_min for k in range(nb_vertical_points)]
 
         else:
@@ -816,11 +817,15 @@ class FlightPlanningDomain(
         if climbing_slope:
             climbing_ratio = climbing_slope
         else:
-            climbing_ratio = (possible_altitudes[0] / climb_dist if climb_dist != 0 else 0)
+            climbing_ratio = (
+                possible_altitudes[0] / climb_dist if climb_dist != 0 else 0
+            )
         if descending_slope:
             descending_ratio = descending_slope
         else:
-            descending_ratio = (possible_altitudes[0] / descent_dist if descent_dist != 0 else 0)
+            descending_ratio = (
+                possible_altitudes[0] / descent_dist if descent_dist != 0 else 0
+            )
         # Initialisation of the graph matrix
         pt = [
             [
@@ -838,33 +843,37 @@ class FlightPlanningDomain(
 
         # set climb phase
         i_initial = 1
-        if climbing_ratio != 0 :         
+        if climbing_ratio != 0:
             dist = 0
             alt = p0.height
             while dist < climb_dist and i_initial != nb_forward_points:
 
                 local_dist = (
-                    pt[i_initial - 1][half_lateral_points][half_vertical_points].distanceTo(
-                        p1
-                    )
+                    pt[i_initial - 1][half_lateral_points][
+                        half_vertical_points
+                    ].distanceTo(p1)
                 ) / (nb_forward_points - i_initial)
                 dist += local_dist
                 alt += int(local_dist * climbing_ratio)
 
                 for k in range(nb_vertical_points):
-                    bearing = pt[i_initial - 1][half_lateral_points][k].initialBearingTo(p1)
+                    bearing = pt[i_initial - 1][half_lateral_points][
+                        k
+                    ].initialBearingTo(p1)
                     pt[i_initial][half_lateral_points][k] = pt[i_initial - 1][
                         half_lateral_points
-                    ][k].destination(local_dist, bearing, min(possible_altitudes[0], alt))
+                    ][k].destination(
+                        local_dist, bearing, min(possible_altitudes[0], alt)
+                    )
                 i_initial += 1
 
         # set last step, descent
         i_final = 1
-        if descending_ratio != 0 :
+        if descending_ratio != 0:
             dist = 0
             alt = p1.height
 
-            while dist < descent_dist and i_final != nb_forward_points-1:
+            while dist < descent_dist and i_final != nb_forward_points - 1:
                 local_dist = (
                     pt[nb_forward_points - i_final][half_lateral_points][
                         half_vertical_points
@@ -905,20 +914,18 @@ class FlightPlanningDomain(
             pt[half_forward_points][nb_lateral_points - 1][k] = pt[half_forward_points][
                 half_lateral_points
             ][k].destination(
-                distp * half_lateral_points, bearing + 90, height=pt[half_forward_points][
-                half_lateral_points
-            ][k].height
+                distp * half_lateral_points,
+                bearing + 90,
+                height=pt[half_forward_points][half_lateral_points][k].height,
             )
             pt[half_forward_points][0][k] = pt[half_forward_points][
                 half_lateral_points
             ][k].destination(
-                distp * half_lateral_points, bearing - 90, height=pt[half_forward_points][
-                half_lateral_points
-            ][k].height
+                distp * half_lateral_points,
+                bearing - 90,
+                height=pt[half_forward_points][half_lateral_points][k].height,
             )
 
-            
-            
         for j in range(1, half_lateral_points + 1):
             for k in range(len(possible_altitudes)):
                 # +j (left)
@@ -1024,7 +1031,9 @@ class FlightPlanningDomain(
                     ][half_lateral_points + j][k].destination(
                         total_distance / (half_forward_points - i + 1),
                         bearing,
-                        height=pt[half_forward_points + i][half_lateral_points][k].height,
+                        height=pt[half_forward_points + i][half_lateral_points][
+                            k
+                        ].height,
                     )
 
                     bearing = pt[half_forward_points + i - 1][half_lateral_points - j][
@@ -1042,7 +1051,9 @@ class FlightPlanningDomain(
                     ][half_lateral_points - j][k].destination(
                         total_distance / (half_forward_points - i + 1),
                         bearing,
-                        height=pt[half_forward_points + i][half_lateral_points][k].height,
+                        height=pt[half_forward_points + i][half_lateral_points][
+                            k
+                        ].height,
                     )
                 for i in range(abs(half_forward_points - i_final), half_forward_points):
                     alt = pt[half_forward_points + i - 1][half_lateral_points][k].height

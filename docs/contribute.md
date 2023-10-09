@@ -84,9 +84,9 @@ Here are the steps to follow:
           ```shell
           poetry env use 3.8.11
           ```
-      
-      - Preinstall gym 0.21.0 with appropriate option to avoid an error during installation 
-        (see this [issue](https://github.com/openai/gym/issues/3176) 
+
+      - Preinstall gym 0.21.0 with appropriate option to avoid an error during installation
+        (see this [issue](https://github.com/openai/gym/issues/3176)
         and this [solution](https://github.com/python-poetry/poetry/issues/3433#issuecomment-840509576)):
           ```shell
           poetry run python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
@@ -132,8 +132,8 @@ as it can also be installed by conda via the conda-forge channel.
     poetry self add poetry-dynamic-versioning
     ```
 
-- Preinstall gym 0.21.0 with appropriate option to avoid an error during installation 
-  (see this [issue](https://github.com/openai/gym/issues/3176) 
+- Preinstall gym 0.21.0 with appropriate option to avoid an error during installation
+  (see this [issue](https://github.com/openai/gym/issues/3176)
   and this [solution](https://github.com/python-poetry/poetry/issues/3433#issuecomment-840509576)):
     ```shell
     poetry run python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore

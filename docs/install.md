@@ -125,8 +125,8 @@ pip install -U scikit-decide
 
 ## Troubleshooting
 
-You may encounter an [error when installing `gym==0.21.0`](https://github.com/openai/gym/issues/3176) which happens to be a dependency of `scikit-decide[all]`. 
-This is because its installation does not respect PEP 517 which is enforced by default by last versions of pip and setuptools. 
+You may encounter an [error when installing `gym==0.21.0`](https://github.com/openai/gym/issues/3176) which happens to be a dependency of `scikit-decide[all]`.
+This is because its installation does not respect PEP 517 which is enforced by default by last versions of pip and setuptools.
 The solution is to install it beforehand:
 ```shell
 # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
@@ -145,7 +145,7 @@ pip install -U scikit-decide[all]
 ```
 
 ::: tip Note
-Newer versions of gym or [gymnasium](https://gymnasium.farama.org/), typically greater than 0.26 are not yet possible 
-because of a conflict between [`ray[rllib]`](https://github.com/ray-project/ray/issues/34396) 
+Newer versions of gym or [gymnasium](https://gymnasium.farama.org/), typically greater than 0.26 are not yet possible
+because of a conflict between [`ray[rllib]`](https://github.com/ray-project/ray/issues/34396)
 and [`stable-baselines3`](https://github.com/DLR-RM/stable-baselines3/issues/1452).
 :::
