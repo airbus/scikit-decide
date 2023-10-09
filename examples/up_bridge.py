@@ -3,20 +3,20 @@
 # LICENSE file in the root directory of this source tree.
 
 import sys
-from skdecide.hub.domain.up import UPDomain
-from skdecide.hub.solver.up import UPSolver
-from skdecide.hub.solver.lazy_astar import LazyAstar
 
 import unified_planning
 from unified_planning.shortcuts import (
-    UserType,
     BoolType,
-    OneshotPlanner,
     Fluent,
     InstantaneousAction,
     Not,
+    OneshotPlanner,
+    UserType,
 )
 
+from skdecide.hub.domain.up import UPDomain
+from skdecide.hub.solver.lazy_astar import LazyAstar
+from skdecide.hub.solver.up import UPSolver
 from skdecide.utils import rollout
 
 # Example 1: Solving a basic example, the same as
