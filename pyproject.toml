@@ -54,7 +54,7 @@ python = "^3.7"
 pynng = ">=0.6.2"
 pathos = ">=0.2.7"
 simplejson = {version = ">=3.17.2", optional = true}
-gym = {version = ">=0.18.0", optional = true}
+gymnasium = {version = ">=0.27", optional = true}
 numpy = {version = ">=1.20.1", optional = true}
 matplotlib = {version = ">=3.3.4", optional = true}
 joblib = {version = ">=1.0.1", optional = true}
@@ -70,9 +70,9 @@ up-enhsp = {version = "^0.0.19", python = ">=3.10", allow-prereleases = true, op
 up-pyperplan = {version = "^1.0.0.1.dev1", python = ">=3.10", allow-prereleases = true, optional = true}
 
 [tool.poetry.extras]
-domains = [ "gym", "numpy", "matplotlib", "simplejson", "discrete-optimization", "openap", "pygeodesy", "unified-planning" ]
-solvers = [ "gym", "numpy", "joblib", "ray", "stable-baselines3", "discrete-optimization", "unified-planning", "up-tamer", "up-fast-downward", "up-enhsp", "up-pyperplan" ]
-all = [ "gym", "numpy", "matplotlib", "simplejson", "joblib", "ray", "stable-baselines3", "discrete-optimization", "openap", "pygeodesy", "unified-planning", "up-tamer", "up-fast-downward", "up-enhsp", "up-pyperplan" ]
+domains = [ "gymnasium", "numpy", "matplotlib", "simplejson", "discrete-optimization", "openap", "pygeodesy", "unified-planning" ]
+solvers = [ "gymnasium", "numpy", "joblib", "ray", "stable-baselines3", "discrete-optimization", "unified-planning", "up-tamer", "up-fast-downward", "up-enhsp", "up-pyperplan" ]
+all = [ "gymnasium", "numpy", "matplotlib", "simplejson", "joblib", "ray", "stable-baselines3", "discrete-optimization", "openap", "pygeodesy", "unified-planning", "up-tamer", "up-fast-downward", "up-enhsp", "up-pyperplan" ]
 
 [tool.poetry.plugins."skdecide.domains"]
   GymDomain = "skdecide.hub.domain.gym:GymDomain [domains]"
