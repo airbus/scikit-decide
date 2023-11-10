@@ -16,7 +16,7 @@ from skdecide.builders.domain import (
     UnrestrictedActions,
 )
 from skdecide.builders.solver import Policies, Restorable
-from skdecide.hub.domain.gym import AsGymEnv
+from skdecide.hub.domain.gym import AsGymnasiumEnv
 from skdecide.hub.space.gym import GymSpace
 
 
@@ -66,7 +66,7 @@ class StableBaseline(Solver, Policies, Restorable):
         ):  # reuse algo if possible (enables further learning)
             domain = domain_factory()
             env = DummyVecEnv(
-                [lambda: AsGymEnv(domain)]
+                [lambda: AsGymnasiumEnv(domain)]
             )  # the algorithms require a vectorized environment to run
             self._algo = self._algo_class(
                 self._baselines_policy, env, **self._algo_kwargs

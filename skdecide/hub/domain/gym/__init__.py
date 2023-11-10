@@ -3,7 +3,8 @@
 # LICENSE file in the root directory of this source tree.
 
 from .gym import (
-    AsGymEnv,
+    AsGymnasiumEnv,
+    AsLegacyGymV21Env,
     CostDeterministicGymDomain,
     DeterministicGymDomain,
     DeterministicInitializedGymDomain,

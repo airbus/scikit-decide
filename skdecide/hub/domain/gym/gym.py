@@ -18,6 +18,7 @@ from typing import Any, Callable, List, Optional
 
 import gymnasium as gym
 import numpy as np
+from gymnasium.wrappers.compatibility import EnvCompatibility, LegacyEnv
 
 from skdecide import Domain, ImplicitSpace, Space, TransitionOutcome, Value
 from skdecide.builders.domain import (
@@ -69,7 +70,7 @@ class GymDomain(D):
         self._gym_env = gym_env
 
     def _state_reset(self) -> D.T_state:
-        return self._gym_env.reset()
+        return self._gym_env.reset()[0]
 
     def _state_step(
         self, action: D.T_agent[D.T_concurrency[D.T_event]]
@@ -79,7 +80,8 @@ class GymDomain(D):
         D.T_agent[D.T_predicate],
         D.T_agent[D.T_info],
     ]:
-        obs, reward, done, info = self._gym_env.step(action)
+        obs, reward, terminated, truncated, info = self._gym_env.step(action)
+        done = terminated or truncated
         return TransitionOutcome(
             state=obs, value=Value(reward=reward), termination=done, info=info
         )
@@ -91,10 +93,7 @@ class GymDomain(D):
         return GymSpace(self._gym_env.observation_space)
 
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        if "mode" in kwargs:
-            return self._gym_env.render(mode=kwargs["mode"])
-        else:
-            return self._gym_env.render()
+        return self._gym_env.render()
 
     def close(self):
         return self._gym_env.close()
@@ -237,7 +236,7 @@ class DeterministicInitializedGymDomain(D):
     def _state_reset(self) -> D.T_state:
         if self._initial_state is None:
             self._initial_state = GymDomainStateProxy(
-                state=self._gym_env.reset(), context=None
+                state=self._gym_env.reset()[0], context=None
             )
             if self._set_state is not None and self._get_state is not None:
                 self._initial_env_state = self._get_state(self._gym_env)
@@ -260,7 +259,8 @@ class DeterministicInitializedGymDomain(D):
         D.T_agent[D.T_predicate],
         D.T_agent[D.T_info],
     ]:
-        obs, reward, done, info = self._gym_env.step(action)
+        obs, reward, terminated, truncated, info = self._gym_env.step(action)
+        done = terminated or truncated
         if self._set_state is not None and self._get_state is not None:
             state = GymDomainStateProxy(state=obs, context=self._initial_env_state)
         else:
@@ -276,10 +276,7 @@ class DeterministicInitializedGymDomain(D):
         return GymSpace(self._gym_env.observation_space)
 
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        if "mode" in kwargs:
-            render = self._gym_env.render(mode=kwargs["mode"])
-        else:
-            render = self._gym_env.render()
+        render = self._gym_env.render()
         if self._set_state is None or self._get_state is None:
             self._gym_env.close()  # avoid deepcopy errors
         return render
@@ -504,14 +501,14 @@ class GymWidthDomain:
 
     def nb_of_binary_features(self) -> int:
         """Return the size of the bit vector encoding an observation"""
-        return self._binary_features(
-            self._gym_env.observation_space,
-            self._gym_env.observation_space.sample(),
-            0,
-            lambda i: None,
+        return len(
+            self._binary_features(
+                self._gym_env.observation_space,
+                self._gym_env.observation_space.sample(),
+            )
         )
 
-    def binary_features(self, memory: D.T_memory[D.T_state]):
+    def binary_features(self, memory: D.T_memory[D.T_state]) -> List[bool]:
         """Transform state in a bit vector and call f on each true value of this vector
 
         # Parameters
@@ -522,7 +519,7 @@ class GymWidthDomain:
         memory = memory._state if isinstance(memory, GymDomainStateProxy) else memory
         return self._binary_features(self._gym_env.observation_space, memory)
 
-    def _binary_features(self, space: gym.spaces.Space, element: Any) -> int:
+    def _binary_features(self, space: gym.spaces.Space, element: Any) -> List[bool]:
         if isinstance(space, gym.spaces.box.Box):
             features = []
             # compute the size of the bit vector encoding the largest float
@@ -853,7 +850,7 @@ class DeterministicGymDomain(D):
         self._init_env = None
 
     def _get_initial_state_(self) -> D.T_state:
-        initial_state = self._gym_env.reset()
+        initial_state = self._gym_env.reset()[0]
         return GymDomainStateProxy(
             state=initial_state,
             context=[
@@ -878,7 +875,8 @@ class DeterministicGymDomain(D):
         elif not check_equality_state(memory._context[4], self._get_state(env)):
             self._set_state(env, memory._context[4])
         self._gym_env = env  # Just in case the simulation environment would be different from the planner's environment...
-        obs, reward, done, info = env.step(action)
+        obs, reward, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
         outcome = TransitionOutcome(
             state=obs, value=Value(reward=reward), termination=done, info=info
         )
@@ -918,10 +916,7 @@ class DeterministicGymDomain(D):
         return GymSpace(self._gym_env.observation_space)
 
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        if "mode" in kwargs:
-            render = self._gym_env.render(mode=kwargs["mode"])
-        else:
-            render = self._gym_env.render()
+        render = self._gym_env.render()
         if self._set_state is None or self._get_state is None:
             self._gym_env.close()  # avoid deepcopy errors
         return render
@@ -1060,8 +1055,8 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         )
 
 
-class AsGymEnv(gym.Env):
-    """This class wraps a scikit-decide domain as an OpenAI Gym environment.
+class AsLegacyGymV21Env(LegacyEnv):
+    """This class wraps a scikit-decide domain as a legacy OpenAI Gym v0.21 environment.
 
     !!! warning
         The scikit-decide domain to wrap should inherit #UnrestrictedActionDomain since OpenAI Gym environments usually assume
@@ -1192,7 +1187,10 @@ class AsGymEnv(gym.Env):
 
         Environments will automatically close() themselves when garbage collected or when the program exits.
         """
-        return self._domain.close()
+        # check that the method "close" exists before calling it. (For instance Maze domain do not has one.)
+        close_meth = getattr(self._domain, "close", None)
+        if callable(close_meth):
+            return close_meth()
 
     def unwrapped(self):
         """Unwrap the scikit-decide domain and return it.
@@ -1201,3 +1199,16 @@ class AsGymEnv(gym.Env):
         The original scikit-decide domain.
         """
         return self._domain
+
+
+class AsGymnasiumEnv(EnvCompatibility):
+    """This class wraps a scikit-decide domain as a gymnasium environment."""
+
+    def __init__(
+        self,
+        domain: Domain,
+        unwrap_spaces: bool = True,
+        render_mode: Optional[str] = None,
+    ) -> None:
+        legacy_env = AsLegacyGymV21Env(domain=domain, unwrap_spaces=unwrap_spaces)
+        super().__init__(old_env=legacy_env, render_mode=render_mode)
