@@ -55,10 +55,10 @@ class D(
 
 # TODO: update with latest Gym Env spec (with seed)
 class GymDomain(D):
-    """This class wraps an OpenAI Gym environment (gym.env) as a scikit-decide domain.
+    """This class wraps an Gymnasium environment (gym.env) as a scikit-decide domain.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires Gymnasium to be installed.
     """
 
     def __init__(self, gym_env: gym.Env) -> None:
@@ -147,11 +147,11 @@ class GymDomainStateProxy:
 
 
 class GymDomainHashable(GymDomain):
-    """This class wraps an OpenAI Gym environment (gym.env) as a scikit-decide domain
+    """This class wraps an Gymnasium environment (gym.env) as a scikit-decide domain
        using hashable states and actions.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires Gymnasium to be installed.
     """
 
     def __init__(self, gym_env: gym.Env) -> None:
@@ -193,12 +193,12 @@ class D(
 
 
 class DeterministicInitializedGymDomain(D):
-    """This class wraps an OpenAI Gym environment (gym.env) as a scikit-decide domain
+    """This class wraps an Gymnasium environment (gym.env) as a scikit-decide domain
        with a deterministic initial state (i.e. reset the domain to the initial
        state returned by the first reset)
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires Gymnasium to be installed.
     """
 
     def __init__(
@@ -294,11 +294,11 @@ class DeterministicInitializedGymDomain(D):
 
 
 class GymWidthDomain:
-    """This class wraps an OpenAI Gym environment as a domain
+    """This class wraps an Gymnasium environment as a domain
         usable by width-based solving algorithm (e.g. IW)
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires Gymnasium to be installed.
     """
 
     def __init__(self, continuous_feature_fidelity: int = 1) -> None:
@@ -659,11 +659,11 @@ class GymWidthDomain:
 
 
 class GymDiscreteActionDomain(UnrestrictedActions):
-    """This class wraps an OpenAI Gym environment as a domain
+    """This class wraps an Gymnasium environment as a domain
         usable by a solver that requires enumerable applicable action sets
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires Gymnasium to be installed.
     """
 
     def __init__(
@@ -823,10 +823,10 @@ def check_equality_state(st1, st2):
 
 
 class DeterministicGymDomain(D):
-    """This class wraps a deterministic OpenAI Gym environment (gym.env) as a scikit-decide domain.
+    """This class wraps a deterministic Gymnasium environment (gym.env) as a scikit-decide domain.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires Gymnasium to be installed.
     """
 
     def __init__(
@@ -961,11 +961,11 @@ class CostDeterministicGymDomain(DeterministicGymDomain, PositiveCosts):
 
 
 class GymPlanningDomain(CostDeterministicGymDomain, Goals):
-    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
+    """This class wraps a cost-based deterministic Gymnasium environment as a domain
         usable by a classical planner
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires Gymnasium to be installed.
     """
 
     def __init__(
@@ -1059,10 +1059,10 @@ class AsLegacyGymV21Env(LegacyEnv):
     """This class wraps a scikit-decide domain as a legacy OpenAI Gym v0.21 environment.
 
     !!! warning
-        The scikit-decide domain to wrap should inherit #UnrestrictedActionDomain since OpenAI Gym environments usually assume
+        The scikit-decide domain to wrap should inherit #UnrestrictedActionDomain since Gymnasium environments usually assume
         that all their actions are always applicable.
 
-    An OpenAI Gym environment encapsulates an environment with arbitrary behind-the-scenes dynamics. An environment can
+    An Gymnasium environment encapsulates an environment with arbitrary behind-the-scenes dynamics. An environment can
     be partially or fully observed.
 
     The main API methods that users of this class need to know are:
@@ -1089,7 +1089,7 @@ class AsLegacyGymV21Env(LegacyEnv):
         """Initialize AsGymEnv.
 
         # Parameters
-        domain: The scikit-decide domain to wrap as an OpenAI Gym environment.
+        domain: The scikit-decide domain to wrap as an Gymnasium environment.
         unwrap_spaces: Boolean specifying whether the action & observation spaces should be unwrapped.
         """
         self._domain = domain
@@ -1129,7 +1129,7 @@ class AsLegacyGymV21Env(LegacyEnv):
                 self._domain.get_observation_space().to_unwrapped([outcome.observation])
             )
         )
-        # Some solvers dealing with OpenAI Gym environments crash when info is None (e.g. baselines solver)
+        # Some solvers dealing with Gymnasium environments crash when info is None (e.g. baselines solver)
         outcome_info = outcome.info if outcome.info is not None else {}
         return (
             outcome_observation,

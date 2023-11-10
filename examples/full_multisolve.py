@@ -98,9 +98,9 @@ if __name__ == "__main__":
                 "outcome_formatter": lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
             },
         },
-        # Cart Pole (OpenAI Gym)
+        # Cart Pole (Gymnasium)
         {
-            "name": "Cart Pole (OpenAI Gym)",
+            "name": "Cart Pole (Gymnasium)",
             "entry": "GymDomain",
             "config": {"gym_env": gym.make("CartPole-v1")},
             "rollout": {
@@ -110,9 +110,9 @@ if __name__ == "__main__":
                 "outcome_formatter": None,
             },
         },
-        # Mountain Car continuous (OpenAI Gym)
+        # Mountain Car continuous (Gymnasium)
         {
-            "name": "Mountain Car continuous (OpenAI Gym)",
+            "name": "Mountain Car continuous (Gymnasium)",
             "entry": "GymDomain",
             "config": {"gym_env": gym.make("MountainCarContinuous-v0")},
             "rollout": {
@@ -122,9 +122,9 @@ if __name__ == "__main__":
                 "outcome_formatter": None,
             },
         },
-        # ATARI Pacman (OpenAI Gym)
+        # ATARI Pacman (Gymnasium)
         {
-            "name": "ATARI Pacman (OpenAI Gym)",
+            "name": "ATARI Pacman (Gymnasium)",
             "entry": "GymDomain",
             "config": {"gym_env": gym.make("MsPacman-v4")},
             "rollout": {
@@ -299,8 +299,8 @@ if __name__ == "__main__":
             # Match solvers compatible with selected domain
             compatible = [None] + match_solvers(domain, candidates=solver_candidates)
             if (
-                selected_domain["name"] == "Cart Pole (OpenAI Gym)"
-                or selected_domain["name"] == "Mountain Car continuous (OpenAI Gym)"
+                selected_domain["name"] == "Cart Pole (Gymnasium)"
+                or selected_domain["name"] == "Mountain Car continuous (Gymnasium)"
             ):
                 # Those gym domain actually have more capabilities than they pretend,
                 # so we will transform them later to GymDomainForWidthSolvers (which
@@ -354,9 +354,9 @@ if __name__ == "__main__":
                             )
                         ),
                     )
-                elif selected_domain["name"] == "Cart Pole (OpenAI Gym)":
+                elif selected_domain["name"] == "Cart Pole (Gymnasium)":
                     setattr(domain_type, "heuristic", lambda self, s: Value(cost=1))
-                elif selected_domain["name"] == "Mountain Car continuous (OpenAI Gym)":
+                elif selected_domain["name"] == "Mountain Car continuous (Gymnasium)":
                     setattr(domain_type, "heuristic", lambda self, s: Value(cost=150))
                 else:
                     setattr(domain_type, "heuristic", lambda self, s: Value(cost=0))
@@ -391,7 +391,7 @@ if __name__ == "__main__":
                             or selected_solver["entry"].__name__ == "UCT"
                         ):
                             actual_domain_type = GymDomainForWidthSolvers
-                            if selected_domain["name"] == "Cart Pole (OpenAI Gym)":
+                            if selected_domain["name"] == "Cart Pole (Gymnasium)":
                                 actual_domain_config["termination_is_goal"] = False
                             actual_domain = actual_domain_type(**actual_domain_config)
                         selected_solver["config"][
