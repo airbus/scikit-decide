@@ -8,8 +8,8 @@ from dataclasses import asdict
 from enum import EnumMeta
 from typing import Dict, Generic, Iterable, List, Sequence, Tuple, Union
 
-import gym
-import gym.spaces as gym_spaces
+import gymnasium as gym
+import gymnasium.spaces as gym_spaces
 import numpy as np
 
 from skdecide import EnumerableSpace, SamplableSpace, SerializableSpace, T

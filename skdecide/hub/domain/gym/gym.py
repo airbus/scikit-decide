@@ -16,7 +16,7 @@ from itertools import product
 from math import pi, tan
 from typing import Any, Callable, List, Optional
 
-import gym
+import gymnasium as gym
 import numpy as np
 
 from skdecide import Domain, ImplicitSpace, Space, TransitionOutcome, Value

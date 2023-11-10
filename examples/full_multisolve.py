@@ -5,7 +5,7 @@
 from math import sqrt
 from typing import Any, Callable
 
-import gym
+import gymnasium as gym
 import numpy as np
 from stable_baselines3 import PPO
 

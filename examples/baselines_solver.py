@@ -10,7 +10,7 @@ Import modules.
 """
 
 # %%
-import gym
+import gymnasium as gym
 from stable_baselines3 import PPO
 
 from skdecide.hub.domain.gym import GymDomain
