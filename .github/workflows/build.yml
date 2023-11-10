@@ -393,7 +393,7 @@ jobs:
           path: dist/*.whl
 
   test-windows:
-    needs: [build-macos, build-ubuntu, build-windows, setup]
+    needs: [build-windows, setup]
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).windows }}
@@ -489,7 +489,7 @@ jobs:
           pytest -v -s tests/scheduling
 
   test-macos:
-    needs: [build-macos, build-ubuntu, build-windows, setup]
+    needs: [build-macos, setup]
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).macos }}
@@ -584,7 +584,7 @@ jobs:
           pytest -v -s tests/scheduling
 
   test-ubuntu:
-    needs: [build-macos, build-ubuntu, build-windows, setup]
+    needs: [build-ubuntu, setup]
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).ubuntu }}
