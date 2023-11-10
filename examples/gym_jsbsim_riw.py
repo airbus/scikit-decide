@@ -8,8 +8,8 @@ import math
 from typing import Any, Callable
 
 import folium
-import gym
 import gym_jsbsim
+import gymnasium as gym
 import numpy as np
 from gym_jsbsim.catalogs.catalog import Catalog as prp
 from gym_jsbsim.envs.taxi_utils import *

@@ -10,7 +10,7 @@ Import modules.
 """
 
 # %%
-import gym
+import gymnasium as gym
 
 from skdecide.hub.domain.gym import GymDomain
 from skdecide.utils import rollout

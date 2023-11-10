@@ -8,7 +8,7 @@ import os
 from collections.abc import Iterable
 from typing import Callable
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pylab
 

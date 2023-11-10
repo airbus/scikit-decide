@@ -5,9 +5,9 @@
 from math import exp, fabs, sqrt
 from typing import Any, Callable
 
-import gym
+import gymnasium as gym
 import numpy as np
-from gym.envs.classic_control import rendering
+from gymnasium.envs.classic_control import rendering
 
 from skdecide import TransitionOutcome, Value
 from skdecide.builders.domain import Renderable

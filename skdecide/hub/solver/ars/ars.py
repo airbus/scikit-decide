@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Callable
 
-import gym
+import gymnasium as gym
 import numpy as np
 
 from skdecide import Domain, Solver

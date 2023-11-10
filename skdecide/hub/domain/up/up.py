@@ -4,7 +4,7 @@
 
 from typing import Dict, List, Optional, Tuple, Union
 
-import gym
+import gymnasium as gym
 import unified_planning as up
 from unified_planning.engines.compilers.grounder import GrounderHelper
 from unified_planning.engines.sequential_simulator import (

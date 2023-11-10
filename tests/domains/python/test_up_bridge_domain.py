@@ -4,7 +4,7 @@
 
 import sys
 
-import gym
+import gymnasium as gym
 import pytest
 
 
