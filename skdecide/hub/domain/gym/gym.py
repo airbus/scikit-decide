@@ -916,9 +916,11 @@ class DeterministicGymDomain(D):
         return GymSpace(self._gym_env.observation_space)
 
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        render = self._gym_env.render()
-        if self._set_state is None or self._get_state is None:
-            self._gym_env.close()  # avoid deepcopy errors
+        # gym_env.render() can modify the environment
+        # and generate deepcopy errors later in _get_next_state
+        # thus we use a copy of the env to render it instead.
+        gym_env_for_rendering = deepcopy(self._gym_env)
+        render = gym_env_for_rendering.render()
         return render
 
     def close(self):
