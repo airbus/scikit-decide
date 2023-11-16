@@ -8,9 +8,7 @@ from __future__ import annotations
 import bisect
 import random
 import struct
-from collections import (  # TODO: replace with `from typing import NamedTuple`?
-    namedtuple,
-)
+from collections import OrderedDict
 from copy import deepcopy
 from itertools import product
 from math import pi, tan
@@ -742,58 +740,75 @@ class GymDiscreteActionDomain(UnrestrictedActions):
 
                 ticks.append(l)
 
-            return ListSpace(product(*ticks))
+            return ListSpace(
+                np.reshape(np.array(x, dtype=action_space.dtype), action_space.shape)
+                for x in product(*ticks)
+            )
+
         elif isinstance(action_space, gym.spaces.discrete.Discrete):
-            return ListSpace([i for i in range(action_space.n)])
+            return ListSpace(
+                np.int64(i + action_space.start) for i in range(action_space.n)
+            )
+
         elif isinstance(action_space, gym.spaces.multi_discrete.MultiDiscrete):
-            generate = lambda d: (
-                [[e] + g for e in range(action_space.nvec[d]) for g in generate(d + 1)]
-                if d < len(action_space.nvec) - 1
-                else [[e] for e in range(action_space.nvec[d])]
+            ticks = []
+            it = np.nditer(action_space.nvec, flags=["multi_index"])
+            for _ in it:
+                index = it.multi_index
+                ticks.append(range(action_space.nvec[index]))
+
+            return ListSpace(
+                np.reshape(np.array(x, dtype=action_space.dtype), action_space.shape)
+                for x in product(*ticks)
             )
-            return ListSpace(generate(0))
+
         elif isinstance(action_space, gym.spaces.multi_binary.MultiBinary):
-            generate = lambda d: (
-                [[e] + g for e in [True, False] for g in generate(d + 1)]
-                if d < len(action_space.n) - 1
-                else [[e] for e in [True, False]]
+            ticks = [range(2)] * int(np.prod(action_space.shape))
+
+            return ListSpace(
+                np.reshape(np.array(x, dtype=action_space.dtype), action_space.shape)
+                for x in product(*ticks)
             )
-            return ListSpace(generate(0))
+
         elif isinstance(action_space, gym.spaces.tuple.Tuple):
             generate = lambda d: (
-                [
-                    [e] + g
+                (
+                    (e,) + g
                     for e in self._discretize_action_space(
                         action_space.spaces[d]
                     ).get_elements()
                     for g in generate(d + 1)
-                ]
+                )
                 if d < len(action_space.spaces) - 1
-                else [
-                    [e]
+                else (
+                    (e,)
                     for e in self._discretize_action_space(
                         action_space.spaces[d]
                     ).get_elements()
-                ]
+                )
             )
             return ListSpace(generate(0))
+
         elif isinstance(action_space, gym.spaces.dict.Dict):
-            dkeys = action_space.spaces.keys()
+            dkeys = list(action_space.spaces.keys())
             generate = lambda d: (
-                [
-                    [e] + g
+                (
+                    (e,) + g
                     for e in self._discretize_action_space(
                         action_space.spaces[dkeys[d]]
                     ).get_elements()
                     for g in generate(d + 1)
-                ]
-                if d < len(dkeys) - 1
-                else [
-                    [e]
+                )
+                if d < len(action_space.spaces) - 1
+                else (
+                    (e,)
                     for e in self._discretize_action_space(
                         action_space.spaces[dkeys[d]]
                     ).get_elements()
-                ]
+                )
+            )
+            return ListSpace(
+                OrderedDict(zip(dkeys, dvalues)) for dvalues in generate(0)
             )
         else:
             raise RuntimeError(
