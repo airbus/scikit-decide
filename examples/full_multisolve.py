@@ -102,7 +102,7 @@ if __name__ == "__main__":
         {
             "name": "Cart Pole (Gymnasium)",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("CartPole-v1")},
+            "config": {"gym_env": gym.make("CartPole-v1", render_mode="human")},
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 1000,
@@ -114,7 +114,9 @@ if __name__ == "__main__":
         {
             "name": "Mountain Car continuous (Gymnasium)",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("MountainCarContinuous-v0")},
+            "config": {
+                "gym_env": gym.make("MountainCarContinuous-v0", render_mode="human")
+            },
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 1000,
@@ -126,7 +128,7 @@ if __name__ == "__main__":
         {
             "name": "ATARI Pacman (Gymnasium)",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("MsPacman-v4")},
+            "config": {"gym_env": gym.make("ALE/MsPacman-v5", render_mode="human")},
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 1000,
