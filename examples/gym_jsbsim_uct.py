@@ -377,7 +377,9 @@ class GymUCTSampleDomain(D):
 
 
 domain_factory = lambda: GymUCTRawDomain(
-    gym_env=gym.make(ENV_NAME), discretization_factor=9, max_depth=HORIZON
+    gym_env=gym.make("GymV21Environment-v0", env_id=ENV_NAME),
+    discretization_factor=9,
+    max_depth=HORIZON,
 )
 
 if UCT.check_domain(domain_factory()):

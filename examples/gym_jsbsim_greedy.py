@@ -7,7 +7,6 @@ from typing import Any, Callable
 import folium
 import gym_jsbsim
 import gymnasium as gym
-import numpy as np
 from gym_jsbsim.catalogs.catalog import Catalog as prp
 from gym_jsbsim.envs.taxi_utils import *
 
@@ -156,7 +155,7 @@ class GreedyPlanner(Solver, DeterministicPolicies, Utilities):
 
 
 domain_factory = lambda: GymGreedyDomain(
-    gym_env=gym.make(ENV_NAME),
+    gym_env=gym.make("GymV21Environment-v0", env_id=ENV_NAME),
     set_state=lambda e, s: e.set_state(s),
     get_state=lambda e: e.get_state(),
     discretization_factor=5,
