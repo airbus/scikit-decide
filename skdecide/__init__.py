@@ -8,4 +8,4 @@ from skdecide.domains import *
 from skdecide.solvers import *
 from skdecide.utils import *
 
-__version__ = "0.0.0"
+__version__ = "0.9.8.dev19+4ad63a353"
