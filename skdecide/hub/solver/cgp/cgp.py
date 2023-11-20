@@ -303,7 +303,7 @@ class CGPWrapper(Solver, DeterministicPolicies):
             evaluator,
             self._folder_name,
             self._n_cpus,
-            verbose=self._verbose
+            verbose=self._verbose,
         )
         es.run(self._n_it)
 
