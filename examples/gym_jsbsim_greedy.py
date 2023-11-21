@@ -25,11 +25,11 @@ class D(DeterministicGymDomain, GymDiscreteActionDomain):
 
 
 class GymGreedyDomain(D):
-    """This class wraps a cost-based deterministic Gymnasium environment as a domain
+    """This class wraps a cost-based deterministic gymnasium environment as a domain
         usable by a width-based planner
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(

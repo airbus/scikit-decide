@@ -45,11 +45,11 @@ class D(GymDomainHashable, GymDiscreteActionDomain, DeterministicInitialized):
 
 
 class GymUCTRawDomain(D):
-    """This class wraps a cost-based deterministic Gymnasium environment as a domain
+    """This class wraps a cost-based deterministic gymnasium environment as a domain
         usable by a width-based planner
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -117,11 +117,11 @@ class D(GymDomain, GymDiscreteActionDomain):
 
 
 class GymUCTStepDomain(D):
-    """This class wraps a cost-based deterministic Gymnasium environment as a domain
+    """This class wraps a cost-based deterministic gymnasium environment as a domain
         usable by a width-based planner
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -245,11 +245,11 @@ class GymUCTStepDomain(D):
 
 
 class GymUCTSampleDomain(D):
-    """This class wraps a cost-based deterministic Gymnasium environment as a domain
+    """This class wraps a cost-based deterministic gymnasium environment as a domain
         usable by a width-based planner
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
