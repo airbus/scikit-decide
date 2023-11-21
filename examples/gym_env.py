@@ -21,7 +21,7 @@ Select a [Gym environment](https://gym.openai.com/envs) and run 5 episodes.
 """
 
 # %%
-ENV_NAME = "CartPole-v1"  # or any other installed environment ('MsPacman-v4'...)
+ENV_NAME = "CartPole-v1"  # or any other installed environment ('ALE/MsPacman-v5'...)
 
 gym_domain = GymDomain(gym.make(ENV_NAME))
 rollout(
