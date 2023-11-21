@@ -79,9 +79,10 @@ class GymDomain(D):
         D.T_agent[D.T_info],
     ]:
         obs, reward, terminated, truncated, info = self._gym_env.step(action)
-        done = terminated or truncated
+        if truncated:
+            info["TimeLimit.truncated"] = True
         return TransitionOutcome(
-            state=obs, value=Value(reward=reward), termination=done, info=info
+            state=obs, value=Value(reward=reward), termination=terminated, info=info
         )
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
@@ -258,13 +259,14 @@ class DeterministicInitializedGymDomain(D):
         D.T_agent[D.T_info],
     ]:
         obs, reward, terminated, truncated, info = self._gym_env.step(action)
-        done = terminated or truncated
+        if truncated:
+            info["TimeLimit.truncated"] = True
         if self._set_state is not None and self._get_state is not None:
             state = GymDomainStateProxy(state=obs, context=self._initial_env_state)
         else:
             state = GymDomainStateProxy(state=obs, context=self._init_env)
         return TransitionOutcome(
-            state=state, value=Value(reward=reward), termination=done, info=info
+            state=state, value=Value(reward=reward), termination=terminated, info=info
         )
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
@@ -891,9 +893,10 @@ class DeterministicGymDomain(D):
             self._set_state(env, memory._context[4])
         self._gym_env = env  # Just in case the simulation environment would be different from the planner's environment...
         obs, reward, terminated, truncated, info = env.step(action)
-        done = terminated or truncated
+        if truncated:
+            info["TimeLimit.truncated"] = True
         outcome = TransitionOutcome(
-            state=obs, value=Value(reward=reward), termination=done, info=info
+            state=obs, value=Value(reward=reward), termination=terminated, info=info
         )
         # print('Transition:', str(memory._state), ' -> ', str(action), ' -> ', str(outcome.state))
         return GymDomainStateProxy(
@@ -1204,7 +1207,7 @@ class AsLegacyGymV21Env(LegacyEnv):
 
         Environments will automatically close() themselves when garbage collected or when the program exits.
         """
-        # check that the method "close" exists before calling it. (For instance Maze domain do not has one.)
+        # check that the method "close" exists before calling it (for instance the maze domain does not have one).
         close_meth = getattr(self._domain, "close", None)
         if callable(close_meth):
             return close_meth()
