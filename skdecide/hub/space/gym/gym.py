@@ -16,10 +16,10 @@ from skdecide import EnumerableSpace, SamplableSpace, SerializableSpace, T
 
 
 class GymSpace(Generic[T], SamplableSpace[T], SerializableSpace[T]):
-    """This class wraps an Gymnasium space (gym.spaces) as a scikit-decide space.
+    """This class wraps a gymnasium space (gym.spaces) as a scikit-decide space.
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, gym_space: gym.Space) -> None:
@@ -61,10 +61,10 @@ class GymSpace(Generic[T], SamplableSpace[T], SerializableSpace[T]):
 
 
 class BoxSpace(GymSpace[T]):
-    """This class wraps an Gymnasium Box space (gym.spaces.Box) as a scikit-decide space.
+    """This class wraps a gymnasium Box space (gym.spaces.Box) as a scikit-decide space.
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, low, high, shape=None, dtype=np.float32):
@@ -72,10 +72,10 @@ class BoxSpace(GymSpace[T]):
 
 
 class DiscreteSpace(GymSpace[T]):
-    """This class wraps an Gymnasium Discrete space (gym.spaces.Discrete) as a scikit-decide space.
+    """This class wraps a gymnasium Discrete space (gym.spaces.Discrete) as a scikit-decide space.
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, n):
@@ -83,10 +83,10 @@ class DiscreteSpace(GymSpace[T]):
 
 
 class MultiDiscreteSpace(GymSpace[T]):
-    """This class wraps an Gymnasium MultiDiscrete space (gym.spaces.MultiDiscrete) as a scikit-decide space.
+    """This class wraps a gymnasium MultiDiscrete space (gym.spaces.MultiDiscrete) as a scikit-decide space.
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, nvec):
@@ -94,10 +94,10 @@ class MultiDiscreteSpace(GymSpace[T]):
 
 
 class MultiBinarySpace(GymSpace[T]):
-    """This class wraps an Gymnasium MultiBinary space (gym.spaces.MultiBinary) as a scikit-decide space.
+    """This class wraps a gymnasium MultiBinary space (gym.spaces.MultiBinary) as a scikit-decide space.
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, n):
@@ -105,10 +105,10 @@ class MultiBinarySpace(GymSpace[T]):
 
 
 class TupleSpace(GymSpace[T]):
-    """This class wraps an Gymnasium Tuple space (gym.spaces.Tuple) as a scikit-decide space.
+    """This class wraps a gymnasium Tuple space (gym.spaces.Tuple) as a scikit-decide space.
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, spaces):
@@ -116,10 +116,10 @@ class TupleSpace(GymSpace[T]):
 
 
 class DictSpace(GymSpace[T]):
-    """This class wraps an Gymnasium Dict space (gym.spaces.Dict) as a scikit-decide space.
+    """This class wraps a gymnasium Dict space (gym.spaces.Dict) as a scikit-decide space.
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, spaces=None, **spaces_kwargs):
@@ -127,11 +127,11 @@ class DictSpace(GymSpace[T]):
 
 
 class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
-    """This class creates an Gymnasium Discrete space (gym.spaces.Discrete) from an enumeration and wraps it as a
+    """This class creates a gymnasium Discrete space (gym.spaces.Discrete) from an enumeration and wraps it as a
     scikit-decide enumerable space.
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, enum_class: EnumMeta) -> None:
@@ -176,11 +176,11 @@ class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
 
 
 class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
-    """This class creates an Gymnasium Discrete space (gym.spaces.Discrete) from a list of elements and wraps it as a
+    """This class creates a gymnasium Discrete space (gym.spaces.Discrete) from a list of elements and wraps it as a
     scikit-decide enumerable space.
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, elements: Iterable[T]) -> None:
@@ -224,10 +224,10 @@ class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
 
 
 class DataSpace(GymSpace[T]):
-    """This class creates an Gymnasium Dict space (gym.spaces.Dict) from a dataclass and wraps it as a scikit-decide space.
+    """This class creates a gymnasium Dict space (gym.spaces.Dict) from a dataclass and wraps it as a scikit-decide space.
 
     !!! warning
-        Using this class requires Gymnasium to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
