@@ -24,7 +24,7 @@ HORIZON = 500
 
 
 class FakeGymEnv(gym.Env):
-    """This class mimics an Gymnasium environment"""
+    """This class mimics a Gymnasium environment"""
 
     metadata = {
         "render_modes": ["human", "rgb_array"],
@@ -105,9 +105,12 @@ class FakeGymEnv(gym.Env):
             [self._pos_x, self._pos_y, self._speed_x, self._speed_y], dtype=np.float32
         )
         reward = exp(-sqrt(self._pos_y * self._pos_y))
-        done = bool(fabs(self._pos_y > 1.0))
+        terminated = bool(fabs(self._pos_y > 1.0))
         self._path.append((self._pos_x, self._pos_y))
-        return obs, reward, done, False, {}
+
+        if self.render_mode == "human":
+            self.render()
+        return obs, reward, terminated, False, {}
 
     def render(self):
         if self.render_mode is None:
