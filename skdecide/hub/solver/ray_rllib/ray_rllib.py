@@ -6,11 +6,14 @@ from __future__ import annotations
 
 import glob
 import os
-from typing import Callable, Dict, Optional, Type
+from typing import Callable, Dict, Optional, Set, Type
 
+import gymnasium as gym
 import ray
-from ray.rllib.agents.trainer import Trainer
-from ray.rllib.env.multi_agent_env import MultiAgentEnv
+from ray.rllib.algorithms.algorithm import Algorithm, AlgorithmConfig
+from ray.rllib.env.wrappers.multi_agent_env_compatibility import (
+    MultiAgentEnvCompatibility,
+)
 from ray.tune.registry import register_env
 
 from skdecide import Domain, Solver
@@ -21,6 +24,7 @@ from skdecide.builders.domain import (
     UnrestrictedActions,
 )
 from skdecide.builders.solver import Policies, Restorable
+from skdecide.hub.domain.gym import AsLegacyGymV21Env
 from skdecide.hub.space.gym import GymSpace
 
 
@@ -40,11 +44,13 @@ class RayRLlib(Solver, Policies, Restorable):
 
     def __init__(
         self,
-        algo_class: Type[Trainer],
+        algo_class: Type[Algorithm],
         train_iterations: int,
-        config: Optional[Dict] = None,
-        policy_configs: Dict[str, Dict] = {"policy": {}},
-        policy_mapping_fn: Callable[[str], str] = lambda agent_id: "policy",
+        config: Optional[AlgorithmConfig] = None,
+        policy_configs: Optional[Dict[str, Dict]] = None,
+        policy_mapping_fn: Optional[
+            Callable[[str, Optional["EpisodeV2"], Optional["RolloutWorker"]], str]
+        ] = None,
     ) -> None:
         """Initialize Ray RLlib.
 
@@ -57,9 +63,16 @@ class RayRLlib(Solver, Policies, Restorable):
         """
         self._algo_class = algo_class
         self._train_iterations = train_iterations
-        self._config = config or {}
-        self._policy_configs = policy_configs
-        self._policy_mapping_fn = policy_mapping_fn
+        self._config = config or algo_class.get_default_config()
+        if policy_configs is None:
+            self._policy_configs = {"policy": {}}
+        else:
+            self._policy_configs = policy_configs
+        if policy_mapping_fn is None:
+            self._policy_mapping_fn = lambda agent_id, episode, worker: "policy"
+        else:
+            self._policy_mapping_fn = policy_mapping_fn
+
         ray.init(ignore_reinit_error=True)
 
     @classmethod
@@ -88,8 +101,8 @@ class RayRLlib(Solver, Policies, Restorable):
         self, observation: D.T_agent[D.T_observation]
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         action = {
-            k: self._algo.compute_action(
-                self._unwrap_obs(v, k), policy_id=self._policy_mapping_fn(k)
+            k: self._algo.compute_single_action(
+                self._unwrap_obs(v, k), policy_id=self._policy_mapping_fn(k, None, None)
             )
             for k, v in observation.items()
         }
@@ -102,11 +115,6 @@ class RayRLlib(Solver, Policies, Restorable):
         self._algo.save(path)
 
     def _load(self, path: str, domain_factory: Callable[[], D]):
-        if not os.path.isfile(path):
-            # Find latest checkpoint
-            metadata_files = glob.glob(f"{path}/**/*.tune_metadata")
-            latest_metadata_file = max(metadata_files, key=os.path.getctime)
-            path = latest_metadata_file[: -len(".tune_metadata")]
         self._init_algo(domain_factory)
         self._algo.restore(path)
 
@@ -121,34 +129,65 @@ class RayRLlib(Solver, Policies, Restorable):
         )
         # Overwrite multi-agent config
         pol_obs_spaces = {
-            self._policy_mapping_fn(k): v.unwrapped()
+            self._policy_mapping_fn(k, None, None): v.unwrapped()
             for k, v in domain.get_observation_space().items()
         }
         pol_act_spaces = {
-            self._policy_mapping_fn(k): v.unwrapped()
+            self._policy_mapping_fn(k, None, None): v.unwrapped()
             for k, v in domain.get_action_space().items()
         }
         policies = {
             k: (None, pol_obs_spaces[k], pol_act_spaces[k], v or {})
             for k, v in self._policy_configs.items()
         }
-        self._config["multiagent"] = {
-            "policies": policies,
-            "policy_mapping_fn": self._policy_mapping_fn,
-        }
+        self._config.multi_agent(
+            policies=policies,
+            policy_mapping_fn=self._policy_mapping_fn,
+        )
         # Instanciate algo
         register_env("skdecide_env", lambda _: AsRLlibMultiAgentEnv(domain_factory()))
-        self._algo = self._algo_class(env="skdecide_env", config=self._config)
+        self._config.environment(env="skdecide_env")
+        self._algo = self._algo_class(config=self._config)
 
 
-class AsRLlibMultiAgentEnv(MultiAgentEnv):
-    def __init__(self, domain: D) -> None:
+class AsRLlibMultiAgentEnv(MultiAgentEnvCompatibility):
+    def __init__(self, domain: D, render_mode: Optional[str] = None) -> None:
+        old_env = AsLegacyRLlibMultiAgentEnv(domain=domain)
+        self._domain = domain
+        super().__init__(old_env=old_env, render_mode=render_mode)
+
+    def get_agent_ids(self) -> Set[str]:
+        return self._domain.get_agents()
+
+
+class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
+    def __init__(self, domain: D, unwrap_spaces: bool = True) -> None:
         """Initialize AsRLlibMultiAgentEnv.
 
         # Parameters
         domain: The scikit-decide domain to wrap as a RLlib multi-agent environment.
+        unwrap_spaces: Boolean specifying whether the action & observation spaces should be unwrapped.
         """
         self._domain = domain
+        self._unwrap_spaces = unwrap_spaces
+        if unwrap_spaces:
+            self.observation_space = gym.spaces.Dict(
+                {
+                    k: agent_observation_space.unwrapped()
+                    for k, agent_observation_space in domain.get_observation_space().items()
+                }
+            )
+            self.action_space = gym.spaces.Dict(
+                {
+                    k: agent_action_space.unwrapped()
+                    for k, agent_action_space in domain.get_action_space().items()
+                }
+            )
+        else:
+            self.observation_space = domain.get_observation_space()
+            self.action_space = (
+                domain.get_action_space()
+            )  # assumes all actions are always applicable
 
     def reset(self):
         """Resets the env and returns observations from ready agents.
@@ -156,7 +195,7 @@ class AsRLlibMultiAgentEnv(MultiAgentEnv):
         # Returns
         obs (dict): New observations for each ready agent.
         """
-        raw_observation = self._domain.reset()
+        raw_observation = super().reset()
         observation = {
             k: next(iter(self._domain.get_observation_space()[k].to_unwrapped([v])))
             for k, v in raw_observation.items()
@@ -186,36 +225,7 @@ class AsRLlibMultiAgentEnv(MultiAgentEnv):
             for k, v in outcome.observation.items()
         }
         rewards = {k: v.reward for k, v in outcome.value.items()}
-        done = {"__all__": outcome.termination}
+        done = outcome.termination
+        done.update({"__all__": all(outcome.termination.values())})
         infos = {k: (v or {}) for k, v in outcome.info.items()}
         return observations, rewards, done, infos
-
-    def unwrapped(self):
-        """Unwrap the scikit-decide domain and return it.
-
-        # Returns
-        The original scikit-decide domain.
-        """
-        return self._domain
-
-
-if __name__ == "__main__":
-    from ray.rllib.agents.ppo import PPOTrainer
-
-    from skdecide.hub.domain.rock_paper_scissors import RockPaperScissors
-    from skdecide.utils import rollout
-
-    domain_factory = lambda: RockPaperScissors()
-    domain = domain_factory()
-    if RayRLlib.check_domain(domain):
-        solver_factory = lambda: RayRLlib(
-            PPOTrainer, train_iterations=1, config={"framework": "torch"}
-        )
-        solver = RockPaperScissors.solve_with(solver_factory, domain_factory)
-        rollout(
-            domain,
-            solver,
-            action_formatter=lambda a: str({k: v.name for k, v in a.items()}),
-            outcome_formatter=lambda o: f"{ {k: v.name for k, v in o.observation.items()} }"
-            f" - rewards: { {k: v.reward for k, v in o.value.items()} }",
-        )
