@@ -103,15 +103,3 @@ class RockPaperScissors(D):
 
     def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
         return {"player1": EnumSpace(Move), "player2": EnumSpace(Move)}
-
-
-if __name__ == "__main__":
-    from skdecide.utils import rollout
-
-    domain = RockPaperScissors()
-    rollout(
-        domain,
-        action_formatter=lambda a: str({k: v.name for k, v in a.items()}),
-        outcome_formatter=lambda o: f"{ {k: v.name for k, v in o.observation.items()} }"
-        f" - rewards: { {k: v.reward for k, v in o.value.items()} }",
-    )
