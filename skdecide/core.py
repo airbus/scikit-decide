@@ -676,6 +676,8 @@ class BoundConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
         )
 
 
+SINGLE_AGENT_ID = "agent"
+
 # (auto)cast-related objects/functions
 cast_dict = {
     (Memory, Union): lambda obj, src, dst: cast(obj[0], src[0], dst[0]),
@@ -686,7 +688,9 @@ cast_dict = {
     (StrDict, Union): lambda obj, src, dst: cast(
         next(iter(obj.values())), src[0], dst[0]
     ),
-    (Union, StrDict): lambda obj, src, dst: {"agent": cast(obj, src[0], dst[0])},
+    (Union, StrDict): lambda obj, src, dst: {
+        SINGLE_AGENT_ID: cast(obj, src[0], dst[0])
+    },
     (StrDict, StrDict): lambda obj, src, dst: {
         k: cast(v, src[0], dst[0]) for k, v in obj.items()
     },
