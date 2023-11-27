@@ -67,6 +67,13 @@ if not len(logger.handlers):
 
 # MAIN BASE CLASS
 
+T_state = NewType("T_state", object)
+T_observation = NewType("T_observation", object)
+T_event = NewType("T_event", object)
+T_value = NewType("T_value", object)
+T_predicate = NewType("T_predicate", object)
+T_info = NewType("T_info", object)
+
 
 class Domain(
     MultiAgent, Parallel, Environment, Events, History, PartiallyObservable, Rewards
@@ -97,12 +104,12 @@ class Domain(
     - **value**: Rewards -> PositiveCosts
     """
 
-    T_state = NewType("T_state", object)
-    T_observation = NewType("T_observation", object)
-    T_event = NewType("T_event", object)
-    T_value = NewType("T_value", object)
-    T_predicate = NewType("T_predicate", object)
-    T_info = NewType("T_info", object)
+    T_state = T_state
+    T_observation = T_observation
+    T_event = T_event
+    T_value = T_value
+    T_predicate = T_predicate
+    T_info = T_info
 
     @classmethod
     def solve_with(
