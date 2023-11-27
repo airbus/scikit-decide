@@ -69,11 +69,16 @@ up-tamer = {version = "^1.0.0.1.dev1", python = ">=3.10", allow-prereleases = tr
 up-fast-downward = {version = "^0.3.0", python = ">=3.10", allow-prereleases = true, optional = true}
 up-enhsp = {version = "^0.0.19", python = ">=3.10", allow-prereleases = true, optional = true}
 up-pyperplan = {version = "^1.0.0.1.dev1", python = ">=3.10", allow-prereleases = true, optional = true}
+cartopy = {version = ">=0.22.0", python = ">=3.9", optional = true}
+pygrib = [
+    {version = ">=2.1.5", platform = "linux", optional = true},
+    {version = ">=2.1.5", platform = "darwin", optional = true}
+]
 
 [tool.poetry.extras]
-domains = [ "gymnasium", "numpy", "matplotlib", "simplejson", "discrete-optimization", "openap", "pygeodesy", "unified-planning" ]
+domains = [ "gymnasium", "numpy", "matplotlib", "simplejson", "discrete-optimization", "openap", "pygeodesy", "unified-planning", "cartopy", "pygrib" ]
 solvers = [ "gymnasium", "numpy", "joblib", "ray", "stable-baselines3", "discrete-optimization", "unified-planning", "up-tamer", "up-fast-downward", "up-enhsp", "up-pyperplan" ]
-all = [ "gymnasium", "numpy", "matplotlib", "simplejson", "joblib", "ray", "stable-baselines3", "discrete-optimization", "openap", "pygeodesy", "unified-planning", "up-tamer", "up-fast-downward", "up-enhsp", "up-pyperplan" ]
+all = [ "gymnasium", "numpy", "matplotlib", "simplejson", "joblib", "ray", "stable-baselines3", "discrete-optimization", "openap", "pygeodesy", "unified-planning", "up-tamer", "up-fast-downward", "up-enhsp", "up-pyperplan" , "cartopy", "pygrib" ]
 
 [tool.poetry.plugins."skdecide.domains"]
   GymDomain = "skdecide.hub.domain.gym:GymDomain [domains]"
@@ -116,6 +121,7 @@ tqdm = "^4.59.0"
 nbmake = "^1.0"
 docopt = ">=0.6.2"
 commonmark = ">=0.9.1"
+gymnasium = {version = ">=0.28.1", extras = ["classic-control"], optional = true}
 
 [tool.pytest.ini_options]
 minversion = "6.0"

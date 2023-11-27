@@ -341,10 +341,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install pytest
-
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -378,11 +374,11 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
-      - name: Install scikit-decide
+      - name: Install scikit-decide and test dependencies
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
-          pip install ${wheelfile}[all]
+          pip install ${wheelfile}[all] pytest gymnasium[classic-control]
 
       - name: Test with pytest
         run: |
@@ -419,10 +415,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install pytest
-
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -458,11 +450,11 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
-      - name: Install scikit-decide
+      - name: Install scikit-decide and test dependencies
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*.whl)
-          pip install ${wheelfile}[all]
+          pip install ${wheelfile}[all] pytest gymnasium[classic-control]
 
       - name: Test with pytest
         run: |
@@ -496,10 +488,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install pytest
-
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -536,11 +524,11 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
-      - name: Install scikit-decide
+      - name: Install scikit-decide and test dependencies
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
-          pip install ${wheelfile}[all]
+          pip install ${wheelfile}[all] pytest gymnasium[classic-control]
 
       - name: Test with pytest
         run: |
