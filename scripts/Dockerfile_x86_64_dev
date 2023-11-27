@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=quay.io/pypa/manylinux2014_x86_64
+ARG BASE_IMAGE=quay.io/pypa/manylinux2014_x86_64:latest
 
 FROM $BASE_IMAGE as build
 
