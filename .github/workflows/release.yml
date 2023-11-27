@@ -391,10 +391,7 @@ jobs:
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
-          pytest -v -s tests/autocast
-          pytest -v -s tests/solvers/cpp
-          pytest -v -s tests/solvers/python
-          pytest -v -s tests/scheduling
+          pytest -v -s tests
 
   test-macos:
     needs: [build-macos, build-ubuntu, build-windows, setup]
@@ -474,10 +471,7 @@ jobs:
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
-          pytest -v -s tests/autocast
-          pytest -v -s tests/solvers/cpp
-          pytest -v -s tests/solvers/python
-          pytest -v -s tests/scheduling
+          pytest -v -s tests
 
   test-ubuntu:
     needs: [build-macos, build-ubuntu, build-windows, setup]
@@ -555,10 +549,7 @@ jobs:
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
-          pytest -v -s tests/autocast
-          pytest -v -s tests/solvers/cpp
-          pytest -v -s tests/solvers/python
-          pytest -v -s tests/scheduling
+          pytest -v -s tests
 
   upload:
     needs: [test-ubuntu, test-macos, test-windows]
