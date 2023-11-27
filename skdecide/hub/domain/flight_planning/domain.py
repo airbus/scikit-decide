@@ -9,7 +9,6 @@ from typing import Any, Optional, Tuple, Union
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from IPython.display import clear_output
 from openap.extra.aero import atmos
 from openap.extra.aero import bearing as aero_bearing
 from openap.extra.aero import distance, ft, kts, latlon, mach2tas
@@ -35,6 +34,18 @@ from skdecide.hub.solver.astar import Astar
 from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.space.gym import EnumSpace, ListSpace, MultiDiscreteSpace
 from skdecide.utils import match_solvers
+
+try:
+    from IPython.display import clear_output as ipython_clear_output
+except ImportError:
+    ipython_available = False
+else:
+    ipython_available = True
+
+
+def clear_output(wait=True):
+    if ipython_available:
+        ipython_clear_output(wait=wait)
 
 
 class WeatherDate:
