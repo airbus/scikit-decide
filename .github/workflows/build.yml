@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       python_version: ${{ steps.generate-matrix.outputs.python_version }}
+      python_version_per_os: ${{ steps.generate-matrix.outputs.python_version_per_os }}
       build: ${{ steps.generate-matrix.outputs.build}}
       test: ${{ steps.generate-matrix.outputs.test}}
       do_macos: ${{ steps.generate-matrix.outputs.do_macos}}
@@ -81,6 +82,13 @@ jobs:
                   build_doc = "false"
           oses = ["macos", "ubuntu", "windows"]
           build_dict = {os : [k for k in build if k.startswith(os)] for os in oses}
+          python_version_per_os = {os: python_version for os in oses}
+          # remove python 3.11 for windows: dependency conflict from pyarrow prevent testing the wheel windows python 3.11
+          python_version_per_os["windows"] = [v for v in python_version if v != "3.11"]
+          # update build_dict by removing os without any python version
+          for os in build_dict:
+              if len(python_version_per_os[os]) == 0:
+                    build_dict[os] = []
 
           with open(environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"build={build_dict}\n")
@@ -89,6 +97,8 @@ jobs:
               for os in oses:
                   f.write(f"do_{os}={'true' if len(build_dict[os]) > 0 else 'false'}\n")
               f.write(f"python_version={python_version}\n")
+              f.write(f"python_version_per_os={python_version_per_os}\n")
+
 
   lint-sources:
     runs-on: ubuntu-latest
@@ -113,7 +123,7 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.build).windows }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).windows }}
       fail-fast: false
     defaults:
       run:
@@ -192,7 +202,7 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.build).macos }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).macos }}
       fail-fast: false
     defaults:
       run:
@@ -293,7 +303,7 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.build).ubuntu }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).ubuntu }}
       fail-fast: false
     defaults:
       run:
@@ -397,7 +407,7 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).windows }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).windows }}
         compiler: [gnu]
       fail-fast: true
     runs-on: ${{ matrix.os }}
@@ -481,7 +491,7 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).macos }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).macos }}
       fail-fast: true
     runs-on: ${{ matrix.os }}
     env:
@@ -564,7 +574,7 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).ubuntu }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).ubuntu }}
       fail-fast: true
     runs-on: ${{ matrix.os }}
     env:
