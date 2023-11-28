@@ -49,7 +49,7 @@ class CGP:
             self.max_graph_length + self.num_inputs, dtype=np.float64
         )
         self.nodes_used = []
-        self.output_genes = np.zeros(self.num_outputs, dtype=np.int)
+        self.output_genes = np.zeros(self.num_outputs, dtype=np.int_)
         self.nodes = np.empty(0, dtype=self.CGPNode)
         for i in range(0, self.num_outputs):
             self.output_genes[i] = self.genome[len(self.genome) - self.num_outputs + i]
