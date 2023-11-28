@@ -61,9 +61,18 @@ def test_ray_rllib_solver():
     # check compatibility
     assert RayRLlib.check_domain(domain)
 
-    # define and solve
+    # solver factory
+    # NB: we define here a config_factory instead of instancing direcly the config,
+    # as it cannot be reused later when loading the solver, because at that point
+    # the config will have been "frozen" by the first training step
+    config_factory = lambda: PPO.get_default_config().resources(
+        num_cpus_per_worker=0.5
+    )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
     solver_kwargs = dict(algo_class=PPO, train_iterations=1)
-    solver = RockPaperScissors.solve_with(RayRLlib(**solver_kwargs), domain_factory)
+    solver_factory = lambda: RayRLlib(config=config_factory(), **solver_kwargs)
+
+    # solve
+    solver = RockPaperScissors.solve_with(solver_factory(), domain_factory)
     assert hasattr(solver, "_algo")
 
     # store
@@ -80,7 +89,7 @@ def test_ray_rllib_solver():
     )
 
     # load and rollout
-    solver2 = RayRLlib(**solver_kwargs)
+    solver2 = solver_factory()
     solver2.load(tmp_save_dir, domain_factory)
     rollout(
         domain,
@@ -99,7 +108,12 @@ def test_ray_rllib_solver_on_single_agent_domain():
 
     # define and solve
     solver_kwargs = dict(algo_class=PPO, train_iterations=1)
-    solver = GymDomain.solve_with(RayRLlib(**solver_kwargs), domain_factory)
+    config = PPO.get_default_config().resources(
+        num_cpus_per_worker=0.5
+    )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
+    solver = GymDomain.solve_with(
+        RayRLlib(config=config, **solver_kwargs), domain_factory
+    )
     assert hasattr(solver, "_algo")
 
     # rollout
