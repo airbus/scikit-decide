@@ -73,9 +73,9 @@ export DO_SKIP_MZN_CHECK=1
 Please note however that the library is never tested without minizinc (or minizinc versions < 2.6).
 
 
-### Python 3.7+ environment
+### Python 3.8+ environment
 
-The use of a virtual environment for scikit-decide is recommended, and you will need to ensure that the environment use a Python version greater than 3.7.
+The use of a virtual environment for scikit-decide is recommended, and you will need to ensure that the environment use a Python version greater than 3.8.
 This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows)
 and [venv](https://docs.python.org/fr/3/library/venv.html) module.
 
