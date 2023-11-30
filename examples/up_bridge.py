@@ -7,6 +7,13 @@ from skdecide.hub.domain.up import UPDomain
 from skdecide.hub.solver.up import UPSolver
 from skdecide.hub.solver.lazy_astar import LazyAstar
 
+from skdecide.hub.solver.ray_rllib import RayRLlib
+
+# from skdecide.hub.solver.stable_baselines import StableBaseline
+# from stable_baselines3.dqn import DQN
+
+from ray.rllib.agents.dqn import DQNTrainer
+
 import unified_planning
 from unified_planning.shortcuts import (
     UserType,
@@ -57,6 +64,10 @@ for i in range(NLOC - 1):
 
 problem.add_goal(robot_at(locations[-1]))
 
+problem.add_quality_metric(
+    unified_planning.model.metrics.MinimizeActionCosts({move: 1})
+)
+
 ## Step 2: creating the scikit-decide's UPDomain
 
 domain_factory = lambda: UPDomain(problem)
@@ -80,6 +91,32 @@ if UPSolver.check_domain(domain):
             outcome_formatter=None,
         )
 
+# Example 2: Solving the same example but with RLLib's DQN
+
+print(
+    "\n\n=== EXAMPLE 2: Solving UP's basic example using skdecide's RLLib's DQN solver ===\n"
+)
+
+domain_factory = lambda: UPDomain(problem, state_encoding="vector")
+domain = domain_factory()
+
+if True:  # RayRLlib.check_domain(domain):
+    with RayRLlib(algo_class=DQNTrainer, train_iterations=5) as solver:
+        # with StableBaseline(
+        #     algo_class=DQN,
+        #     baselines_policy="MlpPolicy",
+        #     learn_config={"total_timesteps": 5},
+        #     verbose=1,
+        # ) as solver:
+        UPDomain.solve_with(solver, domain_factory)
+        rollout(
+            domain,
+            solver,
+            num_episodes=1,
+            max_steps=100,
+            max_framerate=30,
+            outcome_formatter=None,
+        )
 
 # Example 2: Solving a numeric example, the same as https://github.com/aiplan4eu/unified-planning/blob/master/docs/notebooks/02-optimal-planning.ipynb
 

@@ -79,8 +79,8 @@ def test_up_bridge_solver_classic():
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 10) or platform.system() == "Windows",
-    reason="requires python3.10 or higher and any OS different from Windows",
+    sys.version_info < (3, 10),
+    reason="requires python3.10 or higher",
 )
 def test_up_bridge_solver_numeric():
     noexcept = True

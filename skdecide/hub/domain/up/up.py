@@ -49,10 +49,14 @@ class SkUPState:
 
     def __eq__(self, other):
         return {
-            fn: v for fn, v in self._up_state if fn.fluent().name != "total-cost"
-        }._values == {
-            fn: v for fn, v in other._up_state if fn.fluent().name != "total-cost"
-        }._values
+            fn: v
+            for fn, v in self._up_state._values.items()
+            if fn.fluent().name != "total-cost"
+        } == {
+            fn: v
+            for fn, v in other._up_state._values.items()
+            if fn.fluent().name != "total-cost"
+        }
 
     def __repr__(self) -> str:
         return repr(self._up_state)

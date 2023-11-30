@@ -14,7 +14,10 @@ def test_up_bridge_domain():
 
     try:
         from skdecide.hub.domain.up import UPDomain
-        from skdecide.hub.solver.lazy_astar import LazyAstar
+
+        # from skdecide.hub.solver.lazy_astar import LazyAstar
+        from skdecide.hub.solver.ray_rllib import RayRLlib
+        from ray.rllib.algorithms.dqn import DQN
 
         import unified_planning
         from unified_planning.shortcuts import Fluent, InstantaneousAction, Not
@@ -52,12 +55,13 @@ def test_up_bridge_domain():
             unified_planning.model.metrics.MinimizeActionCosts({a: 10, b: 1, c: 1})
         )
 
-        domain_factory = lambda: UPDomain(problem)
+        domain_factory = lambda: UPDomain(problem, state_encoding="dictionary")
         domain = domain_factory()
         action_space = domain.get_action_space()
         observation_space = domain.get_observation_space()
 
-        with LazyAstar() as solver:
+        # with LazyAstar() as solver:
+        with RayRLlib(algo_class=DQN, train_iterations=1) as solver:
             UPDomain.solve_with(solver, domain_factory)
             s = domain.get_initial_state()
             step = 0
@@ -71,7 +75,7 @@ def test_up_bridge_domain():
         noexcept = False
     assert (
         noexcept
-        and LazyAstar.check_domain(domain)
+        and RayRLlib.check_domain(domain)
         and len(action_space._elements) == 3
         and all(
             isinstance(s, gym.spaces.Discrete) and s.n == 2
