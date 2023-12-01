@@ -657,6 +657,7 @@ jobs:
       - name: Trigger a build on each BinderHub deployments in the mybinder.org federation
         run: |
           bash scripts/trigger_binder.sh https://ovh.mybinder.org/build/gh/${GITHUB_REPOSITORY}/${BINDER_RELEASE_ENV_SHA1}
+          bash scripts/trigger_binder.sh https://ovh2.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
           bash scripts/trigger_binder.sh https://notebooks.gesis.org/binder/build/gh/${GITHUB_REPOSITORY}/${BINDER_RELEASE_ENV_SHA1}
 
       - name: Set env variables for github+binder links in doc

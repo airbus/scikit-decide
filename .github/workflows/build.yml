@@ -925,7 +925,6 @@ jobs:
       # only if a nightly release occured
       if: ${{ steps.asset.outputs.result != '' }}
       run: |
-        bash scripts/trigger_binder.sh https://gke.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
         bash scripts/trigger_binder.sh https://ovh.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
-        bash scripts/trigger_binder.sh https://turing.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
-        bash scripts/trigger_binder.sh https://gesis.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
+        bash scripts/trigger_binder.sh https://ovh2.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
+        bash scripts/trigger_binder.sh https://notebooks.gesis.org/binder/build/gh/${GITHUB_REPOSITORY}/binder
