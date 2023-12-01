@@ -23,3 +23,4 @@ dependencies:
     - PyOpenGL-accelerate
     - PyOpenGL
     - xarray
+    - gymnasium[classic-control]==0.28.1
