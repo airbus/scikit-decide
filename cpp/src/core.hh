@@ -343,7 +343,7 @@ public:
     _maxlen = m._maxlen;
   }
 
-  bool operator==(const Memory &m) {
+  bool operator==(const Memory &m) const {
     return static_cast<const std::deque<T> &>(*this) ==
                static_cast<const std::deque<T> &>(m) &&
            _maxlen == m._maxlen;
