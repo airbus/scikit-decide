@@ -57,16 +57,22 @@ bool PythonContainerProxy<Texecution>::value_type::operator==(
 
 // === PythonContainerProxy::value_type::PrimitiveType implementation ===
 
+#if defined(__GNUC__) || defined(__GNUG__)
+#define SK_PY_CONTAINER_PROXY_PRIMITIVE_TYPE_CLASS                             \
+  PythonContainerProxy<Texecution>::value_type::template PrimitiveType<T>
+#else
+#define SK_PY_CONTAINER_PROXY_PRIMITIVE_TYPE_CLASS                             \
+  PythonContainerProxy<Texecution>::value_type::PrimitiveType<T>
+#endif
+
 template <typename Texecution>
 template <typename T>
-PythonContainerProxy<Texecution>::value_type::PrimitiveType<T>::PrimitiveType(
-    const T &value)
+SK_PY_CONTAINER_PROXY_PRIMITIVE_TYPE_CLASS::PrimitiveType(const T &value)
     : _value(value) {}
 
 template <typename Texecution>
 template <typename T>
-PythonContainerProxy<Texecution>::value_type::PrimitiveType<
-    T>::~PrimitiveType() {}
+SK_PY_CONTAINER_PROXY_PRIMITIVE_TYPE_CLASS::~PrimitiveType() {}
 
 template <typename Texecution>
 template <typename T>

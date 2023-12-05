@@ -17,6 +17,10 @@
 
 namespace skdecide {
 
+#define SK_PY_DOMAIN_PROXY_CLASS                                               \
+  PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability,      \
+                    Tmemory>
+
 // === Agent implementation ===
 
 #define SK_PY_AGENT_TEMPLATE_DECL                                              \
@@ -32,17 +36,19 @@ namespace skdecide {
                              Tcontrollability, Tmemory>::Agent
 
 SK_PY_AGENT_TEMPLATE_DECL
-SK_PY_AGENT_CLASS::Agent() : PyObj<Agent>() {}
+SK_PY_AGENT_CLASS::Agent() : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Agent>() {}
 
 SK_PY_AGENT_TEMPLATE_DECL
 SK_PY_AGENT_CLASS::Agent(std::unique_ptr<py::object> &&a)
-    : PyObj<Agent>(std::move(a)) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Agent>(std::move(a)) {}
 
 SK_PY_AGENT_TEMPLATE_DECL
-SK_PY_AGENT_CLASS::Agent(const py::object &a) : PyObj<Agent>(a) {}
+SK_PY_AGENT_CLASS::Agent(const py::object &a)
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Agent>(a) {}
 
 SK_PY_AGENT_TEMPLATE_DECL
-SK_PY_AGENT_CLASS::Agent(const Agent &other) : PyObj<Agent>(other) {}
+SK_PY_AGENT_CLASS::Agent(const Agent &other)
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Agent>(other) {}
 
 SK_PY_AGENT_TEMPLATE_DECL
 SK_PY_AGENT_TYPE &SK_PY_AGENT_CLASS::operator=(const Agent &other) {
@@ -76,19 +82,19 @@ SK_PY_AGENT_CLASS::~Agent() {}
 
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ACCESS_CLASS::AgentDataAccess()
-    : PyObj<AgentData, py::dict>() {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<AgentData, py::dict>() {}
 
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ACCESS_CLASS::AgentDataAccess(std::unique_ptr<py::object> &&ad)
-    : PyObj<AgentData, py::dict>(std::move(ad)) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<AgentData, py::dict>(std::move(ad)) {}
 
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ACCESS_CLASS::AgentDataAccess(const py::object &ad)
-    : PyObj<AgentData, py::dict>(ad) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<AgentData, py::dict>(ad) {}
 
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ACCESS_CLASS::AgentDataAccess(const AgentDataAccess &other)
-    : PyObj<AgentData, py::dict>(other) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<AgentData, py::dict>(other) {}
 
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ACCESS_TYPE &
@@ -170,23 +176,24 @@ SK_PY_AGENT_DATA_ACCESS_CLASS::end() const {
 #define SK_PY_AGENT_DATA_ITEM_TYPE SK_PY_AGENT_DATA_ACCESS_TYPE::Item
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
-SK_PY_AGENT_DATA_ITEM_CLASS::Item() : PyObj<Item, py::tuple>() {}
+SK_PY_AGENT_DATA_ITEM_CLASS::Item()
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Item, py::tuple>() {}
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ITEM_CLASS::Item(std::unique_ptr<py::object> &&a)
-    : PyObj<Item, py::tuple>(std::move(a)) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Item, py::tuple>(std::move(a)) {}
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ITEM_CLASS::Item(const py::object &a)
-    : PyObj<Item, py::tuple>(a) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Item, py::tuple>(a) {}
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
-SK_PY_AGENT_DATA_ITEM_CLASS::Item(const Item &other)
-    : PyObj<Item, py::tuple>(other) {}
+SK_PY_AGENT_DATA_ITEM_CLASS::Item(const SK_PY_AGENT_DATA_ITEM_TYPE &other)
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Item, py::tuple>(other) {}
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
-SK_PY_AGENT_DATA_ITEM_TYPE &
-SK_PY_AGENT_DATA_ITEM_CLASS::operator=(const Item &other) {
+SK_PY_AGENT_DATA_ITEM_TYPE &SK_PY_AGENT_DATA_ITEM_CLASS::operator=(
+    const SK_PY_AGENT_DATA_ITEM_TYPE &other) {
   static_cast<PyObj<Item, py::tuple> &>(*this) = other;
   return *this;
 }
@@ -220,7 +227,9 @@ SK_PY_AGENT_DATA_ACCESS_TYPE::AgentData SK_PY_AGENT_DATA_ITEM_CLASS::data() {
 SK_PY_AGENT_DATA_ACCESSOR_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ACCESSOR_CLASS::AgentDataAccessor(
     const py::detail::item_accessor &a)
-    : PyObj<AgentDataAccessor, py::detail::item_accessor>(a), AgentData(a) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<AgentDataAccessor,
+                                      py::detail::item_accessor>(a),
+      AgentData(a) {}
 
 SK_PY_AGENT_DATA_ACCESSOR_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ACCESSOR_TYPE &
@@ -257,19 +266,20 @@ SK_PY_AGENT_DATA_ACCESSOR_CLASS::~AgentDataAccessor() {}
                              Tcontrollability, Tmemory>::MemoryState
 
 SK_PY_MEMORY_STATE_TEMPLATE_DECL
-SK_PY_MEMORY_STATE_CLASS::MemoryState() : PyObj<MemoryState, py::list>() {}
+SK_PY_MEMORY_STATE_CLASS::MemoryState()
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<MemoryState, py::list>() {}
 
 SK_PY_MEMORY_STATE_TEMPLATE_DECL
 SK_PY_MEMORY_STATE_CLASS::MemoryState(std::unique_ptr<py::object> &&m)
-    : PyObj<MemoryState, py::list>(std::move(m)) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<MemoryState, py::list>(std::move(m)) {}
 
 SK_PY_MEMORY_STATE_TEMPLATE_DECL
 SK_PY_MEMORY_STATE_CLASS::MemoryState(const py::object &m)
-    : PyObj<MemoryState, py::list>(m) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<MemoryState, py::list>(m) {}
 
 SK_PY_MEMORY_STATE_TEMPLATE_DECL
 SK_PY_MEMORY_STATE_CLASS::MemoryState(const MemoryState &other)
-    : PyObj<MemoryState, py::list>(other) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<MemoryState, py::list>(other) {}
 
 SK_PY_MEMORY_STATE_TEMPLATE_DECL
 SK_PY_MEMORY_STATE_TYPE &
@@ -315,17 +325,19 @@ SK_PY_MEMORY_STATE_TYPE::State SK_PY_MEMORY_STATE_CLASS::last_state() {
                              Tmemory>::template Outcome<Derived, Situation>
 
 SK_PY_OUTCOME_TEMPLATE_DECL
-SK_PY_OUTCOME_CLASS::Outcome() : PyObj<Derived>() { construct(); }
+SK_PY_OUTCOME_CLASS::Outcome() : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Derived>() {
+  construct();
+}
 
 SK_PY_OUTCOME_TEMPLATE_DECL
 SK_PY_OUTCOME_CLASS::Outcome(std::unique_ptr<py::object> &&outcome)
-    : PyObj<Derived>(std::move(outcome)) {
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Derived>(std::move(outcome)) {
   construct();
 }
 
 SK_PY_OUTCOME_TEMPLATE_DECL
 SK_PY_OUTCOME_CLASS::Outcome(const py::object &outcome)
-    : PyObj<Derived>(outcome) {
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Derived>(outcome) {
   construct();
 }
 
@@ -333,7 +345,7 @@ SK_PY_OUTCOME_TEMPLATE_DECL
 SK_PY_OUTCOME_CLASS::Outcome(const Situation &situation,
                              const Value &transition_value,
                              const Predicate &termination, const Info &info)
-    : PyObj<Derived>() {
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Derived>() {
   construct(situation, transition_value, termination, info);
 }
 
@@ -383,7 +395,8 @@ void SK_PY_OUTCOME_CLASS::construct(const Situation &situation,
 }
 
 SK_PY_OUTCOME_TEMPLATE_DECL
-SK_PY_OUTCOME_CLASS::Outcome(const Outcome &other) : PyObj<Derived>(other) {}
+SK_PY_OUTCOME_CLASS::Outcome(const Outcome &other)
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<Derived>(other) {}
 
 SK_PY_OUTCOME_TEMPLATE_DECL
 SK_PY_OUTCOME_TYPE &SK_PY_OUTCOME_CLASS::operator=(const Outcome &other) {
@@ -737,22 +750,24 @@ const double &SK_PY_DISTRIBUTION_VALUE_CLASS::probability() const {
 
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::NextStateDistributionValues()
-    : PyObj<NextStateDistributionValues>() {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<NextStateDistributionValues>() {}
 
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::NextStateDistributionValues(
     std::unique_ptr<py::object> &&next_state_distribution)
-    : PyObj<NextStateDistributionValues>(std::move(next_state_distribution)) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<NextStateDistributionValues>(
+          std::move(next_state_distribution)) {}
 
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::NextStateDistributionValues(
     const py::object &next_state_distribution)
-    : PyObj<NextStateDistributionValues>(next_state_distribution) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<NextStateDistributionValues>(
+          next_state_distribution) {}
 
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::NextStateDistributionValues(
     const NextStateDistributionValues &other)
-    : PyObj<NextStateDistributionValues>(other) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<NextStateDistributionValues>(other) {}
 
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TYPE &
@@ -795,21 +810,23 @@ SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::end() const {
 
 SK_PY_NEXT_STATE_DISTRIBUTION_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::NextStateDistribution()
-    : PyObj<NextStateDistribution>() {
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<NextStateDistribution>() {
   construct();
 }
 
 SK_PY_NEXT_STATE_DISTRIBUTION_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::NextStateDistribution(
     std::unique_ptr<py::object> &&next_state_distribution)
-    : PyObj<NextStateDistribution>(std::move(next_state_distribution)) {
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<NextStateDistribution>(
+          std::move(next_state_distribution)) {
   construct();
 }
 
 SK_PY_NEXT_STATE_DISTRIBUTION_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::NextStateDistribution(
     const py::object &next_state_distribution)
-    : PyObj<NextStateDistribution>(next_state_distribution) {
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<NextStateDistribution>(
+          next_state_distribution) {
   construct();
 }
 
@@ -835,7 +852,7 @@ void SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::construct() {
 SK_PY_NEXT_STATE_DISTRIBUTION_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::NextStateDistribution(
     const NextStateDistribution &other)
-    : PyObj<NextStateDistribution>(other) {}
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<NextStateDistribution>(other) {}
 
 SK_PY_NEXT_STATE_DISTRIBUTION_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_TYPE &
