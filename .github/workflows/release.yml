@@ -124,7 +124,7 @@ jobs:
 
       - name: Build wheel
         run: |
-          export "BOOST_ROOT=$PWD/$BOOST_DIR"
+          export "Boost_ROOT=$PWD/$BOOST_DIR"
           python -m pip install --upgrade pip
           pip install build poetry-dynamic-versioning
           python -m build --sdist --wheel
@@ -205,7 +205,7 @@ jobs:
 
       - name: Build wheel
         run: |
-          export "BOOST_ROOT=$PWD/$BOOST_DIR"
+          export "Boost_ROOT=$PWD/$BOOST_DIR"
           export "OpenMP_ROOT=$(brew --prefix)/opt/libomp"
           python -m pip install --upgrade pip
           pip install build poetry-dynamic-versioning
