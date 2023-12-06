@@ -2,8 +2,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import gym
-from ray.rllib.agents.ppo import PPOTrainer
+import gymnasium as gym
+from ray.rllib.algorithms.ppo import PPO
 
 from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.solver.ray_rllib import RayRLlib
@@ -17,9 +17,7 @@ domain = domain_factory()
 # Check domain compatibility
 if RayRLlib.check_domain(domain):
 
-    solver_factory = lambda: RayRLlib(
-        PPOTrainer, train_iterations=5, config={"framework": "torch"}
-    )
+    solver_factory = lambda: RayRLlib(PPO, train_iterations=5)
 
     # Start solving
     with solver_factory() as solver:

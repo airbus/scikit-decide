@@ -73,9 +73,9 @@ export DO_SKIP_MZN_CHECK=1
 Please note however that the library is never tested without minizinc (or minizinc versions < 2.6).
 
 
-### Python 3.7+ environment
+### Python 3.8+ environment
 
-The use of a virtual environment for scikit-decide is recommended, and you will need to ensure that the environment use a Python version greater than 3.7.
+The use of a virtual environment for scikit-decide is recommended, and you will need to ensure that the environment use a Python version greater than 3.8.
 This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows)
 and [venv](https://docs.python.org/fr/3/library/venv.html) module.
 
@@ -122,30 +122,3 @@ Alternatively you can choose to only install the core library, which is enough i
 pip install -U pip
 pip install -U scikit-decide
 ```
-
-## Troubleshooting
-
-You may encounter an [error when installing `gym==0.21.0`](https://github.com/openai/gym/issues/3176) which happens to be a dependency of `scikit-decide[all]`. 
-This is because its installation does not respect PEP 517 which is enforced by default by last versions of pip and setuptools. 
-The solution is to install it beforehand:
-```shell
-# preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
-python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
-python -m pip install "setuptools<67"  # starting with setuptools 67, gym 0.21.0 is not intallable anymore
-python -m pip install "importlib-metadata<5" "virtualenv==20.16.6"  # cannot import gym with importlib-metadata >= 5 and python<3.8
-python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
-python -m pip install gym==0.21.0 --no-use-pep517
-# preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also install gym > 0.21
-python -m pip install --upgrade pip
-python -m pip install "ray[rllib]<2.3.0"
-# preinstall stable-baselines3<2.0.0 because starting from 2.0.0, stable-baselines3 requires gym > 0.26
-python -m pip install "stable-baselines3<2.0.0"
-# install scikit-decide and remaining dependencies
-pip install -U scikit-decide[all]
-```
-
-::: tip Note
-Newer versions of gym or [gymnasium](https://gymnasium.farama.org/), typically greater than 0.26 are not yet possible 
-because of a conflict between [`ray[rllib]`](https://github.com/ray-project/ray/issues/34396) 
-and [`stable-baselines3`](https://github.com/DLR-RM/stable-baselines3/issues/1452).
-:::

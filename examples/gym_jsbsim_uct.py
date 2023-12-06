@@ -8,8 +8,8 @@ from math import sqrt
 from typing import Any
 
 import folium
-import gym
 import gym_jsbsim
+import gymnasium as gym
 import numpy as np
 from gym_jsbsim.catalogs.catalog import Catalog as prp
 from gym_jsbsim.envs.taxi_utils import *
@@ -45,11 +45,11 @@ class D(GymDomainHashable, GymDiscreteActionDomain, DeterministicInitialized):
 
 
 class GymUCTRawDomain(D):
-    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
+    """This class wraps a cost-based deterministic gymnasium environment as a domain
         usable by a width-based planner
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -117,11 +117,11 @@ class D(GymDomain, GymDiscreteActionDomain):
 
 
 class GymUCTStepDomain(D):
-    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
+    """This class wraps a cost-based deterministic gymnasium environment as a domain
         usable by a width-based planner
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -245,11 +245,11 @@ class GymUCTStepDomain(D):
 
 
 class GymUCTSampleDomain(D):
-    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
+    """This class wraps a cost-based deterministic gymnasium environment as a domain
         usable by a width-based planner
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -377,7 +377,9 @@ class GymUCTSampleDomain(D):
 
 
 domain_factory = lambda: GymUCTRawDomain(
-    gym_env=gym.make(ENV_NAME), discretization_factor=9, max_depth=HORIZON
+    gym_env=gym.make("GymV21Environment-v0", env_id=ENV_NAME),
+    discretization_factor=9,
+    max_depth=HORIZON,
 )
 
 if UCT.check_domain(domain_factory()):

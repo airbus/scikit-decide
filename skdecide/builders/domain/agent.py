@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
-from typing import Union
+from typing import Set, Union
 
-from skdecide.core import StrDict
+from skdecide.core import SINGLE_AGENT_ID, StrDict
 
 __all__ = ["MultiAgent", "SingleAgent"]
 
@@ -19,8 +19,21 @@ class MultiAgent:
 
     T_agent = StrDict
 
+    def get_agents(self) -> Set[str]:
+        """Return the set of available agents ids."""
+        return set(self.get_observation_space())
+
 
 class SingleAgent(MultiAgent):
     """A domain must inherit this class if it is single-agent (i.e hosting only one agent)."""
 
     T_agent = Union
+
+    def get_agents(self) -> Set[str]:
+        """Return a singleton for single agent domains.
+
+        We must be here consistent with `skdecide.core.autocast()` which transforms a single agent domain
+        into a multi agents domain whose only agent has the id "agent".
+
+        """
+        return {SINGLE_AGENT_ID}

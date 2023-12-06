@@ -142,9 +142,9 @@ The best example to try out scikit-decide capabilities might be `examples/full_m
 - Simple Grid World
 - Maze
 - Mastermind
-- Cart Pole (OpenAI Gym)
-- Mountain Car continuous (OpenAI Gym)
-- ATARI Pacman (OpenAI Gym)
+- Cart Pole (Gymnasium)
+- Mountain Car continuous (Gymnasium)
+- ATARI Pacman (Gymnasium)
 
 ...and then solve it with any compatible solver (detected automatically) among following selection:
 
@@ -170,7 +170,7 @@ These combinations are particularly efficient if you want to try them out:
 ::: warning
 Some domains/solvers might require extra manual setup steps to work at 100%.
 In the future, each scikit-decide hub entry might have a dedicated help page to list them, but in the meantime please refer to this:
-- OpenAI Gym domains: [OpenAI Gym](http://gym.openai.com/docs/#installation) for loading Gym environments not included by default (e.g. atari games).
+- Gym/Gymnasium domains: [Gymnasium documentation](https://gymnasium.farama.org/environments/atari/) for loading Gym environments not included by default (e.g. atari games).
 :::
 
 ## Code generators

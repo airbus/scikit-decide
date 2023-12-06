@@ -8,8 +8,8 @@ import math
 from typing import Any, Callable
 
 import folium
-import gym
 import gym_jsbsim
+import gymnasium as gym
 import numpy as np
 from gym_jsbsim.catalogs.catalog import Catalog as prp
 from gym_jsbsim.envs.taxi_utils import *
@@ -37,11 +37,11 @@ class D(
 
 
 class GymRIWDomain(D):
-    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
+    """This class wraps a cost-based deterministic gymnasium environment as a domain
         usable by a width-based planner
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -327,7 +327,7 @@ class GymRIW(RIW):
 
 
 domain_factory = lambda: GymRIWDomain(
-    gym_env=gym.make(ENV_NAME),
+    gym_env=gym.make("GymV21Environment-v0", env_id=ENV_NAME),
     set_state=lambda e, s: e.set_state(s),
     get_state=lambda e: e.get_state(),
     continuous_feature_fidelity=1,

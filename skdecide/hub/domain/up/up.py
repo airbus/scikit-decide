@@ -3,31 +3,35 @@
 # LICENSE file in the root directory of this source tree.
 
 from typing import Dict, List, Optional, Tuple, Union
-import numpy as np
-import gym
 
-import unified_planning as up
-from unified_planning.model.state import UPState
+import numpy as np
+import gymnasium as gym
 
 from skdecide.core import ImplicitSpace, Space, Value
 from skdecide.domains import DeterministicPlanningDomain
 from skdecide.hub.space.gym import ListSpace, DictSpace, BoxSpace
 from skdecide.utils import logger
 
+import unified_planning as up
+from unified_planning.shortcuts import FluentExp
 from unified_planning.model import Problem, UPState, InstantaneousAction, FNode
 from unified_planning.plans import ActionInstance
+from unified_planning.engines.compilers.grounder import GrounderHelper
+from unified_planning.engines.sequential_simulator import (
+    UPSequentialSimulator,
+    evaluate_quality_metric,
+)
+from unified_planning.exceptions import UPValueError
 from unified_planning.model.metrics import (
     MaximizeExpressionOnFinalState,
     Oversubscription,
     TemporalOversubscription,
 )
-from unified_planning.shortcuts import FluentExp
-from unified_planning.engines.sequential_simulator import (
-    UPSequentialSimulator,
-    evaluate_quality_metric,
-)
-from unified_planning.engines.compilers.grounder import GrounderHelper
-from unified_planning.exceptions import UPValueError
+
+from skdecide.core import ImplicitSpace, Space, Value
+from skdecide.domains import DeterministicPlanningDomain
+from skdecide.hub.space.gym import DictSpace, ListSpace
+from skdecide.utils import logger
 
 
 class SkUPState:

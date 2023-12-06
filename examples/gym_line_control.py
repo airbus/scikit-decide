@@ -3,11 +3,11 @@
 # LICENSE file in the root directory of this source tree.
 
 from math import exp, fabs, sqrt
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
-import gym
+import gymnasium as gym
 import numpy as np
-from gym.envs.classic_control import rendering
+from gymnasium.error import DependencyNotInstalled
 
 from skdecide import TransitionOutcome, Value
 from skdecide.builders.domain import Renderable
@@ -23,10 +23,15 @@ from skdecide.utils import rollout
 HORIZON = 500
 
 
-class FakeGymEnv:
-    """This class mimics an OpenAI Gym environment"""
+class FakeGymEnv(gym.Env):
+    """This class mimics a gymnasium environment"""
 
-    def __init__(self):
+    metadata = {
+        "render_modes": ["human", "rgb_array"],
+        "render_fps": 30,
+    }
+
+    def __init__(self, render_mode: Optional[str] = None):
         """Initialize GymDomain.
 
         # Parameters
@@ -53,6 +58,14 @@ class FakeGymEnv:
         self.viewer = None
         self._path = []
 
+        self.render_mode = render_mode
+
+        self.screen_width = 600
+        self.screen_height = 400
+        self.screen = None
+        self.clock = None
+        self.isopen = True
+
     def get_state(self):
         return np.array(
             [self._pos_x, self._pos_y, self._speed_x, self._speed_y], dtype=np.float32
@@ -64,19 +77,27 @@ class FakeGymEnv:
         self._speed_x = state[2]
         self._speed_y = state[3]
 
-    def reset(self):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
+        super().reset(seed=seed)
         self._pos_x = self._init_pos_x
         self._pos_y = self._init_pos_y
         self._speed_x = self._init_speed_x
         self._speed_y = self._init_speed_y
         self._path = []
-        return np.array(
-            [self._pos_x, self._pos_y, self._speed_x, self._speed_y], dtype=np.float32
+
+        if self.render_mode == "human":
+            self.render()
+        return (
+            np.array(
+                [self._pos_x, self._pos_y, self._speed_x, self._speed_y],
+                dtype=np.float32,
+            ),
+            {},
         )
 
     def step(self, action):
         speed = sqrt(self._speed_x * self._speed_x + self._speed_y * self._speed_y)
-        self._speed_y = self._speed_y + action * self._delta_t
+        self._speed_y = self._speed_y + action[0] * self._delta_t
         self._pos_y = self._pos_y + self._delta_t * self._speed_y
         self._speed_x = sqrt(speed * speed - self._speed_y * self._speed_y)
         self._pos_x = self._pos_x + self._delta_t * self._speed_x
@@ -84,37 +105,81 @@ class FakeGymEnv:
             [self._pos_x, self._pos_y, self._speed_x, self._speed_y], dtype=np.float32
         )
         reward = exp(-sqrt(self._pos_y * self._pos_y))
-        done = bool(fabs(self._pos_y > 1.0))
+        terminated = bool(fabs(self._pos_y > 1.0))
         self._path.append((self._pos_x, self._pos_y))
-        return obs, reward, done, {}
 
-    def render(self, mode="human"):
-        screen_width = 600
-        screen_height = 400
+        if self.render_mode == "human":
+            self.render()
+        return obs, reward, terminated, False, {}
 
-        if self.viewer is None:
-            self.viewer = rendering.Viewer(screen_width, screen_height)
-            self.track = rendering.Line(
-                (0, screen_height / 2), (screen_width, screen_height / 2)
+    def render(self):
+        if self.render_mode is None:
+            assert self.spec is not None
+            gym.logger.warn(
+                "You are calling render method without specifying any render mode. "
+                "You can specify the render_mode at initialization, "
+                f'e.g. gym.make("{self.spec.id}", render_mode="rgb_array")'
             )
-            self.track.set_color(0, 0, 1)
-            self.viewer.add_geom(self.track)
-            self.traj = rendering.PolyLine([], False)
-            self.traj.set_color(1, 0, 0)
-            self.traj.set_linewidth(3)
-            self.viewer.add_geom(self.traj)
+            return
 
-        if len(self.traj.v) != len(self._path):
-            self.traj.v = []
-            for p in self._path:
-                self.traj.v.append((p[0] * 100, screen_height / 2 + p[1] * 100))
+        try:
+            import pygame
+            from pygame import gfxdraw
+        except ImportError as e:
+            raise DependencyNotInstalled(
+                "pygame is not installed, run `pip install gymnasium[classic-control]`"
+            ) from e
 
-        return self.viewer.render(return_rgb_array=mode == "rgb_array")
+        if self.screen is None:
+            pygame.init()
+            if self.render_mode == "human":
+                pygame.display.init()
+                self.screen = pygame.display.set_mode(
+                    (self.screen_width, self.screen_height)
+                )
+            else:  # mode == "rgb_array":
+                self.screen = pygame.Surface((self.screen_width, self.screen_height))
+        if self.clock is None:
+            self.clock = pygame.time.Clock()
+
+        self.surf = pygame.Surface((self.screen_width, self.screen_height))
+        self.surf.fill((255, 255, 255))
+
+        pygame.draw.aaline(
+            self.surf,
+            start_pos=(0, self.screen_height / 2),
+            end_pos=(self.screen_width, self.screen_height / 2),
+            color=(0, 0, 255),
+        )
+
+        # trajectory
+        if len(self._path) > 1:
+            points = [
+                (p[0] * 100, self.screen_height / 2 + p[1] * 100) for p in self._path
+            ]
+            pygame.draw.lines(
+                self.surf, width=3, color=(255, 0, 0), closed=False, points=points
+            )
+
+        self.surf = pygame.transform.flip(self.surf, False, True)
+        self.screen.blit(self.surf, (0, 0))
+        if self.render_mode == "human":
+            pygame.event.pump()
+            self.clock.tick(self.metadata["render_fps"])
+            pygame.display.flip()
+
+        elif self.render_mode == "rgb_array":
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
+            )
 
     def close(self):
-        if self.viewer:
-            self.viewer.close()
-            self.viewer = None
+        if self.screen is not None:
+            import pygame
+
+            pygame.display.quit()
+            pygame.quit()
+            self.isopen = False
 
 
 class D(
@@ -127,11 +192,11 @@ class D(
 
 
 class GymRIWDomain(D):
-    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
+    """This class wraps a cost-based deterministic gymnasium environment as a domain
         usable by a width-based planner
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -190,7 +255,7 @@ class GymRIWDomain(D):
 
 
 domain_factory = lambda: GymRIWDomain(
-    gym_env=FakeGymEnv(),
+    gym_env=FakeGymEnv(render_mode="human"),
     set_state=lambda e, s: e.set_state(s),
     get_state=lambda e: e.get_state(),
     continuous_feature_fidelity=3,

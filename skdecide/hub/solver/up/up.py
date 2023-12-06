@@ -4,15 +4,15 @@
 
 from __future__ import annotations
 
+from typing import Any, Callable, Dict, List
+
 from unified_planning.engines import Engine
 from unified_planning.exceptions import UPValueError
 from unified_planning.shortcuts import FluentExp, SequentialSimulator
 
-from skdecide.hub.domain.up import UPDomain, SkUPState, SkUPAction
-from typing import Any, Callable, Dict, List
-
 from skdecide import Solver, Value
 from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.hub.domain.up import SkUPAction, SkUPState, UPDomain
 
 
 # TODO: remove Markovian req?

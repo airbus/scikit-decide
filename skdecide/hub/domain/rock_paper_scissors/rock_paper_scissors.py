@@ -47,6 +47,9 @@ class RockPaperScissors(D):
     def __init__(self, max_moves: int = 10):
         self._max_moves = max_moves
 
+    def get_agents(self):
+        return {"player1", "player2"}
+
     def _state_step(
         self, action: D.T_agent[D.T_concurrency[D.T_event]]
     ) -> TransitionOutcome[
@@ -79,7 +82,7 @@ class RockPaperScissors(D):
         return TransitionOutcome(
             state=State(num_move=num_move),
             value={"player1": Value(reward=r1), "player2": Value(reward=r2)},
-            termination=(num_move >= self._max_moves),
+            termination={k: (num_move >= self._max_moves) for k in self.get_agents()},
         )
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
@@ -100,15 +103,3 @@ class RockPaperScissors(D):
 
     def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
         return {"player1": EnumSpace(Move), "player2": EnumSpace(Move)}
-
-
-if __name__ == "__main__":
-    from skdecide.utils import rollout
-
-    domain = RockPaperScissors()
-    rollout(
-        domain,
-        action_formatter=lambda a: str({k: v.name for k, v in a.items()}),
-        outcome_formatter=lambda o: f"{ {k: v.name for k, v in o.observation.items()} }"
-        f" - rewards: { {k: v.reward for k, v in o.value.items()} }",
-    )

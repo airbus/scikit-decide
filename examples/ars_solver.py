@@ -1,5 +1,5 @@
-import gym
 import gym_jsbsim
+import gymnasium as gym
 
 from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.solver.ars import ars
@@ -11,7 +11,11 @@ if __name__ == "__main__":
         {
             "name": "Heading Control Task",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("GymJsbsim-HeadingControlTask-v0")},
+            "config": {
+                "gym_env": gym.make(
+                    "GymV21Environment-v0", env_id="GymJsbsim-HeadingControlTask-v0"
+                )
+            },
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 500,
@@ -22,7 +26,11 @@ if __name__ == "__main__":
         {
             "name": "Approach Control Task",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("GymJsbsim-ApproachControlTask-v0")},
+            "config": {
+                "gym_env": gym.make(
+                    "GymV21Environment-v0", env_id="GymJsbsim-ApproachControlTask-v0"
+                )
+            },
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 500,
@@ -33,7 +41,11 @@ if __name__ == "__main__":
         {
             "name": "Taxi Ap Control Task",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("GymJsbsim-TaxiapControlTask-v0")},
+            "config": {
+                "gym_env": gym.make(
+                    "GymV21Environment-v0", env_id="GymJsbsim-TaxiapControlTask-v0"
+                )
+            },
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 200,
@@ -44,7 +56,11 @@ if __name__ == "__main__":
         {
             "name": "Taxi Control Task",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("GymJsbsim-TaxiControlTask-v0")},
+            "config": {
+                "gym_env": gym.make(
+                    "GymV21Environment-v0", env_id="GymJsbsim-TaxiControlTask-v0"
+                )
+            },
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 200,

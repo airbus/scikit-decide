@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Callable
 
-import gym
+import gymnasium as gym
 import numpy as np
 
 from skdecide import Domain, Solver
@@ -303,7 +303,7 @@ class CGPWrapper(Solver, DeterministicPolicies):
             evaluator,
             self._folder_name,
             self._n_cpus,
-            verbose=self._verbose
+            verbose=self._verbose,
         )
         es.run(self._n_it)
 

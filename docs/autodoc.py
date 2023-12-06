@@ -14,7 +14,7 @@ import sys
 import urllib
 from functools import lru_cache
 from glob import glob
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import skdecide
 
@@ -154,8 +154,13 @@ def add_basic_member_infos(member, autodoc):
         pass
 
 
+class AnnotationEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        return str(o)
+
+
 def json_escape(obj):
-    return json.dumps(obj).replace("'", r"\'").replace('"', "'")
+    return json.dumps(obj, cls=AnnotationEncoder).replace("'", r"\'").replace('"', "'")
 
 
 def md_escape(md):

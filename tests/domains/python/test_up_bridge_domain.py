@@ -2,10 +2,10 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import pytest
 import sys
 
-import gym
+import gymnasium as gym
+import pytest
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
@@ -13,11 +13,11 @@ def test_up_bridge_domain():
     noexcept = True
 
     try:
-        from skdecide.hub.domain.up import UPDomain
+        import unified_planning
+        from unified_planning.shortcuts import Fluent, InstantaneousAction, Not
 
-        # from skdecide.hub.solver.lazy_astar import LazyAstar
-        from skdecide.hub.solver.ray_rllib import RayRLlib
-        from ray.rllib.algorithms.dqn import DQN
+        from skdecide.hub.domain.up import UPDomain
+        from skdecide.hub.solver.lazy_astar import LazyAstar
 
         import unified_planning
         from unified_planning.shortcuts import Fluent, InstantaneousAction, Not

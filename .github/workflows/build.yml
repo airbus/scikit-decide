@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       python_version: ${{ steps.generate-matrix.outputs.python_version }}
+      python_version_per_os: ${{ steps.generate-matrix.outputs.python_version_per_os }}
       build: ${{ steps.generate-matrix.outputs.build}}
       test: ${{ steps.generate-matrix.outputs.test}}
       do_macos: ${{ steps.generate-matrix.outputs.do_macos}}
@@ -40,7 +41,7 @@ jobs:
         run: |
           from os import environ
 
-          python_version = ["3.7", "3.8", "3.9", "3.10"]
+          python_version = ["3.8", "3.9", "3.10", "3.11"]
           build = [ "macos-latest", "ubuntu-latest", "windows-latest" ]
           test = [ "macos-11", "macos-12", "ubuntu-22.04", "ubuntu-20.04", "windows-2019", "windows-2022"]
           build_doc = "true"
@@ -48,7 +49,7 @@ jobs:
           if "${{ github.event_name }}" != "schedule":
               to_bool = lambda s: True if s == "true" else False
               python_filter = {
-                  '3.7' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.7]') }}"),
+                  '3.11' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.11]') }}"),
                   '3.8' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.8]') }}"),
                   '3.9' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.9]') }}"),
                   '3.10' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.10]') }}"),
@@ -81,6 +82,13 @@ jobs:
                   build_doc = "false"
           oses = ["macos", "ubuntu", "windows"]
           build_dict = {os : [k for k in build if k.startswith(os)] for os in oses}
+          python_version_per_os = {os: python_version for os in oses}
+          # remove python 3.11 for windows: dependency conflict from pyarrow prevent testing the wheel windows python 3.11
+          python_version_per_os["windows"] = [v for v in python_version if v != "3.11"]
+          # update build_dict by removing os without any python version
+          for os in build_dict:
+              if len(python_version_per_os[os]) == 0:
+                    build_dict[os] = []
 
           with open(environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"build={build_dict}\n")
@@ -89,6 +97,8 @@ jobs:
               for os in oses:
                   f.write(f"do_{os}={'true' if len(build_dict[os]) > 0 else 'false'}\n")
               f.write(f"python_version={python_version}\n")
+              f.write(f"python_version_per_os={python_version_per_os}\n")
+
 
   lint-sources:
     runs-on: ubuntu-latest
@@ -105,7 +115,7 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
       - name: pre-commit checks
-        run: pre-commit run --show-diff-on-failure --color=always
+        run: pre-commit run --show-diff-on-failure --color=always --all-files
 
   build-windows:
     needs: [setup]
@@ -113,7 +123,7 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.build).windows }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).windows }}
       fail-fast: false
     defaults:
       run:
@@ -192,7 +202,7 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.build).macos }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).macos }}
       fail-fast: false
     defaults:
       run:
@@ -293,7 +303,7 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.build).ubuntu }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).ubuntu }}
       fail-fast: false
     defaults:
       run:
@@ -393,11 +403,11 @@ jobs:
           path: dist/*.whl
 
   test-windows:
-    needs: [build-macos, build-ubuntu, build-windows, setup]
+    needs: [build-windows, setup]
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).windows }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).windows }}
         compiler: [gnu]
       fail-fast: true
     runs-on: ${{ matrix.os }}
@@ -423,18 +433,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
-          python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
-          python -m pip install "setuptools<67"  # starting with setuptools 67, gym 0.21.0 is not intallable anymore
-          python -m pip install "importlib-metadata<5" "virtualenv==20.16.6"  # cannot import gym with importlib-metadata >= 5 and python<3.8
-          python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
-          python -m pip install gym==0.21.0 --no-use-pep517
-          # preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also installs gym > 0.21
-          python -m pip install --upgrade pip
-          python -m pip install "ray[rllib]<2.3.0"
-          # preinstall stable-baselines3<2.0.0 because starting from 2.0.0, stable-baselines3 requires gym > 0.26
-          python -m pip install "stable-baselines3<2.0.0"
-          # install remaining dependencies
           python -m pip install pytest
 
       - name: Download artifacts
@@ -489,11 +487,11 @@ jobs:
           pytest -v -s tests/scheduling
 
   test-macos:
-    needs: [build-macos, build-ubuntu, build-windows, setup]
+    needs: [build-macos, setup]
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).macos }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).macos }}
       fail-fast: true
     runs-on: ${{ matrix.os }}
     env:
@@ -516,18 +514,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
-          python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
-          python -m pip install "setuptools<67"  # starting with setuptools 67, gym 0.21.0 is not intallable anymore
-          python -m pip install "importlib-metadata<5" "virtualenv==20.16.6"  # cannot import gym with importlib-metadata >= 5 and python<3.8
-          python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
-          python -m pip install gym==0.21.0 --no-use-pep517
-          # preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also installs gym > 0.21
-          python -m pip install --upgrade pip
-          python -m pip install "ray[rllib]<2.3.0"
-          # preinstall stable-baselines3<2.0.0 because starting from 2.0.0, stable-baselines3 requires gym > 0.26
-          python -m pip install "stable-baselines3<2.0.0"
-          # install remaining dependencies
           python -m pip install pytest
 
       - name: Download artifacts
@@ -584,11 +570,11 @@ jobs:
           pytest -v -s tests/scheduling
 
   test-ubuntu:
-    needs: [build-macos, build-ubuntu, build-windows, setup]
+    needs: [build-ubuntu, setup]
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).ubuntu }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).ubuntu }}
       fail-fast: true
     runs-on: ${{ matrix.os }}
     env:
@@ -609,18 +595,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
-          python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
-          python -m pip install "setuptools<67"  # starting with setuptools 67, gym 0.21.0 is not intallable anymore
-          python -m pip install "importlib-metadata<5" "virtualenv==20.16.6"  # cannot import gym with importlib-metadata >= 5 and python<3.8
-          python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
-          python -m pip install gym==0.21.0 --no-use-pep517
-          # preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also installs gym > 0.21
-          python -m pip install --upgrade pip
-          python -m pip install "ray[rllib]<2.3.0"
-          # preinstall stable-baselines3<2.0.0 because starting from 2.0.0, stable-baselines3 requires gym > 0.26
-          python -m pip install "stable-baselines3<2.0.0"
-          # install remaining dependencies
           python -m pip install pytest docopt commonmark
 
       - name: Download artifacts
@@ -688,7 +662,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.7"]
+        python-version: ["3.8"]
       fail-fast: false
     runs-on: ${{ matrix.os }}
 
@@ -734,17 +708,6 @@ jobs:
 
       - name: Install scikit-decide
         run: |
-          # preinstall gym==0.21.0 with legacy method (python setup.py) because its requirements list is broken
-          python -m pip install "pip==22"  # starting with pip 23.1, gym 0.21.0 is not intallable anymore
-          python -m pip install "setuptools<67"  # starting with setuptools 67, gym 0.21.0 is not intallable anymore
-          python -m pip install "importlib-metadata<5" "virtualenv==20.16.6"  # cannot import gym with importlib-metadata >= 5 and python<3.8
-          python -m pip uninstall -y wheel  # wheel must not be here to fall back directly to python setup.py
-          python -m pip install gym==0.21.0 --no-use-pep517
-          # preinstall ray[rllib]<2.3.0 because starting from 2.3.0, ray also installs gym > 0.21
-          python -m pip install --upgrade pip
-          python -m pip install "ray[rllib]<2.3.0"
-          # preinstall stable-baselines3<2.0.0 because starting from 2.0.0, stable-baselines3 requires gym > 0.26
-          python -m pip install "stable-baselines3<2.0.0"
           # find proper wheel and install it
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
@@ -770,7 +733,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.7"]
+        python-version: ["3.8"]
       fail-fast: false
     runs-on: ${{ matrix.os }}
 
