@@ -387,9 +387,17 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
-          # run pytest, split tests using cpp scikit-decide library from others to avoid openmp versions conflicts
+          # run pytest
+          # we split tests using
+          #  - c++ scikit-decide library
+          #  - ortools (scheduling)
+          #  - deep-learning solvers (solvers/python)
+          #  - from others
+          # to avoid openmp versions conflicts
           pytest -v -s tests/*/cpp
-          pytest -v -s --ignore-glob tests/*/cpp
+          pytest -v -s tests/solvers/python
+          pytest -v -s tests/scheduling
+          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
   test-macos:
     needs: [build-macos, build-ubuntu, build-windows, setup]
@@ -464,9 +472,17 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
-          # run pytest, split tests using cpp scikit-decide library from others to avoid openmp versions conflicts
+          # run pytest
+          # we split tests using
+          #  - c++ scikit-decide library
+          #  - ortools (scheduling)
+          #  - deep-learning solvers (solvers/python)
+          #  - from others
+          # to avoid openmp versions conflicts
           pytest -v -s tests/*/cpp
-          pytest -v -s --ignore-glob tests/*/cpp
+          pytest -v -s tests/solvers/python
+          pytest -v -s tests/scheduling
+          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
   test-ubuntu:
     needs: [build-macos, build-ubuntu, build-windows, setup]
@@ -539,9 +555,17 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
-          # run pytest, split tests using cpp scikit-decide library from others to avoid openmp versions conflicts
+          # run pytest
+          # we split tests using
+          #  - c++ scikit-decide library
+          #  - ortools (scheduling)
+          #  - deep-learning solvers (solvers/python)
+          #  - from others
+          # to avoid openmp versions conflicts
           pytest -v -s tests/*/cpp
-          pytest -v -s --ignore-glob tests/*/cpp
+          pytest -v -s tests/solvers/python
+          pytest -v -s tests/scheduling
+          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
   upload:
     needs: [test-ubuntu, test-macos, test-windows]
