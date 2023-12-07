@@ -386,8 +386,9 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
-          # run pytest
-          pytest -v -s tests
+          # run pytest, split tests using cpp scikit-decide library from others to avoid openmp versions conflicts
+          pytest -v -s tests/*/cpp
+          pytest -v -s --ignore-glob tests/*/cpp
 
   test-macos:
     needs: [build-macos, build-ubuntu, build-windows, setup]
@@ -462,8 +463,9 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
-          # run pytest
-          pytest -v -s tests
+          # run pytest, split tests using cpp scikit-decide library from others to avoid openmp versions conflicts
+          pytest -v -s tests/*/cpp
+          pytest -v -s --ignore-glob tests/*/cpp
 
   test-ubuntu:
     needs: [build-macos, build-ubuntu, build-windows, setup]
@@ -536,8 +538,9 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
-          # run pytest
-          pytest -v -s tests
+          # run pytest, split tests using cpp scikit-decide library from others to avoid openmp versions conflicts
+          pytest -v -s tests/*/cpp
+          pytest -v -s --ignore-glob tests/*/cpp
 
   upload:
     needs: [test-ubuntu, test-macos, test-windows]
