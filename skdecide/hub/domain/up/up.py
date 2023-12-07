@@ -3,6 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from typing import Dict, List, Optional, Tuple, Union
+from numpy.typing import ArrayLike
 
 import numpy as np
 import gymnasium as gym
@@ -27,11 +28,6 @@ from unified_planning.model.metrics import (
     Oversubscription,
     TemporalOversubscription,
 )
-
-from skdecide.core import ImplicitSpace, Space, Value
-from skdecide.domains import DeterministicPlanningDomain
-from skdecide.hub.space.gym import DictSpace, ListSpace
-from skdecide.utils import logger
 
 
 class SkUPState:
@@ -150,36 +146,51 @@ class UPDomain(D):
         problem: Problem,
         fluent_domains: Dict[FNode, Tuple[Union[int, float], Union[int, float]]] = None,
         state_encoding: str = "native",
+        action_masking: str = "none",
+        invalid_action_penalty: float = 1000000,
         **simulator_params,
     ):
         """Initialize UPDomain.
 
         # Parameters
         problem: The Unified Planning problem (Problem) to wrap.
-        int_fluent_domains: The ranges of the int fluents (must be provided only if get_observation_space() is used)
-        real_fluent_domains: The (low, high) ranges of the real fluents (must be provided only if get_observation_space() is used)
+        fluent_domains: Dictionary of min and max fluent values by fluent represented as a Unified Planning's FNode (must be provided only if get_observation_space() is used)
+        state_encoding: Encoding of the state (observation) which must be one of "native", "dictionary" or "vector" (warning: if action_masking is "vector" then the state automatically becomes a dictionary which separates the action masking vector from the real state as defined here)
+        action_masking: Implementation of action masking as an output of the step function which must be one of "none", "penalty" or "vector" (embedded in the state which then becomes a dictionary separating action masking from the real state as defined by state_encoding)
+        invalid_action_penalty: Cost penalty returned when applying an invalid action in the step function (used only if action_masking is "penalty")
         simulator_params: Optional parameters to pass to the UP sequential simulator
         """
         self._problem = problem
+        # We might be in a different process from the one where the UP problem was created
+        # thus we must set the global environment to the one of the UP problem
+        up.environment.GLOBAL_ENVIRONMENT = self._problem._env
         self._simulator = UPSequentialSimulator(
-            problem, error_on_failed_checks=True, **simulator_params
+            self._problem, error_on_failed_checks=True, **simulator_params
         )
         try:
-            self._total_cost = FluentExp(problem.fluent("total-cost"))
+            self._total_cost = FluentExp(self._problem.fluent("total-cost"))
         except UPValueError:
             self._total_cost = None
         self._transition_costs = {}
         self._fluent_domains = fluent_domains
         self._state_encoding = state_encoding
+        self._action_masking = action_masking
+        self._invalid_action_penalty = invalid_action_penalty
+        self._action_space = None  # not computed by default
+        self._observation_space = None  # not computed by default
         self._fnodes_variables_map = None
         self._fnodes_vars_ordering = None
         self._states_map = None
         if self._state_encoding != "native":
             if self._state_encoding not in ["dictionary", "vector"]:
                 raise RuntimeError(
-                    "State encoding must be 'native', 'dictionary' or 'vector'"
+                    "State encoding must be one of 'native', 'dictionary' or 'vector'"
                 )
             self._init_state_encoding_()
+        if self._action_masking not in ["none", "penalty", "vector"]:
+            raise RuntimeError(
+                "Action masking must be one of 'none', 'penalty' or 'vector'"
+            )
 
     def _init_state_encoding_(self):
         def fnode_lower_bound(fn):
@@ -305,7 +316,15 @@ class UPDomain(D):
                 next_state.up_state.get_value(self._total_cost).constant_value() - cost
             )
             self._transition_costs[tuple([state, action, next_state])] = cost
-        return self._convert_from_skup_state_(next_state)
+        next_state = self._convert_from_skup_state_(next_state)
+        return (
+            next_state
+            if self._action_masking != "vector"
+            else {
+                "action_mask": self._get_valid_action_mask_(next_state),
+                "real_obs": next_state,
+            }
+        )
 
     def _get_transition_value(
         self,
@@ -313,6 +332,12 @@ class UPDomain(D):
         action: D.T_event,
         next_state: Optional[D.T_state] = None,
     ) -> Value[D.T_value]:
+        action_penalty = (
+            0
+            if self._action_masking != "penalty"
+            or action not in self._get_applicable_actions_from(memory)
+            else self._invalid_action_penalty
+        )
         if self._total_cost is not None:
             transition = tuple(
                 [
@@ -322,7 +347,7 @@ class UPDomain(D):
                 ]
             )
             if transition in self._transition_costs:
-                return Value(cost=self._transition_costs[transition])
+                return Value(cost=self._transition_costs[transition] + action_penalty)
         if len(self._problem.quality_metrics) > 0:
             transition_cost = 0
             for qm in self._problem.quality_metrics:
@@ -346,7 +371,7 @@ class UPDomain(D):
                     transition_cost += -metric
                 else:
                     transition_cost += metric
-            return Value(cost=transition_cost)
+            return Value(cost=transition_cost + action_penalty)
         else:
             logger.warning(
                 "UPDomain: requesting transition value whereas the 'total-cost' fluent or UP quality metrics are not defined will return NaN"
@@ -357,15 +382,18 @@ class UPDomain(D):
         return self._simulator.is_goal(memory.up_state)
 
     def _get_action_space_(self) -> Space[D.T_event]:
-        return ListSpace(
-            [
-                SkUPAction(a[2], ungrounded_action=a[0], orig_params=a[1])
-                for a in GrounderHelper(self._problem).get_grounded_actions()
-                if a[2] is not None
-            ]
-        )
+        if self._action_space is None:
+            self._action_space = ListSpace(
+                [
+                    SkUPAction(a[2], ungrounded_action=a[0], orig_params=a[1])
+                    for a in GrounderHelper(self._problem).get_grounded_actions()
+                    if a[2] is not None
+                ]
+            )
+        return self._action_space
 
     def _get_applicable_actions_from(self, memory: D.T_state) -> Space[D.T_event]:
+        state = self._convert_to_skup_state_(memory)
         return ListSpace(
             [
                 SkUPAction(
@@ -374,7 +402,7 @@ class UPDomain(D):
                     orig_params=params,
                 )
                 for action, params in self._simulator.get_applicable_actions(
-                    memory.up_state
+                    state.up_state
                 )
             ]
         )
@@ -383,49 +411,88 @@ class UPDomain(D):
         return ImplicitSpace(lambda s: self._is_terminal(s))
 
     def _get_initial_state_(self) -> D.T_state:
-        return self._convert_from_skup_state_(
+        init_state = self._convert_from_skup_state_(
             SkUPState(self._simulator.get_initial_state())
+        )
+        return (
+            init_state
+            if self._action_masking != "vector"
+            else {
+                "action_mask": self._get_valid_action_mask_(init_state),
+                "real_obs": init_state,
+            }
         )
 
     def _get_observation_space_(self) -> Space[D.T_observation]:
-        if self._state_encoding == "native":
-            raise RuntimeError(
-                "Observation space defined only for state encoding 'dictionary' or 'vector'"
-            )
-        elif self._state_encoding == "dictionary":
-            return DictSpace(
-                {
-                    repr(fn): gym.spaces.Discrete(2)
-                    if fn.fluent().type.is_bool_type()
-                    else gym.spaces.Discrete(v[1])
-                    if fn.fluent().type.is_int_type()
-                    else gym.spaces.Box(v[0], v[1])
-                    if fn.fluent().type.is_real_type()
-                    else gym.spaces.Discrete(v[1])
-                    if fn.fluent().type.is_user_type()
-                    else None
-                    for fn, v in self._fnodes_variables_map.items()
-                }
-            )
-        elif self._state_encoding == "vector":
-            return BoxSpace(
-                low=np.array(
-                    [
-                        self._fnodes_variables_map[fn][0]
-                        for fn in self._fnodes_vars_ordering
-                    ]
-                ),
-                high=np.array(
-                    [
-                        self._fnodes_variables_map[fn][1]
-                        for fn in self._fnodes_vars_ordering
-                    ]
-                ),
-                dtype=np.float32
-                if any(
-                    fn.fluent().type.is_real_type() for fn in self._fnodes_vars_ordering
+        if self._observation_space is None:
+            if self._state_encoding == "native":
+                raise RuntimeError(
+                    "Observation space defined only for state encoding 'dictionary' or 'vector'"
                 )
-                else np.int32,
+            elif self._state_encoding == "dictionary":
+                real_obs_space = DictSpace(
+                    {
+                        repr(fn): gym.spaces.Discrete(2)
+                        if fn.fluent().type.is_bool_type()
+                        else gym.spaces.Discrete(v[1])
+                        if fn.fluent().type.is_int_type()
+                        else gym.spaces.Box(v[0], v[1])
+                        if fn.fluent().type.is_real_type()
+                        else gym.spaces.Discrete(v[1])
+                        if fn.fluent().type.is_user_type()
+                        else None
+                        for fn, v in self._fnodes_variables_map.items()
+                    }
+                )
+            elif self._state_encoding == "vector":
+                real_obs_space = BoxSpace(
+                    low=np.array(
+                        [
+                            self._fnodes_variables_map[fn][0]
+                            for fn in self._fnodes_vars_ordering
+                        ]
+                    ),
+                    high=np.array(
+                        [
+                            self._fnodes_variables_map[fn][1]
+                            for fn in self._fnodes_vars_ordering
+                        ]
+                    ),
+                    dtype=np.float32
+                    if any(
+                        fn.fluent().type.is_real_type()
+                        for fn in self._fnodes_vars_ordering
+                    )
+                    else np.int32,
+                )
+            else:
+                return None
+            self._observation_space = (
+                real_obs_space
+                if self._action_masking != "vector"
+                else DictSpace(
+                    {
+                        "action_mask": BoxSpace(
+                            0, 1, shape=(len(self._get_action_space_().get_elements()),)
+                        ),
+                        "real_obs": real_obs_space,
+                    }
+                )
             )
-        else:
-            return None
+        return self._observation_space
+
+    def _get_valid_action_mask_(self, memory: D.T_state) -> ArrayLike:
+        all_actions = self._get_action_space_()
+        action_mask = np.zeros(shape=(len(all_actions),))
+        valid_actions = self._get_applicable_actions_from(memory)
+        for i, a in enumerate(all_actions):
+            if a in valid_actions:
+                action_mask[i] = 1
+                valid_actions.remove(a)
+            if len(valid_actions) == 0:
+                break
+        if len(valid_actions) > 0:
+            raise RuntimeError(
+                "Some valid actions could not be found in the action space!"
+            )
+        return action_mask
