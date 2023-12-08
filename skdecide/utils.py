@@ -7,14 +7,14 @@ from __future__ import annotations
 
 import copy
 import datetime
+import importlib.metadata
 import logging
 import os
-import re
+import sys
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
 
 import simplejson as json
-from pkg_resources import DistributionNotFound, EntryPoint, iter_entry_points
 
 from skdecide import (
     D,
@@ -55,29 +55,36 @@ if not len(logger.handlers):
 
 
 def _get_registered_entries(entry_type: str) -> List[str]:
-    return [e.name for e in iter_entry_points(entry_type)]
+    if (
+        sys.version_info.minor < 10 and sys.version_info.major == 3
+    ):  # different behaviour for 3.8 and 3.9
+        return [e.name for e in importlib.metadata.entry_points()[entry_type]]
+    else:
+        return [e.name for e in importlib.metadata.entry_points(group=entry_type)]
 
 
 def _load_registered_entry(entry_type: str, entry_name: str) -> Optional[Any]:
-    try:
-        for entry_point in iter_entry_points(entry_type):
-            if entry_point.name == entry_name:
-                return entry_point.load()
+    if (
+        sys.version_info.minor < 10 and sys.version_info.major == 3
+    ):  # different behaviour for 3.8 and 3.9
+        potential_entry_points = tuple(
+            e
+            for e in importlib.metadata.entry_points()[entry_type]
+            if e.name == entry_name
+        )
+    else:
+        potential_entry_points = tuple(
+            importlib.metadata.entry_points(group=entry_type, name=entry_name)
+        )
+    if len(potential_entry_points) == 0:
         logger.warning(
             rf'/!\ {entry_name} could not be loaded because it is not registered in group "{entry_type}".'
         )
-    except DistributionNotFound as e:
-        logger.warning(
-            rf"/!\ {entry_name} could not be loaded because of missing dependency ({e})."
-        )
-        extra_match = re.search(r'\bextra\s*==\s*"(?P<extra>[^"]+)"', str(e))
-        if extra_match:
-            extra = extra_match.group("extra")
-            logger.warning(
-                f"    ==> Try following command in your Python environment: pip install skdecide[{extra}]"
-            )
-    except Exception as e:
-        logger.warning(rf"/!\ {entry_name} could not be loaded ({e}).")
+    else:
+        try:
+            return potential_entry_points[0].load()
+        except Exception as e:
+            logger.warning(rf"/!\ {entry_name} could not be loaded ({e}).")
 
 
 def get_registered_domains() -> List[str]:
