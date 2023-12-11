@@ -1,10 +1,10 @@
-name: nb-skdecide092-py38
+name: nb-skdecide-py310
 channels:
   - pytorch
   - defaults
 dependencies:
   - cartopy>=0.21
-  - python=3.8
+  - python=3.10
   - pip
   - pytorch::cpuonly
   - pytorch::pytorch
