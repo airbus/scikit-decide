@@ -222,6 +222,17 @@ def get_binder_link(
     return link
 
 
+def get_colab_link(
+    notebooks_repo_name: str,
+    notebooks_branch: str,
+    notebook_relative_path: str,
+) -> str:
+    if notebooks_repo_name:
+        return f"https://colab.research.google.com/github/{notebooks_repo_name}/blob/{notebooks_branch}/{notebook_relative_path}"
+    else:
+        return ""
+
+
 def get_github_link(
     notebooks_repo_url: str,
     notebooks_branch: str,
@@ -230,7 +241,9 @@ def get_github_link(
     return f"{notebooks_repo_url}/blob/{notebooks_branch}/{notebook_relative_path}"
 
 
-def get_repo_n_branches_for_binder_n_github_links() -> Tuple[bool, str, str, str, str]:
+def get_repo_n_branches_for_binder_n_github_links() -> Tuple[
+    bool, str, str, str, str, str
+]:
     # repos + branches to use for binder environment and notebooks content.
     creating_links = True
     try:
@@ -253,9 +266,17 @@ def get_repo_n_branches_for_binder_n_github_links() -> Tuple[bool, str, str, str
             "Missing environment variables AUTODOC_NOTEBOOKS_REPO_URL "
             "or AUTODOC_NOTEBOOKS_BRANCH to create github and binder links for notebooks."
         )
+    try:
+        notebooks_repo_name = os.environ["AUTODOC_NOTEBOOKS_REPO_NAME"]
+    except KeyError:
+        notebooks_repo_name = ""
+        match = re.match(".*/(.*/.*)/?", notebooks_repo_url)
+        if match:
+            notebooks_repo_name = match.group(1)
     return (
         creating_links,
         notebooks_repo_url,
+        notebooks_repo_name,
         notebooks_branch,
         binder_env_repo_name,
         binder_env_branch,
@@ -633,6 +654,7 @@ if __name__ == "__main__":
     (
         creating_links,
         notebooks_repo_url,
+        notebooks_repo_name,
         notebooks_branch,
         binder_env_repo_name,
         binder_env_branch,
@@ -664,9 +686,23 @@ if __name__ == "__main__":
                 notebook_relative_path=notebook_relative_path,
             )
             github_badge = f"[![Github](https://img.shields.io/badge/see-Github-579aca?logo=github)]({github_link})"
-
+            colab_link = get_colab_link(
+                notebooks_repo_name=notebooks_repo_name,
+                notebooks_branch=notebooks_branch,
+                notebook_relative_path=notebook_relative_path,
+            )
+            if colab_link:
+                colab_badge = f"[![Colab](https://colab.research.google.com/assets/colab-badge.svg)]({colab_link})"
+            else:
+                colab_badge = ""
             # markdown item
-            notebooks_list_text += f"{github_badge}\n{binder_badge}\n\n"
+            notebooks_list_text += f"{github_badge}\n"
+            if colab_badge:
+                notebooks_list_text += f"{colab_badge}\n"
+            if binder_badge:
+                notebooks_list_text += f"{binder_badge}\n"
+        notebooks_list_text += "\n"
+
         # description
         notebooks_list_text += "".join(description_lines)
         notebooks_list_text += "\n\n"

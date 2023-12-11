@@ -159,7 +159,7 @@ Make sure you are in the "scikit-decide" root directory and install documentatio
 yarn install
 ```
 
-#### Define environment variables for binder links
+#### Define environment variables for binder and colab links
 
 In order to define appropriate links for notebooks (github source + launching on binder), we need several environment variables:
 - AUTODOC_BINDER_ENV_GH_REPO_NAME: name of the github repository hosting the binder environment
