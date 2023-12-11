@@ -643,6 +643,36 @@ jobs:
           submodules: true
           fetch-depth: 0  # fetch all branches
 
+      - name: Update notebooks to install release version of scikit-decide on colab in a dedicated tag
+        id: push-nb-release-tag
+        run: |
+          # update colab installation process for notebooks
+          shopt -s globstar  # enable **
+          old_pip_spec_pattern="\(skdecide_pip_spec.*\)scikit-decide\[all\]"
+          new_pip_spec_pattern="\1scikit-decide[all]==${SKDECIDE_VERSION}"
+          if ${{ github.repository != 'airbus/scikit-decide' && secrets.TEST_PYPI_PASSWORD != '' }} == 'true'; then
+            # install from TestPypi if on a fork
+            new_pip_spec_pattern="${new_pip_spec_pattern} --extra-index-url https://test.pypi.org/simple/"
+          fi
+          old_using_nightly_pattern="\(using_nightly_version\s*=\s*\)True"
+          new_using_nightly_pattern="using_nightly_version = False"
+          sed -i \
+              -e "s|${old_pip_spec_pattern}|${new_pip_spec_pattern}|g" \
+              -e "s|${old_using_nightly_pattern}|${new_using_nightly_pattern}|g" \
+              notebooks/**/*.ipynb
+          # commit changes
+          git config user.name "Actions"
+          git config user.email "actions@github.com"
+          git commit notebooks -m "Install version ${SKDECIDE_VERSION} of scikit-decide in colab notebooks"
+          # tag and push
+          current_tag_name=${GITHUB_REF/refs\/tags\//}  # stripping refs/tags/
+          new_tag_name="notebooks-${current_tag_name}"
+          echo $new_tag_name
+          git tag $new_tag_name -m "Release ${current_tag_name} + installation in notebooks updated"
+          git push origin ${new_tag_name}
+          # store new tag name
+          echo "new_tag_name=${new_tag_name}" >> $GITHUB_OUTPUT
+
       - name: Create binder environment for the release
         run: |
           git checkout binder
@@ -667,12 +697,12 @@ jobs:
           bash scripts/trigger_binder.sh https://ovh2.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
           bash scripts/trigger_binder.sh https://notebooks.gesis.org/binder/build/gh/${GITHUB_REPOSITORY}/${BINDER_RELEASE_ENV_SHA1}
 
-      - name: Set env variables for github+binder links in doc
+      - name: Set env variables for github+colab+binder links in doc
         run: |
           echo "AUTODOC_BINDER_ENV_GH_REPO_NAME=${GITHUB_REPOSITORY}" >> $GITHUB_ENV
           echo "AUTODOC_BINDER_ENV_GH_BRANCH=${BINDER_RELEASE_ENV_SHA1}" >> $GITHUB_ENV
           echo "AUTODOC_NOTEBOOKS_REPO_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" >> $GITHUB_ENV
-          echo "AUTODOC_NOTEBOOKS_BRANCH=${TAG_NAME}" >> $GITHUB_ENV
+          echo "AUTODOC_NOTEBOOKS_BRANCH=${{ steps.push-nb-release-tag.outputs.new_tag_name }}" >> $GITHUB_ENV
 
       - name: Setup python
         uses: actions/setup-python@v4
