@@ -157,7 +157,7 @@ print(
 )
 
 domain_factory = lambda: UPDomain(
-    problem, state_encoding="vector", action_masking="vector"
+    problem, state_encoding="vector", action_encoding="int", action_masking="vector"
 )
 domain = domain_factory()
 
