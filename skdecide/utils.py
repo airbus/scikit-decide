@@ -14,8 +14,6 @@ import sys
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
 
-import simplejson as json
-
 from skdecide import (
     D,
     Domain,
@@ -133,8 +131,7 @@ def rollout(
     verbose: bool = True,
     action_formatter: Optional[Callable[[D.T_event], str]] = lambda a: str(a),
     outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = lambda o: str(o),
-    save_result_directory: str = None,
-) -> str:
+) -> None:
     """This method will run one or more episodes in a domain according to the policy of a solver.
 
     # Parameters
@@ -149,7 +146,6 @@ def rollout(
     verbose: Whether to print information to the console during rollout.
     action_formatter: The function transforming actions in the string to print (if None, no print).
     outcome_formatter: The function transforming EnvironmentOutcome objects in the string to print (if None, no print).
-    save_result: Directory in which state visited, actions applied and Transition Value are saved to json.
     """
     if verbose:
         logger.setLevel(logging.DEBUG)
@@ -217,35 +213,16 @@ def rollout(
         # Run episode
         step = 1
 
-        if save_result_directory is not None:
-            observations = dict()
-            transitions = dict()
-            actions = dict()
-            # save the initial observation
-            observations[0] = observation
-
         while max_steps is None or step <= max_steps:
             old_time = time.perf_counter()
             if render and has_render:
                 domain.render()
             # assert solver.is_policy_defined_for(observation)
-            if save_result_directory is not None:
-                previous_observation = copy.deepcopy(observation)
             action = solver.sample_action(observation)
             if action_formatter is not None:
                 logger.debug("Action: {}".format(action_formatter(action)))
             outcome = domain.step(action)
             observation = outcome.observation
-            if save_result_directory is not None:
-                if isinstance(domain, FullyObservable):
-                    observations[step] = observation
-                    actions[step] = action
-                    transitions[step] = {
-                        "s": hash(previous_observation),
-                        "a": hash(action),
-                        "cost": outcome.value.cost,
-                        "s'": hash(observation),
-                    }
             if outcome_formatter is not None:
                 logger.debug("Result: {}".format(outcome_formatter(outcome)))
             termination = (
@@ -270,33 +247,6 @@ def rollout(
                 f'The goal was{"" if domain.is_goal(observation) else " not"} reached '
                 f"in episode {i_episode + 1}."
             )
-        if save_result_directory is not None:
-            if not os.path.exists(save_result_directory):
-                os.mkdir(save_result_directory)
-            elif not os.path.isdir(save_result_directory):
-                raise FileExistsError
-
-            now = datetime.datetime.now()
-            str_timestamp = now.strftime("%Y%m%dT%H%M%S")
-            directory = os.path.join(save_result_directory, str_timestamp)
-            os.mkdir(directory)
-            try:
-                with open(os.path.join(directory, "actions.json"), "w") as f:
-                    json.dump(actions, f, indent=2)
-            except TypeError:
-                logger.error("Action is not serializable")
-            try:
-                with open(os.path.join(directory, "transitions.json"), "w") as f:
-                    json.dump(transitions, f, indent=2)
-            except TypeError:
-                logger.error("Transition is not serializable")
-            try:
-                with open(os.path.join(directory, "observations.json"), "w") as f:
-                    json.dump(observations, f, indent=2)
-            except TypeError:
-                logger.error("Observation is not serializable")
-
-            return directory
 
 
 def rollout_episode(
@@ -311,7 +261,6 @@ def rollout_episode(
     verbose: bool = True,
     action_formatter: Optional[Callable[[D.T_event], str]] = None,
     outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = None,
-    save_result_directory: str = None,
 ) -> Tuple[List[D.T_observation], List[D.T_event], List[D.T_value]]:
     """This method will run one or more episodes in a domain according to the policy of a solver.
 
@@ -327,7 +276,6 @@ def rollout_episode(
     verbose: Whether to print information to the console during rollout.
     action_formatter: The function transforming actions in the string to print (if None, no print).
     outcome_formatter: The function transforming EnvironmentOutcome objects in the string to print (if None, no print).
-    save_result: Directory in which state visited, actions applied and Transition Value are saved to json.
     """
     if verbose:
         logger.setLevel(logging.DEBUG)
