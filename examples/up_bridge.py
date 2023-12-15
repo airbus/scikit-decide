@@ -5,6 +5,7 @@
 import sys
 
 import torch
+from skdecide.hub.domain.gym.gym import GymDomain
 
 from skdecide.hub.solver.ray_rllib import RayRLlib
 

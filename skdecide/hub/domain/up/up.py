@@ -6,11 +6,11 @@ from typing import Dict, List, Optional, Tuple, Union
 from numpy.typing import ArrayLike
 
 import numpy as np
-import gymnasium as gym
 
 from skdecide.core import ImplicitSpace, Space, Value
 from skdecide.domains import DeterministicPlanningDomain
 from skdecide.hub.space.gym import ListSpace
+from skdecide.hub.space.gym.gym import BoxSpace, DictSpace, DiscreteSpace, GymSpace
 from skdecide.utils import logger
 
 import unified_planning as up
@@ -127,7 +127,7 @@ class SkUPAction:
 
 
 class D(DeterministicPlanningDomain):
-    T_state = Union[SkUPState, gym.spaces.Dict, gym.spaces.Box]  # Type of states
+    T_state = Union[SkUPState, DictSpace, BoxSpace]  # Type of states
     T_observation = T_state  # Type of observations
     T_event = SkUPAction  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
@@ -169,6 +169,7 @@ class UPDomain(D):
         self._simulator = UPSequentialSimulator(
             self._problem, error_on_failed_checks=True, **simulator_params
         )
+        self._simulator_params = simulator_params
         try:
             self._total_cost = FluentExp(self._problem.fluent("total-cost"))
         except UPValueError:
@@ -336,12 +337,14 @@ class UPDomain(D):
             return None
 
     def _get_next_state(self, memory: D.T_state, action: D.T_event) -> D.T_state:
-        state = self._convert_to_skup_state_(memory)
+        state = self._convert_to_skup_state_(
+            memory if self._action_masking != "vector" else memory["real_obs"]
+        )
         act = self._convert_to_skup_action_(action)
         if self._total_cost is not None:
             cost = state.up_state.get_value(self._total_cost).constant_value()
         next_state = SkUPState(
-            self._simulator.apply(state.up_state, act.up_action, action.up_parameters)
+            self._simulator.apply(state.up_state, act.up_action, act.up_parameters)
         )
         if self._total_cost is not None:
             cost = (
@@ -416,7 +419,7 @@ class UPDomain(D):
     def _is_terminal(self, memory: D.T_state) -> D.T_predicate:
         return self._simulator.is_goal(memory.up_state)
 
-    def _get_action_space_(self) -> Space[D.T_event]:
+    def _get_action_space_(self) -> GymSpace[D.T_event]:
         if self._action_space is None:
             if self._action_encoding == "native":
                 # By default we don't initialize action encoding for actions
@@ -426,12 +429,12 @@ class UPDomain(D):
                     self._init_action_encoding_()
                 self._action_space = ListSpace(self._actions_ordering)
             elif self._action_encoding == "int":
-                self._action_space = gym.spaces.Discrete(len(self._actions_ordering))
+                self._action_space = DiscreteSpace(len(self._actions_ordering))
             else:
                 return None
         return self._action_space
 
-    def _get_applicable_actions_from(self, memory: D.T_state) -> Space[D.T_event]:
+    def _get_applicable_actions_from(self, memory: D.T_state) -> GymSpace[D.T_event]:
         state = self._convert_to_skup_state_(memory)
         applicable_actions = [
             SkUPAction(
@@ -464,29 +467,29 @@ class UPDomain(D):
             }
         )
 
-    def _get_observation_space_(self) -> Space[D.T_observation]:
+    def _get_observation_space_(self) -> GymSpace[D.T_observation]:
         if self._observation_space is None:
             if self._state_encoding == "native":
                 raise RuntimeError(
                     "Observation space defined only for state encoding 'dictionary' or 'vector'"
                 )
             elif self._state_encoding == "dictionary":
-                real_obs_space = gym.spaces.Dict(
+                real_obs_space = DictSpace(
                     {
-                        repr(fn): gym.spaces.Discrete(2)
+                        repr(fn): DiscreteSpace(2)
                         if fn.fluent().type.is_bool_type()
-                        else gym.spaces.Discrete(v[1])
+                        else DiscreteSpace(v[1])
                         if fn.fluent().type.is_int_type()
-                        else gym.spaces.Box(v[0], v[1])
+                        else BoxSpace(v[0], v[1])
                         if fn.fluent().type.is_real_type()
-                        else gym.spaces.Discrete(v[1])
+                        else DiscreteSpace(v[1])
                         if fn.fluent().type.is_user_type()
                         else None
                         for fn, v in self._fnodes_variables_map.items()
                     }
                 )
             elif self._state_encoding == "vector":
-                real_obs_space = gym.spaces.Box(
+                real_obs_space = BoxSpace(
                     low=np.array(
                         [
                             self._fnodes_variables_map[fn][0]
@@ -511,20 +514,23 @@ class UPDomain(D):
             self._observation_space = (
                 real_obs_space
                 if self._action_masking != "vector"
-                else gym.spaces.Dict(
+                else DictSpace(
                     {
-                        "action_mask": gym.spaces.Box(
+                        # We unwrap the spaces because RLLib wants to see
+                        # a true gym space (not the skdecide variant)
+                        "action_mask": BoxSpace(
                             0,
                             1,
                             shape=(
                                 len(self._get_action_space_().get_elements())
                                 if self._action_encoding == "native"
-                                else self._get_action_space_().n
+                                else self._get_action_space_().unwrapped().n
                                 if self._action_encoding == "int"
                                 else 0,
                             ),
-                        ),
-                        "real_obs": real_obs_space,
+                            dtype=np.int32,
+                        ).unwrapped(),
+                        "real_obs": real_obs_space.unwrapped(),
                     }
                 )
             )
@@ -534,11 +540,11 @@ class UPDomain(D):
         nb_actions = (
             len(self._get_action_space_().get_elements())
             if self._action_encoding == "native"
-            else self._get_action_space_().n
+            else self._get_action_space_().unwrapped().n
             if self._action_encoding == "int"
             else 0
         )
-        action_mask = np.zeros(shape=(len(self._actions_ordering),))
+        action_mask = np.zeros(shape=(len(self._actions_ordering),), dtype=np.int32)
         valid_actions = self._get_applicable_actions_from(memory)
         if self._action_encoding == "native":
             for a in valid_actions.get_elements():
@@ -547,3 +553,50 @@ class UPDomain(D):
             for a in valid_actions.get_elements():
                 action_mask[int(a)] = 1
         return action_mask
+
+    # class GymDomain(gym.Env):
+    #     def __init__(
+    #         self,
+    #         render_mode: Optional[str] = None,
+    #         up_domain=None,
+    #         rllib_action_masking: bool = True,
+    #     ):
+    #         if (
+    #             up_domain._state_encoding == "vector"
+    #             and up_domain._action_encoding == "int"
+    #             and (up_domain._action_masking == "vector") == rllib_action_masking
+    #         ):
+    #             self._up_domain = up_domain
+    #         else:
+    #             self._up_domain = UPDomain(
+    #                 problem=up_domain._problem,
+    #                 fluent_domains=up_domain._fluent_domains,
+    #                 state_encoding="vector",
+    #                 action_encoding="int",
+    #                 action_masking="vector" if rllib_action_masking else "none",
+    #             )
+
+    #     def get_observation_space(self):
+    #         return self._up_domain.get_observation_space()
+
+    #     def get_action_space(self):
+    #         return self._up_domain.get_action_space()
+
+    #     def step(self, action: int):
+    #         return self._up_domain.step(action)
+
+    #     def reset(
+    #         self,
+    #         *,
+    #         seed: Optional[int] = None,
+    #         options: Optional[dict] = None,
+    #     ):
+    #         return self._up_domain.reset()
+
+    #     def render(self):
+    #         pass
+
+    # def AsGymEnv(self, rllib_action_masking=True):
+    #     return UPDomain.GymDomain(
+    #         up_domain=self, rllib_action_masking=rllib_action_masking
+    #     )
