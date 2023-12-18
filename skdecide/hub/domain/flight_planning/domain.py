@@ -1,10 +1,8 @@
-import argparse
 import math
 from argparse import Action
 from enum import Enum
 from math import asin, atan2, cos, radians, sin, sqrt
-from time import sleep
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +15,7 @@ from openap.fuel import FuelFlow
 from openap.prop import aircraft
 from pygeodesy.ellipsoidalVincenty import LatLon
 
-from skdecide import DeterministicPlanningDomain, ImplicitSpace, Space, Value
+from skdecide import DeterministicPlanningDomain, ImplicitSpace, Solver, Space, Value
 from skdecide.builders.domain import Renderable, UnrestrictedActions
 from skdecide.hub.domain.flight_planning.flightplanning_utils import (
     plot_altitude,
@@ -30,10 +28,8 @@ from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.get_
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.GenericInterpolator import (
     GenericWindInterpolator,
 )
-from skdecide.hub.solver.astar import Astar
-from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.space.gym import EnumSpace, ListSpace, MultiDiscreteSpace
-from skdecide.utils import match_solvers
+from skdecide.utils import load_registered_solver
 
 try:
     from IPython.display import clear_output as ipython_clear_output
@@ -256,6 +252,92 @@ class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
 class FlightPlanningDomain(
     DeterministicPlanningDomain, UnrestrictedActions, Renderable
 ):
+    """Automated flight planning domain.
+
+    Domain definition
+    -----------------
+
+    The flight planning domain can be quickly defined as :
+
+    - An origin, as ICAO code of an airport,
+    - A destination, as ICAO code of an airport,
+    - An aircraft type, as a string recognizable by the OpenAP library.
+
+    Airways graph
+    -------------
+
+    A three-dimensional airway graph of waypoints is created. The graph is following the great circle
+    which represents the shortest pass between the origin and the destination.
+    The planner computes a plan by choosing waypoints in the graph, which are represented by 4-dimensionnal states.
+    There is 3 phases in the graph :
+
+    - The climbing phase
+    - The cruise phase
+    - The descent phase
+
+    The flight planning domain allows to choose a number of forward, lateral and vertical waypoints in the graph.
+    It is also possible to choose different width (tiny, small, normal, large, xlarge) which will increase
+    or decrease the graph width.
+
+    State representation
+    --------------------
+
+    Here, the states are represented by 4 features :
+
+    - The position in the graph (x,y,z)
+    - The aircraft mass, which can also represent the fuel consumption (integer)
+    - The altitude (integer)
+    - The time (seconds)
+
+    Wind interpolation
+    ------------------
+
+    The flight planning domain can take in consideration the wind conditions.
+    That interpolation have a major impact on the results, as jet streams are high altitude wind
+    which can increase or decrease the ground speed of the aircraft.
+    It also have an impact on the computation time of a flight plan,
+    as the objective and heuristic function became more complex.
+
+    Objective (or cost) functions
+    -----------------------------
+
+    There is three possible objective functions:
+
+    - Fuel (Default)
+    - Distance
+    - Time
+
+    The chosen objective will represent the cost to go from a state to another. The aim of the algorithm is to minimize the cost.
+
+    Heuristic functions
+    -------------------
+
+    When using an A* algorithm to compute the flight plan, we need to feed it with a heuristic function, which guide the algorithm.
+    For now, there is 5 different (not admissible) heuristic function, depending on `self.heuristic_name`:
+
+    - fuel, which computes the required fuel to get to the goal. It takes in consideration the local wind & speed of the aircraft.
+    - time, which computes the required time to get to the goal. It takes in consideration the local wind & speed of the aircraft.
+    - distance, wich computes the distance to the goal.
+    - lazy_fuel, which propagates the fuel consummed so far.
+    - lazy_time, which propagates the time spent on the flight so far
+    - None : we give a 0 cost value, which will transform the A* algorithm into a Dijkstra-like algorithm.
+
+    Optional features
+    -----------------
+
+    The flight planning domain has several optional features :
+
+    - Fuel loop: this is an optimisation of the loaded fuel for the aircraft.
+      It will run some flights to computes the loaded fuel, using distance objective & heuristic.
+
+    - Constraints definition: you can define constraints such as
+
+        - A time constraint, represented by a time windows
+        - A fuel constraint, represented by the maximum fuel for instance.
+
+    - Slopes: you can define your own climbing & descending slopes which have to be between 10.0 and 25.0.
+
+    """
 
     T_state = State  # Type of states
     T_observation = State  # Type of observations
@@ -280,6 +362,8 @@ class FlightPlanningDomain(
         nb_vertical_points: int = None,
         fuel_loaded: float = None,
         fuel_loop: bool = False,
+        fuel_loop_solver_factory: Optional[Callable[[], Solver]] = None,
+        fuel_loop_tol: float = 1e-3,
         climbing_slope: float = None,
         descending_slope: float = None,
         graph_width: str = None,
@@ -313,17 +397,19 @@ class FlightPlanningDomain(
                 Number of vertical nodes in the graph. Defaults to None.
             fuel_loaded (float, optional):
                 Fuel loaded in the aricraft for the flight plan. Defaults to None.
-            fuel_loop (bool, optionnal):
+            fuel_loop (bool, optional):
                 Boolean to create a fuel loop to optimize the fuel loaded for the flight. Defaults to False
-            climbing_slope (float, optionnal):
+            fuel_loop_solver_factory (solver factory, optional):
+                Solver factory used in the fuel loop. Defaults to LazyAstar.
+            climbing_slope (float, optional):
                 Climbing slope of the aircraft, has to be between 10.0 and 25.0. Defaults to None.
-            descending_slope (float, optionnal):
+            descending_slope (float, optional):
                 Descending slope of the aircraft, has to be between 10.0 and 25.0. Defaults to None.
-            graph_width (str, optionnal):
+            graph_width (str, optional):
                 Airways graph width, in ["tiny", "small", "normal", "large", "xlarge"]. Defaults to None
-            res_img_dir (str, optionnal):
+            res_img_dir (str, optional):
                 Directory in which images will be saved. Defaults to None
-            starting_time (float, optionnal):
+            starting_time (float, optional):
                 Start time of the flight, in seconds. Defaults to 8AM (3_600.0 * 8.0)
         """
 
@@ -346,6 +432,7 @@ class FlightPlanningDomain(
 
         self.start_time = starting_time
         # Retrieve the aircraft datas in openap library and normalizing meters into ft
+        self.actype = actype
         self.ac = aircraft(actype)
 
         self.mach = self.ac["cruise"]["mach"]
@@ -408,11 +495,22 @@ class FlightPlanningDomain(
         )
 
         self.fuel_loaded = fuel_loaded
-        # Initialisation of the flight plan, with the iniatial state
 
+        # Initialisation of the flight plan, with the initial state
         if fuel_loop:
+            if fuel_loop_solver_factory is None:
+                LazyAstar = load_registered_solver("LazyAstar")
+                fuel_loop_solver_factory = lambda: LazyAstar(
+                    heuristic=lambda d, s: d.heuristic(s)
+                )
             fuel_loaded = fuel_optimisation(
-                origin, destination, self.ac, constraints, weather_date
+                origin=origin,
+                destination=destination,
+                actype=self.actype,
+                constraints=constraints,
+                weather_date=weather_date,
+                solver_factory=fuel_loop_solver_factory,
+                fuel_tol=fuel_loop_tol,
             )
             # Adding fuel reserve (but we can't put more fuel than maxFuel)
             fuel_loaded = min(1.1 * fuel_loaded, self.ac["limits"]["MFC"])
@@ -1109,143 +1207,6 @@ class FlightPlanningDomain(
     def get_network(self):
         return self.network
 
-    def simple_fuel_loop(self, domain_factory, max_steps: int = 100) -> float:
-
-        solver = LazyAstar(heuristic=lambda d, s: d.heuristic(s), debug_logs=False)
-        self.solve_with(solver, domain_factory)
-        pause_between_steps = None
-        max_steps = 100
-        observation: State = self.reset()
-        solver.reset()
-        clear_output(wait=True)
-
-        # loop until max_steps or goal is reached
-        for i_step in range(1, max_steps + 1):
-
-            if pause_between_steps is not None:
-                sleep(pause_between_steps)
-
-            # choose action according to solver
-            action = solver.sample_action(observation)
-
-            # get corresponding action
-            outcome = self.step(action)
-            observation = outcome.observation
-
-            if self.is_terminal(observation):
-                break
-
-        # Retrieve fuel for the flight
-        fuel = self._get_terminal_state_time_fuel(observation)["fuel"]
-
-        solver._cleanup()
-        return fuel
-
-    def solve(
-        self,
-        domain_factory,
-        max_steps: int = 100,
-        debug: bool = False,
-        make_img: bool = False,
-        solver=None,
-    ):
-        if not solver:
-            solver = Astar(heuristic=lambda d, s: d.heuristic(s), debug_logs=debug)
-        self.solve_with(solver, domain_factory)
-        pause_between_steps = None
-        max_steps = 100
-        observation = self.reset()
-
-        solver.reset()
-        clear_output(wait=True)
-
-        # loop until max_steps or goal is reached
-        for i_step in range(1, max_steps + 1):
-
-            if pause_between_steps is not None:
-                sleep(pause_between_steps)
-
-            # choose action according to solver
-            action = solver.sample_action(observation)
-
-            # get corresponding action
-            outcome = self.step(action)
-            observation = outcome.observation
-
-            print("step ", i_step)
-            print("policy = ", action[0], action[1])
-            print("New state = ", observation.pos)
-            print("Alt = ", observation.alt)
-            print("Mach = ", observation.trajectory.iloc[-1]["mach"])
-            print(observation)
-            if make_img:
-                # update image
-                plt.clf()  # clear figure
-                clear_output(wait=True)
-                figure = self.render(observation)
-                # plt.savefig(f'step_{i_step}')
-
-            # final state reached?
-            if self.is_terminal(observation):
-                break
-        if make_img:
-            if self.res_img_dir:
-                plt.savefig(f"{self.res_img_dir}/terminal")
-                plt.clf()
-                clear_output(wait=True)
-                figure = plot_altitude(observation.trajectory)
-                plt.savefig(f"{self.res_img_dir}/altitude")
-                plot_network(self, dir=self.res_img_dir)
-            else:
-                plt.savefig(f"terminal")
-                plt.clf()
-                clear_output(wait=True)
-                figure = plot_altitude(observation.trajectory)
-                plt.savefig("altitude")
-                plot_network(self)
-        # goal reached?
-        is_goal_reached = self.is_goal(observation)
-
-        terminal_state_constraints = self._get_terminal_state_time_fuel(observation)
-        if is_goal_reached:
-            if self.constraints is not None:
-                if self.constraints["time"] is not None:
-                    if (
-                        self.constraints["time"][1]
-                        >= terminal_state_constraints["time"]
-                    ):
-                        if (
-                            self.constraints["fuel"]
-                            >= terminal_state_constraints["fuel"]
-                        ):
-                            print(f"Goal reached after {i_step} steps!")
-                        else:
-                            print(
-                                f"Goal reached after {i_step} steps, but there is not enough fuel remaining!"
-                            )
-                    else:
-                        print(
-                            f"Goal reached after {i_step} steps, but not in the good timelapse!"
-                        )
-                else:
-                    if self.constraints["fuel"] >= terminal_state_constraints["fuel"]:
-                        print(f"Goal reached after {i_step} steps!")
-                    else:
-                        print(
-                            f"Goal reached after {i_step} steps, but there is not enough fuel remaining!"
-                        )
-            else:
-                if self.ac["limits"]["MFC"] >= terminal_state_constraints["fuel"]:
-                    print(f"Goal reached after {i_step} steps!")
-                else:
-                    print(
-                        f"Goal reached after {i_step} steps, but there is not enough fuel remaining!"
-                    )
-        else:
-            print(f"Goal not reached after {i_step} steps!")
-        solver._cleanup()
-        return terminal_state_constraints, self.constraints
-
     def flying(
         self, from_: pd.DataFrame, to_: Tuple[float, float, int]
     ) -> pd.DataFrame:
@@ -1370,6 +1331,89 @@ class FlightPlanningDomain(
             wind_interpolator = GenericWindInterpolator(file_npz=mat)
         return wind_interpolator
 
+    def custom_rollout(self, solver, max_steps=100, make_img=True):
+        observation = self.reset()
+
+        solver.reset()
+        clear_output(wait=True)
+
+        # loop until max_steps or goal is reached
+        for i_step in range(1, max_steps + 1):
+
+            # choose action according to solver
+            action = solver.sample_action(observation)
+
+            # get corresponding action
+            outcome = self.step(action)
+            observation = outcome.observation
+
+            print("step ", i_step)
+            print("policy = ", action[0], action[1])
+            print("New state = ", observation.pos)
+            print("Alt = ", observation.alt)
+            print("Mach = ", observation.trajectory.iloc[-1]["mach"])
+            print(observation)
+
+            if make_img:
+                # update image
+                plt.clf()  # clear figure
+                clear_output(wait=True)
+                figure = self.render(observation)
+                # plt.savefig(f'step_{i_step}')
+
+            # final state reached?
+            if self.is_terminal(observation):
+                break
+        if make_img:
+            plt.savefig(f"terminal")
+            plt.clf()
+            clear_output(wait=True)
+            figure = plot_altitude(observation.trajectory)
+            plt.savefig("altitude")
+            plot_network(self)
+        # goal reached?
+        is_goal_reached = self.is_goal(observation)
+
+        terminal_state_constraints = self._get_terminal_state_time_fuel(observation)
+        if is_goal_reached:
+            if self.constraints is not None:
+                if self.constraints["time"] is not None:
+                    if (
+                        self.constraints["time"][1]
+                        >= terminal_state_constraints["time"]
+                    ):
+                        if (
+                            self.constraints["fuel"]
+                            >= terminal_state_constraints["fuel"]
+                        ):
+                            print(f"Goal reached after {i_step} steps!")
+                        else:
+                            print(
+                                f"Goal reached after {i_step} steps, but there is not enough fuel remaining!"
+                            )
+                    else:
+                        print(
+                            f"Goal reached after {i_step} steps, but not in the good timelapse!"
+                        )
+                else:
+                    if self.constraints["fuel"] >= terminal_state_constraints["fuel"]:
+                        print(f"Goal reached after {i_step} steps!")
+                    else:
+                        print(
+                            f"Goal reached after {i_step} steps, but there is not enough fuel remaining!"
+                        )
+            else:
+                if self.ac["limits"]["MFC"] >= terminal_state_constraints["fuel"]:
+                    print(f"Goal reached after {i_step} steps!")
+                else:
+                    print(
+                        f"Goal reached after {i_step} steps, but there is not enough fuel remaining!"
+                    )
+        else:
+            print(f"Goal not reached after {i_step} steps!")
+
+        return terminal_state_constraints, self.constraints
+
 
 def compute_gspeed(
     tas: float, true_course: float, wind_speed: float, wind_direction: float
@@ -1405,9 +1449,12 @@ def compute_gspeed(
 def fuel_optimisation(
     origin: Union[str, tuple],
     destination: Union[str, tuple],
-    ac: str,
+    actype: str,
     constraints: dict,
     weather_date: WeatherDate,
+    solver_factory: Callable[[], Solver],
+    max_steps: int = 100,
+    fuel_tol: float = 1e-3,
 ) -> float:
     """
     Function to optimise the fuel loaded in the plane, doing multiple fuel loops to approach an optimal
@@ -1419,7 +1466,7 @@ def fuel_optimisation(
         destination (Union[str, tuple]):
             ICAO code of the arrival airport of th flight plan e.g LFBO for Toulouse-Blagnac airport, or a tuple (lat,lon)
 
-        ac (str):
+        actype (str):
             Aircarft type describe in openap datas (https://github.com/junzis/openap/tree/master/openap/data/aircraft)
 
         constraints (dict):
@@ -1430,6 +1477,16 @@ def fuel_optimisation(
 
         fuel_loaded (float):
             Fuel loaded in the plane for the flight
+
+        solver_factory:
+            Solver factory used in the fuel loop
+
+        max_steps (int):
+            max steps to use in the internal fuel loop
+
+        fuel_tol (float):
+            tolerance on fuel used to stop the optimization
+
     Returns:
         float:
             Return the quantity of fuel to be loaded in the plane for the flight
@@ -1439,10 +1496,10 @@ def fuel_optimisation(
     step = 0
     new_fuel = constraints["fuel"]
     while not small_diff:
-        fuel_domain_factory = lambda: FlightPlanningDomain(
-            origin,
-            destination,
-            ac,
+        domain_factory = lambda: FlightPlanningDomain(
+            origin=origin,
+            destination=destination,
+            actype=actype,
             constraints=constraints,
             weather_date=weather_date,
             objective="distance",
@@ -1452,11 +1509,40 @@ def fuel_optimisation(
             fuel_loaded=new_fuel,
             starting_time=0.0,
         )
-        fuel_domain = fuel_domain_factory()
 
         fuel_prec = new_fuel
-        new_fuel = fuel_domain.simple_fuel_loop(fuel_domain_factory)
+        new_fuel = simple_fuel_loop(
+            solver_factory=solver_factory,
+            domain_factory=domain_factory,
+            max_steps=max_steps,
+        )
         step += 1
-        small_diff = (fuel_prec - new_fuel) <= (1 / 1000)
+        small_diff = (fuel_prec - new_fuel) <= fuel_tol
 
     return new_fuel
+
+
+def simple_fuel_loop(solver_factory, domain_factory, max_steps: int = 100) -> float:
+    domain = domain_factory()
+    with solver_factory() as solver:
+        domain.solve_with(solver, domain_factory)
+        observation: State = domain.reset()
+        solver.reset()
+
+        # loop until max_steps or goal is reached
+        for i_step in range(1, max_steps + 1):
+
+            # choose action according to solver
+            action = solver.sample_action(observation)
+
+            # get corresponding action
+            outcome = domain.step(action)
+            observation = outcome.observation
+
+            if domain.is_terminal(observation):
+                break
+
+        # Retrieve fuel for the flight
+        fuel = domain._get_terminal_state_time_fuel(observation)["fuel"]
+
+    return fuel
