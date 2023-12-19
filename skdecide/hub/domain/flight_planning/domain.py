@@ -380,9 +380,11 @@ class FlightPlanningDomain(
             actype (str):
                 Aircarft type describe in openap datas (https://github.com/junzis/openap/tree/master/openap/data/aircraft)
             weather_date (WeatherDate, optional):
-                Date for the weather, needed for days management. Defaults to None.
+                Date for the weather, needed for days management.
+                If None, no wind will be applied.
             wind_interpolator (GenericWindInterpolator, optional):
-                Wind interpolator for the flight plan. Defaults to None.
+                Wind interpolator for the flight plan. If None, create one from the specified weather_date.
+                The data is either already present locally or be downloaded from https://www.ncei.noaa.gov
             objective (str, optional):
                 Cost function of the flight plan. It can be either fuel, distance or time. Defaults to "fuel".
             heuristic_name (str, optional):
@@ -458,7 +460,10 @@ class FlightPlanningDomain(
 
         self.weather_date = weather_date
         self.initial_date = weather_date
-        self.wind_ds = wind_interpolator
+        if wind_interpolator is None:
+            self.wind_interpolator = self.get_wind_interpolator()
+        else:
+            self.wind_interpolator = wind_interpolator
 
         # Build network between airports
         if graph_width:
@@ -790,9 +795,9 @@ class FlightPlanningDomain(
             we, wn = 0, 0
             bearing_degrees = aero_bearing(pos["lat"], pos["lon"], self.lat2, self.lon2)
 
-            if self.wind_ds:
+            if self.wind_interpolator:
                 time = pos["ts"]
-                wind_ms = self.wind_ds.interpol_wind_classic(
+                wind_ms = self.wind_interpolator.interpol_wind_classic(
                     lat=pos["lat"], longi=pos["lon"], alt=pos["alt"], t=time
                 )
 
@@ -816,9 +821,9 @@ class FlightPlanningDomain(
             we, wn = 0, 0
             bearing_degrees = aero_bearing(pos["lat"], pos["lon"], self.lat2, self.lon2)
 
-            if self.wind_ds:
+            if self.wind_interpolator:
                 time = pos["ts"]
-                wind_ms = self.wind_ds.interpol_wind_classic(
+                wind_ms = self.wind_interpolator.interpol_wind_classic(
                     lat=pos["lat"], longi=pos["lon"], alt=pos["alt"], t=time
                 )
 
@@ -1245,9 +1250,9 @@ class FlightPlanningDomain(
             p, _, _ = atmos(alt * ft)
             isobaric = p / 100
             we, wn = 0, 0
-            if self.wind_ds:
+            if self.wind_interpolator:
                 time = pos["ts"] % (3_600 * 24)
-                wind_ms = self.wind_ds.interpol_wind_classic(
+                wind_ms = self.wind_interpolator.interpol_wind_classic(
                     lat=pos["lat"], longi=pos["lon"], alt=alt, t=time
                 )
                 we, wn = wind_ms[2][0], wind_ms[2][1]
@@ -1282,11 +1287,11 @@ class FlightPlanningDomain(
                 if self.weather_date:
                     if self.weather_date == self.initial_date:
                         self.weather_date = self.weather_date.next_day()
-                        self.wind_ds = self.wind_interpolator()
+                        self.wind_interpolator = self.get_wind_interpolator()
             else:
                 if self.weather_date != self.initial_date:
                     self.weather_date = self.weather_date.previous_day()
-                    self.wind_ds = self.wind_interpolator()
+                    self.wind_interpolator = self.get_wind_interpolator()
 
             new_row = {
                 "ts": pos["ts"] + dt,
@@ -1316,7 +1321,7 @@ class FlightPlanningDomain(
 
         return pd.DataFrame(data)
 
-    def wind_interpolator(self) -> GenericWindInterpolator:
+    def get_wind_interpolator(self) -> GenericWindInterpolator:
         wind_interpolator = None
         if self.weather_date:
             w_dict = self.weather_date.to_dict()
