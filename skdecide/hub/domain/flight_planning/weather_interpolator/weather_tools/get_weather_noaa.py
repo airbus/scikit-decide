@@ -1,6 +1,7 @@
 import calendar
 import collections
 import datetime as datetime
+import logging
 import os
 import urllib.request as request
 from functools import reduce
@@ -17,6 +18,9 @@ from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.inte
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.parser_pygrib import (
     GribPygribUniqueForecast,
 )
+from skdecide.utils import get_data_home
+
+logger = logging.getLogger(__name__)
 
 
 def tree():
@@ -25,42 +29,6 @@ def tree():
 
 def get_absolute_path(filename, relative_path):
     return os.path.abspath(os.path.join(os.path.dirname(filename), relative_path))
-
-
-def get_absolute_path_from_rep(rep_name, relative_path):
-    return os.path.abspath(os.path.join(rep_name, relative_path))
-
-
-def download_weather(year, month, day, forecast):
-    exportdir_grib = get_absolute_path(
-        __file__,
-        "../data/weather/grib/" + forecast + "/" + str(year) + str(month) + str(day),
-    )
-    if not os.path.exists(exportdir_grib):
-        os.makedirs(exportdir_grib)
-    list_files = [
-        os.path.join(exportdir_grib, x)
-        for x in os.listdir(exportdir_grib)
-        if "grb" in x
-    ]
-    if len(list_files) >= 4:
-        print("Grib found locally")
-        print(list_files)
-        return list_files
-    files, address = UrlGeneratorWithForecastLayer.get_list_of_url_forecast(
-        day=day, month=month, year=year, forecast=forecast
-    )
-    list_files = []
-    for i in range(len(files)):
-        print("Downloading : ", address[i])
-        try:
-            request.urlretrieve(
-                address[i], filename=os.path.join(exportdir_grib, files[i])
-            )
-            list_files += [os.path.join(exportdir_grib, files[i])]
-        except Exception as e:
-            print("Download failed, ", e)
-    return list_files
 
 
 def create_merged_matrix(list_files: List[str], params: Optional[List[str]]):
@@ -123,11 +91,21 @@ def get_weather_matrix(
     """
     exportdir_grib = get_absolute_path(
         __file__,
-        "../data/weather/grib/" + forecast + "/" + str(year) + str(month) + str(day),
+        f"{get_data_home()}/weather/grib/"
+        + forecast
+        + "/"
+        + str(year)
+        + str(month)
+        + str(day),
     )
     exportdir_npz = get_absolute_path(
         __file__,
-        "../data/weather/npz/" + forecast + "/" + str(year) + str(month) + str(day),
+        f"{get_data_home()}/weather/npz/"
+        + forecast
+        + "/"
+        + str(year)
+        + str(month)
+        + str(day),
     )
     if not os.path.exists(exportdir_npz):
         os.makedirs(exportdir_npz)
@@ -136,7 +114,7 @@ def get_weather_matrix(
     ]
     if len(list_files) > 0:
         # In case you already have an npz locally
-        print("You have the npz on your local computer")
+        logger.info("You have the npz on your local computer")
         p = np.load(list_files[0], allow_pickle=True)
         if delete_npz_from_local:
             os.remove(list_files[0])
@@ -146,7 +124,7 @@ def get_weather_matrix(
         os.makedirs(exportdir_grib)
     list_files = [os.path.join(exportdir_grib, x) for x in os.listdir(exportdir_grib)]
     if len(list_files) >= 4:
-        print("Grib found locally")
+        logger.info("Grib found locally")
     if len(list_files) == 0:
         if not download_grib:
             return {}
@@ -186,23 +164,6 @@ def get_weather_matrix(
             os.path.join(exportdir_npz, str(year) + str(month) + str(day) + ".npz")
         )
     return matrix
-
-
-def return_levels_in_feet(dataset, variable):
-    list_level = {}
-    for i in range(1, dataset.RasterCount + 1):
-        band = dataset.GetRasterBand(i)
-        metadata = band.GetMetadata()
-        band_level = metadata["GRIB_SHORT_NAME"]
-        band_variable = metadata["GRIB_ELEMENT"]
-        if band_variable == variable:
-            if "ISBL" in band_level:
-                list_level[i] = standard_atmosphere.press2alt(
-                    int("".join(filter(str.isdigit, band_level))),
-                    press_units="pa",
-                    alt_units="ft",
-                )
-    return list_level
 
 
 class UrlGeneratorWithForecastLayer:
@@ -530,43 +491,3 @@ class UrlGeneratorWithForecastLayer:
             + file
             for file in files
         ]
-
-
-def load_npz():
-    mat = get_weather_matrix(
-        year="2023",
-        month="01",
-        day="13",
-        forecast="nowcast",
-        delete_npz_from_local=False,
-        delete_grib_from_local=False,
-    )
-    interpolator = GenericWindInterpolator(file_npz=mat)
-    print(mat)
-    print("HEY")
-    from time import perf_counter
-
-    for j in range(1000):
-        t = perf_counter()
-        interp = interpolator.interpol_wind_classic(lat=50, longi=100, alt=35000, t=0)
-        print(interp)
-        t2 = perf_counter()
-        print(t2 - t, " sec")
-
-
-def create_npz_script_example():
-    list_files = download_weather(year="2023", month="01", day="12", forecast="nowcast")
-    res = create_merged_matrix(list_files, params=["u", "v"])
-    np.savez_compressed("file_weather.npz", **res)
-    interpolator = GenericWindInterpolator(file_npz="file_weather.npz")
-    from time import perf_counter
-
-    for j in range(1000):
-        t = perf_counter()
-        interp = interpolator.interpol_wind_classic(lat=50, longi=100, alt=35000, t=0)
-        t2 = perf_counter()
-        print(t2 - t, " sec")
-
-
-if __name__ == "__main__":
-    load_npz()
