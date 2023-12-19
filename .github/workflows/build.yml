@@ -760,6 +760,7 @@ jobs:
           folder: docs/.vuepress/dist # The folder the action should deploy.
           target-folder: / # The folder the action should deploy to.
           commit-message: publish documentation
+          single-commit: true
           clean-exclude: |
             "version/*"
 
