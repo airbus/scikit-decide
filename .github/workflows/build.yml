@@ -259,9 +259,6 @@ jobs:
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
         run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
 
-      - name: Install omp
-        run: brew install libomp
-
       - name: Install and restore ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -284,15 +281,24 @@ jobs:
               # https://github.com/scipy/scipy/issues/14688
               # We use the same deployment target to match SciPy.
               export MACOSX_DEPLOYMENT_TARGET=12.0
+              OPENMP_URL="https://anaconda.org/conda-forge/llvm-openmp/11.1.0/download/osx-arm64/llvm-openmp-11.1.0-hf3c4609_1.tar.bz2"
           else
               export MACOSX_DEPLOYMENT_TARGET=10.15
+              OPENMP_URL="https://anaconda.org/conda-forge/llvm-openmp/11.1.0/download/osx-64/llvm-openmp-11.1.0-hda6cdc1_1.tar.bz2"
           fi
           PYTHON_VERSION_WO_DOT=$(echo ${PYTHON_VERSION} | sed -e 's/\.//g')  # remove "."
           MACOSX_DEPLOYMENT_TARGET_WO_DOT=$(echo ${MACOSX_DEPLOYMENT_TARGET} | sed -e 's/\./_/g')  # replace "." by "_"
 
+          # install appropriate version of openmp
+          sudo conda create -n build $OPENMP_URL
+
           # make openmp and boost available
-          export OpenMP_ROOT=$(brew --prefix)/opt/libomp
           export Boost_ROOT=$PWD/$BOOST_DIR
+          export OpenMP_ROOT=$CONDA/envs/build
+          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
+          export CFLAGS="$CFLAGS -I$OpenMP_ROOT/include"
+          export CXXFLAGS="$CXXFLAGS -I$OpenMP_ROOT/include"
+          export LDFLAGS="$LDFLAGS -Wl,-rpath,$OpenMP_ROOT/lib -L$OpenMP_ROOT/lib -lomp"
 
           # cmake flag to cross-compile the c++
           export CMAKE_OSX_ARCHITECTURES=${ARCH}
