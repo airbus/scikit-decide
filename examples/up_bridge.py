@@ -6,6 +6,7 @@ import sys
 
 import torch
 from skdecide.hub.domain.gym.gym import GymDomain
+import numpy as np
 
 from skdecide.hub.solver.ray_rllib import RayRLlib
 
@@ -44,29 +45,31 @@ class TorchParametricActionsModel(DQNTorchModel):
         num_outputs,
         model_config,
         name,
-        true_obs_shape=(4,),
-        action_embed_size=2,
-        **kw
+        **kw,
     ):
         DQNTorchModel.__init__(
             self, obs_space, action_space, num_outputs, model_config, name, **kw
         )
 
         self.action_embed_model = TorchFC(
-            Box(-1, 1, shape=true_obs_shape),
+            Box(-1, 1, shape=model_config["custom_model_config"]["true_obs_shape"]),
             action_space,
-            action_embed_size,
+            model_config["custom_model_config"]["action_embed_size"],
             model_config,
             name + "_action_embed",
         )
 
     def forward(self, input_dict, state, seq_lens):
         # Extract the available actions tensor from the observation.
-        avail_actions = input_dict["obs"]["avail_actions"]
         action_mask = input_dict["obs"]["action_mask"]
+        avail_actions = torch.unsqueeze(
+            torch.tensor(np.arange(action_mask.shape[1])), 1
+        )
 
         # Compute the predicted action embedding
-        action_embed, _ = self.action_embed_model({"obs": input_dict["obs"]["cart"]})
+        action_embed, _ = self.action_embed_model(
+            {"obs": input_dict["obs"]["real_obs"]}
+        )
 
         # Expand the model output to [BATCH, 1, EMBED_SIZE]. Note that the
         # avail actions tensor is of shape [BATCH, MAX_ACTIONS, EMBED_SIZE].
@@ -130,26 +133,26 @@ problem.add_quality_metric(
 
 ## Step 2: creating the scikit-decide's UPDomain
 
-domain_factory = lambda: UPDomain(problem)
-domain = domain_factory()
+# domain_factory = lambda: UPDomain(problem)
+# domain = domain_factory()
 
 ## Step 3: solving the UP problem with scikit-decide's UP engine
 
-if UPSolver.check_domain(domain):
-    with UPSolver(
-        operation_mode=OneshotPlanner,
-        name="pyperplan",
-        engine_params={"output_stream": sys.stdout},
-    ) as solver:
-        UPDomain.solve_with(solver, domain_factory)
-        rollout(
-            domain,
-            solver,
-            num_episodes=1,
-            max_steps=100,
-            max_framerate=30,
-            outcome_formatter=None,
-        )
+# if UPSolver.check_domain(domain):
+#     with UPSolver(
+#         operation_mode=OneshotPlanner,
+#         name="pyperplan",
+#         engine_params={"output_stream": sys.stdout},
+#     ) as solver:
+#         UPDomain.solve_with(solver, domain_factory)
+#         rollout(
+#             domain,
+#             solver,
+#             num_episodes=1,
+#             max_steps=100,
+#             max_framerate=30,
+#             outcome_formatter=None,
+#         )
 
 # Example 2: Solving the same example but with RLLib's DQN
 
@@ -169,7 +172,20 @@ if True:  # RayRLlib.check_domain(domain):
         algo_class=DQN,
         train_iterations=5,
         config=DQNConfig()
-        .training(model={"custom_model": "pa_model"}, hiddens=[], dueling=False)
+        .environment(disable_env_checking=True)
+        .training(
+            model={
+                "custom_model": "pa_model",
+                "custom_model_config": {
+                    "true_obs_shape": domain.get_observation_space()
+                    .unwrapped()["real_obs"]
+                    .shape,
+                    "action_embed_size": domain.get_action_space().unwrapped().n,
+                },
+            },
+            hiddens=[],
+            dueling=False,
+        )
         .framework("torch"),
     ) as solver:
         UPDomain.solve_with(solver, domain_factory)

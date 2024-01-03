@@ -39,24 +39,41 @@ class SkUPState:
         return self._up_state
 
     def __hash__(self):
-        return hash(
-            frozenset(
+        fs = frozenset()
+        ci = self._up_state
+        while ci is not None:
+            fs.update(
                 (fn, v)
-                for fn, v in self._up_state._values.items()
+                for fn, v in ci._values.items()
                 if fn.fluent().name != "total-cost"
             )
-        )
+            ci = ci._father
+        return hash(fs)
 
     def __eq__(self, other):
-        return {
-            fn: v
-            for fn, v in self._up_state._values.items()
-            if fn.fluent().name != "total-cost"
-        } == {
-            fn: v
-            for fn, v in other._up_state._values.items()
-            if fn.fluent().name != "total-cost"
-        }
+        sd = {}
+        ci = self._up_state
+        while ci is not None:
+            sd.update(
+                {
+                    fn: v
+                    for fn, v in ci._values.items()
+                    if fn.fluent().name != "total-cost"
+                }
+            )
+            ci = ci._father
+        od = {}
+        ci = other._up_state
+        while ci is not None:
+            od.update(
+                {
+                    fn: v
+                    for fn, v in ci._values.items()
+                    if fn.fluent().name != "total-cost"
+                }
+            )
+            ci = ci._father
+        return sd == od
 
     def __repr__(self) -> str:
         return repr(self._up_state)
@@ -228,55 +245,62 @@ class UPDomain(D):
         self._states_map = {}
         init_state = self._simulator.get_initial_state()
         static_fluents = self._problem.get_static_fluents()
-        for fn in init_state._values.keys():
-            if fn.fluent() not in static_fluents and fn.fluent().name != "total-cost":
-                self._fnodes_vars_ordering.append(fn)
-                if fn.fluent().type.is_bool_type():
-                    self._fnodes_variables_map[fn] = (
-                        0,
-                        1,
-                        lambda b: int(b),
-                        lambda i: bool(i),
-                    )
-                elif fn.fluent().type.is_int_type():
-                    lb = int(fnode_lower_bound(fn))
-                    ub = int(fnode_upper_bound(fn))
-                    self._fnodes_variables_map[fn] = (
-                        (
+        ci = init_state
+        while ci is not None:
+            for fn in ci._values.keys():
+                if (
+                    fn.fluent() not in static_fluents
+                    and fn.fluent().name != "total-cost"
+                ):
+                    self._fnodes_vars_ordering.append(fn)
+                    if fn.fluent().type.is_bool_type():
+                        self._fnodes_variables_map[fn] = (
                             0,
-                            ub - lb + 1,
-                            lambda i, lb=lb: i - lb,
-                            lambda i, lb=lb: i + lb,
+                            1,
+                            lambda b: int(b),
+                            lambda i: bool(i),
                         )
-                        if self._state_encoding == "dictionary"
-                        else (lb, ub, lambda i: int(i), lambda i: i)
-                    )
-                elif fn.fluent().type.is_real_type():
-                    self._fnodes_variables_map[fn] = (
-                        float(fnode_lower_bound(fn)),
-                        float(fnode_upper_bound(fn)),
-                        lambda x: float(x),
-                        lambda x: x,
-                    )
-                elif fn.fluent().type.is_user_type():
-                    co = list(self._problem.objects(fn.fluent().type))
-                    o2i = {o: i for i, o in enumerate(co)}
-                    self._fnodes_variables_map[fn] = (
-                        0,
-                        len(co),
-                        lambda o, o2i=o2i: o2i[o],
-                        lambda i, i2o=co: i2o[i],
-                    )
-                elif fn.fluent().type.is_time_type():
-                    raise RuntimeError("Time types not handled by UPDomain")
+                    elif fn.fluent().type.is_int_type():
+                        lb = int(fnode_lower_bound(fn))
+                        ub = int(fnode_upper_bound(fn))
+                        self._fnodes_variables_map[fn] = (
+                            (
+                                0,
+                                ub - lb + 1,
+                                lambda i, lb=lb: i - lb,
+                                lambda i, lb=lb: i + lb,
+                            )
+                            if self._state_encoding == "dictionary"
+                            else (lb, ub, lambda i: int(i), lambda i: i)
+                        )
+                    elif fn.fluent().type.is_real_type():
+                        self._fnodes_variables_map[fn] = (
+                            float(fnode_lower_bound(fn)),
+                            float(fnode_upper_bound(fn)),
+                            lambda x: float(x),
+                            lambda x: x,
+                        )
+                    elif fn.fluent().type.is_user_type():
+                        co = list(self._problem.objects(fn.fluent().type))
+                        o2i = {o: i for i, o in enumerate(co)}
+                        self._fnodes_variables_map[fn] = (
+                            0,
+                            len(co),
+                            lambda o, o2i=o2i: o2i[o],
+                            lambda i, i2o=co: i2o[i],
+                        )
+                    elif fn.fluent().type.is_time_type():
+                        raise RuntimeError("Time types not handled by UPDomain")
+            ci = ci._father
 
     def _convert_to_skup_state_(self, state):
+        rstate = state if self._action_masking != "vector" else state["real_obs"]
         if self._state_encoding == "native":
-            return state
+            return rstate
         elif self._state_encoding == "dictionary":
-            return self._states_map[frozenset(state.items())]
+            return self._states_map[frozenset(rstate.items())]
         elif self._state_encoding == "vector":
-            return self._states_map[tuple(state.flatten())]
+            return self._states_map[tuple(rstate.flatten())]
         else:
             return None
 
@@ -285,26 +309,34 @@ class UPDomain(D):
             return skup_state
         elif self._state_encoding == "dictionary":
             state = {}
-            for fn, val in skup_state._up_state._values.items():
-                if fn in self._fnodes_variables_map:
-                    v = (
-                        val.object()
-                        if fn.fluent().type.is_user_type()
-                        else val.constant_value()
-                    )
-                    state[fn] = self._fnodes_variables_map[fn][2](v)
+            ci = skup_state._up_state
+            while ci is not None:
+                for fn, val in ci._values.items():
+                    if fn in self._fnodes_variables_map:
+                        v = (
+                            val.object()
+                            if fn.fluent().type.is_user_type()
+                            else val.constant_value()
+                        )
+                        state[fn] = self._fnodes_variables_map[fn][2](v)
+                ci = ci._father
             self._states_map[frozenset(state.items())] = skup_state
             return state
         elif self._state_encoding == "vector":
             state = []
             any_real = False
             for fn in self._fnodes_vars_ordering:
-                v = (
-                    skup_state._up_state._values[fn].object()
-                    if fn.fluent().type.is_user_type()
-                    else skup_state._up_state._values[fn].constant_value()
-                )
-                state.append(self._fnodes_variables_map[fn][2](v))
+                ci = skup_state._up_state
+                while ci is not None:
+                    if fn in ci._values:
+                        v = (
+                            ci._values[fn].object()
+                            if fn.fluent().type.is_user_type()
+                            else ci._values[fn].constant_value()
+                        )
+                        state.append(self._fnodes_variables_map[fn][2](v))
+                        break
+                    ci = ci._father
                 any_real = any_real or fn.fluent().type.is_real_type()
             state = np.array(state, dtype=np.float32 if any_real else np.int32)
             self._states_map[tuple(state.flatten())] = skup_state
@@ -455,6 +487,9 @@ class UPDomain(D):
         return ImplicitSpace(lambda s: self._is_terminal(s))
 
     def _get_initial_state_(self) -> D.T_state:
+        print(
+            f"\n\033[91mDEBUG init state: {SkUPState(self._simulator.get_initial_state())}"
+        )
         init_state = self._convert_from_skup_state_(
             SkUPState(self._simulator.get_initial_state())
         )
@@ -537,13 +572,6 @@ class UPDomain(D):
         return self._observation_space
 
     def _get_valid_action_mask_(self, memory: D.T_state) -> ArrayLike:
-        nb_actions = (
-            len(self._get_action_space_().get_elements())
-            if self._action_encoding == "native"
-            else self._get_action_space_().unwrapped().n
-            if self._action_encoding == "int"
-            else 0
-        )
         action_mask = np.zeros(shape=(len(self._actions_ordering),), dtype=np.int32)
         valid_actions = self._get_applicable_actions_from(memory)
         if self._action_encoding == "native":
@@ -553,50 +581,3 @@ class UPDomain(D):
             for a in valid_actions.get_elements():
                 action_mask[int(a)] = 1
         return action_mask
-
-    # class GymDomain(gym.Env):
-    #     def __init__(
-    #         self,
-    #         render_mode: Optional[str] = None,
-    #         up_domain=None,
-    #         rllib_action_masking: bool = True,
-    #     ):
-    #         if (
-    #             up_domain._state_encoding == "vector"
-    #             and up_domain._action_encoding == "int"
-    #             and (up_domain._action_masking == "vector") == rllib_action_masking
-    #         ):
-    #             self._up_domain = up_domain
-    #         else:
-    #             self._up_domain = UPDomain(
-    #                 problem=up_domain._problem,
-    #                 fluent_domains=up_domain._fluent_domains,
-    #                 state_encoding="vector",
-    #                 action_encoding="int",
-    #                 action_masking="vector" if rllib_action_masking else "none",
-    #             )
-
-    #     def get_observation_space(self):
-    #         return self._up_domain.get_observation_space()
-
-    #     def get_action_space(self):
-    #         return self._up_domain.get_action_space()
-
-    #     def step(self, action: int):
-    #         return self._up_domain.step(action)
-
-    #     def reset(
-    #         self,
-    #         *,
-    #         seed: Optional[int] = None,
-    #         options: Optional[dict] = None,
-    #     ):
-    #         return self._up_domain.reset()
-
-    #     def render(self):
-    #         pass
-
-    # def AsGymEnv(self, rllib_action_masking=True):
-    #     return UPDomain.GymDomain(
-    #         up_domain=self, rllib_action_masking=rllib_action_masking
-    #     )
