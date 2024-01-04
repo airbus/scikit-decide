@@ -133,26 +133,26 @@ problem.add_quality_metric(
 
 ## Step 2: creating the scikit-decide's UPDomain
 
-# domain_factory = lambda: UPDomain(problem)
-# domain = domain_factory()
+domain_factory = lambda: UPDomain(problem)
+domain = domain_factory()
 
 ## Step 3: solving the UP problem with scikit-decide's UP engine
 
-# if UPSolver.check_domain(domain):
-#     with UPSolver(
-#         operation_mode=OneshotPlanner,
-#         name="pyperplan",
-#         engine_params={"output_stream": sys.stdout},
-#     ) as solver:
-#         UPDomain.solve_with(solver, domain_factory)
-#         rollout(
-#             domain,
-#             solver,
-#             num_episodes=1,
-#             max_steps=100,
-#             max_framerate=30,
-#             outcome_formatter=None,
-#         )
+if UPSolver.check_domain(domain):
+    with UPSolver(
+        operation_mode=OneshotPlanner,
+        name="pyperplan",
+        engine_params={"output_stream": sys.stdout},
+    ) as solver:
+        UPDomain.solve_with(solver, domain_factory)
+        rollout(
+            domain,
+            solver,
+            num_episodes=1,
+            max_steps=100,
+            max_framerate=30,
+            outcome_formatter=None,
+        )
 
 # Example 2: Solving the same example but with RLLib's DQN
 
@@ -167,11 +167,13 @@ domain = domain_factory()
 
 ModelCatalog.register_custom_model("pa_model", TorchParametricActionsModel)
 
-if True:  # RayRLlib.check_domain(domain):
+if RayRLlib.check_domain(domain):
     with RayRLlib(
         algo_class=DQN,
-        train_iterations=5,
+        train_iterations=1,
         config=DQNConfig()
+        # Disable env checking because it does not make use of action masking
+        # to the point that it crashes the _get_next_state method
         .environment(disable_env_checking=True)
         .training(
             model={
@@ -190,7 +192,7 @@ if True:  # RayRLlib.check_domain(domain):
     ) as solver:
         UPDomain.solve_with(solver, domain_factory)
         rollout(
-            domain,
+            domain_factory(),
             solver,
             num_episodes=1,
             max_steps=100,
@@ -198,10 +200,10 @@ if True:  # RayRLlib.check_domain(domain):
             outcome_formatter=None,
         )
 
-# Example 2: Solving a numeric example, the same as https://github.com/aiplan4eu/unified-planning/blob/master/docs/notebooks/02-optimal-planning.ipynb
+# Example 3: Solving a numeric example, the same as https://github.com/aiplan4eu/unified-planning/blob/master/docs/notebooks/02-optimal-planning.ipynb
 
 print(
-    "\n\n=== EXAMPLE 2: Solving UP's numeric example using skdecide's UP ENHSP solver ===\n"
+    "\n\n=== EXAMPLE 3: Solving UP's numeric example using skdecide's UP ENHSP solver ===\n"
 )
 
 ## Step 1: modeling the UP problem
@@ -262,10 +264,10 @@ if UPSolver.check_domain(domain):
             outcome_formatter=None,
         )
 
-# Example 3: Solving the same UP numeric problem but with scikit-decide's A* algorithm
+# Example 4: Solving the same UP numeric problem but with scikit-decide's A* algorithm
 
 print(
-    "\n\n=== EXAMPLE 3: Solving UP's numeric example using skdecide's LazyAstar solver ===\n"
+    "\n\n=== EXAMPLE 4: Solving UP's numeric example using skdecide's LazyAstar solver ===\n"
 )
 
 if LazyAstar.check_domain(domain):

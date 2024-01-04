@@ -7,7 +7,7 @@ from numpy.typing import ArrayLike
 
 import numpy as np
 
-from skdecide.core import ImplicitSpace, Space, Value
+from skdecide.core import ImplicitSpace, EmptySpace, Space, Value
 from skdecide.domains import DeterministicPlanningDomain
 from skdecide.hub.space.gym import ListSpace
 from skdecide.hub.space.gym.gym import BoxSpace, DictSpace, DiscreteSpace, GymSpace
@@ -39,7 +39,7 @@ class SkUPState:
         return self._up_state
 
     def __hash__(self):
-        fs = frozenset()
+        fs = set()
         ci = self._up_state
         while ci is not None:
             fs.update(
@@ -48,7 +48,7 @@ class SkUPState:
                 if fn.fluent().name != "total-cost"
             )
             ci = ci._father
-        return hash(fs)
+        return hash(frozenset(fs))
 
     def __eq__(self, other):
         sd = {}
@@ -294,13 +294,12 @@ class UPDomain(D):
             ci = ci._father
 
     def _convert_to_skup_state_(self, state):
-        rstate = state if self._action_masking != "vector" else state["real_obs"]
         if self._state_encoding == "native":
-            return rstate
+            return state
         elif self._state_encoding == "dictionary":
-            return self._states_map[frozenset(rstate.items())]
+            return self._states_map[frozenset(state.items())]
         elif self._state_encoding == "vector":
-            return self._states_map[tuple(rstate.flatten())]
+            return self._states_map[tuple(state.flatten())]
         else:
             return None
 
@@ -408,18 +407,32 @@ class UPDomain(D):
         if self._total_cost is not None:
             transition = tuple(
                 [
-                    self._convert_to_skup_state_(memory),
+                    self._convert_to_skup_state_(
+                        memory
+                        if self._action_masking != "vector"
+                        else memory["real_obs"]
+                    ),
                     self._convert_to_skup_action_(action),
-                    self._convert_to_skup_state_(next_state),
+                    self._convert_to_skup_state_(
+                        next_state
+                        if self._action_masking != "vector"
+                        else next_state["real_obs"]
+                    ),
                 ]
             )
             if transition in self._transition_costs:
                 return Value(cost=self._transition_costs[transition] + action_penalty)
         if len(self._problem.quality_metrics) > 0:
             transition_cost = 0
-            state = self._convert_to_skup_state_(memory)
+            state = self._convert_to_skup_state_(
+                memory if self._action_masking != "vector" else memory["real_obs"]
+            )
             act = self._convert_to_skup_action_(action)
-            nstate = self._convert_to_skup_state_(next_state)
+            nstate = self._convert_to_skup_state_(
+                next_state
+                if self._action_masking != "vector"
+                else next_state["real_obs"]
+            )
             for qm in self._problem.quality_metrics:
                 metric = evaluate_quality_metric(
                     self._simulator,
@@ -449,7 +462,10 @@ class UPDomain(D):
             return Value(cost=float("Nan"))
 
     def _is_terminal(self, memory: D.T_state) -> D.T_predicate:
-        return self._simulator.is_goal(memory.up_state)
+        state = self._convert_to_skup_state_(
+            memory if self._action_masking != "vector" else memory["real_obs"]
+        )
+        return self._simulator.is_goal(state.up_state)
 
     def _get_action_space_(self) -> GymSpace[D.T_event]:
         if self._action_space is None:
@@ -467,7 +483,9 @@ class UPDomain(D):
         return self._action_space
 
     def _get_applicable_actions_from(self, memory: D.T_state) -> GymSpace[D.T_event]:
-        state = self._convert_to_skup_state_(memory)
+        state = self._convert_to_skup_state_(
+            memory if self._action_masking != "vector" else memory["real_obs"]
+        )
         applicable_actions = [
             SkUPAction(
                 self._simulator._ground_action(action, params),
@@ -477,9 +495,19 @@ class UPDomain(D):
             for action, params in self._simulator.get_applicable_actions(state.up_state)
         ]
         if self._action_encoding == "native":
-            return ListSpace(applicable_actions)
+            # ListSpace requires to be non empty
+            return (
+                ListSpace(applicable_actions)
+                if len(applicable_actions) > 0
+                else EmptySpace()
+            )
         elif self._action_encoding == "int":
-            return ListSpace([self._actions_map[a] for a in applicable_actions])
+            # ListSpace requires to be non empty
+            return (
+                ListSpace([self._actions_map[a] for a in applicable_actions])
+                if len(applicable_actions) > 0
+                else EmptySpace()
+            )
         else:
             return None
 
@@ -487,9 +515,6 @@ class UPDomain(D):
         return ImplicitSpace(lambda s: self._is_terminal(s))
 
     def _get_initial_state_(self) -> D.T_state:
-        print(
-            f"\n\033[91mDEBUG init state: {SkUPState(self._simulator.get_initial_state())}"
-        )
         init_state = self._convert_from_skup_state_(
             SkUPState(self._simulator.get_initial_state())
         )
@@ -573,7 +598,16 @@ class UPDomain(D):
 
     def _get_valid_action_mask_(self, memory: D.T_state) -> ArrayLike:
         action_mask = np.zeros(shape=(len(self._actions_ordering),), dtype=np.int32)
-        valid_actions = self._get_applicable_actions_from(memory)
+        valid_actions = self._get_applicable_actions_from(
+            # We need to reconstruct the memory state for
+            # _get_applicable_actions_from since it does not need to be
+            # in the D.T_state form when calling _get_valid_action_mask_
+            memory
+            if self._action_masking != "vector"
+            else {"real_obs": memory}
+        )
+        if isinstance(valid_actions, EmptySpace):
+            return action_mask
         if self._action_encoding == "native":
             for a in valid_actions.get_elements():
                 action_mask[self._actions_map[a]] = 1
