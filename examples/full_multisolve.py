@@ -2,6 +2,21 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""Example mixing various domains with various solvers.
+
+NB: to be able to launch this example, you need to install scikit-decide with all optional dependencies
+    + atari and autorom to play pacman (see https://gymnasium.farama.org/environments/atari/).
+
+    ```
+    pip install scikit-decide[all]
+    pip install gymnasium[atari,accept-rom-license]
+    ```
+
+    In doing so (`pip install gymnasium[accept-rom-license]`), you agree to own a license to these Atari 2600 ROMs
+    and agree to not distribution these ROMS.
+
+"""
+
 from math import sqrt
 from typing import Any, Callable
 
