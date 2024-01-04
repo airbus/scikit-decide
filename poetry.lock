@@ -3839,4 +3839,4 @@ solvers = ["discrete-optimization", "gymnasium", "joblib", "numpy", "ray", "stab
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "d45753cb23c051f9c207e7c0ea3646e76012e948d861ce39e0459fe0f8c481ee"
+content-hash = "109116f67db11990198bb37e751faed890678e2bcef258d0d063b75337cc4752"
