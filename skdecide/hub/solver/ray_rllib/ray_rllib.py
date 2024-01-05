@@ -9,7 +9,10 @@ import os
 from typing import Callable, Dict, Optional, Set, Type
 
 import gymnasium as gym
+import numpy as np
 import ray
+from ray.rllib.models import ModelCatalog
+from ray.rllib.utils.from_config import NotProvided
 from ray.rllib.algorithms.algorithm import Algorithm, AlgorithmConfig
 from ray.rllib.env.wrappers.multi_agent_env_compatibility import (
     MultiAgentEnvCompatibility,
@@ -21,15 +24,18 @@ from skdecide.builders.domain import (
     Initializable,
     Sequential,
     SingleAgent,
+    Actions,
     UnrestrictedActions,
 )
 from skdecide.builders.solver import Policies, Restorable
+from skdecide.core import EnumerableSpace
 from skdecide.hub.domain.gym import AsLegacyGymV21Env
 from skdecide.hub.space.gym import GymSpace
 
+from custom_models import TFParametricActionsModel, TorchParametricActionsModel
 
-# TODO: remove UnrestrictedActions?
-class D(Domain, Sequential, UnrestrictedActions, Initializable):
+
+class D(Domain, Sequential, Actions, Initializable):
     pass
 
 
@@ -51,6 +57,7 @@ class RayRLlib(Solver, Policies, Restorable):
         policy_mapping_fn: Optional[
             Callable[[str, Optional["EpisodeV2"], Optional["RolloutWorker"]], str]
         ] = None,
+        action_embed_size: Optional[int] = 2,
     ) -> None:
         """Initialize Ray RLlib.
 
@@ -60,6 +67,7 @@ class RayRLlib(Solver, Policies, Restorable):
         config: The configuration dictionary for the trainer.
         policy_configs: The mapping from policy id (str) to additional config (dict) (leave default for single policy).
         policy_mapping_fn: The function mapping agent ids to policy ids (leave default for single policy).
+        action_embed_size: The size of action embedding (only used with action masking, i.e. with domains filtering allowed actions per state)
         """
         self._algo_class = algo_class
         self._train_iterations = train_iterations
@@ -72,6 +80,7 @@ class RayRLlib(Solver, Policies, Restorable):
             self._policy_mapping_fn = lambda agent_id, episode, worker: "policy"
         else:
             self._policy_mapping_fn = policy_mapping_fn
+        self._action_embed_size = action_embed_size
 
         ray.init(ignore_reinit_error=True)
 
@@ -144,15 +153,71 @@ class RayRLlib(Solver, Policies, Restorable):
             policies=policies,
             policy_mapping_fn=self._policy_mapping_fn,
         )
+        # Test if the domain is using restricted actions or not
+        self._action_masking = (
+            (not isinstance(domain, UnrestrictedActions))
+            and all(
+                isinstance(agent_action_space, EnumerableSpace)
+                for agent_action_space in domain.get_action_space().values()
+            )
+            and self._algo_class.__name__
+            in ["APPO", "BC", "DQN", "Rainbow", "IMPALA", "MARWIL", "PPO"]
+        )
+
         # Instanciate algo
-        register_env("skdecide_env", lambda _: AsRLlibMultiAgentEnv(domain_factory()))
-        self._config.environment(env="skdecide_env")
+        register_env(
+            "skdecide_env",
+            lambda _: AsRLlibMultiAgentEnv(
+                domain=domain_factory(), action_masking=self._action_masking
+            ),
+        )
+        # Disable env checking in case of action masking otherwise RLlib will try to simulate
+        # next state transition with invalid actions, which might make some domains crash if
+        # they require action masking
+        self._config.environment(
+            env="skdecide_env", disable_env_checking=self._action_masking
+        )
+        if self._action_masking:
+            if self._config.get("framework") not in ["tf", "tf2", "torch"]:
+                raise RuntimeError(
+                    "Action masking (invalid action filtering) for RLlib requires TensorFlow or PyTorch to be installed"
+                )
+            ModelCatalog.register_custom_model(
+                "skdecide_rllib_custom_model",
+                TFParametricActionsModel
+                if self._config.get("framework") in ["tf", "tf2"]
+                else TorchParametricActionsModel
+                if self._config.get("framework") == "torch"
+                else NotProvided,
+            )
+            model_config = {
+                "custom_model": "skdecide_rllib_custom_model",
+                "custom_model_config": {
+                    "true_obs_shape": domain.get_observation_space().unwrapped().shape,
+                    "action_embed_size": self._action_embed_size,
+                },
+            }
+            if self._algo_class.__name__ == "DQN":
+                self._config.training(
+                    model=model_config,
+                    hiddens=[],
+                    dueling=False,
+                )
+            elif self._algo_class.__name__ == "PPO":
+                self._config.training(
+                    model=model_config,
+                    vf_share_layers=True,
+                )
         self._algo = self._algo_class(config=self._config)
 
 
 class AsRLlibMultiAgentEnv(MultiAgentEnvCompatibility):
-    def __init__(self, domain: D, render_mode: Optional[str] = None) -> None:
-        old_env = AsLegacyRLlibMultiAgentEnv(domain=domain)
+    def __init__(
+        self, domain: D, action_masking: bool, render_mode: Optional[str] = None
+    ) -> None:
+        old_env = AsLegacyRLlibMultiAgentEnv(
+            domain=domain, action_masking=action_masking
+        )
         self._domain = domain
         super().__init__(old_env=old_env, render_mode=render_mode)
 
@@ -161,19 +226,33 @@ class AsRLlibMultiAgentEnv(MultiAgentEnvCompatibility):
 
 
 class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
-    def __init__(self, domain: D, unwrap_spaces: bool = True) -> None:
-        """Initialize AsRLlibMultiAgentEnv.
+    def __init__(
+        self, domain: D, action_masking: bool, unwrap_spaces: bool = True
+    ) -> None:
+        """Initialize AsLegacyRLlibMultiAgentEnv.
 
         # Parameters
         domain: The scikit-decide domain to wrap as a RLlib multi-agent environment.
+        action_masking: Boolean specifying whether action masking is used
         unwrap_spaces: Boolean specifying whether the action & observation spaces should be unwrapped.
         """
         self._domain = domain
+        self._action_masking = action_masking
         self._unwrap_spaces = unwrap_spaces
         if unwrap_spaces:
             self.observation_space = gym.spaces.Dict(
                 {
                     k: agent_observation_space.unwrapped()
+                    if not self._action_masking
+                    else {
+                        "valid_avail_actions_mask": gym.spaces.Box(
+                            0,
+                            1,
+                            shape=(len(domain.get_action_space()[k].get_elements()),),
+                            dtype=np.int32,
+                        ),
+                        "true_obs": agent_observation_space.unwrapped(),
+                    }
                     for k, agent_observation_space in domain.get_observation_space().items()
                 }
             )
@@ -184,10 +263,31 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
                 }
             )
         else:
-            self.observation_space = domain.get_observation_space()
-            self.action_space = (
-                domain.get_action_space()
-            )  # assumes all actions are always applicable
+            self.observation_space = (
+                domain.get_observation_space()
+                if not self._action_masking
+                else {
+                    gym.spaces.Dict(
+                        {
+                            k: {
+                                "valid_avail_actions_mask": gym.spaces.Box(
+                                    0,
+                                    1,
+                                    shape=(
+                                        len(
+                                            domain.get_action_space()[k].get_elements()
+                                        ),
+                                    ),
+                                    dtype=np.int32,
+                                ),
+                                "true_obs": agent_observation_space,
+                            }
+                            for k, agent_observation_space in domain.get_observation_space().items()
+                        }
+                    )
+                }
+            )
+            self.action_space = domain.get_action_space()
 
     def reset(self):
         """Resets the env and returns observations from ready agents.
@@ -229,3 +329,24 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
         done.update({"__all__": all(outcome.termination.values())})
         infos = {k: (v or {}) for k, v in outcome.info.items()}
         return observations, rewards, done, infos
+
+    def _apply_action_mask(self, observation):
+        if not self._action_masking:
+            return observation
+        else:
+            applicable_actions = self._domain.get_applicable_actions(observation)
+            return {
+                k: {
+                    "valid_avail_actions_mask": np.array(
+                        [
+                            1 if applicable_actions[k].contains(a) else 0
+                            for a in self._domain.get_action_space()[k].get_elements()
+                        ],
+                        dtype=np.int32,
+                    ),
+                    "true_obs": v,
+                }
+                for k, v in observation.items()
+            }
+
+# TODO : improve contains() method for ListSpace ; check max_avail_actions and true_obs_shape for custom models in multiagent settings ; clarify wrapping/unwrapping things
