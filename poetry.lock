@@ -696,13 +696,13 @@ graph = ["objgraph (>=1.7.2)"]
 
 [[package]]
 name = "discrete-optimization"
-version = "0.2.2"
+version = "0.2.3"
 description = "Discrete optimization library"
 category = "main"
 optional = true
 python-versions = ">=3.7"
 files = [
-    {file = "discrete_optimization-0.2.2-py3-none-any.whl", hash = "sha256:81a9dc799f2e24ab340b20121a8cfc4ac02bcf666310ca9bd186fc7d8cba3836"},
+    {file = "discrete_optimization-0.2.3-py3-none-any.whl", hash = "sha256:b5f91270dc4294c7afbe1528e786a4166d6b67a78cafd16170cb0604104e09bb"},
 ]
 
 [package.dependencies]
@@ -3839,4 +3839,4 @@ solvers = ["discrete-optimization", "gymnasium", "joblib", "numpy", "ray", "stab
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "9d9849f8b5f6a17686c5b68940d93eb6ec3b8a3ece099913e71939480b893655"
+content-hash = "d45753cb23c051f9c207e7c0ea3646e76012e948d861ce39e0459fe0f8c481ee"
