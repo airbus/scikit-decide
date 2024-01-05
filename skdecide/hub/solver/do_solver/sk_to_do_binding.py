@@ -6,13 +6,7 @@ from __future__ import annotations
 
 from typing import Union
 
-from discrete_optimization.rcpsp.rcpsp_model import (
-    MultiModeRCPSPModel,
-    RCPSPModel,
-    RCPSPModelCalendar,
-    RCPSPSolution,
-    SingleModeRCPSPModel,
-)
+from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, RCPSPSolution
 from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
     Employee,
     MS_RCPSPModel,
@@ -84,7 +78,7 @@ def build_do_domain(
                 mode_details_do[task][mode][
                     "duration"
                 ] = scheduling_domain.get_task_duration(task=task, mode=mode)
-        return SingleModeRCPSPModel(
+        return RCPSPModel(
             resources={
                 r: scheduling_domain.get_original_quantity_resource(r)
                 for r in scheduling_domain.get_resource_types_names()
@@ -115,7 +109,7 @@ def build_do_domain(
                 mode_details_do[task][mode][
                     "duration"
                 ] = scheduling_domain.sample_task_duration(task=task, mode=mode)
-        return SingleModeRCPSPModel(
+        return RCPSPModel(
             resources={
                 r: scheduling_domain.get_original_quantity_resource(r)
                 for r in scheduling_domain.get_resource_types_names()
@@ -146,7 +140,7 @@ def build_do_domain(
                 mode_details_do[task][mode][
                     "duration"
                 ] = scheduling_domain.get_task_duration(task=task, mode=mode)
-        return MultiModeRCPSPModel(
+        return RCPSPModel(
             resources={
                 r: scheduling_domain.get_original_quantity_resource(r)
                 for r in scheduling_domain.get_resource_types_names()
@@ -178,7 +172,7 @@ def build_do_domain(
                     "duration"
                 ] = scheduling_domain.get_task_duration(task=task, mode=mode)
         horizon = scheduling_domain.get_max_horizon()
-        return RCPSPModelCalendar(
+        return RCPSPModel(
             resources={
                 r: [
                     scheduling_domain.get_quantity_resource(r, time=t)
@@ -276,12 +270,13 @@ def build_do_domain(
 
 
 def build_sk_domain(
-    rcpsp_do_domain: Union[
-        MS_RCPSPModel, SingleModeRCPSPModel, MultiModeRCPSP, RCPSPModelCalendar
-    ],
+    rcpsp_do_domain: Union[MS_RCPSPModel, RCPSPModel],
     varying_ressource: bool = False,
 ):
-    if isinstance(rcpsp_do_domain, RCPSPModelCalendar):
+    if (
+        isinstance(rcpsp_do_domain, RCPSPModel)
+        and rcpsp_do_domain.is_varying_resource()
+    ):
         if varying_ressource:
             my_domain = MRCPSPCalendar(
                 resource_names=rcpsp_do_domain.resources_list,
@@ -315,7 +310,10 @@ def build_sk_domain(
             )
         return my_domain
 
-    if isinstance(rcpsp_do_domain, SingleModeRCPSPModel):
+    if (
+        isinstance(rcpsp_do_domain, RCPSPModel)
+        and not rcpsp_do_domain.is_rcpsp_multimode()
+    ):
         my_domain = RCPSP(
             resource_names=rcpsp_do_domain.resources_list,
             task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
@@ -330,7 +328,9 @@ def build_sk_domain(
         )
         return my_domain
 
-    elif isinstance(rcpsp_do_domain, (MultiModeRCPSPModel, RCPSPModel)):
+    elif (
+        isinstance(rcpsp_do_domain, RCPSPModel) and rcpsp_do_domain.is_rcpsp_multimode()
+    ):
         my_domain = MRCPSP(
             resource_names=rcpsp_do_domain.resources_list,
             task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
