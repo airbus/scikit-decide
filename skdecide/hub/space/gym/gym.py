@@ -177,7 +177,8 @@ class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
 
 class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
     """This class creates a gymnasium Discrete space (gym.spaces.Discrete) from a list of elements and wraps it as a
-    scikit-decide enumerable space.
+    scikit-decide enumerable space. If ordering is not important contrary to the 'contains' test, it is advised to
+    use the 'SetSpace' class instead.
 
     !!! warning
         Using this class requires gymnasium to be installed.
@@ -221,6 +222,56 @@ class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
 
     def from_unwrapped(self, sample_n: Iterable[int]) -> Iterable[T]:
         return [self._elements[sample] for sample in sample_n]
+
+
+class SetSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
+    """This class creates a gymnasium Discrete space (gym.spaces.Discrete) from a set of elements and wraps it as a
+    scikit-decide enumerable space.
+
+    !!! warning
+        Using this class requires gymnasium to be installed.
+    """
+
+    def __init__(self, elements: Iterable[T]) -> None:
+        """Initialize SetSpace.
+
+        # Parameters
+        elements: The set of elements for creating the Gym Discrete space (gym.spaces.Discrete) to wrap.
+        """
+        self._elements = set(elements)
+        self._to_indexes = {e: i for i, e in enumerate(self._elements)}
+        self._to_elements = [e for e in self._elements]
+        gym_space = gym_spaces.Discrete(len(self._elements))
+        super().__init__(gym_space)
+
+    def contains(self, x: T) -> bool:
+        return x in self._elements
+
+    def get_elements(self) -> Iterable[T]:
+        return self._elements
+
+    def sample(self) -> T:
+        return self._elements[super().sample()]
+
+    def to_jsonable(self, sample_n: Iterable[T]) -> Sequence:
+        return sample_n
+
+    def from_jsonable(self, sample_n: Sequence) -> Iterable[T]:
+        return sample_n
+
+    def unwrapped(self) -> gym_spaces.Discrete:
+        """Unwrap the Gym Discrete space (gym.spaces.Discrete) and return it.
+
+        # Returns
+        The original Gym Discrete space created from the list.
+        """
+        return super().unwrapped()
+
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable[int]:
+        return [self._to_indexes[sample] for sample in sample_n]
+
+    def from_unwrapped(self, sample_n: Iterable[int]) -> Iterable[T]:
+        return [self._to_elements[sample] for sample in sample_n]
 
 
 class DataSpace(GymSpace[T]):

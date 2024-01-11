@@ -1,5 +1,6 @@
 from gymnasium.spaces import Box
 
+from ray.rllib.policy.policy import PolicySpec
 from ray.rllib.algorithms.dqn.distributional_q_tf_model import DistributionalQTFModel
 from ray.rllib.algorithms.dqn.dqn_torch_model import DQNTorchModel
 from ray.rllib.models.tf.fcnet import FullyConnectedNetwork as TFFullyConnectedNetwork
@@ -18,9 +19,6 @@ class TFParametricActionsModel(DistributionalQTFModel):
     that also learns action embeddings. TensorFlow version.
 
     This assumes the outputs are logits for a single Categorical action dist.
-    Getting this to work with a more complex output (e.g., if the action space
-    is a tuple of several distributions) is also possible but left as an
-    exercise to the reader.
     """
 
     def __init__(self, obs_space, action_space, num_outputs, model_config, name, **kw):
@@ -82,9 +80,6 @@ class TorchParametricActionsModel(DQNTorchModel):
     that also learns action embeddings. PyTorch version.
 
     This assumes the outputs are logits for a single Categorical action dist.
-    Getting this to work with a more complex output (e.g., if the action space
-    is a tuple of several distributions) is also possible but left as an
-    exercise to the reader.
     """
 
     def __init__(self, obs_space, action_space, num_outputs, model_config, name, **kw):
@@ -92,7 +87,7 @@ class TorchParametricActionsModel(DQNTorchModel):
             obs_space, action_space, num_outputs, model_config, name, **kw
         )
 
-        self.action_ids_shifted = torch.arange(1, num_outputs + 1, dtype=torch.int32)
+        self.action_ids_shifted = torch.arange(1, num_outputs + 1, dtype=torch.int64)
 
         self.pred_action_embed_model = TorchFullyConnectedNetwork(
             Box(-1, 1, shape=model_config["custom_model_config"]["true_obs_shape"]),
@@ -124,7 +119,7 @@ class TorchParametricActionsModel(DQNTorchModel):
 
         # Embedding for valid available actions which will be learned.
         # Embedding vector for 0 is an invalid embedding (a "dummy embedding").
-        valid_avail_actions_embed = self.action_embedding(valid_avail_actions)
+        valid_avail_actions_embed = self.action_embedding(valid_avail_actions.int())
 
         # Batch dot product => shape of logits is [BATCH, MAX_ACTIONS].
         action_logits = torch.sum(valid_avail_actions_embed * intent_vector, dim=2)
