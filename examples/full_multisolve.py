@@ -15,6 +15,13 @@ NB: to be able to launch this example, you need to install scikit-decide with al
     In doing so (`pip install gymnasium[accept-rom-license]`), you agree to own a license to these Atari 2600 ROMs
     and agree to not distribution these ROMS.
 
+    If you still does not have the ROMs after that, and getting the following error:
+
+    > gymnasium.error.Error: We're Unable to find the game "MsPacman". Note: Gymnasium no longer distributes ROMs.
+
+    it may be due to a (silent) ssl error that can be resolved by setting the environment variable CURL_CA_BUNDLE
+    to the proper certificate (https://stackoverflow.com/a/31060428).
+
 """
 
 from math import sqrt
