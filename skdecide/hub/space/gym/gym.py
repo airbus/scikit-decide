@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from enum import EnumMeta
+import itertools
 from typing import Dict, Generic, Iterable, List, Sequence, Tuple, Union
 
 import gymnasium as gym
@@ -71,7 +72,7 @@ class BoxSpace(GymSpace[T]):
         super().__init__(gym_space=gym_spaces.Box(low, high, shape, dtype))
 
 
-class DiscreteSpace(GymSpace[T]):
+class DiscreteSpace(GymSpace[T], EnumerableSpace[T]):
     """This class wraps a gymnasium Discrete space (gym.spaces.Discrete) as a scikit-decide space.
 
     !!! warning
@@ -81,8 +82,16 @@ class DiscreteSpace(GymSpace[T]):
     def __init__(self, n):
         super().__init__(gym_space=gym_spaces.Discrete(n))
 
+    def get_elements(self) -> Iterable[T]:
+        """Get the elements of this space.
 
-class MultiDiscreteSpace(GymSpace[T]):
+        # Returns
+        The elements of this space.
+        """
+        return np.array(list(range(self._gym_space.n)), dtype=np.int64)
+
+
+class MultiDiscreteSpace(GymSpace[T], EnumerableSpace[T]):
     """This class wraps a gymnasium MultiDiscrete space (gym.spaces.MultiDiscrete) as a scikit-decide space.
 
     !!! warning
@@ -92,8 +101,19 @@ class MultiDiscreteSpace(GymSpace[T]):
     def __init__(self, nvec):
         super().__init__(gym_space=gym_spaces.MultiDiscrete(nvec))
 
+    def get_elements(self) -> Iterable[T]:
+        """Get the elements of this space.
 
-class MultiBinarySpace(GymSpace[T]):
+        # Returns
+        The elements of this space.
+        """
+        return np.array(
+            list(itertools.product(*[list(range(n)) for n in self._gym_space.nvec])),
+            dtype=np.int64,
+        )
+
+
+class MultiBinarySpace(GymSpace[T], EnumerableSpace[T]):
     """This class wraps a gymnasium MultiBinary space (gym.spaces.MultiBinary) as a scikit-decide space.
 
     !!! warning
@@ -102,6 +122,17 @@ class MultiBinarySpace(GymSpace[T]):
 
     def __init__(self, n):
         super().__init__(gym_space=gym_spaces.MultiBinary(n))
+
+    def get_elements(self) -> Iterable[T]:
+        """Get the elements of this space.
+
+        # Returns
+        The elements of this space.
+        """
+        return np.array(
+            list(itertools.product(*[(1, 0) for _ in range(self._gym_space.n)])),
+            dtype=np.int8,
+        )
 
 
 class TupleSpace(GymSpace[T]):

@@ -170,7 +170,7 @@ class RayRLlib(Solver, Policies, Restorable):
                 )
             elif self._algo_class.__name__ == "PPO":
                 self._config.training(
-                    vf_share_layers=True,
+                    model={"vf_share_layers": True},
                 )
             # States are not automatically autocasted when the domain is actually single agent
             # because the type hints of states in functions taking them as argument are not in
