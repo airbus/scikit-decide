@@ -183,13 +183,13 @@ class RayRLlib(Solver, Policies, Restorable):
         else:
             self._state_access = None
         self._wrap_action = lambda a: {
-            # Trick to assign v's corresponding element to self._wrap_action
-            # (no get_element method from indexes in enumerable spaces)
+            # Trick to assign v's wrapped value to self._wrap_action
+            # (no wrapping method for single unwrapped values in enumerable spaces)
             k: next(iter(wrapped_action_space[k].from_unwrapped([v])))
             for k, v in a.items()
         }
-        # Trick to assign o's index to self._unwrap_obs
-        # (no get_index method from elements in enumerable spaces)
+        # Trick to assign o's unwrapped value to self._unwrap_obs
+        # (no unwrapping method for single elements in enumerable spaces)
         self._unwrap_obs = (
             lambda obs, agent: next(
                 iter(wrapped_observation_space[agent].to_unwrapped([obs[agent]]))
@@ -256,9 +256,9 @@ class RayRLlib(Solver, Policies, Restorable):
                             "model": {
                                 "custom_model": "skdecide_rllib_custom_model",
                                 "custom_model_config": {
-                                    "true_obs_shape": pol_obs_spaces[k]
-                                    .spaces["true_obs"]
-                                    .shape,
+                                    "true_obs_space": pol_obs_spaces[k].spaces[
+                                        "true_obs"
+                                    ],
                                     "action_embed_size": action_embed_size,
                                 },
                             },
@@ -398,11 +398,11 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
         # Returns
         obs (dict): New observations for each ready agent.
         """
-        raw_observation = super().reset()
+        raw_observation = self._domain.reset()
         if not self._action_masking:
             observation = {
-                # Trick to assign v's index to k
-                # (no get_index method from elements in enumerable spaces)
+                # Trick to assign v's unwrapped value to k
+                # (no unwrapping method for single elements in enumerable spaces)
                 k: next(iter(self._wrapped_observation_space[k].to_unwrapped([v])))
                 for k, v in raw_observation.items()
             }
@@ -411,8 +411,8 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
                 self._state_access(raw_observation)
             )
             observation = {
-                # Trick to assign v's index to k
-                # (no get_index method from elements in enumerable spaces)
+                # Trick to assign v's unwrapped value to k
+                # (no unwrapping method for single elements in enumerable spaces)
                 k: {
                     "valid_avail_actions_mask": np.array(
                         [
@@ -443,16 +443,16 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
         infos (dict): Optional info values for each agent id.
         """
         action = {
-            # Trick to assign v's corresponding element to k
-            # (no get_element method from indexes in enumerable spaces)
+            # Trick to assign v's wrapped value to k
+            # (no wrapping method from single unwrapped values in enumerable spaces)
             k: next(iter(self._wrapped_action_space[k].from_unwrapped([v])))
             for k, v in action_dict.items()
         }
         outcome = self._domain.step(action)
         if not self._action_masking:
             observations = {
-                # Trick to assign v's index to k
-                # (no get_index method from elements in enumerable spaces)
+                # Trick to assign v's unwrapped value to k
+                # (no unwrapping method for single elements in enumerable spaces)
                 k: next(iter(self._wrapped_observation_space[k].to_unwrapped([v])))
                 for k, v in outcome.observation.items()
             }
@@ -461,8 +461,8 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
                 self._state_access(outcome.observation)
             )
             observations = {
-                # Trick to assign v's index to k
-                # (no get_index method from elements in enumerable spaces)
+                # Trick to assign v's unwrapped value to k
+                # (no unwrapping method for single elements in enumerable spaces)
                 k: {
                     "valid_avail_actions_mask": np.array(
                         [

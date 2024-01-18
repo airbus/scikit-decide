@@ -3,89 +3,98 @@
 # LICENSE file in the root directory of this source tree.
 
 from collections import namedtuple
+from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import NamedTuple, Optional
 import numpy as np
+import gymnasium as gym
+
 from ray.rllib.algorithms.ppo import PPO
 from ray.rllib.algorithms.dqn import DQN
 from skdecide.builders.domain.events import Actions
 from skdecide.core import Space, Value
 from skdecide.domains import DeterministicPlanningDomain
 
+from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.domain.simple_grid_world import SimpleGridWorld
 from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.hub.space.gym import EnumSpace, ListSpace, SetSpace, BoxSpace
+from skdecide.hub.space.gym.gym import DataSpace, MultiDiscreteSpace
 from skdecide.utils import rollout
 
-# # === EXAMPLE 1: solve the cart pole OpenAI Gym domain using RLlib's PPO ===
+# === EXAMPLE 1: solve the cart pole OpenAI Gym domain using RLlib's PPO ===
 
-# ENV_NAME = "CartPole-v1"
+print(
+    "\n\033[94mEXAMPLE 1: solve the cart pole OpenAI Gym domain using RLlib's PPO\n\033[0m"
+)
 
-# domain_factory = lambda: GymDomain(gym.make(ENV_NAME))
-# domain = domain_factory()
+ENV_NAME = "CartPole-v1"
 
-# # Check domain compatibility
-# if RayRLlib.check_domain(domain):
-#     solver_factory = lambda: RayRLlib(PPO, train_iterations=5)
+domain_factory = lambda: GymDomain(gym.make(ENV_NAME))
+domain = domain_factory()
 
-#     # Start solving
-#     with solver_factory() as solver:
-#         GymDomain.solve_with(solver, domain_factory)
-#         solver.save("TEMP_RLlib")  # Save results
+# Check domain compatibility
+if RayRLlib.check_domain(domain):
+    solver_factory = lambda: RayRLlib(PPO, train_iterations=5)
 
-#         # Continue solving (just to demonstrate the capability to learn further)
-#         solver.solve(domain_factory)
-#         solver.save("TEMP_RLlib")  # Save updated results
+    # Start solving
+    with solver_factory() as solver:
+        GymDomain.solve_with(solver, domain_factory)
+        solver.save("TEMP_RLlib")  # Save results
 
-#         # Test solution
-#         rollout(
-#             domain,
-#             solver,
-#             num_episodes=1,
-#             max_steps=1000,
-#             max_framerate=30,
-#             outcome_formatter=None,
-#         )
+        # Continue solving (just to demonstrate the capability to learn further)
+        solver.solve(domain_factory)
+        solver.save("TEMP_RLlib")  # Save updated results
 
-#     # Restore (latest results) from scratch and re-run
-#     with solver_factory() as solver:
-#         GymDomain.solve_with(solver, domain_factory, load_path="TEMP_RLlib")
-#         rollout(
-#             domain,
-#             solver,
-#             num_episodes=1,
-#             max_steps=1000,
-#             max_framerate=30,
-#             outcome_formatter=None,
-#         )
+        # Test solution
+        rollout(
+            domain,
+            solver,
+            num_episodes=1,
+            max_steps=1000,
+            max_framerate=30,
+            outcome_formatter=None,
+        )
+
+    # Restore (latest results) from scratch and re-run
+    with solver_factory() as solver:
+        GymDomain.solve_with(solver, domain_factory, load_path="TEMP_RLlib")
+        rollout(
+            domain,
+            solver,
+            num_episodes=1,
+            max_steps=1000,
+            max_framerate=30,
+            outcome_formatter=None,
+        )
 
 
-# # === EXAMPLE 2: solve the grid world domain with restricted actions using RLlib's DQN ===
+# === EXAMPLE 2: solve the simple grid world domain using RLlib's DQN ===
 
-# print(
-#     "\n\033[94mEXAMPLE 2: solve the grid world domain with restricted actions using RLlib's DQN\n\033[0m"
-# )
+print(
+    "\n\033[94mEXAMPLE 2: solve the simple grid world domain using RLlib's DQN\n\033[0m"
+)
 
-# domain_factory = lambda: SimpleGridWorld(num_cols=10, num_rows=10)
-# domain = domain_factory()
+domain_factory = lambda: SimpleGridWorld(num_cols=10, num_rows=10)
+domain = domain_factory()
 
-# # Check domain compatibility
-# if RayRLlib.check_domain(domain):
-#     solver_factory = lambda: RayRLlib(PPO, train_iterations=5)
+# Check domain compatibility
+if RayRLlib.check_domain(domain):
+    solver_factory = lambda: RayRLlib(PPO, train_iterations=5)
 
-#     # Start solving
-#     with solver_factory() as solver:
-#         SimpleGridWorld.solve_with(solver, domain_factory)
+    # Start solving
+    with solver_factory() as solver:
+        SimpleGridWorld.solve_with(solver, domain_factory)
 
-#         # Test solution
-#         rollout(
-#             domain,
-#             solver,
-#             num_episodes=1,
-#             max_steps=100,
-#             max_framerate=30,
-#             outcome_formatter=None,
-#         )
+        # Test solution
+        rollout(
+            domain,
+            solver,
+            num_episodes=1,
+            max_steps=100,
+            max_framerate=30,
+            outcome_formatter=None,
+        )
 
 
 # === EXAMPLE 3: solve the grid world domain with filtered actions using RLlib's DQN ===
@@ -93,6 +102,7 @@ from skdecide.utils import rollout
 print(
     "\n\033[94mEXAMPLE 3: solve the grid world domain with filtered actions using RLlib's DQN\n\033[0m"
 )
+
 
 # Allowed action handling in rllib requires to use Dict spaces for observations, which in turn
 # don't support NamedTuple instances as sub-observations (cloudpickle error), therefore we use
@@ -175,13 +185,8 @@ class GridWorldFilteredActions(D):
         return EnumSpace(Action)
 
     def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
-        # Allowed action handling in rllib requires to use Dict spaces for observations,
-        # which in turn don't seem to support complex subspaces, which is why we use
-        # BoxSpace instead of TupleSpace([sp.Discrete(self.num_cols), sp.Discrete(self.num_rows)])
-        return BoxSpace(
-            low=np.array([0, 0], dtype=np.int64),
-            high=np.array([self.num_cols, self.num_rows], dtype=np.int64),
-            dtype=np.int64,
+        return MultiDiscreteSpace(
+            nvec=[self.num_cols, self.num_rows], element_class=State
         )
 
 

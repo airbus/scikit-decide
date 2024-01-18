@@ -1,12 +1,12 @@
-from gymnasium.spaces import Box
+from gymnasium.spaces import Box, flatten_space, flatten
 
-from ray.rllib.policy.policy import PolicySpec
 from ray.rllib.algorithms.dqn.distributional_q_tf_model import DistributionalQTFModel
 from ray.rllib.algorithms.dqn.dqn_torch_model import DQNTorchModel
 from ray.rllib.models.tf.fcnet import FullyConnectedNetwork as TFFullyConnectedNetwork
 from ray.rllib.models.torch.fcnet import (
     FullyConnectedNetwork as TorchFullyConnectedNetwork,
 )
+from ray.rllib.utils.spaces.space_utils import unbatch, flatten_to_single_ndarray
 from ray.rllib.utils.framework import try_import_tf, try_import_torch
 from ray.rllib.utils.torch_utils import FLOAT_MAX, FLOAT_MIN
 
@@ -29,9 +29,10 @@ class TFParametricActionsModel(DistributionalQTFModel):
         self.action_ids_shifted = tf.constant(
             list(range(1, num_outputs + 1)), dtype=tf.float32
         )
+        self.true_obs_space = model_config["custom_model_config"]["true_obs_space"]
 
         self.pred_action_embed_model = TFFullyConnectedNetwork(
-            Box(-1, 1, shape=model_config["custom_model_config"]["true_obs_shape"]),
+            flatten_space(self.true_obs_space),
             action_space,
             model_config["custom_model_config"]["action_embed_size"],
             model_config,
@@ -48,9 +49,16 @@ class TFParametricActionsModel(DistributionalQTFModel):
         # Extract the available actions mask tensor from the observation.
         valid_avail_actions_mask = input_dict["obs"]["valid_avail_actions_mask"]
 
+        # Unbatch true observations before flattening them
+        unbatched_true_obs = unbatch(input_dict["obs"]["true_obs"])
+
         # Compute the predicted action embedding
         pred_action_embed, _ = self.pred_action_embed_model(
-            {"obs": input_dict["obs"]["true_obs"]}
+            {
+                "obs": tf.stack(
+                    [flatten_to_single_ndarray(o) for o in unbatched_true_obs]
+                )
+            }
         )
 
         # Expand the model output to [BATCH, 1, EMBED_SIZE]. Note that the
@@ -88,9 +96,10 @@ class TorchParametricActionsModel(DQNTorchModel):
         )
 
         self.action_ids_shifted = torch.arange(1, num_outputs + 1, dtype=torch.int64)
+        self.true_obs_space = model_config["custom_model_config"]["true_obs_space"]
 
         self.pred_action_embed_model = TorchFullyConnectedNetwork(
-            Box(-1, 1, shape=model_config["custom_model_config"]["true_obs_shape"]),
+            flatten_space(self.true_obs_space),
             action_space,
             model_config["custom_model_config"]["action_embed_size"],
             model_config,
@@ -106,9 +115,16 @@ class TorchParametricActionsModel(DQNTorchModel):
         # Extract the available actions mask tensor from the observation.
         valid_avail_actions_mask = input_dict["obs"]["valid_avail_actions_mask"]
 
+        # Unbatch true observations before flattening them
+        unbatched_true_obs = unbatch(input_dict["obs"]["true_obs"])
+
         # Compute the predicted action embedding
         pred_action_embed, _ = self.pred_action_embed_model(
-            {"obs": input_dict["obs"]["true_obs"]}
+            {
+                "obs": torch.stack(
+                    [flatten_to_single_ndarray(o) for o in unbatched_true_obs]
+                )
+            }
         )
 
         # Expand the model output to [BATCH, 1, EMBED_SIZE]. Note that the

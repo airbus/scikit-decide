@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from enum import EnumMeta
 import itertools
-from typing import Dict, Generic, Iterable, List, Sequence, Tuple, Union
+from typing import Dict, Generic, Iterable, List, Sequence, Tuple, Union, Any
 
 import gymnasium as gym
 import gymnasium.spaces as gym_spaces
@@ -79,8 +79,9 @@ class DiscreteSpace(GymSpace[T], EnumerableSpace[T]):
         Using this class requires gymnasium to be installed.
     """
 
-    def __init__(self, n):
+    def __init__(self, n, element_class=int):
         super().__init__(gym_space=gym_spaces.Discrete(n))
+        self._element_class = element_class
 
     def get_elements(self) -> Iterable[T]:
         """Get the elements of this space.
@@ -90,6 +91,20 @@ class DiscreteSpace(GymSpace[T], EnumerableSpace[T]):
         """
         return np.array(list(range(self._gym_space.n)), dtype=np.int64)
 
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return (
+            sample_n
+            if self._element_class is int
+            else [int(sample) for sample in sample_n]
+        )
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return (
+            sample_n
+            if self._element_class is int
+            else [self._element_class(sample) for sample in sample_n]
+        )
+
 
 class MultiDiscreteSpace(GymSpace[T], EnumerableSpace[T]):
     """This class wraps a gymnasium MultiDiscrete space (gym.spaces.MultiDiscrete) as a scikit-decide space.
@@ -98,8 +113,9 @@ class MultiDiscreteSpace(GymSpace[T], EnumerableSpace[T]):
         Using this class requires gymnasium to be installed.
     """
 
-    def __init__(self, nvec):
+    def __init__(self, nvec, element_class=np.ndarray):
         super().__init__(gym_space=gym_spaces.MultiDiscrete(nvec))
+        self._element_class = element_class
 
     def get_elements(self) -> Iterable[T]:
         """Get the elements of this space.
@@ -112,6 +128,20 @@ class MultiDiscreteSpace(GymSpace[T], EnumerableSpace[T]):
             dtype=np.int64,
         )
 
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return (
+            sample_n
+            if self._element_class is np.ndarray
+            else [np.asarray(sample, dtype=np.int64) for sample in sample_n]
+        )
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return (
+            sample_n
+            if self._element_class is np.ndarray
+            else [self._element_class(sample) for sample in sample_n]
+        )
+
 
 class MultiBinarySpace(GymSpace[T], EnumerableSpace[T]):
     """This class wraps a gymnasium MultiBinary space (gym.spaces.MultiBinary) as a scikit-decide space.
@@ -120,8 +150,9 @@ class MultiBinarySpace(GymSpace[T], EnumerableSpace[T]):
         Using this class requires gymnasium to be installed.
     """
 
-    def __init__(self, n):
+    def __init__(self, n, element_class=np.ndarray):
         super().__init__(gym_space=gym_spaces.MultiBinary(n))
+        self._element_class = element_class
 
     def get_elements(self) -> Iterable[T]:
         """Get the elements of this space.
@@ -134,6 +165,20 @@ class MultiBinarySpace(GymSpace[T], EnumerableSpace[T]):
             dtype=np.int8,
         )
 
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return (
+            sample_n
+            if self._element_class is np.ndarray
+            else [np.asarray(sample, dtype=np.bool_).astype(int) for sample in sample_n]
+        )
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return (
+            sample_n
+            if self._element_class is np.ndarray
+            else [self._element_class(sample) for sample in sample_n]
+        )
+
 
 class TupleSpace(GymSpace[T]):
     """This class wraps a gymnasium Tuple space (gym.spaces.Tuple) as a scikit-decide space.
@@ -142,8 +187,55 @@ class TupleSpace(GymSpace[T]):
         Using this class requires gymnasium to be installed.
     """
 
-    def __init__(self, spaces):
-        super().__init__(gym_space=gym_spaces.Tuple(spaces))
+    def __init__(
+        self, spaces: Tuple[Union[GymSpace[T], gym.Space]], element_class=tuple
+    ):
+        super().__init__(
+            gym_space=gym_spaces.Tuple(
+                [sp if isinstance(sp, gym.Space) else sp.unwrapped() for sp in spaces]
+            )
+        )
+        self._spaces = spaces
+        self._element_class = element_class
+        assert (
+            isinstance(element_class, tuple)
+            or all(m in dir(element_class) for m in ["to_tuple", "from_tuple"]),
+            "Tuple space's element class must be of type tuple or it must provide the to_tuple and from_tuple methods",
+        )
+        self._to_tuple = (
+            (lambda e: e)
+            if isinstance(element_class, tuple)
+            else (lambda e: e.to_tuple())
+        )
+        self._from_tuple = (
+            (lambda e: e)
+            if isinstance(element_class, tuple)
+            else (lambda e: self._element_class.from_tuple(e))
+        )
+
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return [
+            tuple(
+                next(iter(self._spaces[i].to_unwrapped([e])))
+                if isinstance(self._spaces[i], GymSpace)
+                else e
+                for i, e in enumerate(self._to_tuple(sample))
+            )
+            for sample in sample_n
+        ]
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return [
+            self._from_tuple(
+                tuple(
+                    next(iter(self._spaces[i].from_unwrapped([e])))
+                    if isinstance(self._spaces[i], GymSpace)
+                    else e
+                    for i, e in enumerate(sample)
+                )
+            )
+            for sample in sample_n
+        ]
 
 
 class DictSpace(GymSpace[T]):
@@ -153,8 +245,62 @@ class DictSpace(GymSpace[T]):
         Using this class requires gymnasium to be installed.
     """
 
-    def __init__(self, spaces=None, **spaces_kwargs):
-        super().__init__(gym_space=gym_spaces.Dict(spaces, **spaces_kwargs))
+    def __init__(
+        self,
+        spaces: Dict[Any, Union[GymSpace[T], gym.Space]] = None,
+        element_class=dict,
+        **spaces_kwargs,
+    ):
+        super().__init__(
+            gym_space=gym_spaces.Dict(
+                {
+                    k: sp if isinstance(sp, gym.Space) else sp.unwrapped()
+                    for k, sp in spaces.items()
+                },
+                **spaces_kwargs,
+            )
+        )
+        self._spaces = spaces
+        self._element_class = element_class
+        assert (
+            isinstance(element_class, dict)
+            or all(m in dir(element_class) for m in ["to_dict", "from_dict"]),
+            "Dict space's element class must be of type dict or it must provide the to_dict and from_dict methods",
+        )
+        self._to_dict = (
+            (lambda e: e)
+            if isinstance(element_class, dict)
+            else (lambda e: e.to_dict())
+        )
+        self._from_dict = (
+            (lambda e: e)
+            if isinstance(element_class, dict)
+            else (lambda e: self._element_class.from_dict(e))
+        )
+
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return [
+            {
+                k: next(iter(self._spaces[k].to_unwrapped([e])))
+                if isinstance(self._spaces[k], GymSpace)
+                else e
+                for k, e in self._to_dict(sample).items()
+            }
+            for sample in sample_n
+        ]
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return [
+            self._from_dict(
+                {
+                    k: next(iter(self._spaces[k].from_unwrapped([e])))
+                    if isinstance(self._spaces[k], GymSpace)
+                    else e
+                    for k, e in sample.items()
+                }
+            )
+            for sample in sample_n
+        ]
 
 
 class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
