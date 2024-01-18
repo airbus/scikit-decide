@@ -1,4 +1,4 @@
-from gymnasium.spaces import Box, flatten_space, flatten
+from gymnasium.spaces import flatten_space
 
 from ray.rllib.algorithms.dqn.distributional_q_tf_model import DistributionalQTFModel
 from ray.rllib.algorithms.dqn.dqn_torch_model import DQNTorchModel

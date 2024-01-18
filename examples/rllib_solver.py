@@ -3,10 +3,8 @@
 # LICENSE file in the root directory of this source tree.
 
 from collections import namedtuple
-from dataclasses import dataclass
 from enum import Enum
-from typing import NamedTuple, Optional
-import numpy as np
+from typing import Optional
 import gymnasium as gym
 
 from ray.rllib.algorithms.ppo import PPO
@@ -18,8 +16,8 @@ from skdecide.domains import DeterministicPlanningDomain
 from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.domain.simple_grid_world import SimpleGridWorld
 from skdecide.hub.solver.ray_rllib import RayRLlib
-from skdecide.hub.space.gym import EnumSpace, ListSpace, SetSpace, BoxSpace
-from skdecide.hub.space.gym.gym import DataSpace, MultiDiscreteSpace
+from skdecide.hub.space.gym import EnumSpace, ListSpace, SetSpace
+from skdecide.hub.space.gym.gym import MultiDiscreteSpace
 from skdecide.utils import rollout
 
 # === EXAMPLE 1: solve the cart pole OpenAI Gym domain using RLlib's PPO ===

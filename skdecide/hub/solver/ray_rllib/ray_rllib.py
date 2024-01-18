@@ -3,7 +3,6 @@
 # LICENSE file in the root directory of this source tree.
 
 from __future__ import annotations
-from copy import deepcopy
 
 from typing import Callable, Dict, Optional, Set, Type
 
@@ -295,8 +294,8 @@ class AsRLlibMultiAgentEnv(MultiAgentEnvCompatibility):
     def __init__(
         self,
         domain: D,
-        action_masking: bool,
-        state_access: Callable[D.T_agent[D.T_observation], D.T_state],
+        action_masking: bool = False,
+        state_access: Callable[D.T_agent[D.T_observation], D.T_state] = None,
         render_mode: Optional[str] = None,
     ) -> None:
         old_env = AsLegacyRLlibMultiAgentEnv(

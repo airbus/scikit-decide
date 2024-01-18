@@ -90,7 +90,6 @@ class Maze(D):
         memory: D.T_memory[D.T_state],
         action: D.T_agent[D.T_concurrency[D.T_event]],
     ) -> D.T_state:
-
         if action == Action.left:
             next_state = State(memory.x - 1, memory.y)
         if action == Action.right:
@@ -116,7 +115,6 @@ class Maze(D):
         action: D.T_agent[D.T_concurrency[D.T_event]],
         next_state: Optional[D.T_state] = None,
     ) -> D.T_agent[Value[D.T_value]]:
-
         if next_state.x == memory.x and next_state.y == memory.y:
             cost = 2  # big penalty when hitting a wall
         else:
@@ -139,7 +137,9 @@ class Maze(D):
         return self._start
 
     def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
-        return MultiDiscreteSpace([self._num_cols, self._num_rows])
+        return MultiDiscreteSpace(
+            nvec=[self._num_cols, self._num_rows], element_class=State
+        )
 
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
         if self._ax is None:
