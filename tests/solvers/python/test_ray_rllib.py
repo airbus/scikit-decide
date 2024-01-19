@@ -176,6 +176,7 @@ def test_ray_rllib_solver():
     rollout(
         domain,
         solver,
+        max_steps=100,
         action_formatter=lambda a: str({k: v.name for k, v in a.items()}),
         outcome_formatter=lambda o: f"{ {k: v.name for k, v in o.observation.items()} }"
         f" - rewards: { {k: v.reward for k, v in o.value.items()} }",
@@ -187,6 +188,7 @@ def test_ray_rllib_solver():
     rollout(
         domain,
         solver2,
+        max_steps=100,
     )
 
 
@@ -209,7 +211,7 @@ def test_ray_rllib_solver_with_filtered_actions():
     assert hasattr(solver, "_algo")
 
     # rollout
-    rollout(domain, solver)
+    rollout(domain, solver, max_steps=100)
 
 
 def test_ray_rllib_solver_on_single_agent_domain():
@@ -235,4 +237,5 @@ def test_ray_rllib_solver_on_single_agent_domain():
     rollout(
         domain,
         solver,
+        max_steps=100,
     )
