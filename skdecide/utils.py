@@ -36,6 +36,9 @@ __all__ = [
     "rollout_episode",
 ]
 
+SKDECIDE_DEFAULT_DATAHOME = "~/skdecide_data"
+SKDECIDE_DEFAULT_DATAHOME_ENVVARNAME = "SKDECIDE_DATA"
+
 logger = logging.getLogger("skdecide.utils")
 
 logger.setLevel(logging.INFO)
@@ -50,6 +53,32 @@ if not len(logger.handlers):
     # add the handlers to the logger
     logger.addHandler(ch)
     logger.propagate = False
+
+
+def get_data_home(data_home: Optional[str] = None) -> str:
+    """Return the path of the scikit-decide data directory.
+
+    This folder is used by some large dataset loaders to avoid downloading the
+    data several times, as for instance the weather data used by the flight planning domain.
+    By default the data dir is set to a folder named 'skdecide_data' in the
+    user home folder.
+    Alternatively, it can be set by the 'SKDECIDE_DATA' environment
+    variable or programmatically by giving an explicit folder path. The '~'
+    symbol is expanded to the user home folder.
+    If the folder does not already exist, it is automatically created.
+
+    Params:
+        data_home : The path to scikit-decide data directory. If `None`, the default path
+        is `~/skdecide_data`.
+
+    """
+    if data_home is None:
+        data_home = os.environ.get(
+            SKDECIDE_DEFAULT_DATAHOME_ENVVARNAME, SKDECIDE_DEFAULT_DATAHOME
+        )
+    data_home = os.path.expanduser(data_home)
+    os.makedirs(data_home, exist_ok=True)
+    return data_home
 
 
 def _get_registered_entries(entry_type: str) -> List[str]:

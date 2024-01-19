@@ -145,6 +145,7 @@ jobs:
     needs: [setup]
     strategy:
       matrix:
+        arch: [ "arm64", "x86_64" ]  # NB: only x86_64 wheel will be tested as no macosx_arm64 github runner available
         os: ${{ fromJSON(needs.setup.outputs.build).macos }}
         python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).macos }}
       fail-fast: false
@@ -202,26 +203,63 @@ jobs:
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
         run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
 
-      - name: Install omp
-        run: brew install libomp
-
       - name: Build wheel
+        env:
+          ARCH: ${{ matrix.arch }}
+          PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
-          export "Boost_ROOT=$PWD/$BOOST_DIR"
-          export "OpenMP_ROOT=$(brew --prefix)/opt/libomp"
-          python -m pip install --upgrade pip
-          pip install build poetry-dynamic-versioning
-          python -m build --sdist --wheel
+
+          if [[ "$ARCH" == arm64 ]]; then
+              # SciPy requires 12.0 on arm to prevent kernel panics
+              # https://github.com/scipy/scipy/issues/14688
+              # We use the same deployment target to match SciPy.
+              export MACOSX_DEPLOYMENT_TARGET=12.0
+              OPENMP_URL="https://anaconda.org/conda-forge/llvm-openmp/11.1.0/download/osx-arm64/llvm-openmp-11.1.0-hf3c4609_1.tar.bz2"
+          else
+              export MACOSX_DEPLOYMENT_TARGET=10.15
+              OPENMP_URL="https://anaconda.org/conda-forge/llvm-openmp/11.1.0/download/osx-64/llvm-openmp-11.1.0-hda6cdc1_1.tar.bz2"
+          fi
+          PYTHON_VERSION_WO_DOT=$(echo ${PYTHON_VERSION} | sed -e 's/\.//g')  # remove "."
+          MACOSX_DEPLOYMENT_TARGET_WO_DOT=$(echo ${MACOSX_DEPLOYMENT_TARGET} | sed -e 's/\./_/g')  # replace "." by "_"
+
+          # install appropriate version of openmp
+          sudo conda create -n build $OPENMP_URL
+
+          # make openmp and boost available
+          export Boost_ROOT=$PWD/$BOOST_DIR
+          export OpenMP_ROOT=$CONDA/envs/build
+          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
+          export CFLAGS="$CFLAGS -I$OpenMP_ROOT/include"
+          export CXXFLAGS="$CXXFLAGS -I$OpenMP_ROOT/include"
+          export LDFLAGS="$LDFLAGS -Wl,-rpath,$OpenMP_ROOT/lib -L$OpenMP_ROOT/lib -lomp"
+
+          # cmake flag to cross-compile the c++
+          export CMAKE_OSX_ARCHITECTURES=${ARCH}
+
+          python -m pip install cibuildwheel
+          # cibuildwheel flags
+          export CIBW_BUILD_FRONTEND="build"
+          export CIBW_ARCHS=${ARCH}
+          export CIBW_BUILD="cp${PYTHON_VERSION_WO_DOT}-macosx_${ARCH}"
+
+          # build wheel
+          python -m cibuildwheel --output-dir wheelhouse
+
+          # set the proper platform tag
+          #  - with poetry build + cross-compilation for arm64, the tag could been still x64_64 (https://cibuildwheel.readthedocs.io/en/stable/faq/#how-to-cross-compile)
+          #  - we downgrade the displayed macosx version to ensure compatibility with lesser macosx than the ones used on this runner
+          pip install "wheel>=0.40"
+          wheel tags --platform-tag macosx_${MACOSX_DEPLOYMENT_TARGET_WO_DOT}_${ARCH} --remove wheelhouse/*.whl
 
       - name: Update build cache from wheels
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
-        run: 7z x dist/*.whl -y
+        run: 7z x wheelhouse/*.whl -y
 
       - name: Upload as build artifacts
         uses: actions/upload-artifact@v3
         with:
           name: wheels
-          path: dist/*.whl
+          path: wheelhouse/*.whl
 
   build-ubuntu:
     needs: [setup]
@@ -465,7 +503,7 @@ jobs:
       - name: Install scikit-decide and test dependencies
         run: |
           python_version=${{ matrix.python-version }}
-          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*.whl)
+          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*x86_64.whl)
           pip install ${wheelfile}[all] pytest gymnasium[classic-control]
 
       - name: Test with pytest
@@ -628,7 +666,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOCS_VERSION_PATH: /
-      python_version: "3.8"
+      python_version: "3.10"
 
     steps:
       - name: Get scikit-decide release version and update online docs path
