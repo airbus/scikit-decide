@@ -1,7 +1,7 @@
 from gymnasium.spaces import flatten_space
 
-from ray.rllib.algorithms.dqn.distributional_q_tf_model import DistributionalQTFModel
-from ray.rllib.algorithms.dqn.dqn_torch_model import DQNTorchModel
+from ray.rllib.models.tf.tf_modelv2 import TFModelV2
+from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.models.tf.fcnet import FullyConnectedNetwork as TFFullyConnectedNetwork
 from ray.rllib.models.torch.fcnet import (
     FullyConnectedNetwork as TorchFullyConnectedNetwork,
@@ -14,7 +14,7 @@ tf1, tf, tfv = try_import_tf()
 torch, nn = try_import_torch()
 
 
-class TFParametricActionsModel(DistributionalQTFModel):
+class TFParametricActionsModel(TFModelV2):
     """Parametric action model that handles the dot product and masking and
     that also learns action embeddings. TensorFlow version.
 
@@ -83,7 +83,7 @@ class TFParametricActionsModel(DistributionalQTFModel):
         return self.pred_action_embed_model.value_function()
 
 
-class TorchParametricActionsModel(DQNTorchModel):
+class TorchParametricActionsModel(TorchModelV2, nn.Module):
     """Parametric action model that handles the dot product and masking and
     that also learns action embeddings. PyTorch version.
 
@@ -91,6 +91,7 @@ class TorchParametricActionsModel(DQNTorchModel):
     """
 
     def __init__(self, obs_space, action_space, num_outputs, model_config, name, **kw):
+        nn.Module.__init__(self)
         super(TorchParametricActionsModel, self).__init__(
             obs_space, action_space, num_outputs, model_config, name, **kw
         )
