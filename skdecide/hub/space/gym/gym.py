@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import asdict
 from enum import EnumMeta
-import itertools
-from typing import Dict, Generic, Iterable, List, Sequence, Tuple, Union, Any
+from typing import Any, Dict, Generic, Iterable, List, Sequence, Tuple, Union
 
 import gymnasium as gym
 import gymnasium.spaces as gym_spaces

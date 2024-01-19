@@ -9,19 +9,16 @@ from typing import Callable, Dict, Optional, Set, Type
 import gymnasium as gym
 import numpy as np
 import ray
-from ray.rllib.models import ModelCatalog
-from ray.rllib.utils.from_config import NotProvided
 from ray.rllib.algorithms.algorithm import Algorithm, AlgorithmConfig
 from ray.rllib.env.wrappers.multi_agent_env_compatibility import (
     MultiAgentEnvCompatibility,
 )
+from ray.rllib.models import ModelCatalog
+from ray.rllib.utils.from_config import NotProvided
 from ray.tune.registry import register_env
 
 from skdecide import Domain, Solver
-from skdecide.builders.domain import (
-    SingleAgent,
-    UnrestrictedActions,
-)
+from skdecide.builders.domain import SingleAgent, UnrestrictedActions
 from skdecide.builders.domain.observability import FullyObservable
 from skdecide.builders.solver import Policies, Restorable
 from skdecide.core import EnumerableSpace

@@ -1,13 +1,12 @@
 from gymnasium.spaces import flatten_space
-
-from ray.rllib.models.tf.tf_modelv2 import TFModelV2
-from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.models.tf.fcnet import FullyConnectedNetwork as TFFullyConnectedNetwork
+from ray.rllib.models.tf.tf_modelv2 import TFModelV2
 from ray.rllib.models.torch.fcnet import (
     FullyConnectedNetwork as TorchFullyConnectedNetwork,
 )
-from ray.rllib.utils.spaces.space_utils import unbatch, flatten_to_single_ndarray
+from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.framework import try_import_tf, try_import_torch
+from ray.rllib.utils.spaces.space_utils import flatten_to_single_ndarray, unbatch
 from ray.rllib.utils.torch_utils import FLOAT_MAX, FLOAT_MIN
 
 tf1, tf, tfv = try_import_tf()

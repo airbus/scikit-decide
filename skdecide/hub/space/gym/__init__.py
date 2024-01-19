@@ -10,8 +10,8 @@ from .gym import (
     EnumSpace,
     GymSpace,
     ListSpace,
-    SetSpace,
     MultiBinarySpace,
     MultiDiscreteSpace,
+    SetSpace,
     TupleSpace,
 )

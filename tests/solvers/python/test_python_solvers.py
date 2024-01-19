@@ -9,8 +9,8 @@ from enum import Enum
 from typing import NamedTuple, Optional
 
 import pytest
-from stable_baselines3 import PPO
 from ray.rllib.algorithms.dqn import DQN
+from stable_baselines3 import PPO
 
 from skdecide import DeterministicPlanningDomain, ImplicitSpace, Space, Value
 from skdecide.builders.domain import UnrestrictedActions

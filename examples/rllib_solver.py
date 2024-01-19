@@ -5,14 +5,14 @@
 from collections import namedtuple
 from enum import Enum
 from typing import Optional
-import gymnasium as gym
 
-from ray.rllib.algorithms.ppo import PPO
+import gymnasium as gym
 from ray.rllib.algorithms.dqn import DQN
+from ray.rllib.algorithms.ppo import PPO
+
 from skdecide.builders.domain.events import Actions
 from skdecide.core import Space, Value
 from skdecide.domains import DeterministicPlanningDomain
-
 from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.domain.simple_grid_world import SimpleGridWorld
 from skdecide.hub.solver.ray_rllib import RayRLlib
