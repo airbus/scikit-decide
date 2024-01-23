@@ -6,101 +6,18 @@ from collections import namedtuple
 from enum import Enum
 from typing import Optional
 
-import gymnasium as gym
 from ray.rllib.algorithms.dqn import DQN
 from ray.rllib.algorithms.ppo import PPO
 
 from skdecide.builders.domain.events import Actions
 from skdecide.core import Space, Value
 from skdecide.domains import DeterministicPlanningDomain
-from skdecide.hub.domain.gym import GymDomain
-from skdecide.hub.domain.simple_grid_world import SimpleGridWorld
 from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.hub.space.gym import EnumSpace, ListSpace, SetSpace
 from skdecide.hub.space.gym.gym import MultiDiscreteSpace
 from skdecide.utils import rollout
 
-# === EXAMPLE 1: solve the cart pole OpenAI Gym domain using RLlib's PPO ===
-
-print(
-    "\n\033[94mEXAMPLE 1: solve the cart pole OpenAI Gym domain using RLlib's PPO\n\033[0m"
-)
-
-ENV_NAME = "CartPole-v1"
-
-domain_factory = lambda: GymDomain(gym.make(ENV_NAME))
-domain = domain_factory()
-
-# Check domain compatibility
-if RayRLlib.check_domain(domain):
-    solver_factory = lambda: RayRLlib(PPO, train_iterations=5)
-
-    # Start solving
-    with solver_factory() as solver:
-        GymDomain.solve_with(solver, domain_factory)
-        solver.save("TEMP_RLlib")  # Save results
-
-        # Continue solving (just to demonstrate the capability to learn further)
-        solver.solve(domain_factory)
-        solver.save("TEMP_RLlib")  # Save updated results
-
-        # Test solution
-        rollout(
-            domain,
-            solver,
-            num_episodes=1,
-            max_steps=1000,
-            max_framerate=30,
-            outcome_formatter=None,
-        )
-
-    # Restore (latest results) from scratch and re-run
-    with solver_factory() as solver:
-        GymDomain.solve_with(solver, domain_factory, load_path="TEMP_RLlib")
-        rollout(
-            domain,
-            solver,
-            num_episodes=1,
-            max_steps=1000,
-            max_framerate=30,
-            outcome_formatter=None,
-        )
-
-
-# === EXAMPLE 2: solve the simple grid world domain using RLlib's DQN ===
-
-print(
-    "\n\033[94mEXAMPLE 2: solve the simple grid world domain using RLlib's DQN\n\033[0m"
-)
-
-domain_factory = lambda: SimpleGridWorld(num_cols=10, num_rows=10)
-domain = domain_factory()
-
-# Check domain compatibility
-if RayRLlib.check_domain(domain):
-    solver_factory = lambda: RayRLlib(PPO, train_iterations=5)
-
-    # Start solving
-    with solver_factory() as solver:
-        SimpleGridWorld.solve_with(solver, domain_factory)
-
-        # Test solution
-        rollout(
-            domain,
-            solver,
-            num_episodes=1,
-            max_steps=100,
-            max_framerate=30,
-            outcome_formatter=None,
-        )
-
-
-# === EXAMPLE 3: solve the grid world domain with filtered actions using RLlib's DQN ===
-
-print(
-    "\n\033[94mEXAMPLE 3: solve the grid world domain with filtered actions using RLlib's DQN\n\033[0m"
-)
-
+# This example shows hw to solve the grid world domain with filtered actions using RLlib's DQN
 
 # Allowed action handling in rllib requires to use Dict spaces for observations, which in turn
 # don't support NamedTuple instances as sub-observations (cloudpickle error), therefore we use
