@@ -105,7 +105,9 @@ class MasterMind(D):
         return self._calc_score(state, action)
 
     def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
-        return MultiDiscreteSpace([self._n_positions + 1, self._n_positions + 1])
+        return MultiDiscreteSpace(
+            nvec=[self._n_positions + 1, self._n_positions + 1], element_class=Score
+        )
 
     def _list_hidden_solutions(self):
         """Return a list of all possible hidden solutions (n_colours ** n_positions)."""

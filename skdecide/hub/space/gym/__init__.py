@@ -12,5 +12,6 @@ from .gym import (
     ListSpace,
     MultiBinarySpace,
     MultiDiscreteSpace,
+    SetSpace,
     TupleSpace,
 )

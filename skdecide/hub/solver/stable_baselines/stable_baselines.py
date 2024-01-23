@@ -77,7 +77,7 @@ class StableBaseline(Solver, Policies, Restorable):
     def _sample_action(
         self, observation: D.T_agent[D.T_observation]
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        action, _ = self._algo.predict(observation)
+        action, _ = self._algo.predict(self._unwrap_obs(observation))
         return self._wrap_action(action)
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
@@ -93,4 +93,7 @@ class StableBaseline(Solver, Policies, Restorable):
     def _init_algo(self, domain: D):
         self._wrap_action = lambda a: next(
             iter(domain.get_action_space().from_unwrapped([a]))
+        )
+        self._unwrap_obs = lambda o: next(
+            iter(domain.get_observation_space().to_unwrapped([o]))
         )

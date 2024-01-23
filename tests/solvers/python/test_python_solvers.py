@@ -9,6 +9,7 @@ from enum import Enum
 from typing import NamedTuple, Optional
 
 import pytest
+from ray.rllib.algorithms.dqn import DQN
 from stable_baselines3 import PPO
 
 from skdecide import DeterministicPlanningDomain, ImplicitSpace, Space, Value
@@ -57,7 +58,6 @@ class GridDomain(D):
         memory: D.T_memory[D.T_state],
         action: D.T_agent[D.T_concurrency[D.T_event]],
     ) -> D.T_state:
-
         if action == Action.left:
             next_state = State(max(memory.x - 1, 0), memory.y, memory.s + 1)
         if action == Action.right:
@@ -79,7 +79,6 @@ class GridDomain(D):
         action: D.T_agent[D.T_concurrency[D.T_event]],
         next_state: Optional[D.T_state] = None,
     ) -> D.T_agent[Value[D.T_value]]:
-
         if next_state.x == memory.x and next_state.y == memory.y:
             cost = 2  # big penalty when hitting a wall
         else:
@@ -90,7 +89,7 @@ class GridDomain(D):
         return Value(cost=cost)
 
     def _is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
-        return self._is_goal(state) or state.s >= 100
+        return self._is_goal(state) or state.s >= 99
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
         return EnumSpace(Action)
@@ -105,7 +104,9 @@ class GridDomain(D):
         return State(x=0, y=0, s=0)
 
     def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
-        return MultiDiscreteSpace([self.num_cols, self.num_rows, 100])
+        return MultiDiscreteSpace(
+            nvec=[self.num_cols, self.num_rows, 100], element_class=State
+        )
 
 
 # FIXTURES
@@ -114,6 +115,8 @@ class GridDomain(D):
 @pytest.fixture(
     params=[
         {"entry": "LazyAstar", "config": {"verbose": False}, "optimal": True},
+        {"entry": "LRTAstar", "config": {"verbose": False}, "optimal": False},
+        {"entry": "RayRLlib", "config": {"train_iterations": 1}, "optimal": False},
         {
             "entry": "StableBaseline",
             "config": {
@@ -155,6 +158,8 @@ def test_solve_python(solver_python):
         solver_args = deepcopy(solver_python["config"])
         if solver_python["entry"] == "StableBaseline":
             solver_args["algo_class"] = PPO
+        elif solver_python["entry"] == "RayRLlib":
+            solver_args["algo_class"] = DQN
 
         with solver_type(**solver_args) as slv:
             GridDomain.solve_with(slv)
