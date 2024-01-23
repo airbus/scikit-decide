@@ -9,6 +9,8 @@ from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.utils import rollout
 
+# This example shows how to solve the cart pole OpenAI Gym domain using RLlib's PPO
+
 ENV_NAME = "CartPole-v1"
 
 domain_factory = lambda: GymDomain(gym.make(ENV_NAME))
@@ -16,7 +18,6 @@ domain = domain_factory()
 
 # Check domain compatibility
 if RayRLlib.check_domain(domain):
-
     solver_factory = lambda: RayRLlib(PPO, train_iterations=5)
 
     # Start solving

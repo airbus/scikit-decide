@@ -1164,7 +1164,13 @@ class AsLegacyGymV21Env(LegacyEnv):
         # Returns
         observation (object): The initial observation of the space.
         """
-        return self._domain.reset()
+        return next(
+            iter(
+                self._domain.get_observation_space().to_unwrapped(
+                    [self._domain.reset()]
+                )
+            )
+        )
 
     def render(self, mode="human"):
         """Render the environment.

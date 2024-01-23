@@ -1,15 +1,12 @@
-import argparse
 import math
 from argparse import Action
 from enum import Enum
 from math import asin, atan2, cos, radians, sin, sqrt
-from time import sleep
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from IPython.display import clear_output
 from openap.extra.aero import atmos
 from openap.extra.aero import bearing as aero_bearing
 from openap.extra.aero import distance, ft, kts, latlon, mach2tas
@@ -18,7 +15,7 @@ from openap.fuel import FuelFlow
 from openap.prop import aircraft
 from pygeodesy.ellipsoidalVincenty import LatLon
 
-from skdecide import DeterministicPlanningDomain, ImplicitSpace, Space, Value
+from skdecide import DeterministicPlanningDomain, ImplicitSpace, Solver, Space, Value
 from skdecide.builders.domain import Renderable, UnrestrictedActions
 from skdecide.hub.domain.flight_planning.flightplanning_utils import (
     plot_altitude,
@@ -31,10 +28,20 @@ from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.get_
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.GenericInterpolator import (
     GenericWindInterpolator,
 )
-from skdecide.hub.solver.astar import Astar
-from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.space.gym import EnumSpace, ListSpace, MultiDiscreteSpace
-from skdecide.utils import match_solvers
+from skdecide.utils import load_registered_solver
+
+try:
+    from IPython.display import clear_output as ipython_clear_output
+except ImportError:
+    ipython_available = False
+else:
+    ipython_available = True
+
+
+def clear_output(wait=True):
+    if ipython_available:
+        ipython_clear_output(wait=wait)
 
 
 class WeatherDate:
@@ -245,6 +252,92 @@ class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
 class FlightPlanningDomain(
     DeterministicPlanningDomain, UnrestrictedActions, Renderable
 ):
+    """Automated flight planning domain.
+
+    Domain definition
+    -----------------
+
+    The flight planning domain can be quickly defined as :
+
+    - An origin, as ICAO code of an airport,
+    - A destination, as ICAO code of an airport,
+    - An aircraft type, as a string recognizable by the OpenAP library.
+
+    Airways graph
+    -------------
+
+    A three-dimensional airway graph of waypoints is created. The graph is following the great circle
+    which represents the shortest pass between the origin and the destination.
+    The planner computes a plan by choosing waypoints in the graph, which are represented by 4-dimensionnal states.
+    There is 3 phases in the graph :
+
+    - The climbing phase
+    - The cruise phase
+    - The descent phase
+
+    The flight planning domain allows to choose a number of forward, lateral and vertical waypoints in the graph.
+    It is also possible to choose different width (tiny, small, normal, large, xlarge) which will increase
+    or decrease the graph width.
+
+    State representation
+    --------------------
+
+    Here, the states are represented by 4 features :
+
+    - The position in the graph (x,y,z)
+    - The aircraft mass, which can also represent the fuel consumption (integer)
+    - The altitude (integer)
+    - The time (seconds)
+
+    Wind interpolation
+    ------------------
+
+    The flight planning domain can take in consideration the wind conditions.
+    That interpolation have a major impact on the results, as jet streams are high altitude wind
+    which can increase or decrease the ground speed of the aircraft.
+    It also have an impact on the computation time of a flight plan,
+    as the objective and heuristic function became more complex.
+
+    Objective (or cost) functions
+    -----------------------------
+
+    There is three possible objective functions:
+
+    - Fuel (Default)
+    - Distance
+    - Time
+
+    The chosen objective will represent the cost to go from a state to another. The aim of the algorithm is to minimize the cost.
+
+    Heuristic functions
+    -------------------
+
+    When using an A* algorithm to compute the flight plan, we need to feed it with a heuristic function, which guide the algorithm.
+    For now, there is 5 different (not admissible) heuristic function, depending on `self.heuristic_name`:
+
+    - fuel, which computes the required fuel to get to the goal. It takes in consideration the local wind & speed of the aircraft.
+    - time, which computes the required time to get to the goal. It takes in consideration the local wind & speed of the aircraft.
+    - distance, wich computes the distance to the goal.
+    - lazy_fuel, which propagates the fuel consummed so far.
+    - lazy_time, which propagates the time spent on the flight so far
+    - None : we give a 0 cost value, which will transform the A* algorithm into a Dijkstra-like algorithm.
+
+    Optional features
+    -----------------
+
+    The flight planning domain has several optional features :
+
+    - Fuel loop: this is an optimisation of the loaded fuel for the aircraft.
+      It will run some flights to computes the loaded fuel, using distance objective & heuristic.
+
+    - Constraints definition: you can define constraints such as
+
+        - A time constraint, represented by a time windows
+        - A fuel constraint, represented by the maximum fuel for instance.
+
+    - Slopes: you can define your own climbing & descending slopes which have to be between 10.0 and 25.0.
+
+    """
 
     T_state = State  # Type of states
     T_observation = State  # Type of observations
@@ -269,6 +362,8 @@ class FlightPlanningDomain(
         nb_vertical_points: int = None,
         fuel_loaded: float = None,
         fuel_loop: bool = False,
+        fuel_loop_solver_factory: Optional[Callable[[], Solver]] = None,
+        fuel_loop_tol: float = 1e-3,
         climbing_slope: float = None,
         descending_slope: float = None,
         graph_width: str = None,
@@ -285,9 +380,11 @@ class FlightPlanningDomain(
             actype (str):
                 Aircarft type describe in openap datas (https://github.com/junzis/openap/tree/master/openap/data/aircraft)
             weather_date (WeatherDate, optional):
-                Date for the weather, needed for days management. Defaults to None.
+                Date for the weather, needed for days management.
+                If None, no wind will be applied.
             wind_interpolator (GenericWindInterpolator, optional):
-                Wind interpolator for the flight plan. Defaults to None.
+                Wind interpolator for the flight plan. If None, create one from the specified weather_date.
+                The data is either already present locally or be downloaded from https://www.ncei.noaa.gov
             objective (str, optional):
                 Cost function of the flight plan. It can be either fuel, distance or time. Defaults to "fuel".
             heuristic_name (str, optional):
@@ -302,17 +399,19 @@ class FlightPlanningDomain(
                 Number of vertical nodes in the graph. Defaults to None.
             fuel_loaded (float, optional):
                 Fuel loaded in the aricraft for the flight plan. Defaults to None.
-            fuel_loop (bool, optionnal):
+            fuel_loop (bool, optional):
                 Boolean to create a fuel loop to optimize the fuel loaded for the flight. Defaults to False
-            climbing_slope (float, optionnal):
+            fuel_loop_solver_factory (solver factory, optional):
+                Solver factory used in the fuel loop. Defaults to LazyAstar.
+            climbing_slope (float, optional):
                 Climbing slope of the aircraft, has to be between 10.0 and 25.0. Defaults to None.
-            descending_slope (float, optionnal):
+            descending_slope (float, optional):
                 Descending slope of the aircraft, has to be between 10.0 and 25.0. Defaults to None.
-            graph_width (str, optionnal):
+            graph_width (str, optional):
                 Airways graph width, in ["tiny", "small", "normal", "large", "xlarge"]. Defaults to None
-            res_img_dir (str, optionnal):
+            res_img_dir (str, optional):
                 Directory in which images will be saved. Defaults to None
-            starting_time (float, optionnal):
+            starting_time (float, optional):
                 Start time of the flight, in seconds. Defaults to 8AM (3_600.0 * 8.0)
         """
 
@@ -335,6 +434,7 @@ class FlightPlanningDomain(
 
         self.start_time = starting_time
         # Retrieve the aircraft datas in openap library and normalizing meters into ft
+        self.actype = actype
         self.ac = aircraft(actype)
 
         self.mach = self.ac["cruise"]["mach"]
@@ -360,7 +460,10 @@ class FlightPlanningDomain(
 
         self.weather_date = weather_date
         self.initial_date = weather_date
-        self.wind_ds = wind_interpolator
+        if wind_interpolator is None:
+            self.wind_interpolator = self.get_wind_interpolator()
+        else:
+            self.wind_interpolator = wind_interpolator
 
         # Build network between airports
         if graph_width:
@@ -397,11 +500,22 @@ class FlightPlanningDomain(
         )
 
         self.fuel_loaded = fuel_loaded
-        # Initialisation of the flight plan, with the iniatial state
 
+        # Initialisation of the flight plan, with the initial state
         if fuel_loop:
+            if fuel_loop_solver_factory is None:
+                LazyAstar = load_registered_solver("LazyAstar")
+                fuel_loop_solver_factory = lambda: LazyAstar(
+                    heuristic=lambda d, s: d.heuristic(s)
+                )
             fuel_loaded = fuel_optimisation(
-                origin, destination, self.ac, constraints, weather_date
+                origin=origin,
+                destination=destination,
+                actype=self.actype,
+                constraints=constraints,
+                weather_date=weather_date,
+                solver_factory=fuel_loop_solver_factory,
+                fuel_tol=fuel_loop_tol,
             )
             # Adding fuel reserve (but we can't put more fuel than maxFuel)
             fuel_loaded = min(1.1 * fuel_loaded, self.ac["limits"]["MFC"])
@@ -681,9 +795,9 @@ class FlightPlanningDomain(
             we, wn = 0, 0
             bearing_degrees = aero_bearing(pos["lat"], pos["lon"], self.lat2, self.lon2)
 
-            if self.wind_ds:
+            if self.wind_interpolator:
                 time = pos["ts"]
-                wind_ms = self.wind_ds.interpol_wind_classic(
+                wind_ms = self.wind_interpolator.interpol_wind_classic(
                     lat=pos["lat"], longi=pos["lon"], alt=pos["alt"], t=time
                 )
 
@@ -707,9 +821,9 @@ class FlightPlanningDomain(
             we, wn = 0, 0
             bearing_degrees = aero_bearing(pos["lat"], pos["lon"], self.lat2, self.lon2)
 
-            if self.wind_ds:
+            if self.wind_interpolator:
                 time = pos["ts"]
-                wind_ms = self.wind_ds.interpol_wind_classic(
+                wind_ms = self.wind_interpolator.interpol_wind_classic(
                     lat=pos["lat"], longi=pos["lon"], alt=pos["alt"], t=time
                 )
 
@@ -1098,51 +1212,131 @@ class FlightPlanningDomain(
     def get_network(self):
         return self.network
 
-    def simple_fuel_loop(self, domain_factory, max_steps: int = 100) -> float:
+    def flying(
+        self, from_: pd.DataFrame, to_: Tuple[float, float, int]
+    ) -> pd.DataFrame:
+        """Compute the trajectory of a flying object from a given point to a given point
 
-        solver = LazyAstar(heuristic=lambda d, s: d.heuristic(s), debug_logs=False)
-        self.solve_with(solver, domain_factory)
-        pause_between_steps = None
-        max_steps = 100
-        observation: State = self.reset()
-        solver.reset()
-        clear_output(wait=True)
+        Args:
+            from_ (pd.DataFrame): the trajectory of the object so far
+            to_ (Tuple[float, float]): the destination of the object
 
-        # loop until max_steps or goal is reached
-        for i_step in range(1, max_steps + 1):
+        Returns:
+            pd.DataFrame: the final trajectory of the object
+        """
+        pos = from_.to_dict("records")[0]
+        alt = to_[2]
+        dist_ = distance(pos["lat"], pos["lon"], to_[0], to_[1], alt)
+        data = []
+        epsilon = 100
+        dt = 600
+        dist = dist_
+        loop = 0
+        while dist > epsilon:
+            bearing_degrees = aero_bearing(pos["lat"], pos["lon"], to_[0], to_[1])
 
-            if pause_between_steps is not None:
-                sleep(pause_between_steps)
+            def heading(position, destination):
+                theta = np.arctan2(
+                    np.sin(np.pi / 180.0 * (destination[1] - position[1]))
+                    * np.cos(np.pi / 180.0 * destination[0]),
+                    np.cos(np.pi / 180.0 * position[0])
+                    * np.sin(np.pi / 180.0 * destination[0])
+                    - np.sin(np.pi / 180.0 * position[0])
+                    * np.cos(np.pi / 180.0 * destination[0])
+                    * np.cos(np.pi / 180.0 * (destination[1] - position[1])),
+                )
+                return theta
 
-            # choose action according to solver
-            action = solver.sample_action(observation)
+            p, _, _ = atmos(alt * ft)
+            isobaric = p / 100
+            we, wn = 0, 0
+            if self.wind_interpolator:
+                time = pos["ts"] % (3_600 * 24)
+                wind_ms = self.wind_interpolator.interpol_wind_classic(
+                    lat=pos["lat"], longi=pos["lon"], alt=alt, t=time
+                )
+                we, wn = wind_ms[2][0], wind_ms[2][1]
 
-            # get corresponding action
-            outcome = self.step(action)
-            observation = outcome.observation
+            wspd = sqrt(wn * wn + we * we)
+            tas = mach2tas(self.mach, alt * ft)
+            gs = compute_gspeed(
+                tas=tas,
+                true_course=radians(bearing_degrees),
+                wind_speed=wspd,
+                wind_direction=3 * math.pi / 2 - atan2(wn, we),
+            )
 
-            if self.is_terminal(observation):
-                break
+            if gs * dt > dist:
+                # Last step. make sure we go to destination.
+                dt = dist / gs
+                ll = to_[0], to_[1]
+            else:
+                ll = latlon(
+                    pos["lat"], pos["lon"], d=gs * dt, brg=bearing_degrees, h=alt * ft
+                )
 
-        # Retrieve fuel for the flight
-        fuel = self._get_terminal_state_time_fuel(observation)["fuel"]
+            pos["fuel"] = dt * self.fuel_flow(
+                pos["mass"],
+                tas / kts,
+                alt * ft,
+                path_angle=(alt - pos["alt"]) / (gs * dt),
+            )
+            mass = pos["mass"] - pos["fuel"]
 
-        solver._cleanup()
-        return fuel
+            if pos["ts"] + dt >= (3_600.0 * 24.0):
+                if self.weather_date:
+                    if self.weather_date == self.initial_date:
+                        self.weather_date = self.weather_date.next_day()
+                        self.wind_interpolator = self.get_wind_interpolator()
+            else:
+                if self.weather_date != self.initial_date:
+                    self.weather_date = self.weather_date.previous_day()
+                    self.wind_interpolator = self.get_wind_interpolator()
 
-    def solve(
-        self,
-        domain_factory,
-        max_steps: int = 100,
-        debug: bool = False,
-        make_img: bool = False,
-        solver=None,
-    ):
-        if not solver:
-            solver = Astar(heuristic=lambda d, s: d.heuristic(s), debug_logs=debug)
-        self.solve_with(solver, domain_factory)
-        pause_between_steps = None
-        max_steps = 100
+            new_row = {
+                "ts": pos["ts"] + dt,
+                "lat": ll[0],
+                "lon": ll[1],
+                "mass": mass,
+                "mach": self.mach,
+                "fuel": pos["fuel"],
+                "alt": alt,  # to be modified
+            }
+
+            # New distance to the next 'checkpoint'
+            dist = distance(
+                new_row["lat"], new_row["lon"], to_[0], to_[1], new_row["alt"]
+            )
+
+            if dist < dist_:
+                data.append(new_row)
+                dist_ = dist
+                pos = data[-1]
+            else:
+                dt = int(dt / 10)
+                print("going in the wrong part.")
+                assert dt > 0
+
+            loop += 1
+
+        return pd.DataFrame(data)
+
+    def get_wind_interpolator(self) -> GenericWindInterpolator:
+        wind_interpolator = None
+        if self.weather_date:
+            w_dict = self.weather_date.to_dict()
+            mat = get_weather_matrix(
+                year=w_dict["year"],
+                month=w_dict["month"],
+                day=w_dict["day"],
+                forecast=w_dict["forecast"],
+                delete_npz_from_local=False,
+                delete_grib_from_local=False,
+            )
+            wind_interpolator = GenericWindInterpolator(file_npz=mat)
+        return wind_interpolator
+
+    def custom_rollout(self, solver, max_steps=100, make_img=True):
         observation = self.reset()
 
         solver.reset()
@@ -1150,9 +1344,6 @@ class FlightPlanningDomain(
 
         # loop until max_steps or goal is reached
         for i_step in range(1, max_steps + 1):
-
-            if pause_between_steps is not None:
-                sleep(pause_between_steps)
 
             # choose action according to solver
             action = solver.sample_action(observation)
@@ -1167,6 +1358,7 @@ class FlightPlanningDomain(
             print("Alt = ", observation.alt)
             print("Mach = ", observation.trajectory.iloc[-1]["mach"])
             print(observation)
+
             if make_img:
                 # update image
                 plt.clf()  # clear figure
@@ -1178,20 +1370,12 @@ class FlightPlanningDomain(
             if self.is_terminal(observation):
                 break
         if make_img:
-            if self.res_img_dir:
-                plt.savefig(f"{self.res_img_dir}/terminal")
-                plt.clf()
-                clear_output(wait=True)
-                figure = plot_altitude(observation.trajectory)
-                plt.savefig(f"{self.res_img_dir}/altitude")
-                plot_network(self, dir=self.res_img_dir)
-            else:
-                plt.savefig(f"terminal")
-                plt.clf()
-                clear_output(wait=True)
-                figure = plot_altitude(observation.trajectory)
-                plt.savefig("altitude")
-                plot_network(self)
+            plt.savefig(f"terminal")
+            plt.clf()
+            clear_output(wait=True)
+            figure = plot_altitude(observation.trajectory)
+            plt.savefig("altitude")
+            plot_network(self)
         # goal reached?
         is_goal_reached = self.is_goal(observation)
 
@@ -1232,132 +1416,8 @@ class FlightPlanningDomain(
                     )
         else:
             print(f"Goal not reached after {i_step} steps!")
-        solver._cleanup()
+
         return terminal_state_constraints, self.constraints
-
-    def flying(
-        self, from_: pd.DataFrame, to_: Tuple[float, float, int]
-    ) -> pd.DataFrame:
-        """Compute the trajectory of a flying object from a given point to a given point
-
-        Args:
-            from_ (pd.DataFrame): the trajectory of the object so far
-            to_ (Tuple[float, float]): the destination of the object
-
-        Returns:
-            pd.DataFrame: the final trajectory of the object
-        """
-        pos = from_.to_dict("records")[0]
-        alt = to_[2]
-        dist_ = distance(pos["lat"], pos["lon"], to_[0], to_[1], alt)
-        data = []
-        epsilon = 100
-        dt = 600
-        dist = dist_
-        loop = 0
-        while dist > epsilon:
-            bearing_degrees = aero_bearing(pos["lat"], pos["lon"], to_[0], to_[1])
-
-            def heading(position, destination):
-                theta = np.arctan2(
-                    np.sin(np.pi / 180.0 * (destination[1] - position[1]))
-                    * np.cos(np.pi / 180.0 * destination[0]),
-                    np.cos(np.pi / 180.0 * position[0])
-                    * np.sin(np.pi / 180.0 * destination[0])
-                    - np.sin(np.pi / 180.0 * position[0])
-                    * np.cos(np.pi / 180.0 * destination[0])
-                    * np.cos(np.pi / 180.0 * (destination[1] - position[1])),
-                )
-                return theta
-
-            p, _, _ = atmos(alt * ft)
-            isobaric = p / 100
-            we, wn = 0, 0
-            if self.wind_ds:
-                time = pos["ts"] % (3_600 * 24)
-                wind_ms = self.wind_ds.interpol_wind_classic(
-                    lat=pos["lat"], longi=pos["lon"], alt=alt, t=time
-                )
-                we, wn = wind_ms[2][0], wind_ms[2][1]
-
-            wspd = sqrt(wn * wn + we * we)
-            tas = mach2tas(self.mach, alt * ft)
-            gs = compute_gspeed(
-                tas=tas,
-                true_course=radians(bearing_degrees),
-                wind_speed=wspd,
-                wind_direction=3 * math.pi / 2 - atan2(wn, we),
-            )
-
-            if gs * dt > dist:
-                # Last step. make sure we go to destination.
-                dt = dist / gs
-                ll = to_[0], to_[1]
-            else:
-                ll = latlon(
-                    pos["lat"], pos["lon"], d=gs * dt, brg=bearing_degrees, h=alt * ft
-                )
-
-            pos["fuel"] = dt * self.fuel_flow(
-                pos["mass"],
-                tas / kts,
-                alt * ft,
-                path_angle=(alt - pos["alt"]) / (gs * dt),
-            )
-            mass = pos["mass"] - pos["fuel"]
-
-            if pos["ts"] + dt >= (3_600.0 * 24.0):
-                if self.weather_date:
-                    if self.weather_date == self.initial_date:
-                        self.weather_date = self.weather_date.next_day()
-                        self.wind_ds = self.wind_interpolator()
-            else:
-                if self.weather_date != self.initial_date:
-                    self.weather_date = self.weather_date.previous_day()
-                    self.wind_ds = self.wind_interpolator()
-
-            new_row = {
-                "ts": pos["ts"] + dt,
-                "lat": ll[0],
-                "lon": ll[1],
-                "mass": mass,
-                "mach": self.mach,
-                "fuel": pos["fuel"],
-                "alt": alt,  # to be modified
-            }
-
-            # New distance to the next 'checkpoint'
-            dist = distance(
-                new_row["lat"], new_row["lon"], to_[0], to_[1], new_row["alt"]
-            )
-
-            if dist < dist_:
-                data.append(new_row)
-                dist_ = dist
-                pos = data[-1]
-            else:
-                dt = int(dt / 10)
-                print("going in the wrong part.")
-                assert dt > 0
-
-            loop += 1
-
-        return pd.DataFrame(data)
-
-    def wind_interpolator(self) -> GenericWindInterpolator:
-        wind_interpolator = None
-        if self.weather_date:
-            w_dict = self.weather_date.to_dict()
-            mat = get_weather_matrix(
-                year=w_dict["year"],
-                month=w_dict["month"],
-                day=w_dict["day"],
-                forecast=w_dict["forecast"],
-                delete_npz_from_local=False,
-                delete_grib_from_local=False,
-            )
-            wind_interpolator = GenericWindInterpolator(file_npz=mat)
-        return wind_interpolator
 
 
 def compute_gspeed(
@@ -1394,9 +1454,12 @@ def compute_gspeed(
 def fuel_optimisation(
     origin: Union[str, tuple],
     destination: Union[str, tuple],
-    ac: str,
+    actype: str,
     constraints: dict,
     weather_date: WeatherDate,
+    solver_factory: Callable[[], Solver],
+    max_steps: int = 100,
+    fuel_tol: float = 1e-3,
 ) -> float:
     """
     Function to optimise the fuel loaded in the plane, doing multiple fuel loops to approach an optimal
@@ -1408,7 +1471,7 @@ def fuel_optimisation(
         destination (Union[str, tuple]):
             ICAO code of the arrival airport of th flight plan e.g LFBO for Toulouse-Blagnac airport, or a tuple (lat,lon)
 
-        ac (str):
+        actype (str):
             Aircarft type describe in openap datas (https://github.com/junzis/openap/tree/master/openap/data/aircraft)
 
         constraints (dict):
@@ -1419,6 +1482,16 @@ def fuel_optimisation(
 
         fuel_loaded (float):
             Fuel loaded in the plane for the flight
+
+        solver_factory:
+            Solver factory used in the fuel loop
+
+        max_steps (int):
+            max steps to use in the internal fuel loop
+
+        fuel_tol (float):
+            tolerance on fuel used to stop the optimization
+
     Returns:
         float:
             Return the quantity of fuel to be loaded in the plane for the flight
@@ -1428,10 +1501,10 @@ def fuel_optimisation(
     step = 0
     new_fuel = constraints["fuel"]
     while not small_diff:
-        fuel_domain_factory = lambda: FlightPlanningDomain(
-            origin,
-            destination,
-            ac,
+        domain_factory = lambda: FlightPlanningDomain(
+            origin=origin,
+            destination=destination,
+            actype=actype,
             constraints=constraints,
             weather_date=weather_date,
             objective="distance",
@@ -1441,11 +1514,40 @@ def fuel_optimisation(
             fuel_loaded=new_fuel,
             starting_time=0.0,
         )
-        fuel_domain = fuel_domain_factory()
 
         fuel_prec = new_fuel
-        new_fuel = fuel_domain.simple_fuel_loop(fuel_domain_factory)
+        new_fuel = simple_fuel_loop(
+            solver_factory=solver_factory,
+            domain_factory=domain_factory,
+            max_steps=max_steps,
+        )
         step += 1
-        small_diff = (fuel_prec - new_fuel) <= (1 / 1000)
+        small_diff = (fuel_prec - new_fuel) <= fuel_tol
 
     return new_fuel
+
+
+def simple_fuel_loop(solver_factory, domain_factory, max_steps: int = 100) -> float:
+    domain = domain_factory()
+    with solver_factory() as solver:
+        domain.solve_with(solver, domain_factory)
+        observation: State = domain.reset()
+        solver.reset()
+
+        # loop until max_steps or goal is reached
+        for i_step in range(1, max_steps + 1):
+
+            # choose action according to solver
+            action = solver.sample_action(observation)
+
+            # get corresponding action
+            outcome = domain.step(action)
+            observation = outcome.observation
+
+            if domain.is_terminal(observation):
+                break
+
+        # Retrieve fuel for the flight
+        fuel = domain._get_terminal_state_time_fuel(observation)["fuel"]
+
+    return fuel

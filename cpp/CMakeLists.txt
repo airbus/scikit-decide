@@ -2,7 +2,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.10.2)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.26.6)
 PROJECT(skdecide)
 
 OPTION(BUILD_TESTS OFF)
@@ -10,7 +10,7 @@ OPTION(ONLY_PYTHON OFF)
 OPTION(BUILD_PYTHON_BINDING ON)
 
 ENABLE_LANGUAGE(CXX)
-SET(CMAKE_CXX_STANDARD 17)
+SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -29,17 +29,34 @@ SET(LIBS "")
 SET(INTERFACES "")
 SET(INCLUDE_DIRS "")
 
-IF (NOT TBB_FOUND OR NOT HAS_EXECUTION)
-    # Test for openmp
+SET(MULTITHREADING_FRAMEWORK "OpenMP" CACHE STRING "Multi-threading framework to use (either OpenMP or TBB)")
+IF (MULTITHREADING_FRAMEWORK STREQUAL "OpenMP")
     FIND_PACKAGE(OpenMP)
     IF (OpenMP_CXX_FOUND)
         MESSAGE ("Using OpenMP multi-threading support")
         SET(HAS_OPENMP True)
         LIST(APPEND LIBS "OpenMP::OpenMP_CXX")
     ELSE ()
-        MESSAGE ("Neither C++-17 nor OpenMP multi-threading support found: providing only single-threaded algorithms")
+        MESSAGE ("/!/ OpenMP multi-threading support not found: providing only single-threaded algorithms")
     ENDIF ()
 ENDIF ()
+IF (MULTITHREADING_FRAMEWORK STREQUAL "TBB")
+    FIND_PACKAGE(TBB)
+    IF (TBB_FOUND)
+        CMAKE_POLICY(SET CMP0075 NEW)
+        SET(CMAKE_REQUIRED_LIBRARIES TBB::tbb)
+        INCLUDE(CheckIncludeFileCXX)
+        CHECK_INCLUDE_FILE_CXX(execution HAS_EXECUTION)
+        IF (HAS_EXECUTION)
+            MESSAGE ("Using C++-20 and TBB multi-threading support")
+            LIST(APPEND INCLUDE_DIRS "${TBB_INCLUDE_DIRS}")
+            LIST(APPEND LIBS TBB::tbb)
+        ENDIF ()
+        SET(CMAKE_REQUIRED_LIBRARIES "")
+    ELSE ()
+        MESSAGE ("/!/ Requested C++-20 and TBB multi-threading support not found: providing only single-threaded algorithms")
+    ENDIF ()
+ENDIF()
 
 # BOOST
 FIND_PACKAGE(Boost)

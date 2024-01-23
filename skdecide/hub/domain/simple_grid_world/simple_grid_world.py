@@ -45,7 +45,6 @@ class SimpleGridWorld(D):
         memory: D.T_memory[D.T_state],
         action: D.T_agent[D.T_concurrency[D.T_event]],
     ) -> D.T_state:
-
         if action == Action.left:
             next_state = State(max(memory.x - 1, 0), memory.y)
         if action == Action.right:
@@ -63,7 +62,6 @@ class SimpleGridWorld(D):
         action: D.T_agent[D.T_concurrency[D.T_event]],
         next_state: Optional[D.T_state] = None,
     ) -> D.T_agent[Value[D.T_value]]:
-
         if next_state.x == memory.x and next_state.y == memory.y:
             cost = 2  # big penalty when hitting a wall
         else:
@@ -86,4 +84,6 @@ class SimpleGridWorld(D):
         return State(x=0, y=0)
 
     def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
-        return MultiDiscreteSpace([self.num_cols, self.num_rows])
+        return MultiDiscreteSpace(
+            nvec=[self.num_cols, self.num_rows], element_class=State
+        )

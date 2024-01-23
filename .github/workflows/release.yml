@@ -34,6 +34,8 @@ jobs:
           deploy_test_pypi = "true"
           python_version_per_os = {os: python_version for os in build_dict}
           # remove python 3.11 for windows: dependency conflict from pyarrow prevent testing the wheel windows python 3.11          python_version_per_os["windows"] = [v for v in python_version if v != "3.11"]
+          python_version_per_os["windows"] = [v for v in python_version if v != "3.11"]
+
           if "${{ contains(github.event.head_commit.message, '[ci: skip-deploy-test-pypi]') }}" == "true":
               deploy_test_pypi = "false"
 
@@ -124,7 +126,7 @@ jobs:
 
       - name: Build wheel
         run: |
-          export "BOOST_ROOT=$PWD/$BOOST_DIR"
+          export "Boost_ROOT=$PWD/$BOOST_DIR"
           python -m pip install --upgrade pip
           pip install build poetry-dynamic-versioning
           python -m build --sdist --wheel
@@ -143,6 +145,7 @@ jobs:
     needs: [setup]
     strategy:
       matrix:
+        arch: [ "arm64", "x86_64" ]  # NB: only x86_64 wheel will be tested as no macosx_arm64 github runner available
         os: ${{ fromJSON(needs.setup.outputs.build).macos }}
         python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).macos }}
       fail-fast: false
@@ -200,25 +203,63 @@ jobs:
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
         run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
 
-      - name: Install omp
-        run: brew install libomp
-
       - name: Build wheel
+        env:
+          ARCH: ${{ matrix.arch }}
+          PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
-          export "BOOST_ROOT=$PWD/$BOOST_DIR"
-          python -m pip install --upgrade pip
-          pip install build poetry-dynamic-versioning
-          python -m build --sdist --wheel
+
+          if [[ "$ARCH" == arm64 ]]; then
+              # SciPy requires 12.0 on arm to prevent kernel panics
+              # https://github.com/scipy/scipy/issues/14688
+              # We use the same deployment target to match SciPy.
+              export MACOSX_DEPLOYMENT_TARGET=12.0
+              OPENMP_URL="https://anaconda.org/conda-forge/llvm-openmp/11.1.0/download/osx-arm64/llvm-openmp-11.1.0-hf3c4609_1.tar.bz2"
+          else
+              export MACOSX_DEPLOYMENT_TARGET=10.15
+              OPENMP_URL="https://anaconda.org/conda-forge/llvm-openmp/11.1.0/download/osx-64/llvm-openmp-11.1.0-hda6cdc1_1.tar.bz2"
+          fi
+          PYTHON_VERSION_WO_DOT=$(echo ${PYTHON_VERSION} | sed -e 's/\.//g')  # remove "."
+          MACOSX_DEPLOYMENT_TARGET_WO_DOT=$(echo ${MACOSX_DEPLOYMENT_TARGET} | sed -e 's/\./_/g')  # replace "." by "_"
+
+          # install appropriate version of openmp
+          sudo conda create -n build $OPENMP_URL
+
+          # make openmp and boost available
+          export Boost_ROOT=$PWD/$BOOST_DIR
+          export OpenMP_ROOT=$CONDA/envs/build
+          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
+          export CFLAGS="$CFLAGS -I$OpenMP_ROOT/include"
+          export CXXFLAGS="$CXXFLAGS -I$OpenMP_ROOT/include"
+          export LDFLAGS="$LDFLAGS -Wl,-rpath,$OpenMP_ROOT/lib -L$OpenMP_ROOT/lib -lomp"
+
+          # cmake flag to cross-compile the c++
+          export CMAKE_OSX_ARCHITECTURES=${ARCH}
+
+          python -m pip install cibuildwheel
+          # cibuildwheel flags
+          export CIBW_BUILD_FRONTEND="build"
+          export CIBW_ARCHS=${ARCH}
+          export CIBW_BUILD="cp${PYTHON_VERSION_WO_DOT}-macosx_${ARCH}"
+
+          # build wheel
+          python -m cibuildwheel --output-dir wheelhouse
+
+          # set the proper platform tag
+          #  - with poetry build + cross-compilation for arm64, the tag could been still x64_64 (https://cibuildwheel.readthedocs.io/en/stable/faq/#how-to-cross-compile)
+          #  - we downgrade the displayed macosx version to ensure compatibility with lesser macosx than the ones used on this runner
+          pip install "wheel>=0.40"
+          wheel tags --platform-tag macosx_${MACOSX_DEPLOYMENT_TARGET_WO_DOT}_${ARCH} --remove wheelhouse/*.whl
 
       - name: Update build cache from wheels
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
-        run: 7z x dist/*.whl -y
+        run: 7z x wheelhouse/*.whl -y
 
       - name: Upload as build artifacts
         uses: actions/upload-artifact@v3
         with:
           name: wheels
-          path: dist/*.whl
+          path: wheelhouse/*.whl
 
   build-ubuntu:
     needs: [setup]
@@ -341,10 +382,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install pytest
-
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -378,11 +415,11 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
-      - name: Install scikit-decide
+      - name: Install scikit-decide and test dependencies
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
-          pip install ${wheelfile}[all]
+          pip install ${wheelfile}[all] pytest gymnasium[classic-control]
 
       - name: Test with pytest
         run: |
@@ -391,10 +428,16 @@ jobs:
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
-          pytest -v -s tests/autocast
-          pytest -v -s tests/solvers/cpp
+          # we split tests using
+          #  - c++ scikit-decide library
+          #  - ortools (scheduling)
+          #  - deep-learning solvers (solvers/python)
+          #  - from others
+          # to avoid openmp versions conflicts
+          pytest -v -s tests/*/cpp
           pytest -v -s tests/solvers/python
           pytest -v -s tests/scheduling
+          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
   test-macos:
     needs: [build-macos, build-ubuntu, build-windows, setup]
@@ -422,10 +465,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install pytest
-
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -461,11 +500,11 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
-      - name: Install scikit-decide
+      - name: Install scikit-decide and test dependencies
         run: |
           python_version=${{ matrix.python-version }}
-          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*.whl)
-          pip install ${wheelfile}[all]
+          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*x86_64.whl)
+          pip install ${wheelfile}[all] pytest gymnasium[classic-control]
 
       - name: Test with pytest
         run: |
@@ -474,10 +513,16 @@ jobs:
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
-          pytest -v -s tests/autocast
-          pytest -v -s tests/solvers/cpp
+          # we split tests using
+          #  - c++ scikit-decide library
+          #  - ortools (scheduling)
+          #  - deep-learning solvers (solvers/python)
+          #  - from others
+          # to avoid openmp versions conflicts
+          pytest -v -s tests/*/cpp
           pytest -v -s tests/solvers/python
           pytest -v -s tests/scheduling
+          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
   test-ubuntu:
     needs: [build-macos, build-ubuntu, build-windows, setup]
@@ -502,10 +547,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install pytest
-
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -542,11 +583,11 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
-      - name: Install scikit-decide
+      - name: Install scikit-decide and test dependencies
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
-          pip install ${wheelfile}[all]
+          pip install ${wheelfile}[all] pytest gymnasium[classic-control]
 
       - name: Test with pytest
         run: |
@@ -555,10 +596,16 @@ jobs:
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
           # run pytest
-          pytest -v -s tests/autocast
-          pytest -v -s tests/solvers/cpp
+          # we split tests using
+          #  - c++ scikit-decide library
+          #  - ortools (scheduling)
+          #  - deep-learning solvers (solvers/python)
+          #  - from others
+          # to avoid openmp versions conflicts
+          pytest -v -s tests/*/cpp
           pytest -v -s tests/solvers/python
           pytest -v -s tests/scheduling
+          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
   upload:
     needs: [test-ubuntu, test-macos, test-windows]
@@ -619,7 +666,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOCS_VERSION_PATH: /
-      python_version: "3.8"
+      python_version: "3.10"
 
     steps:
       - name: Get scikit-decide release version and update online docs path
@@ -635,6 +682,36 @@ jobs:
         with:
           submodules: true
           fetch-depth: 0  # fetch all branches
+
+      - name: Update notebooks to install release version of scikit-decide on colab in a dedicated tag
+        id: push-nb-release-tag
+        run: |
+          # update colab installation process for notebooks
+          shopt -s globstar  # enable **
+          old_pip_spec_pattern="\(skdecide_pip_spec.*\)scikit-decide\[all\]"
+          new_pip_spec_pattern="\1scikit-decide[all]==${SKDECIDE_VERSION}"
+          if ${{ github.repository != 'airbus/scikit-decide' && secrets.TEST_PYPI_PASSWORD != '' }} == 'true'; then
+            # install from TestPypi if on a fork
+            new_pip_spec_pattern="${new_pip_spec_pattern} --extra-index-url https://test.pypi.org/simple/"
+          fi
+          old_using_nightly_pattern="\(using_nightly_version\s*=\s*\)True"
+          new_using_nightly_pattern="using_nightly_version = False"
+          sed -i \
+              -e "s|${old_pip_spec_pattern}|${new_pip_spec_pattern}|g" \
+              -e "s|${old_using_nightly_pattern}|${new_using_nightly_pattern}|g" \
+              notebooks/**/*.ipynb
+          # commit changes
+          git config user.name "Actions"
+          git config user.email "actions@github.com"
+          git commit notebooks -m "Install version ${SKDECIDE_VERSION} of scikit-decide in colab notebooks"
+          # tag and push
+          current_tag_name=${GITHUB_REF/refs\/tags\//}  # stripping refs/tags/
+          new_tag_name="notebooks-${current_tag_name}"
+          echo $new_tag_name
+          git tag $new_tag_name -m "Release ${current_tag_name} + installation in notebooks updated"
+          git push origin ${new_tag_name}
+          # store new tag name
+          echo "new_tag_name=${new_tag_name}" >> $GITHUB_OUTPUT
 
       - name: Create binder environment for the release
         run: |
@@ -657,14 +734,15 @@ jobs:
       - name: Trigger a build on each BinderHub deployments in the mybinder.org federation
         run: |
           bash scripts/trigger_binder.sh https://ovh.mybinder.org/build/gh/${GITHUB_REPOSITORY}/${BINDER_RELEASE_ENV_SHA1}
+          bash scripts/trigger_binder.sh https://ovh2.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
           bash scripts/trigger_binder.sh https://notebooks.gesis.org/binder/build/gh/${GITHUB_REPOSITORY}/${BINDER_RELEASE_ENV_SHA1}
 
-      - name: Set env variables for github+binder links in doc
+      - name: Set env variables for github+colab+binder links in doc
         run: |
           echo "AUTODOC_BINDER_ENV_GH_REPO_NAME=${GITHUB_REPOSITORY}" >> $GITHUB_ENV
           echo "AUTODOC_BINDER_ENV_GH_BRANCH=${BINDER_RELEASE_ENV_SHA1}" >> $GITHUB_ENV
           echo "AUTODOC_NOTEBOOKS_REPO_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" >> $GITHUB_ENV
-          echo "AUTODOC_NOTEBOOKS_BRANCH=${TAG_NAME}" >> $GITHUB_ENV
+          echo "AUTODOC_NOTEBOOKS_BRANCH=${{ steps.push-nb-release-tag.outputs.new_tag_name }}" >> $GITHUB_ENV
 
       - name: Setup python
         uses: actions/setup-python@v4
@@ -699,6 +777,7 @@ jobs:
           folder: docs/.vuepress/dist # The folder the action should deploy.
           target-folder: ${{ env.DOCS_VERSION_PATH }} # The folder the action should deploy to.
           commit-message: publish documentation
+          single-commit: true
           clean: false # Releasing a new version is about creating a new directory, so we don't want to clean up the root.
 
   delete-nightly-release:

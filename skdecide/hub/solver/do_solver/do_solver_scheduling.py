@@ -7,13 +7,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Callable, Dict, Union
 
-from discrete_optimization.rcpsp.rcpsp_model import (
-    MultiModeRCPSPModel,
-    RCPSPModel,
-    RCPSPModelCalendar,
-    RCPSPSolution,
-    SingleModeRCPSPModel,
-)
+from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, RCPSPSolution
 from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
     MS_RCPSPModel,
     MS_RCPSPSolution,
@@ -47,7 +41,7 @@ class SolvingMethod(Enum):
 
 
 def build_solver(solving_method: SolvingMethod, do_domain):
-    if isinstance(do_domain, (RCPSPModelCalendar, RCPSPModel, MultiModeRCPSPModel)):
+    if isinstance(do_domain, RCPSPModel):
         from discrete_optimization.rcpsp.rcpsp_solvers import (
             look_for_solver,
             solvers_map,
@@ -71,7 +65,7 @@ def build_solver(solving_method: SolvingMethod, do_domain):
         ]
         if len(smap) > 0:
             return smap[0]
-    if isinstance(do_domain, (MS_RCPSPModel, MS_RCPSPModel, MultiModeRCPSPModel)):
+    if isinstance(do_domain, MS_RCPSPModel):
         from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
             look_for_solver,
             solvers_map,
@@ -181,9 +175,7 @@ class DOSolver(Solver, DeterministicPolicies):
             )
 
             available = look_for_solver(do_domain)
-        elif isinstance(
-            do_domain, (SingleModeRCPSPModel, RCPSPModel, MultiModeRCPSPModel)
-        ):
+        elif isinstance(do_domain, RCPSPModel):
             from discrete_optimization.rcpsp.rcpsp_solvers import (
                 look_for_solver,
                 solvers_map,

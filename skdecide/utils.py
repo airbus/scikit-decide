@@ -7,14 +7,12 @@ from __future__ import annotations
 
 import copy
 import datetime
+import importlib.metadata
 import logging
 import os
-import re
+import sys
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
-
-import simplejson as json
-from pkg_resources import DistributionNotFound, EntryPoint, iter_entry_points
 
 from skdecide import (
     D,
@@ -38,6 +36,9 @@ __all__ = [
     "rollout_episode",
 ]
 
+SKDECIDE_DEFAULT_DATAHOME = "~/skdecide_data"
+SKDECIDE_DEFAULT_DATAHOME_ENVVARNAME = "SKDECIDE_DATA"
+
 logger = logging.getLogger("skdecide.utils")
 
 logger.setLevel(logging.INFO)
@@ -54,30 +55,63 @@ if not len(logger.handlers):
     logger.propagate = False
 
 
+def get_data_home(data_home: Optional[str] = None) -> str:
+    """Return the path of the scikit-decide data directory.
+
+    This folder is used by some large dataset loaders to avoid downloading the
+    data several times, as for instance the weather data used by the flight planning domain.
+    By default the data dir is set to a folder named 'skdecide_data' in the
+    user home folder.
+    Alternatively, it can be set by the 'SKDECIDE_DATA' environment
+    variable or programmatically by giving an explicit folder path. The '~'
+    symbol is expanded to the user home folder.
+    If the folder does not already exist, it is automatically created.
+
+    Params:
+        data_home : The path to scikit-decide data directory. If `None`, the default path
+        is `~/skdecide_data`.
+
+    """
+    if data_home is None:
+        data_home = os.environ.get(
+            SKDECIDE_DEFAULT_DATAHOME_ENVVARNAME, SKDECIDE_DEFAULT_DATAHOME
+        )
+    data_home = os.path.expanduser(data_home)
+    os.makedirs(data_home, exist_ok=True)
+    return data_home
+
+
 def _get_registered_entries(entry_type: str) -> List[str]:
-    return [e.name for e in iter_entry_points(entry_type)]
+    if (
+        sys.version_info.minor < 10 and sys.version_info.major == 3
+    ):  # different behaviour for 3.8 and 3.9
+        return [e.name for e in importlib.metadata.entry_points()[entry_type]]
+    else:
+        return [e.name for e in importlib.metadata.entry_points(group=entry_type)]
 
 
 def _load_registered_entry(entry_type: str, entry_name: str) -> Optional[Any]:
-    try:
-        for entry_point in iter_entry_points(entry_type):
-            if entry_point.name == entry_name:
-                return entry_point.load()
+    if (
+        sys.version_info.minor < 10 and sys.version_info.major == 3
+    ):  # different behaviour for 3.8 and 3.9
+        potential_entry_points = tuple(
+            e
+            for e in importlib.metadata.entry_points()[entry_type]
+            if e.name == entry_name
+        )
+    else:
+        potential_entry_points = tuple(
+            importlib.metadata.entry_points(group=entry_type, name=entry_name)
+        )
+    if len(potential_entry_points) == 0:
         logger.warning(
             rf'/!\ {entry_name} could not be loaded because it is not registered in group "{entry_type}".'
         )
-    except DistributionNotFound as e:
-        logger.warning(
-            rf"/!\ {entry_name} could not be loaded because of missing dependency ({e})."
-        )
-        extra_match = re.search(r'\bextra\s*==\s*"(?P<extra>[^"]+)"', str(e))
-        if extra_match:
-            extra = extra_match.group("extra")
-            logger.warning(
-                f"    ==> Try following command in your Python environment: pip install skdecide[{extra}]"
-            )
-    except Exception as e:
-        logger.warning(rf"/!\ {entry_name} could not be loaded ({e}).")
+    else:
+        try:
+            return potential_entry_points[0].load()
+        except Exception as e:
+            logger.warning(rf"/!\ {entry_name} could not be loaded ({e}).")
 
 
 def get_registered_domains() -> List[str]:
@@ -126,8 +160,7 @@ def rollout(
     verbose: bool = True,
     action_formatter: Optional[Callable[[D.T_event], str]] = lambda a: str(a),
     outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = lambda o: str(o),
-    save_result_directory: str = None,
-) -> str:
+) -> None:
     """This method will run one or more episodes in a domain according to the policy of a solver.
 
     # Parameters
@@ -142,7 +175,6 @@ def rollout(
     verbose: Whether to print information to the console during rollout.
     action_formatter: The function transforming actions in the string to print (if None, no print).
     outcome_formatter: The function transforming EnvironmentOutcome objects in the string to print (if None, no print).
-    save_result: Directory in which state visited, actions applied and Transition Value are saved to json.
     """
     if verbose:
         logger.setLevel(logging.DEBUG)
@@ -210,35 +242,16 @@ def rollout(
         # Run episode
         step = 1
 
-        if save_result_directory is not None:
-            observations = dict()
-            transitions = dict()
-            actions = dict()
-            # save the initial observation
-            observations[0] = observation
-
         while max_steps is None or step <= max_steps:
             old_time = time.perf_counter()
             if render and has_render:
                 domain.render()
             # assert solver.is_policy_defined_for(observation)
-            if save_result_directory is not None:
-                previous_observation = copy.deepcopy(observation)
             action = solver.sample_action(observation)
             if action_formatter is not None:
                 logger.debug("Action: {}".format(action_formatter(action)))
             outcome = domain.step(action)
             observation = outcome.observation
-            if save_result_directory is not None:
-                if isinstance(domain, FullyObservable):
-                    observations[step] = observation
-                    actions[step] = action
-                    transitions[step] = {
-                        "s": hash(previous_observation),
-                        "a": hash(action),
-                        "cost": outcome.value.cost,
-                        "s'": hash(observation),
-                    }
             if outcome_formatter is not None:
                 logger.debug("Result: {}".format(outcome_formatter(outcome)))
             termination = (
@@ -263,33 +276,6 @@ def rollout(
                 f'The goal was{"" if domain.is_goal(observation) else " not"} reached '
                 f"in episode {i_episode + 1}."
             )
-        if save_result_directory is not None:
-            if not os.path.exists(save_result_directory):
-                os.mkdir(save_result_directory)
-            elif not os.path.isdir(save_result_directory):
-                raise FileExistsError
-
-            now = datetime.datetime.now()
-            str_timestamp = now.strftime("%Y%m%dT%H%M%S")
-            directory = os.path.join(save_result_directory, str_timestamp)
-            os.mkdir(directory)
-            try:
-                with open(os.path.join(directory, "actions.json"), "w") as f:
-                    json.dump(actions, f, indent=2)
-            except TypeError:
-                logger.error("Action is not serializable")
-            try:
-                with open(os.path.join(directory, "transitions.json"), "w") as f:
-                    json.dump(transitions, f, indent=2)
-            except TypeError:
-                logger.error("Transition is not serializable")
-            try:
-                with open(os.path.join(directory, "observations.json"), "w") as f:
-                    json.dump(observations, f, indent=2)
-            except TypeError:
-                logger.error("Observation is not serializable")
-
-            return directory
 
 
 def rollout_episode(
@@ -304,7 +290,6 @@ def rollout_episode(
     verbose: bool = True,
     action_formatter: Optional[Callable[[D.T_event], str]] = None,
     outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = None,
-    save_result_directory: str = None,
 ) -> Tuple[List[D.T_observation], List[D.T_event], List[D.T_value]]:
     """This method will run one or more episodes in a domain according to the policy of a solver.
 
@@ -320,7 +305,6 @@ def rollout_episode(
     verbose: Whether to print information to the console during rollout.
     action_formatter: The function transforming actions in the string to print (if None, no print).
     outcome_formatter: The function transforming EnvironmentOutcome objects in the string to print (if None, no print).
-    save_result: Directory in which state visited, actions applied and Transition Value are saved to json.
     """
     if verbose:
         logger.setLevel(logging.DEBUG)

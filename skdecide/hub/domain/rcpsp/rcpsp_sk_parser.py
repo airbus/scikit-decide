@@ -12,18 +12,13 @@ from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP
 
 
 def load_domain(file_path):
-    from discrete_optimization.rcpsp.rcpsp_model import (
-        MultiModeRCPSPModel,
-        SingleModeRCPSPModel,
-    )
+    from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel
     from discrete_optimization.rcpsp.rcpsp_parser import parse_file
 
     from skdecide.hub.domain.rcpsp.rcpsp_sk import MRCPSP, RCPSP
 
-    rcpsp_model: Union[SingleModeRCPSPModel, MultiModeRCPSPModel] = parse_file(
-        file_path
-    )
-    if isinstance(rcpsp_model, SingleModeRCPSPModel):
+    rcpsp_model: RCPSPModel = parse_file(file_path)
+    if not rcpsp_model.is_rcpsp_multimode():
         my_domain = RCPSP(
             resource_names=rcpsp_model.resources_list,
             task_ids=sorted(rcpsp_model.mode_details.keys()),
@@ -36,7 +31,7 @@ def load_domain(file_path):
                 for r in rcpsp_model.resources_list
             },
         )
-    elif isinstance(rcpsp_model, MultiModeRCPSPModel):
+    else:
         my_domain = MRCPSP(
             resource_names=rcpsp_model.resources_list,
             task_ids=sorted(rcpsp_model.mode_details.keys()),
