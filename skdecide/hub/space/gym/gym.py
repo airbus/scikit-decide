@@ -197,11 +197,9 @@ class TupleSpace(GymSpace[T]):
         )
         self._spaces = spaces
         self._element_class = element_class
-        assert (
-            isinstance(element_class, tuple)
-            or all(m in dir(element_class) for m in ["to_tuple", "from_tuple"]),
-            "Tuple space's element class must be of type tuple or it must provide the to_tuple and from_tuple methods",
-        )
+        assert isinstance(element_class, tuple) or all(
+            m in dir(element_class) for m in ["to_tuple", "from_tuple"]
+        ), "Tuple space's element class must be of type tuple or it must provide the to_tuple and from_tuple methods"
         self._to_tuple = (
             (lambda e: e)
             if isinstance(element_class, tuple)
@@ -262,11 +260,9 @@ class DictSpace(GymSpace[T]):
         )
         self._spaces = spaces
         self._element_class = element_class
-        assert (
-            isinstance(element_class, dict)
-            or all(m in dir(element_class) for m in ["to_dict", "from_dict"]),
-            "Dict space's element class must be of type dict or it must provide the to_dict and from_dict methods",
-        )
+        assert isinstance(element_class, dict) or all(
+            m in dir(element_class) for m in ["to_dict", "from_dict"]
+        ), "Dict space's element class must be of type dict or it must provide the to_dict and from_dict methods"
         self._to_dict = (
             (lambda e: e)
             if isinstance(element_class, dict)
