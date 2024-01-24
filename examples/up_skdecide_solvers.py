@@ -2,10 +2,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from skdecide.hub.solver.ray_rllib import RayRLlib
-from ray.rllib.algorithms.dqn import DQN
-
 import unified_planning
+from ray.rllib.algorithms.dqn import DQN
 from unified_planning.shortcuts import (
     BoolType,
     Fluent,
@@ -16,8 +14,8 @@ from unified_planning.shortcuts import (
 
 from skdecide.hub.domain.up import UPDomain
 from skdecide.hub.solver.lazy_astar import LazyAstar
+from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.utils import rollout
-
 
 # Example 1: Solving a basic example, the same as
 # https://github.com/aiplan4eu/unified-planning/blob/master/docs/notebooks/01-basic-example.ipynb

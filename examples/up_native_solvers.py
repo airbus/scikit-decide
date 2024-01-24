@@ -18,7 +18,6 @@ from skdecide.hub.domain.up import UPDomain
 from skdecide.hub.solver.up import UPSolver
 from skdecide.utils import rollout
 
-
 # Example 1: Solving a basic example, the same as
 # https://github.com/aiplan4eu/unified-planning/blob/master/docs/notebooks/01-basic-example.ipynb
 
