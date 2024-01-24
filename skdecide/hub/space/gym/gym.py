@@ -420,7 +420,7 @@ class SetSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
         return self._elements
 
     def sample(self) -> T:
-        return self._elements[super().sample()]
+        return self._to_elements[super().sample()]
 
     def to_jsonable(self, sample_n: Iterable[T]) -> Sequence:
         return sample_n
