@@ -142,7 +142,10 @@ def test_up_bridge_domain_planning():
     )
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
+@pytest.mark.skipif(
+    sys.version_info < (3, 10) or sys.platform == "darwin",
+    reason="requires python3.10 or higher, libomp segfault on MacOS",
+)
 def test_up_bridge_domain_rl():
     noexcept = True
 
