@@ -4,13 +4,6 @@
 
 import sys
 
-import torch
-from skdecide.hub.domain.gym.gym import GymDomain
-import numpy as np
-
-from skdecide.hub.solver.ray_rllib import RayRLlib
-from ray.rllib.algorithms.dqn import DQN
-
 import unified_planning
 from unified_planning.shortcuts import (
     BoolType,
@@ -22,7 +15,6 @@ from unified_planning.shortcuts import (
 )
 
 from skdecide.hub.domain.up import UPDomain
-from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.solver.up import UPSolver
 from skdecide.utils import rollout
 
@@ -30,7 +22,9 @@ from skdecide.utils import rollout
 # Example 1: Solving a basic example, the same as
 # https://github.com/aiplan4eu/unified-planning/blob/master/docs/notebooks/01-basic-example.ipynb
 
-print("\n\n=== EXAMPLE 1: Solving UP's basic example using skdecide's UP solver ===\n")
+print(
+    "\n\n=== EXAMPLE 1: Solving UP's basic example using skdecide's UP/Pyperplan solver ===\n"
+)
 
 ## Step 1: modeling the UP problem
 
@@ -92,36 +86,10 @@ if UPSolver.check_domain(domain):
             outcome_formatter=None,
         )
 
-# Example 2: Solving the same example but with RLLib's DQN
+# Example 2: Solving a numeric example, the same as https://github.com/aiplan4eu/unified-planning/blob/master/docs/notebooks/02-optimal-planning.ipynb
 
 print(
-    "\n\n=== EXAMPLE 2: Solving UP's basic example using skdecide's RLLib's DQN solver ===\n"
-)
-
-domain_factory = lambda: UPDomain(
-    problem, state_encoding="vector", action_encoding="int"
-)
-domain = domain_factory()
-
-if RayRLlib.check_domain(domain):
-    with RayRLlib(
-        algo_class=DQN,
-        train_iterations=1,
-    ) as solver:
-        UPDomain.solve_with(solver, domain_factory)
-        rollout(
-            domain_factory(),
-            solver,
-            num_episodes=1,
-            max_steps=100,
-            max_framerate=30,
-            outcome_formatter=None,
-        )
-
-# Example 3: Solving a numeric example, the same as https://github.com/aiplan4eu/unified-planning/blob/master/docs/notebooks/02-optimal-planning.ipynb
-
-print(
-    "\n\n=== EXAMPLE 3: Solving UP's numeric example using skdecide's UP ENHSP solver ===\n"
+    "\n\n=== EXAMPLE 2: Solving UP's numeric example using skdecide's UP/ENHSP solver ===\n"
 )
 
 ## Step 1: modeling the UP problem
@@ -172,24 +140,6 @@ if UPSolver.check_domain(domain):
         name="enhsp-opt",
         engine_params={"output_stream": sys.stdout},
     ) as solver:
-        UPDomain.solve_with(solver, domain_factory)
-        rollout(
-            domain,
-            solver,
-            num_episodes=1,
-            max_steps=100,
-            max_framerate=30,
-            outcome_formatter=None,
-        )
-
-# Example 4: Solving the same UP numeric problem but with scikit-decide's A* algorithm
-
-print(
-    "\n\n=== EXAMPLE 4: Solving UP's numeric example using skdecide's LazyAstar solver ===\n"
-)
-
-if LazyAstar.check_domain(domain):
-    with LazyAstar() as solver:
         UPDomain.solve_with(solver, domain_factory)
         rollout(
             domain,
