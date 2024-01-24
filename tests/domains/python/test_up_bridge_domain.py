@@ -148,12 +148,12 @@ def test_up_bridge_domain_rl():
 
     try:
         import unified_planning
-        from unified_planning.shortcuts import UserType, BoolType
+        from ray.rllib.algorithms.dqn import DQN
+        from unified_planning.shortcuts import BoolType, UserType
 
-        from skdecide.utils import rollout
         from skdecide.hub.domain.up import UPDomain
         from skdecide.hub.solver.ray_rllib import RayRLlib
-        from ray.rllib.algorithms.dqn import DQN
+        from skdecide.utils import rollout
 
         Location = UserType("Location")
         robot_at = unified_planning.model.Fluent("robot_at", BoolType(), l=Location)
