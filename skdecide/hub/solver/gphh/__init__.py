@@ -3,13 +3,13 @@
 # LICENSE file in the root directory of this source tree.
 
 from .gphh import (
-    FeatureEnum,
+    GPHH,
     EvaluationGPHH,
-    PermutationDistance,
-    ParametersGPHH,
+    FeatureEnum,
+    FixedPermutationPolicy,
     GPHHPolicy,
+    ParametersGPHH,
+    PermutationDistance,
     PoolAggregationMethod,
     PooledGPHHPolicy,
-    FixedPermutationPolicy,
-    GPHH,
 )

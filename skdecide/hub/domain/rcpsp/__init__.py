@@ -4,11 +4,11 @@
 
 from .rcpsp_sk import (
     MRCPSP,
-    MRCPSPCalendar,
-    RCPSP,
-    RCPSPCalendar,
-    Stochastic_RCPSP,
-    SMRCPSPCalendar,
     MSRCPSP,
+    RCPSP,
+    MRCPSPCalendar,
     MSRCPSPCalendar,
+    RCPSPCalendar,
+    SMRCPSPCalendar,
+    Stochastic_RCPSP,
 )
