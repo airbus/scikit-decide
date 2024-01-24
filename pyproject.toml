@@ -162,9 +162,7 @@ SimpleGreedy = "skdecide.hub.solver.simple_greedy:SimpleGreedy [solvers]"
 StableBaseline = "skdecide.hub.solver.stable_baselines:StableBaseline [solvers]"
 DOSolver = "skdecide.hub.solver.do_solver:DOSolver [solvers]"
 GPHH = "skdecide.hub.solver.gphh:GPHH [solvers]"
-MetaPolicy = "skdecide.hub.solver.meta_policy:MetaPolicy [solvers]"
 PilePolicy = "skdecide.hub.solver.pile_policy:PilePolicy [solvers]"
-PolicyRCPSP = "skdecide.hub.solver.sgs_policies:PolicyRCPSP [solvers]"
 UPSolver = "skdecide.hub.solver.up:UPSolver [solvers]"
 
 [tool.poetry.dev-dependencies]
