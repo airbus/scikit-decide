@@ -9,12 +9,12 @@ import numpy as np
 
 from skdecide.core import ImplicitSpace, EmptySpace, Space, Value
 from skdecide.domains import DeterministicPlanningDomain
-from skdecide.hub.space.gym import ListSpace
+from skdecide.hub.space.gym import ListSpace, SetSpace
 from skdecide.hub.space.gym.gym import BoxSpace, DictSpace, DiscreteSpace, GymSpace
 from skdecide.utils import logger
 
 import unified_planning as up
-from unified_planning.shortcuts import FluentExp
+from unified_planning.shortcuts import FluentExp, Bool, Int, Real, ObjectExp
 from unified_planning.model import Problem, UPState, InstantaneousAction, FNode
 from unified_planning.plans import ActionInstance
 from unified_planning.engines.compilers.grounder import GrounderHelper
@@ -164,8 +164,6 @@ class UPDomain(D):
         fluent_domains: Dict[FNode, Tuple[Union[int, float], Union[int, float]]] = None,
         state_encoding: str = "native",
         action_encoding: str = "native",
-        action_masking: str = "none",
-        invalid_action_penalty: float = 1000000,
         **simulator_params,
     ):
         """Initialize UPDomain.
@@ -175,8 +173,6 @@ class UPDomain(D):
         fluent_domains: Dictionary of min and max fluent values by fluent represented as a Unified Planning's FNode (must be provided only if get_observation_space() is used)
         state_encoding: Encoding of the state (observation) which must be one of "native", "dictionary" or "vector" (warning: if action_masking is "vector" then the state automatically becomes a dictionary which separates the action masking vector from the real state as defined here)
         action_encoding: Encoding of the action which must be either "native" or "int"
-        action_masking: Implementation of action masking as an output of the step function which must be one of "none", "penalty" or "vector" (embedded in the state which then becomes a dictionary separating action masking from the real state as defined by state_encoding)
-        invalid_action_penalty: Cost penalty returned when applying an invalid action in the step function (used only if action_masking is "penalty")
         simulator_params: Optional parameters to pass to the UP sequential simulator
         """
         self._problem = problem
@@ -195,15 +191,14 @@ class UPDomain(D):
         self._fluent_domains = fluent_domains
         self._state_encoding = state_encoding
         self._action_encoding = action_encoding
-        self._action_masking = action_masking
-        self._invalid_action_penalty = invalid_action_penalty
         self._action_space = None  # not computed by default
         self._observation_space = None  # not computed by default
         self._fnodes_variables_map = None
         self._fnodes_vars_ordering = None
-        self._states_map = None
-        self._actions_map = None
-        self._actions_ordering = None
+        self._states_up2np = None
+        self._states_np2up = None
+        self._actions_up2np = None
+        self._actions_np2up = None
         if self._state_encoding != "native":
             if self._state_encoding not in ["dictionary", "vector"]:
                 raise RuntimeError(
@@ -214,10 +209,6 @@ class UPDomain(D):
             if self._action_encoding != "int":
                 raise RuntimeError("Action encoding must be either 'native' or 'int'")
             self._init_action_encoding_()
-        if self._action_masking not in ["none", "penalty", "vector"]:
-            raise RuntimeError(
-                "Action masking must be one of 'none', 'penalty' or 'vector'"
-            )
 
     def _init_state_encoding_(self):
         def fnode_lower_bound(fn):
@@ -242,7 +233,8 @@ class UPDomain(D):
 
         self._fnodes_variables_map = {}
         self._fnodes_vars_ordering = []
-        self._states_map = {}
+        self._states_up2np = {}
+        self._states_np2up = {}
         init_state = self._simulator.get_initial_state()
         static_fluents = self._problem.get_static_fluents()
         ci = init_state
@@ -257,8 +249,8 @@ class UPDomain(D):
                         self._fnodes_variables_map[fn] = (
                             0,
                             1,
-                            lambda b: int(b),
-                            lambda i: bool(i),
+                            lambda b_fnode: int(b_fnode.constant_value()),
+                            lambda i_int: Bool(bool(i_int)),
                         )
                     elif fn.fluent().type.is_int_type():
                         lb = int(fnode_lower_bound(fn))
@@ -267,18 +259,23 @@ class UPDomain(D):
                             (
                                 0,
                                 ub - lb + 1,
-                                lambda i, lb=lb: i - lb,
-                                lambda i, lb=lb: i + lb,
+                                lambda i_fnode, lb=lb: i_fnode.constant_value() - lb,
+                                lambda i_int, lb=lb: Int(i_int + lb),
                             )
                             if self._state_encoding == "dictionary"
-                            else (lb, ub, lambda i: int(i), lambda i: i)
+                            else (
+                                lb,
+                                ub,
+                                lambda i_fnode: int(i_fnode.constant_value()),
+                                lambda i_int: Int(i_int),
+                            )
                         )
                     elif fn.fluent().type.is_real_type():
                         self._fnodes_variables_map[fn] = (
                             float(fnode_lower_bound(fn)),
                             float(fnode_upper_bound(fn)),
-                            lambda x: float(x),
-                            lambda x: x,
+                            lambda x_fnode: float(x_fnode.constant_value()),
+                            lambda x_float: Real(x_float),
                         )
                     elif fn.fluent().type.is_user_type():
                         co = list(self._problem.objects(fn.fluent().type))
@@ -286,8 +283,8 @@ class UPDomain(D):
                         self._fnodes_variables_map[fn] = (
                             0,
                             len(co),
-                            lambda o, o2i=o2i: o2i[o],
-                            lambda i, i2o=co: i2o[i],
+                            lambda o_fnode, o2i=o2i: o2i[o_fnode.object()],
+                            lambda i_int, i2o=co: ObjectExp(i2o[i_int]),
                         )
                     elif fn.fluent().type.is_time_type():
                         raise RuntimeError("Time types not handled by UPDomain")
@@ -297,9 +294,29 @@ class UPDomain(D):
         if self._state_encoding == "native":
             return state
         elif self._state_encoding == "dictionary":
-            return self._states_map[frozenset(state.items())]
+            kstate = frozenset(state.items())
+            if kstate in self._states_np2up:
+                return self._states_np2up[kstate]
+            else:
+                values = {}
+                for fn, s in state.items():
+                    values[fn] = self._fnodes_variables_map[fn][3](s)
+                skup_state = SkUPState(UPState(values))
+                self._states_up2np[skup_state] = state
+                self._states_np2up[kstate] = skup_state
+                return skup_state
         elif self._state_encoding == "vector":
-            return self._states_map[tuple(state.flatten())]
+            kstate = tuple(state.flatten())
+            if kstate in self._states_np2up:
+                return self._states_np2up[kstate]
+            else:
+                values = {}
+                for i, fn in enumerate(self._fnodes_vars_ordering):
+                    values[fn] = self._fnodes_variables_map[fn][3](state.item(i))
+                skup_state = SkUPState(UPState(values))
+                self._states_up2np[skup_state] = state
+                self._states_np2up[kstate] = skup_state
+                return skup_state
         else:
             return None
 
@@ -307,55 +324,56 @@ class UPDomain(D):
         if self._state_encoding == "native":
             return skup_state
         elif self._state_encoding == "dictionary":
-            state = {}
-            ci = skup_state._up_state
-            while ci is not None:
-                for fn, val in ci._values.items():
-                    if fn in self._fnodes_variables_map:
-                        v = (
-                            val.object()
-                            if fn.fluent().type.is_user_type()
-                            else val.constant_value()
-                        )
-                        state[fn] = self._fnodes_variables_map[fn][2](v)
-                ci = ci._father
-            self._states_map[frozenset(state.items())] = skup_state
-            return state
-        elif self._state_encoding == "vector":
-            state = []
-            any_real = False
-            for fn in self._fnodes_vars_ordering:
+            if skup_state in self._states_up2np:
+                return self._states_up2np[skup_state]
+            else:
+                state = {}
                 ci = skup_state._up_state
                 while ci is not None:
-                    if fn in ci._values:
-                        v = (
-                            ci._values[fn].object()
-                            if fn.fluent().type.is_user_type()
-                            else ci._values[fn].constant_value()
-                        )
-                        state.append(self._fnodes_variables_map[fn][2](v))
-                        break
+                    for fn, val in ci._values.items():
+                        if fn in self._fnodes_variables_map:
+                            state[fn] = self._fnodes_variables_map[fn][2](val)
                     ci = ci._father
-                any_real = any_real or fn.fluent().type.is_real_type()
-            state = np.array(state, dtype=np.float32 if any_real else np.int32)
-            self._states_map[tuple(state.flatten())] = skup_state
-            return state
+                self._states_np2up[frozenset(state.items())] = skup_state
+                self._states_up2np[skup_state] = state
+                return state
+        elif self._state_encoding == "vector":
+            if skup_state in self._states_up2np:
+                return self._states_up2np[skup_state]
+            else:
+                state = []
+                any_real = False
+                for fn in self._fnodes_vars_ordering:
+                    ci = skup_state._up_state
+                    while ci is not None:
+                        if fn in ci._values:
+                            state.append(
+                                self._fnodes_variables_map[fn][2](ci._values[fn])
+                            )
+                            break
+                        ci = ci._father
+                    any_real = any_real or fn.fluent().type.is_real_type()
+                state = np.array(state, dtype=np.float32 if any_real else np.int32)
+                self._states_np2up[tuple(state.flatten())] = skup_state
+                self._states_up2np[skup_state] = state
+                return state
         else:
             return None
 
     def _init_action_encoding_(self):
-        self._actions_ordering = [
+        # For actions, the numpy encoding is just an int
+        self._actions_np2up = [
             SkUPAction(a[2], ungrounded_action=a[0], orig_params=a[1])
             for a in GrounderHelper(self._problem).get_grounded_actions()
             if a[2] is not None
         ]
-        self._actions_map = {a: i for i, a in enumerate(self._actions_ordering)}
+        self._actions_up2np = {a: i for i, a in enumerate(self._actions_np2up)}
 
     def _convert_to_skup_action_(self, action):
         if self._action_encoding == "native":
             return action
         elif self._action_encoding == "int":
-            return self._actions_ordering[int(action)]
+            return self._actions_np2up[int(action)]
         else:
             return None
 
@@ -368,9 +386,7 @@ class UPDomain(D):
             return None
 
     def _get_next_state(self, memory: D.T_state, action: D.T_event) -> D.T_state:
-        state = self._convert_to_skup_state_(
-            memory if self._action_masking != "vector" else memory["real_obs"]
-        )
+        state = self._convert_to_skup_state_(memory)
         act = self._convert_to_skup_action_(action)
         if self._total_cost is not None:
             cost = state.up_state.get_value(self._total_cost).constant_value()
@@ -383,14 +399,7 @@ class UPDomain(D):
             )
             self._transition_costs[tuple([state, act, next_state])] = cost
         next_state = self._convert_from_skup_state_(next_state)
-        return (
-            next_state
-            if self._action_masking != "vector"
-            else {
-                "action_mask": self._get_valid_action_mask_(next_state),
-                "real_obs": next_state,
-            }
-        )
+        return next_state
 
     def _get_transition_value(
         self,
@@ -398,41 +407,21 @@ class UPDomain(D):
         action: D.T_event,
         next_state: Optional[D.T_state] = None,
     ) -> Value[D.T_value]:
-        action_penalty = (
-            0
-            if self._action_masking != "penalty"
-            or action not in self._get_applicable_actions_from(memory).get_elements()
-            else self._invalid_action_penalty
-        )
         if self._total_cost is not None:
             transition = tuple(
                 [
-                    self._convert_to_skup_state_(
-                        memory
-                        if self._action_masking != "vector"
-                        else memory["real_obs"]
-                    ),
+                    self._convert_to_skup_state_(memory),
                     self._convert_to_skup_action_(action),
-                    self._convert_to_skup_state_(
-                        next_state
-                        if self._action_masking != "vector"
-                        else next_state["real_obs"]
-                    ),
+                    self._convert_to_skup_state_(next_state),
                 ]
             )
             if transition in self._transition_costs:
-                return Value(cost=self._transition_costs[transition] + action_penalty)
+                return Value(cost=self._transition_costs[transition])
         if len(self._problem.quality_metrics) > 0:
             transition_cost = 0
-            state = self._convert_to_skup_state_(
-                memory if self._action_masking != "vector" else memory["real_obs"]
-            )
+            state = self._convert_to_skup_state_(memory)
             act = self._convert_to_skup_action_(action)
-            nstate = self._convert_to_skup_state_(
-                next_state
-                if self._action_masking != "vector"
-                else next_state["real_obs"]
-            )
+            nstate = self._convert_to_skup_state_(next_state)
             for qm in self._problem.quality_metrics:
                 metric = evaluate_quality_metric(
                     self._simulator,
@@ -454,7 +443,7 @@ class UPDomain(D):
                     transition_cost += -metric
                 else:
                     transition_cost += metric
-            return Value(cost=transition_cost + action_penalty)
+            return Value(cost=transition_cost)
         else:
             logger.warning(
                 "UPDomain: requesting transition value whereas the 'total-cost' fluent or UP quality metrics are not defined will return NaN"
@@ -462,9 +451,7 @@ class UPDomain(D):
             return Value(cost=float("Nan"))
 
     def _is_terminal(self, memory: D.T_state) -> D.T_predicate:
-        state = self._convert_to_skup_state_(
-            memory if self._action_masking != "vector" else memory["real_obs"]
-        )
+        state = self._convert_to_skup_state_(memory)
         return self._simulator.is_goal(state.up_state)
 
     def _get_action_space_(self) -> GymSpace[D.T_event]:
@@ -473,19 +460,17 @@ class UPDomain(D):
                 # By default we don't initialize action encoding for actions
                 # since it is not highly expected that the action space will
                 # be requested from the user in "native" action encoding mode
-                if self._actions_ordering is None:
+                if self._actions_np2up is None:
                     self._init_action_encoding_()
-                self._action_space = ListSpace(self._actions_ordering)
+                self._action_space = ListSpace(self._actions_np2up)
             elif self._action_encoding == "int":
-                self._action_space = DiscreteSpace(len(self._actions_ordering))
+                self._action_space = DiscreteSpace(len(self._actions_np2up))
             else:
                 return None
         return self._action_space
 
     def _get_applicable_actions_from(self, memory: D.T_state) -> GymSpace[D.T_event]:
-        state = self._convert_to_skup_state_(
-            memory if self._action_masking != "vector" else memory["real_obs"]
-        )
+        state = self._convert_to_skup_state_(memory)
         applicable_actions = [
             SkUPAction(
                 self._simulator._ground_action(action, params),
@@ -495,16 +480,16 @@ class UPDomain(D):
             for action, params in self._simulator.get_applicable_actions(state.up_state)
         ]
         if self._action_encoding == "native":
-            # ListSpace requires to be non empty
+            # SetSpace requires to be non empty
             return (
-                ListSpace(applicable_actions)
+                SetSpace(applicable_actions)
                 if len(applicable_actions) > 0
                 else EmptySpace()
             )
         elif self._action_encoding == "int":
-            # ListSpace requires to be non empty
+            # SetSpace requires to be non empty
             return (
-                ListSpace([self._actions_map[a] for a in applicable_actions])
+                SetSpace([self._actions_up2np[a] for a in applicable_actions])
                 if len(applicable_actions) > 0
                 else EmptySpace()
             )
@@ -518,14 +503,7 @@ class UPDomain(D):
         init_state = self._convert_from_skup_state_(
             SkUPState(self._simulator.get_initial_state())
         )
-        return (
-            init_state
-            if self._action_masking != "vector"
-            else {
-                "action_mask": self._get_valid_action_mask_(init_state),
-                "real_obs": init_state,
-            }
-        )
+        return init_state
 
     def _get_observation_space_(self) -> GymSpace[D.T_observation]:
         if self._observation_space is None:
@@ -534,7 +512,7 @@ class UPDomain(D):
                     "Observation space defined only for state encoding 'dictionary' or 'vector'"
                 )
             elif self._state_encoding == "dictionary":
-                real_obs_space = DictSpace(
+                self._observation_space = DictSpace(
                     {
                         repr(fn): DiscreteSpace(2)
                         if fn.fluent().type.is_bool_type()
@@ -549,7 +527,7 @@ class UPDomain(D):
                     }
                 )
             elif self._state_encoding == "vector":
-                real_obs_space = BoxSpace(
+                self._observation_space = BoxSpace(
                     low=np.array(
                         [
                             self._fnodes_variables_map[fn][0]
@@ -571,47 +549,4 @@ class UPDomain(D):
                 )
             else:
                 return None
-            self._observation_space = (
-                real_obs_space
-                if self._action_masking != "vector"
-                else DictSpace(
-                    {
-                        # We unwrap the spaces because RLLib wants to see
-                        # a true gym space (not the skdecide variant)
-                        "action_mask": BoxSpace(
-                            0,
-                            1,
-                            shape=(
-                                len(self._get_action_space_().get_elements())
-                                if self._action_encoding == "native"
-                                else self._get_action_space_().unwrapped().n
-                                if self._action_encoding == "int"
-                                else 0,
-                            ),
-                            dtype=np.int32,
-                        ).unwrapped(),
-                        "real_obs": real_obs_space.unwrapped(),
-                    }
-                )
-            )
         return self._observation_space
-
-    def _get_valid_action_mask_(self, memory: D.T_state) -> ArrayLike:
-        action_mask = np.zeros(shape=(len(self._actions_ordering),), dtype=np.int32)
-        valid_actions = self._get_applicable_actions_from(
-            # We need to reconstruct the memory state for
-            # _get_applicable_actions_from since it does not need to be
-            # in the D.T_state form when calling _get_valid_action_mask_
-            memory
-            if self._action_masking != "vector"
-            else {"real_obs": memory}
-        )
-        if isinstance(valid_actions, EmptySpace):
-            return action_mask
-        if self._action_encoding == "native":
-            for a in valid_actions.get_elements():
-                action_mask[self._actions_map[a]] = 1
-        elif self._action_encoding == "int":
-            for a in valid_actions.get_elements():
-                action_mask[int(a)] = 1
-        return action_mask

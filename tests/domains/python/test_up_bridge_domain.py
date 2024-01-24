@@ -9,7 +9,7 @@ import pytest
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
-def test_up_bridge_domain():
+def test_up_bridge_domain_random():
     noexcept = True
 
     try:
@@ -17,10 +17,6 @@ def test_up_bridge_domain():
         from unified_planning.shortcuts import Fluent, InstantaneousAction, Not
 
         from skdecide.hub.domain.up import UPDomain
-        from skdecide.hub.solver.lazy_astar import LazyAstar
-
-        import unified_planning
-        from unified_planning.shortcuts import Fluent, InstantaneousAction, Not
 
         x = Fluent("x")
         y = Fluent("y")
@@ -60,8 +56,72 @@ def test_up_bridge_domain():
         action_space = domain.get_action_space()
         observation_space = domain.get_observation_space()
 
-        # with LazyAstar() as solver:
-        with RayRLlib(algo_class=DQN, train_iterations=1) as solver:
+        s = domain.get_initial_state()
+        step = 0
+        while not domain.is_goal(s) and step < 10:
+            s = domain.get_next_state(s, domain.get_applicable_actions(s).sample())
+            step += 1
+    except Exception as e:
+        print(e)
+        noexcept = False
+    assert (
+        noexcept
+        and len(action_space._elements) == 3
+        and all(
+            isinstance(s, gym.spaces.Discrete) and s.n == 2
+            for s in observation_space.unwrapped().spaces.values()
+        )
+    )
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
+def test_up_bridge_domain_planning():
+    noexcept = True
+
+    try:
+        import unified_planning
+        from unified_planning.shortcuts import Fluent, InstantaneousAction, Not
+
+        from skdecide.hub.domain.up import UPDomain
+        from skdecide.hub.solver.lazy_astar import LazyAstar
+
+        x = Fluent("x")
+        y = Fluent("y")
+
+        a = InstantaneousAction("a")
+        a.add_precondition(Not(x))
+        a.add_effect(x, True)
+
+        b = InstantaneousAction("b")
+        b.add_precondition(Not(y))
+        b.add_effect(y, True)
+
+        c = InstantaneousAction("c")
+        c.add_precondition(y)
+        c.add_effect(x, True)
+
+        problem = unified_planning.model.Problem("simple_with_costs")
+
+        problem.add_fluent(x)
+        problem.add_fluent(y)
+
+        problem.add_action(a)
+        problem.add_action(b)
+        problem.add_action(c)
+
+        problem.set_initial_value(x, False)
+        problem.set_initial_value(y, False)
+
+        problem.add_goal(x)
+
+        problem.add_quality_metric(
+            unified_planning.model.metrics.MinimizeActionCosts({a: 10, b: 1, c: 1})
+        )
+
+        domain_factory = lambda: UPDomain(problem, state_encoding="native")
+        domain = domain_factory()
+
+        with LazyAstar() as solver:
             UPDomain.solve_with(solver, domain_factory)
             s = domain.get_initial_state()
             step = 0
@@ -75,13 +135,98 @@ def test_up_bridge_domain():
         noexcept = False
     assert (
         noexcept
-        and RayRLlib.check_domain(domain)
-        and len(action_space._elements) == 3
-        and all(
-            isinstance(s, gym.spaces.Discrete) and s.n == 2
-            for s in observation_space._gym_space.spaces.values()
-        )
+        and LazyAstar.check_domain(domain)
         and step == 2
         and p[0].up_action == b
         and p[1].up_action == c
+    )
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
+def test_up_bridge_domain_rl():
+    noexcept = True
+
+    try:
+        import unified_planning
+        from unified_planning.shortcuts import UserType, BoolType
+
+        from skdecide.utils import rollout
+        from skdecide.hub.domain.up import UPDomain
+        from skdecide.hub.solver.ray_rllib import RayRLlib
+        from ray.rllib.algorithms.dqn import DQN
+
+        Location = UserType("Location")
+        robot_at = unified_planning.model.Fluent("robot_at", BoolType(), l=Location)
+        connected = unified_planning.model.Fluent(
+            "connected", BoolType(), l_from=Location, l_to=Location
+        )
+
+        move = unified_planning.model.InstantaneousAction(
+            "move", l_from=Location, l_to=Location
+        )
+        l_from = move.parameter("l_from")
+        l_to = move.parameter("l_to")
+        move.add_precondition(connected(l_from, l_to))
+        move.add_precondition(robot_at(l_from))
+        move.add_effect(robot_at(l_from), False)
+        move.add_effect(robot_at(l_to), True)
+
+        problem = unified_planning.model.Problem("robot")
+        problem.add_fluent(robot_at, default_initial_value=False)
+        problem.add_fluent(connected, default_initial_value=False)
+        problem.add_action(move)
+
+        NLOC = 10
+        locations = [
+            unified_planning.model.Object("l%s" % i, Location) for i in range(NLOC)
+        ]
+        problem.add_objects(locations)
+
+        problem.set_initial_value(robot_at(locations[0]), True)
+        for i in range(NLOC - 1):
+            problem.set_initial_value(connected(locations[i], locations[i + 1]), True)
+
+        problem.add_goal(robot_at(locations[-1]))
+
+        problem.add_quality_metric(
+            unified_planning.model.metrics.MinimizeActionCosts({move: 1})
+        )
+
+        domain_factory = lambda: UPDomain(
+            problem, state_encoding="vector", action_encoding="int"
+        )
+        domain = domain_factory()
+        action_space = domain.get_action_space()
+        observation_space = domain.get_observation_space()
+
+        with RayRLlib(
+            algo_class=DQN,
+            train_iterations=1,
+        ) as solver:
+            UPDomain.solve_with(solver, domain_factory)
+            rollout(
+                domain_factory(),
+                solver,
+                num_episodes=1,
+                max_steps=100,
+                max_framerate=30,
+                outcome_formatter=None,
+            )
+    except Exception as e:
+        print(e)
+        noexcept = False
+    assert (
+        noexcept
+        and RayRLlib.check_domain(domain)
+        and isinstance(action_space.unwrapped(), gym.spaces.Discrete)
+        and action_space.unwrapped().n == 9
+        and isinstance(observation_space.unwrapped(), gym.spaces.Box)
+        and len(observation_space.unwrapped().low)
+        == len(observation_space.unwrapped().high)
+        == 10
+        and all(
+            observation_space.unwrapped().low[i] == 0
+            and observation_space.unwrapped().high[i] == 1
+            for i in range(10)
+        )
     )
