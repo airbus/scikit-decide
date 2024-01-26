@@ -178,7 +178,7 @@ class RayRLlib(Solver, Policies, Restorable):
             )
         else:
             self._state_access = None
-        self._wrap_action = lambda a: {
+        self._wrap_action = lambda a, wrapped_action_space=wrapped_action_space: {
             # Trick to assign v's wrapped value to self._wrap_action
             # (no wrapping method for single unwrapped values in enumerable spaces)
             k: next(iter(wrapped_action_space[k].from_unwrapped([v])))
@@ -187,7 +187,7 @@ class RayRLlib(Solver, Policies, Restorable):
         # Trick to assign o's unwrapped value to self._unwrap_obs
         # (no unwrapping method for single elements in enumerable spaces)
         self._unwrap_obs = (
-            lambda obs, agent: next(
+            lambda obs, agent, domain=domain, wrapped_action_space=wrapped_action_space, wrapped_observation_space=wrapped_observation_space: next(
                 iter(wrapped_observation_space[agent].to_unwrapped([obs[agent]]))
             )
             if not self._action_masking
@@ -272,10 +272,10 @@ class RayRLlib(Solver, Policies, Restorable):
         # Instantiate algo
         register_env(
             "skdecide_env",
-            lambda _: AsRLlibMultiAgentEnv(
+            lambda _, domain_factory=domain_factory, rayrllib=self: AsRLlibMultiAgentEnv(
                 domain=domain_factory(),
-                action_masking=self._action_masking,
-                state_access=self._state_access,
+                action_masking=rayrllib._action_masking,
+                state_access=rayrllib._state_access,
             ),
         )
         # Disable env checking in case of action masking otherwise RLlib will try to simulate

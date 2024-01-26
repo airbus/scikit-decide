@@ -2,27 +2,27 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import sys
-
 import unified_planning
+from ray.rllib.algorithms.dqn import DQN
 from unified_planning.shortcuts import (
     BoolType,
     Fluent,
     InstantaneousAction,
     Not,
-    OneshotPlanner,
     UserType,
 )
 
 from skdecide.hub.domain.up import UPDomain
 from skdecide.hub.solver.lazy_astar import LazyAstar
-from skdecide.hub.solver.up import UPSolver
+from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.utils import rollout
 
 # Example 1: Solving a basic example, the same as
 # https://github.com/aiplan4eu/unified-planning/blob/master/docs/notebooks/01-basic-example.ipynb
 
-print("\n\n=== EXAMPLE 1: Solving UP's basic example using skdecide's UP solver ===\n")
+print(
+    "\n\n=== EXAMPLE 1: Solving UP's basic example using skdecide's RLlib solver ===\n"
+)
 
 ## Step 1: modeling the UP problem
 
@@ -57,22 +57,27 @@ for i in range(NLOC - 1):
 
 problem.add_goal(robot_at(locations[-1]))
 
+problem.add_quality_metric(
+    unified_planning.model.metrics.MinimizeActionCosts({move: 1})
+)
+
 ## Step 2: creating the scikit-decide's UPDomain
 
-domain_factory = lambda: UPDomain(problem)
+domain_factory = lambda: UPDomain(
+    problem, state_encoding="vector", action_encoding="int"
+)
 domain = domain_factory()
 
 ## Step 3: solving the UP problem with scikit-decide's UP engine
 
-if UPSolver.check_domain(domain):
-    with UPSolver(
-        operation_mode=OneshotPlanner,
-        name="pyperplan",
-        engine_params={"output_stream": sys.stdout},
+if RayRLlib.check_domain(domain):
+    with RayRLlib(
+        algo_class=DQN,
+        train_iterations=1,
     ) as solver:
         UPDomain.solve_with(solver, domain_factory)
         rollout(
-            domain,
+            domain_factory(),
             solver,
             num_episodes=1,
             max_steps=100,
@@ -80,11 +85,10 @@ if UPSolver.check_domain(domain):
             outcome_formatter=None,
         )
 
-
 # Example 2: Solving a numeric example, the same as https://github.com/aiplan4eu/unified-planning/blob/master/docs/notebooks/02-optimal-planning.ipynb
 
 print(
-    "\n\n=== EXAMPLE 2: Solving UP's numeric example using skdecide's UP ENHSP solver ===\n"
+    "\n\n=== EXAMPLE 2: Solving UP's numeric example using skdecide's Python A* solver ===\n"
 )
 
 ## Step 1: modeling the UP problem
@@ -127,29 +131,7 @@ problem.add_quality_metric(
 domain_factory = lambda: UPDomain(problem)
 domain = domain_factory()
 
-## Step 3: solving the UP problem with scikit-decide's UP engine
-
-if UPSolver.check_domain(domain):
-    with UPSolver(
-        operation_mode=OneshotPlanner,
-        name="enhsp-opt",
-        engine_params={"output_stream": sys.stdout},
-    ) as solver:
-        UPDomain.solve_with(solver, domain_factory)
-        rollout(
-            domain,
-            solver,
-            num_episodes=1,
-            max_steps=100,
-            max_framerate=30,
-            outcome_formatter=None,
-        )
-
-# Example 3: Solving the same UP numeric problem but with scikit-decide's A* algorithm
-
-print(
-    "\n\n=== EXAMPLE 3: Solving UP's numeric example using skdecide's LazyAstar solver ===\n"
-)
+## Step 3: solving the UP problem with scikit-decide's Python A* engine
 
 if LazyAstar.check_domain(domain):
     with LazyAstar() as solver:
