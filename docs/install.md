@@ -122,3 +122,15 @@ Alternatively you can choose to only install the core library, which is enough i
 pip install -U pip
 pip install -U scikit-decide
 ```
+
+
+## Known issues
+
+### pygrib
+
+When installing [pygrib](https://jswhit.github.io/pygrib/index.html) on MacOS ARM (in dependencies of `scikit-decide[all]`),
+no wheel exists on PyPI and there is issues when pip tries to build it.
+You can overcome this by installing the pygrib package available on conda-forge:
+```shell
+conda install -c conda-forge pygrib
+```
