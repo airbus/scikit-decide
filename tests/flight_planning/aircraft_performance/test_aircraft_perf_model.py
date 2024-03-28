@@ -1,37 +1,5 @@
 import pytest
-from pathlib import Path
 from skdecide.hub.domain.flight_planning.aircraft_performance.base import AircraftPerformanceModel
-
-
-# @pytest.fixture(scope="module")
-# def data_dir():
-#     yield Path(__file__).parent / "data"
-
-# def test_toto():
-#     assert 1+1==2
-
-# def test_titi():
-#     assert 1+1==3
-
-# def test_tata(tmpdir, data_dir):
-#     print(tmpdir)
-#     path = tmpdir.join("test.txt")
-
-#     with open(data_dir / "test.csv", "r") as f:
-#         data = f.read()
-
-#     with path.open("w") as f:
-#         f.write(data)
-
-#     assert path.exists()
-
-# def add(a, b):
-#     return a + b
-
-# @pytest.mark.parametrize("a, b, expected", [(1, 2, 3), (3, 5, 8), (1, 3, 19)])
-# def test_add(a, b, expected):
-#     assert add(a, b) == expected
-
 
 @pytest.fixture(scope="function")
 def ac_model(model):
