@@ -7,6 +7,8 @@ import time
 from copy import deepcopy
 
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
 import numpy as np
 import pandas as pd
 from cartopy import crs as ccrs
@@ -14,6 +16,8 @@ from cartopy.feature import BORDERS, LAND, OCEAN
 from matplotlib.figure import Figure
 from openap import aero
 from pygeodesy.ellipsoidalVincenty import LatLon
+
+from openap.extra.aero import nm, ft
 
 
 class Timer(object):
@@ -30,6 +34,118 @@ class Timer(object):
             )
         print("Elapsed: %s" % (time.time() - self.tstart))
 
+def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
+    network = domain.network
+
+    fig = plt.figure(figsize=(15, 10))
+        
+    # define the grid layout
+    gs = gridspec.GridSpec(2, 2, width_ratios=[1, 2])
+
+    # add subplots for the line plots
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[1, 0])
+    
+    # add subplots for the left side
+    # ax1 = plt.subplot(gs[0, 0])
+    # ax2 = plt.subplot(gs[1, 0])
+
+    # add subplots for the right side
+    # ax3 = plt.subplot(gs[:, 1])
+
+    # values
+    pos = [
+        LatLon(
+            trajectory.iloc[i]["lat"],
+            trajectory.iloc[i]["lon"],
+            trajectory.iloc[i]["alt"] * ft,
+        )
+        for i in range(len(trajectory.alt))
+    ]
+    dist = np.array([d.distanceTo(pos[0]) for d in pos])
+
+
+    # plot the altitude
+    ax1.plot(dist / nm, trajectory.alt)
+    ax1.set_xlabel("ESAD (nm)")
+    ax1.set_ylabel("Zp (ft)")
+    ax1.set_title("Altitude profile")
+
+    # plot the mass
+    ax2.plot(dist / nm, trajectory.mass)
+    ax2.set_xlabel("ESAD (nm)")
+    ax2.set_ylabel("Mass (Kg)")
+    ax2.set_title("Mass profile")
+
+    # plot the trajectory
+    latmin, latmax = min(trajectory.lat), max(trajectory.lat)
+    lonmin, lonmax = min(trajectory.lon), max(trajectory.lon)
+
+    ax3 = fig.add_subplot(gs[:, 1], projection=ccrs.PlateCarree(central_longitude=trajectory.lon.mean()))
+
+    # ax3 = plt.axes(
+    #     projection=ccrs.TransverseMercator(
+    #         central_longitude=trajectory.lon.mean(), central_latitude=trajectory.lat.mean()
+    #     )
+    # )
+
+    ax3.set_extent([lonmin - 4, lonmax + 4, latmin - 2, latmax + 2])
+    ax3.add_feature(OCEAN, facecolor="#d1e0e0", zorder=-1, lw=0)
+    ax3.add_feature(LAND, facecolor="#f5f5f5", lw=0)
+    ax3.add_feature(BORDERS, lw=0.5, color="gray")
+    ax3.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
+    ax3.coastlines(resolution="50m", lw=0.5, color="gray")
+
+    # add great circle
+    ax3.scatter(trajectory.lon.iloc[0], trajectory.lat.iloc[0], c="darkgreen", transform=ccrs.Geodetic())
+    ax3.scatter(trajectory.lon.iloc[-1], trajectory.lat.iloc[-1], c="red", transform=ccrs.Geodetic())
+
+    ax3.plot(
+        [trajectory.lon.iloc[0], trajectory.lon.iloc[-1]],
+        [trajectory.lat.iloc[0], trajectory.lat.iloc[-1]],
+        label="Great Circle",
+        color="red",
+        ls="--",
+        transform=ccrs.Geodetic(),
+    )
+
+    # add trajectory
+    ax3.plot(
+        trajectory.lon,
+        trajectory.lat,
+        color="green",
+        transform=ccrs.Geodetic(),
+        linewidth=2,
+        marker=".",
+        label="skdecide",
+    )
+
+    # add network
+    ax3.scatter(
+        [
+            network[x][x1][x2].lon
+            for x in range(len(network))
+            for x1 in range(len(network[x]))
+            for x2 in range(len(network[x][x1]))
+        ],
+        [
+            network[x][x1][x2].lat
+            for x in range(len(network))
+            for x1 in range(len(network[x]))
+            for x2 in range(len(network[x][x1]))
+        ],
+        transform=ccrs.Geodetic(),
+        s=0.1,
+    )
+
+    ax3.legend()
+
+    # add title to figure
+    fig.suptitle(f'Leg: {domain.origin} -> {domain.destination} \n A/C perf. model: {domain.perf_model_name}; Fuel: {np.round(trajectory["fuel"].sum(), 2)} Kg', fontsize=16)
+
+    plt.tight_layout()
+
+    return fig
 
 def plot_trajectory(lat1, lon1, lat2, lon2, trajectory: pd.DataFrame) -> Figure:
     """Plot the trajectory of an object
@@ -148,7 +264,7 @@ def plot_trajectory_no_map(lat1, lon1, lat2, lon2, trajectory: pd.DataFrame) -> 
     return fig
 
 
-def plot_altitude(trajectory: pd.DataFrame) -> Figure:
+def plot_mass(trajectory: pd.DataFrame) -> Figure:
     fig = plt.Figure()
     ax = plt.axes()
     pos = [
@@ -159,8 +275,31 @@ def plot_altitude(trajectory: pd.DataFrame) -> Figure:
         )
         for i in range(len(trajectory.alt))
     ]
-    dist = [d.distanceTo(pos[0]) for d in pos]
-    ax.plot(dist, trajectory.alt)
+    dist = np.array([d.distanceTo(pos[0]) for d in pos])
+    
+    ax.plot(dist / nm, trajectory.mass)
+    ax.set_xlabel("ESAD (nm)")
+    ax.set_ylabel("Mass (Kg)")
+
+    return fig
+
+def plot_altitude(trajectory: pd.DataFrame) -> Figure:
+    fig = plt.Figure()
+    ax = plt.axes()
+    pos = [
+        LatLon(
+            trajectory.iloc[i]["lat"],
+            trajectory.iloc[i]["lon"],
+            trajectory.iloc[i]["alt"] * ft,
+        )
+        for i in range(len(trajectory.alt))
+    ]
+    dist = np.array([d.distanceTo(pos[0]) for d in pos])
+    
+    ax.plot(dist / nm, trajectory.alt)
+    ax.set_xlabel("ESAD (nm)")
+    ax.set_ylabel("Zp (ft)")
+
     return fig
 
 

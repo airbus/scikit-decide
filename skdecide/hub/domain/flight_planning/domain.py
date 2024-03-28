@@ -1,35 +1,46 @@
 import math
 from argparse import Action
 from enum import Enum
-from math import asin, atan2, cos, radians, sin, sqrt
-from typing import Any, Callable, Optional, Tuple, Union
 
-import matplotlib.pyplot as plt
-import numpy as np
+# data and math
+from math import asin, atan2, cos, radians, sin, sqrt
 import pandas as pd
-from openap.extra.aero import atmos
+import numpy as np
+
+# aircraft performance model
 from openap.extra.aero import bearing as aero_bearing
 from openap.extra.aero import distance, ft, kts, latlon, mach2tas
 from openap.extra.nav import airport
-from openap.fuel import FuelFlow
 from openap.prop import aircraft
+
+# custom aircraft performance model
+from skdecide.hub.domain.flight_planning.aircraft_performance.base import AircraftPerformanceModel
+
 from pygeodesy.ellipsoidalVincenty import LatLon
 
 from skdecide import DeterministicPlanningDomain, ImplicitSpace, Solver, Space, Value
 from skdecide.builders.domain import Renderable, UnrestrictedActions
+
+# plotting
+import matplotlib.pyplot as plt
 from skdecide.hub.domain.flight_planning.flightplanning_utils import (
-    plot_altitude,
-    plot_network,
+    plot_full,
     plot_trajectory,
 )
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.get_weather_noaa import (
     get_weather_matrix,
 )
+
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.GenericInterpolator import (
-    GenericWindInterpolator,
-)
+    GenericWindInterpolator)
+
 from skdecide.hub.space.gym import EnumSpace, ListSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver
+
+from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.engine_loader import load_aircraft_engine_params
+
+# typing
+from typing import Any, Callable, Optional, Tuple, Union
 
 try:
     from IPython.display import clear_output as ipython_clear_output
@@ -52,7 +63,6 @@ class WeatherDate:
     leapyear: bool
 
     def __init__(self, day, month, year, forecast="nowcast") -> None:
-
         self.day = int(day)
         self.month = int(month)
         self.year = int(year)
@@ -194,6 +204,7 @@ class State:
             self.time = None
 
     def __hash__(self):
+        # print(self.pos, self.mass, self.alt, self.time)
         return hash((self.pos, int(self.mass), self.alt, int(self.time)))
 
     def __eq__(self, other):
@@ -322,6 +333,16 @@ class FlightPlanningDomain(
     - lazy_time, which propagates the time spent on the flight so far
     - None : we give a 0 cost value, which will transform the A* algorithm into a Dijkstra-like algorithm.
 
+    Aircraft performance models
+    --------------------------
+
+    The flight planning domain can use two possible A/C performance models:
+
+    - OpenAP: the aircraft performance model is based on the OpenAP library.
+    - Poll-Schumann: the aircraft performance model is based on Poll-Schumann equations as stated on the paper: "An estimation 
+    method for the fuel burn and other performance characteristics of civil transport aircraft in the cruise" by Poll and Schumann; 
+    The Aernautical Journal, 2020.
+
     Optional features
     -----------------
 
@@ -356,10 +377,12 @@ class FlightPlanningDomain(
         wind_interpolator: GenericWindInterpolator = None,
         objective: str = "fuel",
         heuristic_name: str = "fuel",
+        perf_model_name: str = "openap",
         constraints=None,
         nb_forward_points: int = 41,
         nb_lateral_points: int = 11,
         nb_vertical_points: int = None,
+        take_off_weight: int = None,
         fuel_loaded: float = None,
         fuel_loop: bool = False,
         fuel_loop_solver_factory: Optional[Callable[[], Solver]] = None,
@@ -389,6 +412,8 @@ class FlightPlanningDomain(
                 Cost function of the flight plan. It can be either fuel, distance or time. Defaults to "fuel".
             heuristic_name (str, optional):
                 Heuristic of the flight plan, it will guide the aircraft through the graph. It can be either fuel, distance or time. Defaults to "fuel".
+            perf_model_name (str, optional):
+                Aircraft performance model used in the flight plan. It can be either openap or PS (Poll-Schumann). Defaults to "openap".
             constraints (_type_, optional):
                 Constraints dictionnary (keyValues : ['time', 'fuel'] ) to be defined in for the flight plan. Defaults to None.
             nb_points_forward (int, optional):
@@ -397,6 +422,8 @@ class FlightPlanningDomain(
                 Number of lateral nodes in the graph. Defaults to 11.
             nb_points_vertical (int, optional):
                 Number of vertical nodes in the graph. Defaults to None.
+            take_off_weight (int, optional):
+                Take off weight of the aircraft. Defaults to None.
             fuel_loaded (float, optional):
                 Fuel loaded in the aricraft for the flight plan. Defaults to None.
             fuel_loop (bool, optional):
@@ -416,6 +443,7 @@ class FlightPlanningDomain(
         """
 
         # Initialisation of the origin and the destination
+        self.origin, self.destination = origin, destination
         if isinstance(origin, str):  # Origin is an airport
             ap1 = airport(origin)
             self.lat1, self.lon1, self.alt1 = ap1["lat"], ap1["lon"], ap1["alt"]
@@ -428,12 +456,8 @@ class FlightPlanningDomain(
         else:  # Destination is geographic coordinates
             self.lat2, self.lon2, self.alt2 = destination
 
-        # We now set altitude in meters according to LatLon
-        self.alt1 *= ft
-        self.alt2 *= ft
-
         self.start_time = starting_time
-        # Retrieve the aircraft datas in openap library and normalizing meters into ft
+        # Retrieve the aircraft datas in openap library
         self.actype = actype
         self.ac = aircraft(actype)
 
@@ -460,10 +484,9 @@ class FlightPlanningDomain(
 
         self.weather_date = weather_date
         self.initial_date = weather_date
+
         if wind_interpolator is None:
-            self.wind_interpolator = self.get_wind_interpolator()
-        else:
-            self.wind_interpolator = wind_interpolator
+            self.weather_interpolator= self.get_weather_interpolator()
 
         # Build network between airports
         if graph_width:
@@ -489,8 +512,8 @@ class FlightPlanningDomain(
                 + 1
             )
         self.network = self.set_network(
-            LatLon(self.lat1, self.lon1, self.alt1),
-            LatLon(self.lat2, self.lon2, self.alt2),
+            LatLon(self.lat1, self.lon1, self.alt1 * ft), # alt ft -> meters
+            LatLon(self.lat2, self.lon2, self.alt2 * ft), # alt ft -> meters
             self.nb_forward_points,
             self.nb_lateral_points,
             self.nb_vertical_points,
@@ -531,6 +554,9 @@ class FlightPlanningDomain(
         assert (
             fuel_loaded <= self.ac["limits"]["MFC"]
         )  # Ensure fuel loaded <= fuel capacity
+
+        aircraft_params = load_aircraft_engine_params(actype)
+
         self.start = State(
             pd.DataFrame(
                 [
@@ -538,23 +564,23 @@ class FlightPlanningDomain(
                         "ts": self.start_time,
                         "lat": self.lat1,
                         "lon": self.lon1,
-                        "mass": self.ac["limits"]["MTOW"]
-                        - 0.8
-                        * (
-                            self.ac["limits"]["MFC"] - self.fuel_loaded
-                        ),  # Here we compute the weight difference between the fuel loaded and the fuel capacity
+                        "mass": aircraft_params["amass_mtow"] if take_off_weight is None else take_off_weight \
+                        - 0.8 * (self.ac["limits"]["MFC"] - self.fuel_loaded),  # Here we compute the weight difference between the fuel loaded and the fuel capacity
                         "mach": self.mach,
                         "fuel": 0.0,
-                        "alt": self.alt1 / ft,
+                        "alt": self.alt1,
                     }
                 ]
             ),
             (0, self.nb_lateral_points // 2, 0),
         )
-        # Definition of the fuel consumption function
-        self.fuel_flow = FuelFlow(actype).enroute
+        
+        self.perf_model = AircraftPerformanceModel(actype, perf_model_name)
+        self.perf_model_name = perf_model_name
+
         self.res_img_dir = res_img_dir
-        self.cruising = self.alt1 >= self.ac["cruise"]["height"] * 0.98
+        self.cruising = self.alt1 * ft >= self.ac["cruise"]["height"] * 0.98
+
 
     # Class functions
 
@@ -604,7 +630,7 @@ class FlightPlanningDomain(
         )  # We compute the flight with altitude in ft, whereas the altitude in the network is in meters according to LatLon
 
         self.cruising = (
-            to_alt >= self.ac["cruise"]["height"] * 0.98
+            to_alt * ft >= self.ac["cruise"]["height"] * 0.98
         )  # Check if the plane will be cruising in the next state
         trajectory = self.flying(trajectory.tail(1), (to_lat, to_lon, to_alt))
 
@@ -638,12 +664,12 @@ class FlightPlanningDomain(
                 LatLon(
                     memory.trajectory.iloc[-1]["lat"],
                     memory.trajectory.iloc[-1]["lon"],
-                    memory.trajectory.iloc[-1]["alt"],
+                    memory.trajectory.iloc[-1]["alt"] * ft,
                 ),
                 LatLon(
                     next_state.trajectory.iloc[-1]["lat"],
                     next_state.trajectory.iloc[-1]["lon"],
-                    next_state.trajectory.iloc[-1]["alt"],
+                    next_state.trajectory.iloc[-1]["alt"] * ft,
                 ),
             )
         elif self.objective == "time" or self.objective == "lazy_time":
@@ -772,39 +798,57 @@ class FlightPlanningDomain(
         Returns:
             Value[D.T_value]: Heuristic value of the state.
         """
+
+        # current position
+        pos = s.trajectory.iloc[-1]
+
+        # parameters
+        lat_to, lon_to, alt_to = self.lat2, self.lon2, self.alt2
+        lat_start, lon_start, alt_start = self.lat1, self.lon1, self.alt1
+
         if heuristic_name is None:
             heuristic_name = self.heuristic_name
 
-        pos = s.trajectory.iloc[-1]
-
         # Compute distance in meters
         distance_to_goal = LatLon.distanceTo(
-            LatLon(pos["lat"], pos["lon"], height=pos["alt"]),
-            LatLon(self.lat2, self.lon2, height=self.alt2),
+            LatLon(pos["lat"], pos["lon"], height=pos["alt"]*ft), # alt ft -> meters
+            LatLon(lat_to, lon_to, height=alt_to*ft), # alt ft -> meters
         )
         distance_to_start = LatLon.distanceTo(
-            LatLon(pos["lat"], pos["lon"], height=pos["alt"]),
-            LatLon(self.lat1, self.lon1, height=self.alt1),
+            LatLon(pos["lat"], pos["lon"], height=pos["alt"]*ft), # alt ft -> meters
+            LatLon(lat_start, lon_start, height=alt_start*ft), # alt ft -> meters
         )
-
+        
         if heuristic_name == "distance":
             cost = distance_to_goal
 
         elif heuristic_name == "fuel":
+            # bearing of the plane
+            bearing_degrees = aero_bearing(pos["lat"], pos["lon"], lat_to, lon_to)
 
+            # weather computations & A/C speed modification
             we, wn = 0, 0
-            bearing_degrees = aero_bearing(pos["lat"], pos["lon"], self.lat2, self.lon2)
+            temp = 273.15
+            if self.weather_interpolator:
+                # wind computations
+                wind_ms = self.weather_interpolator.interpol_wind_classic(
+                    lat=pos["lat"], longi=pos["lon"], alt=pos["alt"], t=pos["ts"]
+                )
+                we, wn = wind_ms[2][0], wind_ms[2][1]  # 0, 300
 
-            if self.wind_interpolator:
-                time = pos["ts"]
-                wind_ms = self.wind_interpolator.interpol_wind_classic(
-                    lat=pos["lat"], longi=pos["lon"], alt=pos["alt"], t=time
+                # temperature computations
+                temp = self.weather_interpolator.interpol_field(
+                    [pos["ts"], pos["alt"], pos["lat"], pos["lon"]],
+                    field="T"
                 )
 
-                we, wn = wind_ms[2][0], wind_ms[2][1]  # 0, 300
+                # check for NaN values
+                if math.isnan(temp):
+                    print("NaN values in temp")
+
             wspd = sqrt(wn * wn + we * we)
 
-            tas = mach2tas(pos["mach"], pos["alt"] * ft)
+            tas = mach2tas(pos["mach"], pos["alt"] * ft) # alt ft -> meters
 
             gs = compute_gspeed(
                 tas=tas,
@@ -813,24 +857,46 @@ class FlightPlanningDomain(
                 wind_direction=3 * math.pi / 2 - atan2(wn, we),
             )
 
-            cost = ((distance_to_goal / gs)) * (
-                self.fuel_flow(pos["mass"], tas * kts, pos["alt"] * ft)
-            )
+            # override temp computation
+            values_current = {
+                "mass": pos["mass"],
+                "alt": pos["alt"],
+                "speed": tas / kts,
+                "temp": temp,
+            }
 
+            # compute "time to arrival"
+            dt = distance_to_goal / gs
+
+            if distance_to_goal == 0:
+                return Value(cost=0)
+
+            if self.perf_model_name == 'PS':
+                cost = self.perf_model.compute_fuel_consumption(
+                    values_current,
+                    delta_time=dt,
+                    path_angle=math.degrees((alt_to - pos["alt"])*ft / (distance_to_goal)) 
+                    # approximation for small angles: tan(alpha) ~ alpha
+                )
+            else:
+                cost = self.perf_model.compute_fuel_consumption(
+                    values_current,
+                    delta_time=dt,
+                )
+            
         elif heuristic_name == "time":
             we, wn = 0, 0
             bearing_degrees = aero_bearing(pos["lat"], pos["lon"], self.lat2, self.lon2)
 
-            if self.wind_interpolator:
-                time = pos["ts"]
-                wind_ms = self.wind_interpolator.interpol_wind_classic(
-                    lat=pos["lat"], longi=pos["lon"], alt=pos["alt"], t=time
+            if self.weather_interpolator:
+                wind_ms = self.weather_interpolator.interpol_wind_classic(
+                    lat=pos["lat"], longi=pos["lon"], alt=pos["alt"], t=pos["ts"]
                 )
 
                 we, wn = wind_ms[2][0], wind_ms[2][1]  # 0, 300
             wspd = sqrt(wn * wn + we * we)
 
-            tas = mach2tas(pos["mach"], pos["alt"] * ft)
+            tas = mach2tas(pos["mach"], pos["alt"] * ft) # alt ft -> meters
 
             gs = compute_gspeed(
                 tas=tas,
@@ -843,16 +909,17 @@ class FlightPlanningDomain(
 
         elif heuristic_name == "lazy_fuel":
             fuel_consummed = s.trajectory.iloc[0]["mass"] - pos["mass"]
-            cost = 1.05 * distance_to_goal * (fuel_consummed / distance_to_start)
+            cost = 1.05 * distance_to_goal * (fuel_consummed / (distance_to_start+1e-8))
 
         elif heuristic_name == "lazy_time":
             cost = (
                 1.5
                 * distance_to_goal
-                * ((pos["ts"] - s.trajectory.iloc[0]["ts"]) / distance_to_start)
+                * ((pos["ts"] - s.trajectory.iloc[0]["ts"]) / (distance_to_start+1e-8))
             )
         else:
             cost = 0
+
         return Value(cost=cost)
 
     def set_network(
@@ -1209,7 +1276,7 @@ class FlightPlanningDomain(
 
         return pt
 
-    def get_network(self):
+    def get_network(self):        
         return self.network
 
     def flying(
@@ -1225,93 +1292,112 @@ class FlightPlanningDomain(
             pd.DataFrame: the final trajectory of the object
         """
         pos = from_.to_dict("records")[0]
-        alt = to_[2]
-        dist_ = distance(pos["lat"], pos["lon"], to_[0], to_[1], alt)
+
+        lat_to, lon_to, alt_to = to_[0], to_[1], to_[2]
+        dist_ = distance(pos["lat"], pos["lon"], lat_to, lon_to, h=(alt_to - pos["alt"])*ft)
+
         data = []
         epsilon = 100
         dt = 600
         dist = dist_
         loop = 0
+
         while dist > epsilon:
-            bearing_degrees = aero_bearing(pos["lat"], pos["lon"], to_[0], to_[1])
-
-            def heading(position, destination):
-                theta = np.arctan2(
-                    np.sin(np.pi / 180.0 * (destination[1] - position[1]))
-                    * np.cos(np.pi / 180.0 * destination[0]),
-                    np.cos(np.pi / 180.0 * position[0])
-                    * np.sin(np.pi / 180.0 * destination[0])
-                    - np.sin(np.pi / 180.0 * position[0])
-                    * np.cos(np.pi / 180.0 * destination[0])
-                    * np.cos(np.pi / 180.0 * (destination[1] - position[1])),
-                )
-                return theta
-
-            p, _, _ = atmos(alt * ft)
-            isobaric = p / 100
+            # bearing of the plane
+            bearing_degrees = aero_bearing(pos["lat"], pos["lon"], lat_to, lon_to)
+            
+            # wind computations & A/C speed modification
             we, wn = 0, 0
-            if self.wind_interpolator:
+            temp = 273.15
+            if self.weather_interpolator:
                 time = pos["ts"] % (3_600 * 24)
-                wind_ms = self.wind_interpolator.interpol_wind_classic(
-                    lat=pos["lat"], longi=pos["lon"], alt=alt, t=time
+
+                # wind computations
+                wind_ms = self.weather_interpolator.interpol_wind_classic(
+                    lat=pos["lat"], longi=pos["lon"], alt=alt_to, t=time
                 )
                 we, wn = wind_ms[2][0], wind_ms[2][1]
 
+                # temperature computations
+                temp = self.weather_interpolator.interpol_field(
+                    [pos["ts"], pos["alt"], pos["lat"], pos["lon"]],
+                    field="T"
+                )      
+
             wspd = sqrt(wn * wn + we * we)
-            tas = mach2tas(self.mach, alt * ft)
+
+            tas = mach2tas(self.mach, alt_to * ft) # alt ft -> meters
+
             gs = compute_gspeed(
                 tas=tas,
                 true_course=radians(bearing_degrees),
                 wind_speed=wspd,
                 wind_direction=3 * math.pi / 2 - atan2(wn, we),
             )
-
+            
             if gs * dt > dist:
                 # Last step. make sure we go to destination.
                 dt = dist / gs
-                ll = to_[0], to_[1]
+                ll = lat_to, lon_to
             else:
                 ll = latlon(
-                    pos["lat"], pos["lon"], d=gs * dt, brg=bearing_degrees, h=alt * ft
+                    pos["lat"], 
+                    pos["lon"], 
+                    d=gs * dt, 
+                    brg=bearing_degrees, 
+                    h=alt_to * ft
                 )
 
-            pos["fuel"] = dt * self.fuel_flow(
-                pos["mass"],
-                tas / kts,
-                alt * ft,
-                path_angle=(alt - pos["alt"]) / (gs * dt),
+            values_current = {
+                "mass": pos["mass"],
+                "alt": pos["alt"],
+                "speed": tas / kts,
+                "temp": temp,
+            }
+            
+            pos["fuel"] = self.perf_model.compute_fuel_consumption(
+                values_current,
+                delta_time=dt,
+                path_angle=math.degrees((alt_to - pos["alt"])*ft / (gs * dt)) 
+                # approximation for small angles: tan(alpha) ~ alpha
             )
+
             mass = pos["mass"] - pos["fuel"]
 
+            # get new weather interpolators
             if pos["ts"] + dt >= (3_600.0 * 24.0):
                 if self.weather_date:
                     if self.weather_date == self.initial_date:
                         self.weather_date = self.weather_date.next_day()
-                        self.wind_interpolator = self.get_wind_interpolator()
+                        self.weather_interpolator = self.get_weather_interpolator()
             else:
                 if self.weather_date != self.initial_date:
                     self.weather_date = self.weather_date.previous_day()
-                    self.wind_interpolator = self.get_wind_interpolator()
+                    self.weather_interpolator = self.get_weather_interpolator()
 
             new_row = {
-                "ts": pos["ts"] + dt,
+                "ts": (pos["ts"] + dt),
                 "lat": ll[0],
                 "lon": ll[1],
                 "mass": mass,
                 "mach": self.mach,
                 "fuel": pos["fuel"],
-                "alt": alt,  # to be modified
+                "alt": alt_to,  # to be modified
             }
 
-            # New distance to the next 'checkpoint'
             dist = distance(
-                new_row["lat"], new_row["lon"], to_[0], to_[1], new_row["alt"]
+                ll[0], 
+                ll[1], 
+                lat_to, 
+                lon_to,
+                h=(pos["alt"] - alt_to)*ft # height difference in m
             )
 
             if dist < dist_:
                 data.append(new_row)
                 dist_ = dist
                 pos = data[-1]
+
             else:
                 dt = int(dt / 10)
                 print("going in the wrong part.")
@@ -1320,11 +1406,13 @@ class FlightPlanningDomain(
             loop += 1
 
         return pd.DataFrame(data)
+    
+    def get_weather_interpolator(self) -> GenericWindInterpolator:
+        weather_interpolator = None
 
-    def get_wind_interpolator(self) -> GenericWindInterpolator:
-        wind_interpolator = None
         if self.weather_date:
             w_dict = self.weather_date.to_dict()
+
             mat = get_weather_matrix(
                 year=w_dict["year"],
                 month=w_dict["month"],
@@ -1333,12 +1421,15 @@ class FlightPlanningDomain(
                 delete_npz_from_local=False,
                 delete_grib_from_local=False,
             )
-            wind_interpolator = GenericWindInterpolator(file_npz=mat)
-        return wind_interpolator
 
+            # returns both wind and temperature interpolators
+            weather_interpolator = GenericWindInterpolator(file_npz=mat)
+
+        return weather_interpolator
+  
     def custom_rollout(self, solver, max_steps=100, make_img=True):
         observation = self.reset()
-
+        
         solver.reset()
         clear_output(wait=True)
 
@@ -1351,6 +1442,8 @@ class FlightPlanningDomain(
             # get corresponding action
             outcome = self.step(action)
             observation = outcome.observation
+            
+            # self.observation = observation
 
             print("step ", i_step)
             print("policy = ", action[0], action[1])
@@ -1359,23 +1452,35 @@ class FlightPlanningDomain(
             print("Mach = ", observation.trajectory.iloc[-1]["mach"])
             print(observation)
 
-            if make_img:
-                # update image
-                plt.clf()  # clear figure
-                clear_output(wait=True)
-                figure = self.render(observation)
-                # plt.savefig(f'step_{i_step}')
+            # if make_img:
+            #     # update image
+            #     plt.clf()  # clear figure
+            #     clear_output(wait=True)
+            #     figure = self.render(observation)
+            #     # plt.savefig(f'step_{i_step}')
 
             # final state reached?
             if self.is_terminal(observation):
                 break
         if make_img:
-            plt.savefig(f"terminal")
-            plt.clf()
+            print("Final state reached")
             clear_output(wait=True)
-            figure = plot_altitude(observation.trajectory)
-            plt.savefig("altitude")
-            plot_network(self)
+            fig = plot_full(self, observation.trajectory)
+            # plt.savefig(f"full_plot")
+            plt.show()
+            pass
+            # clear_output(wait=True)
+            # plt.title(f'Flight plan - {self.origin} -> {self.destination} \n Model: {self.perf_model_name}, Fuel: {np.round(observation.trajectory["fuel"].sum(), 2)} Kg')
+            # plt.savefig(f"terminal")
+            # plt.show()
+            
+            # figure = plot_altitude(observation.trajectory)
+            # plt.savefig("altitude")
+            # plt.show()
+            # figure = plot_mass(observation.trajectory)
+            # plt.savefig("mass")
+            # plt.show()
+            # plot_network(self)
         # goal reached?
         is_goal_reached = self.is_goal(observation)
 

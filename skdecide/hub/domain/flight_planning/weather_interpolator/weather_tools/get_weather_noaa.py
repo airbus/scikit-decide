@@ -163,6 +163,7 @@ def get_weather_matrix(
         os.remove(
             os.path.join(exportdir_npz, str(year) + str(month) + str(day) + ".npz")
         )
+        
     return matrix
 
 
