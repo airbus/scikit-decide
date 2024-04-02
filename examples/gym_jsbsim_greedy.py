@@ -11,7 +11,7 @@ from gym_jsbsim.catalogs.catalog import Catalog as prp
 from gym_jsbsim.envs.taxi_utils import *
 
 from skdecide import Solver
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import DeterministicPolicies, FromAnyState, Utilities
 from skdecide.hub.domain.gym import DeterministicGymDomain, GymDiscreteActionDomain
 from skdecide.utils import rollout
 
@@ -100,7 +100,7 @@ class GymGreedyDomain(D):
         self._map.save("gym_jsbsim_map_update.html")
 
 
-class GreedyPlanner(Solver, DeterministicPolicies, Utilities):
+class GreedyPlanner(Solver, DeterministicPolicies, Utilities, FromAnyState):
     T_domain = D
 
     def __init__(self):
@@ -115,9 +115,6 @@ class GreedyPlanner(Solver, DeterministicPolicies, Utilities):
         lon = self._domain._gym_env.sim.get_property_value(prp.position_long_gc_deg)
         lat = self._domain._gym_env.sim.get_property_value(prp.position_lat_geod_deg)
         self._current_pos = (lat, lon)
-
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
-        self._init_solve(domain_factory)
 
     def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
         self._best_action = None

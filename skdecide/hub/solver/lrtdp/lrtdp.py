@@ -19,7 +19,12 @@ from skdecide.builders.domain import (
     SingleAgent,
     UncertainTransitions,
 )
-from skdecide.builders.solver import DeterministicPolicies, ParallelSolver, Utilities
+from skdecide.builders.solver import (
+    DeterministicPolicies,
+    FromAnyState,
+    ParallelSolver,
+    Utilities,
+)
 from skdecide.core import Value
 
 record_sys_path = sys.path
@@ -45,7 +50,7 @@ try:
     ):
         pass
 
-    class LRTDP(ParallelSolver, Solver, DeterministicPolicies, Utilities):
+    class LRTDP(ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState):
         T_domain = D
 
         def __init__(
@@ -130,9 +135,6 @@ try:
                 watchdog=self._watchdog,
             )
             self._solver.clear()
-
-        def _solve(self, domain_factory: Callable[[], D]) -> None:
-            self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             self._solver.solve(memory)
