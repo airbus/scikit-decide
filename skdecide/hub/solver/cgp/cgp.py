@@ -271,7 +271,7 @@ class CGPWrapper(Solver, DeterministicPolicies):
 
         return valide_action_space and validate_observation_space
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         domain = domain_factory()
 
         evaluator = SkDecideEvaluator(domain)

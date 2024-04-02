@@ -186,7 +186,7 @@ class DOSolver(Solver, DeterministicPolicies):
 
         return smap
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self.domain = domain_factory()
         self.do_domain = build_do_domain(self.domain)
         solvers = build_solver(solving_method=self.method, do_domain=self.do_domain)

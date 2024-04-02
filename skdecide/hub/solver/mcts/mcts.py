@@ -170,7 +170,7 @@ try:
             )
             self._solver.clear()
 
-        def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+        def _solve(self, domain_factory: Callable[[], D]) -> None:
             self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
@@ -293,8 +293,8 @@ try:
             self._action_choice_noise = action_choice_noise
             self._heuristic_records = {}
 
-        def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
-            super()._solve_domain(domain_factory=domain_factory)
+        def _solve(self, domain_factory: Callable[[], D]) -> None:
+            super()._solve(domain_factory=domain_factory)
             self._heuristic_records = {}
 
         def _value_heuristic(

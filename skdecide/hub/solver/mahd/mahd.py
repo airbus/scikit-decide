@@ -74,7 +74,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities):
             a: {} for a in self._multiagent_domain.get_agents()
         }
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self._multiagent_domain_class.solve_with(
             solver=self._multiagent_solver, domain_factory=domain_factory
         )

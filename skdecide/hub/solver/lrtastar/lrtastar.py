@@ -77,7 +77,7 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities):
         self.heuristic_changed = False
         self._policy = {}
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self._domain = domain_factory()
         self.values = {}
         iteration = 0

@@ -35,7 +35,7 @@ class PilePolicy(Solver, DeterministicPolicies):
     def __init__(self, greedy_method: GreedyChoice = GreedyChoice.MOST_SUCCESSORS):
         self.greedy_method = greedy_method
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self.domain = domain_factory()
         self.graph = self.domain.graph
         self.nx_graph: nx.DiGraph = self.graph.to_networkx()
