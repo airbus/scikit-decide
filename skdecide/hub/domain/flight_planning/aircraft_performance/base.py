@@ -1,5 +1,5 @@
 # models fuel flows
-from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils import pollschumann
+from poll_schumann import pollschumann
 import openap
 
 from typing import Dict, Optional

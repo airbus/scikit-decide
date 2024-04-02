@@ -37,7 +37,7 @@ from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.inte
 from skdecide.hub.space.gym import EnumSpace, ListSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver
 
-from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.engine_loader import load_aircraft_engine_params
+from poll_schumann.engine_loader import load_aircraft_engine_params
 
 # typing
 from typing import Any, Callable, Optional, Tuple, Union
