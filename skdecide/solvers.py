@@ -5,10 +5,10 @@
 """This module contains base classes for quickly building solvers."""
 from __future__ import annotations
 
-from typing import Callable, List
+from typing import List
 
+from skdecide.builders.solver.fromanystatesolvability import FromInitialState
 from skdecide.builders.solver.policy import DeterministicPolicies
-from skdecide.core import D, autocast_all, autocastable
 from skdecide.domains import Domain
 
 __all__ = ["Solver", "DeterministicPolicySolver"]
@@ -17,7 +17,7 @@ __all__ = ["Solver", "DeterministicPolicySolver"]
 # MAIN BASE CLASS
 
 
-class Solver:
+class Solver(FromInitialState):
     """This is the highest level solver class (inheriting top-level class for each mandatory solver characteristic).
 
     This helper class can be used as the main base class for solvers.
@@ -124,73 +124,6 @@ class Solver:
 
         This function does nothing by default but can be overridden if needed (e.g. to reset the hidden state of a LSTM
         policy network, which carries information about past observations seen in the previous episode).
-        """
-        pass
-
-    def solve(self, domain_factory: Callable[[], Domain]) -> None:
-        """Run the solving process.
-
-        By default, #Solver.solve() provides some boilerplate code and internally calls #Solver._solve(). The
-        boilerplate code transforms the domain factory to auto-cast the new domains to the level expected by the solver.
-
-        # Parameters
-        domain_factory: A callable with no argument returning the domain to solve (can be just a domain class).
-
-        !!! tip
-            The nature of the solutions produced here depends on other solver's characteristics like
-            #policy and #assessibility.
-        """
-
-        def cast_domain_factory():
-            domain = domain_factory()
-            autocast_all(domain, domain, self.T_domain)
-            return domain
-
-        return self._solve(cast_domain_factory)
-
-    def _solve(self, domain_factory: Callable[[], T_domain]) -> None:
-        """Run the solving process.
-
-        This is a helper function called by default from #Solver.solve(), the difference being that the domain factory
-        here returns domains auto-cast to the level expected by the solver.
-
-        # Parameters
-        domain_factory: A callable with no argument returning the domain to solve (auto-cast to expected level).
-
-        !!! tip
-            The nature of the solutions produced here depends on other solver's characteristics like
-            #policy and #assessibility.
-        """
-        raise NotImplementedError
-
-    @autocastable
-    def solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-        """Run the solving process from a given state.
-
-        !!! tip
-            Create the domain first by calling the @Solver.reset() method
-
-        # Parameters
-        memory: The source memory (state or history) of the transition.
-
-        !!! tip
-            The nature of the solutions produced here depends on other solver's characteristics like
-            #policy and #assessibility.
-        """
-        return self._solve_from(memory)
-
-    def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-        """Run the solving process from a given state.
-
-        !!! tip
-            Create the domain first by calling the @Solver.reset() method
-
-        # Parameters
-        memory: The source memory (state or history) of the transition.
-
-        !!! tip
-            The nature of the solutions produced here depends on other solver's characteristics like
-            #policy and #assessibility.
         """
         pass
 
