@@ -61,7 +61,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
         self._values = {}
         self._plan = []
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self._domain = domain_factory()
 
         def extender(node, label, explored):

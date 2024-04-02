@@ -46,17 +46,6 @@ class Solver:
         # Returns
         A list of classes to inherit from.
         """
-        return cls._get_domain_requirements()
-
-    @classmethod
-    def _get_domain_requirements(cls) -> List[type]:
-        """Get domain requirements for this solver class to be applicable.
-
-        Domain requirements are classes from the #skdecide.builders.domain package that the domain needs to inherit from.
-
-        # Returns
-        A list of classes to inherit from.
-        """
 
         def is_domain_builder(
             cls,
@@ -101,25 +90,8 @@ class Solver:
         # Returns
         True if the domain is compliant with the solver type (False otherwise).
         """
-        return cls._check_domain(domain)
-
-    @classmethod
-    def _check_domain(cls, domain: Domain) -> bool:
-        """Check whether a domain is compliant with this solver type.
-
-        By default, #Solver._check_domain() provides some boilerplate code and internally
-        calls #Solver._check_domain_additional() (which returns True by default but can be overridden to define specific
-        checks in addition to the "domain requirements"). The boilerplate code automatically checks whether all domain
-        requirements are met.
-
-        # Parameters
-        domain: The domain to check.
-
-        # Returns
-        True if the domain is compliant with the solver type (False otherwise).
-        """
         check_requirements = all(
-            isinstance(domain, req) for req in cls._get_domain_requirements()
+            isinstance(domain, req) for req in cls.get_domain_requirements()
         )
         return check_requirements and cls._check_domain_additional(domain)
 
@@ -128,7 +100,7 @@ class Solver:
         """Check whether the given domain is compliant with the specific requirements of this solver type (i.e. the
         ones in addition to "domain requirements").
 
-        This is a helper function called by default from #Solver._check_domain(). It focuses on specific checks, as
+        This is a helper function called by default from #Solver.check_domain(). It focuses on specific checks, as
         opposed to taking also into account the domain requirements for the latter.
 
         # Parameters
@@ -168,33 +140,18 @@ class Solver:
             The nature of the solutions produced here depends on other solver's characteristics like
             #policy and #assessibility.
         """
-        return self._solve(domain_factory)
-
-    def _solve(self, domain_factory: Callable[[], Domain]) -> None:
-        """Run the solving process.
-
-        By default, #Solver._solve() provides some boilerplate code and internally calls #Solver._solve_domain(). The
-        boilerplate code transforms the domain factory to auto-cast the new domains to the level expected by the solver.
-
-        # Parameters
-        domain_factory: A callable with no argument returning the domain to solve (can be just a domain class).
-
-        !!! tip
-            The nature of the solutions produced here depends on other solver's characteristics like
-            #policy and #assessibility.
-        """
 
         def cast_domain_factory():
             domain = domain_factory()
             autocast_all(domain, domain, self.T_domain)
             return domain
 
-        return self._solve_domain(cast_domain_factory)
+        return self._solve(cast_domain_factory)
 
-    def _solve_domain(self, domain_factory: Callable[[], T_domain]) -> None:
+    def _solve(self, domain_factory: Callable[[], T_domain]) -> None:
         """Run the solving process.
 
-        This is a helper function called by default from #Solver._solve(), the difference being that the domain factory
+        This is a helper function called by default from #Solver.solve(), the difference being that the domain factory
         here returns domains auto-cast to the level expected by the solver.
 
         # Parameters

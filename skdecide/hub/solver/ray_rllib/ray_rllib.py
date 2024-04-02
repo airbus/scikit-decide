@@ -99,7 +99,7 @@ class RayRLlib(Solver, Policies, Restorable):
                 isinstance(o, GymSpace) for o in domain.get_observation_space().values()
             )
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         # Reuse algo if possible (enables further learning)
         if not hasattr(self, "_algo"):
             self._init_algo(domain_factory)

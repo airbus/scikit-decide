@@ -543,7 +543,7 @@ class GPHH(Solver, DeterministicPolicies):
     #         else:
     #             self.reference_makespans[td] = reference_makespans[td_name]
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self.domain = domain_factory()
 
         tournament_ratio = self.params_gphh.tournament_ratio

@@ -139,7 +139,7 @@ class MaxentIRL(Solver, Policies, Restorable):
                 demonstrations[x][y][1] = rawFile["actions"][index]
                 index += 1
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self.env = domain_factory()
         if self.q_table is not None:
             return

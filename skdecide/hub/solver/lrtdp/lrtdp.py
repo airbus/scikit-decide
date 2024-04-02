@@ -131,7 +131,7 @@ try:
             )
             self._solver.clear()
 
-        def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+        def _solve(self, domain_factory: Callable[[], D]) -> None:
             self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
