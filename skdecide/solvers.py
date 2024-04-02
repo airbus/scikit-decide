@@ -124,7 +124,7 @@ class Solver:
         return check_requirements and cls._check_domain_additional(domain)
 
     @classmethod
-    def _check_domain_additional(cls, domain: D) -> bool:
+    def _check_domain_additional(cls, domain: Domain) -> bool:
         """Check whether the given domain is compliant with the specific requirements of this solver type (i.e. the
         ones in addition to "domain requirements").
 
@@ -191,7 +191,7 @@ class Solver:
 
         return self._solve_domain(cast_domain_factory)
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve_domain(self, domain_factory: Callable[[], T_domain]) -> None:
         """Run the solving process.
 
         This is a helper function called by default from #Solver._solve(), the difference being that the domain factory
