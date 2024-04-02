@@ -435,8 +435,8 @@ def run_example():
     solver = None
     # UNCOMMENT BELOW TO USE ASTAR
     # domain.set_inplace_environment(False)
-    # solver = lazy_astar.LazyAstar(from_state=state, heuristic=None, verbose=True)
-    # solver.solve(domain_factory=lambda: domain)
+    # solver = lazy_astar.LazyAstar(heuristic=None, verbose=True)
+    # solver.solve(domain_factory=lambda: domain, from_memory=state)
     states, actions, values = rollout_episode(
         domain=domain,
         max_steps=1000,
@@ -455,8 +455,8 @@ def run_astar():
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
     print("Initial state : ", state)
-    solver = LazyAstar(from_state=state, heuristic=None, verbose=True)
-    solver.solve(domain_factory=lambda: domain)
+    solver = LazyAstar(heuristic=None, verbose=True)
+    solver.solve(domain_factory=lambda: domain, from_memory=state)
     states, actions, values = rollout_episode(
         domain=domain,
         max_steps=1000,
