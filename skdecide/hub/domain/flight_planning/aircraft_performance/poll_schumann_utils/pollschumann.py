@@ -9,7 +9,7 @@ from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_util
 from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.parameters import (units, operational_limits as op_lim, jet, atmospheric_parameters as atm_params)
 
 # aero
-from poll_schumann.utils.aero import ft, kts
+from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.utils.aero import ft, kts
 
 # typing
 from typing import Any, Dict, Optional
