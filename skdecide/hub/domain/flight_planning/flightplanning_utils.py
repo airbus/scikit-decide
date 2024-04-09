@@ -307,8 +307,16 @@ def plot_network(domain, dir=None):
     network = domain.network
     origin_coord = domain.lat1, domain.lon1, domain.alt1
     target_coord = domain.lat2, domain.lon2, domain.alt2
-    fig, ax = plt.subplots(1, subplot_kw={"projection": ccrs.PlateCarree()})
-    ax.set_extent(
+    
+    # fig, ax = plt.subplots(1, subplot_kw={"projection": ccrs.PlateCarree()})
+    fig = plt.figure(figsize=(15, 10))
+        
+    # define the grid layout
+    gs = gridspec.GridSpec(1, 2, width_ratios=[1, 1])
+    ax1 = fig.add_subplot(gs[0], projection=ccrs.PlateCarree())
+    ax2 = fig.add_subplot(gs[1])
+    
+    ax1.set_extent(
         [
             min(origin_coord[1], target_coord[1]) - 4,
             max(origin_coord[1], target_coord[1]) + 4,
@@ -316,27 +324,52 @@ def plot_network(domain, dir=None):
             max(origin_coord[0], target_coord[0]) + 2,
         ]
     )
-    ax.add_feature(OCEAN, facecolor="#d1e0e0", zorder=-1, lw=0)
-    ax.add_feature(LAND, facecolor="#f5f5f5", lw=0)
-    ax.add_feature(BORDERS, lw=0.5, color="gray")
-    ax.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
-    ax.coastlines(resolution="50m", lw=0.5, color="gray")
-    ax.scatter(
-        [
-            network[x][x1][x2].lon
-            for x in range(len(network))
-            for x1 in range(len(network[x]))
-            for x2 in range(len(network[x][x1]))
-        ],
-        [
-            network[x][x1][x2].lat
-            for x in range(len(network))
-            for x1 in range(len(network[x]))
-            for x2 in range(len(network[x][x1]))
-        ],
+    ax1.add_feature(OCEAN, facecolor="#d1e0e0", zorder=-1, lw=0)
+    ax1.add_feature(LAND, facecolor="#f5f5f5", lw=0)
+    ax1.add_feature(BORDERS, lw=0.5, color="gray")
+    ax1.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
+    ax1.coastlines(resolution="50m", lw=0.5, color="gray")
+    
+    lon_values = [
+        network[x][x1][x2].lon
+        for x in range(len(network))
+        for x1 in range(len(network[x]))
+        for x2 in range(len(network[x][x1]))
+    ]
+    lat_values = [
+        network[x][x1][x2].lat
+        for x in range(len(network))
+        for x1 in range(len(network[x]))
+        for x2 in range(len(network[x][x1]))
+    ]
+    height_values = [
+        network[x][x1][x2].height / ft
+        for x in range(len(network))
+        for x1 in range(len(network[x]))
+        for x2 in range(len(network[x][x1]))
+    ]
+    distance_to_origin = [
+        LatLon(lat_values[i], lon_values[i], height_values[i])
+        .distanceTo(LatLon(origin_coord[0], origin_coord[1], origin_coord[2]))  / nm
+        for i in range(len(lon_values))
+    ]
+
+
+    ax1.scatter(
+        lon_values,
+        lat_values,
         transform=ccrs.Geodetic(),
         s=0.2,
     )
+
+    ax2.scatter(
+        distance_to_origin,
+        height_values,
+        s=0.2,
+    )
+
+    plt.tight_layout()
+    plt.show()
 
     if dir:
         fig.savefig(f"{dir}/network points.png")
