@@ -153,12 +153,12 @@ def test_up_bridge_domain_rl():
         import unified_planning
         from ray.rllib.algorithms.dqn import DQN
         from unified_planning.shortcuts import (
-            BoolType,
-            IntType,
-            UserType,
-            Int,
-            SimulatedEffect,
             GE,
+            BoolType,
+            Int,
+            IntType,
+            SimulatedEffect,
+            UserType,
         )
 
         from skdecide.hub.domain.up import UPDomain
