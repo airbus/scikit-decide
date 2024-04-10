@@ -28,6 +28,3 @@ docs/.vuepress/_state.json
 docs/.vuepress/public/notebooks/
 docs/*/_*.md
 docs/notebooks/README.md
-
-# C extensions
-*.so
