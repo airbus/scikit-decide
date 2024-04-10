@@ -152,7 +152,14 @@ def test_up_bridge_domain_rl():
     try:
         import unified_planning
         from ray.rllib.algorithms.dqn import DQN
-        from unified_planning.shortcuts import BoolType, UserType
+        from unified_planning.shortcuts import (
+            BoolType,
+            IntType,
+            UserType,
+            Int,
+            SimulatedEffect,
+            GE,
+        )
 
         from skdecide.hub.domain.up import UPDomain
         from skdecide.hub.solver.ray_rllib import RayRLlib
@@ -163,6 +170,9 @@ def test_up_bridge_domain_rl():
         connected = unified_planning.model.Fluent(
             "connected", BoolType(), l_from=Location, l_to=Location
         )
+        battery_charge = unified_planning.model.Fluent(
+            "battery_charge", IntType(0, 100)
+        )
 
         move = unified_planning.model.InstantaneousAction(
             "move", l_from=Location, l_to=Location
@@ -171,12 +181,22 @@ def test_up_bridge_domain_rl():
         l_to = move.parameter("l_to")
         move.add_precondition(connected(l_from, l_to))
         move.add_precondition(robot_at(l_from))
+        move.add_precondition(GE(battery_charge(), 10))
         move.add_effect(robot_at(l_from), False)
         move.add_effect(robot_at(l_to), True)
+
+        def fun(_, state, actual_params):
+            value = state.get_value(
+                battery_charge(actual_params.get())
+            ).constant_value()
+            return [Int(value - 10)]
+
+        move.set_simulated_effect(SimulatedEffect([battery_charge()], fun))
 
         problem = unified_planning.model.Problem("robot")
         problem.add_fluent(robot_at, default_initial_value=False)
         problem.add_fluent(connected, default_initial_value=False)
+        problem.add_fluent(battery_charge, default_initial_value=False)
         problem.add_action(move)
 
         NLOC = 10
@@ -188,6 +208,7 @@ def test_up_bridge_domain_rl():
         problem.set_initial_value(robot_at(locations[0]), True)
         for i in range(NLOC - 1):
             problem.set_initial_value(connected(locations[i], locations[i + 1]), True)
+        problem.set_initial_value(battery_charge(), 150)
 
         problem.add_goal(robot_at(locations[-1]))
 
