@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from heapq import heappop, heappush
 from itertools import count
-from typing import Callable, Optional
+from typing import Callable, Dict, List, Optional
 
 from skdecide import Domain, Solver, Value
 from skdecide.builders.domain import (
@@ -57,7 +57,15 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         self._verbose = verbose
         self._render = render
         self._values = {}
-        self._plan = []
+        self._plan: List[D.T_event] = []
+
+    def get_plan(self) -> List[D.T_event]:
+        """Return the computed plan."""
+        return self._plan
+
+    def get_policy(self) -> Dict[D.T_observation, Optional[D.T_event]]:
+        """Return the computed policy."""
+        return self._policy
 
     def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
         """Initialize solver before calling `solve_from()`
@@ -186,7 +194,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
                         lbl,
                     ),
                 )
-        self._policy = {}
+        self._policy: Dict[D.T_observation, Optional[D.T_event]] = {}
         for node, label in path:
             self._policy[node] = label["action"] if label is not None else None
             self._values[node] = estim_total - enqueued[node][0]

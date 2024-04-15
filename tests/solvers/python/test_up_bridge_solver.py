@@ -133,6 +133,7 @@ def test_up_bridge_solver_numeric():
         engine_params={"output_stream": sys.stdout},
     ) as solver:
         UPDomain.solve_with(solver, domain_factory)
+
         s = domain.get_initial_state()
         step = 0
         p = []
@@ -140,6 +141,9 @@ def test_up_bridge_solver_numeric():
             p.append(solver.get_next_action(s))
             s = domain.get_next_state(s, p[-1])
             step += 1
+
+        # test get_policy()
+        policy = solver.get_policy()
 
     assert (
         UPSolver.check_domain(domain)

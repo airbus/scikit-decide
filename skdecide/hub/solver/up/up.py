@@ -92,5 +92,10 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
     def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
         return self._values[observation]
 
+    def get_policy(self) -> Dict[D.T_agent[D.T_observation], SkUPAction]:
+        """Return the computed policy."""
+        return self._policy
+
     def get_plan(self) -> List[SkUPAction]:
+        """Return the computed plan."""
         return self._plan

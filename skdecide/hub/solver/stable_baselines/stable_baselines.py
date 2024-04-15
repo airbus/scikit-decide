@@ -4,8 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional, Type, Union
 
+from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from skdecide import Domain, Solver
@@ -35,9 +37,9 @@ class StableBaseline(Solver, Policies, Restorable):
 
     def __init__(
         self,
-        algo_class: type,
-        baselines_policy: Any,
-        learn_config: Dict = None,
+        algo_class: Type[BaseAlgorithm],
+        baselines_policy: Union[str, Type[BasePolicy]],
+        learn_config: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         """Initialize StableBaselines.
@@ -97,3 +99,7 @@ class StableBaseline(Solver, Policies, Restorable):
         self._unwrap_obs = lambda o: next(
             iter(domain.get_observation_space().to_unwrapped([o]))
         )
+
+    def get_policy(self) -> BasePolicy:
+        """Return the computed policy."""
+        return self._algo.policy
