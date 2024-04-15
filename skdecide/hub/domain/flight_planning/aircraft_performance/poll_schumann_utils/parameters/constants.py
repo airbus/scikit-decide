@@ -2,12 +2,12 @@
 gamma: float = 1.4
 
 # constant of air in the ideal gas law
-R: float = 287.0500676 # J/(kg*K)
+R: float = 287.0500676  # J/(kg*K)
 
 # gravitational acceleration
-g: float = 9.807 # m/s^2
+g: float = 9.807  # m/s^2
 
-# standard atmospheric temperature at mean sea level 
+# standard atmospheric temperature at mean sea level
 T_msl: float = 288.15
 
 # surface pressure, internation standard atmosphere

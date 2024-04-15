@@ -9,11 +9,13 @@ import numpy as np
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.common_utils as Toolbox
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.intergrid as intergrid
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.std_atm as std_atm
+from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.common_utils import (
+    convert,
+)
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.WeatherInterpolator import (
     WeatherInterpolator,
 )
 
-from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.common_utils import convert
 
 class GenericInterpolator(ABC):
     @abstractmethod
@@ -125,7 +127,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
 
             # items: U, V, T, R
             self.values = {var: items[var]["values"] for var in items}
-            
+
             if self.time_cut_index is not None:
                 index_cut = min(
                     self.time_cut_index,
@@ -133,20 +135,22 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 )
                 for var in self.values:
                     self.values[var] = self.values[var][:index_cut, :, :, :]
-        elif isinstance(file_npz, dict):  # Already loaded data in a dict (directly from parseWeather indeed)
-            
+        elif isinstance(
+            file_npz, dict
+        ):  # Already loaded data in a dict (directly from parseWeather indeed)
+
             self.datas = file_npz
             if fields is None:
                 fields = self.datas.keys()
             else:
                 fields = [f for f in fields if f in list(self.datas.keys())]
-            
-            ### ??? ### 
+
+            ### ??? ###
             # if fields is None:
             #     fields = self.datas.keys()
             # else:
             #     fields = [f for f in fields if f in list(self.datas.keys())]
-                
+
             # self.datas.allow_pickle = True
             items = {var: self.datas[var] for var in fields}
             self.lat_dict = {var: items[var]["lats"] for var in fields}
@@ -160,7 +164,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 var: items[var]["levels"] if "levels" in items[var] else [200.0]
                 for var in fields
             }
-            
+
             self.time_dict = {var: items[var]["times"] for var in fields}
             if time_shift_s != 0.0:
                 for v in self.time_dict:
@@ -197,7 +201,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 self.levels_dict[var],
                 self.time_dict[var],
             )
-            
+
             self.axes[var] = axes
             self.interpol_dict[var] = intergrid.Intergrid(
                 self.values[var],
@@ -208,7 +212,6 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 copy=True,
                 order=order,
             )
-
 
     def add_new_field(self, origin_field, operation, axis, new_field):
         values = self.values[origin_field]
@@ -464,6 +467,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
         except:
             pass
 
+
 class GenericWindInterpolator(GenericEnsembleInterpolator, WeatherInterpolator):
     """
     Class used to store weather data, interpolate and plot weather forecast from .npz files
@@ -520,11 +524,13 @@ class GenericWindInterpolator(GenericEnsembleInterpolator, WeatherInterpolator):
 
         if len(self.axes["U"][1]) == 5:
             norm = self.interpol_dict["norm-wind"]([t, p, index_forecast, lat, longi])
-            arg = self.interpol_dict["argument-wind"]([t, p, index_forecast, lat, longi])
+            arg = self.interpol_dict["argument-wind"](
+                [t, p, index_forecast, lat, longi]
+            )
 
             result = norm * np.array([np.cos(arg), np.sin(arg)])
             return [norm, arg, result]
-        
+
         if len(self.axes["U"][1]) == 4:
             norm = self.interpol_dict["norm-wind"]([t, p, lat, longi])
             arg = self.interpol_dict["argument-wind"]([t, p, lat, longi])

@@ -60,7 +60,7 @@ class WeatherForecastInterpolator(WeatherInterpolator):
         self.time_cut_index = time_cut_index
         if isinstance(file_npz, (str, np.lib.npyio.NpzFile)):
             self.datas = np.load(file_npz) if isinstance(file_npz, str) else file_npz
-            
+
             self.lat_dict = {
                 var: self.datas[var].item()["lats"] for var in self.datas.keys()
             }
@@ -102,7 +102,9 @@ class WeatherForecastInterpolator(WeatherInterpolator):
             self.long_dict = {
                 var: self.datas[var]["longs"] for var in self.datas.keys()
             }
-            self.alt_dict = {var: self.datas[var]["levels"] for var in self.datas.keys()}
+            self.alt_dict = {
+                var: self.datas[var]["levels"] for var in self.datas.keys()
+            }
             self.time_dict = {
                 var: self.datas[var]["times"] for var in self.datas.keys()
             }
@@ -124,11 +126,9 @@ class WeatherForecastInterpolator(WeatherInterpolator):
                 elif feat == "T":
                     self.temperature = self.temperature[:, :, ::-1, :]
 
-
         # self.norm_wind = np.sqrt(np.square(self.u_wind) + np.square(self.v_wind))
         # self.angle_wind = np.arctan2(self.v_wind, self.u_wind)
-        
-        
+
         self.interpol_dict = {}
         # self.interpol_dict["wind"] = {
         #     "norm": intergrid.Intergrid(

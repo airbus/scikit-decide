@@ -1,9 +1,14 @@
-from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.parameters import units
 import numpy as np
 
+from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.parameters import (
+    units,
+)
 
-def equivalent_fuel_flow_rate_at_cruise(fuel_flow_sls: float, theta_amb: float, delta_amb: float, mach_num: float) -> float:
-    """ Convert fuel mass flow rate at sea level to equivalent fuel flow rate at cruise conditions.
+
+def equivalent_fuel_flow_rate_at_cruise(
+    fuel_flow_sls: float, theta_amb: float, delta_amb: float, mach_num: float
+) -> float:
+    """Convert fuel mass flow rate at sea level to equivalent fuel flow rate at cruise conditions.
 
     Args:
         fuel_flow_sls (float):
@@ -25,10 +30,12 @@ def equivalent_fuel_flow_rate_at_cruise(fuel_flow_sls: float, theta_amb: float, 
 
     return fuel_flow_sls / denom
 
+
 def clip_mach_number(
     true_airspeed: float,
     air_temperature: float,
-    max_mach_number: float,):
+    max_mach_number: float,
+):
     """Compute the Mach number from the true airspeed and ambient temperature.
 
     Args:
@@ -55,7 +62,10 @@ def clip_mach_number(
 
     return adjusted_true_airspeed, adjusted_mach_num
 
-def rate_of_climb_descent(altitude_current: float, altitude_next: float, delta_time: float) -> float:
+
+def rate_of_climb_descent(
+    altitude_current: float, altitude_next: float, delta_time: float
+) -> float:
     """Compute the rate of climb or descent (ft/min) from the path angle and speed.
 
     Args:
@@ -72,11 +82,12 @@ def rate_of_climb_descent(altitude_current: float, altitude_next: float, delta_t
 
     delta_time_min = delta_time / 60.0
 
-    return (altitude_next - altitude_current) / (delta_time_min+1e-8)
+    return (altitude_next - altitude_current) / (delta_time_min + 1e-8)
+
 
 # TODO: if speed not constant, change this function
 def acceleration(speed_current, delta_time) -> float:
-    """ Calculate the acceleration/deceleration at each waypoint.
+    """Calculate the acceleration/deceleration at each waypoint.
 
     Args:
         speed_current (float):

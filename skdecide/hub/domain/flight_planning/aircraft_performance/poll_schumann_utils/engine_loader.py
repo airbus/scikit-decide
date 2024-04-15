@@ -1,9 +1,13 @@
-import pandas as pd
-
-from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.parameters import aircraft_parameters as arc_params
 from pathlib import Path
 
+import pandas as pd
+
+from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.parameters import (
+    aircraft_parameters as arc_params,
+)
+
 PS_FILE_PATH = str(Path(__file__).parent / "data" / "aircraft_engine_params.csv")
+
 
 def load_aircraft_engine_params(actype: str):
     """Extract aircraft-engine parameters for each aircraft type supported by the PS model."""
@@ -81,9 +85,17 @@ def load_aircraft_engine_params(actype: str):
 
     df["j_3"] = 70.0
     df["f_00"] = df["f_00"] * 1_000.0
-    df["tet_mto"] = arc_params.turbine_entry_temperature_at_max_take_off(df["Year_of_first_flight"].values)
-    df["p_i_max"] = arc_params.impact_pressure_max_operating_limits(df["max_mach_num"].values)
-    df["tet_mcc"] = arc_params.turbine_entry_temperature_at_max_continuous_climb(df["tet_mto"].values)
-    df["p_inf_co"] = arc_params.crossover_pressure_altitude(df["max_mach_num"].values, df["p_i_max"].values)
+    df["tet_mto"] = arc_params.turbine_entry_temperature_at_max_take_off(
+        df["Year_of_first_flight"].values
+    )
+    df["p_i_max"] = arc_params.impact_pressure_max_operating_limits(
+        df["max_mach_num"].values
+    )
+    df["tet_mcc"] = arc_params.turbine_entry_temperature_at_max_continuous_climb(
+        df["tet_mto"].values
+    )
+    df["p_inf_co"] = arc_params.crossover_pressure_altitude(
+        df["max_mach_num"].values, df["p_i_max"].values
+    )
 
     return df.to_dict(orient="records")[0]

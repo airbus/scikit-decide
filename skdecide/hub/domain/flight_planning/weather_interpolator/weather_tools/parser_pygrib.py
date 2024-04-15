@@ -134,7 +134,7 @@ class GribPygribUniqueForecast(object):
         forecast_dates = set()
         for grib in gribs:
             # filter levels that are not isobaricInhPa
-            if not(grib.typeOfLevel == 'isobaricInhPa'):
+            if not (grib.typeOfLevel == "isobaricInhPa"):
                 continue
 
             dates.add(grib.date)
