@@ -4,25 +4,32 @@ from enum import Enum
 
 # data and math
 from math import asin, atan2, cos, radians, sin, sqrt
-import pandas as pd
+
+# typing
+from typing import Any, Callable, Optional, Tuple, Union
+
+# plotting
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 # aircraft performance model
 from openap.extra.aero import bearing as aero_bearing
 from openap.extra.aero import distance, ft, kts, latlon, mach2tas
 from openap.extra.nav import airport
 from openap.prop import aircraft
-
-# custom aircraft performance model
-from skdecide.hub.domain.flight_planning.aircraft_performance.base import AircraftPerformanceModel
-
 from pygeodesy.ellipsoidalVincenty import LatLon
 
 from skdecide import DeterministicPlanningDomain, ImplicitSpace, Solver, Space, Value
 from skdecide.builders.domain import Renderable, UnrestrictedActions
 
-# plotting
-import matplotlib.pyplot as plt
+# custom aircraft performance model
+from skdecide.hub.domain.flight_planning.aircraft_performance.base import (
+    AircraftPerformanceModel,
+)
+from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.engine_loader import (
+    load_aircraft_engine_params,
+)
 from skdecide.hub.domain.flight_planning.flightplanning_utils import (
     plot_full,
     plot_trajectory,
@@ -30,17 +37,11 @@ from skdecide.hub.domain.flight_planning.flightplanning_utils import (
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.get_weather_noaa import (
     get_weather_matrix,
 )
-
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.GenericInterpolator import (
-    GenericWindInterpolator)
-
+    GenericWindInterpolator,
+)
 from skdecide.hub.space.gym import EnumSpace, ListSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver
-
-from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.engine_loader import load_aircraft_engine_params
-
-# typing
-from typing import Any, Callable, Optional, Tuple, Union
 
 try:
     from IPython.display import clear_output as ipython_clear_output
@@ -339,8 +340,8 @@ class FlightPlanningDomain(
     The flight planning domain can use two possible A/C performance models:
 
     - OpenAP: the aircraft performance model is based on the OpenAP library.
-    - Poll-Schumann: the aircraft performance model is based on Poll-Schumann equations as stated on the paper: "An estimation 
-    method for the fuel burn and other performance characteristics of civil transport aircraft in the cruise" by Poll and Schumann; 
+    - Poll-Schumann: the aircraft performance model is based on Poll-Schumann equations as stated on the paper: "An estimation
+    method for the fuel burn and other performance characteristics of civil transport aircraft in the cruise" by Poll and Schumann;
     The Aernautical Journal, 2020.
 
     Optional features
@@ -486,7 +487,7 @@ class FlightPlanningDomain(
         self.initial_date = weather_date
 
         if wind_interpolator is None:
-            self.weather_interpolator= self.get_weather_interpolator()
+            self.weather_interpolator = self.get_weather_interpolator()
 
         # Build network between airports
         if graph_width:
@@ -512,8 +513,8 @@ class FlightPlanningDomain(
                 + 1
             )
         self.network = self.set_network(
-            LatLon(self.lat1, self.lon1, self.alt1 * ft), # alt ft -> meters
-            LatLon(self.lat2, self.lon2, self.alt2 * ft), # alt ft -> meters
+            LatLon(self.lat1, self.lon1, self.alt1 * ft),  # alt ft -> meters
+            LatLon(self.lat2, self.lon2, self.alt2 * ft),  # alt ft -> meters
             self.nb_forward_points,
             self.nb_lateral_points,
             self.nb_vertical_points,
@@ -564,8 +565,13 @@ class FlightPlanningDomain(
                         "ts": self.start_time,
                         "lat": self.lat1,
                         "lon": self.lon1,
-                        "mass": aircraft_params["amass_mtow"] if take_off_weight is None else take_off_weight \
-                        - 0.8 * (self.ac["limits"]["MFC"] - self.fuel_loaded),  # Here we compute the weight difference between the fuel loaded and the fuel capacity
+                        "mass": aircraft_params["amass_mtow"]
+                        if take_off_weight is None
+                        else take_off_weight
+                        - 0.8
+                        * (
+                            self.ac["limits"]["MFC"] - self.fuel_loaded
+                        ),  # Here we compute the weight difference between the fuel loaded and the fuel capacity
                         "mach": self.mach,
                         "fuel": 0.0,
                         "alt": self.alt1,
@@ -574,13 +580,12 @@ class FlightPlanningDomain(
             ),
             (0, self.nb_lateral_points // 2, 0),
         )
-        
+
         self.perf_model = AircraftPerformanceModel(actype, perf_model_name)
         self.perf_model_name = perf_model_name
 
         self.res_img_dir = res_img_dir
         self.cruising = self.alt1 * ft >= self.ac["cruise"]["height"] * 0.98
-
 
     # Class functions
 
@@ -811,14 +816,14 @@ class FlightPlanningDomain(
 
         # Compute distance in meters
         distance_to_goal = LatLon.distanceTo(
-            LatLon(pos["lat"], pos["lon"], height=pos["alt"]*ft), # alt ft -> meters
-            LatLon(lat_to, lon_to, height=alt_to*ft), # alt ft -> meters
+            LatLon(pos["lat"], pos["lon"], height=pos["alt"] * ft),  # alt ft -> meters
+            LatLon(lat_to, lon_to, height=alt_to * ft),  # alt ft -> meters
         )
         distance_to_start = LatLon.distanceTo(
-            LatLon(pos["lat"], pos["lon"], height=pos["alt"]*ft), # alt ft -> meters
-            LatLon(lat_start, lon_start, height=alt_start*ft), # alt ft -> meters
+            LatLon(pos["lat"], pos["lon"], height=pos["alt"] * ft),  # alt ft -> meters
+            LatLon(lat_start, lon_start, height=alt_start * ft),  # alt ft -> meters
         )
-        
+
         if heuristic_name == "distance":
             cost = distance_to_goal
 
@@ -838,8 +843,7 @@ class FlightPlanningDomain(
 
                 # temperature computations
                 temp = self.weather_interpolator.interpol_field(
-                    [pos["ts"], pos["alt"], pos["lat"], pos["lon"]],
-                    field="T"
+                    [pos["ts"], pos["alt"], pos["lat"], pos["lon"]], field="T"
                 )
 
                 # check for NaN values
@@ -848,7 +852,7 @@ class FlightPlanningDomain(
 
             wspd = sqrt(wn * wn + we * we)
 
-            tas = mach2tas(pos["mach"], pos["alt"] * ft) # alt ft -> meters
+            tas = mach2tas(pos["mach"], pos["alt"] * ft)  # alt ft -> meters
 
             gs = compute_gspeed(
                 tas=tas,
@@ -871,11 +875,13 @@ class FlightPlanningDomain(
             if distance_to_goal == 0:
                 return Value(cost=0)
 
-            if self.perf_model_name == 'PS':
+            if self.perf_model_name == "PS":
                 cost = self.perf_model.compute_fuel_consumption(
                     values_current,
                     delta_time=dt,
-                    path_angle=math.degrees((alt_to - pos["alt"])*ft / (distance_to_goal)) 
+                    path_angle=math.degrees(
+                        (alt_to - pos["alt"]) * ft / (distance_to_goal)
+                    )
                     # approximation for small angles: tan(alpha) ~ alpha
                 )
             else:
@@ -883,7 +889,7 @@ class FlightPlanningDomain(
                     values_current,
                     delta_time=dt,
                 )
-            
+
         elif heuristic_name == "time":
             we, wn = 0, 0
             bearing_degrees = aero_bearing(pos["lat"], pos["lon"], self.lat2, self.lon2)
@@ -896,7 +902,7 @@ class FlightPlanningDomain(
                 we, wn = wind_ms[2][0], wind_ms[2][1]  # 0, 300
             wspd = sqrt(wn * wn + we * we)
 
-            tas = mach2tas(pos["mach"], pos["alt"] * ft) # alt ft -> meters
+            tas = mach2tas(pos["mach"], pos["alt"] * ft)  # alt ft -> meters
 
             gs = compute_gspeed(
                 tas=tas,
@@ -909,13 +915,18 @@ class FlightPlanningDomain(
 
         elif heuristic_name == "lazy_fuel":
             fuel_consummed = s.trajectory.iloc[0]["mass"] - pos["mass"]
-            cost = 1.05 * distance_to_goal * (fuel_consummed / (distance_to_start+1e-8))
+            cost = (
+                1.05 * distance_to_goal * (fuel_consummed / (distance_to_start + 1e-8))
+            )
 
         elif heuristic_name == "lazy_time":
             cost = (
                 1.5
                 * distance_to_goal
-                * ((pos["ts"] - s.trajectory.iloc[0]["ts"]) / (distance_to_start+1e-8))
+                * (
+                    (pos["ts"] - s.trajectory.iloc[0]["ts"])
+                    / (distance_to_start + 1e-8)
+                )
             )
         else:
             cost = 0
@@ -1276,7 +1287,7 @@ class FlightPlanningDomain(
 
         return pt
 
-    def get_network(self):        
+    def get_network(self):
         return self.network
 
     def flying(
@@ -1294,7 +1305,9 @@ class FlightPlanningDomain(
         pos = from_.to_dict("records")[0]
 
         lat_to, lon_to, alt_to = to_[0], to_[1], to_[2]
-        dist_ = distance(pos["lat"], pos["lon"], lat_to, lon_to, h=(alt_to - pos["alt"])*ft)
+        dist_ = distance(
+            pos["lat"], pos["lon"], lat_to, lon_to, h=(alt_to - pos["alt"]) * ft
+        )
 
         data = []
         epsilon = 100
@@ -1305,7 +1318,7 @@ class FlightPlanningDomain(
         while dist > epsilon:
             # bearing of the plane
             bearing_degrees = aero_bearing(pos["lat"], pos["lon"], lat_to, lon_to)
-            
+
             # wind computations & A/C speed modification
             we, wn = 0, 0
             temp = 273.15
@@ -1320,13 +1333,12 @@ class FlightPlanningDomain(
 
                 # temperature computations
                 temp = self.weather_interpolator.interpol_field(
-                    [pos["ts"], pos["alt"], pos["lat"], pos["lon"]],
-                    field="T"
-                )      
+                    [pos["ts"], pos["alt"], pos["lat"], pos["lon"]], field="T"
+                )
 
             wspd = sqrt(wn * wn + we * we)
 
-            tas = mach2tas(self.mach, alt_to * ft) # alt ft -> meters
+            tas = mach2tas(self.mach, alt_to * ft)  # alt ft -> meters
 
             gs = compute_gspeed(
                 tas=tas,
@@ -1334,18 +1346,18 @@ class FlightPlanningDomain(
                 wind_speed=wspd,
                 wind_direction=3 * math.pi / 2 - atan2(wn, we),
             )
-            
+
             if gs * dt > dist:
                 # Last step. make sure we go to destination.
                 dt = dist / gs
                 ll = lat_to, lon_to
             else:
                 ll = latlon(
-                    pos["lat"], 
-                    pos["lon"], 
-                    d=gs * dt, 
-                    brg=bearing_degrees, 
-                    h=alt_to * ft
+                    pos["lat"],
+                    pos["lon"],
+                    d=gs * dt,
+                    brg=bearing_degrees,
+                    h=alt_to * ft,
                 )
 
             values_current = {
@@ -1354,11 +1366,11 @@ class FlightPlanningDomain(
                 "speed": tas / kts,
                 "temp": temp,
             }
-            
+
             pos["fuel"] = self.perf_model.compute_fuel_consumption(
                 values_current,
                 delta_time=dt,
-                path_angle=math.degrees((alt_to - pos["alt"])*ft / (gs * dt)) 
+                path_angle=math.degrees((alt_to - pos["alt"]) * ft / (gs * dt))
                 # approximation for small angles: tan(alpha) ~ alpha
             )
 
@@ -1386,11 +1398,11 @@ class FlightPlanningDomain(
             }
 
             dist = distance(
-                ll[0], 
-                ll[1], 
-                lat_to, 
+                ll[0],
+                ll[1],
+                lat_to,
                 lon_to,
-                h=(pos["alt"] - alt_to)*ft # height difference in m
+                h=(pos["alt"] - alt_to) * ft,  # height difference in m
             )
 
             if dist < dist_:
@@ -1406,7 +1418,7 @@ class FlightPlanningDomain(
             loop += 1
 
         return pd.DataFrame(data)
-    
+
     def get_weather_interpolator(self) -> GenericWindInterpolator:
         weather_interpolator = None
 
@@ -1426,10 +1438,10 @@ class FlightPlanningDomain(
             weather_interpolator = GenericWindInterpolator(file_npz=mat)
 
         return weather_interpolator
-  
+
     def custom_rollout(self, solver, max_steps=100, make_img=True):
         observation = self.reset()
-        
+
         solver.reset()
         clear_output(wait=True)
 
@@ -1442,7 +1454,7 @@ class FlightPlanningDomain(
             # get corresponding action
             outcome = self.step(action)
             observation = outcome.observation
-            
+
             # self.observation = observation
 
             print("step ", i_step)
@@ -1473,7 +1485,7 @@ class FlightPlanningDomain(
             # plt.title(f'Flight plan - {self.origin} -> {self.destination} \n Model: {self.perf_model_name}, Fuel: {np.round(observation.trajectory["fuel"].sum(), 2)} Kg')
             # plt.savefig(f"terminal")
             # plt.show()
-            
+
             # figure = plot_altitude(observation.trajectory)
             # plt.savefig("altitude")
             # plt.show()
