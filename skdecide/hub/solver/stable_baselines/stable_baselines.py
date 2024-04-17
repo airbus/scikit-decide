@@ -57,7 +57,7 @@ class StableBaseline(Solver, Policies, Restorable):
             domain.get_observation_space(), GymSpace
         )
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         # TODO: improve code for parallelism
         #  (https://stable-baselines3.readthedocs.io/en/master/guide/examples.html
         #  #multiprocessing-unleashing-the-power-of-vectorized-environments)?

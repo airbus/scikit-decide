@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 
@@ -15,7 +16,7 @@ import dill
 from pathos.helpers import mp
 from pynng import Push0
 
-from skdecide.domains import logger
+logger = logging.getLogger(__name__)
 
 dill.settings["byref"] = True
 

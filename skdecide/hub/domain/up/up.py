@@ -101,9 +101,11 @@ class SkUPAction:
         return (
             self._ungrounded_action
             if self._ungrounded_action is not None
-            else self._up_action
-            if isinstance(self._up_action, InstantaneousAction)
-            else self._up_action.action
+            else (
+                self._up_action
+                if isinstance(self._up_action, InstantaneousAction)
+                else self._up_action.action
+            )
         )
 
     @property
@@ -113,9 +115,11 @@ class SkUPAction:
         return (
             self._orig_params
             if self._orig_params is not None
-            else self._up_action.parameters
-            if isinstance(self._up_action, InstantaneousAction)
-            else self._up_action.actual_parameters
+            else (
+                self._up_action.parameters
+                if isinstance(self._up_action, InstantaneousAction)
+                else self._up_action.actual_parameters
+            )
         )
 
     def __hash__(self):
@@ -143,7 +147,7 @@ class SkUPAction:
 
 
 class D(DeterministicPlanningDomain):
-    T_state = Union[SkUPState, DictSpace, BoxSpace]  # Type of states
+    T_state = Union[SkUPState, Dict, ArrayLike]  # Type of states
     T_observation = T_state  # Type of observations
     T_event = SkUPAction  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
@@ -182,6 +186,7 @@ class UPDomain(D):
             self._problem, error_on_failed_checks=True, **simulator_params
         )
         self._simulator_params = simulator_params
+        self._grounder = GrounderHelper(self._problem)
         try:
             self._total_cost = FluentExp(self._problem.fluent("total-cost"))
         except UPValueError:
@@ -363,7 +368,7 @@ class UPDomain(D):
         # For actions, the numpy encoding is just an int
         self._actions_np2up = [
             SkUPAction(a[2], ungrounded_action=a[0], orig_params=a[1])
-            for a in GrounderHelper(self._problem).get_grounded_actions()
+            for a in self._grounder.get_grounded_actions()
             if a[2] is not None
         ]
         self._actions_up2np = {a: i for i, a in enumerate(self._actions_np2up)}
@@ -384,7 +389,11 @@ class UPDomain(D):
         else:
             return None
 
-    def _get_next_state(self, memory: D.T_state, action: D.T_event) -> D.T_state:
+    def _get_next_state(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> D.T_memory[D.T_state]:
         state = self._convert_to_skup_state_(memory)
         act = self._convert_to_skup_action_(action)
         if self._total_cost is not None:
@@ -402,10 +411,10 @@ class UPDomain(D):
 
     def _get_transition_value(
         self,
-        memory: D.T_state,
-        action: D.T_event,
-        next_state: Optional[D.T_state] = None,
-    ) -> Value[D.T_value]:
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+        next_state: Optional[D.T_memory[D.T_state]] = None,
+    ) -> D.T_agent[Value[D.T_value]]:
         if self._total_cost is not None:
             transition = tuple(
                 [
@@ -449,11 +458,11 @@ class UPDomain(D):
             )
             return Value(cost=float("Nan"))
 
-    def _is_terminal(self, memory: D.T_state) -> D.T_predicate:
+    def _is_terminal(self, memory: D.T_state) -> D.T_agent[D.T_predicate]:
         state = self._convert_to_skup_state_(memory)
         return self._simulator.is_goal(state.up_state)
 
-    def _get_action_space_(self) -> GymSpace[D.T_event]:
+    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
         if self._action_space is None:
             if self._action_encoding == "native":
                 # By default we don't initialize action encoding for actions
@@ -468,11 +477,13 @@ class UPDomain(D):
                 return None
         return self._action_space
 
-    def _get_applicable_actions_from(self, memory: D.T_state) -> GymSpace[D.T_event]:
+    def _get_applicable_actions_from(
+        self, memory: D.T_state
+    ) -> D.T_agent[Space[D.T_event]]:
         state = self._convert_to_skup_state_(memory)
         applicable_actions = [
             SkUPAction(
-                self._simulator._ground_action(action, params),
+                self._grounder.ground_action(action, params),
                 ungrounded_action=action,
                 orig_params=params,
             )
@@ -495,7 +506,7 @@ class UPDomain(D):
         else:
             return None
 
-    def _get_goals_(self) -> Space[D.T_observation]:
+    def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
         return ImplicitSpace(lambda s: self._is_terminal(s))
 
     def _get_initial_state_(self) -> D.T_state:
@@ -504,7 +515,7 @@ class UPDomain(D):
         )
         return init_state
 
-    def _get_observation_space_(self) -> GymSpace[D.T_observation]:
+    def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
         if self._observation_space is None:
             if self._state_encoding == "native":
                 raise RuntimeError(
@@ -513,15 +524,23 @@ class UPDomain(D):
             elif self._state_encoding == "dictionary":
                 self._observation_space = DictSpace(
                     {
-                        repr(fn): DiscreteSpace(2)
-                        if fn.fluent().type.is_bool_type()
-                        else DiscreteSpace(v[1])
-                        if fn.fluent().type.is_int_type()
-                        else BoxSpace(v[0], v[1])
-                        if fn.fluent().type.is_real_type()
-                        else DiscreteSpace(v[1])
-                        if fn.fluent().type.is_user_type()
-                        else None
+                        repr(fn): (
+                            DiscreteSpace(2)
+                            if fn.fluent().type.is_bool_type()
+                            else (
+                                DiscreteSpace(v[1])
+                                if fn.fluent().type.is_int_type()
+                                else (
+                                    BoxSpace(v[0], v[1])
+                                    if fn.fluent().type.is_real_type()
+                                    else (
+                                        DiscreteSpace(v[1])
+                                        if fn.fluent().type.is_user_type()
+                                        else None
+                                    )
+                                )
+                            )
+                        )
                         for fn, v in self._fnodes_variables_map.items()
                     }
                 )
@@ -539,12 +558,14 @@ class UPDomain(D):
                             for fn in self._fnodes_vars_ordering
                         ]
                     ),
-                    dtype=np.float32
-                    if any(
-                        fn.fluent().type.is_real_type()
-                        for fn in self._fnodes_vars_ordering
-                    )
-                    else np.int32,
+                    dtype=(
+                        np.float32
+                        if any(
+                            fn.fluent().type.is_real_type()
+                            for fn in self._fnodes_vars_ordering
+                        )
+                        else np.int32
+                    ),
                 )
             else:
                 return None

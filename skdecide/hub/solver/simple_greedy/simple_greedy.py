@@ -21,7 +21,7 @@ class SimpleGreedy(DeterministicPolicySolver):
     def _check_domain_additional(cls, domain: D) -> bool:
         return isinstance(domain.get_action_space(), EnumerableSpace)
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self._domain = (
             domain_factory()
         )  # no further solving code required here since everything is computed online

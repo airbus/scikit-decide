@@ -466,33 +466,25 @@ class GridShmProxy:
 
 
 def test_solver_cpp(solver_cpp, parallel, shared_memory):
-    noexcept = True
-
     if solver_cpp["entry"] == "UCT":
         pytest.skip("There is a heap corruption in MCTS solver")
-    try:
-        dom = GridDomain()
-        solver_type = load_registered_solver(solver_cpp["entry"])
-        solver_args = deepcopy(solver_cpp["config"])
-        if "parallel" in inspect.signature(solver_type.__init__).parameters:
-            solver_args["parallel"] = parallel
-        if (
-            "shared_memory_proxy" in inspect.signature(solver_type.__init__).parameters
-            and shared_memory
-        ):
-            solver_args["shared_memory_proxy"] = GridShmProxy()
-        solver_args["domain_factory"] = lambda: GridDomain()
 
-        with solver_type(**solver_args) as slv:
-            GridDomain.solve_with(slv)
-            plan, cost = get_plan(dom, slv)
-    except Exception as e:
-        print(e)
-        noexcept = False
-    assert (
-        solver_type.check_domain(dom)
-        and noexcept
-        and (
-            (not solver_cpp["optimal"]) or parallel or (cost == 18 and len(plan) == 18)
-        )
+    dom = GridDomain()
+    solver_type = load_registered_solver(solver_cpp["entry"])
+    solver_args = deepcopy(solver_cpp["config"])
+    if "parallel" in inspect.signature(solver_type.__init__).parameters:
+        solver_args["parallel"] = parallel
+    if (
+        "shared_memory_proxy" in inspect.signature(solver_type.__init__).parameters
+        and shared_memory
+    ):
+        solver_args["shared_memory_proxy"] = GridShmProxy()
+    solver_args["domain_factory"] = lambda: GridDomain()
+
+    with solver_type(**solver_args) as slv:
+        GridDomain.solve_with(slv)
+        plan, cost = get_plan(dom, slv)
+
+    assert solver_type.check_domain(dom) and (
+        (not solver_cpp["optimal"]) or parallel or (cost == 18 and len(plan) == 18)
     )

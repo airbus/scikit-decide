@@ -4,11 +4,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Set, Tuple
+from typing import Any, Callable, Optional, Set, Tuple
 
 from skdecide import Domain, Solver
 from skdecide.builders.domain import MultiAgent, Sequential, SingleAgent
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import DeterministicPolicies, FromAnyState, Utilities
 from skdecide.core import Value
 
 
@@ -17,7 +17,7 @@ class D(Domain, MultiAgent, Sequential):
     pass
 
 
-class MAHD(Solver, DeterministicPolicies, Utilities):
+class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
     T_domain = D
 
     def __init__(
@@ -74,10 +74,26 @@ class MAHD(Solver, DeterministicPolicies, Utilities):
             a: {} for a in self._multiagent_domain.get_agents()
         }
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(
+        self,
+        domain_factory: Callable[[], D],
+        from_memory: Optional[D.T_memory[D.T_state]] = None,
+    ) -> None:
         self._multiagent_domain_class.solve_with(
-            solver=self._multiagent_solver, domain_factory=domain_factory
+            solver=self._multiagent_solver,
+            domain_factory=domain_factory,
+            from_memory=from_memory,
         )
+
+    def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+        self._multiagent_domain_class.solve_with(
+            solver=self._multiagent_solver,
+            domain_factory=self._domain_factory,
+            from_memory=memory,
+        )
+
+    def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
+        self._domain_factory = domain_factory
 
     def _get_next_action(
         self, observation: D.T_agent[D.T_observation]

@@ -158,7 +158,7 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
         else:
             return 2 * np.random.random_sample() - 1
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
 
         self.env = domain_factory()
         np.random.seed(0)

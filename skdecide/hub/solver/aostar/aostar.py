@@ -19,7 +19,12 @@ from skdecide.builders.domain import (
     Sequential,
     SingleAgent,
 )
-from skdecide.builders.solver import DeterministicPolicies, ParallelSolver, Utilities
+from skdecide.builders.solver import (
+    DeterministicPolicies,
+    FromAnyState,
+    ParallelSolver,
+    Utilities,
+)
 from skdecide.core import Value
 
 record_sys_path = sys.path
@@ -45,7 +50,9 @@ try:
     ):
         pass
 
-    class AOstar(ParallelSolver, Solver, DeterministicPolicies, Utilities):
+    class AOstar(
+        ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState
+    ):
         T_domain = D
 
         def __init__(
@@ -103,9 +110,6 @@ try:
                 debug_logs=self._debug_logs,
             )
             self._solver.clear()
-
-        def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
-            self._init_solve(domain_factory)
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             self._solver.solve(memory)

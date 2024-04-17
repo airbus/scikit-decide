@@ -50,7 +50,7 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
         self._policy = {}
         self._values = {}
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self._domain = domain_factory()
         problem = self._domain._problem
         om_params = (
