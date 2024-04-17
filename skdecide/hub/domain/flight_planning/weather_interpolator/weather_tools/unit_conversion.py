@@ -44,6 +44,8 @@
 # 0.22   25 Apr 08  Corrected error in unit validation in press_conv()
 # #############################################################################
 
+import numpy as np
+
 """
 Convert between various units.
 """
@@ -303,6 +305,7 @@ def power_conv(P, from_units=default_power_units, to_units=default_power_units):
         )
 
 
+@np.vectorize
 def press_conv(P, from_units=default_press_units, to_units=default_press_units):
     """
     Convert pressure values between inches of HG, mm of HG, psi, lb/ft^2,

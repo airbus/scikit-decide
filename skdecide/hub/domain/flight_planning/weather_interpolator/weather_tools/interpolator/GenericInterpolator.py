@@ -9,6 +9,9 @@ import numpy as np
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.common_utils as Toolbox
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.intergrid as intergrid
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.std_atm as std_atm
+from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.common_utils import (
+    convert,
+)
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.WeatherInterpolator import (
     WeatherInterpolator,
 )
@@ -84,6 +87,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
         self.axes = {}
         # self._auto_lock = Lock()
         self.time_shift_s = time_shift_s
+
         if isinstance(file_npz, (str, np.lib.npyio.NpzFile)):
             self.datas = (
                 np.load(file_npz, allow_pickle=True)
@@ -94,6 +98,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 fields = self.datas.keys()
             else:
                 fields = [f for f in fields if f in list(self.datas.keys())]
+
             self.datas.allow_pickle = True
             items = {var: self.datas[var].item() for var in fields}
             self.lat_dict = {var: items[var]["lats"] for var in items}
@@ -115,10 +120,14 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 ]
                 for var in items
             }
+
             if time_shift_s != 0.0:
                 for v in self.time_dict:
                     self.time_dict[v] += time_shift_s
+
+            # items: U, V, T, R
             self.values = {var: items[var]["values"] for var in items}
+
             if self.time_cut_index is not None:
                 index_cut = min(
                     self.time_cut_index,
@@ -129,15 +138,19 @@ class GenericEnsembleInterpolator(GenericInterpolator):
         elif isinstance(
             file_npz, dict
         ):  # Already loaded data in a dict (directly from parseWeather indeed)
+
             self.datas = file_npz
             if fields is None:
                 fields = self.datas.keys()
             else:
                 fields = [f for f in fields if f in list(self.datas.keys())]
-            if fields is None:
-                fields = self.datas.keys()
-            else:
-                fields = [f for f in fields if f in list(self.datas.keys())]
+
+            ### ??? ###
+            # if fields is None:
+            #     fields = self.datas.keys()
+            # else:
+            #     fields = [f for f in fields if f in list(self.datas.keys())]
+
             # self.datas.allow_pickle = True
             items = {var: self.datas[var] for var in fields}
             self.lat_dict = {var: items[var]["lats"] for var in fields}
@@ -151,6 +164,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 var: items[var]["levels"] if "levels" in items[var] else [200.0]
                 for var in fields
             }
+
             self.time_dict = {var: items[var]["times"] for var in fields}
             if time_shift_s != 0.0:
                 for v in self.time_dict:
@@ -163,7 +177,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
             #     print(self.time_dict[var].shape, "time")
             #     print(self.values[var].shape, "values")
 
-        one_field = list(self.values.keys())[0]
+        # one_field = list(self.values.keys())[0]
         for feat in self.lat_dict:
             if self.lat_dict[feat][-1] < self.lat_dict[feat][0]:
                 self.lat_dict[feat] = self.lat_dict[feat][::-1]
@@ -172,10 +186,14 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 elif self.values[feat].ndim == 5:
                     self.values[feat] = self.values[feat][:, :, :, ::-1, :]
         self.interpol_dict = {}
+
         for var in self.values:
-            if len(self.levels_dict[var]) == 0 or (len(self.levels_dict[var]) == 1):
-                self.levels_dict[var] = np.array([30000])
-            # print(var, self.values[var].shape)
+            # print(f'Building interpolator for {var}')
+            # print(f'Levels dict: {self.levels_dict[var]}')
+            self.levels_dict[var] = [111, 121]
+            if (len(self.levels_dict[var]) == 0) or (len(self.levels_dict[var]) == 1):
+                self.levels_dict[var] = np.array([30_000])
+
             axes = guess_axes(
                 self.values[var],
                 self.lat_dict[var],
@@ -183,6 +201,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 self.levels_dict[var],
                 self.time_dict[var],
             )
+
             self.axes[var] = axes
             self.interpol_dict[var] = intergrid.Intergrid(
                 self.values[var],
@@ -502,16 +521,20 @@ class GenericWindInterpolator(GenericEnsembleInterpolator, WeatherInterpolator):
     def interpol_wind_classic(self, lat, longi, alt=35000.0, t=0.0, index_forecast=0):
         # with self._auto_lock:
         p = std_atm.alt2press(alt, alt_units="ft", press_units="hpa")
+
         if len(self.axes["U"][1]) == 5:
             norm = self.interpol_dict["norm-wind"]([t, p, index_forecast, lat, longi])
             arg = self.interpol_dict["argument-wind"](
                 [t, p, index_forecast, lat, longi]
             )
+
             result = norm * np.array([np.cos(arg), np.sin(arg)])
             return [norm, arg, result]
+
         if len(self.axes["U"][1]) == 4:
             norm = self.interpol_dict["norm-wind"]([t, p, lat, longi])
             arg = self.interpol_dict["argument-wind"]([t, p, lat, longi])
+
             result = norm * np.array([np.cos(arg), np.sin(arg)])
             return [norm, arg, result]
 
