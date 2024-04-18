@@ -2,13 +2,12 @@ import sys
 
 import pytest
 
+if sys.version_info < (3, 8):
+    pytest.skip("cartopy requires python3.9 or higher", allow_module_level=True)
+if sys.platform.startswith("win"):
+    pytest.skip("pygrib does not install on windows", allow_module_level=True)
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9), reason="cartopy requires python3.9 or higher"
-)
-@pytest.mark.skipif(
-    sys.platform.startswith("win"), reason="pygrib does not install on windows"
-)
+
 @pytest.fixture(scope="function")
 def ac_model(model):
     from skdecide.hub.domain.flight_planning.aircraft_performance.base import (

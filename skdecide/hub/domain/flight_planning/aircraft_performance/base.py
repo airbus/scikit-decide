@@ -23,6 +23,7 @@ class AircraftPerformanceModel:
         if perf_model == "openap":
             self.perf_model = OpenAP(actype)
         elif perf_model == "PS":
+            print("Poll-Schumann model")
             self.perf_model = PollSchumannModel(actype)
         else:
             raise ValueError(f"Unknown performance model: {perf_model}")
@@ -82,33 +83,11 @@ class PollSchumannModel(AircraftPerformanceModel):
         delta_time: float,
         path_angle: Optional[float] = 0.0,
     ) -> float:
-
         ff = self.fuel_flow(
             values_current, delta_time=delta_time, path_angle=path_angle
         )
-
-        print(ff)
 
         return delta_time * ff
 
     def compute_crossover_altitude(self) -> float:
         return load_aircraft_engine_params(self.actype)["p_inf_co"]
-
-
-# create aircraft performance model based on BADA model that inherits from the base class
-class PollSchumannModel(AircraftPerformanceModel):
-    def __init__(self, actype: str):
-        self.actype = actype
-        self.fuel_flow = pollschumann.FuelFlow(actype)
-
-    def compute_fuel_consumption(
-        self,
-        values_current: Dict[str, float],
-        delta_time: float,
-        path_angle: Optional[float] = 0.0,
-    ) -> float:
-
-        pass
-
-    def compute_crossover_altitude(self) -> float:
-        pass
