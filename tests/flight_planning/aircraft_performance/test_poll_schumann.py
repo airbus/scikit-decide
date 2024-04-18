@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import pytest
 
-if sys.version_info < (3, 8):
+if sys.version_info < (3, 9):
     pytest.skip("cartopy requires python3.9 or higher", allow_module_level=True)
 if sys.platform.startswith("win"):
     pytest.skip("pygrib does not install on windows", allow_module_level=True)
