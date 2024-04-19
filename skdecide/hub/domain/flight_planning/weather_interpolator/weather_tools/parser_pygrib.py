@@ -133,24 +133,23 @@ class GribPygribUniqueForecast(object):
         parameters_short_names = set()
         forecast_dates = set()
         for grib in gribs:
+            # filter levels that are not isobaricInhPa
+            if not (grib.typeOfLevel == "isobaricInhPa"):
+                continue
+
             dates.add(grib.date)
             times.add(grib.dataTime)
-            # in some sfc forecast grib.stepRange[0]is e.g.: 0-3 this is not a valid step
-            # print(dates)
-            # print(times)
-            # print(grib.analDate)
-            # print(grib.validDate)
             date = grib.validDate.replace(tzinfo=pytz.utc)
             forecast_dates.add(date.timestamp())
-            # print(datetime.datetime.fromtimestamp(date.timestamp(), tz=pytz.utc))
+
             try:
                 int(grib.stepRange)
-                # print(grib.stepRange)
                 steps.add(grib.stepRange)
             except:
                 # do nothgin
                 continue
             levels.add(grib.level)
+
             # members.add(grib.perturbationNumber - 1)
             parameters_full_names.add(grib.parameterName)
             parameters_short_names.add(grib.shortName)
