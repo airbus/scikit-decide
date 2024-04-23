@@ -1,0 +1,26 @@
+name: nb-skdecide-py310
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - cartopy>=0.21
+  - python=3.10
+  - pip
+  - pytorch::cpuonly
+  - pytorch::pytorch
+  - pip:
+    - cdsapi
+    - cfgrib
+    - cartopy
+    - matplotlib
+    - ipywidgets
+    - ipympl
+    - scikit-decide[all]==0.9.8
+    - nbgitpuller
+    - openap
+    - pygeodesy
+    - pyvirtualdisplay
+    - PyOpenGL-accelerate
+    - PyOpenGL
+    - xarray
+    - gymnasium[classic-control]==0.28.1

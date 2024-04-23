@@ -1,0 +1,7 @@
+ffmpeg
+freeglut3-dev
+libeccodes-tools
+xvfb
+x11-utils
+libegl1
+libgl1
