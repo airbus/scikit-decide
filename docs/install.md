@@ -130,7 +130,13 @@ pip install -U scikit-decide
 
 When installing [pygrib](https://jswhit.github.io/pygrib/index.html) on MacOS ARM (in dependencies of `scikit-decide[all]`),
 no wheel exists on PyPI and there is issues when pip tries to build it.
-You can overcome this by installing the pygrib package available on conda-forge:
+You can overcome this by first installing `eccodes` which provides GRIB header files required to build the `pygrib` wheel:
+```shell
+brew install eccodes
+```
+Then, reinstall `scikit-decide[all]` with pip.
+
+If the issue persists, you can try to install the pygrib package available on conda-forge:
 ```shell
 conda install -c conda-forge pygrib
 ```
