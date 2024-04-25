@@ -19,6 +19,16 @@ from typing import Any, List, Tuple
 import skdecide
 
 NOTEBOOKS_LIST_PLACEHOLDER = "[[notebooks-list]]"
+NOTEBOOKS_PAGE_TEMPLATE_RELATIVE_PATH = "notebooks/README.template.md"
+NOTEBOOKS_PAGE_RELATIVE_PATH = "notebooks/README.md"
+NOTEBOOKS_SECTION_KEY_VAR_SEP = "_"
+NOTEBOOKS_DIRECTORY_NAME = "notebooks"
+
+DEFAULT_REPO_NAME = "airbus/scikit-decide"
+
+docdir = os.path.dirname(os.path.abspath(__file__))
+rootdir = os.path.abspath(f"{docdir}/..")
+notebooksdir = f"{rootdir}/{NOTEBOOKS_DIRECTORY_NAME}"
 
 logger = logging.getLogger(__name__)
 refs = set()
@@ -188,36 +198,59 @@ def get_binder_link(
     notebooks_repo_url: str,
     notebooks_branch: str,
     notebook_relative_path: str,
+    notebooks_repo_name: str,
+    use_nbgitpuller: bool = False,
 ) -> str:
     # binder hub url
     jupyterhub = urllib.parse.urlsplit("https://mybinder.org")
 
-    # path to the binder env
-    binder_path = f"v2/gh/{binder_env_repo_name}/{binder_env_branch}"
+    if use_nbgitpuller:
+        # path to the binder env
+        binder_path = f"v2/gh/{binder_env_repo_name}/{binder_env_branch}"
 
-    # nbgitpuller query
-    notebooks_repo_basename = os.path.basename(notebooks_repo_url)
-    urlpath = f"tree/{notebooks_repo_basename}/{notebook_relative_path}"
-    next_url_params = urllib.parse.urlencode(
-        {
-            "repo": notebooks_repo_url,
-            "urlpath": urlpath,
-            "branch": notebooks_branch,
-        }
-    )
-    next_url = f"git-pull?{next_url_params}"
-    query = urllib.parse.urlencode({"urlpath": next_url})
-
-    # full link
-    link = urllib.parse.urlunsplit(
-        urllib.parse.SplitResult(
-            scheme=jupyterhub.scheme,
-            netloc=jupyterhub.netloc,
-            path=binder_path,
-            query=query,
-            fragment="",
+        # nbgitpuller query
+        notebooks_repo_basename = os.path.basename(notebooks_repo_url)
+        urlpath = f"tree/{notebooks_repo_basename}/{notebook_relative_path}"
+        next_url_params = urllib.parse.urlencode(
+            {
+                "repo": notebooks_repo_url,
+                "urlpath": urlpath,
+                "branch": notebooks_branch,
+            }
         )
-    )
+        next_url = f"git-pull?{next_url_params}"
+        query = urllib.parse.urlencode({"urlpath": next_url})
+
+        # full link
+        link = urllib.parse.urlunsplit(
+            urllib.parse.SplitResult(
+                scheme=jupyterhub.scheme,
+                netloc=jupyterhub.netloc,
+                path=binder_path,
+                query=query,
+                fragment="",
+            )
+        )
+    else:
+        if notebooks_repo_name:
+            # path to the binder env
+            binder_path = f"v2/gh/{notebooks_repo_name}/{notebooks_branch}"
+
+            # query to open proper notebook
+            query = urllib.parse.urlencode({"labpath": notebook_relative_path})
+
+            # full link
+            link = urllib.parse.urlunsplit(
+                urllib.parse.SplitResult(
+                    scheme=jupyterhub.scheme,
+                    netloc=jupyterhub.netloc,
+                    path=binder_path,
+                    query=query,
+                    fragment="",
+                )
+            )
+        else:
+            link = ""
 
     return link
 
@@ -242,14 +275,25 @@ def get_github_link(
 
 
 def get_repo_n_branches_for_binder_n_github_links() -> Tuple[
-    bool, str, str, str, str, str
+    bool, str, str, str, str, str, bool
 ]:
     # repos + branches to use for binder environment and notebooks content.
     creating_links = True
+    use_nbgitpuller = False
+    try:
+        use_nbgitpuller_str = os.environ["AUTODOC_BINDER_NBGITPULLER"]
+        try:
+            use_nbgitpuller_int = int(use_nbgitpuller_str)
+        except ValueError:
+            use_nbgitpuller_int = 1
+        if (use_nbgitpuller_str.lower() != "false") and (use_nbgitpuller_int != 0):
+            use_nbgitpuller = True
+    except KeyError:
+        pass
     try:
         binder_env_repo_name = os.environ["AUTODOC_BINDER_ENV_GH_REPO_NAME"]
     except KeyError:
-        binder_env_repo_name = "airbus/scikit-decide"
+        binder_env_repo_name = DEFAULT_REPO_NAME
     try:
         binder_env_branch = os.environ["AUTODOC_BINDER_ENV_GH_BRANCH"]
     except KeyError:
@@ -280,6 +324,7 @@ def get_repo_n_branches_for_binder_n_github_links() -> Tuple[
         notebooks_branch,
         binder_env_repo_name,
         binder_env_branch,
+        use_nbgitpuller,
     )
 
 
@@ -287,7 +332,7 @@ def extract_notebook_title_n_description(
     notebook_filepath: str,
 ) -> Tuple[str, List[str]]:
     # load notebook
-    with open(notebook_filepath, "rt") as f:
+    with open(notebook_filepath, "rt", encoding="utf-8") as f:
         notebook = json.load(f)
 
     # find title + description: from first cell,  h1 title + remaining text.
@@ -296,7 +341,8 @@ def extract_notebook_title_n_description(
     description_lines: List[str] = []
     cell = notebook["cells"][0]
     if cell["cell_type"] == "markdown":
-        if cell["source"][0].startswith("# "):
+        firstline = cell["source"][0].strip()
+        if firstline.startswith("# "):
             title = cell["source"][0][2:].strip()
             description_lines = cell["source"][1:]
         else:
@@ -308,8 +354,6 @@ def extract_notebook_title_n_description(
 
 
 if __name__ == "__main__":
-    docdir = os.path.dirname(os.path.abspath(__file__))
-
     # ========== GATHER AUTODOC INFOS ==========
 
     # Get all scikit-decide (sub)modules
@@ -647,10 +691,12 @@ if __name__ == "__main__":
     with open(f"{docdir}/.vuepress/_state.json", "w") as f:
         json.dump(state, f)
 
-    # List existing notebooks and and write Notebooks page
-    rootdir = os.path.abspath(f"{docdir}/..")
-    notebook_filepaths = sorted(glob(f"{rootdir}/notebooks/*.ipynb"))
+    # List existing notebooks and write Notebooks page
+    notebook_filepaths = sorted(glob(f"{notebooksdir}/**/*.ipynb", recursive=True))
     notebooks_list_text = ""
+    notebooksdir_prefixlen = len(notebooksdir) + 1
+    sections_baselevel = 2
+    current_sections = []
     (
         creating_links,
         notebooks_repo_url,
@@ -658,14 +704,31 @@ if __name__ == "__main__":
         notebooks_branch,
         binder_env_repo_name,
         binder_env_branch,
+        use_nbgitpuller,
     ) = get_repo_n_branches_for_binder_n_github_links()
     # loop on notebooks sorted alphabetically by filenames
     for notebook_filepath in notebook_filepaths:
+        # get subsections arborescence
+        notebook_relpath = notebook_filepath[notebooksdir_prefixlen:]
+        notebook_arbo = notebook_relpath.split(os.path.sep)
+        notebook_sections = notebook_arbo[:-1]
+        # write missing sections
+        for i_section, section in enumerate(notebook_sections):
+            if (
+                i_section >= len(current_sections)
+                or section != current_sections[i_section]
+            ):
+                section_prefix = (sections_baselevel + i_section) * "#"
+                section_name = section.split(NOTEBOOKS_SECTION_KEY_VAR_SEP)[-1]
+                notebooks_list_text += f"{section_prefix} {section_name}\n\n"
+        current_sections = notebook_sections
+        # extract title and description
         title, description_lines = extract_notebook_title_n_description(
             notebook_filepath
         )
-        # subsection title
-        notebooks_list_text += f"## {title}\n\n"
+        # write title
+        title_prefix = (sections_baselevel + len(notebook_sections)) * "#"
+        notebooks_list_text += f"{title_prefix} {title}\n\n"
         # links
         if creating_links:
             notebook_path_prefix_len = len(f"{rootdir}/")
@@ -676,10 +739,15 @@ if __name__ == "__main__":
                 notebooks_repo_url=notebooks_repo_url,
                 notebooks_branch=notebooks_branch,
                 notebook_relative_path=notebook_relative_path,
+                notebooks_repo_name=notebooks_repo_name,
+                use_nbgitpuller=use_nbgitpuller,
             )
-            binder_badge = (
-                f"[![Binder](https://mybinder.org/badge_logo.svg)]({binder_link})"
-            )
+            if binder_link:
+                binder_badge = (
+                    f"[![Binder](https://mybinder.org/badge_logo.svg)]({binder_link})"
+                )
+            else:
+                binder_badge = ""
             github_link = get_github_link(
                 notebooks_repo_url=notebooks_repo_url,
                 notebooks_branch=notebooks_branch,
@@ -696,23 +764,24 @@ if __name__ == "__main__":
             else:
                 colab_badge = ""
             # markdown item
+            # notebooks_list_text += f"{github_badge}\n{binder_badge}\n\n"
             notebooks_list_text += f"{github_badge}\n"
             if colab_badge:
                 notebooks_list_text += f"{colab_badge}\n"
             if binder_badge:
                 notebooks_list_text += f"{binder_badge}\n"
-        notebooks_list_text += "\n"
+            notebooks_list_text += "\n"
 
         # description
         notebooks_list_text += "".join(description_lines)
         notebooks_list_text += "\n\n"
 
-    with open(f"{docdir}/notebooks/README.md.template", "rt") as f:
+    with open(f"{docdir}/{NOTEBOOKS_PAGE_TEMPLATE_RELATIVE_PATH}", "rt") as f:
         readme_template_text = f.read()
 
     readme_text = readme_template_text.replace(
         NOTEBOOKS_LIST_PLACEHOLDER, notebooks_list_text
     )
 
-    with open(f"{docdir}/notebooks/README.md", "wt") as f:
+    with open(f"{docdir}/{NOTEBOOKS_PAGE_RELATIVE_PATH}", "wt") as f:
         f.write(readme_text)
