@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable, Dict, List, Optional
 
 from skdecide import Domain, Solver, Value
 from skdecide.builders.domain import (
@@ -44,7 +44,7 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         return self._policy.get(observation, None)
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
-        return observation is self._policy
+        return observation in self._policy
 
     def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
         if observation not in self.values:
@@ -67,13 +67,17 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         self._weight = weight
         self.max_iter = max_iter
         self.max_depth = max_depth
-        self._plan = []
+        self._plan: List[D.T_event] = []
         self.values = {}
 
         self._verbose = verbose
 
         self.heuristic_changed = False
-        self._policy = {}
+        self._policy: Dict[D.T_observation, Optional[D.T_event]] = {}
+
+    def get_policy(self) -> Dict[D.T_observation, Optional[D.T_event]]:
+        """Return the computed policy."""
+        return self._policy
 
     def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
         """Initialize solver before calling `solve_from()`

@@ -179,6 +179,7 @@ try:
             D.T_agent[D.T_observation],
             Tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
         ]:
+            """Return the computed policy."""
             return self._solver.get_policy()
 
 except ImportError:

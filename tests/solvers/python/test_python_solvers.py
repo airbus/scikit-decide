@@ -161,6 +161,12 @@ def test_solve_python(solver_python):
     with solver_type(**solver_args) as slv:
         GridDomain.solve_with(slv)
         plan, cost = get_plan(dom, slv)
+        # test get_plan and get_policy
+        if hasattr(slv, "get_policy"):
+            slv.get_policy()
+        if hasattr(slv, "get_plan"):
+            slv.get_plan()
+
     assert solver_type.check_domain(dom) and (
         (not solver_python["optimal"]) or (cost == 18 and len(plan) == 18)
     )
