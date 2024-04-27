@@ -42,7 +42,7 @@ jobs:
           from os import environ
 
           python_version = ["3.8", "3.9", "3.10", "3.11"]
-          build = [ "macos-latest", "ubuntu-latest", "windows-latest" ]
+          build = [ "macos-12", "ubuntu-latest", "windows-latest" ]
           test = [ "macos-11", "macos-12", "ubuntu-22.04", "ubuntu-20.04", "windows-2019", "windows-2022"]
           build_doc = "true"
 
