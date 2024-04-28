@@ -14,6 +14,7 @@ from ray.rllib.env.wrappers.multi_agent_env_compatibility import (
     MultiAgentEnvCompatibility,
 )
 from ray.rllib.models import ModelCatalog
+from ray.rllib.policy.policy import Policy
 from ray.rllib.utils.from_config import NotProvided
 from ray.tune.registry import register_env
 
@@ -86,6 +87,13 @@ class RayRLlib(Solver, Policies, Restorable):
 
         ray.init(ignore_reinit_error=True)
 
+    def get_policy(self) -> Dict[str, Policy]:
+        """Return the computed policy."""
+        return {
+            policy_id: self._algo.get_policy(policy_id=policy_id)
+            for policy_id in self._policy_configs
+        }
+
     @classmethod
     def _check_domain_additional(cls, domain: Domain) -> bool:
         if isinstance(domain, SingleAgent):
@@ -99,7 +107,7 @@ class RayRLlib(Solver, Policies, Restorable):
                 isinstance(o, GymSpace) for o in domain.get_observation_space().values()
             )
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         # Reuse algo if possible (enables further learning)
         if not hasattr(self, "_algo"):
             self._init_algo(domain_factory)

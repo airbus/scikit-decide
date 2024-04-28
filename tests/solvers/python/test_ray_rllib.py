@@ -165,8 +165,11 @@ def test_ray_rllib_solver():
     solver_factory = lambda: RayRLlib(config=config_factory(), **solver_kwargs)
 
     # solve
-    solver = RockPaperScissors.solve_with(solver_factory(), domain_factory)
+    solver: RayRLlib = RockPaperScissors.solve_with(solver_factory(), domain_factory)
     assert hasattr(solver, "_algo")
+
+    # test get_policy()
+    policy = solver.get_policy()
 
     # store
     tmp_save_dir = "TEMP_RLlib"

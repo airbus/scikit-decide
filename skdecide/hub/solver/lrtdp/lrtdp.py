@@ -19,7 +19,12 @@ from skdecide.builders.domain import (
     SingleAgent,
     UncertainTransitions,
 )
-from skdecide.builders.solver import DeterministicPolicies, ParallelSolver, Utilities
+from skdecide.builders.solver import (
+    DeterministicPolicies,
+    FromAnyState,
+    ParallelSolver,
+    Utilities,
+)
 from skdecide.core import Value
 
 record_sys_path = sys.path
@@ -45,7 +50,7 @@ try:
     ):
         pass
 
-    class LRTDP(ParallelSolver, Solver, DeterministicPolicies, Utilities):
+    class LRTDP(ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState):
         T_domain = D
 
         def __init__(
@@ -131,9 +136,6 @@ try:
             )
             self._solver.clear()
 
-        def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
-            self._init_solve(domain_factory)
-
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             self._solver.solve(memory)
 
@@ -177,6 +179,7 @@ try:
             D.T_agent[D.T_observation],
             Tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
         ]:
+            """Return the computed policy."""
             return self._solver.get_policy()
 
 except ImportError:

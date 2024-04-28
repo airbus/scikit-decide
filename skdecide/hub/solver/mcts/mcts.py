@@ -21,7 +21,12 @@ from skdecide.builders.domain import (
     Sequential,
     SingleAgent,
 )
-from skdecide.builders.solver import DeterministicPolicies, ParallelSolver, Utilities
+from skdecide.builders.solver import (
+    DeterministicPolicies,
+    FromAnyState,
+    ParallelSolver,
+    Utilities,
+)
 from skdecide.core import Value
 
 record_sys_path = sys.path
@@ -47,7 +52,7 @@ try:
     ):  # TODO: check why DeterministicInitialized & PositiveCosts/Rewards?
         pass
 
-    class MCTS(ParallelSolver, Solver, DeterministicPolicies, Utilities):
+    class MCTS(ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState):
         T_domain = D
 
         Options = mcts_options
@@ -170,9 +175,6 @@ try:
             )
             self._solver.clear()
 
-        def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
-            self._init_solve(domain_factory)
-
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             self._solver.solve(memory)
 
@@ -219,6 +221,7 @@ try:
             D.T_agent[D.T_observation],
             Tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
         ]:
+            """Return the computed policy."""
             return self._solver.get_policy()
 
         def get_action_prefix(self) -> List[D.T_agent[D.T_observation]]:
@@ -293,8 +296,8 @@ try:
             self._action_choice_noise = action_choice_noise
             self._heuristic_records = {}
 
-        def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
-            super()._solve_domain(domain_factory=domain_factory)
+        def _init_solve(self, domain_factory: Callable[[], D]) -> None:
+            super()._init_solve(domain_factory)
             self._heuristic_records = {}
 
         def _value_heuristic(

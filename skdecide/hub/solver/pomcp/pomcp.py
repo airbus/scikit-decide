@@ -56,7 +56,7 @@ class POMCP(Solver, DeterministicPolicies):
         # for the range of possible cost values.
         self._VLV = 100 * self._max_depth
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self._domain = domain_factory()
         self._initial_belief = []
         d = self._domain.get_initial_state_distribution()

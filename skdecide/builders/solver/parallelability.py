@@ -4,10 +4,12 @@
 
 from __future__ import annotations
 
-from typing import Callable, List
+from typing import TYPE_CHECKING, Callable, List
 
-from skdecide.domains import Domain
 from skdecide.parallel_domains import PipeParallelDomain, ShmParallelDomain
+
+if TYPE_CHECKING:  # avoids circular imports
+    from skdecide.domains import Domain
 
 __all__ = ["ParallelSolver"]
 

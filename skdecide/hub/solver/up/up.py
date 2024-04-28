@@ -50,7 +50,7 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
         self._policy = {}
         self._values = {}
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self, domain_factory: Callable[[], D]) -> None:
         self._domain = domain_factory()
         problem = self._domain._problem
         om_params = (
@@ -92,5 +92,10 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
     def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
         return self._values[observation]
 
+    def get_policy(self) -> Dict[D.T_agent[D.T_observation], SkUPAction]:
+        """Return the computed policy."""
+        return self._policy
+
     def get_plan(self) -> List[SkUPAction]:
+        """Return the computed plan."""
         return self._plan

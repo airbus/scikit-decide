@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from heapq import heappop, heappush
 from itertools import count
-from typing import Callable, Optional
+from typing import Callable, Dict, List, Optional
 
 from skdecide import Domain, Solver, Value
 from skdecide.builders.domain import (
@@ -19,7 +19,7 @@ from skdecide.builders.domain import (
     Sequential,
     SingleAgent,
 )
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import DeterministicPolicies, FromAnyState, Utilities
 
 
 # TODO: remove Markovian req?
@@ -37,12 +37,11 @@ class D(
     pass
 
 
-class LazyAstar(Solver, DeterministicPolicies, Utilities):
+class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
     T_domain = D
 
     def __init__(
         self,
-        from_state: Optional[D.T_state] = None,
         heuristic: Optional[
             Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]
         ] = None,
@@ -51,7 +50,6 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
         render: bool = False,
     ) -> None:
 
-        self._from_state = from_state
         self._heuristic = (
             (lambda _, __: Value(cost=0.0)) if heuristic is None else heuristic
         )
@@ -59,10 +57,46 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
         self._verbose = verbose
         self._render = render
         self._values = {}
-        self._plan = []
+        self._plan: List[D.T_event] = []
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def get_plan(self) -> List[D.T_event]:
+        """Return the computed plan."""
+        return self._plan
+
+    def get_policy(self) -> Dict[D.T_observation, Optional[D.T_event]]:
+        """Return the computed policy."""
+        return self._policy
+
+    def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
+        """Initialize solver before calling `solve_from()`
+
+        In particular, initialize the underlying domain.
+
+        This is a helper function called by default from #FromAnyState.init_solve(), the difference being that the domain factory
+        here returns domains auto-cast to the level expected by the solver.
+
+        # Parameters
+        domain_factory: A callable with no argument returning the domain to solve (can be just a domain class).
+
+        """
         self._domain = domain_factory()
+
+    def _solve_from(
+        self,
+        memory: D.T_state,
+    ) -> None:
+        """Run the solving process from a given state.
+
+        !!! tip
+            Create the domain first by calling the @FromAnyState._init_solve() method
+
+        # Parameters
+        memory: The source memory (state or history) of the transition.
+
+        !!! tip
+            The nature of the solutions produced here depends on other solver's characteristics like
+            #policy and #assessibility.
+        """
 
         def extender(node, label, explored):
             result = []
@@ -80,11 +114,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
 
         push = heappush
         pop = heappop
-        if self._from_state is None:
-            # get initial observation from domain (assuming DeterministicInitialized)
-            sources = [self._domain.get_initial_state()]
-        else:
-            sources = [self._from_state]
+        sources = [memory]
         # targets = list(self._domain.get_goals().get_elements())
 
         # The queue is the OPEN list.
@@ -164,7 +194,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities):
                         lbl,
                     ),
                 )
-        self._policy = {}
+        self._policy: Dict[D.T_observation, Optional[D.T_event]] = {}
         for node, label in path:
             self._policy[node] = label["action"] if label is not None else None
             self._values[node] = estim_total - enqueued[node][0]

@@ -150,25 +150,23 @@ def get_plan(domain, solver):
 
 
 def test_solve_python(solver_python):
-    noexcept = True
+    dom = GridDomain()
+    solver_type = load_registered_solver(solver_python["entry"])
+    solver_args = deepcopy(solver_python["config"])
+    if solver_python["entry"] == "StableBaseline":
+        solver_args["algo_class"] = PPO
+    elif solver_python["entry"] == "RayRLlib":
+        solver_args["algo_class"] = DQN
 
-    try:
-        dom = GridDomain()
-        solver_type = load_registered_solver(solver_python["entry"])
-        solver_args = deepcopy(solver_python["config"])
-        if solver_python["entry"] == "StableBaseline":
-            solver_args["algo_class"] = PPO
-        elif solver_python["entry"] == "RayRLlib":
-            solver_args["algo_class"] = DQN
+    with solver_type(**solver_args) as slv:
+        GridDomain.solve_with(slv)
+        plan, cost = get_plan(dom, slv)
+        # test get_plan and get_policy
+        if hasattr(slv, "get_policy"):
+            slv.get_policy()
+        if hasattr(slv, "get_plan"):
+            slv.get_plan()
 
-        with solver_type(**solver_args) as slv:
-            GridDomain.solve_with(slv)
-            plan, cost = get_plan(dom, slv)
-    except Exception as e:
-        print(e)
-        noexcept = False
-    assert (
-        solver_type.check_domain(dom)
-        and noexcept
-        and ((not solver_python["optimal"]) or (cost == 18 and len(plan) == 18))
+    assert solver_type.check_domain(dom) and (
+        (not solver_python["optimal"]) or (cost == 18 and len(plan) == 18)
     )

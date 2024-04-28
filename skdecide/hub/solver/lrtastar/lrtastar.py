@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable, Dict, List, Optional
 
 from skdecide import Domain, Solver, Value
 from skdecide.builders.domain import (
@@ -18,7 +18,7 @@ from skdecide.builders.domain import (
     Sequential,
     SingleAgent,
 )
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import DeterministicPolicies, FromAnyState, Utilities
 
 
 class D(
@@ -35,7 +35,7 @@ class D(
     pass
 
 
-class LRTAstar(Solver, DeterministicPolicies, Utilities):
+class LRTAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
     T_domain = D
 
     def _get_next_action(
@@ -44,7 +44,7 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities):
         return self._policy.get(observation, None)
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
-        return observation is self._policy
+        return observation in self._policy
 
     def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
         if observation not in self.values:
@@ -53,7 +53,6 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities):
 
     def __init__(
         self,
-        from_state: Optional[D.T_state] = None,
         heuristic: Optional[
             Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]
         ] = None,
@@ -62,37 +61,61 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities):
         max_iter=5000,
         max_depth=200,
     ) -> None:
-        self._from_state = from_state
         self._heuristic = (
             (lambda _, __: Value(cost=0.0)) if heuristic is None else heuristic
         )
         self._weight = weight
         self.max_iter = max_iter
         self.max_depth = max_depth
-        self._plan = []
+        self._plan: List[D.T_event] = []
         self.values = {}
 
         self._verbose = verbose
 
         self.heuristic_changed = False
-        self._policy = {}
+        self._policy: Dict[D.T_observation, Optional[D.T_event]] = {}
 
-    def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+    def get_policy(self) -> Dict[D.T_observation, Optional[D.T_event]]:
+        """Return the computed policy."""
+        return self._policy
+
+    def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
+        """Initialize solver before calling `solve_from()`
+
+        In particular, initialize the underlying domain.
+
+        This is a helper function called by default from #FromAnyState.init_solve(), the difference being that the domain factory
+        here returns domains auto-cast to the level expected by the solver.
+
+        # Parameters
+        domain_factory: A callable with no argument returning the domain to solve (can be just a domain class).
+
+        """
         self._domain = domain_factory()
+
+    def _solve_from(
+        self,
+        memory: D.T_state,
+    ) -> None:
+        """Run the solving process from a given state.
+
+        !!! tip
+            Create the domain first by calling the @FromAnyState._init_solve() method
+
+        # Parameters
+        memory: The source memory (state or history) of the transition.
+
+        !!! tip
+            The nature of the solutions produced here depends on other solver's characteristics like
+            #policy and #assessibility.
+        """
         self.values = {}
         iteration = 0
         best_cost = float("inf")
-        if self._from_state is None:
-            # get initial observation from domain (assuming DeterministicInitialized)
-            from_observation = self._domain.get_initial_state()
-        else:
-            from_observation = self._from_state
         # best_path = None
         while True:
-            print(from_observation)
-            dead_end, cumulated_cost, current_roll, list_action = self.doTrial(
-                from_observation
-            )
+            print(memory)
+            dead_end, cumulated_cost, current_roll, list_action = self.doTrial(memory)
             if self._verbose:
                 print(
                     "iter ",

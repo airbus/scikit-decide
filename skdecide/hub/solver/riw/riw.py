@@ -19,7 +19,12 @@ from skdecide.builders.domain import (
     Sequential,
     SingleAgent,
 )
-from skdecide.builders.solver import DeterministicPolicies, ParallelSolver, Utilities
+from skdecide.builders.solver import (
+    DeterministicPolicies,
+    FromAnyState,
+    ParallelSolver,
+    Utilities,
+)
 
 record_sys_path = sys.path
 skdecide_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
@@ -43,7 +48,7 @@ try:
     ):  # TODO: check why DeterministicInitialized & PositiveCosts/Rewards?
         pass
 
-    class RIW(ParallelSolver, Solver, DeterministicPolicies, Utilities):
+    class RIW(ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState):
         T_domain = D
 
         def __init__(
@@ -128,9 +133,6 @@ try:
             )
             self._solver.clear()
 
-        def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
-            self._init_solve(domain_factory)
-
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             self._solver.solve(memory)
 
@@ -180,6 +182,7 @@ try:
             D.T_agent[D.T_observation],
             Tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
         ]:
+            """Return the computed policy."""
             return self._solver.get_policy()
 
         def get_action_prefix(self) -> List[D.T_agent[D.T_observation]]:
