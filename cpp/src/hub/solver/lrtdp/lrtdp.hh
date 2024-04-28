@@ -41,6 +41,8 @@ public:
                              const double &, const double &)>
       WatchdogFunctor;
 
+  // If use_labels is true, then rollout_budget and epsilon moving average are
+  // voided
   LRTDPSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
       const HeuristicFunctor &heuristic, bool use_labels = true,

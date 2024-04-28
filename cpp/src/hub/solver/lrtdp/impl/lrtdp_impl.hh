@@ -73,6 +73,8 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
     }
 
     _nb_rollouts = 0;
+    _epsilon_moving_average = 0.0;
+    _epsilons.clear();
     boost::integer_range<std::size_t> parallel_rollouts(
         0, _domain.get_parallel_capacity());
 
@@ -82,6 +84,7 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
         [this, &start_time, &root_node](const std::size_t &thread_id) {
           std::size_t etime = 0;
           std::size_t epsilons_size = 0;
+          double eps_moving_average = 0.0;
 
           do {
             if (_debug_logs)
@@ -93,14 +96,16 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
             trial(&root_node, start_time, &thread_id);
             epsilons_size = update_epsilon_moving_average(
                 root_node, root_node_record_value);
+            eps_moving_average =
+                (epsilons_size >= _epsilon_moving_average_window)
+                    ? (double)_epsilon_moving_average
+                    : std::numeric_limits<double>::infinity();
           } while (_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
-                             root_node.best_value,
-                             (epsilons_size >= _epsilon_moving_average_window)
-                                 ? (double)_epsilon_moving_average
-                                 : std::numeric_limits<double>::infinity()) &&
+                             root_node.best_value, eps_moving_average) &&
+                   (etime < _time_budget) &&
                    (!_use_labels || !root_node.solved) &&
-                   (etime < _time_budget) && (_nb_rollouts < _rollout_budget) &&
-                   (_epsilon_moving_average > _epsilon));
+                   (_use_labels || ((_nb_rollouts < _rollout_budget) &&
+                                    (eps_moving_average > _epsilon))));
         });
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -505,8 +510,9 @@ std::size_t SK_LRTDP_SOLVER_CLASS::update_epsilon_moving_average(
         [this, &epsilons_size, &current_epsilon]() {
           if (_epsilons.size() < _epsilon_moving_average_window) {
             _epsilon_moving_average =
-                ((double)_epsilon_moving_average) +
-                (current_epsilon / ((double)_epsilon_moving_average_window));
+                ((double)((_epsilon_moving_average * _epsilons.size()) +
+                          current_epsilon)) /
+                ((double)(_epsilons.size() + 1));
           } else {
             _epsilon_moving_average =
                 ((double)_epsilon_moving_average) +
