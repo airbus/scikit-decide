@@ -129,6 +129,7 @@ void SK_MCTS_SOLVER_CLASS::solve(const State &s) {
         [this, &start_time, &root_node](const std::size_t &thread_id) {
           std::size_t etime = 0;
           std::size_t epsilons_size = 0;
+          double eps_moving_average = 0.0;
 
           do {
             std::size_t depth = 0;
@@ -140,14 +141,15 @@ void SK_MCTS_SOLVER_CLASS::solve(const State &s) {
             (*_back_propagator)(*this, &thread_id, *sn);
             epsilons_size = update_epsilon_moving_average(
                 root_node, root_node_record_value);
+            eps_moving_average =
+                (epsilons_size >= _epsilon_moving_average_window)
+                    ? (double)_epsilon_moving_average
+                    : std::numeric_limits<double>::infinity();
             _nb_rollouts++;
           } while (_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
-                             root_node.value,
-                             (epsilons_size >= _epsilon_moving_average_window)
-                                 ? (double)_epsilon_moving_average
-                                 : std::numeric_limits<double>::infinity()) &&
+                             root_node.value, eps_moving_average) &&
                    (etime < _time_budget) && (_nb_rollouts < _rollout_budget) &&
-                   (_epsilon_moving_average > _epsilon));
+                   (eps_moving_average > _epsilon));
         });
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -403,8 +405,9 @@ std::size_t SK_MCTS_SOLVER_CLASS::update_epsilon_moving_average(
         [this, &epsilons_size, &current_epsilon]() {
           if (_epsilons.size() < _epsilon_moving_average_window) {
             _epsilon_moving_average =
-                ((double)_epsilon_moving_average) +
-                (current_epsilon / ((double)_epsilon_moving_average_window));
+                ((double)((_epsilon_moving_average * _epsilons.size()) +
+                          current_epsilon)) /
+                ((double)(_epsilons.size() + 1));
           } else {
             _epsilon_moving_average =
                 ((double)_epsilon_moving_average) +

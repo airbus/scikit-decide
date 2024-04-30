@@ -105,6 +105,7 @@ void SK_MARTDP_SOLVER_CLASS::solve(const State &s) {
     _epsilons.clear();
     std::size_t etime = 0;
     std::size_t epsilons_size = 0;
+    double eps_moving_average = 0.0;
 
     do {
       if (_debug_logs)
@@ -116,13 +117,13 @@ void SK_MARTDP_SOLVER_CLASS::solve(const State &s) {
       trial(&root_node, start_time);
       epsilons_size =
           update_epsilon_moving_average(root_node, root_node_record_value);
+      eps_moving_average = (epsilons_size >= _epsilon_moving_average_window)
+                               ? _epsilon_moving_average
+                               : std::numeric_limits<double>::infinity();
     } while (_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
-                       root_node.all_value,
-                       (epsilons_size >= _epsilon_moving_average_window)
-                           ? _epsilon_moving_average
-                           : std::numeric_limits<double>::infinity()) &&
+                       root_node.all_value, eps_moving_average) &&
              (etime < _time_budget) && (_nb_rollouts < _rollout_budget) &&
-             (_epsilon_moving_average > _epsilon));
+             (eps_moving_average > _epsilon));
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -620,8 +621,10 @@ std::size_t SK_MARTDP_SOLVER_CLASS::update_epsilon_moving_average(
   if (_epsilon_moving_average_window > 0) {
     double current_epsilon = std::fabs(node_record_value - node.all_value);
     if (_epsilons.size() < _epsilon_moving_average_window) {
-      _epsilon_moving_average +=
-          current_epsilon / ((double)_epsilon_moving_average_window);
+      _epsilon_moving_average =
+          ((double)((_epsilon_moving_average * _epsilons.size()) +
+                    current_epsilon)) /
+          ((double)(_epsilons.size() + 1));
     } else {
       _epsilon_moving_average += (current_epsilon - _epsilons.front()) /
                                  ((double)_epsilon_moving_average_window);
