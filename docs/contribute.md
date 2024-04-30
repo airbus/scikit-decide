@@ -46,6 +46,16 @@ brew install cmake
 brew install boost
 brew install libomp
 ```
+You must also set some environment variables to instruct the build process on how to find boost and openMP.
+For instance, on macOS, it is done via:
+```shell
+export Boost_ROOT=$(brew --cellar boost)/$(brew list --versions boost | tr ' ' '\n' | tail -1)
+export OpenMP_ROOT=$(brew --cellar libomp)/$(brew list --versions libomp | tr ' ' '\n' | tail -1)
+export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
+export CFLAGS="$CFLAGS -I$OpenMP_ROOT/include"
+export CXXFLAGS="$CXXFLAGS -I$OpenMP_ROOT/include"
+export LDFLAGS="$LDFLAGS -Wl,-rpath,$OpenMP_ROOT/lib -L$OpenMP_ROOT/lib -lomp"
+```
 
 #### Installation with pyenv + poetry
 
@@ -69,9 +79,9 @@ Here are the steps to follow:
 
   - Use poetry to install the project:
 
-      - Install [poetry](https://python-poetry.org/docs/master/#installation).
+      - Install [poetry](https://python-poetry.org/docs/#installation).
           ```shell
-          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python -
+          curl -sSL https://install.python-poetry.org | python3 -
           export PATH="$HOME/.local/bin:$PATH"  # add path to poetry
           ```
 
