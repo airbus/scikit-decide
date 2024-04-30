@@ -186,7 +186,18 @@ Then generate and serve locally the documentation with:
 poetry run yarn docs:dev
 ```
 
-NB: The above command will call `python docs/autodoc.py` hence the use of `poetry run`.
+The above command will call `python docs/autodoc.py` hence the use of `poetry run`.
+
+NB: you can encounter an error when using Node version >=17 :
+```
+node:internal/crypto/hash:71
+  this[kHandle] = new _Hash(algorithm, xofLen);
+                  ^
+```
+In that case, typing the command below may help you:
+```shell
+export NODE_OPTIONS=--openssl-legacy-provider
+```
 
 
 Open your web browser to access the documentation (by default on http://localhost:8080/scikit-decide/).
