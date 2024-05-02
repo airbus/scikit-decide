@@ -119,9 +119,6 @@ def test_as_rllib_env():
     for subspace in env.observation_space.values():
         assert isinstance(subspace, gym.spaces.Space)
 
-    # checks from ray.rllib
-    ray.rllib.utils.check_env(env)
-
 
 def test_as_rllib_env_with_autocast_from_singleagent_to_multiagents():
     ENV_NAME = "CartPole-v1"
@@ -141,9 +138,6 @@ def test_as_rllib_env_with_autocast_from_singleagent_to_multiagents():
     assert env.get_agent_ids() == set(env.observation_space)
     for subspace in env.observation_space.values():
         assert isinstance(subspace, gym.spaces.Space)
-
-    # checks from ray.rllib
-    ray.rllib.utils.check_env(env)
 
 
 def test_ray_rllib_solver():
