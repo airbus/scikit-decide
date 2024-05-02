@@ -1,0 +1,65 @@
+name: Deploy doc
+
+on:
+  workflow_call:
+    inputs:
+      doc-version-path:
+        description: "Path where the doc should be deployed"
+        required: FALSE
+        default: "/"
+        type: string
+      doc-clean:
+        description: "Whether the previous doc should be cleaned. (Always ignore subfolders in version/)"
+        required: FALSE
+        default: "true"
+        type: string
+      doc-artifact-name:
+        description: "Name of the artifact containing the built doc"
+        required: false
+        default: "doc"
+        type: string
+      doc-path:
+        description: "Path where to extract the built doc"
+        required: false
+        default: "docs/.vuepress/dist"
+        type: string
+      binder-env-fullref:
+        description: "Full ref of the binder env to build. The build is triggered only if not empty."
+        required: false
+        default: "${{ github.repository }}/${{ github.ref_name}}"
+        type: string
+jobs:
+  trigger-binder-build:
+    runs-on: ubuntu-latest
+    if: inputs.binder-env-fullref != ''
+    steps:
+      - uses: actions/checkout@v4  # checkout triggering branch to get scripts/trigger_binder.sh
+      - name: Trigger a build for default binder env ref on each BinderHub deployments in the mybinder.org federation
+        continue-on-error: true
+        run: |
+          binder_env_full_ref=${{ inputs.binder-env-fullref }}
+          echo Triggering binder environment build for ${binder_env_full_ref}
+          bash scripts/trigger_binder.sh https://ovh.mybinder.org/build/gh/${binder_env_full_ref}
+          bash scripts/trigger_binder.sh https://ovh2.mybinder.org/build/gh/${binder_env_full_ref}
+          bash scripts/trigger_binder.sh https://notebooks.gesis.org/binder/build/gh/${binder_env_full_ref}
+
+  deploy-doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.doc-artifact-name }}
+          path: ${{ inputs.doc-path }}
+      - name: Deploy documentation in a version subfolder on GH pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages # The branch the action should deploy to.
+          folder: ${{ inputs.doc-path }} # The folder the action should deploy.
+          target-folder: ${{ inputs.doc-version-path }} # The folder the action should deploy to.
+          commit-message: publish documentation
+          single-commit: true
+          clean: ${{ inputs.doc-clean }}
+          clean-exclude: |
+            "version/*"

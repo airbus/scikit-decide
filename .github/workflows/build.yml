@@ -7,7 +7,7 @@ on:
   pull_request:
   workflow_dispatch:
   schedule:
-    - cron:  '45 1 * * *'
+    - cron:  '45 1 * * 3'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,7 +32,7 @@ jobs:
       do_windows: ${{ steps.generate-matrix.outputs.do_windows}}
       build_doc: ${{ steps.generate-matrix.outputs.build_doc}}
     steps:
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.8
       - name: Generate Matrix
@@ -83,9 +83,9 @@ jobs:
           oses = ["macos", "ubuntu", "windows"]
           build_dict = {os : [k for k in build if k.startswith(os)] for os in oses}
           python_version_per_os = {os: python_version for os in oses}
-          # remove python 3.11 for windows: dependency conflict from pyarrow prevent testing the wheel windows python 3.11
+          # remove python 3.11 for windows: dependency conflict from pyarrow prevent testing the wheel windows python 3.11
           python_version_per_os["windows"] = [v for v in python_version if v != "3.11"]
-          # update build_dict by removing os without any python version
+          # update build_dict by removing os without any python version
           for os in build_dict:
               if len(python_version_per_os[os]) == 0:
                     build_dict[os] = []
@@ -103,14 +103,14 @@ jobs:
   lint-sources:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.8"
       - name: install pre-commit
         run: python -m pip install pre-commit
       - name: get cached pre-commit hooks
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
           key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
@@ -132,25 +132,25 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -167,7 +167,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             skdecide/hub/bin
@@ -191,9 +191,9 @@ jobs:
         run: 7z x dist/*.whl -y
 
       - name: Upload as build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
           path: dist/*.whl
 
   build-macos:
@@ -212,25 +212,25 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache
-          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+          key: venv-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -247,13 +247,13 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             skdecide/hub/bin
             skdecide/hub/share
             skdecide/hub/*.msc
-          key: ${{ runner.os }}-cache-deps
+          key: ${{ runner.os }}-${{ matrix.arch }}-cache-deps
 
       - name: Update SKDECIDE_SKIP_DEPS
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
@@ -262,7 +262,7 @@ jobs:
       - name: Install and restore ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ runner.os }}-py${{ matrix.python-version }}
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.arch }}
           max-size: 80M
 
       - name: Let cmake use ccache
@@ -323,9 +323,9 @@ jobs:
         run: 7z x wheelhouse/*.whl -y
 
       - name: Upload as build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.arch }}
           path: wheelhouse/*.whl
 
   build-ubuntu:
@@ -343,25 +343,25 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -378,7 +378,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             skdecide/hub/bin
@@ -392,14 +392,14 @@ jobs:
 
       - name: Restore docker dev image
         id: cache-dev-deps
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: /tmp/docker
           key: dev-deps-${{ runner.os }}-${{ hashFiles('scripts/build-skdecide_dev.sh', 'scripts/Dockerfile_x86_64_dev') }}
 
       - name: Restore ccache cache
         id: ccache-restore
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .ccache
           key: ccache-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.run_id }}-${{github.run_number}}
@@ -428,9 +428,9 @@ jobs:
         run: 7z x dist/*.whl -y
 
       - name: Upload as build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
           path: dist/*.whl
 
   test-windows:
@@ -453,19 +453,20 @@ jobs:
       minizinc_install_cmdline: cmd //c "minizinc_setup.exe /verysilent /currentuser /norestart /suppressmsgboxes /sp"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: wheels
+          pattern: wheels-windows*-${{ matrix.python-version }}
+          merge-multiple: true
           path: wheels
 
       - name: get MininZinc path to cache
@@ -475,7 +476,7 @@ jobs:
 
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -535,20 +536,21 @@ jobs:
       minizinc_install_cmdline: sudo hdiutil attach bin/minizinc.dmg; sudo cp -R /Volumes/MiniZinc*/MiniZincIDE.app bin/.
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install libomp package
         run: brew install libomp
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: wheels
+          pattern: wheels-macos*-${{ matrix.python-version }}*
+          merge-multiple: true
           path: wheels
 
       - name: Create bin/
@@ -560,7 +562,7 @@ jobs:
 
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -621,17 +623,18 @@ jobs:
 
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: wheels
+          pattern: wheels-ubuntu*-${{ matrix.python-version }}
+          merge-multiple: true
           path: wheels
 
       - name: Create bin/
@@ -644,7 +647,7 @@ jobs:
 
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -694,121 +697,28 @@ jobs:
           python tests/test_guide.py
 
   build-doc:
-    needs: [build-macos, build-ubuntu, build-windows, test-ubuntu, setup]
+    needs: [ build-ubuntu, setup ]
     if: needs.setup.outputs.build_doc == 'true'
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.10"]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Set env variables for github+binder links in doc
-        run: |
-          # binder environment repo and branch
-          AUTODOC_BINDER_ENV_GH_REPO_NAME=${GITHUB_REPOSITORY}
-          AUTODOC_BINDER_ENV_GH_BRANCH="binder"
-          # notebooks source repo and branch depending if it is a commit push or a PR
-          if [[ $GITHUB_REF == refs/pull* ]];
-          then
-              AUTODOC_NOTEBOOKS_REPO_URL="${GITHUB_SERVER_URL}/${{ github.event.pull_request.head.repo.full_name }}"
-              AUTODOC_NOTEBOOKS_BRANCH=${GITHUB_HEAD_REF}
-          elif [[ $GITHUB_REF == refs/heads* ]];
-          then
-              AUTODOC_NOTEBOOKS_REPO_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}
-              AUTODOC_NOTEBOOKS_BRANCH=${GITHUB_REF/refs\/heads\//}
-          fi
-          # export in GITHUB_ENV for next steps
-          echo "AUTODOC_BINDER_ENV_GH_REPO_NAME=${AUTODOC_BINDER_ENV_GH_REPO_NAME}" >> $GITHUB_ENV
-          echo "AUTODOC_BINDER_ENV_GH_BRANCH=${AUTODOC_BINDER_ENV_GH_BRANCH}" >> $GITHUB_ENV
-          echo "AUTODOC_NOTEBOOKS_REPO_URL=${AUTODOC_NOTEBOOKS_REPO_URL}" >> $GITHUB_ENV
-          echo "AUTODOC_NOTEBOOKS_BRANCH=${AUTODOC_NOTEBOOKS_BRANCH}" >> $GITHUB_ENV
-          # check computed variables
-          echo "Binder env: ${AUTODOC_BINDER_ENV_GH_REPO_NAME}/${AUTODOC_BINDER_ENV_GH_BRANCH}"
-          echo "Notebooks source: ${AUTODOC_NOTEBOOKS_REPO_URL}/tree/${AUTODOC_NOTEBOOKS_BRANCH}"
-
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: wheels
-          path: wheels
-
-      - name: Install scikit-decide
-        run: |
-          # find proper wheel and install it
-          python_version=${{ matrix.python-version }}
-          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
-          pip install ${wheelfile}[all]
-
-      - name: generate documentation
-        run: |
-          yarn global add vuepress && yarn install
-          export NODE_OPTIONS=--openssl-legacy-provider  # avoid issue with node 18 and current dependencies (ok because no interaction with external network during the build)
-          export DO_SKIP_MZN_CHECK=1  # avoid having to install minizinc for discrete-optimization
-          yarn docs:build
-          touch docs/.vuepress/dist/.nojekyll
-
-      - name: upload as artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: doc
-          path: docs/.vuepress/dist
-
-  upload-doc:
-    needs: [build-doc, test-windows, test-macos, test-ubuntu]
-    if: github.ref == 'refs/heads/master'
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.8"]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: doc
-          path: docs/.vuepress/dist
-
-      - name: Deploy documentation in root folder on GH pages 🚀
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          branch: gh-pages # The branch the action should deploy to.
-          folder: docs/.vuepress/dist # The folder the action should deploy.
-          target-folder: / # The folder the action should deploy to.
-          commit-message: publish documentation
-          single-commit: true
-          clean-exclude: |
-            "version/*"
+    uses: ./.github/workflows/build-doc.yml
+    with:
+      doc-prerequisites-cmdline: export DO_SKIP_MZN_CHECK=1
 
   upload-nightly:
-    if: (github.ref == 'refs/heads/master') && (github.repository == 'airbus/scikit-decide') && (github.event_name == 'schedule')
+    if: (github.repository == 'airbus/scikit-decide') && (github.ref == 'refs/heads/master')
     needs: [test-ubuntu, test-macos, test-windows]
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
-        name: wheels
+        pattern: wheels-*
+        merge-multiple: true
         path: dist/
 
     - run: |
         zip -r dist.zip dist/
 
-    - uses: actions/github-script@v6
+    - uses: actions/github-script@v7
       id: asset
       with:
         script: |
@@ -938,31 +848,20 @@ jobs:
           return uploadedAsset.data.browser_download_url;
         result-encoding: string
 
-    - uses: actions/checkout@v3
-      # only if a nightly release occured
-      if: ${{ steps.asset.outputs.result != '' }}
-      with:
-        ref: binder
-
-    - name: Force a rebuild of binder environment
-      # only if a nightly release occured
-      if: ${{ steps.asset.outputs.result != '' }}
-      run: |
-        # update nightly_build_url to install last nightly build over last release
-        sed -i -e 's|nightly_build_url="[^"]*"|nightly_build_url="${{ steps.asset.outputs.result }}"|' postBuild
-        git config user.name "Actions"
-        git config user.email "actions@github.com"
-        git commit postBuild -m "Use scikit-decide last nightly build"
-        git push origin binder
-
-    - uses: actions/checkout@v3  # checkout triggering branch to get scripts/trigger_binder.sh
-      # only if a nightly release occured
-      if: ${{ steps.asset.outputs.result != '' }}
-
-    - name: Trigger a build on each BinderHub deployments in the mybinder.org federation
-      # only if a nightly release occured
-      if: ${{ steps.asset.outputs.result != '' }}
-      run: |
-        bash scripts/trigger_binder.sh https://ovh.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
-        bash scripts/trigger_binder.sh https://ovh2.mybinder.org/build/gh/${GITHUB_REPOSITORY}/binder
-        bash scripts/trigger_binder.sh https://notebooks.gesis.org/binder/build/gh/${GITHUB_REPOSITORY}/binder
+  deploy-doc:
+    needs: [build-doc, test-windows, test-macos, test-ubuntu, upload-nightly]
+    # if: always()
+    #  -> trigger even if one needed job was skipped (namely upload-nightly)
+    #  -> needed jobs successes must be checked explicitely
+    if: |
+      always()
+      && (github.ref == 'refs/heads/master')
+      && (needs.build-doc.result == 'success')
+      && (needs.test-windows.result == 'success')
+      && (needs.test-macos.result == 'success')
+      && (needs.test-ubuntu.result == 'success')
+      && (
+        (needs.upload-nightly.result == 'success')
+        || (github.repository != 'airbus/scikit-decide')
+      )
+    uses: ./.github/workflows/deploy-doc.yml

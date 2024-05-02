@@ -1,0 +1,111 @@
+name: Build doc
+
+on:
+  workflow_call:
+    inputs:
+      doc-artifact-name:
+        description: "Name of the artifact containing the built doc"
+        required: false
+        default: "doc"
+        type: string
+      doc-path:
+        description: "Path where to extract the built doc"
+        required: false
+        default: "docs/.vuepress/dist"
+        type: string
+      notebooks-repo-url:
+        description: |
+          Url of the repository containing the notebooks, used to generate github and colab links.
+          By default, the current repository url.
+        required: false
+        default: ""
+        type: string
+      notebooks-branch:
+        description: |
+          Branch containing the notebooks, used to generate github and colab links.
+          By default, the current branch.
+        required: false
+        default: ""
+        type: string
+      doc-prerequisites-cmdline:
+        description: |
+          Command line to run before building doc.
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  build-doc:
+    runs-on: ubuntu-latest
+    env:
+      python-version: "3.9"
+    steps:
+      - name: Set env variables for github links in doc
+        run: |
+          # notebooks source repo and branch. First try to use workflow inputs
+          AUTODOC_NOTEBOOKS_REPO_URL=${{ inputs.notebooks-repo-url }}
+          AUTODOC_NOTEBOOKS_BRANCH=${{ inputs.notebooks-branch }}
+          # use github context if not defined in inputs
+          if [[ $GITHUB_REF == refs/pull* ]];
+          then
+              if [ -z "${AUTODOC_NOTEBOOKS_REPO_URL}" ]; then
+                AUTODOC_NOTEBOOKS_REPO_URL="${GITHUB_SERVER_URL}/${{ github.event.pull_request.head.repo.full_name }}"
+              fi
+              if [ -z "${AUTODOC_NOTEBOOKS_BRANCH}" ]; then
+                AUTODOC_NOTEBOOKS_BRANCH=${GITHUB_HEAD_REF}
+              fi
+          elif [[ $GITHUB_REF == refs/heads* ]];
+          then
+              if [ -z "${AUTODOC_NOTEBOOKS_REPO_URL}" ]; then
+                AUTODOC_NOTEBOOKS_REPO_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}
+              fi
+              if [ -z "${AUTODOC_NOTEBOOKS_BRANCH}" ]; then
+                AUTODOC_NOTEBOOKS_BRANCH=${GITHUB_REF/refs\/heads\//}
+              fi
+          elif [[ $GITHUB_REF == refs/tags* ]];
+          then
+              if [ -z "${AUTODOC_NOTEBOOKS_REPO_URL}" ]; then
+                AUTODOC_NOTEBOOKS_REPO_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}
+              fi
+              if [ -z "${AUTODOC_NOTEBOOKS_BRANCH}" ]; then
+                AUTODOC_NOTEBOOKS_BRANCH=${GITHUB_REF/refs\/tags\//}
+              fi
+          fi
+          # export in GITHUB_ENV for next steps
+          echo "AUTODOC_NOTEBOOKS_REPO_URL=${AUTODOC_NOTEBOOKS_REPO_URL}" >> $GITHUB_ENV
+          echo "AUTODOC_NOTEBOOKS_BRANCH=${AUTODOC_NOTEBOOKS_BRANCH}" >> $GITHUB_ENV
+          # check computed variables
+          echo "Notebooks source: ${AUTODOC_NOTEBOOKS_REPO_URL}/tree/${AUTODOC_NOTEBOOKS_BRANCH}"
+      - uses: actions/checkout@v4
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.python-version }}
+          cache: "pip"
+          cache-dependency-path: |
+            pyproject.toml
+      - name: Download wheel
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-ubuntu*-${{ env.python-version }}
+          merge-multiple: true
+          path: wheels
+      - name: Install scikit-decide wheel and dependencies
+        run: |
+          python -m pip install -U pip setuptools
+          # find proper wheel and install it
+          python_version=${{ env.python-version }}
+          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
+          pip install ${wheelfile}[all]
+      - name: generate documentation
+        run: |
+          yarn global add vuepress && yarn install
+          export NODE_OPTIONS=--openssl-legacy-provider  # avoid issue with node 18 and current dependencies (ok because no interaction with external network during the build)
+          export DO_SKIP_MZN_CHECK=1  # avoid having to install minizinc for discrete-optimization
+          yarn docs:build
+          touch docs/.vuepress/dist/.nojekyll
+      - name: upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.doc-artifact-name }}
+          path: ${{ inputs.doc-path }}
