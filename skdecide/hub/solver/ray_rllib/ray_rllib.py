@@ -9,6 +9,7 @@ from typing import Callable, Dict, Optional, Set, Type
 import gymnasium as gym
 import numpy as np
 import ray
+from packaging.version import Version
 from ray.rllib.algorithms.algorithm import Algorithm, AlgorithmConfig
 from ray.rllib.env.wrappers.multi_agent_env_compatibility import (
     MultiAgentEnvCompatibility,
@@ -286,12 +287,18 @@ class RayRLlib(Solver, Policies, Restorable):
                 state_access=rayrllib._state_access,
             ),
         )
-        # Disable env checking in case of action masking otherwise RLlib will try to simulate
-        # next state transition with invalid actions, which might make some domains crash if
-        # they require action masking
-        self._config.environment(
-            env="skdecide_env", disable_env_checking=self._action_masking
-        )
+        if Version(ray.__version__) >= Version("2.20.0"):
+            # starting from ray 2.20, no more checks on environment are made,
+            # and `disable_env_checking` use raises an error
+            self._config.environment(env="skdecide_env")
+        else:
+            # Disable env checking in case of action masking otherwise RLlib will try to simulate
+            # next state transition with invalid actions, which might make some domains crash if
+            # they require action masking
+            self._config.environment(
+                env="skdecide_env", disable_env_checking=self._action_masking
+            )
+
         self._algo = self._algo_class(config=self._config)
 
 
