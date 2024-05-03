@@ -626,6 +626,12 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
+      - name: Install prerelease version of pymip (only for macos arm64)
+        if: matrix.os == 'macos-latest'
+        run: |
+          python -m pip install -U pip
+          pip install mip==1.16rc0
+
       - name: Install scikit-decide and test dependencies
         run: |
           python_version=${{ matrix.python-version }}
