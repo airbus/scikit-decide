@@ -25,14 +25,14 @@ SK_LRTDP_SOLVER_CLASS::LRTDPSolver(
     const HeuristicFunctor &heuristic, bool use_labels, std::size_t time_budget,
     std::size_t rollout_budget, std::size_t max_depth,
     std::size_t epsilon_moving_average_window, double epsilon, double discount,
-    bool online_node_garbage, bool debug_logs, const WatchdogFunctor &watchdog)
+    bool online_node_garbage, bool debug_logs, const CallbackFunctor &callback)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
       _use_labels(use_labels), _time_budget(time_budget),
       _rollout_budget(rollout_budget), _max_depth(max_depth),
       _epsilon_moving_average_window(epsilon_moving_average_window),
       _epsilon(epsilon), _discount(discount),
       _online_node_garbage(online_node_garbage), _debug_logs(debug_logs),
-      _watchdog(watchdog), _current_state(nullptr), _nb_rollouts(0) {
+      _callback(callback), _current_state(nullptr), _nb_rollouts(0) {
 
   if (debug_logs) {
     Logger::check_level(logging::debug, "algorithm LRTDP");
@@ -50,7 +50,7 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
   try {
     Logger::info("Running " + ExecutionPolicy::print_type() +
                  " LRTDP solver from state " + s.print());
-    auto start_time = std::chrono::high_resolution_clock::now();
+    _start_time = std::chrono::high_resolution_clock::now();
 
     auto si = _graph.emplace(s);
     StateNode &root_node = const_cast<StateNode &>(
@@ -74,14 +74,14 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
 
     _nb_rollouts = 0;
     _epsilon_moving_average = 0.0;
-    _epsilons.clear();
+    _residuals.clear();
     boost::integer_range<std::size_t> parallel_rollouts(
         0, _domain.get_parallel_capacity());
 
     std::for_each(
         ExecutionPolicy::policy, parallel_rollouts.begin(),
         parallel_rollouts.end(),
-        [this, &start_time, &root_node](const std::size_t &thread_id) {
+        [this, &root_node](const std::size_t &thread_id) {
           std::size_t etime = 0;
           std::size_t epsilons_size = 0;
           double eps_moving_average = 0.0;
@@ -93,24 +93,18 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
                             ExecutionPolicy::print_thread());
             _nb_rollouts++;
             double root_node_record_value = root_node.best_value;
-            trial(&root_node, start_time, &thread_id);
-            epsilons_size = update_epsilon_moving_average(
-                root_node, root_node_record_value);
-            eps_moving_average =
-                (epsilons_size >= _epsilon_moving_average_window)
-                    ? (double)_epsilon_moving_average
-                    : std::numeric_limits<double>::infinity();
-          } while (_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
-                             root_node.best_value, eps_moving_average) &&
-                   (etime < _time_budget) &&
-                   (!_use_labels || !root_node.solved) &&
-                   (_use_labels || ((_nb_rollouts < _rollout_budget) &&
-                                    (eps_moving_average > _epsilon))));
+            trial(&root_node, &thread_id);
+            update_epsilon_moving_average(root_node, root_node_record_value);
+          } while (
+              !_callback(*this, _domain, &thread_id) &&
+              (etime < _time_budget) && (!_use_labels || !root_node.solved) &&
+              (_use_labels || ((_nb_rollouts < _rollout_budget) &&
+                               (get_residual_moving_average() > _epsilon))));
         });
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        end_time - start_time)
+                        end_time - _start_time)
                         .count();
     Logger::info("LRTDP finished to solve from state " + s.print() + " in " +
                  StringConverter::from((double)duration / (double)1e9) +
@@ -187,10 +181,32 @@ std::size_t SK_LRTDP_SOLVER_CLASS::get_nb_rollouts() const {
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
-typename MapTypeDeducer<
+double SK_LRTDP_SOLVER_CLASS::get_residual_moving_average() const {
+  if (_residuals.size() >= _epsilon_moving_average_window) {
+    return (double)_epsilon_moving_average;
+  } else {
+    return std::numeric_limits<double>::infinity();
+  }
+}
+
+SK_LRTDP_SOLVER_TEMPLATE_DECL
+std::size_t SK_LRTDP_SOLVER_CLASS::get_solving_time() {
+  std::size_t milliseconds_duration;
+  _execution_policy.protect(
+      [this, &milliseconds_duration]() {
+        milliseconds_duration = static_cast<std::size_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::high_resolution_clock::now() - _start_time)
+                .count());
+      },
+      _time_mutex);
+  return milliseconds_duration;
+}
+
+SK_LRTDP_SOLVER_TEMPLATE_DECL typename MapTypeDeducer<
     typename SK_LRTDP_SOLVER_CLASS::State,
     std::pair<typename SK_LRTDP_SOLVER_CLASS::Action, double>>::Map
-SK_LRTDP_SOLVER_CLASS::policy() const {
+SK_LRTDP_SOLVER_CLASS::get_policy() const {
   typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
   for (auto &n : _graph) {
     if (n.best_action != nullptr) {
@@ -225,8 +241,8 @@ void SK_LRTDP_SOLVER_CLASS::expand(StateNode *s, const std::size_t *thread_id) {
       _execution_policy.protect(
           [this, &i, &ns] { i = _graph.emplace(ns.state()); });
       StateNode &next_node = const_cast<StateNode &>(
-          *(i.first)); // we won't change the real key (StateNode::state) so we
-                       // are safe
+          *(i.first)); // we won't change the real key (StateNode::state) so
+                       // we are safe
       an.outcomes.push_back(std::make_tuple(
           ns.probability(),
           _domain.get_transition_value(s->state, a, next_node.state, thread_id)
@@ -343,11 +359,8 @@ double SK_LRTDP_SOLVER_CLASS::residual(StateNode *s,
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
-bool SK_LRTDP_SOLVER_CLASS::check_solved(
-    StateNode *s,
-    const std::chrono::time_point<std::chrono::high_resolution_clock>
-        &start_time,
-    const std::size_t *thread_id) {
+bool SK_LRTDP_SOLVER_CLASS::check_solved(StateNode *s,
+                                         const std::size_t *thread_id) {
   if (_debug_logs) {
     _execution_policy.protect(
         [&s]() {
@@ -368,7 +381,7 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(
     visited.insert(s);
   }
 
-  while (!open.empty() && (elapsed_time(start_time) < _time_budget) &&
+  while (!open.empty() && (get_solving_time() < _time_budget) &&
          (depth < _max_depth)) {
     depth++;
     StateNode *cs = open.top();
@@ -395,7 +408,7 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(
         cs->mutex);
   }
 
-  auto e_time = elapsed_time(start_time);
+  auto e_time = get_solving_time();
   rv = rv &&
        ((e_time < _time_budget) || ((e_time >= _time_budget) && open.empty()));
 
@@ -405,7 +418,7 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(
       closed.pop();
     }
   } else {
-    while (!closed.empty() && (elapsed_time(start_time) < _time_budget)) {
+    while (!closed.empty() && (get_solving_time() < _time_budget)) {
       _execution_policy.protect(
           [this, &closed, &thread_id]() { update(closed.top(), thread_id); },
           closed.top()->mutex);
@@ -427,18 +440,14 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
-void SK_LRTDP_SOLVER_CLASS::trial(
-    StateNode *s,
-    const std::chrono::time_point<std::chrono::high_resolution_clock>
-        &start_time,
-    const std::size_t *thread_id) {
+void SK_LRTDP_SOLVER_CLASS::trial(StateNode *s, const std::size_t *thread_id) {
   std::stack<StateNode *> visited;
   StateNode *cs = s;
   std::size_t depth = 0;
   bool found_goal = false;
 
   while ((!_use_labels || !(cs->solved)) && !found_goal &&
-         (elapsed_time(start_time) < _time_budget) && (depth < _max_depth)) {
+         (get_solving_time() < _time_budget) && (depth < _max_depth)) {
     depth++;
     visited.push(cs);
     _execution_policy.protect(
@@ -457,11 +466,11 @@ void SK_LRTDP_SOLVER_CLASS::trial(
   }
 
   while (_use_labels && !visited.empty() &&
-         (elapsed_time(start_time) < _time_budget)) {
+         (get_solving_time() < _time_budget)) {
     cs = visited.top();
     visited.pop();
 
-    if (!check_solved(cs, start_time, thread_id)) {
+    if (!check_solved(cs, thread_id)) {
       break;
     }
   }
@@ -501,47 +510,28 @@ void SK_LRTDP_SOLVER_CLASS::remove_subgraph(
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
-std::size_t SK_LRTDP_SOLVER_CLASS::update_epsilon_moving_average(
+void SK_LRTDP_SOLVER_CLASS::update_epsilon_moving_average(
     const StateNode &node, const double &node_record_value) {
-  std::size_t epsilons_size = 0;
   if (_epsilon_moving_average_window > 0) {
-    double current_epsilon = std::fabs(node_record_value - node.best_value);
+    double current_residual = std::fabs(node_record_value - node.best_value);
     _execution_policy.protect(
-        [this, &epsilons_size, &current_epsilon]() {
-          if (_epsilons.size() < _epsilon_moving_average_window) {
+        [this, &current_residual]() {
+          if (_residuals.size() < _epsilon_moving_average_window) {
             _epsilon_moving_average =
-                ((double)((_epsilon_moving_average * _epsilons.size()) +
-                          current_epsilon)) /
-                ((double)(_epsilons.size() + 1));
+                ((double)((_epsilon_moving_average * _residuals.size()) +
+                          current_residual)) /
+                ((double)(_residuals.size() + 1));
           } else {
             _epsilon_moving_average =
                 ((double)_epsilon_moving_average) +
-                ((current_epsilon - _epsilons.front()) /
+                ((current_residual - _residuals.front()) /
                  ((double)_epsilon_moving_average_window));
-            _epsilons.pop_front();
+            _residuals.pop_front();
           }
-          _epsilons.push_back(current_epsilon);
-          epsilons_size = _epsilons.size();
+          _residuals.push_back(current_residual);
         },
-        _epsilons_protect);
+        _residuals_protect);
   }
-  return epsilons_size;
-}
-
-SK_LRTDP_SOLVER_TEMPLATE_DECL
-std::size_t SK_LRTDP_SOLVER_CLASS::elapsed_time(
-    const std::chrono::time_point<std::chrono::high_resolution_clock>
-        &start_time) {
-  std::size_t milliseconds_duration;
-  _execution_policy.protect(
-      [&milliseconds_duration, &start_time]() {
-        milliseconds_duration = static_cast<std::size_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::high_resolution_clock::now() - start_time)
-                .count());
-      },
-      _time_mutex);
-  return milliseconds_duration;
 }
 
 // === LRTDPStarSolver::StateNode implementation ===

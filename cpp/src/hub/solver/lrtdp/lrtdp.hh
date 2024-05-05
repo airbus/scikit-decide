@@ -23,6 +23,15 @@
 
 namespace skdecide {
 
+/**
+ * @brief This is the skdecide implementation of "Labeled RTDP: Improving the
+ * Convergence of Real-Time Dynamic Programming" by Blai Bonet and Hector
+ * Geffner (ICAPS 2013)
+ *
+ * @tparam Tdomain Type of the domain class
+ * @tparam Texecution_policy Type of the execution policy (sequential or
+ * parallel)
+ */
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class LRTDPSolver {
 public:
@@ -37,12 +46,48 @@ public:
       GoalCheckerFunctor;
   typedef std::function<Value(Domain &, const State &, const std::size_t *)>
       HeuristicFunctor;
-  typedef std::function<bool(const std::size_t &, const std::size_t &,
-                             const double &, const double &)>
-      WatchdogFunctor;
+  typedef std::function<bool(const LRTDPSolver &, Domain &,
+                             const std::size_t *)>
+      CallbackFunctor;
 
   // If use_labels is true, then rollout_budget and epsilon moving average are
   // voided
+  /**
+   * @brief Construct a new LRTDPSolver object
+   *
+   * @param domain The domain instance
+   * @param goal_checker Functor taking as arguments the domain, a state object
+   * and the thread ID from which it is called, and returning true if the state
+   * is the goal
+   * @param heuristic Functor taking as arguments the domain, a state object and
+   * the thread ID from which it is called, and returning the heuristic estimate
+   * from the state to the goal
+   * @param use_labels Boolean indicating whether labels must be used (true) or
+   * not (false, in which case the algorithm is equivalent to the standard RTDP)
+   * @param time_budget Maximum solving time in milliseconds
+   * @param rollout_budget Maximum number of rollouts (deactivated when
+   * use_labels is true)
+   * @param max_depth Maximum depth of each LRTDP trial (rollout)
+   * @param epsilon_moving_average_window Number of latest computed residual
+   * values to memorize in order to compute the average Bellman error (residual)
+   * at the root state of the search (deactivated when use_labels
+   * is true)
+   * @param epsilon Maximum Bellman error (residual) allowed to decide that a
+   * state is solved, or to decide when no labels are used that the value
+   * function of the root state of the search has converged (in the latter case:
+   * the root state's Bellman error is averaged over the
+   * epsilon_moving_average_window, deactivated when
+   * use_labels is true)
+   * @param discount Value function's discount factor
+   * @param online_node_garbage Boolean indicating whether the search graph
+   * which is no more reachable from the root solving state should be
+   * deleted (true) or not (false)
+   * @param debug_logs Boolean indicating whether debugging messages should be
+   * logged (true) or not (false)
+   * @param callback Functor called at the end of each LRTDP trial (rollout),
+   * taking as arguments the solver, the domain and the thread ID from which it
+   * is called, and returning true if the solver must be stopped
+   */
   LRTDPSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
       const HeuristicFunctor &heuristic, bool use_labels = true,
@@ -51,23 +96,105 @@ public:
       std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
       bool debug_logs = false,
-      const WatchdogFunctor &watchdog = [](const std::size_t &,
-                                           const std::size_t &, const double &,
-                                           const double &) { return true; });
+      const CallbackFunctor &callback = [](const LRTDPSolver &, Domain &,
+                                           const std::size_t *) {
+        return false;
+      });
 
-  // clears the solver (clears the search graph, thus preventing from reusing
-  // previous search results)
+  /**
+   * @brief Clears the search graph, thus preventing from reusing previous
+   * search results)
+   *
+   */
   void clear();
 
-  // solves from state s using heuristic function h
+  /**
+   * @brief Call the LRTDP algorithm
+   *
+   * @param s Root state of the search from which LRTDP trials are launched
+   */
   void solve(const State &s);
 
+  /**
+   * @brief Indicates whether the solution policy is defined for a given state
+   *
+   * @param s State for which an entry is searched in the policy graph
+   * @return true If the state has been explored and an action is defined in
+   * this state
+   * @return false If the state has not been explored or no action is defined in
+   * this state
+   */
   bool is_solution_defined_for(const State &s) const;
+
+  /**
+   * @brief Get the best computed action in terms of best Q-value in a given
+   * state (throws a runtime error exception if no action is defined in the
+   * given state, which is why it is advised to call
+   * LRTDPSolver::is_solution_defined_for before)
+   *
+   * @param s State for which the best action is requested
+   * @return const Action& Best computed action
+   */
   const Action &get_best_action(const State &s);
+
+  /**
+   * @brief Get the best Q-value in a given state (throws a runtime
+   * error exception if no action is defined in the given state, which is why it
+   * is advised to call LRTDPSolver::is_solution_defined_for before)
+   *
+   * @param s State from which the best Q-value is requested
+   * @return double Maximum Q-value of the given state over the applicable
+   * actions in this state
+   */
   double get_best_value(const State &s) const;
+
+  /**
+   * @brief Get the number of states present in the search graph (which can be
+   * lower than the number of actually explored states if node garbage has been
+   * set to true in the LRTDP instance's constructor)
+   *
+   * @return std::size_t Number of states present in the search graph
+   */
   std::size_t get_nb_of_explored_states() const;
+
+  /**
+   * @brief Get the number of rollouts since the beginning of the search from
+   * the root solving state
+   *
+   * @return std::size_t Number of rollouts (LRTDP trials)
+   */
   std::size_t get_nb_rollouts() const;
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
+
+  /**
+   * @brief Get the average Bellman error (residual)
+   * at the root state of the search, or an infinite value if the number of
+   * computed residuals is lower than the epsilon moving average window set in
+   * the LRTDP instance's constructor
+   *
+   * @return double Bellman error at the root state of the search averaged over
+   * the epsilon moving average window
+   */
+  double get_residual_moving_average() const;
+
+  /**
+   * @brief Get the solving time in milliseconds since the beginning of the
+   * search from the root solving state
+   *
+   * @return std::size_t Solving time in milliseconds
+   */
+  std::size_t get_solving_time();
+
+  /**
+   * @brief Get the (partial) solution policy defined for the states for which
+   * the Q-value has been updated at least once (which is optimal if the
+   * algorithm has converged and labels are used); warning: only defined over
+   * the states reachable from the last root solving state when node garbage is
+   * set in the LRTDP instance's constructor
+   *
+   * @return Mapping from states to pairs of action and best Q-value
+   */
+  typename MapTypeDeducer<State, std::pair<Action, double>>::Map
+  get_policy() const;
 
 private:
   typedef typename ExecutionPolicy::template atomic<std::size_t> atomic_size_t;
@@ -86,16 +213,16 @@ private:
   atomic_double _discount;
   bool _online_node_garbage;
   atomic_bool _debug_logs;
-  WatchdogFunctor _watchdog;
+  CallbackFunctor _callback;
   ExecutionPolicy _execution_policy;
 
   std::unique_ptr<std::mt19937> _gen;
   typename ExecutionPolicy::Mutex _gen_mutex;
   typename ExecutionPolicy::Mutex _time_mutex;
-  typename ExecutionPolicy::Mutex _epsilons_protect;
+  typename ExecutionPolicy::Mutex _residuals_protect;
 
   atomic_double _epsilon_moving_average;
-  std::list<double> _epsilons;
+  std::list<double> _residuals;
 
   struct ActionNode;
 
@@ -129,6 +256,7 @@ private:
   Graph _graph;
   StateNode *_current_state;
   atomic_size_t _nb_rollouts;
+  std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
 
   void expand(StateNode *s, const std::size_t *thread_id);
   double q_value(ActionNode *a);
@@ -136,24 +264,14 @@ private:
   void update(StateNode *s, const std::size_t *thread_id);
   StateNode *pick_next_state(ActionNode *a);
   double residual(StateNode *s, const std::size_t *thread_id);
-  bool
-  check_solved(StateNode *s,
-               const std::chrono::time_point<std::chrono::high_resolution_clock>
-                   &start_time,
-               const std::size_t *thread_id);
-  void trial(StateNode *s,
-             const std::chrono::time_point<std::chrono::high_resolution_clock>
-                 &start_time,
-             const std::size_t *thread_id);
+  bool check_solved(StateNode *s, const std::size_t *thread_id);
+  void trial(StateNode *s, const std::size_t *thread_id);
   void compute_reachable_subgraph(StateNode *node,
                                   std::unordered_set<StateNode *> &subgraph);
   void remove_subgraph(std::unordered_set<StateNode *> &root_subgraph,
                        std::unordered_set<StateNode *> &child_subgraph);
-  std::size_t update_epsilon_moving_average(const StateNode &node,
-                                            const double &node_record_value);
-  std::size_t
-  elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>
-                   &start_time);
+  void update_epsilon_moving_average(const StateNode &node,
+                                     const double &node_record_value);
 };
 
 } // namespace skdecide
