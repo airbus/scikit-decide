@@ -51,8 +51,6 @@ public:
                              const std::size_t *)>
       CallbackFunctor;
 
-  // If use_labels is true, then rollout_budget and epsilon moving average are
-  // voided
   /**
    * @brief Construct a new LRTDPSolver object
    *
