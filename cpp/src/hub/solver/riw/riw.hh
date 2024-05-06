@@ -200,7 +200,10 @@ public:
    * @brief Get the best computed action in terms of best Q-value in a given
    * state (throws a runtime error exception if no action is defined in the
    * given state, which is why it is advised to call
-   * RIWSolver::is_solution_defined_for before)
+   * RIWSolver::is_solution_defined_for before).  The search
+   * subgraph which is no more reachable after executing the returned action is
+   * also deleted if node garbage was set to true in the RIWSolver instance's
+   * constructor.
    *
    * @param s State for which the best action is requested
    * @return Action Best computed action
@@ -220,7 +223,7 @@ public:
 
   /**
    * @brief Get the number of states present in the search graph (which can be
-   * lower than the number of actually explored states if node garbage has been
+   * lower than the number of actually explored states if node garbage was
    * set to true in the RIWSolver instance's constructor)
    *
    * @return std::size_t Number of states present in the search graph
@@ -230,7 +233,7 @@ public:
   /**
    * @brief Get the number of states present in the search graph that have been
    * pruned by the novelty test (which can be lower than the number of actually
-   * explored states if node garbage has been set to true in the RIWSolver
+   * explored states if node garbage was set to true in the RIWSolver
    * instance's constructor)
    *
    * @return std::size_t Number of states present in the search graph that have
@@ -242,7 +245,7 @@ public:
    * @brief Get the exploration statistics as number of states present in the
    * search graph and number of such states that have been pruned by the novelty
    * test (both statistics can be lower than the number of actually
-   * explored states if node garbage has been set to true in the RIWSolver
+   * explored states if node garbage was set to true in the RIWSolver
    * instance's constructor)
    *
    * @return std::pair<std::size_t, std::size_t> Pair of number of states
@@ -282,8 +285,8 @@ public:
    * @brief Get the (partial) solution policy defined for the states for which
    * the Q-value has been updated at least once (which is optimal if the
    * algorithm has converged and labels are used); warning: only defined over
-   * the states reachable from the last root solving state when node garbage is
-   * set in the RIWSolver instance's constructor
+   * the states reachable from the last root solving state when node garbage was
+   * set to true in the RIWSolver instance's constructor
    *
    * @return Mapping from states to pairs of action and best Q-value
    */

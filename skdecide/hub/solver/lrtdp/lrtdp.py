@@ -211,7 +211,9 @@ try:
         def _get_next_action(
             self, observation: D.T_agent[D.T_observation]
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            """Get the best computed action in terms of best Q-value in a given state
+            """Get the best computed action in terms of best Q-value in a given state. The search
+                subgraph which is no more reachable after executing the returned action is
+                also deleted if node garbage was set to True in the LRTDP instance's constructor.
 
             !!! warning
                 Returns a random action if no action is defined in the given state,
@@ -257,8 +259,8 @@ try:
 
         def get_nb_of_explored_states(self) -> int:
             """Get the number of states present in the search graph (which can be
-                lower than the number of actually explored states if node garbage has been
-                set to true in the LRTDP instance's constructor)
+                lower than the number of actually explored states if node garbage was
+                set to True in the LRTDP instance's constructor)
 
             Returns:
                 int: Number of states present in the search graph
@@ -303,8 +305,8 @@ try:
             """Get the (partial) solution policy defined for the states for which
                 the Q-value has been updated at least once (which is optimal if the
                 algorithm has converged and labels are used); warning: only defined over
-                the states reachable from the last root solving state when node garbage is
-                set in the LRTDP instance's constructor
+                the states reachable from the last root solving state when node garbage was
+                set to True in the LRTDP instance's constructor
 
             Returns:
                 Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], float], ]:
