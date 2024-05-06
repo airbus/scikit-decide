@@ -56,9 +56,9 @@ private:
             &heuristic, // last arg used for optional thread_id
         bool use_labels = true, std::size_t time_budget = 3600000,
         std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
-        std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
-        double discount = 1.0, bool online_node_garbage = false,
-        bool debug_logs = false,
+        std::size_t residual_moving_average_window = 100,
+        double epsilon = 0.001, double discount = 1.0,
+        bool online_node_garbage = false, bool debug_logs = false,
         const std::function<py::bool_(py::object &, const py::object &,
                                       const py::object &)> &callback = nullptr)
         : _goal_checker(goal_checker), _heuristic(heuristic),
@@ -104,8 +104,8 @@ private:
             }
           },
           use_labels, time_budget, rollout_budget, max_depth,
-          epsilon_moving_average_window, epsilon, discount, online_node_garbage,
-          debug_logs,
+          residual_moving_average_window, epsilon, discount,
+          online_node_garbage, debug_logs,
           [this](const skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>,
                                              Texecution> &s,
                  PyLRTDPDomain<Texecution> &d,
@@ -277,7 +277,7 @@ public:
                                      )> &heuristic,
       bool use_labels = true, std::size_t time_budget = 3600000,
       std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
-      std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
+      std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
       bool parallel = false, bool debug_logs = false,
       const std::function<py::bool_(py::object &, const py::object &,
@@ -289,7 +289,7 @@ public:
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, goal_checker, heuristic, use_labels,
                      time_budget, rollout_budget, max_depth,
-                     epsilon_moving_average_window, epsilon, discount,
+                     residual_moving_average_window, epsilon, discount,
                      online_node_garbage, debug_logs, callback);
   }
 

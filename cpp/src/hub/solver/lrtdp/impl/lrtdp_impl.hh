@@ -24,12 +24,12 @@ SK_LRTDP_SOLVER_CLASS::LRTDPSolver(
     Domain &domain, const GoalCheckerFunctor &goal_checker,
     const HeuristicFunctor &heuristic, bool use_labels, std::size_t time_budget,
     std::size_t rollout_budget, std::size_t max_depth,
-    std::size_t epsilon_moving_average_window, double epsilon, double discount,
+    std::size_t residual_moving_average_window, double epsilon, double discount,
     bool online_node_garbage, bool debug_logs, const CallbackFunctor &callback)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
       _use_labels(use_labels), _time_budget(time_budget),
       _rollout_budget(rollout_budget), _max_depth(max_depth),
-      _epsilon_moving_average_window(epsilon_moving_average_window),
+      _residual_moving_average_window(residual_moving_average_window),
       _epsilon(epsilon), _discount(discount),
       _online_node_garbage(online_node_garbage), _debug_logs(debug_logs),
       _callback(callback), _current_state(nullptr), _nb_rollouts(0) {
@@ -176,7 +176,7 @@ std::size_t SK_LRTDP_SOLVER_CLASS::get_nb_rollouts() const {
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 double SK_LRTDP_SOLVER_CLASS::get_residual_moving_average() const {
-  if (_residuals.size() >= _epsilon_moving_average_window) {
+  if (_residuals.size() >= _residual_moving_average_window) {
     return (double)_residual_moving_average;
   } else {
     return std::numeric_limits<double>::infinity();
@@ -506,11 +506,11 @@ void SK_LRTDP_SOLVER_CLASS::remove_subgraph(
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 void SK_LRTDP_SOLVER_CLASS::update_residual_moving_average(
     const StateNode &node, const double &node_record_value) {
-  if (_epsilon_moving_average_window > 0) {
+  if (_residual_moving_average_window > 0) {
     double current_residual = std::fabs(node_record_value - node.best_value);
     _execution_policy.protect(
         [this, &current_residual]() {
-          if (_residuals.size() < _epsilon_moving_average_window) {
+          if (_residuals.size() < _residual_moving_average_window) {
             _residual_moving_average =
                 ((double)((_residual_moving_average * _residuals.size()) +
                           current_residual)) /
@@ -519,7 +519,7 @@ void SK_LRTDP_SOLVER_CLASS::update_residual_moving_average(
             _residual_moving_average =
                 ((double)_residual_moving_average) +
                 ((current_residual - _residuals.front()) /
-                 ((double)_epsilon_moving_average_window));
+                 ((double)_residual_moving_average_window));
             _residuals.pop_front();
           }
           _residuals.push_back(current_residual);

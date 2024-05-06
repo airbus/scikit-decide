@@ -68,7 +68,7 @@ try:
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
             max_depth: int = 1000,
-            epsilon_moving_average_window: int = 100,
+            residual_moving_average_window: int = 100,
             epsilon: float = 0.001,
             discount: float = 1.0,
             online_node_garbage: bool = False,
@@ -91,13 +91,13 @@ try:
                 rollout_budget (int, optional): Maximum number of rollouts (deactivated when
                     use_labels is True). Defaults to 100000.
                 max_depth (int, optional): Maximum depth of each LRTDP trial (rollout). Defaults to 1000.
-                epsilon_moving_average_window (int, optional): Number of latest computed residual values
+                residual_moving_average_window (int, optional): Number of latest computed residual values
                     to memorize in order to compute the average Bellman error (residual) at the root state
                     of the search (deactivated when use_labels is True). Defaults to 100.
                 epsilon (float, optional): Maximum Bellman error (residual) allowed to decide that a state
                     is solved, or to decide when no labels are used that the value function of the root state
                     of the search has converged (in the latter case: the root state's Bellman error is averaged
-                    over the epsilon_moving_average_window, deactivated when use_labels is True). Defaults to 0.001.
+                    over the residual_moving_average_window, deactivated when use_labels is True). Defaults to 0.001.
                 discount (float, optional): Value function's discount factor. Defaults to 1.0.
                 online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
                     no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
@@ -129,7 +129,7 @@ try:
             self._time_budget = time_budget
             self._rollout_budget = rollout_budget
             self._max_depth = max_depth
-            self._epsilon_moving_average_window = epsilon_moving_average_window
+            self._residual_moving_average_window = residual_moving_average_window
             self._epsilon = epsilon
             self._discount = discount
             self._online_node_garbage = online_node_garbage
@@ -168,7 +168,7 @@ try:
                 time_budget=self._time_budget,
                 rollout_budget=self._rollout_budget,
                 max_depth=self._max_depth,
-                epsilon_moving_average_window=self._epsilon_moving_average_window,
+                residual_moving_average_window=self._residual_moving_average_window,
                 epsilon=self._epsilon,
                 discount=self._discount,
                 online_node_garbage=self._online_node_garbage,

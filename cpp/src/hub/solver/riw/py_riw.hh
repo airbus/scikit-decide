@@ -63,9 +63,9 @@ private:
             &state_features, // last arg used for optional thread_id
         std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
         std::size_t max_depth = 1000, double exploration = 0.25,
-        std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
-        double discount = 1.0, bool online_node_garbage = false,
-        bool debug_logs = false,
+        std::size_t residual_moving_average_window = 100,
+        double epsilon = 0.001, double discount = 1.0,
+        bool online_node_garbage = false, bool debug_logs = false,
         const std::function<py::bool_(py::object &, const py::object &,
                                       const py::object &)> &callback = nullptr)
         : _state_features(state_features), _callback(callback) {
@@ -98,8 +98,8 @@ private:
             }
           },
           time_budget, rollout_budget, max_depth, exploration,
-          epsilon_moving_average_window, epsilon, discount, online_node_garbage,
-          debug_logs,
+          residual_moving_average_window, epsilon, discount,
+          online_node_garbage, debug_logs,
           [this](
               const RIWSolver<PyRIWDomain<Texecution>,
                               PyRIWFeatureVector<Texecution>, Thashing_policy,
@@ -354,7 +354,7 @@ public:
       bool use_state_feature_hash = false, bool use_simulation_domain = false,
       std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
       std::size_t max_depth = 1000, double exploration = 0.25,
-      std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
+      std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
       bool parallel = false, bool debug_logs = false,
       const std::function<py::bool_(py::object &, const py::object &,
@@ -368,7 +368,7 @@ public:
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, state_features, time_budget,
                      rollout_budget, max_depth, exploration,
-                     epsilon_moving_average_window, epsilon, discount,
+                     residual_moving_average_window, epsilon, discount,
                      online_node_garbage, debug_logs, callback);
   }
 

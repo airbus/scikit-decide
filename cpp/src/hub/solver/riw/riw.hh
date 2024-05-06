@@ -141,14 +141,14 @@ public:
    * probability 'exploration', and a already-explored but non-solved child is
    * chosen with a probability of '1 - exploration' divided by its novelty
    * measure; probabilities among children are then normalized)
-   * @param epsilon_moving_average_window Number of latest computed residual
+   * @param residual_moving_average_window Number of latest computed residual
    * values to memorize in order to compute the average Bellman error (residual)
    * at the root state of the search
    * @param epsilon Maximum Bellman error (residual) allowed to decide that a
    * state is solved, or to decide when no labels are used that the value
    * function of the root state of the search has converged (in the latter case:
    * the root state's Bellman error is averaged over the
-   * epsilon_moving_average_window)
+   * residual_moving_average_window)
    * @param discount Value function's discount factor
    * @param online_node_garbage Boolean indicating whether the search graph
    * which is no more reachable from the root solving state should be
@@ -163,7 +163,7 @@ public:
       Domain &domain, const StateFeatureFunctor &state_features,
       std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
       std::size_t max_depth = 1000, double exploration = 0.25,
-      std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
+      std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
       bool debug_logs = false,
       const CallbackFunctor &callback = [](const RIWSolver &, Domain &,
@@ -317,7 +317,7 @@ private:
   atomic_size_t _rollout_budget;
   atomic_size_t _max_depth;
   atomic_double _exploration;
-  atomic_size_t _epsilon_moving_average_window;
+  atomic_size_t _residual_moving_average_window;
   atomic_double _epsilon;
   atomic_double _discount;
   bool _online_node_garbage;
@@ -395,7 +395,7 @@ private:
         const StateFeatureFunctor &state_features,
         const atomic_size_t &time_budget, const atomic_size_t &rollout_budget,
         const atomic_size_t &max_depth, const atomic_double &exploration,
-        const atomic_size_t &epsilon_moving_average_window,
+        const atomic_size_t &residual_moving_average_window,
         const atomic_double &epsilon, atomic_double &residual_moving_average,
         std::list<double> &residuals, const atomic_double &discount,
         atomic_double &min_reward, const atomic_size_t &width, Graph &graph,
@@ -419,7 +419,7 @@ private:
     const atomic_size_t &_rollout_budget;
     const atomic_size_t &_max_depth;
     const atomic_double &_exploration;
-    const atomic_size_t &_epsilon_moving_average_window;
+    const atomic_size_t &_residual_moving_average_window;
     const atomic_double &_epsilon;
     atomic_double &_residual_moving_average;
     std::list<double> &_residuals;

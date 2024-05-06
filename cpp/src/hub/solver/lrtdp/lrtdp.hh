@@ -67,15 +67,15 @@ public:
    * @param rollout_budget Maximum number of rollouts (deactivated when
    * use_labels is true)
    * @param max_depth Maximum depth of each LRTDP trial (rollout)
-   * @param epsilon_moving_average_window Number of latest computed residual
+   * @param residual_moving_average_window Number of latest computed residual
    * values to memorize in order to compute the average Bellman error (residual)
    * at the root state of the search (deactivated when use_labels
    * is true)
    * @param epsilon Maximum Bellman error (residual) allowed to decide that a
-   * state is solved, or to decide when no labels are used that the value
+   * state is solved, or to decide when no label is used that the value
    * function of the root state of the search has converged (in the latter case:
    * the root state's Bellman error is averaged over the
-   * epsilon_moving_average_window, deactivated when
+   * residual_moving_average_window, deactivated when
    * use_labels is true)
    * @param discount Value function's discount factor
    * @param online_node_garbage Boolean indicating whether the search graph
@@ -92,7 +92,7 @@ public:
       const HeuristicFunctor &heuristic, bool use_labels = true,
       std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
       std::size_t max_depth = 1000,
-      std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
+      std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
       bool debug_logs = false,
       const CallbackFunctor &callback = [](const LRTDPSolver &, Domain &,
@@ -210,7 +210,7 @@ private:
   atomic_size_t _time_budget;
   atomic_size_t _rollout_budget;
   atomic_size_t _max_depth;
-  atomic_size_t _epsilon_moving_average_window;
+  atomic_size_t _residual_moving_average_window;
   atomic_double _epsilon;
   atomic_double _discount;
   bool _online_node_garbage;

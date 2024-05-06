@@ -30,7 +30,7 @@ void init_pyriw(py::module &m) {
            py::arg("use_simulation_domain") = false,
            py::arg("time_budget") = 3600000, py::arg("rollout_budget") = 100000,
            py::arg("max_depth") = 1000, py::arg("exploration") = 0.25,
-           py::arg("epsilon_moving_average_window") = 100,
+           py::arg("residual_moving_average_window") = 100,
            py::arg("epsilon") = 0.001, py::arg("discount") = 1.0,
            py::arg("online_node_garbage") = false, py::arg("parallel") = false,
            py::arg("debug_logs") = false, py::arg("callback") = nullptr)
