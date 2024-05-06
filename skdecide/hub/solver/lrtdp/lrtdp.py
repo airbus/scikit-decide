@@ -104,13 +104,14 @@ try:
                 continuous_planning (bool, optional): Boolean whether the solver should optimize again the policy
                     from the current solving state (True) or not (False) even if the policy is already defined
                     in this state. Defaults to True.
-                parallel (bool, optional): Parallelize LRTDP trials (True) or not (False). Defaults to False.
+                parallel (bool, optional): Parallelize LRTDP trials on different processes using duplicated domains (True)
+                    or not (False). Defaults to False.
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 debug_logs (bool, optional): Boolean indicating whether debugging messages should be logged (True)
                     or not (False). Defaults to False.
                 callback (Callable[[Domain, LRTDP], optional): Function called at the end of each LRTDP trial (rollout),
-                    taking as arguments the solver, the domain and the thread ID from which it is called,
-                    and returning True if the solver must be stopped. Defaults to None.
+                    taking as arguments the solver and the domain, and returning True if the solver must be stopped.
+                    Defaults to None.
             """
             ParallelSolver.__init__(
                 self,
@@ -123,7 +124,7 @@ try:
                 self._heuristic = lambda d, s: Value(cost=0)
             else:
                 self._heuristic = heuristic
-            self._lambdas = [self._heuristic]
+            self._lambdas = [self._heuristic, self._callback]
             self._use_labels = use_labels
             self._time_budget = time_budget
             self._rollout_budget = rollout_budget
@@ -142,8 +143,11 @@ try:
 
         def close(self):
             """Joins the parallel domains' processes.
-            Not calling this method (or not using the 'with' context statement)
-            results in the solver forever waiting for the domain processes to exit.
+
+            !!! warning
+                Not calling this method (or not using the 'with' context statement)
+                results in the solver forever waiting for the domain processes to exit.
+
             """
             if self._parallel:
                 self._solver.close()
@@ -170,8 +174,14 @@ try:
                 online_node_garbage=self._online_node_garbage,
                 parallel=self._parallel,
                 debug_logs=self._debug_logs,
-                callback=self._callback,
+                callback=lambda d, s, i=None: (
+                    self._callback(d, s) if not self._parallel else d.call(i, 1, s)
+                ),
             )
+            self._solver.clear()
+
+        def _reset(self) -> None:
+            """Clears the search graph."""
             self._solver.clear()
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
@@ -202,8 +212,10 @@ try:
             self, observation: D.T_agent[D.T_observation]
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             """Get the best computed action in terms of best Q-value in a given state
-                (throws a runtime error exception if no action is defined in the given state,
-                which is why it is advised to call :py:class:`LRTDP.is_solution_defined_for` before)
+
+            !!! warning
+                Returns a random action if no action is defined in the given state,
+                which is why it is advised to call :py:meth:`LRTDP.is_solution_defined_for` before
 
             Args:
                 observation (D.T_agent[D.T_observation]): State for which the best action is requested
@@ -229,9 +241,11 @@ try:
                 return action
 
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
-            """Get the best Q-value in a given state (throws a runtime error exception
-                if no action is defined in the given state, which is why it is advised
-                to call :py:class:`LRTDP.is_solution_defined_for` before)
+            """Get the best Q-value in a given state
+
+            !!! warning
+                Returns None if no action is defined in the given state, which is why
+                it is advised to call :py:meth:`LRTDP.is_solution_defined_for` before
 
             Args:
                 observation (D.T_agent[D.T_observation]): State from which the best Q-value is requested

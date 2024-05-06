@@ -78,39 +78,33 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
     boost::integer_range<std::size_t> parallel_rollouts(
         0, _domain.get_parallel_capacity());
 
-    std::for_each(
-        ExecutionPolicy::policy, parallel_rollouts.begin(),
-        parallel_rollouts.end(),
-        [this, &root_node](const std::size_t &thread_id) {
-          std::size_t etime = 0;
-          std::size_t epsilons_size = 0;
-          double eps_moving_average = 0.0;
-
-          do {
-            if (_debug_logs)
-              Logger::debug("Starting rollout " +
-                            StringConverter::from(_nb_rollouts) +
-                            ExecutionPolicy::print_thread());
-            _nb_rollouts++;
-            double root_node_record_value = root_node.best_value;
-            trial(&root_node, &thread_id);
-            update_epsilon_moving_average(root_node, root_node_record_value);
-          } while (
-              !_callback(*this, _domain, &thread_id) &&
-              (etime < _time_budget) && (!_use_labels || !root_node.solved) &&
-              (_use_labels || ((_nb_rollouts < _rollout_budget) &&
+    std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(),
+                  parallel_rollouts.end(),
+                  [this, &root_node](const std::size_t &thread_id) {
+                    do {
+                      if (_debug_logs)
+                        Logger::debug("Starting rollout " +
+                                      StringConverter::from(_nb_rollouts) +
+                                      ExecutionPolicy::print_thread());
+                      _nb_rollouts++;
+                      double root_node_record_value = root_node.best_value;
+                      trial(&root_node, &thread_id);
+                      update_epsilon_moving_average(root_node,
+                                                    root_node_record_value);
+                    } while (!_callback(*this, _domain, &thread_id) &&
+                             (get_solving_time() < _time_budget) &&
+                             (!_use_labels || !root_node.solved) &&
+                             (_use_labels ||
+                              ((_nb_rollouts < _rollout_budget) &&
                                (get_residual_moving_average() > _epsilon))));
-        });
+                  });
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        end_time - _start_time)
-                        .count();
-    Logger::info("LRTDP finished to solve from state " + s.print() + " in " +
-                 StringConverter::from((double)duration / (double)1e9) +
-                 " seconds with " + StringConverter::from(_nb_rollouts) +
-                 " rollouts and visited " +
-                 StringConverter::from(_graph.size()) + " states. ");
+    Logger::info(
+        "LRTDP finished to solve from state " + s.print() + " in " +
+        StringConverter::from((double)get_solving_time() / (double)1e6) +
+        " seconds with " + StringConverter::from(_nb_rollouts) +
+        " rollouts and visited " + StringConverter::from(_graph.size()) +
+        " states. ");
   } catch (const std::exception &e) {
     Logger::error("LRTDP failed solving from state " + s.print() +
                   ". Reason: " + e.what());

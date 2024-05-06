@@ -5,7 +5,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 
-#include "hub/solver/lrtdp/lrtdp.hh"
 #include "py_lrtdp.hh"
 
 void init_pylrtdp(py::module &m) {

@@ -29,8 +29,9 @@ namespace skdecide {
  * Geffner (ICAPS 2013)
  *
  * @tparam Tdomain Type of the domain class
- * @tparam Texecution_policy Type of the execution policy (sequential or
- * parallel)
+ * @tparam Texecution_policy Type of the execution policy (one of
+ * 'SequentialExecution' to execute rollouts in sequence, or 'ParallelExecution'
+ * to execute rollouts in parallel on different threads)
  */
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class LRTDPSolver {
@@ -151,7 +152,7 @@ public:
   /**
    * @brief Get the number of states present in the search graph (which can be
    * lower than the number of actually explored states if node garbage has been
-   * set to true in the LRTDP instance's constructor)
+   * set to true in the LRTDPSolver instance's constructor)
    *
    * @return std::size_t Number of states present in the search graph
    */
@@ -169,7 +170,7 @@ public:
    * @brief Get the average Bellman error (residual)
    * at the root state of the search, or an infinite value if the number of
    * computed residuals is lower than the epsilon moving average window set in
-   * the LRTDP instance's constructor
+   * the LRTDPSolver instance's constructor
    *
    * @return double Bellman error at the root state of the search averaged over
    * the epsilon moving average window
@@ -189,7 +190,7 @@ public:
    * the Q-value has been updated at least once (which is optimal if the
    * algorithm has converged and labels are used); warning: only defined over
    * the states reachable from the last root solving state when node garbage is
-   * set in the LRTDP instance's constructor
+   * set in the LRTDPSolver instance's constructor
    *
    * @return Mapping from states to pairs of action and best Q-value
    */
