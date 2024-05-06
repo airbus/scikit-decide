@@ -26,7 +26,7 @@ namespace skdecide {
 /**
  * @brief This is the skdecide implementation of "Labeled RTDP: Improving the
  * Convergence of Real-Time Dynamic Programming" by Blai Bonet and Hector
- * Geffner (ICAPS 2013)
+ * Geffner (ICAPS 2003)
  *
  * @tparam Tdomain Type of the domain class
  * @tparam Texecution_policy Type of the execution policy (one of
