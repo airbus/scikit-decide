@@ -73,7 +73,7 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
     }
 
     _nb_rollouts = 0;
-    _epsilon_moving_average = 0.0;
+    _residual_moving_average = 0.0;
     _residuals.clear();
     boost::integer_range<std::size_t> parallel_rollouts(
         0, _domain.get_parallel_capacity());
@@ -89,8 +89,8 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
                       _nb_rollouts++;
                       double root_node_record_value = root_node.best_value;
                       trial(&root_node, &thread_id);
-                      update_epsilon_moving_average(root_node,
-                                                    root_node_record_value);
+                      update_residual_moving_average(root_node,
+                                                     root_node_record_value);
                     } while (!_callback(*this, _domain, &thread_id) &&
                              (get_solving_time() < _time_budget) &&
                              (!_use_labels || !root_node.solved) &&
@@ -177,7 +177,7 @@ std::size_t SK_LRTDP_SOLVER_CLASS::get_nb_rollouts() const {
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 double SK_LRTDP_SOLVER_CLASS::get_residual_moving_average() const {
   if (_residuals.size() >= _epsilon_moving_average_window) {
-    return (double)_epsilon_moving_average;
+    return (double)_residual_moving_average;
   } else {
     return std::numeric_limits<double>::infinity();
   }
@@ -504,20 +504,20 @@ void SK_LRTDP_SOLVER_CLASS::remove_subgraph(
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
-void SK_LRTDP_SOLVER_CLASS::update_epsilon_moving_average(
+void SK_LRTDP_SOLVER_CLASS::update_residual_moving_average(
     const StateNode &node, const double &node_record_value) {
   if (_epsilon_moving_average_window > 0) {
     double current_residual = std::fabs(node_record_value - node.best_value);
     _execution_policy.protect(
         [this, &current_residual]() {
           if (_residuals.size() < _epsilon_moving_average_window) {
-            _epsilon_moving_average =
-                ((double)((_epsilon_moving_average * _residuals.size()) +
+            _residual_moving_average =
+                ((double)((_residual_moving_average * _residuals.size()) +
                           current_residual)) /
                 ((double)(_residuals.size() + 1));
           } else {
-            _epsilon_moving_average =
-                ((double)_epsilon_moving_average) +
+            _residual_moving_average =
+                ((double)_residual_moving_average) +
                 ((current_residual - _residuals.front()) /
                  ((double)_epsilon_moving_average_window));
             _residuals.pop_front();

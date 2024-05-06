@@ -334,7 +334,7 @@ private:
   typename ExecutionPolicy::Mutex _time_mutex;
   typename ExecutionPolicy::Mutex _residuals_protect;
 
-  atomic_double _epsilon_moving_average;
+  atomic_double _residual_moving_average;
   std::list<double> _residuals;
 
   struct Node {
@@ -396,7 +396,7 @@ private:
         const atomic_size_t &time_budget, const atomic_size_t &rollout_budget,
         const atomic_size_t &max_depth, const atomic_double &exploration,
         const atomic_size_t &epsilon_moving_average_window,
-        const atomic_double &epsilon, atomic_double &epsilon_moving_average,
+        const atomic_double &epsilon, atomic_double &residual_moving_average,
         std::list<double> &residuals, const atomic_double &discount,
         atomic_double &min_reward, const atomic_size_t &width, Graph &graph,
         RolloutPolicy &rollout_policy, ExecutionPolicy &execution_policy,
@@ -421,7 +421,7 @@ private:
     const atomic_double &_exploration;
     const atomic_size_t &_epsilon_moving_average_window;
     const atomic_double &_epsilon;
-    atomic_double &_epsilon_moving_average;
+    atomic_double &_residual_moving_average;
     std::list<double> &_residuals;
     const atomic_double &_discount;
     atomic_double &_min_reward;
@@ -459,8 +459,8 @@ private:
 
     void update_node(Node &node, bool solved);
 
-    void update_epsilon_moving_average(const Node &node,
-                                       const double &node_record_value);
+    void update_residual_moving_average(const Node &node,
+                                        const double &node_record_value);
   }; // WidthSolver class
 
   void compute_reachable_subgraph(Node &node,

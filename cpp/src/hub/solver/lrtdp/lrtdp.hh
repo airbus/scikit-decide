@@ -223,7 +223,7 @@ private:
   typename ExecutionPolicy::Mutex _time_mutex;
   typename ExecutionPolicy::Mutex _residuals_protect;
 
-  atomic_double _epsilon_moving_average;
+  atomic_double _residual_moving_average;
   std::list<double> _residuals;
 
   struct ActionNode;
@@ -272,8 +272,8 @@ private:
                                   std::unordered_set<StateNode *> &subgraph);
   void remove_subgraph(std::unordered_set<StateNode *> &root_subgraph,
                        std::unordered_set<StateNode *> &child_subgraph);
-  void update_epsilon_moving_average(const StateNode &node,
-                                     const double &node_record_value);
+  void update_residual_moving_average(const StateNode &node,
+                                      const double &node_record_value);
 };
 
 } // namespace skdecide

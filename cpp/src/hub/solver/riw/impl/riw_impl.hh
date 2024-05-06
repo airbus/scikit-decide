@@ -214,7 +214,7 @@ void SK_RIW_SOLVER_CLASS::solve(const State &s) {
       if (WidthSolver(*this, _domain, _state_features, _time_budget,
                       _rollout_budget, _max_depth, _exploration,
                       _epsilon_moving_average_window, _epsilon,
-                      _epsilon_moving_average, _residuals, _discount,
+                      _residual_moving_average, _residuals, _discount,
                       _min_reward, w, _graph, _rollout_policy,
                       _execution_policy, *_gen, _gen_mutex, _time_mutex,
                       _residuals_protect, _debug_logs, _callback)
@@ -349,7 +349,7 @@ std::size_t SK_RIW_SOLVER_CLASS::get_nb_rollouts() const {
 SK_RIW_SOLVER_TEMPLATE_DECL
 double SK_RIW_SOLVER_CLASS::get_residual_moving_average() const {
   if (_residuals.size() >= _epsilon_moving_average_window) {
-    return (double)_epsilon_moving_average;
+    return (double)_residual_moving_average;
   } else {
     return std::numeric_limits<double>::infinity();
   }
@@ -595,7 +595,7 @@ SK_RIW_SOLVER_CLASS::WidthSolver::WidthSolver(
     const atomic_size_t &rollout_budget, const atomic_size_t &max_depth,
     const atomic_double &exploration,
     const atomic_size_t &epsilon_moving_average_window,
-    const atomic_double &epsilon, atomic_double &epsilon_moving_average,
+    const atomic_double &epsilon, atomic_double &residual_moving_average,
     std::list<double> &residuals, const atomic_double &discount,
     atomic_double &min_reward, const atomic_size_t &width, Graph &graph,
     RolloutPolicy &rollout_policy, ExecutionPolicy &execution_policy,
@@ -608,7 +608,7 @@ SK_RIW_SOLVER_CLASS::WidthSolver::WidthSolver(
       _rollout_budget(rollout_budget), _max_depth(max_depth),
       _exploration(exploration),
       _epsilon_moving_average_window(epsilon_moving_average_window),
-      _epsilon(epsilon), _epsilon_moving_average(epsilon_moving_average),
+      _epsilon(epsilon), _residual_moving_average(residual_moving_average),
       _residuals(residuals), _discount(discount), _min_reward(min_reward),
       _min_reward_changed(false), _width(width), _graph(graph),
       _rollout_policy(rollout_policy), _execution_policy(execution_policy),
@@ -653,7 +653,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(const State &s,
 
     boost::integer_range<std::size_t> parallel_rollouts(
         0, _domain.get_parallel_capacity());
-    _epsilon_moving_average = 0.0;
+    _residual_moving_average = 0.0;
     _residuals.clear();
 
     std::for_each(
@@ -666,6 +666,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(const State &s,
             double root_node_record_value = root_node.value;
             rollout(root_node, feature_tuples, nb_rollouts, states_pruned,
                     reached_end_of_trajectory_once, &thread_id);
+            update_residual_moving_average(root_node, root_node_record_value);
           } while (!_callback(_parent_solver, _domain, &thread_id) &&
                    !root_node.solved &&
                    (_parent_solver.get_solving_time() < _time_budget) &&
@@ -1087,20 +1088,20 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::update_node(Node &node, bool solved) {
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-void SK_RIW_SOLVER_CLASS::WidthSolver::update_epsilon_moving_average(
+void SK_RIW_SOLVER_CLASS::WidthSolver::update_residual_moving_average(
     const Node &node, const double &node_record_value) {
   if (_epsilon_moving_average_window > 0) {
     double current_residual = std::fabs(node_record_value - node.value);
     _execution_policy.protect(
         [this, &current_residual]() {
           if (_residuals.size() < _epsilon_moving_average_window) {
-            _epsilon_moving_average =
-                ((double)((_epsilon_moving_average * _residuals.size()) +
+            _residual_moving_average =
+                ((double)((_residual_moving_average * _residuals.size()) +
                           current_residual)) /
                 ((double)(_residuals.size() + 1));
           } else {
-            _epsilon_moving_average =
-                ((double)_epsilon_moving_average) +
+            _residual_moving_average =
+                ((double)_residual_moving_average) +
                 ((current_residual - _residuals.front()) /
                  ((double)_epsilon_moving_average_window));
             _residuals.pop_front();
