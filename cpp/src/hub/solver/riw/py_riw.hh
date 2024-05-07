@@ -41,8 +41,8 @@ private:
     virtual py::bool_ is_solution_defined_for(const py::object &s) = 0;
     virtual py::object get_next_action(const py::object &s) = 0;
     virtual py::float_ get_utility(const py::object &s) = 0;
-    virtual py::int_ get_nb_of_explored_states() = 0;
-    virtual py::int_ get_nb_of_pruned_states() = 0;
+    virtual py::int_ get_nb_explored_states() = 0;
+    virtual py::int_ get_nb_pruned_states() = 0;
     virtual py::tuple get_exploration_statistics() = 0;
     virtual py::int_ get_nb_rollouts() = 0;
     virtual py::float_ get_residual_moving_average() = 0;
@@ -207,12 +207,12 @@ private:
       }
     }
 
-    virtual py::int_ get_nb_of_explored_states() {
-      return _solver->get_nb_of_explored_states();
+    virtual py::int_ get_nb_explored_states() {
+      return _solver->get_nb_explored_states();
     }
 
-    virtual py::int_ get_nb_of_pruned_states() {
-      return _solver->get_nb_of_pruned_states();
+    virtual py::int_ get_nb_pruned_states() {
+      return _solver->get_nb_pruned_states();
     }
 
     virtual py::tuple get_exploration_statistics() {
@@ -390,12 +390,12 @@ public:
     return _implementation->get_utility(s);
   }
 
-  py::int_ get_nb_of_explored_states() {
-    return _implementation->get_nb_of_explored_states();
+  py::int_ get_nb_explored_states() {
+    return _implementation->get_nb_explored_states();
   }
 
-  py::int_ get_nb_of_pruned_states() {
-    return _implementation->get_nb_of_pruned_states();
+  py::int_ get_nb_pruned_states() {
+    return _implementation->get_nb_pruned_states();
   }
 
   py::tuple get_exploration_statistics() {

@@ -44,8 +44,8 @@ void init_pylrtdp(py::module &m) {
            py::arg("state"))
       .def("get_utility", &skdecide::PyLRTDPSolver::get_utility,
            py::arg("state"))
-      .def("get_nb_of_explored_states",
-           &skdecide::PyLRTDPSolver::get_nb_of_explored_states)
+      .def("get_nb_explored_states",
+           &skdecide::PyLRTDPSolver::get_nb_explored_states)
       .def("get_nb_rollouts", &skdecide::PyLRTDPSolver::get_nb_rollouts)
       .def("get_residual_moving_average",
            &skdecide::PyLRTDPSolver::get_residual_moving_average)

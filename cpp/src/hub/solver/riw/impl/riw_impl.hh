@@ -312,12 +312,12 @@ double SK_RIW_SOLVER_CLASS::get_best_value(const State &s) const {
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-std::size_t SK_RIW_SOLVER_CLASS::get_nb_of_explored_states() const {
+std::size_t SK_RIW_SOLVER_CLASS::get_nb_explored_states() const {
   return _graph.size();
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-std::size_t SK_RIW_SOLVER_CLASS::get_nb_of_pruned_states() const {
+std::size_t SK_RIW_SOLVER_CLASS::get_nb_pruned_states() const {
   std::size_t cnt = 0;
   for (const auto &n : _graph) {
     if (n.pruned) {

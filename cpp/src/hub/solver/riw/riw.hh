@@ -228,7 +228,7 @@ public:
    *
    * @return std::size_t Number of states present in the search graph
    */
-  std::size_t get_nb_of_explored_states() const;
+  std::size_t get_nb_explored_states() const;
 
   /**
    * @brief Get the number of states present in the search graph that have been
@@ -239,7 +239,7 @@ public:
    * @return std::size_t Number of states present in the search graph that have
    * been pruned by the novelty test
    */
-  std::size_t get_nb_of_pruned_states() const;
+  std::size_t get_nb_pruned_states() const;
 
   /**
    * @brief Get the exploration statistics as number of states present in the

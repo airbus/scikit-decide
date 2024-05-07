@@ -220,7 +220,7 @@ double SK_MCTS_SOLVER_CLASS::get_best_value(const State &s) {
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-std::size_t SK_MCTS_SOLVER_CLASS::get_nb_of_explored_states() const {
+std::size_t SK_MCTS_SOLVER_CLASS::get_nb_explored_states() const {
   return _graph.size();
 }
 

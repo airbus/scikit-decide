@@ -77,7 +77,7 @@ try:
         ) -> None:
             """Construct a RIW solver instance
 
-            Args:
+            # Parameters
                 domain_factory (Callable[[], Domain]): The domain instance.
                 state_features (Callable[[Domain, D.T_state], Any]): state feature vector
                     used to compute the novelty measure
@@ -194,7 +194,7 @@ try:
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the RIW algorithm from a given root solving state
 
-            Args:
+            # Parameters
                 memory (D.T_memory[D.T_state]): State from which to run the RIW algorithm
                     (root of the search graph)
             """
@@ -205,11 +205,11 @@ try:
         ) -> bool:
             """Indicates whether the solution policy is defined for a given state
 
-            Args:
+            # Parameters
                 observation (D.T_agent[D.T_observation]): State for which an entry is searched
                     in the policy graph
 
-            Returns:
+            # Returns
                 bool: True if the state has been explored and an action is defined in this state,
                     False otherwise
             """
@@ -226,10 +226,10 @@ try:
                 Returns a random action if no action is defined in the given state,
                 which is why it is advised to call :py:meth:`RIW.is_solution_defined_for` before
 
-            Args:
+            # Parameters
                 observation (D.T_agent[D.T_observation]): State for which the best action is requested
 
-            Returns:
+            # Returns
                 D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
             """
             if self._continuous_planning or not self._is_solution_defined_for(
@@ -256,35 +256,35 @@ try:
                 Returns None if no action is defined in the given state, which is why
                 it is advised to call :py:meth:`RIW.is_solution_defined_for` before
 
-            Args:
+            # Parameters
                 observation (D.T_agent[D.T_observation]): State from which the best Q-value is requested
 
-            Returns:
+            # Returns
                 D.T_value: Maximum Q-value of the given state over the applicable actions in this state
             """
             return self._solver.get_utility(observation)
 
-        def get_nb_of_explored_states(self) -> int:
+        def get_nb_explored_states(self) -> int:
             """Get the number of states present in the search graph (which can be
                 lower than the number of actually explored states if node garbage was
                 set to True in the RIW instance's constructor)
 
-            Returns:
+            # Returns
                 int: Number of states present in the search graph
             """
-            return self._solver.get_nb_of_explored_states()
+            return self._solver.get_nb_explored_states()
 
-        def get_nb_of_pruned_states(self) -> int:
+        def get_nb_pruned_states(self) -> int:
             """Get the number of states present in the search graph that have been
                 pruned by the novelty test (which can be lower than the number of actually
                 explored states if node garbage was set to True in the RIWSolver
                 instance's constructor)
 
-            Returns:
+            # Returns
                 int: Number of states present in the search graph that have been pruned by
                     the novelty test
             """
-            return self._solver.get_nb_of_pruned_states()
+            return self._solver.get_nb_pruned_states()
 
         def get_exploration_statistics(self) -> int:
             """Get the exploration statistics as number of states present in the
@@ -293,17 +293,17 @@ try:
                 explored states if node garbage was set to True in the RIWSolver
                 instance's constructor)
 
-            Returns:
+            # Returns
                 int: Pair of number of states present in the search graph and of number of
                 such states that have been pruned by the novelty test
             """
-            return self._solver.get_nb_of_pruned_states()
+            return self._solver.get_nb_pruned_states()
 
         def get_nb_rollouts(self) -> int:
             """Get the number of rollouts since the beginning of the search from
                 the root solving state
 
-            Returns:
+            # Returns
                 int: Number of RIW rollouts
             """
             return self._solver.get_nb_rollouts()
@@ -313,7 +313,7 @@ try:
                 or an infinite value if the number of computed residuals is lower than
                 the epsilon moving average window set in the RIW instance's constructor
 
-            Returns:
+            # Returns
                 float: Bellman error at the root state of the search averaged over
                     the epsilon moving average window
             """
@@ -323,7 +323,7 @@ try:
             """Get the solving time in milliseconds since the beginning of the
                 search from the root solving state
 
-            Returns:
+            # Returns
                 int: Solving time in milliseconds
             """
             return self._solver.get_solving_time()
@@ -336,11 +336,13 @@ try:
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the Q-value has been updated at least once (which is optimal if the
-                algorithm has converged and labels are used); warning: only defined over
-                the states reachable from the last root solving state when node garbage was
-                set to True in the RIW instance's constructor
+                algorithm has converged and labels are used)
 
-            Returns:
+            !!! warning
+                Only defined over the states reachable from the last root solving state
+                when node garbage was set to True in the RIW instance's constructor
+
+            # Returns
                 Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], float], ]:
                     Mapping from states to pairs of action and best Q-value
             """
@@ -348,15 +350,15 @@ try:
 
         def get_action_prefix(self) -> List[D.T_agent[D.T_observation]]:
             """Get the list of actions returned by the solver so far after each
-                call to the RIWSolver::get_best_action method (mostly internal use in order
+                call to the RIW.get_next_action method (mostly internal use in order
                 to rebuild the sequence of visited states until reaching the current
-                solving state, when using the 'EnvironmentRollout' policy for which we can
-                only progress the transition function with steps that hide the current
-                state of the environment)
+                solving state, when 'use_simulation_domain' was set to False in the
+                RIW instance's constructor for which we can only progress the
+                transition function with steps that hide the current state of the environment)
 
-            Returns:
+            # Returns
                 List[D.T_agent[D.T_observation]]: List of actions executed by the solver
-                so far after each call to the :py:meth`RIW.get_best_action` method
+                so far after each call to the :py:meth`RIW.get_next_action` method
             """
             return self._solver.get_action_prefix()
 

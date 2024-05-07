@@ -136,8 +136,8 @@ void init_pymcts(py::module &m) {
            py::arg("state"))
       .def("get_utility", &skdecide::PyMCTSSolver::get_utility,
            py::arg("state"))
-      .def("get_nb_of_explored_states",
-           &skdecide::PyMCTSSolver::get_nb_of_explored_states)
+      .def("get_nb_explored_states",
+           &skdecide::PyMCTSSolver::get_nb_explored_states)
       .def("get_nb_rollouts", &skdecide::PyMCTSSolver::get_nb_rollouts)
       .def("get_residual_moving_average",
            &skdecide::PyMCTSSolver::get_residual_moving_average)

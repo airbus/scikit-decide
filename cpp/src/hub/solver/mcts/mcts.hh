@@ -497,7 +497,7 @@ public:
    *
    * @return std::size_t Number of states present in the search graph
    */
-  std::size_t get_nb_of_explored_states() const;
+  std::size_t get_nb_explored_states() const;
 
   /**
    * @brief Get the number of rollouts since the beginning of the search from

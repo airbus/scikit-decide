@@ -128,7 +128,7 @@ try:
         ) -> None:
             """Construct a MCTS solver instance
 
-            Args:
+            # Parameters
                 domain_factory (Callable[[], Domain]): The domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
@@ -303,7 +303,7 @@ try:
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the MCTS algorithm from a given root solving state
 
-            Args:
+            # Parameters
                 memory (D.T_memory[D.T_state]): Root state of the search grph from which
                     MCTS rollouts are launched
             """
@@ -314,11 +314,11 @@ try:
         ) -> bool:
             """Indicates whether the solution policy is defined for a given state
 
-            Args:
+            # Parameters
                 observation (D.T_agent[D.T_observation]): State for which an entry is searched
                     in the policy graph
 
-            Returns:
+            # Returns
                 bool: True if the state has been explored and an action can be obtained
                     from the execution action selector, False otherwise
             """
@@ -335,10 +335,10 @@ try:
                 Returns a random action if no action is defined in the given state,
                 which is why it is advised to call :py:meth:`MCTS.is_solution_defined_for` before
 
-            Args:
+            # Parameters
                 observation (D.T_agent[D.T_observation]): State for which the best action is requested
 
-            Returns:
+            # Returns
                 D.T_agent[D.T_concurrency[D.T_event]]: Best action to execute according to the
                 execution action selector
             """
@@ -366,29 +366,29 @@ try:
                 Returns None if no action is defined in the given state, which is why
                 it is advised to call :py:meth:`MCTS.is_solution_defined_for` before
 
-            Args:
+            # Parameters
                 observation (D.T_agent[D.T_observation]): State from which the best value is requested
 
-            Returns:
+            # Returns
                 D.T_value: Value of the action returned by the execution action selector
             """
             return self._solver.get_utility(observation)
 
-        def get_nb_of_explored_states(self) -> int:
+        def get_nb_explored_states(self) -> int:
             """Get the number of states present in the search graph (which can be
                 lower than the number of actually explored states if node garbage was
                 set to True in the MCTS instance's constructor)
 
-            Returns:
+            # Returns
                 int: Number of states present in the search graph
             """
-            return self._solver.get_nb_of_explored_states()
+            return self._solver.get_nb_explored_states()
 
         def get_nb_rollouts(self) -> int:
             """Get the number of rollouts since the beginning of the search from
                 the root solving state
 
-            Returns:
+            # Returns
                 int: Number of MCTS rollouts
             """
             return self._solver.get_nb_rollouts()
@@ -398,7 +398,7 @@ try:
                 or an infinite value if the number of computed residuals is lower than
                 the epsilon moving average window set in the MCTS instance's constructor
 
-            Returns:
+            # Returns
                 float: Bellman error at the root state of the search averaged over
                     the epsilon moving average window
             """
@@ -408,7 +408,7 @@ try:
             """Get the solving time in milliseconds since the beginning of the
                 search from the root solving state
 
-            Returns:
+            # Returns
                 int: Solving time in milliseconds
             """
             return self._solver.get_solving_time()
@@ -427,7 +427,7 @@ try:
                 Only defined over the states reachable from the last root solving state
                 when node garbage was set to True in the MCTS instance's constructor
 
-            Returns:
+            # Returns
                 Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], float], ]:
                     Mapping from states to pairs of action and best value according to the
                     execution action selector
@@ -442,7 +442,7 @@ try:
                 only progress the transition function with steps that hide the current
                 state of the domain)
 
-            Returns:
+            # Returns
                 List[D.T_agent[D.T_observation]]: List of actions executed by the solver
                 so far after each call to the :py:meth`MCTS.get_next_action` method
             """
@@ -487,7 +487,7 @@ try:
         ):
             """Construct a HMCTS solver instance
 
-            Args:
+            # Parameters
                 domain_factory (Callable[[], Domain]): The domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
@@ -599,12 +599,12 @@ try:
                 state nodes from the multi-agent compound heuristic computed by the
                 :py:class`MAHD` algorithm
 
-            Args:
+            # Parameters
                 domain (Domain): The domain instance
                 observation (D.T_agent[D.T_observation]): The non-expanded state node from which
                     the heuristic must be computed
 
-            Returns:
+            # Returns
                 Tuple[D.T_agent[Value[D.T_value]], int]: MCTS heuristic value at the given state
             """
             if observation not in self._heuristic_records:
@@ -620,12 +620,12 @@ try:
                 state nodes from the multi-agent compound heuristic computed by the
                 :py:class`MAHD` algorithm
 
-            Args:
+            # Parameters
                 domain (Domain): The domain instance
                 observation (D.T_agent[D.T_observation]): The non-expanded state node from which
                     the custom rollout policy must be run
 
-            Returns:
+            # Returns
                 D.T_agent[D.T_concurrency[D.T_event]]: Rollout action to execute in the given state
             """
             if observation not in self._heuristic_records:
@@ -672,7 +672,7 @@ try:
         ) -> None:
             """Construct a UCT solver instance
 
-            Args:
+            # Parameters
                 domain_factory (Callable[[], Domain]): The domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
@@ -777,7 +777,7 @@ try:
         ) -> None:
             """Construct a HUCT solver instance
 
-            Args:
+            # Parameters
                 domain_factory (Callable[[], Domain]): The domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.

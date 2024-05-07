@@ -42,10 +42,9 @@ void init_pyriw(py::module &m) {
       .def("get_next_action", &skdecide::PyRIWSolver::get_next_action,
            py::arg("state"))
       .def("get_utility", &skdecide::PyRIWSolver::get_utility, py::arg("state"))
-      .def("get_nb_of_explored_states",
-           &skdecide::PyRIWSolver::get_nb_of_explored_states)
-      .def("get_nb_of_pruned_states",
-           &skdecide::PyRIWSolver::get_nb_of_pruned_states)
+      .def("get_nb_explored_states",
+           &skdecide::PyRIWSolver::get_nb_explored_states)
+      .def("get_nb_pruned_states", &skdecide::PyRIWSolver::get_nb_pruned_states)
       .def("get_exploration_statistics",
            &skdecide::PyRIWSolver::get_exploration_statistics)
       .def("get_nb_rollouts", &skdecide::PyRIWSolver::get_nb_rollouts)

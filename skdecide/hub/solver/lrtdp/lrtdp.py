@@ -80,7 +80,7 @@ try:
         ) -> None:
             """Construct a LRTDP solver instance
 
-            Args:
+            # Parameters
                 domain_factory (Callable[[], Domain], optional): The domain instance. Defaults to None.
                 heuristic (Optional[ Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
                     Lambda function taking as arguments the domain and a state, and returning the heuristic
@@ -187,7 +187,7 @@ try:
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the LRTDP algorithm from a given root solving state
 
-            Args:
+            # Parameters
                 memory (D.T_memory[D.T_state]): State from which to run the LRTDP algorithm
                     (root of the search graph)
             """
@@ -198,11 +198,11 @@ try:
         ) -> bool:
             """Indicates whether the solution policy is defined for a given state
 
-            Args:
+            # Parameters
                 observation (D.T_agent[D.T_observation]): State for which an entry is searched
                     in the policy graph
 
-            Returns:
+            # Returns
                 bool: True if the state has been explored and an action is defined in this state,
                     False otherwise
             """
@@ -219,10 +219,10 @@ try:
                 Returns a random action if no action is defined in the given state,
                 which is why it is advised to call :py:meth:`LRTDP.is_solution_defined_for` before
 
-            Args:
+            # Parameters
                 observation (D.T_agent[D.T_observation]): State for which the best action is requested
 
-            Returns:
+            # Returns
                 D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
             """
             if self._continuous_planning or not self._is_solution_defined_for(
@@ -249,29 +249,29 @@ try:
                 Returns None if no action is defined in the given state, which is why
                 it is advised to call :py:meth:`LRTDP.is_solution_defined_for` before
 
-            Args:
+            # Parameters
                 observation (D.T_agent[D.T_observation]): State from which the best Q-value is requested
 
-            Returns:
+            # Returns
                 D.T_value: Maximum Q-value of the given state over the applicable actions in this state
             """
             return self._solver.get_utility(observation)
 
-        def get_nb_of_explored_states(self) -> int:
+        def get_nb_explored_states(self) -> int:
             """Get the number of states present in the search graph (which can be
                 lower than the number of actually explored states if node garbage was
                 set to True in the LRTDP instance's constructor)
 
-            Returns:
+            # Returns
                 int: Number of states present in the search graph
             """
-            return self._solver.get_nb_of_explored_states()
+            return self._solver.get_nb_explored_states()
 
         def get_nb_rollouts(self) -> int:
             """Get the number of rollouts since the beginning of the search from
                 the root solving state
 
-            Returns:
+            # Returns
                 int: Number of rollouts (LRTDP trials)
             """
             return self._solver.get_nb_rollouts()
@@ -281,7 +281,7 @@ try:
                 or an infinite value if the number of computed residuals is lower than
                 the epsilon moving average window set in the LRTDP instance's constructor
 
-            Returns:
+            # Returns
                 float: Bellman error at the root state of the search averaged over
                     the epsilon moving average window
             """
@@ -291,7 +291,7 @@ try:
             """Get the solving time in milliseconds since the beginning of the
                 search from the root solving state
 
-            Returns:
+            # Returns
                 int: Solving time in milliseconds
             """
             return self._solver.get_solving_time()
@@ -304,11 +304,13 @@ try:
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the Q-value has been updated at least once (which is optimal if the
-                algorithm has converged and labels are used); warning: only defined over
-                the states reachable from the last root solving state when node garbage was
-                set to True in the LRTDP instance's constructor
+                algorithm has converged and labels are used)
 
-            Returns:
+            !!! warning
+                Only defined over the states reachable from the last root solving state
+                when node garbage was set to True in the LRTDP instance's constructor
+
+            # Returns
                 Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], float], ]:
                     Mapping from states to pairs of action and best Q-value
             """
