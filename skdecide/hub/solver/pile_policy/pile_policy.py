@@ -23,6 +23,16 @@ D = SchedulingDomain
 
 
 class GreedyChoice(Enum):
+    """Enumeration representing different greedy method to use in PilePolicy
+
+    Attributes:
+        MOST_SUCCESSORS (int): Start first the tasks that have the most successors in the precedence graph
+        SAMPLE_MOST_SUCCESSORS (int): Sample next task to schedule based on a probability weight proportional
+        to its number of successors in the precedence graph.
+        FASTEST (int): Schedule first the task that has the lowest duration
+        TOTALLY_RANDOM (int): Sample random next task to schedule next.
+    """
+
     MOST_SUCCESSORS = 1
     SAMPLE_MOST_SUCCESSORS = 2
     FASTEST = 3
@@ -33,6 +43,13 @@ class PilePolicy(Solver, DeterministicPolicies):
     T_domain = D
 
     def __init__(self, greedy_method: GreedyChoice = GreedyChoice.MOST_SUCCESSORS):
+        """Greedy Pile/Queue based solver for scheduling problems.
+
+        This solver/policy is greedily scheduling task based on some rule specified by GreedyChoice enumerator.
+        The resulting solution is not insured to respect specific constraints/needs for the scheduling problem.
+        # Parameters
+        greedy_method : Greedy method to use.
+        """
         self.greedy_method = greedy_method
 
     def _solve(self, domain_factory: Callable[[], D]) -> None:
