@@ -161,7 +161,7 @@ RayRLlib = "skdecide.hub.solver.ray_rllib:RayRLlib [solvers]"
 SimpleGreedy = "skdecide.hub.solver.simple_greedy:SimpleGreedy [solvers]"
 StableBaseline = "skdecide.hub.solver.stable_baselines:StableBaseline [solvers]"
 DOSolver = "skdecide.hub.solver.do_solver:DOSolver [solvers]"
-GPHH = "skdecide.hub.solver.gphh:GPHH [solvers]"
+GPHH = "skdecide.hub.solver.do_solver:GPHH [solvers]"
 PilePolicy = "skdecide.hub.solver.pile_policy:PilePolicy [solvers]"
 UPSolver = "skdecide.hub.solver.up:UPSolver [solvers]"
 
