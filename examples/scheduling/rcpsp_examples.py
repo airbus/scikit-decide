@@ -7,7 +7,7 @@ from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import (
     load_multiskill_domain,
 )
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
-from skdecide.hub.solver.sgs_policies.sgs_policies import (
+from skdecide.hub.solver.do_solver.sgs_policies import (
     BasePolicyMethod,
     PolicyMethodParams,
 )

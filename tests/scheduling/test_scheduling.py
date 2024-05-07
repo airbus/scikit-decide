@@ -35,18 +35,14 @@ from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     rebuild_tasks_modes_dict,
 )
 from skdecide.builders.domain.scheduling.task_duration import DeterministicTaskDuration
-from skdecide.hub.domain.rcpsp.rcpsp_sk import (
-    MRCPSP,
-    RCPSP,
-    build_n_determinist_from_stochastic,
-)
+from skdecide.hub.domain.rcpsp.rcpsp_sk import build_n_determinist_from_stochastic
 from skdecide.hub.solver.do_solver.do_solver_scheduling import (
     BasePolicyMethod,
     DOSolver,
     PolicyMethodParams,
     SolvingMethod,
 )
-from skdecide.hub.solver.gphh.gphh import GPHH, ParametersGPHH
+from skdecide.hub.solver.do_solver.gphh import GPHH, ParametersGPHH
 from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
 from skdecide.hub.solver.lazy_astar import LazyAstar
 

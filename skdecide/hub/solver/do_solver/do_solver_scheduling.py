@@ -15,12 +15,8 @@ from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
 )
 
 from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
+from skdecide.hub.solver.do_solver.sgs_policies import PolicyMethodParams, PolicyRCPSP
 from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
-from skdecide.hub.solver.sgs_policies.sgs_policies import (
-    BasePolicyMethod,
-    PolicyMethodParams,
-    PolicyRCPSP,
-)
 from skdecide.solvers import DeterministicPolicies, Solver
 
 
