@@ -39,31 +39,38 @@ template <typename Texecution>
 using PyMCTSDomain = PythonDomainProxy<Texecution>;
 
 #define MCTS_SOLVER_DECL_ARGS                                                  \
-  py::object &domain, std::size_t time_budget, std::size_t rollout_budget,     \
-      std::size_t max_depth, std::size_t epsilon_moving_average_window,        \
-      double epsilon, double discount, double ucb_constant,                    \
-      bool online_node_garbage, const CustomPolicyFunctor &custom_policy,      \
+  py::object &solver, py::object &domain, std::size_t time_budget,             \
+      std::size_t rollout_budget, std::size_t max_depth,                       \
+      std::size_t residual_moving_average_window, double epsilon,              \
+      double discount, double ucb_constant, bool online_node_garbage,          \
+      const CustomPolicyFunctor &custom_policy,                                \
       const HeuristicFunctor &heuristic, double state_expansion_rate,          \
       double action_expansion_rate, bool debug_logs,                           \
-      const WatchdogFunctor &watchdog
+      const CallbackFunctor &callback
 
 #define MCTS_SOLVER_ARGS                                                       \
-  domain, time_budget, rollout_budget, max_depth,                              \
-      epsilon_moving_average_window, epsilon, discount, ucb_constant,          \
+  solver, domain, time_budget, rollout_budget, max_depth,                      \
+      residual_moving_average_window, epsilon, discount, ucb_constant,         \
       online_node_garbage, custom_policy, heuristic, state_expansion_rate,     \
-      action_expansion_rate, debug_logs, watchdog
+      action_expansion_rate, debug_logs, callback
 
 class PyMCTSSolver {
 public:
-  typedef std::function<py::object(py::object &, const py::object &,
-                                   const py::object &)>
+  typedef std::function<py::object(
+      py::object &, const py::object &,
+      const py::object & // last arg used for optional thread_id
+      )>
       CustomPolicyFunctor;
-  typedef std::function<py::object(py::object &, const py::object &,
-                                   const py::object &)>
+  typedef std::function<py::object(
+      py::object &, const py::object &,
+      const py::object & // last arg used for optional thread_id
+      )>
       HeuristicFunctor;
-  typedef std::function<bool(const std::size_t &, const std::size_t &,
-                             const double &, const double &)>
-      WatchdogFunctor;
+  typedef std::function<py::bool_(
+      py::object &, const py::object &,
+      const py::object & // last arg used for optional thread_id
+      )>
+      CallbackFunctor;
 
 private:
   class BaseImplementation {
@@ -77,6 +84,8 @@ private:
     virtual py::float_ get_utility(const py::object &s) = 0;
     virtual py::int_ get_nb_of_explored_states() = 0;
     virtual py::int_ get_nb_rollouts() = 0;
+    virtual py::float_ get_residual_moving_average() = 0;
+    virtual py::int_ get_solving_time() = 0;
     virtual py::dict get_policy() = 0;
     virtual py::list get_action_prefix() = 0;
   };
@@ -99,13 +108,14 @@ private:
 
     Implementation(MCTS_SOLVER_DECL_ARGS)
         : _custom_policy(custom_policy), _heuristic(heuristic),
-          _watchdog(watchdog) {
+          _callback(callback) {
 
+      _pysolver = std::make_unique<py::object>(solver);
       _domain = std::make_unique<PyMCTSDomain<Texecution>>(domain);
       _solver = std::make_unique<PyMCTSSolver>(
           *_domain, time_budget, rollout_budget, max_depth,
-          epsilon_moving_average_window, epsilon, discount, online_node_garbage,
-          debug_logs, init_watchdog(), init_tree_policy(),
+          residual_moving_average_window, epsilon, discount,
+          online_node_garbage, debug_logs, init_callback(), init_tree_policy(),
           init_expander(_heuristic, state_expansion_rate,
                         action_expansion_rate),
           init_action_selector<TactionSelectorOptimization<PyMCTSSolver>>(
@@ -121,16 +131,30 @@ private:
 
     virtual ~Implementation() {}
 
-    WatchdogFunctor init_watchdog() {
-      return [this](const std::size_t &elapsed_time,
-                    const std::size_t &nb_rollouts, const double &best_value,
-                    const double &epsilon_moving_average) -> bool {
-        if (_watchdog) {
-          typename skdecide::GilControl<Texecution>::Acquire acquire;
-          return _watchdog(elapsed_time, nb_rollouts, best_value,
-                           epsilon_moving_average);
-        } else {
-          return true;
+    std::function<bool(const PyMCTSSolver &s, PyMCTSDomain<Texecution> &d,
+                       const std::size_t *thread_id)>
+    init_callback() {
+      return [this](const PyMCTSSolver &s, PyMCTSDomain<Texecution> &d,
+                    const std::size_t *thread_id) -> bool {
+        // we don't make use of the C++ solver object 's' from Python
+        // but we rather use its Python wrapper 'solver'
+        try {
+          if (_callback) {
+            std::unique_ptr<py::object> r =
+                d.call(thread_id, _callback, *_pysolver);
+            typename skdecide::GilControl<Texecution>::Acquire acquire;
+            bool rr = r->template cast<bool>();
+            r.reset();
+            return rr;
+          } else {
+            return false;
+          }
+        } catch (const std::exception &e) {
+          Logger::error(
+              std::string(
+                  "SKDECIDE exception when calling callback function: ") +
+              e.what());
+          throw;
         }
       };
     }
@@ -287,14 +311,20 @@ private:
     }
 
     virtual py::int_ get_nb_of_explored_states() {
-      return _solver->nb_of_explored_states();
+      return _solver->get_nb_of_explored_states();
     }
 
-    virtual py::int_ get_nb_rollouts() { return _solver->nb_rollouts(); }
+    virtual py::int_ get_nb_rollouts() { return _solver->get_nb_rollouts(); }
+
+    virtual py::float_ get_residual_moving_average() {
+      return _solver->get_residual_moving_average();
+    }
+
+    virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
 
     virtual py::dict get_policy() {
       py::dict d;
-      auto &&p = _solver->policy();
+      auto &&p = _solver->get_policy();
       for (auto &e : p) {
         d[e.first.pyobj()] =
             py::make_tuple(e.second.first.pyobj(), e.second.second);
@@ -312,12 +342,13 @@ private:
     }
 
   private:
+    std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<PyMCTSDomain<Texecution>> _domain;
     std::unique_ptr<PyMCTSSolver> _solver;
 
     CustomPolicyFunctor _custom_policy;
     HeuristicFunctor _heuristic;
-    WatchdogFunctor _watchdog;
+    CallbackFunctor _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -661,12 +692,13 @@ private:
   CustomPolicyFunctor _filtered_custom_policy;
 
 public:
-  PyMCTSSolver(py::object &domain, std::size_t time_budget = 3600000,
+  PyMCTSSolver(py::object &solver, // Python solver wrapper
+               py::object &domain, std::size_t time_budget = 3600000,
                std::size_t rollout_budget = 100000,
                std::size_t max_depth = 1000,
-               std::size_t epsilon_moving_average_window = 100,
+               std::size_t residual_moving_average_window = 100,
                double epsilon = 0.0, // not a stopping criterion by default
-               double discount = 1.0, bool uct_mode = true,
+               double discount = 1.0,
                double ucb_constant = 1.0 / std::sqrt(2.0),
                bool online_node_garbage = false,
                const CustomPolicyFunctor &custom_policy = nullptr,
@@ -687,7 +719,7 @@ public:
                PyMCTSOptions::BackPropagator back_propagator =
                    PyMCTSOptions::BackPropagator::Graph,
                bool parallel = false, bool debug_logs = false,
-               const WatchdogFunctor &watchdog = nullptr);
+               const CallbackFunctor &callback = nullptr);
 
   void close() { _implementation->close(); }
 
@@ -712,6 +744,12 @@ public:
   }
 
   py::int_ get_nb_rollouts() { return _implementation->get_nb_rollouts(); }
+
+  py::float_ get_residual_moving_average() {
+    return _implementation->get_residual_moving_average();
+  }
+
+  py::int_ get_solving_time() { return _implementation->get_solving_time(); }
 
   py::dict get_policy() { return _implementation->get_policy(); }
 

@@ -70,9 +70,9 @@ SK_MCTS_SOLVER_CLASS::StateNode::Key::operator()(const StateNode &sn) const {
 SK_MCTS_SOLVER_TEMPLATE_DECL
 SK_MCTS_SOLVER_CLASS::MCTSSolver(
     Domain &domain, std::size_t time_budget, std::size_t rollout_budget,
-    std::size_t max_depth, std::size_t epsilon_moving_average_window,
+    std::size_t max_depth, std::size_t residual_moving_average_window,
     double epsilon, double discount, bool online_node_garbage, bool debug_logs,
-    const WatchdogFunctor &watchdog, std::unique_ptr<TreePolicy> tree_policy,
+    const CallbackFunctor &callback, std::unique_ptr<TreePolicy> tree_policy,
     std::unique_ptr<Expander> expander,
     std::unique_ptr<ActionSelectorOptimization> action_selector_optimization,
     std::unique_ptr<ActionSelectorExecution> action_selector_execution,
@@ -80,10 +80,10 @@ SK_MCTS_SOLVER_CLASS::MCTSSolver(
     std::unique_ptr<BackPropagator> back_propagator)
     : _domain(domain), _time_budget(time_budget),
       _rollout_budget(rollout_budget), _max_depth(max_depth),
-      _epsilon_moving_average_window(epsilon_moving_average_window),
+      _residual_moving_average_window(residual_moving_average_window),
       _epsilon(epsilon), _discount(discount), _nb_rollouts(0),
       _online_node_garbage(online_node_garbage), _debug_logs(debug_logs),
-      _watchdog(watchdog),
+      _callback(callback),
       _execution_policy(std::make_unique<ExecutionPolicy>()),
       _transition_mode(std::make_unique<TransitionMode>()),
       _tree_policy(std::move(tree_policy)), _expander(std::move(expander)),
@@ -91,7 +91,7 @@ SK_MCTS_SOLVER_CLASS::MCTSSolver(
       _action_selector_execution(std::move(action_selector_execution)),
       _rollout_policy(std::move(rollout_policy)),
       _back_propagator(std::move(back_propagator)), _current_state(nullptr),
-      _epsilon_moving_average(0) {
+      _residual_moving_average(0) {
 
   if (debug_logs) {
     Logger::check_level(logging::debug, "algorithm MCTS");
@@ -109,10 +109,10 @@ void SK_MCTS_SOLVER_CLASS::solve(const State &s) {
   try {
     Logger::info("Running " + ExecutionPolicy::print_type() +
                  " MCTS solver from state " + s.print());
-    auto start_time = std::chrono::high_resolution_clock::now();
+    _start_time = std::chrono::high_resolution_clock::now();
     _nb_rollouts = 0;
-    _epsilon_moving_average = 0.0;
-    _epsilons.clear();
+    _residual_moving_average = 0.0;
+    _residuals.clear();
 
     // Get the root node
     auto si = _graph.emplace(s);
@@ -126,11 +126,7 @@ void SK_MCTS_SOLVER_CLASS::solve(const State &s) {
     std::for_each(
         ExecutionPolicy::policy, parallel_rollouts.begin(),
         parallel_rollouts.end(),
-        [this, &start_time, &root_node](const std::size_t &thread_id) {
-          std::size_t etime = 0;
-          std::size_t epsilons_size = 0;
-          double eps_moving_average = 0.0;
-
+        [this, &root_node](const std::size_t &thread_id) {
           do {
             std::size_t depth = 0;
             double root_node_record_value = root_node.value;
@@ -139,27 +135,18 @@ void SK_MCTS_SOLVER_CLASS::solve(const State &s) {
                                             root_node, depth);
             (*_rollout_policy)(*this, &thread_id, *sn, depth);
             (*_back_propagator)(*this, &thread_id, *sn);
-            epsilons_size = update_epsilon_moving_average(
-                root_node, root_node_record_value);
-            eps_moving_average =
-                (epsilons_size >= _epsilon_moving_average_window)
-                    ? (double)_epsilon_moving_average
-                    : std::numeric_limits<double>::infinity();
+            update_residual_moving_average(root_node, root_node_record_value);
             _nb_rollouts++;
-          } while (_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
-                             root_node.value, eps_moving_average) &&
-                   (etime < _time_budget) && (_nb_rollouts < _rollout_budget) &&
-                   (eps_moving_average > _epsilon));
+          } while (!_callback(*this, _domain, &thread_id) &&
+                   (get_solving_time() < _time_budget) &&
+                   (_nb_rollouts < _rollout_budget) &&
+                   (get_residual_moving_average() > _epsilon));
         });
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        end_time - start_time)
-                        .count();
-    Logger::info("MCTS finished to solve from state " + s.print() + " in " +
-                 StringConverter::from((double)duration / (double)1e9) +
-                 " seconds with " + StringConverter::from(_nb_rollouts) +
-                 " rollouts.");
+    Logger::info(
+        "MCTS finished to solve from state " + s.print() + " in " +
+        StringConverter::from((double)get_solving_time() / (double)1e6) +
+        " seconds with " + StringConverter::from(_nb_rollouts) + " rollouts.");
   } catch (const std::exception &e) {
     Logger::error("MCTS failed solving from state " + s.print() +
                   ". Reason: " + e.what());
@@ -233,18 +220,43 @@ double SK_MCTS_SOLVER_CLASS::get_best_value(const State &s) {
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-std::size_t SK_MCTS_SOLVER_CLASS::nb_of_explored_states() const {
+std::size_t SK_MCTS_SOLVER_CLASS::get_nb_of_explored_states() const {
   return _graph.size();
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-std::size_t SK_MCTS_SOLVER_CLASS::nb_rollouts() const { return _nb_rollouts; }
+std::size_t SK_MCTS_SOLVER_CLASS::get_nb_rollouts() const {
+  return _nb_rollouts;
+}
+
+SK_MCTS_SOLVER_TEMPLATE_DECL
+double SK_MCTS_SOLVER_CLASS::get_residual_moving_average() const {
+  if (_residuals.size() >= _residual_moving_average_window) {
+    return (double)_residual_moving_average;
+  } else {
+    return std::numeric_limits<double>::infinity();
+  }
+}
+
+SK_MCTS_SOLVER_TEMPLATE_DECL
+std::size_t SK_MCTS_SOLVER_CLASS::get_solving_time() {
+  std::size_t milliseconds_duration;
+  _execution_policy->protect(
+      [this, &milliseconds_duration]() {
+        milliseconds_duration = static_cast<std::size_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::high_resolution_clock::now() - _start_time)
+                .count());
+      },
+      _time_mutex);
+  return milliseconds_duration;
+}
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 typename MapTypeDeducer<
     typename SK_MCTS_SOLVER_CLASS::State,
     std::pair<typename SK_MCTS_SOLVER_CLASS::Action, double>>::Map
-SK_MCTS_SOLVER_CLASS::policy() {
+SK_MCTS_SOLVER_CLASS::get_policy() {
   typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
   for (auto &n : _graph) {
     ActionNode *action = (*_action_selector_execution)(*this, nullptr, n);
@@ -396,47 +408,28 @@ void SK_MCTS_SOLVER_CLASS::remove_subgraph(
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-std::size_t SK_MCTS_SOLVER_CLASS::update_epsilon_moving_average(
+void SK_MCTS_SOLVER_CLASS::update_residual_moving_average(
     const StateNode &node, const double &node_record_value) {
-  std::size_t epsilons_size = 0;
-  if (_epsilon_moving_average_window > 0) {
+  if (_residual_moving_average_window > 0) {
     double current_epsilon = std::fabs(node_record_value - node.value);
     _execution_policy->protect(
-        [this, &epsilons_size, &current_epsilon]() {
-          if (_epsilons.size() < _epsilon_moving_average_window) {
-            _epsilon_moving_average =
-                ((double)((_epsilon_moving_average * _epsilons.size()) +
+        [this, &current_epsilon]() {
+          if (_residuals.size() < _residual_moving_average_window) {
+            _residual_moving_average =
+                ((double)((_residual_moving_average * _residuals.size()) +
                           current_epsilon)) /
-                ((double)(_epsilons.size() + 1));
+                ((double)(_residuals.size() + 1));
           } else {
-            _epsilon_moving_average =
-                ((double)_epsilon_moving_average) +
-                ((current_epsilon - _epsilons.front()) /
-                 ((double)_epsilon_moving_average_window));
-            _epsilons.pop_front();
+            _residual_moving_average =
+                ((double)_residual_moving_average) +
+                ((current_epsilon - _residuals.front()) /
+                 ((double)_residual_moving_average_window));
+            _residuals.pop_front();
           }
-          _epsilons.push_back(current_epsilon);
-          epsilons_size = _epsilons.size();
+          _residuals.push_back(current_epsilon);
         },
-        _epsilons_protect);
+        _residuals_protect);
   }
-  return epsilons_size;
-}
-
-SK_MCTS_SOLVER_TEMPLATE_DECL
-std::size_t SK_MCTS_SOLVER_CLASS::elapsed_time(
-    const std::chrono::time_point<std::chrono::high_resolution_clock>
-        &start_time) {
-  std::size_t milliseconds_duration;
-  _execution_policy->protect(
-      [&milliseconds_duration, &start_time]() {
-        milliseconds_duration = static_cast<std::size_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::high_resolution_clock::now() - start_time)
-                .count());
-      },
-      _time_mutex);
-  return milliseconds_duration;
 }
 
 } // namespace skdecide
