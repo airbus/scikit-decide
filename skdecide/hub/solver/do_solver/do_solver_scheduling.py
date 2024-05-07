@@ -5,8 +5,9 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict, Tuple, Union
 
+from discrete_optimization.generic_tools.do_solver import SolverDO
 from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, RCPSPSolution
 from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
     MS_RCPSPModel,
@@ -25,70 +26,46 @@ class D(SchedulingDomain):
 
 
 class SolvingMethod(Enum):
-    PILE = 0
-    GA = 1
-    LS = 2
-    LP = 3
-    CP = 4
-    LNS_LP = 5
-    LNS_CP = 6
-    LNS_CP_CALENDAR = 7
-    # New algorithm, similar to lns, adding iterativelyu constraint to fulfill calendar constraints..
+    PILE = "greedy"
+    GA = "ga"
+    LS = "ls"
+    LP = "lp"
+    CP = "cp"
+    LNS_LP = "lns-lp"
+    LNS_CP = "lns-scheduling"
 
 
-def build_solver(solving_method: SolvingMethod, do_domain):
+def build_solver(
+    solving_method: SolvingMethod, do_domain
+) -> Tuple[SolverDO, Dict[str, Any]]:
     if isinstance(do_domain, RCPSPModel):
         from discrete_optimization.rcpsp.rcpsp_solvers import (
             look_for_solver,
             solvers_map,
         )
 
-        available = look_for_solver(do_domain)
-        solving_method_to_str = {
-            SolvingMethod.PILE: "greedy",
-            SolvingMethod.GA: "ga",
-            SolvingMethod.LS: "ls",
-            SolvingMethod.LP: "lp",
-            SolvingMethod.CP: "cp",
-            SolvingMethod.LNS_LP: "lns-lp",
-            SolvingMethod.LNS_CP: "lns-cp",
-            SolvingMethod.LNS_CP_CALENDAR: "lns-cp-calendar",
-        }
-        smap = [
-            (av, solvers_map[av])
-            for av in available
-            if solvers_map[av][0] == solving_method_to_str[solving_method]
-        ]
-        if len(smap) > 0:
-            return smap[0]
-    if isinstance(do_domain, MS_RCPSPModel):
+        do_domain_cls = RCPSPModel
+    elif isinstance(do_domain, MS_RCPSPModel):
         from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
             look_for_solver,
             solvers_map,
         )
 
-        available = look_for_solver(do_domain)
-        solving_method_to_str = {
-            SolvingMethod.PILE: "greedy",
-            SolvingMethod.GA: "ga",
-            SolvingMethod.LS: "ls",
-            SolvingMethod.LP: "lp",
-            SolvingMethod.CP: "cp",
-            SolvingMethod.LNS_LP: "lns-lp",
-            SolvingMethod.LNS_CP: "lns-cp",
-            SolvingMethod.LNS_CP_CALENDAR: "lns-cp-calendar",
-        }
-
-        smap = [
-            (av, solvers_map[av])
-            for av in available
-            if solvers_map[av][0] == solving_method_to_str[solving_method]
-        ]
-
-        if len(smap) > 0:
-            return smap[0]
-
-    return None
+        do_domain_cls = MS_RCPSPModel
+    else:
+        raise ValueError("do_domain should be either a RCPSPModel or a MS_RCPSPModel.")
+    available = look_for_solver(do_domain)
+    smap = [
+        (av, solvers_map[av])
+        for av in available
+        if solvers_map[av][0] == solving_method.value
+    ]
+    if len(smap) > 0:
+        return smap[0]
+    else:
+        raise ValueError(
+            f"solving_method {solving_method} not available for {do_domain_cls}."
+        )
 
 
 def from_solution_to_policy(
