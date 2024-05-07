@@ -4,27 +4,42 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict
 
 from skdecide import rollout_episode
 from skdecide.builders.domain.scheduling.scheduling_domains import D, SchedulingDomain
 from skdecide.builders.solver import DeterministicPolicies
 
+logger = logging.getLogger(__name__)
+
 
 class MetaPolicy(DeterministicPolicies):
+    """
+    Utility policy function that represents a meta policy :
+    At a given state, it launches a rollout for each policy to evaluate each of them.
+    Then the policy for the given state is obtained with the policy that is giving the lowest estimated cost.
+    """
+
     T_domain = D
 
     def __init__(
         self,
         policies: Dict[Any, DeterministicPolicies],
-        execution_domain: SchedulingDomain,
-        known_domain: SchedulingDomain,
+        domain: SchedulingDomain,
         nb_rollout_estimation=1,
         verbose=True,
     ):
-        self.known_domain = known_domain
-        self.known_domain.fast = True
-        self.execution_domain = execution_domain
+        """
+        # Parameters
+        policies: dictionaries of different policies to evaluate
+        domain: domain on which to evaluate the policies
+        nb_rollout_estimation: relevant if the domain is stochastic,
+        run nb_rollout_estimation time(s) the rollout to estimate the expected cost of the policy.
+
+        """
+        self.domain = domain
+        self.domain.fast = True
         self.policies = policies
         self.current_states = {method: None for method in policies}
         self.nb_rollout_estimation = nb_rollout_estimation
@@ -38,7 +53,7 @@ class MetaPolicy(DeterministicPolicies):
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         results = {}
         actions_map = {}
-        self.known_domain.set_inplace_environment(True)
+        self.domain.set_inplace_environment(True)
         actions_c = [
             self.policies[method].get_next_action(observation)
             for method in self.policies
@@ -48,21 +63,17 @@ class MetaPolicy(DeterministicPolicies):
                 results[method] = 0.0
                 for j in range(self.nb_rollout_estimation):
                     states, actions, values = rollout_episode(
-                        domain=self.known_domain,
+                        domain=self.domain,
                         solver=self.policies[method],
                         outcome_formatter=None,
                         action_formatter=None,
                         verbose=False,
                         from_memory=observation.copy(),
                     )
-                    # cost = sum(v.cost for v in values)
-                    results[method] += (
-                        states[-1].t - observation.t
-                    )  # TODO, this is a trick...
+                    results[method] += states[-1].t - observation.t
                     actions_map[method] = actions[0]
             if self.verbose:
-                # print(results)
-                print(actions_map[min(results, key=lambda x: results[x])])
+                logger.debug(f"{actions_map[min(results, key=lambda x: results[x])]}")
             return actions_map[min(results, key=lambda x: results[x])]
         else:
             return actions_c[0]
