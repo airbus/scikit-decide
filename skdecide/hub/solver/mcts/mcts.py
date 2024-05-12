@@ -9,7 +9,7 @@ import random as rd
 import sys
 from enum import Enum
 from math import sqrt
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from skdecide import Domain, Solver, hub
 from skdecide.builders.domain import (
@@ -124,7 +124,7 @@ try:
             parallel: bool = False,
             shared_memory_proxy=None,
             debug_logs: bool = False,
-            callback: Callable[[Domain, MCTS], bool] = None,
+            callback: Callable[[MCTS, Optional[int]], bool] = None,
         ) -> None:
             """Construct a MCTS solver instance
 
@@ -200,9 +200,16 @@ try:
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 debug_logs (bool, optional): Boolean indicating whether debugging messages should be logged (True)
                     or not (False). Defaults to False.
-                callback (Callable[[Domain, MCTS], optional): Function called at the end of each MCTS rollout,
-                    taking as arguments the solver and the domain, and returning True if the solver must be stopped.
-                    Defaults to None.
+                callback (Callable[[MCTS, Optional[int]], optional): Function called at the end of each RIW rollout,
+                    taking as arguments the solver and the thread/process ID (i.e. parallel domain ID, which is equal to None
+                    in case of sequential execution, i.e. when 'parallel' is set to False in this constructor) from
+                    which the callback is called, and returning True if the solver must be stopped. The callback lambda
+                    function cannot take the (potentially parallelized) domain as argument because we could not otherwise
+                    serialize (i.e. pickle) the solver to pass it to the corresponding parallel domain process in case of parallel
+                    execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
+                    can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
+                    `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
+                    callback's process ID argument. Defaults to None.
             """
             ParallelSolver.__init__(
                 self,
@@ -234,10 +241,10 @@ try:
             self._continuous_planning = continuous_planning
             self._debug_logs = debug_logs
             if callback is None:
-                self._callback = lambda d, s: False
+                self._callback = lambda slv, i=None: False
             else:
                 self._callback = callback
-            self._lambdas = [self._custom_policy, self._heuristic, self._callback]
+            self._lambdas = [self._custom_policy, self._heuristic]
             self._ipc_notify = True
 
         def close(self):
@@ -260,39 +267,38 @@ try:
                 residual_moving_average_window=self._residual_moving_average_window,
                 epsilon=self._epsilon,
                 discount=self._discount,
-                uct_mode=self._uct_mode,
                 ucb_constant=self._ucb_constant,
                 online_node_garbage=self._online_node_garbage,
                 custom_policy=(
                     None
                     if self._custom_policy is None
-                    else lambda d, s, i=None: (
-                        self._custom_policy(d, s)
+                    else (
+                        (lambda d, s, i=None: self._custom_policy(d, s))
                         if not self._parallel
-                        else d.call(i, 0, s)
+                        else (lambda d, s, i=None: d.call(i, 0, s))
                     )
                 ),
                 heuristic=(
                     None
                     if self._heuristic is None
-                    else lambda d, s, i=None: (
-                        self._heuristic(d, s) if not self._parallel else d.call(i, 1, s)
+                    else (
+                        (lambda d, s, i=None: self._heuristic(d, s))
+                        if not self._parallel
+                        else (lambda d, s, i=None: d.call(i, 1, s))
                     )
                 ),
                 state_expansion_rate=self._state_expansion_rate,
                 action_expansion_rate=self._action_expansion_rate,
-                transition_mode=self._transition_mode,
-                tree_policy=self._tree_policy,
-                expander=self._expander,
-                action_selector_optimization=self._action_selector_optimization,
-                action_selector_execution=self._action_selector_execution,
-                rollout_policy=self._rollout_policy,
-                back_propagator=self._back_propagator,
+                transition_mode=self._transition_mode.value,
+                tree_policy=self._tree_policy.value,
+                expander=self._expander.value,
+                action_selector_optimization=self._action_selector_optimization.value,
+                action_selector_execution=self._action_selector_execution.value,
+                rollout_policy=self._rollout_policy.value,
+                back_propagator=self._back_propagator.value,
                 parallel=self._parallel,
                 debug_logs=self._debug_logs,
-                callback=lambda d, s, i=None: (
-                    self._callback(d, s) if not self._parallel else d.call(i, 2, s)
-                ),
+                callback=self._callback,
             )
             self._solver.clear()
 
@@ -483,7 +489,7 @@ try:
             parallel: bool = False,
             shared_memory_proxy=None,
             debug_logs: bool = False,
-            callback: Callable[[Domain, HMCTS], bool] = None,
+            callback: Callable[[HMCTS, Optional[int]], bool] = None,
         ):
             """Construct a HMCTS solver instance
 
@@ -552,9 +558,16 @@ try:
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 debug_logs (bool, optional): Boolean indicating whether debugging messages should be logged (True)
                     or not (False). Defaults to False.
-                callback (Callable[[Domain, HMCTS], optional): Function called at the end of each MCTS rollout,
-                    taking as arguments the solver and the domain, and returning True if the solver must be stopped.
-                    Defaults to None.
+                callback (Callable[[HMCTS, Optional[int]], optional): Function called at the end of each RIW rollout,
+                    taking as arguments the solver and the thread/process ID (i.e. parallel domain ID, which is equal to None
+                    in case of sequential execution, i.e. when 'parallel' is set to False in this constructor) from
+                    which the callback is called, and returning True if the solver must be stopped. The callback lambda
+                    function cannot take the (potentially parallelized) domain as argument because we could not otherwise
+                    serialize (i.e. pickle) the solver to pass it to the corresponding parallel domain process in case of parallel
+                    execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
+                    can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
+                    `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
+                    callback's process ID argument. Defaults to None.
             """
             super().__init__(
                 domain_factory=domain_factory,
@@ -668,7 +681,7 @@ try:
             parallel: bool = False,
             shared_memory_proxy=None,
             debug_logs: bool = False,
-            callback: Callable[[Domain, UCT], bool] = None,
+            callback: Callable[[UCT, Optional[int]], bool] = None,
         ) -> None:
             """Construct a UCT solver instance
 
@@ -715,9 +728,16 @@ try:
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 debug_logs (bool, optional): Boolean indicating whether debugging messages should be logged (True)
                     or not (False). Defaults to False.
-                callback (Callable[[Domain, UCT], bool], optional): Function called at the end of each UCT rollout,
-                    taking as arguments the solver and the domain, and returning True if the solver must be stopped.
-                    Defaults to None.
+                callback (Callable[[UCT, Optional[int]], optional): Function called at the end of each RIW rollout,
+                    taking as arguments the solver and the thread/process ID (i.e. parallel domain ID, which is equal to None
+                    in case of sequential execution, i.e. when 'parallel' is set to False in this constructor) from
+                    which the callback is called, and returning True if the solver must be stopped. The callback lambda
+                    function cannot take the (potentially parallelized) domain as argument because we could not otherwise
+                    serialize (i.e. pickle) the solver to pass it to the corresponding parallel domain process in case of parallel
+                    execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
+                    can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
+                    `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
+                    callback's process ID argument. Defaults to None.
             """
             super().__init__(
                 domain_factory=domain_factory,
@@ -773,7 +793,7 @@ try:
             parallel: bool = False,
             shared_memory_proxy=None,
             debug_logs: bool = False,
-            callback: Callable[[Domain, HUCT], bool] = None,
+            callback: Callable[[HUCT, Optional[int]], bool] = None,
         ) -> None:
             """Construct a HUCT solver instance
 
@@ -813,9 +833,16 @@ try:
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 debug_logs (bool, optional): Boolean indicating whether debugging messages should be logged (True)
                     or not (False). Defaults to False.
-                callback (Callable[[Domain, HUCT], optional): Function called at the end of each UCT rollout,
-                    taking as arguments the solver and the domain, and returning True if the solver must be stopped.
-                    Defaults to None.
+                callback (Callable[[HUCT, Optional[int]], optional): Function called at the end of each RIW rollout,
+                    taking as arguments the solver and the thread/process ID (i.e. parallel domain ID, which is equal to None
+                    in case of sequential execution, i.e. when 'parallel' is set to False in this constructor) from
+                    which the callback is called, and returning True if the solver must be stopped. The callback lambda
+                    function cannot take the (potentially parallelized) domain as argument because we could not otherwise
+                    serialize (i.e. pickle) the solver to pass it to the corresponding parallel domain process in case of parallel
+                    execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
+                    can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
+                    `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
+                    callback's process ID argument. Defaults to None.
             """
             super().__init__(
                 domain_factory=domain_factory,

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from skdecide import Domain, Solver, hub
 from skdecide.builders.domain import (
@@ -73,7 +73,7 @@ try:
             parallel: bool = False,
             shared_memory_proxy=None,
             debug_logs: bool = False,
-            callback: Callable[[Domain, RIW], bool] = None,
+            callback: Callable[[RIW, Optional[int]], bool] = None,
         ) -> None:
             """Construct a RIW solver instance
 
@@ -115,9 +115,16 @@ try:
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 debug_logs (bool, optional): Boolean indicating whether debugging messages should be logged (True)
                     or not (False). Defaults to False.
-                callback (Callable[[Domain, RIW], optional): Function called at the end of each RIW rollout,
-                    taking as arguments the solver and the domain, and returning True if the solver must be stopped.
-                    Defaults to None.
+                callback (Callable[[RIW, Optional[int]], optional): Function called at the end of each RIW rollout,
+                    taking as arguments the solver and the thread/process ID (i.e. parallel domain ID, which is equal to None
+                    in case of sequential execution, i.e. when 'parallel' is set to False in this constructor) from
+                    which the callback is called, and returning True if the solver must be stopped. The callback lambda
+                    function cannot take the (potentially parallelized) domain as argument because we could not otherwise
+                    serialize (i.e. pickle) the solver to pass it to the corresponding parallel domain process in case of parallel
+                    execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
+                    can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
+                    `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
+                    callback's process ID argument. Defaults to None.
             """
             ParallelSolver.__init__(
                 self,
@@ -141,10 +148,10 @@ try:
             self._continuous_planning = continuous_planning
             self._debug_logs = debug_logs
             if callback is None:
-                self._callback = lambda d, s: False
+                self._callback = lambda slv, i=None: False
             else:
                 self._callback = callback
-            self._lambdas = [self._state_features, self._callback]
+            self._lambdas = [self._state_features]
             self._ipc_notify = True
 
         def close(self):
@@ -164,10 +171,10 @@ try:
             self._solver = riw_solver(
                 solver=self,
                 domain=self.get_domain(),
-                state_features=lambda d, s, i=None: (
-                    self._state_features(d, s)
+                state_features=(
+                    (lambda d, s, i=None: self._state_features(d, s))
                     if not self._parallel
-                    else d.call(i, 0, s)
+                    else (lambda d, s, i=None: d.call(i, 0, s))
                 ),
                 use_state_feature_hash=self._use_state_feature_hash,
                 use_simulation_domain=self._use_simulation_domain,
@@ -181,9 +188,7 @@ try:
                 online_node_garbage=self._online_node_garbage,
                 parallel=self._parallel,
                 debug_logs=self._debug_logs,
-                callback=lambda d, s, i=None: (
-                    self._callback(d, s) if not self._parallel else d.call(i, 1, s)
-                ),
+                callback=self._callback,
             )
             self._solver.clear()
 

@@ -196,7 +196,9 @@ def _launch_domain_server_(
 
     if ipc_conn is not None:
         pusher = Push0()
-        pusher.dial(ipc_conn)
+        pusher.dial(
+            ipc_conn, block=False
+        )  # WARNING: recent pynng updates only work with non-blocking dials!
 
     with cond:
         init.value = True
@@ -329,7 +331,9 @@ def _shm_launch_domain_server_(
 
     if ipc_conn is not None:
         pusher = Push0()
-        pusher.dial(ipc_conn)
+        pusher.dial(
+            ipc_conn, block=False
+        )  # WARNING: recent pynng updates only work with non-blocking dials!
 
     with cond:
         init.value = True

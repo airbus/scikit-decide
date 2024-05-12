@@ -98,7 +98,7 @@ void init_pymcts(py::module &m) {
                skdecide::PyMCTSOptions::RolloutPolicy,
                skdecide::PyMCTSOptions::BackPropagator, bool, bool,
                const std::function<py::bool_(
-                   py::object &, const py::object &,
+                   const py::object &,
                    const py::object &)> // last arg used for optional thread_id
                    &>(),
            py::arg("solver"), py::arg("domain"),

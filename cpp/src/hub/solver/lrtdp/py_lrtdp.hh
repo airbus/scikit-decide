@@ -59,8 +59,8 @@ private:
         std::size_t residual_moving_average_window = 100,
         double epsilon = 0.001, double discount = 1.0,
         bool online_node_garbage = false, bool debug_logs = false,
-        const std::function<py::bool_(py::object &, const py::object &,
-                                      const py::object &)> &callback = nullptr)
+        const std::function<py::bool_(const py::object &, const py::object &)>
+            &callback = nullptr)
         : _goal_checker(goal_checker), _heuristic(heuristic),
           _callback(callback) {
 
@@ -112,23 +112,31 @@ private:
                  const std::size_t *thread_id) -> bool {
             // we don't make use of the C++ solver object 's' from Python
             // but we rather use its Python wrapper 'solver'
-            try {
-              if (_callback) {
-                std::unique_ptr<py::object> r =
-                    d.call(thread_id, _callback, *_pysolver);
-                typename skdecide::GilControl<Texecution>::Acquire acquire;
+            if (_callback) {
+              std::unique_ptr<py::bool_> r;
+              typename skdecide::GilControl<Texecution>::Acquire acquire;
+              try {
+                if (thread_id) {
+                  r = std::make_unique<py::bool_>(
+                      _callback(*_pysolver, py::int_(*thread_id)));
+                } else {
+                  r = std::make_unique<py::bool_>(
+                      _callback(*_pysolver, py::none()));
+                }
                 bool rr = r->template cast<bool>();
                 r.reset();
                 return rr;
-              } else {
-                return false;
+              } catch (const py::error_already_set *e) {
+                Logger::error(std::string("SKDECIDE exception when calling "
+                                          "callback function: ") +
+                              e->what());
+                std::runtime_error err(e->what());
+                r.reset();
+                delete e;
+                throw err;
               }
-            } catch (const std::exception &e) {
-              Logger::error(
-                  std::string(
-                      "SKDECIDE exception when calling callback function: ") +
-                  e.what());
-              throw;
+            } else {
+              return false;
             }
           });
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
@@ -221,8 +229,7 @@ private:
     std::function<py::object(py::object &, const py::object &,
                              const py::object &)>
         _heuristic; // last arg used for optional thread_id
-    std::function<py::bool_(py::object &, const py::object &,
-                            const py::object &)>
+    std::function<py::bool_(const py::object &, const py::object &)>
         _callback; // last arg used for optional thread_id
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
@@ -280,7 +287,7 @@ public:
       std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
       bool parallel = false, bool debug_logs = false,
-      const std::function<py::bool_(py::object &, const py::object &,
+      const std::function<py::bool_(const py::object &,
                                     const py::object & // last arg used for
                                                        // optional thread_id
                                     )> &callback = nullptr) {

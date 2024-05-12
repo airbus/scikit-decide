@@ -67,7 +67,7 @@ public:
       )>
       HeuristicFunctor;
   typedef std::function<py::bool_(
-      py::object &, const py::object &,
+      const py::object &,
       const py::object & // last arg used for optional thread_id
       )>
       CallbackFunctor;
@@ -138,23 +138,31 @@ private:
                     const std::size_t *thread_id) -> bool {
         // we don't make use of the C++ solver object 's' from Python
         // but we rather use its Python wrapper 'solver'
-        try {
-          if (_callback) {
-            std::unique_ptr<py::object> r =
-                d.call(thread_id, _callback, *_pysolver);
-            typename skdecide::GilControl<Texecution>::Acquire acquire;
+        if (_callback) {
+          std::unique_ptr<py::bool_> r;
+          typename skdecide::GilControl<Texecution>::Acquire acquire;
+          try {
+            if (thread_id) {
+              r = std::make_unique<py::bool_>(
+                  _callback(*_pysolver, py::int_(*thread_id)));
+            } else {
+              r = std::make_unique<py::bool_>(
+                  _callback(*_pysolver, py::none()));
+            }
             bool rr = r->template cast<bool>();
             r.reset();
             return rr;
-          } else {
-            return false;
+          } catch (const py::error_already_set *e) {
+            Logger::error(std::string("SKDECIDE exception when calling "
+                                      "callback function: ") +
+                          e->what());
+            std::runtime_error err(e->what());
+            r.reset();
+            delete e;
+            throw err;
           }
-        } catch (const std::exception &e) {
-          Logger::error(
-              std::string(
-                  "SKDECIDE exception when calling callback function: ") +
-              e.what());
-          throw;
+        } else {
+          return false;
         }
       };
     }
