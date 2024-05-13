@@ -7,80 +7,27 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any, Dict, List, Set, Tuple
 
-from skdecide import GoalMDPDomain
+import numpy as np
+
+from skdecide import D, GoalMDPDomain
 from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
 from skdecide.builders.solver.policy import DeterministicPolicies
 
-
 # Adapted from skdecide/hub/solver/cssp/utils/cost_shift_solver.py works.
-def construct_dict_policy(
-    domain: GoalMDPDomain, policy: DeterministicPolicies
-) -> Tuple[Dict[Any, Any], Dict[Any, Set[Any]], Dict[Any, List[Tuple[Any, float]]]]:
-    stack = [domain.get_initial_state()]
-    # We store predecessors to make it easier to retrieve the expected costs
-    # later on
-    preds = defaultdict(set)
-    succs = defaultdict()
-    policy_dict = {}
-    while len(stack) > 0:
-        s = stack.pop()
-        if domain.is_terminal(s) or s in policy_dict:
-            continue
-        action = policy.get_next_action(s)
-        policy_dict[s] = action
-        successors = domain.get_next_state_distribution(s, action).get_values()
-        succs[s] = successors
-        for succ, prob in successors:
-            if prob != 0:
-                stack.append(succ)
-                preds[succ].add(s)
-    # Sanity check that successors and predecessors are equal
-    for state, successor_pairs in succs.items():
-        for succ, prob in successor_pairs:
-            assert state in preds[succ]
-    return policy_dict, preds, succs
 
 
-def expected_costs_for_policy(domain, policy_dict, preds, succs):
-    # Compute value function for states that are explored by the policy.
-    opt_val = dict()
-    # Initialize states where all successors have potentially known values
-    stack = set()
-    for s in preds.keys():
-        if domain.is_goal(s):
-            opt_val[s] = 0
-            stack.update(preds[s])
-    while len(stack) > 0:
-        s = stack.pop()
-        # Assert that all successors have known optimal values
-        if s in opt_val or not successor_value_is_known(succs[s], opt_val):
-            continue
-        a = policy_dict[s]
-        main_cost = 0
-        for succ, prob in succs[s]:
-            # evaluate objective function on transition
-            val = domain.get_transition_value(s, a, succ)
-            main_cost += prob * (val.cost + opt_val[succ])
-        opt_val[s] = main_cost
-        stack.update(preds[s])
-    return opt_val
-
-
-def compute_expected_cost_for_policy(domain, policy):
-    policy_dict, preds, succs = construct_dict_policy(domain, policy)
-    value_function_dict = expected_costs_for_policy(domain, policy_dict, preds, succs)
-    return value_function_dict, policy_dict, preds, succs
-
-
-def my_custom_rollout(domain: GoalMDPDomain, state, policy: DeterministicPolicies):
+def my_custom_rollout(
+    domain: GoalMDPDomain, state: GoalMDPDomain.T_state, policy: DeterministicPolicies
+):
     states = [state]
     values = []
     summed_value = 0.0
     actions = []
     while True:
         action = policy.get_next_action(states[-1])
-        next_state = SchedulingDomain._state_sample(domain, states[-1], action).state
-        value = domain.get_transition_value(states[-1], action, next_state)
+        next_transition = domain.sample(states[-1], action)
+        next_state = next_transition.observation
+        value = next_transition.value
         values += [value.cost]
         summed_value += value.cost
         states += [next_state]
@@ -91,11 +38,6 @@ def my_custom_rollout(domain: GoalMDPDomain, state, policy: DeterministicPolicie
             summed_value += 1000  # penalty
             break
     return states, summed_value, values, actions
-
-
-# for uncertain domain leading to intractable number of states. which is the case for non trivial scheduling domains
-# for example
-import numpy as np
 
 
 def rollout_based_policy_estimation(
@@ -137,7 +79,6 @@ def rollout_based_policy_estimation_fast_scheduling(
     policy_dict = {}
     nb_visit_dict = {}
     summed_value = {}
-    final_value = {}
     preds = {}
     succs = {}
     s = domain.get_initial_state()
@@ -154,25 +95,70 @@ def rollout_based_policy_estimation_fast_scheduling(
     return final_value, policy_dict, preds, succs
 
 
-def rollout_based_compute_expected_cost_for_policy(domain, policy, nb_rollout=100):
-    final_value, policy_dict, preds, succs = rollout_based_policy_estimation(
-        domain=domain, policy=policy, nb_rollout=nb_rollout
-    )
-    return final_value, policy_dict, preds, succs
+def construct_dict_policy(
+    domain: GoalMDPDomain, policy: DeterministicPolicies
+) -> Tuple[Dict[Any, Any], Dict[Any, Set[Any]], Dict[Any, List[Tuple[Any, float]]]]:
+    stack = [domain.get_initial_state()]
+    # We store predecessors to make it easier to retrieve the expected costs
+    # later on
+    preds = defaultdict(set)
+    succs = defaultdict()
+    policy_dict = {}
+    while len(stack) > 0:
+        s = stack.pop()
+        if domain.is_terminal(s) or s in policy_dict:
+            continue
+        action = policy.get_next_action(s)
+        policy_dict[s] = action
+        successors = domain.get_next_state_distribution(s, action).get_values()
+        succs[s] = successors
+        for succ, prob in successors:
+            if prob != 0:
+                stack.append(succ)
+                preds[succ].add(s)
+    # Sanity check that successors and predecessors are equal
+    for state, successor_pairs in succs.items():
+        for succ, prob in successor_pairs:
+            assert state in preds[succ]
+    return policy_dict, preds, succs
 
 
-def rollout_based_compute_expected_cost_for_policy_scheduling(
-    domain, policy, nb_rollout=100
+def expected_costs_for_policy(
+    domain: GoalMDPDomain,
+    policy_dict: Dict[D.T_state, D.T_event],
+    preds: Dict[D.T_state, Set[D.T_state]],
+    succs: Dict[D.T_state, List[Tuple[D.T_state, float]]],
 ):
-    (
-        final_value,
-        policy_dict,
-        preds,
-        succs,
-    ) = rollout_based_policy_estimation_fast_scheduling(
-        domain=domain, policy=policy, nb_rollout=nb_rollout
-    )
-    return final_value, policy_dict, preds, succs
+    # Compute value function for states that are explored by the policy.
+    opt_val = dict()
+    # Initialize states where all successors have potentially known values
+    stack = set()
+    for s in preds.keys():
+        if domain.is_goal(s):
+            opt_val[s] = 0
+            stack.update(preds[s])
+    while len(stack) > 0:
+        s = stack.pop()
+        # Assert that all successors have known optimal values
+        if s in opt_val or not successor_value_is_known(succs[s], opt_val):
+            continue
+        a = policy_dict[s]
+        main_cost = 0
+        for succ, prob in succs[s]:
+            # evaluate objective function on transition
+            val = domain.get_transition_value(s, a, succ)
+            main_cost += prob * (val.cost + opt_val[succ])
+        opt_val[s] = main_cost
+        stack.update(preds[s])
+    return opt_val
+
+
+def compute_expected_cost_for_policy(
+    domain: GoalMDPDomain, policy: DeterministicPolicies
+):
+    policy_dict, preds, succs = construct_dict_policy(domain, policy)
+    value_function_dict = expected_costs_for_policy(domain, policy_dict, preds, succs)
+    return value_function_dict, policy_dict, preds, succs
 
 
 def successor_value_is_known(successors, opt_val):
