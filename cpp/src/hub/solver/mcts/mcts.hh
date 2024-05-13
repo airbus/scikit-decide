@@ -498,7 +498,7 @@ public:
    *
    * @return std::size_t Number of states present in the search graph
    */
-  std::size_t get_nb_explored_states() const;
+  std::size_t get_nb_explored_states();
 
   /**
    * @brief Get the number of rollouts since the beginning of the search from
@@ -517,7 +517,7 @@ public:
    * @return double Bellman error at the root state of the search averaged over
    * the epsilon moving average window
    */
-  double get_residual_moving_average() const;
+  double get_residual_moving_average();
 
   /**
    * @brief Get the solving time in milliseconds since the beginning of the

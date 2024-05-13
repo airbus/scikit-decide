@@ -144,6 +144,8 @@ const typename SK_MARTDP_SOLVER_CLASS::Action &
 SK_MARTDP_SOLVER_CLASS::get_best_action(const State &s) {
   auto si = _graph.find(s);
   if ((si == _graph.end()) || !(si->action)) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   } else {
@@ -175,6 +177,8 @@ typename SK_MARTDP_SOLVER_CLASS::Value
 SK_MARTDP_SOLVER_CLASS::get_best_value(const State &s) const {
   auto si = _graph.find(s);
   if (si == _graph.end()) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }

@@ -123,7 +123,7 @@ public:
    * @return false If the state has not been explored or no action is defined in
    * this state
    */
-  bool is_solution_defined_for(const State &s) const;
+  bool is_solution_defined_for(const State &s);
 
   /**
    * @brief Get the best computed action in terms of best Q-value in a given
@@ -148,7 +148,7 @@ public:
    * @return double Maximum Q-value of the given state over the applicable
    * actions in this state
    */
-  Value get_best_value(const State &s) const;
+  Value get_best_value(const State &s);
 
   /**
    * @brief Get the number of states present in the search graph (which can be
@@ -157,7 +157,7 @@ public:
    *
    * @return std::size_t Number of states present in the search graph
    */
-  std::size_t get_nb_explored_states() const;
+  std::size_t get_nb_explored_states();
 
   /**
    * @brief Get the number of rollouts since the beginning of the search from
@@ -176,7 +176,7 @@ public:
    * @return double Bellman error at the root state of the search averaged over
    * the epsilon moving average window
    */
-  double get_residual_moving_average() const;
+  double get_residual_moving_average();
 
   /**
    * @brief Get the solving time in milliseconds since the beginning of the
@@ -195,8 +195,7 @@ public:
    *
    * @return Mapping from states to pairs of action and best Q-value
    */
-  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map
-  get_policy() const;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map get_policy();
 
 private:
   typedef typename ExecutionPolicy::template atomic<std::size_t> atomic_size_t;

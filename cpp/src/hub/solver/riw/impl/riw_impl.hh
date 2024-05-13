@@ -247,38 +247,58 @@ void SK_RIW_SOLVER_CLASS::solve(const State &s) {
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-bool SK_RIW_SOLVER_CLASS::is_solution_defined_for(const State &s) const {
-  auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
-  if ((si == _graph.end()) ||
-      (si->best_action == nullptr)) { // || (si->solved == false)) {
-    return false;
-  } else {
-    return true;
-  }
+bool SK_RIW_SOLVER_CLASS::is_solution_defined_for(const State &s) {
+  bool res;
+  _execution_policy.protect([this, &s, &res]() {
+    auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
+    if ((si == _graph.end()) ||
+        (si->best_action == nullptr)) { // || (si->solved == false)) {
+      res = false;
+    } else {
+      res = true;
+    }
+  });
+  return res;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
 typename SK_RIW_SOLVER_CLASS::Action
 SK_RIW_SOLVER_CLASS::get_best_action(const State &s) {
-  auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
-  if ((si == _graph.end()) || (si->best_action == nullptr)) {
+  Action *best_action = nullptr;
+  Node *next_node = nullptr;
+  _execution_policy.protect([this, &s, &best_action, &next_node]() {
+    auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
+    if ((si != _graph.end()) && (si->best_action != nullptr)) {
+      best_action = si->best_action;
+      _rollout_policy.advance(_domain, s, *best_action, true, nullptr);
+      std::unordered_set<Node *> root_subgraph;
+      compute_reachable_subgraph(const_cast<Node &>(*si),
+                                 root_subgraph); // we won't change the real key
+                                                 // (Node::state) so we are safe
+      for (auto &child : si->children) {
+        if (&std::get<0>(child) == best_action) {
+          next_node = std::get<2>(child);
+          break;
+        }
+      }
+      if (next_node != nullptr) {
+        if (_debug_logs) {
+          Logger::debug("Expected outcome of best action " +
+                        best_action->print() + ": " + next_node->state.print());
+        }
+        std::unordered_set<Node *> child_subgraph;
+        if (_online_node_garbage) {
+          compute_reachable_subgraph(*next_node, child_subgraph);
+        }
+        update_graph(root_subgraph, child_subgraph);
+      }
+    }
+  });
+  if (best_action == nullptr) {
     Logger::error("SKDECIDE exception: no best action found in state " +
                   s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
-  }
-  _rollout_policy.advance(_domain, s, *(si->best_action), true, nullptr);
-  Action best_action = *(si->best_action);
-  std::unordered_set<Node *> root_subgraph;
-  compute_reachable_subgraph(const_cast<Node &>(*si),
-                             root_subgraph); // we won't change the real key
-                                             // (Node::state) so we are safe
-  Node *next_node = nullptr;
-  for (auto &child : si->children) {
-    if (&std::get<0>(child) == si->best_action) {
-      next_node = std::get<2>(child);
-      break;
-    }
   }
   if (next_node == nullptr) {
     Logger::error("SKDECIDE exception: best action's next node from state " +
@@ -287,60 +307,63 @@ SK_RIW_SOLVER_CLASS::get_best_action(const State &s) {
         "SKDECIDE exception: best action's next node from state " + s.print() +
         " not found in the graph");
   }
-  if (_debug_logs) {
-    Logger::debug("Expected outcome of best action " +
-                  si->best_action->print() + ": " + next_node->state.print());
-  }
-  std::unordered_set<Node *> child_subgraph;
-  if (_online_node_garbage) {
-    compute_reachable_subgraph(*next_node, child_subgraph);
-  }
-  update_graph(root_subgraph, child_subgraph);
-  return best_action;
+  return *best_action;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
 typename SK_RIW_SOLVER_CLASS::Value
-SK_RIW_SOLVER_CLASS::get_best_value(const State &s) const {
-  auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
-  if (si == _graph.end()) {
+SK_RIW_SOLVER_CLASS::get_best_value(const State &s) {
+  const atomic_double *value = nullptr;
+  _execution_policy.protect([this, &s, &value]() {
+    auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
+    if (si != _graph.end()) {
+      value = &(si->value);
+    }
+  });
+  if (value == nullptr) {
     Logger::error("SKDECIDE exception: no best action found in state " +
                   s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
   Value val;
-  val.reward(si->value);
+  val.reward(*value);
   return val;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-std::size_t SK_RIW_SOLVER_CLASS::get_nb_explored_states() const {
-  return _graph.size();
+std::size_t SK_RIW_SOLVER_CLASS::get_nb_explored_states() {
+  std::size_t sz = 0;
+  _execution_policy.protect([this, &sz]() { sz = _graph.size(); });
+  return sz;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-std::size_t SK_RIW_SOLVER_CLASS::get_nb_pruned_states() const {
+std::size_t SK_RIW_SOLVER_CLASS::get_nb_pruned_states() {
   std::size_t cnt = 0;
-  for (const auto &n : _graph) {
-    if (n.pruned) {
-      cnt++;
+  _execution_policy.protect([this, &cnt]() {
+    for (const auto &n : _graph) {
+      if (n.pruned) {
+        cnt++;
+      }
     }
-  }
+  });
   return cnt;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
 std::pair<std::size_t, std::size_t>
-SK_RIW_SOLVER_CLASS::get_exploration_statistics() const {
+SK_RIW_SOLVER_CLASS::get_exploration_statistics() {
   std::size_t pruned = 0;
   std::size_t explored = 0;
-  for (const auto &n : _graph) {
-    explored++;
-    if (n.pruned) {
-      pruned++;
+  _execution_policy.protect([this, &pruned, &explored]() {
+    for (const auto &n : _graph) {
+      explored++;
+      if (n.pruned) {
+        pruned++;
+      }
     }
-  }
+  });
   return std::make_pair(explored, pruned);
 }
 
@@ -350,12 +373,18 @@ std::size_t SK_RIW_SOLVER_CLASS::get_nb_rollouts() const {
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-double SK_RIW_SOLVER_CLASS::get_residual_moving_average() const {
-  if (_residuals.size() >= _residual_moving_average_window) {
-    return (double)_residual_moving_average;
-  } else {
-    return std::numeric_limits<double>::infinity();
-  }
+double SK_RIW_SOLVER_CLASS::get_residual_moving_average() {
+  double val = 0.0;
+  _execution_policy.protect(
+      [this, &val]() {
+        if (_residuals.size() >= _residual_moving_average_window) {
+          val = (double)_residual_moving_average;
+        } else {
+          val = std::numeric_limits<double>::infinity();
+        }
+      },
+      _residuals_protect);
+  return val;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
@@ -382,15 +411,17 @@ SK_RIW_SOLVER_TEMPLATE_DECL
 typename MapTypeDeducer<typename SK_RIW_SOLVER_CLASS::State,
                         std::pair<typename SK_RIW_SOLVER_CLASS::Action,
                                   typename SK_RIW_SOLVER_CLASS::Value>>::Map
-SK_RIW_SOLVER_CLASS::get_policy() const {
+SK_RIW_SOLVER_CLASS::get_policy() {
   typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
-  for (auto &n : _graph) {
-    if (n.best_action != nullptr) {
-      Value val;
-      val.reward(n.value);
-      p.insert(std::make_pair(n.state, std::make_pair(*n.best_action, val)));
+  _execution_policy.protect([this, &p]() {
+    for (auto &n : _graph) {
+      if (n.best_action != nullptr) {
+        Value val;
+        val.reward(n.value);
+        p.insert(std::make_pair(n.state, std::make_pair(*n.best_action, val)));
+      }
     }
-  }
+  });
   return p;
 }
 

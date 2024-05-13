@@ -113,63 +113,85 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
-bool SK_LRTDP_SOLVER_CLASS::is_solution_defined_for(const State &s) const {
-  auto si = _graph.find(s);
-  if ((si == _graph.end()) || (si->best_action == nullptr)) {
-    // /!\ does not mean the state is solved!
-    return false;
-  } else {
-    return true;
-  }
+bool SK_LRTDP_SOLVER_CLASS::is_solution_defined_for(const State &s) {
+  bool res;
+  _execution_policy.protect([this, &s, &res]() {
+    auto si = _graph.find(s);
+    if ((si == _graph.end()) || (si->best_action == nullptr)) {
+      // /!\ does not mean the state is solved!
+      res = false;
+    } else {
+      res = true;
+    }
+  });
+  return res;
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 const typename SK_LRTDP_SOLVER_CLASS::Action &
 SK_LRTDP_SOLVER_CLASS::get_best_action(const State &s) {
-  auto si = _graph.find(s);
-  if ((si == _graph.end()) || (si->best_action == nullptr)) {
+  ActionNode *best_action = nullptr;
+  _execution_policy.protect([this, &s, &best_action]() {
+    auto si = _graph.find(s);
+    if ((si != _graph.end()) && (si->best_action != nullptr)) {
+      if (_debug_logs) {
+        std::string str = "(";
+        for (const auto &o : si->best_action->outcomes) {
+          str += "\n    " + std::get<2>(o)->state.print();
+        }
+        str += "\n)";
+        Logger::debug("Best action's outcomes:\n" + str);
+      }
+      if (_online_node_garbage && _current_state) {
+        std::unordered_set<StateNode *> root_subgraph, child_subgraph;
+        compute_reachable_subgraph(_current_state, root_subgraph);
+        compute_reachable_subgraph(
+            const_cast<StateNode *>(&(*si)),
+            child_subgraph); // we won't change the real key (StateNode::state)
+                             // so we are safe
+        remove_subgraph(root_subgraph, child_subgraph);
+      }
+      _current_state =
+          const_cast<StateNode *>(&(*si)); // we won't change the real key
+                                           // (StateNode::state) so we are safe
+      best_action = si->best_action;
+    }
+  });
+  if (best_action == nullptr) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
-  } else {
-    if (_debug_logs) {
-      std::string str = "(";
-      for (const auto &o : si->best_action->outcomes) {
-        str += "\n    " + std::get<2>(o)->state.print();
-      }
-      str += "\n)";
-      Logger::debug("Best action's outcomes:\n" + str);
-    }
-    if (_online_node_garbage && _current_state) {
-      std::unordered_set<StateNode *> root_subgraph, child_subgraph;
-      compute_reachable_subgraph(_current_state, root_subgraph);
-      compute_reachable_subgraph(
-          const_cast<StateNode *>(&(*si)),
-          child_subgraph); // we won't change the real key (StateNode::state) so
-                           // we are safe
-      remove_subgraph(root_subgraph, child_subgraph);
-    }
-    _current_state = const_cast<StateNode *>(&(
-        *si)); // we won't change the real key (StateNode::state) so we are safe
-    return si->best_action->action;
   }
+  return best_action->action;
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 typename SK_LRTDP_SOLVER_CLASS::Value
-SK_LRTDP_SOLVER_CLASS::get_best_value(const State &s) const {
-  auto si = _graph.find(s);
-  if (si == _graph.end()) {
+SK_LRTDP_SOLVER_CLASS::get_best_value(const State &s) {
+  const atomic_double *best_value = nullptr;
+  _execution_policy.protect([this, &s, &best_value]() {
+    auto si = _graph.find(s);
+    if (si != _graph.end()) {
+      best_value = &(si->best_value);
+    }
+  });
+  if (best_value == nullptr) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
   Value val;
-  val.cost(si->best_value);
+  val.cost(*best_value);
   return val;
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
-std::size_t SK_LRTDP_SOLVER_CLASS::get_nb_explored_states() const {
-  return _graph.size();
+std::size_t SK_LRTDP_SOLVER_CLASS::get_nb_explored_states() {
+  std::size_t sz = 0;
+  _execution_policy.protect([this, &sz]() { sz = _graph.size(); });
+  return sz;
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
@@ -178,12 +200,18 @@ std::size_t SK_LRTDP_SOLVER_CLASS::get_nb_rollouts() const {
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
-double SK_LRTDP_SOLVER_CLASS::get_residual_moving_average() const {
-  if (_residuals.size() >= _residual_moving_average_window) {
-    return (double)_residual_moving_average;
-  } else {
-    return std::numeric_limits<double>::infinity();
-  }
+double SK_LRTDP_SOLVER_CLASS::get_residual_moving_average() {
+  double val = 0.0;
+  _execution_policy.protect(
+      [this, &val]() {
+        if (_residuals.size() >= _residual_moving_average_window) {
+          val = (double)_residual_moving_average;
+        } else {
+          val = std::numeric_limits<double>::infinity();
+        }
+      },
+      _residuals_protect);
+  return val;
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
@@ -204,16 +232,18 @@ SK_LRTDP_SOLVER_TEMPLATE_DECL typename MapTypeDeducer<
     typename SK_LRTDP_SOLVER_CLASS::State,
     std::pair<typename SK_LRTDP_SOLVER_CLASS::Action,
               typename SK_LRTDP_SOLVER_CLASS::Value>>::Map
-SK_LRTDP_SOLVER_CLASS::get_policy() const {
+SK_LRTDP_SOLVER_CLASS::get_policy() {
   typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
-  for (auto &n : _graph) {
-    if (n.best_action != nullptr) {
-      Value val;
-      val.cost(n.best_value);
-      p.insert(
-          std::make_pair(n.state, std::make_pair(n.best_action->action, val)));
+  _execution_policy.protect([this, &p]() {
+    for (auto &n : _graph) {
+      if (n.best_action != nullptr) {
+        Value val;
+        val.cost(n.best_value);
+        p.insert(std::make_pair(n.state,
+                                std::make_pair(n.best_action->action, val)));
+      }
     }
-  }
+  });
   return p;
 }
 
@@ -239,7 +269,7 @@ void SK_LRTDP_SOLVER_CLASS::expand(StateNode *s, const std::size_t *thread_id) {
     for (auto ns : next_states) {
       std::pair<typename Graph::iterator, bool> i;
       _execution_policy.protect(
-          [this, &i, &ns] { i = _graph.emplace(ns.state()); });
+          [this, &i, &ns]() { i = _graph.emplace(ns.state()); });
       StateNode &next_node = const_cast<StateNode &>(
           *(i.first)); // we won't change the real key (StateNode::state) so
                        // we are safe

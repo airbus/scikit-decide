@@ -156,75 +156,86 @@ void SK_MCTS_SOLVER_CLASS::solve(const State &s) {
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 bool SK_MCTS_SOLVER_CLASS::is_solution_defined_for(const State &s) {
-  auto si = _graph.find(s);
-  if (si == _graph.end()) {
-    return false;
-  } else {
-    return (*_action_selector_execution)(*this, nullptr, *si) != nullptr;
-  }
+  bool res;
+  _execution_policy->protect([this, &s, &res]() {
+    auto si = _graph.find(s);
+    if (si == _graph.end()) {
+      res = false;
+    } else {
+      res = (*_action_selector_execution)(*this, nullptr, *si) != nullptr;
+    }
+  });
+  return res;
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 typename SK_MCTS_SOLVER_CLASS::Action
 SK_MCTS_SOLVER_CLASS::get_best_action(const State &s) {
-  auto si = _graph.find(s);
   ActionNode *action = nullptr;
-  if (si != _graph.end()) {
-    action = (*_action_selector_execution)(*this, nullptr, *si);
-  }
+  _execution_policy->protect([this, &s, &action]() {
+    auto si = _graph.find(s);
+    if (si != _graph.end()) {
+      action = (*_action_selector_execution)(*this, nullptr, *si);
+    }
+    if (action != nullptr) {
+      if (_debug_logs) {
+        std::string str = "(";
+        for (const auto &o : action->outcomes) {
+          str += "\n    " + o.first->state.print();
+        }
+        str += "\n)";
+        Logger::debug("Best action's known outcomes:\n" + str);
+      }
+      if (_online_node_garbage && _current_state) {
+        std::unordered_set<StateNode *> root_subgraph, child_subgraph;
+        compute_reachable_subgraph(_current_state, root_subgraph);
+        compute_reachable_subgraph(
+            const_cast<StateNode *>(&(*si)),
+            child_subgraph); // we won't change the real key (StateNode::state)
+                             // so we are safe
+        remove_subgraph(root_subgraph, child_subgraph);
+      }
+      _current_state =
+          const_cast<StateNode *>(&(*si)); // we won't change the real key
+                                           // (StateNode::state) so we are safe
+      _action_prefix.push_back(action->action);
+    }
+  });
   if (action == nullptr) {
     Logger::error("SKDECIDE exception: no best action found in state " +
                   s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
-  } else {
-    if (_debug_logs) {
-      std::string str = "(";
-      for (const auto &o : action->outcomes) {
-        str += "\n    " + o.first->state.print();
-      }
-      str += "\n)";
-      Logger::debug("Best action's known outcomes:\n" + str);
-    }
-    if (_online_node_garbage && _current_state) {
-      std::unordered_set<StateNode *> root_subgraph, child_subgraph;
-      compute_reachable_subgraph(_current_state, root_subgraph);
-      compute_reachable_subgraph(
-          const_cast<StateNode *>(&(*si)),
-          child_subgraph); // we won't change the real key (StateNode::state) so
-                           // we are safe
-      remove_subgraph(root_subgraph, child_subgraph);
-    }
-    _current_state = const_cast<StateNode *>(&(
-        *si)); // we won't change the real key (StateNode::state) so we are safe
-    _action_prefix.push_back(action->action);
-    return action->action;
   }
+  return action->action;
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 typename SK_MCTS_SOLVER_CLASS::Value
 SK_MCTS_SOLVER_CLASS::get_best_value(const State &s) {
-  auto si = _graph.find(StateNode(s));
   ActionNode *action = nullptr;
-  if (si != _graph.end()) {
-    action = (*_action_selector_execution)(*this, nullptr, *si);
-  }
+  _execution_policy->protect([this, &s, &action]() {
+    auto si = _graph.find(StateNode(s));
+    if (si != _graph.end()) {
+      action = (*_action_selector_execution)(*this, nullptr, *si);
+    }
+  });
   if (action == nullptr) {
     Logger::error("SKDECIDE exception: no best action found in state " +
                   s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
-  } else {
-    Value val;
-    val.reward(action->value);
-    return val;
   }
+  Value val;
+  val.reward(action->value);
+  return val;
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-std::size_t SK_MCTS_SOLVER_CLASS::get_nb_explored_states() const {
-  return _graph.size();
+std::size_t SK_MCTS_SOLVER_CLASS::get_nb_explored_states() {
+  std::size_t sz = 0;
+  _execution_policy->protect([this, &sz]() { sz = _graph.size(); });
+  return sz;
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
@@ -233,12 +244,18 @@ std::size_t SK_MCTS_SOLVER_CLASS::get_nb_rollouts() const {
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-double SK_MCTS_SOLVER_CLASS::get_residual_moving_average() const {
-  if (_residuals.size() >= _residual_moving_average_window) {
-    return (double)_residual_moving_average;
-  } else {
-    return std::numeric_limits<double>::infinity();
-  }
+double SK_MCTS_SOLVER_CLASS::get_residual_moving_average() {
+  double val = 0.0;
+  _execution_policy->protect(
+      [this, &val]() {
+        if (_residuals.size() >= _residual_moving_average_window) {
+          val = (double)_residual_moving_average;
+        } else {
+          val = std::numeric_limits<double>::infinity();
+        }
+      },
+      _residuals_protect);
+  return val;
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
@@ -261,14 +278,16 @@ typename MapTypeDeducer<typename SK_MCTS_SOLVER_CLASS::State,
                                   typename SK_MCTS_SOLVER_CLASS::Value>>::Map
 SK_MCTS_SOLVER_CLASS::get_policy() {
   typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
-  for (auto &n : _graph) {
-    ActionNode *action = (*_action_selector_execution)(*this, nullptr, n);
-    if (action != nullptr) {
-      Value val;
-      val.reward(action->value);
-      p.insert(std::make_pair(n.state, std::make_pair(action->action, val)));
+  _execution_policy->protect([this, &p]() {
+    for (auto &n : _graph) {
+      ActionNode *action = (*_action_selector_execution)(*this, nullptr, n);
+      if (action != nullptr) {
+        Value val;
+        val.reward(action->value);
+        p.insert(std::make_pair(n.state, std::make_pair(action->action, val)));
+      }
     }
-  }
+  });
   return p;
 }
 
