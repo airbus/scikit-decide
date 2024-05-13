@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from enum import Enum
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
@@ -194,15 +195,16 @@ class DOSolver(Solver, DeterministicPolicies):
             callbacks = [
                 _DOCallback(callback=self.callback, domain=self.domain, solver=self)
             ]
-        if "callbacks" in self.dict_params:
-            callbacks = callbacks + self.dict_params.pop("callbacks")
+        copy_dict_params = deepcopy(self.dict_params)
+        if "callbacks" in copy_dict_params:
+            callbacks = callbacks + copy_dict_params.pop("callbacks")
 
-        self.solver = solver_class(self.do_domain, **self.dict_params)
+        self.solver = solver_class(self.do_domain, **copy_dict_params)
 
         if hasattr(self.solver, "init_model") and callable(self.solver.init_model):
-            self.solver.init_model(**self.dict_params)
+            self.solver.init_model(**copy_dict_params)
 
-        result_storage = self.solver.solve(callbacks=callbacks, **self.dict_params)
+        result_storage = self.solver.solve(callbacks=callbacks, **copy_dict_params)
         best_solution: RCPSPSolution = result_storage.get_best_solution()
 
         assert best_solution is not None
