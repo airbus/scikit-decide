@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from discrete_optimization.generic_tools.callbacks.callback import Callback
+from discrete_optimization.generic_tools.do_problem import Problem
 from discrete_optimization.generic_tools.do_solver import SolverDO
 from discrete_optimization.generic_tools.result_storage.result_storage import (
     ResultStorage,
@@ -41,7 +42,7 @@ class SolvingMethod(Enum):
 
 
 def build_solver(
-    solving_method: SolvingMethod, do_domain
+    solving_method: SolvingMethod, do_domain: Problem
 ) -> Tuple[SolverDO, Dict[str, Any]]:
     if isinstance(do_domain, RCPSPModel):
         from discrete_optimization.rcpsp.rcpsp_solvers import (
@@ -75,9 +76,10 @@ def build_solver(
 
 def from_solution_to_policy(
     solution: Union[RCPSPSolution, MS_RCPSPSolution, MS_RCPSPSolution_Variant],
-    domain,
+    domain: SchedulingDomain,
     policy_method_params: PolicyMethodParams,
-):
+) -> PolicyRCPSP:
+    """Create a PolicyRCPSP object (a skdecide policy) from a scheduling solution from the discrete-optimization library."""
     permutation_task = None
     modes_dictionnary = None
     schedule = None
@@ -130,6 +132,15 @@ def from_solution_to_policy(
 
 
 class DOSolver(Solver, DeterministicPolicies):
+    """Wrapper of discrete-optimization solvers for scheduling problems
+
+    # Attributes
+    policy_method_params:  params for the returned policy.
+    method: method of the discrete-optim solver used
+    dict_params: specific params passed to the do-solver
+    callback: scikit-decide callback to be called inside do-solver when relevant.
+    """
+
     T_domain = D
 
     def __init__(
