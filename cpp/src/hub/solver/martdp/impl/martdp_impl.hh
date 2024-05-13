@@ -12,10 +12,9 @@ namespace skdecide {
 
 // === MARTDPSolver implementation ===
 
-#define SK_MARTDP_SOLVER_TEMPLATE_DECL                                         \
-  template <typename Tdomain, typename Texecution_policy>
+#define SK_MARTDP_SOLVER_TEMPLATE_DECL template <typename Tdomain>
 
-#define SK_MARTDP_SOLVER_CLASS MARTDPSolver<Tdomain, Texecution_policy>
+#define SK_MARTDP_SOLVER_CLASS MARTDPSolver<Tdomain>
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
 SK_MARTDP_SOLVER_CLASS::MARTDPSolver(
@@ -23,17 +22,17 @@ SK_MARTDP_SOLVER_CLASS::MARTDPSolver(
     const HeuristicFunctor &heuristic, std::size_t time_budget,
     std::size_t rollout_budget, std::size_t max_depth,
     std::size_t max_feasibility_trials, double graph_expansion_rate,
-    std::size_t epsilon_moving_average_window, double epsilon, double discount,
+    std::size_t residual_moving_average_window, double epsilon, double discount,
     double action_choice_noise, const double &dead_end_cost,
-    bool online_node_garbage, bool debug_logs, const WatchdogFunctor &watchdog)
+    bool online_node_garbage, bool debug_logs, const CallbackFunctor &callback)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _max_feasibility_trials(max_feasibility_trials),
       _graph_expansion_rate(graph_expansion_rate),
-      _epsilon_moving_average_window(epsilon_moving_average_window),
+      _residual_moving_average_window(residual_moving_average_window),
       _epsilon(epsilon), _discount(discount), _dead_end_cost(dead_end_cost),
       _online_node_garbage(online_node_garbage), _debug_logs(debug_logs),
-      _watchdog(watchdog), _epsilon_moving_average(0), _current_state(nullptr),
+      _callback(callback), _residual_moving_average(0), _current_state(nullptr),
       _nb_rollouts(0), _nb_agents(0) {
 
   if (debug_logs) {
@@ -51,9 +50,8 @@ void SK_MARTDP_SOLVER_CLASS::clear() { _graph.clear(); }
 SK_MARTDP_SOLVER_TEMPLATE_DECL
 void SK_MARTDP_SOLVER_CLASS::solve(const State &s) {
   try {
-    Logger::info("Running " + ExecutionPolicy::print_type() +
-                 " MARTDP solver from state " + s.print());
-    auto start_time = std::chrono::high_resolution_clock::now();
+    Logger::info("Running MARTDP solver from state " + s.print());
+    _start_time = std::chrono::high_resolution_clock::now();
 
     if (_nb_agents != s.size()) {
       // We are solving a new problem.
@@ -101,11 +99,8 @@ void SK_MARTDP_SOLVER_CLASS::solve(const State &s) {
     }
 
     _nb_rollouts = 0;
-    _epsilon_moving_average = 0.0;
-    _epsilons.clear();
-    std::size_t etime = 0;
-    std::size_t epsilons_size = 0;
-    double eps_moving_average = 0.0;
+    _residual_moving_average = 0.0;
+    _residuals.clear();
 
     do {
       if (_debug_logs)
@@ -114,26 +109,19 @@ void SK_MARTDP_SOLVER_CLASS::solve(const State &s) {
 
       _nb_rollouts++;
       double root_node_record_value = root_node.all_value;
-      trial(&root_node, start_time);
-      epsilons_size =
-          update_epsilon_moving_average(root_node, root_node_record_value);
-      eps_moving_average = (epsilons_size >= _epsilon_moving_average_window)
-                               ? _epsilon_moving_average
-                               : std::numeric_limits<double>::infinity();
-    } while (_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
-                       root_node.all_value, eps_moving_average) &&
-             (etime < _time_budget) && (_nb_rollouts < _rollout_budget) &&
-             (eps_moving_average > _epsilon));
+      trial(&root_node);
+      update_residual_moving_average(root_node, root_node_record_value);
+    } while (!_callback(*this, _domain) &&
+             (get_solving_time() < _time_budget) &&
+             (_nb_rollouts < _rollout_budget) &&
+             (get_residual_moving_average() > _epsilon));
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        end_time - start_time)
-                        .count();
-    Logger::info("MARTDP finished to solve from state " + s.print() + " in " +
-                 StringConverter::from((double)duration / (double)1e9) +
-                 " seconds with " + StringConverter::from(_nb_rollouts) +
-                 " rollouts and visited " +
-                 StringConverter::from(_graph.size()) + " states. ");
+    Logger::info(
+        "MARTDP finished to solve from state " + s.print() + " in " +
+        StringConverter::from((double)get_solving_time() / (double)1e6) +
+        " seconds with " + StringConverter::from(_nb_rollouts) +
+        " rollouts and visited " + StringConverter::from(_graph.size()) +
+        " states. ");
   } catch (const std::exception &e) {
     Logger::error("MARTDP failed solving from state " + s.print() +
                   ". Reason: " + e.what());
@@ -183,18 +171,34 @@ SK_MARTDP_SOLVER_CLASS::get_best_action(const State &s) {
 }
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
-double SK_MARTDP_SOLVER_CLASS::get_best_value(const State &s) const {
+typename SK_MARTDP_SOLVER_CLASS::Value
+SK_MARTDP_SOLVER_CLASS::get_best_value(const State &s) const {
   auto si = _graph.find(s);
   if (si == _graph.end()) {
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return si->all_value;
+  Value val;
+  for (std::size_t a = 0; a < _nb_agents; a++) {
+    val[_agents[a]].cost(si->value[a]);
+  }
+  return val;
 }
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
-std::size_t SK_MARTDP_SOLVER_CLASS::get_nb_of_explored_states() const {
+std::size_t SK_MARTDP_SOLVER_CLASS::get_nb_explored_states() const {
   return _graph.size();
+}
+
+SK_MARTDP_SOLVER_TEMPLATE_DECL
+const std::size_t &
+SK_MARTDP_SOLVER_CLASS::get_state_nb_actions(const State &s) const {
+  auto si = _graph.find(s);
+  if (si == _graph.end()) {
+    throw std::runtime_error("SKDECIDE exception: state " + s.print() +
+                             " not in the search graph");
+  }
+  return si->expansions_count;
 }
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
@@ -203,34 +207,40 @@ std::size_t SK_MARTDP_SOLVER_CLASS::get_nb_rollouts() const {
 }
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
-typename MapTypeDeducer<
-    typename SK_MARTDP_SOLVER_CLASS::State,
-    std::pair<typename SK_MARTDP_SOLVER_CLASS::Action, double>>::Map
-SK_MARTDP_SOLVER_CLASS::policy() const {
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
-  for (auto &n : _graph) {
-    if (n.action) {
-      p.insert(std::make_pair(
-          n.state, std::make_pair(n.action->action, (double)n.all_value)));
-    }
+double SK_MARTDP_SOLVER_CLASS::get_residual_moving_average() const {
+  if (_residuals.size() >= _residual_moving_average_window) {
+    return (double)_residual_moving_average;
+  } else {
+    return std::numeric_limits<double>::infinity();
   }
-  return p;
 }
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
-std::size_t SK_MARTDP_SOLVER_CLASS::elapsed_time(
-    const std::chrono::time_point<std::chrono::high_resolution_clock>
-        &start_time) {
+std::size_t SK_MARTDP_SOLVER_CLASS::get_solving_time() {
   std::size_t milliseconds_duration;
-  _execution_policy.protect(
-      [&milliseconds_duration, &start_time]() {
-        milliseconds_duration = static_cast<std::size_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::high_resolution_clock::now() - start_time)
-                .count());
-      },
-      _time_mutex);
+  milliseconds_duration = static_cast<std::size_t>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::high_resolution_clock::now() - _start_time)
+          .count());
   return milliseconds_duration;
+}
+
+SK_MARTDP_SOLVER_TEMPLATE_DECL
+typename MapTypeDeducer<typename SK_MARTDP_SOLVER_CLASS::State,
+                        std::pair<typename SK_MARTDP_SOLVER_CLASS::Action,
+                                  typename SK_MARTDP_SOLVER_CLASS::Value>>::Map
+SK_MARTDP_SOLVER_CLASS::policy() const {
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
+  for (auto &n : _graph) {
+    if (n.action) {
+      Value val;
+      for (std::size_t a = 0; a < _nb_agents; a++) {
+        val[_agents[a]].cost(n.value[a]);
+      }
+      p.insert(std::make_pair(n.state, std::make_pair(n.action->action, val)));
+    }
+  }
+  return p;
 }
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
@@ -528,14 +538,11 @@ void SK_MARTDP_SOLVER_CLASS::initialize_node(StateNode &n,
 }
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
-void SK_MARTDP_SOLVER_CLASS::trial(
-    StateNode *s,
-    const std::chrono::time_point<std::chrono::high_resolution_clock>
-        &start_time) {
+void SK_MARTDP_SOLVER_CLASS::trial(StateNode *s) {
   StateNode *cs = s;
   std::size_t depth = 0;
 
-  while ((elapsed_time(start_time) < _time_budget) && (depth < _max_depth)) {
+  while ((get_solving_time() < _time_budget) && (depth < _max_depth)) {
     depth++;
 
     if (cs->all_goal) {
@@ -615,25 +622,22 @@ void SK_MARTDP_SOLVER_CLASS::remove_subgraph(
 }
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
-std::size_t SK_MARTDP_SOLVER_CLASS::update_epsilon_moving_average(
+void SK_MARTDP_SOLVER_CLASS::update_residual_moving_average(
     const StateNode &node, const double &node_record_value) {
-  std::size_t epsilons_size = 0;
-  if (_epsilon_moving_average_window > 0) {
-    double current_epsilon = std::fabs(node_record_value - node.all_value);
-    if (_epsilons.size() < _epsilon_moving_average_window) {
-      _epsilon_moving_average =
-          ((double)((_epsilon_moving_average * _epsilons.size()) +
-                    current_epsilon)) /
-          ((double)(_epsilons.size() + 1));
+  if (_residual_moving_average_window > 0) {
+    double current_residual = std::fabs(node_record_value - node.all_value);
+    if (_residuals.size() < _residual_moving_average_window) {
+      _residual_moving_average =
+          ((double)((_residual_moving_average * _residuals.size()) +
+                    current_residual)) /
+          ((double)(_residuals.size() + 1));
     } else {
-      _epsilon_moving_average += (current_epsilon - _epsilons.front()) /
-                                 ((double)_epsilon_moving_average_window);
-      _epsilons.pop_front();
+      _residual_moving_average += (current_residual - _residuals.front()) /
+                                  ((double)_residual_moving_average_window);
+      _residuals.pop_front();
     }
-    _epsilons.push_back(current_epsilon);
-    epsilons_size = _epsilons.size();
+    _residuals.push_back(current_residual);
   }
-  return epsilons_size;
 }
 
 // === MARTDPSolver::ActionNode implementation ===

@@ -203,7 +203,8 @@ SK_MCTS_SOLVER_CLASS::get_best_action(const State &s) {
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-double SK_MCTS_SOLVER_CLASS::get_best_value(const State &s) {
+typename SK_MCTS_SOLVER_CLASS::Value
+SK_MCTS_SOLVER_CLASS::get_best_value(const State &s) {
   auto si = _graph.find(StateNode(s));
   ActionNode *action = nullptr;
   if (si != _graph.end()) {
@@ -215,7 +216,9 @@ double SK_MCTS_SOLVER_CLASS::get_best_value(const State &s) {
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   } else {
-    return action->value;
+    Value val;
+    val.reward(action->value);
+    return val;
   }
 }
 
@@ -253,16 +256,17 @@ std::size_t SK_MCTS_SOLVER_CLASS::get_solving_time() {
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-typename MapTypeDeducer<
-    typename SK_MCTS_SOLVER_CLASS::State,
-    std::pair<typename SK_MCTS_SOLVER_CLASS::Action, double>>::Map
+typename MapTypeDeducer<typename SK_MCTS_SOLVER_CLASS::State,
+                        std::pair<typename SK_MCTS_SOLVER_CLASS::Action,
+                                  typename SK_MCTS_SOLVER_CLASS::Value>>::Map
 SK_MCTS_SOLVER_CLASS::get_policy() {
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
   for (auto &n : _graph) {
     ActionNode *action = (*_action_selector_execution)(*this, nullptr, n);
     if (action != nullptr) {
-      p.insert(std::make_pair(
-          n.state, std::make_pair(action->action, (double)action->value)));
+      Value val;
+      val.reward(action->value);
+      p.insert(std::make_pair(n.state, std::make_pair(action->action, val)));
     }
   }
   return p;

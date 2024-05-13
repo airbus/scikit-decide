@@ -60,9 +60,9 @@ try:
 
         def __init__(
             self,
-            domain_factory: Callable[[], Domain] = None,
+            domain_factory: Callable[[], T_domain] = None,
             heuristic: Optional[
-                Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]
+                Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]]
             ] = None,
             use_labels: bool = True,
             time_budget: int = 3600000,
@@ -81,8 +81,8 @@ try:
             """Construct a LRTDP solver instance
 
             # Parameters
-                domain_factory (Callable[[], Domain], optional): The domain instance. Defaults to None.
-                heuristic (Optional[ Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
+                domain_factory (Callable[[], T_domain], optional): The domain instance. Defaults to None.
+                heuristic (Optional[ Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
                     Lambda function taking as arguments the domain and a state, and returning the heuristic
                     estimate from the state to the goal. Defaults to None.
                 use_labels (bool, optional): Boolean indicating whether labels must be used (True) or not
@@ -109,7 +109,7 @@ try:
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 debug_logs (bool, optional): Boolean indicating whether debugging messages should be logged (True)
                     or not (False). Defaults to False.
-                callback (Callable[[LRTDP, Optional[int]], optional): Function called at the end of each RIW rollout,
+                callback (Callable[[LRTDP, Optional[int]], optional): Function called at the end of each LRTDP trial,
                     taking as arguments the solver and the thread/process ID (i.e. parallel domain ID, which is equal to None
                     in case of sequential execution, i.e. when 'parallel' is set to False in this constructor) from
                     which the callback is called, and returning True if the solver must be stopped. The callback lambda
@@ -160,7 +160,7 @@ try:
                 self._solver.close()
             ParallelSolver.close(self)
 
-        def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
+        def _init_solve(self, domain_factory: Callable[[], T_domain]) -> None:
             self._domain_factory = domain_factory
             self._solver = lrtdp_solver(
                 solver=self,
@@ -309,7 +309,7 @@ try:
             self,
         ) -> Dict[
             D.T_agent[D.T_observation],
-            Tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the Q-value has been updated at least once (which is optimal if the
@@ -320,7 +320,7 @@ try:
                 when node garbage was set to True in the LRTDP instance's constructor
 
             # Returns
-                Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], float], ]:
+                Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
                     Mapping from states to pairs of action and best Q-value
             """
             return self._solver.get_policy()

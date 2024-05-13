@@ -61,13 +61,12 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
             self._singleagent_solvers[a] = self._singleagent_solver_class(
                 **self._singleagent_solver_kwargs
             )
-            self._singleagent_domain_class.solve_with(
-                solver=self._singleagent_solvers[a],
-                domain_factory=lambda: self._singleagent_domain_factory(
-                    self._multiagent_domain, a
-                )
-                if self._singleagent_domain_factory is not None
-                else None,
+            self._singleagent_solvers[a].init_solve(
+                domain_factory=lambda: (
+                    self._singleagent_domain_factory(self._multiagent_domain, a)
+                    if self._singleagent_domain_factory is not None
+                    else None
+                ),
             )
 
         self._singleagent_solutions = {
@@ -145,7 +144,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
                         )
                     try:
                         self._singleagent_solutions[a][observation[a]] = (
-                            0,
+                            Value(cost=0),
                             self._get_singleagent_domain(a)
                             .get_applicable_actions(observation[a])
                             .sample(),
@@ -163,7 +162,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
             h = (
                 Value(
                     cost=sum(
-                        p[observation[a]][0]
+                        p[observation[a]][0].cost
                         for a, p in self._singleagent_solutions.items()
                     )
                 ),
@@ -175,7 +174,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         else:
             h = (
                 {
-                    a: Value(cost=p[observation[a]][0])
+                    a: Value(cost=p[observation[a]][0].cost)
                     for a, p in self._singleagent_solutions.items()
                 },
                 {

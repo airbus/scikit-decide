@@ -316,6 +316,7 @@ public:
   typedef Tdomain Domain;
   typedef typename Domain::State State;
   typedef typename Domain::Action Action;
+  typedef typename Domain::Value Value;
   typedef TexecutionPolicy ExecutionPolicy;
   typedef TtransitionMode<Solver> TransitionMode;
   typedef TtreePolicy<Solver> TreePolicy;
@@ -488,7 +489,7 @@ public:
    * @return double Value of the action returned by the execution action
    * selector
    */
-  double get_best_value(const State &s);
+  Value get_best_value(const State &s);
 
   /**
    * @brief Get the number of states present in the search graph (which can be
@@ -537,7 +538,7 @@ public:
    * @return Mapping from states to pairs of action and best value according to
    * the execution action selector
    */
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map get_policy();
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map get_policy();
 
   /**
    * @brief Get the list of actions returned by the solver so far after each

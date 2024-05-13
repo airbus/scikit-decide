@@ -300,7 +300,8 @@ SK_RIW_SOLVER_CLASS::get_best_action(const State &s) {
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-double SK_RIW_SOLVER_CLASS::get_best_value(const State &s) const {
+typename SK_RIW_SOLVER_CLASS::Value
+SK_RIW_SOLVER_CLASS::get_best_value(const State &s) const {
   auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
   if (si == _graph.end()) {
     Logger::error("SKDECIDE exception: no best action found in state " +
@@ -308,7 +309,9 @@ double SK_RIW_SOLVER_CLASS::get_best_value(const State &s) const {
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return si->value;
+  Value val;
+  val.reward(si->value);
+  return val;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
@@ -376,15 +379,16 @@ SK_RIW_SOLVER_CLASS::action_prefix() const {
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-typename MapTypeDeducer<
-    typename SK_RIW_SOLVER_CLASS::State,
-    std::pair<typename SK_RIW_SOLVER_CLASS::Action, double>>::Map
+typename MapTypeDeducer<typename SK_RIW_SOLVER_CLASS::State,
+                        std::pair<typename SK_RIW_SOLVER_CLASS::Action,
+                                  typename SK_RIW_SOLVER_CLASS::Value>>::Map
 SK_RIW_SOLVER_CLASS::get_policy() const {
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
   for (auto &n : _graph) {
     if (n.best_action != nullptr) {
-      p.insert(std::make_pair(n.state,
-                              std::make_pair(*n.best_action, (double)n.value)));
+      Value val;
+      val.reward(n.value);
+      p.insert(std::make_pair(n.state, std::make_pair(*n.best_action, val)));
     }
   }
   return p;

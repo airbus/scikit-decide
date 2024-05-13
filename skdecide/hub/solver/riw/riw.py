@@ -57,8 +57,8 @@ try:
 
         def __init__(
             self,
-            domain_factory: Callable[[], Domain],
-            state_features: Callable[[Domain, D.T_state], Any],
+            domain_factory: Callable[[], T_domain],
+            state_features: Callable[[T_domain, D.T_state], Any],
             use_state_feature_hash: bool = False,
             use_simulation_domain: bool = False,
             time_budget: int = 3600000,
@@ -78,8 +78,8 @@ try:
             """Construct a RIW solver instance
 
             # Parameters
-                domain_factory (Callable[[], Domain]): The domain instance.
-                state_features (Callable[[Domain, D.T_state], Any]): state feature vector
+                domain_factory (Callable[[], T_domain]): The domain instance.
+                state_features (Callable[[T_domain, D.T_state], Any]): state feature vector
                     used to compute the novelty measure
                 use_state_feature_hash (bool, optional): Boolean indicating whether states
                     must be hashed by using their features (True) or by using their native
@@ -337,7 +337,7 @@ try:
             self,
         ) -> Dict[
             D.T_agent[D.T_observation],
-            Tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the Q-value has been updated at least once (which is optimal if the
@@ -348,7 +348,7 @@ try:
                 when node garbage was set to True in the RIW instance's constructor
 
             # Returns
-                Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], float], ]:
+                Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
                     Mapping from states to pairs of action and best Q-value
             """
             return self._solver.get_policy()

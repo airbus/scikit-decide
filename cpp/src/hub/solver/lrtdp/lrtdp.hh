@@ -148,7 +148,7 @@ public:
    * @return double Maximum Q-value of the given state over the applicable
    * actions in this state
    */
-  double get_best_value(const State &s) const;
+  Value get_best_value(const State &s) const;
 
   /**
    * @brief Get the number of states present in the search graph (which can be
@@ -195,7 +195,7 @@ public:
    *
    * @return Mapping from states to pairs of action and best Q-value
    */
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map
   get_policy() const;
 
 private:

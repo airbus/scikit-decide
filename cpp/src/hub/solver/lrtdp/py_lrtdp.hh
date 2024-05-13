@@ -34,7 +34,7 @@ private:
     virtual void solve(const py::object &s) = 0;
     virtual py::bool_ is_solution_defined_for(const py::object &s) = 0;
     virtual py::object get_next_action(const py::object &s) = 0;
-    virtual py::float_ get_utility(const py::object &s) = 0;
+    virtual py::object get_utility(const py::object &s) = 0;
     virtual py::int_ get_nb_explored_states() = 0;
     virtual py::int_ get_nb_rollouts() = 0;
     virtual py::float_ get_residual_moving_average() = 0;
@@ -181,15 +181,19 @@ private:
     virtual py::object get_next_action(const py::object &s) {
       try {
         return _solver->get_best_action(s).pyobj();
-      } catch (const std::runtime_error &) {
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[LRTDP.get_next_action] ") + e.what() +
+                     " - returning None");
         return py::none();
       }
     }
 
-    virtual py::float_ get_utility(const py::object &s) {
+    virtual py::object get_utility(const py::object &s) {
       try {
-        return _solver->get_best_value(s);
-      } catch (const std::runtime_error &) {
+        return _solver->get_best_value(s).pyobj();
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[LRTDP.get_utility] ") + e.what() +
+                     " - returning None");
         return py::none();
       }
     }
@@ -211,7 +215,7 @@ private:
       auto &&p = _solver->get_policy();
       for (auto &e : p) {
         d[e.first.pyobj()] =
-            py::make_tuple(e.second.first.pyobj(), e.second.second);
+            py::make_tuple(e.second.first.pyobj(), e.second.second.pyobj());
       }
       return d;
     }
@@ -314,7 +318,7 @@ public:
     return _implementation->get_next_action(s);
   }
 
-  py::float_ get_utility(const py::object &s) {
+  py::object get_utility(const py::object &s) {
     return _implementation->get_utility(s);
   }
 

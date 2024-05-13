@@ -155,13 +155,16 @@ SK_LRTDP_SOLVER_CLASS::get_best_action(const State &s) {
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
-double SK_LRTDP_SOLVER_CLASS::get_best_value(const State &s) const {
+typename SK_LRTDP_SOLVER_CLASS::Value
+SK_LRTDP_SOLVER_CLASS::get_best_value(const State &s) const {
   auto si = _graph.find(s);
   if (si == _graph.end()) {
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return si->best_value;
+  Value val;
+  val.cost(si->best_value);
+  return val;
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
@@ -199,13 +202,16 @@ std::size_t SK_LRTDP_SOLVER_CLASS::get_solving_time() {
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL typename MapTypeDeducer<
     typename SK_LRTDP_SOLVER_CLASS::State,
-    std::pair<typename SK_LRTDP_SOLVER_CLASS::Action, double>>::Map
+    std::pair<typename SK_LRTDP_SOLVER_CLASS::Action,
+              typename SK_LRTDP_SOLVER_CLASS::Value>>::Map
 SK_LRTDP_SOLVER_CLASS::get_policy() const {
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
   for (auto &n : _graph) {
     if (n.best_action != nullptr) {
-      p.insert(std::make_pair(n.state, std::make_pair(n.best_action->action,
-                                                      (double)n.best_value)));
+      Value val;
+      val.cost(n.best_value);
+      p.insert(
+          std::make_pair(n.state, std::make_pair(n.best_action->action, val)));
     }
   }
   return p;

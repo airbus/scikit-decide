@@ -94,7 +94,7 @@ try:
 
         def __init__(
             self,
-            domain_factory: Callable[[], Domain],
+            domain_factory: Callable[[], T_domain],
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
             max_depth: int = 1000,
@@ -104,11 +104,11 @@ try:
             ucb_constant: float = 1.0 / sqrt(2.0),
             online_node_garbage: bool = False,
             custom_policy: Callable[
-                [Domain, D.T_agent[D.T_observation]],
+                [T_domain, D.T_agent[D.T_observation]],
                 D.T_agent[D.T_concurrency[D.T_event]],
             ] = None,
             heuristic: Callable[
-                [Domain, D.T_agent[D.T_observation]],
+                [T_domain, D.T_agent[D.T_observation]],
                 Tuple[D.T_agent[Value[D.T_value]], int],
             ] = None,
             state_expansion_rate: float = 0.1,
@@ -129,7 +129,7 @@ try:
             """Construct a MCTS solver instance
 
             # Parameters
-                domain_factory (Callable[[], Domain]): The domain instance.
+                domain_factory (Callable[[], T_domain]): The domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
                 max_depth (int, optional): Maximum depth of each MCTS rollout. Defaults to 1000.
@@ -145,10 +145,10 @@ try:
                     (for optimization or execution) is :py:attribute`MCTS.ActionSelector.UCB1`. Defaults to 1.0/sqrt(2.0).
                 online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
                     no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
-                custom_policy (Callable[ [Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]], ], optional):
+                custom_policy (Callable[ [T_domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]], ], optional):
                     Custom policy function to use in the rollout policy from non-expanded state nodes when the rollout policy is
                     :py:attribute`MCTS.RolloutPolicy.CUSTOM`. Defaults to None.
-                heuristic (Callable[ [Domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int], ], optional):
+                heuristic (Callable[ [T_domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int], ], optional):
                     Optional Heuristic function to initialize non-expanded state nodes (returns a pair of value estimate and
                     fake number of visit counts). Defaults to None.
                 state_expansion_rate (float, optional): Value $rs$ used when the expander is :py:attribute`MCTS.Expander.PARTIAL`
@@ -174,7 +174,7 @@ try:
                     :py:attribute`MCTS.ActionSelector.UCB1` to select the action based on the UCB criterion, or
                     :py:attribute`MCTS.ActionSelector.BEST_Q_VALUE` to select the action with maximum Q-Value in the
                     current state node). Defaults to :py:attribute`MCTS.ActionSelector.UCB1`.
-                action_selector_execution (Options.ActionSelector, optional): Action selector class used to
+                action_selector_execution (MCTS.ActionSelector, optional): Action selector class used to
                     select actions at execution time when the 'get_best_action' method of the
                     solver is invoked in a given execution state (one of
                     :py:attribute`MCTS.ActionSelector.UCB1` to select the action based on the UCB criterion, or
@@ -188,7 +188,7 @@ try:
                     the simulation of trajectories from non-expanded state nodes, in which latter case it is advised to
                     provide the 'heuristic' function in this constructor to initialize non-expanded state nodes' values).
                     Defaults to :py:attribute:`MCTS.RolloutPolicy.RANDOM`.
-                back_propagator (Options.BackPropagator, optional): Back propagator enum (currently only
+                back_propagator (MCTS.BackPropagator, optional): Back propagator enum (currently only
                     :py:attribute`MCTS.BackPropagator.GRAPH` which back-propagates empirical Q-values from non-expanded
                     state nodes up to the root node of the tree along the tree policy's sampled
                     trajectories). Defaults to :py:attribute`MCTS.BackPropagator.GRAPH`.
@@ -460,7 +460,7 @@ try:
 
         def __init__(
             self,
-            domain_factory: Callable[[], Domain],
+            domain_factory: Callable[[], MCTS.T_domain],
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
             max_depth: int = 1000,
@@ -470,7 +470,7 @@ try:
             ucb_constant: float = 1.0 / sqrt(2.0),
             online_node_garbage: bool = False,
             heuristic: Callable[
-                [Domain, D.T_state],
+                [MCTS.T_domain, D.T_state],
                 Tuple[
                     D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]
                 ],
@@ -494,7 +494,7 @@ try:
             """Construct a HMCTS solver instance
 
             # Parameters
-                domain_factory (Callable[[], Domain]): The domain instance.
+                domain_factory (Callable[[], MCTS.T_domain]): The domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
                 max_depth (int, optional): Maximum depth of each MCTS rollout. Defaults to 1000.
@@ -510,7 +510,7 @@ try:
                     (for optimization or execution) is :py:attribute`MCTS.ActionSelector.UCB1`. Defaults to 1.0/sqrt(2.0).
                 online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
                     no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
-                heuristic (Callable[ [Domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]] ], ], optional):
+                heuristic (Callable[ [MCTS.T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]] ], ], optional):
                     Multi-agent compound heuristic as returned by the :py:class`MAHD` algorithm from independent
                     agent heuristic contributions. Defaults to None.
                 heuristic_confidence (int, optional): Fake state node visits set on non-expanded state nodes for which the
@@ -540,13 +540,13 @@ try:
                     :py:attribute`MCTS.ActionSelector.UCB1` to select the action based on the UCB criterion, or
                     :py:attribute`MCTS.ActionSelector.BEST_Q_VALUE` to select the action with maximum Q-Value in the
                     current state node). Defaults to :py:attribute`MCTS.ActionSelector.UCB1`.
-                action_selector_execution (Options.ActionSelector, optional): Action selector class used to
+                action_selector_execution (MCTS.ActionSelector, optional): Action selector class used to
                     select actions at execution time when the 'get_best_action' method of the
                     solver is invoked in a given execution state (one of
                     :py:attribute`MCTS.ActionSelector.UCB1` to select the action based on the UCB criterion, or
                     :py:attribute`MCTS.ActionSelector.BEST_Q_VALUE` to select the action with maximum Q-Value in the
                     current state node). Defaults to :py:attribute`MCTS.ActionSelector.BEST_Q_VALUE`.
-                back_propagator (Options.BackPropagator, optional): Back propagator enum (currently only
+                back_propagator (MCTS.BackPropagator, optional): Back propagator enum (currently only
                     :py:attribute`MCTS.BackPropagator.GRAPH` which back-propagates empirical Q-values from non-expanded
                     state nodes up to the root node of the tree along the tree policy's sampled
                     trajectories). Defaults to :py:attribute`MCTS.BackPropagator.GRAPH`.
@@ -558,7 +558,7 @@ try:
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 debug_logs (bool, optional): Boolean indicating whether debugging messages should be logged (True)
                     or not (False). Defaults to False.
-                callback (Callable[[HMCTS, Optional[int]], optional): Function called at the end of each RIW rollout,
+                callback (Callable[[HMCTS, Optional[int]], optional): Function called at the end of each MCTS rollout,
                     taking as arguments the solver and the thread/process ID (i.e. parallel domain ID, which is equal to None
                     in case of sequential execution, i.e. when 'parallel' is set to False in this constructor) from
                     which the callback is called, and returning True if the solver must be stopped. The callback lambda
@@ -606,14 +606,14 @@ try:
             self._heuristic_records = {}
 
         def _value_heuristic(
-            self, domain: Domain, observation: D.T_agent[D.T_observation]
+            self, domain: MCTS.T_domain, observation: D.T_agent[D.T_observation]
         ) -> Tuple[D.T_agent[Value[D.T_value]], int]:
             """Reconstitutes the MCTS heuristic used to initialize the value of non-expanded
                 state nodes from the multi-agent compound heuristic computed by the
                 :py:class`MAHD` algorithm
 
             # Parameters
-                domain (Domain): The domain instance
+                domain (MCTS.T_domain): The domain instance
                 observation (D.T_agent[D.T_observation]): The non-expanded state node from which
                     the heuristic must be computed
 
@@ -627,14 +627,14 @@ try:
             return (self._heuristic_records[observation][0], self._heuristic_confidence)
 
         def _policy_heuristic(
-            self, domain: Domain, observation: D.T_agent[D.T_observation]
+            self, domain: MCTS.T_domain, observation: D.T_agent[D.T_observation]
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             """Reconstitutes the MCTS custom rollout executed starting in non-expanded
                 state nodes from the multi-agent compound heuristic computed by the
                 :py:class`MAHD` algorithm
 
             # Parameters
-                domain (Domain): The domain instance
+                domain (MCTS.T_domain): The domain instance
                 observation (D.T_agent[D.T_observation]): The non-expanded state node from which
                     the custom rollout policy must be run
 
@@ -658,7 +658,7 @@ try:
 
         def __init__(
             self,
-            domain_factory: Callable[[], Domain],
+            domain_factory: Callable[[], MCTS.T_domain],
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
             max_depth: int = 1000,
@@ -668,11 +668,11 @@ try:
             ucb_constant: float = 1.0 / sqrt(2.0),
             online_node_garbage: float = False,
             custom_policy: Callable[
-                [Domain, D.T_agent[D.T_observation]],
+                [MCTS.T_domain, D.T_agent[D.T_observation]],
                 D.T_agent[D.T_concurrency[D.T_event]],
             ] = None,
             heuristic: Callable[
-                [Domain, D.T_agent[D.T_observation]],
+                [MCTS.T_domain, D.T_agent[D.T_observation]],
                 Tuple[D.T_agent[Value[D.T_value]], int],
             ] = None,
             transition_mode: MCTS.TransitionMode = MCTS.TransitionMode.DISTRIBUTION,
@@ -686,7 +686,7 @@ try:
             """Construct a UCT solver instance
 
             # Parameters
-                domain_factory (Callable[[], Domain]): The domain instance.
+                domain_factory (Callable[[], MCTS.T_domain]): The domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
                 max_depth (int, optional): Maximum depth of each UCT rollout. Defaults to 1000.
@@ -702,10 +702,10 @@ try:
                     (for optimization or execution) is :py:attribute`MCTS.ActionSelector.UCB1`. Defaults to 1.0/sqrt(2.0).
                 online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
                     no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
-                custom_policy (Callable[ [Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]], ], optional):
+                custom_policy (Callable[ [MCTS.T_domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]], ], optional):
                     Custom policy function to use in the rollout policy from non-expanded state nodes when the rollout policy is
                     :py:attribute`MCTS.RolloutPolicy.CUSTOM`. Defaults to None.
-                heuristic (Callable[ [Domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int], ], optional):
+                heuristic (Callable[ [MCTS.T_domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int], ], optional):
                     Optional Heuristic function to initialize non-expanded state nodes (returns a pair of value estimate and
                     fake number of visit counts). Defaults to None.
                 transition_mode (MCTS.TransitionMode, optional): Transition mode enum (one of :py:attribute`MCTS.TransitionMode.STEP`,
@@ -771,7 +771,7 @@ try:
 
         def __init__(
             self,
-            domain_factory: Callable[[], Domain],
+            domain_factory: Callable[[], MCTS.T_domain],
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
             max_depth: int = 1000,
@@ -781,7 +781,7 @@ try:
             ucb_constant: float = 1.0 / sqrt(2.0),
             online_node_garbage: float = False,
             heuristic: Callable[
-                [Domain, D.T_state],
+                [MCTS.T_domain, D.T_state],
                 Tuple[
                     D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]
                 ],
@@ -798,7 +798,7 @@ try:
             """Construct a HUCT solver instance
 
             # Parameters
-                domain_factory (Callable[[], Domain]): The domain instance.
+                domain_factory (Callable[[], MCTS.T_domain]): The domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
                 max_depth (int, optional): Maximum depth of each UCT rollout. Defaults to 1000.
@@ -814,7 +814,7 @@ try:
                     (for optimization or execution) is :py:attribute`MCTS.ActionSelector.UCB1`. Defaults to 1.0/sqrt(2.0).
                 online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
                     no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
-                heuristic (Callable[ [Domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]] ], ], optional):
+                heuristic (Callable[ [MCTS.T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]] ], ], optional):
                     Multi-agent compound heuristic as returned by the :py:class`MAHD` algorithm from independent
                     agent heuristic contributions. Defaults to None.
                 heuristic_confidence (int, optional): Fake state node visits set on non-expanded state nodes for which the
