@@ -194,6 +194,8 @@ class DOSolver(Solver, DeterministicPolicies):
             callbacks = [
                 _DOCallback(callback=self.callback, domain=self.domain, solver=self)
             ]
+        if "callbacks" in self.dict_params:
+            callbacks = callbacks + self.dict_params.pop("callbacks")
 
         self.solver = solver_class(self.do_domain, **self.dict_params)
 
