@@ -6,26 +6,27 @@ from __future__ import annotations
 
 from heapq import heappop, heappush
 from itertools import count
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-from skdecide import D, DeterministicPlanningDomain, GoalMDPDomain, MDPDomain, Memory
-from skdecide.hub.solver.graph_explorer.GraphDomain import (
-    GraphDomain,
-    GraphDomainUncertain,
+from skdecide import D, GoalMDPDomain
+from skdecide.hub.domain.graph_domain.graph_domain_builders.GraphExploration import (
+    GraphExploration,
 )
-from skdecide.hub.solver.graph_explorer.GraphExploration import GraphExploration
+from skdecide.hub.domain.graph_domain.GraphDomain import GraphDomainUncertain
 
 # WARNING : adapted for the scheduling domains.
 
 
 class DFSExploration(GraphExploration):
+    """DFS based exploration for MDP domains"""
+
     def __init__(
         self,
         domain: GoalMDPDomain,
         score_function=None,
-        max_edges=None,
-        max_nodes=None,
-        max_path=None,
+        max_edges: Optional[int] = None,
+        max_nodes: Optional[int] = None,
+        max_path: Optional[int] = None,
     ):
         self.domain = domain
         self.score_function = score_function
@@ -35,6 +36,12 @@ class DFSExploration(GraphExploration):
         self.max_edges = max_edges
         self.max_nodes = max_nodes
         self.max_path = max_path
+        if self.max_edges is None:
+            self.max_edges = float("inf")
+        if self.max_nodes is None:
+            self.max_nodes = float("inf")
+        if self.max_path is None:
+            self.max_path = float("inf")
 
     def build_graph_domain(self, init_state: Any = None) -> GraphDomainUncertain:
         if init_state is None:
@@ -53,15 +60,15 @@ class DFSExploration(GraphExploration):
         next_state_map: Dict[
             D.T_state, Dict[D.T_event, Dict[D.T_state, Tuple[float, float]]]
         ] = {}
-        state_terminal: Dict[D.T_state, bool] = {}
-        state_goal: Dict[D.T_state, bool] = {}
+        state_terminal: Dict[D.T_state, bool] = dict()
+        state_goal: Dict[D.T_state, bool] = dict()
         state_terminal[initial_state] = self.domain.is_terminal(initial_state)
         state_goal[initial_state] = self.domain.is_goal(initial_state)
         while len(stack) > 0:
             if not len(result) % 100 and len(result) > nb_states:
                 print("Expanded {} states.".format(len(result)))
                 nb_states = len(result)
-            tuple, s = heappop(stack)
+            _, s = heappop(stack)
             if s not in state_to_ind:
                 state_to_ind[s] = num_s
                 num_s += 1
