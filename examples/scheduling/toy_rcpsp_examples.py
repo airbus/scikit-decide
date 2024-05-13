@@ -538,11 +538,11 @@ def run_graph_exploration():
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
     print("Initial state : ", state)
-    from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import (
-        DFSExploration,
+    from skdecide.hub.domain.graph_domain.graph_domain_builders import (
+        DFS_MDP_Exploration,
     )
 
-    explorer = DFSExploration(domain=domain, max_edges=10000, max_nodes=10000)
+    explorer = DFS_MDP_Exploration(domain=domain, max_edges=50000, max_nodes=50000)
     graph_exploration = explorer.build_graph_domain(init_state=state)
     nx_graph = graph_exploration.to_networkx()
     for state in graph_exploration.next_state_map:
@@ -566,7 +566,8 @@ def run_graph_exploration():
     ]
     for task in goal_states[0].tasks_complete:
         durations = [
-            s.tasks_details[task].end - s.tasks_details[task].start for s in goal_states
+            s.tasks_full_details[task].end - s.tasks_full_details[task].start
+            for s in goal_states
         ]
         print("Duration of task ", task, set(durations))
     for goal_state in goal_states:
@@ -580,14 +581,16 @@ def run_graph_exploration_conditional():
     print("Initial state : ", state)
     from itertools import count
 
-    from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import (
-        DFSExploration,
+    from skdecide.hub.domain.graph_domain.graph_domain_builders import (
+        DFS_MDP_Exploration,
     )
 
     c = count()
     score_state = lambda x: (
-        len(x.tasks_remaining) + len(x.tasks_ongoing) + len(x.tasks_complete),
-        len(x.tasks_remaining),
+        sum(1 for _ in x.tasks_remaining)
+        + len(x.tasks_ongoing)
+        + len(x.tasks_complete),
+        sum(1 for _ in x.tasks_remaining),
         -len(x.tasks_complete),
         -len(x.tasks_ongoing),
         x.t,
@@ -598,7 +601,7 @@ def run_graph_exploration_conditional():
     #                          -len(x.tasks_ongoing),
     #                          x.t,
     #                          next(c))
-    explorer = DFSExploration(
+    explorer = DFS_MDP_Exploration(
         domain=domain, max_edges=30000, score_function=score_state, max_nodes=30000
     )
     graph_exploration = explorer.build_graph_domain(init_state=state)
@@ -631,8 +634,8 @@ def run_graph_exploration_conditional():
     ]
     for task in goal_states[0].task_ids:
         durations = [
-            s.tasks_details[task].end - s.tasks_details[task].start
-            if s.tasks_details[task].end is not None
+            s.tasks_full_details[task].end - s.tasks_full_details[task].start
+            if s.tasks_full_details[task].end is not None
             else None
             for s in goal_states
         ]
@@ -644,7 +647,8 @@ def run_graph_exploration_conditional():
 
 
 if __name__ == "__main__":
-    run_do()
-    run_astar()
+    # run_do()
+    # run_astar()
     # run_example()
     # run_graph_exploration_conditional()
+    run_graph_exploration()
