@@ -17,7 +17,7 @@ concurrency:
 
 env:
   BOOST_DIR: 3rdparty/boost
-  BOOST_VERSION: "1.76.0"
+  BOOST_VERSION: "1.85.0"
   SKDECIDE_SKIP_DEPS: 1
   MAIN_REPO_NAME: "airbus/scikit-decide"
 
@@ -60,7 +60,6 @@ jobs:
     outputs:
       python_version_test_per_os: ${{ steps.generate-matrix.outputs.python_version_test_per_os }}
       python_version_build_per_os: ${{ steps.generate-matrix.outputs.python_version_build_per_os }}
-      build: ${{ steps.generate-matrix.outputs.build}}
       test: ${{ steps.generate-matrix.outputs.test}}
       do_macos: ${{ steps.generate-matrix.outputs.do_macos}}
       do_ubuntu: ${{ steps.generate-matrix.outputs.do_ubuntu}}
@@ -78,26 +77,28 @@ jobs:
 
           python_version_build = ["3.8", "3.9", "3.10", "3.11"]
           python_version_test = ["3.8", "3.11"]
-          build = [ "macos-12", "ubuntu-latest", "windows-latest" ]
-          test = [ "macos-12", "macos-latest", "ubuntu-latest", "windows-latest"]
+          test = ["macos-12", "macos-latest", "ubuntu-latest", "windows-latest"]
           build_doc = "true"
+
+          oses = ["macos", "ubuntu", "windows"]
+          test_dict = dict({os: [k for k in test if k.startswith(os)] for os in oses})
 
           if "${{ needs.trigger.outputs.is_release == 'true' || needs.trigger.outputs.is_push_on_default_branch == 'true' || needs.trigger.outputs.is_schedule == 'true' }}" == "false":
               to_bool = lambda s: True if s == "true" else False
               python_filter = {
-                  '3.11' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.11]') }}"),
-                  '3.8' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.8]') }}"),
-                  '3.9' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.9]') }}"),
-                  '3.10' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.10]') }}"),
+                  '3.11': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.11]') }}"),
+                  '3.8': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.8]') }}"),
+                  '3.9': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.9]') }}"),
+                  '3.10': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.10]') }}"),
               }
               if any(python_filter.values()):
                   python_version_build = [v for v in python_version_build if python_filter[v]]
                   python_version_test = [v for v in python_version_test if python_filter[v]]
               os_filter = {
-                  'macos-latest'     : to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-latest]') }}"),
-                  'macos-12'     : to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-12]') }}"),
-                  'ubuntu-latest' : to_bool("${{ contains(github.event.head_commit.message, '[ci: ubuntu-latest]') }}"),
-                  'windows-latest' : to_bool("${{ contains(github.event.head_commit.message, '[ci: windows-latest]') }}"),
+                  'macos-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-latest]') }}"),
+                  'macos-12': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-12]') }}"),
+                  'ubuntu-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: ubuntu-latest]') }}"),
+                  'windows-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: windows-latest]') }}"),
               }
               if set(os_filter.keys()) != set(test):
                   raise Exception("test and os_filter do not contain the same keys")
@@ -110,31 +111,22 @@ jobs:
               # If there is no keyword, proceed as if all were present
               if not any(os_filter.values()):
                   os_filter.update({k: True for k in os_filter})
-              test = [ v for v in test if os_filter[v]]
-              test_os = { v.split('-')[0] for v in test }
-              build = [ v for v in build if v.split('-')[0] in test_os ]
-              if "${{ contains(github.event.head_commit.message, '[ci: skip-doc]') }}" == "true" or "ubuntu-latest" not in build:
+              test = [v for v in test if os_filter[v]]
+              test_os = {v.split('-')[0] for v in test}
+              test_dict = dict({os: [k for k in test if k.startswith(os)] for os in oses})
+              if "${{ contains(github.event.head_commit.message, '[ci: skip-doc]') }}" == "true" or len(test_dict["ubuntu"]) == 0:
                   build_doc = "false"
-          oses = ["macos", "ubuntu", "windows"]
-          build_dict = {os : [k for k in build if k.startswith(os)] for os in oses}
+
           python_version_build_per_os = {os: python_version_build for os in oses}
           python_version_test_per_os = {os: python_version_test for os in oses}
-          # remove python 3.11 for windows: dependency conflict from pyarrow prevent testing the wheel windows python 3.11
-          # python_version_test_per_os["windows"] = [v for v in python_version_test if v != "3.11"]
-          # update build_dict by removing os without any python version
-          for os in build_dict:
-              if len(python_version_test_per_os[os]) == 0 or len(python_version_build_per_os[os]) == 0:
-                    build_dict[os] = []
 
           with open(environ["GITHUB_OUTPUT"], "a") as f:
-              f.write(f"build={build_dict}\n")
-              f.write(f"test={dict({os : [k for k in test if k.startswith(os)] for os in oses})}\n")
+              f.write(f"test={test_dict}\n")
               f.write(f"build_doc={build_doc}\n")
               for os in oses:
-                  f.write(f"do_{os}={'true' if len(build_dict[os]) > 0 else 'false'}\n")
+                  f.write(f"do_{os}={'true' if len(test_dict[os]) > 0 else 'false'}\n")
               f.write(f"python_version_build_per_os={python_version_build_per_os}\n")
               f.write(f"python_version_test_per_os={python_version_test_per_os}\n")
-
 
   lint-sources:
     runs-on: ubuntu-latest
@@ -158,7 +150,7 @@ jobs:
     if: needs.setup.outputs.do_windows == 'true'
     strategy:
       matrix:
-        os: ${{ fromJSON(needs.setup.outputs.build).windows }}
+        os: ["windows-latest"]
         python-version: ${{ fromJSON(needs.setup.outputs.python_version_build_per_os).windows }}
       fail-fast: false
     defaults:
@@ -237,9 +229,14 @@ jobs:
     if: needs.setup.outputs.do_macos == 'true'
     strategy:
       matrix:
-        arch: ["arm64", "x86_64"]  # NB: only x86_64 wheel will be tested as no macosx_arm64 github runner available
-        os: ${{ fromJSON(needs.setup.outputs.build).macos }}
         python-version: ${{ fromJSON(needs.setup.outputs.python_version_build_per_os).macos }}
+        os: [ "macos-latest", "macos-12" ]
+        arch: [ "arm64", "x86_64" ]
+        exclude:
+          - os: macos-12
+            arch: arm64
+          - os: macos-latest
+            arch: x86_64
       fail-fast: false
     defaults:
       run:
@@ -308,6 +305,34 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
           echo "CMAKE_C_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
 
+      - name: Install conda for macos arm64
+        if: ${{ matrix.arch == 'arm64' }}
+        run: |
+          set -ex
+          # macos arm64 runners do not have conda installed. Thus we much install conda manually
+          EXPECTED_SHA="dd832d8a65a861b5592b2cf1d55f26031f7c1491b30321754443931e7b1e6832"
+          MINIFORGE_URL="https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-arm64.sh"
+          curl -L --retry 10 $MINIFORGE_URL -o miniforge.sh
+
+          # Check SHA
+          file_sha=$(shasum -a 256 miniforge.sh | awk '{print $1}')
+          if [ "$EXPECTED_SHA" != "$file_sha" ]; then
+              echo "SHA values did not match!"
+              exit 1
+          fi
+
+          # Install miniforge
+          MINIFORGE_PATH=$HOME/miniforge
+          bash ./miniforge.sh -b -p $MINIFORGE_PATH
+          echo "$MINIFORGE_PATH/bin" >> $GITHUB_PATH
+          echo "CONDA_HOME=$MINIFORGE_PATH" >> $GITHUB_ENV
+
+      - name: Set conda environment for non-macos arm64 environments
+        if: ${{ matrix.arch != 'arm64' }}
+        run: |
+          # Non-macos arm64 envrionments already have conda installed
+          echo "CONDA_HOME=/usr/local/miniconda" >> $GITHUB_ENV
+
       - name: Build wheel
         env:
           ARCH: ${{ matrix.arch }}
@@ -332,7 +357,7 @@ jobs:
 
           # make openmp and boost available
           export Boost_ROOT=$PWD/$BOOST_DIR
-          export OpenMP_ROOT=$CONDA/envs/build
+          export OpenMP_ROOT=$CONDA_HOME/envs/build
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
           export CFLAGS="$CFLAGS -I$OpenMP_ROOT/include"
           export CXXFLAGS="$CXXFLAGS -I$OpenMP_ROOT/include"
@@ -371,7 +396,7 @@ jobs:
     if: needs.setup.outputs.do_ubuntu == 'true'
     strategy:
       matrix:
-        os: ${{ fromJSON(needs.setup.outputs.build).ubuntu }}
+        os: ["ubuntu-latest"]
         python-version: ${{ fromJSON(needs.setup.outputs.python_version_build_per_os).ubuntu }}
       fail-fast: false
     defaults:
