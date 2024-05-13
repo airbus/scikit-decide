@@ -33,6 +33,16 @@ class D(SchedulingDomain):
 
 
 class SolvingMethod(Enum):
+    """
+    - PILE : solve scheduling problem with greedy queue method
+    - GA : solve scheduling problem with genetic algorithm
+    - LS : solve scheduling problem with local search algorithm (hill climber or simulated annealing)
+    - LP : solve scheduling problem with constraint programming solver
+    - CP : solve scheduling problem with constraint programming solver
+    - LNS_LP : solve scheduling problem with large neighborhood search + LP solver
+    - LNS_CP : solve scheduling problem with large neighborhood search + CP solver
+    """
+
     PILE = "greedy"
     GA = "ga"
     LS = "ls"
@@ -45,6 +55,12 @@ class SolvingMethod(Enum):
 def build_solver(
     solving_method: SolvingMethod, do_domain: Problem
 ) -> Tuple[SolverDO, Dict[str, Any]]:
+    """Build the discrete-optimization solver for a given solving method
+
+    # Parameters
+    solving_method: method of the solver
+    do_domain: discrete-opt problem to solve.
+    """
     if isinstance(do_domain, RCPSPModel):
         from discrete_optimization.rcpsp.rcpsp_solvers import (
             look_for_solver,
@@ -80,7 +96,8 @@ def from_solution_to_policy(
     domain: SchedulingDomain,
     policy_method_params: PolicyMethodParams,
 ) -> PolicyRCPSP:
-    """Create a PolicyRCPSP object (a skdecide policy) from a scheduling solution from the discrete-optimization library."""
+    """Create a PolicyRCPSP object (a skdecide policy) from a scheduling solution
+    from the discrete-optimization library."""
     permutation_task = None
     modes_dictionnary = None
     schedule = None
@@ -136,10 +153,10 @@ class DOSolver(Solver, DeterministicPolicies):
     """Wrapper of discrete-optimization solvers for scheduling problems
 
     # Attributes
-    policy_method_params:  params for the returned policy.
-    method: method of the discrete-optim solver used
-    dict_params: specific params passed to the do-solver
-    callback: scikit-decide callback to be called inside do-solver when relevant.
+    - policy_method_params:  params for the returned policy.
+    - method: method of the discrete-optim solver used
+    - dict_params: specific params passed to the do-solver
+    - callback: scikit-decide callback to be called inside do-solver when relevant.
     """
 
     T_domain = D

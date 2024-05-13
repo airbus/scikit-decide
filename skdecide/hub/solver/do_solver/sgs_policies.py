@@ -69,6 +69,19 @@ class PolicyMethodParams:
 
 
 class PolicyRCPSP(DeterministicPolicies):
+    """Policy object containing results of scheduling solver policy.
+
+    # Attributes
+    domain: scheduling domain where the policy will be applied
+    policy_method_params: params of the policy
+    permutation_task: list of tasks ids, representing a priority list for scheduling
+    modes_dictionnary: when relevant (multimode rcpsp for e.g) specifies in which mode a task is executed
+    schedule: when given, details the schedule to follow : this will be relevant for deterministic scheduling problems
+    resource_allocation: when relevant (multiskill problems for e.g), list the allocated (unitary) resources to the tasks
+    resource_allocation_priority: for each task, store a preference order for resources to be allocated to the task.
+                                  Resource will be greedily allocated based on this priority
+    """
+
     T_domain = D
 
     def __init__(
@@ -83,17 +96,6 @@ class PolicyRCPSP(DeterministicPolicies):
         resource_allocation: Optional[Dict[int, List[str]]] = None,
         resource_allocation_priority: Optional[Dict[int, List[str]]] = None,
     ):
-        """
-        # Parameters
-        domain: scheduling domain where the policy will be applied
-        policy_method_params: params of the policy
-        permutation_task: list of tasks ids, representing a priority list for scheduling
-        modes_dictionnary: when relevant (multimode rcpsp for e.g) specifies in which mode a task is executed
-        schedule: when given, details the schedule to follow : this will be relevant for deterministic scheduling problems
-        resource_allocation: when relevant (multiskill problems for e.g), list the allocated (unitary) resources to the tasks
-        resource_allocation_priority: for each task, store a preference order for resources to be allocated to the task.
-        Resource will be greedily allocated based on this priority
-        """
         self.domain = domain
         self.policy_method_params = policy_method_params
         self.permutation_task = permutation_task
