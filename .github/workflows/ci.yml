@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - "**"
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
   pull_request:
   workflow_dispatch:
   schedule:
@@ -15,17 +17,49 @@ concurrency:
 
 env:
   BOOST_DIR: 3rdparty/boost
-  BOOST_VERSION: "1.76.0"
+  BOOST_VERSION: "1.85.0"
   SKDECIDE_SKIP_DEPS: 1
+  MAIN_REPO_NAME: "airbus/scikit-decide"
 
 jobs:
 
-  setup:
+  trigger:
+    # store trigger reason
     runs-on: ubuntu-latest
     outputs:
-      python_version: ${{ steps.generate-matrix.outputs.python_version }}
-      python_version_per_os: ${{ steps.generate-matrix.outputs.python_version_per_os }}
-      build: ${{ steps.generate-matrix.outputs.build}}
+      is_release: ${{ steps.reason.outputs.is_release }}
+      is_push_on_default_branch: ${{ steps.reason.outputs.is_push_on_default_branch }}
+      is_schedule: ${{ steps.reason.outputs.is_schedule }}
+      on_main_repo: ${{ steps.reason.outputs.on_main_repo }}
+    steps:
+      - id: reason
+        run: |
+          echo "is_release=${{ startsWith(github.ref, 'refs/tags/v') }}" >> $GITHUB_OUTPUT
+          echo "is_push_on_default_branch=${{ (github.event_name == 'push') && (github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) }}" >> $GITHUB_OUTPUT
+          echo "is_schedule=${{ github.event_name == 'schedule' }}" >> $GITHUB_OUTPUT
+          echo "on_main_repo=${{ github.repository == env.MAIN_REPO_NAME }}" >> $GITHUB_OUTPUT
+
+  get-release-version:
+    needs: trigger
+    runs-on: ubuntu-latest
+    outputs:
+      skdecide-version: ${{ steps.get-version.outputs.skdecide_version }}
+      tag-name: ${{ steps.get-version.outputs.tag_name }}
+    steps:
+      - id: get-version
+        if: needs.trigger.outputs.is_release == 'true'
+        run: |
+          tag_name=${GITHUB_REF/refs\/tags\//}  # stripping "refs/tags/"
+          skdecide_version=${tag_name/v/}  # stripping "v"
+          echo "tag_name=${tag_name}" >> $GITHUB_OUTPUT
+          echo "skdecide_version=${skdecide_version}" >> $GITHUB_OUTPUT
+
+  setup:
+    runs-on: ubuntu-latest
+    needs: trigger
+    outputs:
+      python_version_test_per_os: ${{ steps.generate-matrix.outputs.python_version_test_per_os }}
+      python_version_build_per_os: ${{ steps.generate-matrix.outputs.python_version_build_per_os }}
       test: ${{ steps.generate-matrix.outputs.test}}
       do_macos: ${{ steps.generate-matrix.outputs.do_macos}}
       do_ubuntu: ${{ steps.generate-matrix.outputs.do_ubuntu}}
@@ -41,28 +75,30 @@ jobs:
         run: |
           from os import environ
 
-          python_version = ["3.8", "3.9", "3.10", "3.11"]
-          build = [ "macos-12", "ubuntu-latest", "windows-latest" ]
-          test = [ "macos-11", "macos-12", "ubuntu-22.04", "ubuntu-20.04", "windows-2019", "windows-2022"]
+          python_version_build = ["3.8", "3.9", "3.10", "3.11"]
+          python_version_test = ["3.8", "3.11"]
+          test = ["macos-12", "macos-latest", "ubuntu-latest", "windows-latest"]
           build_doc = "true"
 
-          if "${{ github.event_name }}" != "schedule":
+          oses = ["macos", "ubuntu", "windows"]
+          test_dict = dict({os: [k for k in test if k.startswith(os)] for os in oses})
+
+          if "${{ needs.trigger.outputs.is_release == 'true' || needs.trigger.outputs.is_push_on_default_branch == 'true' || needs.trigger.outputs.is_schedule == 'true' }}" == "false":
               to_bool = lambda s: True if s == "true" else False
               python_filter = {
-                  '3.11' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.11]') }}"),
-                  '3.8' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.8]') }}"),
-                  '3.9' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.9]') }}"),
-                  '3.10' : to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.10]') }}"),
+                  '3.11': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.11]') }}"),
+                  '3.8': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.8]') }}"),
+                  '3.9': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.9]') }}"),
+                  '3.10': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.10]') }}"),
               }
               if any(python_filter.values()):
-                  python_version = [v for v in python_version if python_filter[v]]
+                  python_version_build = [v for v in python_version_build if python_filter[v]]
+                  python_version_test = [v for v in python_version_test if python_filter[v]]
               os_filter = {
-                  'macos-11'     : to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-11]') }}"),
-                  'macos-12'     : to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-12]') }}"),
-                  'ubuntu-22.04' : to_bool("${{ contains(github.event.head_commit.message, '[ci: ubuntu-22.04]') }}"),
-                  'ubuntu-20.04' : to_bool("${{ contains(github.event.head_commit.message, '[ci: ubuntu-20.04]') }}"),
-                  'windows-2019' : to_bool("${{ contains(github.event.head_commit.message, '[ci: windows-2019]') }}"),
-                  'windows-2022' : to_bool("${{ contains(github.event.head_commit.message, '[ci: windows-2022]') }}"),
+                  'macos-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-latest]') }}"),
+                  'macos-12': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-12]') }}"),
+                  'ubuntu-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: ubuntu-latest]') }}"),
+                  'windows-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: windows-latest]') }}"),
               }
               if set(os_filter.keys()) != set(test):
                   raise Exception("test and os_filter do not contain the same keys")
@@ -75,30 +111,22 @@ jobs:
               # If there is no keyword, proceed as if all were present
               if not any(os_filter.values()):
                   os_filter.update({k: True for k in os_filter})
-              test = [ v for v in test if os_filter[v]]
-              test_os = { v.split('-')[0] for v in test }
-              build = [ v for v in build if v.split('-')[0] in test_os ]
-              if "${{ contains(github.event.head_commit.message, '[ci: skip-doc]') }}" == "true" or "ubuntu-latest" not in build:
+              test = [v for v in test if os_filter[v]]
+              test_os = {v.split('-')[0] for v in test}
+              test_dict = dict({os: [k for k in test if k.startswith(os)] for os in oses})
+              if "${{ contains(github.event.head_commit.message, '[ci: skip-doc]') }}" == "true" or len(test_dict["ubuntu"]) == 0:
                   build_doc = "false"
-          oses = ["macos", "ubuntu", "windows"]
-          build_dict = {os : [k for k in build if k.startswith(os)] for os in oses}
-          python_version_per_os = {os: python_version for os in oses}
-          # remove python 3.11 for windows: dependency conflict from pyarrow prevent testing the wheel windows python 3.11
-          python_version_per_os["windows"] = [v for v in python_version if v != "3.11"]
-          # update build_dict by removing os without any python version
-          for os in build_dict:
-              if len(python_version_per_os[os]) == 0:
-                    build_dict[os] = []
+
+          python_version_build_per_os = {os: python_version_build for os in oses}
+          python_version_test_per_os = {os: python_version_test for os in oses}
 
           with open(environ["GITHUB_OUTPUT"], "a") as f:
-              f.write(f"build={build_dict}\n")
-              f.write(f"test={dict({os : [k for k in test if k.startswith(os)] for os in oses})}\n")
+              f.write(f"test={test_dict}\n")
               f.write(f"build_doc={build_doc}\n")
               for os in oses:
-                  f.write(f"do_{os}={'true' if len(build_dict[os]) > 0 else 'false'}\n")
-              f.write(f"python_version={python_version}\n")
-              f.write(f"python_version_per_os={python_version_per_os}\n")
-
+                  f.write(f"do_{os}={'true' if len(test_dict[os]) > 0 else 'false'}\n")
+              f.write(f"python_version_build_per_os={python_version_build_per_os}\n")
+              f.write(f"python_version_test_per_os={python_version_test_per_os}\n")
 
   lint-sources:
     runs-on: ubuntu-latest
@@ -122,8 +150,8 @@ jobs:
     if: needs.setup.outputs.do_windows == 'true'
     strategy:
       matrix:
-        os: ${{ fromJSON(needs.setup.outputs.build).windows }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).windows }}
+        os: ["windows-latest"]
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_build_per_os).windows }}
       fail-fast: false
     defaults:
       run:
@@ -197,13 +225,18 @@ jobs:
           path: dist/*.whl
 
   build-macos:
-    needs: [setup]
+    needs: [trigger, setup]
     if: needs.setup.outputs.do_macos == 'true'
     strategy:
       matrix:
-        arch: ["arm64", "x86_64"]  # NB: only x86_64 wheel will be tested as no macosx_arm64 github runner available
-        os: ${{ fromJSON(needs.setup.outputs.build).macos }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).macos }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_build_per_os).macos }}
+        os: [ "macos-latest", "macos-12" ]
+        arch: [ "arm64", "x86_64" ]
+        exclude:
+          - os: macos-12
+            arch: arm64
+          - os: macos-latest
+            arch: x86_64
       fail-fast: false
     defaults:
       run:
@@ -260,15 +293,45 @@ jobs:
         run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
 
       - name: Install and restore ccache
+        if: needs.trigger.outputs.is_release == 'false'
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.arch }}
           max-size: 80M
 
       - name: Let cmake use ccache
+        if: needs.trigger.outputs.is_release == 'false'
         run: |
           echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
           echo "CMAKE_C_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
+
+      - name: Install conda for macos arm64
+        if: ${{ matrix.arch == 'arm64' }}
+        run: |
+          set -ex
+          # macos arm64 runners do not have conda installed. Thus we much install conda manually
+          EXPECTED_SHA="dd832d8a65a861b5592b2cf1d55f26031f7c1491b30321754443931e7b1e6832"
+          MINIFORGE_URL="https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-arm64.sh"
+          curl -L --retry 10 $MINIFORGE_URL -o miniforge.sh
+
+          # Check SHA
+          file_sha=$(shasum -a 256 miniforge.sh | awk '{print $1}')
+          if [ "$EXPECTED_SHA" != "$file_sha" ]; then
+              echo "SHA values did not match!"
+              exit 1
+          fi
+
+          # Install miniforge
+          MINIFORGE_PATH=$HOME/miniforge
+          bash ./miniforge.sh -b -p $MINIFORGE_PATH
+          echo "$MINIFORGE_PATH/bin" >> $GITHUB_PATH
+          echo "CONDA_HOME=$MINIFORGE_PATH" >> $GITHUB_ENV
+
+      - name: Set conda environment for non-macos arm64 environments
+        if: ${{ matrix.arch != 'arm64' }}
+        run: |
+          # Non-macos arm64 envrionments already have conda installed
+          echo "CONDA_HOME=/usr/local/miniconda" >> $GITHUB_ENV
 
       - name: Build wheel
         env:
@@ -294,7 +357,7 @@ jobs:
 
           # make openmp and boost available
           export Boost_ROOT=$PWD/$BOOST_DIR
-          export OpenMP_ROOT=$CONDA/envs/build
+          export OpenMP_ROOT=$CONDA_HOME/envs/build
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
           export CFLAGS="$CFLAGS -I$OpenMP_ROOT/include"
           export CXXFLAGS="$CXXFLAGS -I$OpenMP_ROOT/include"
@@ -312,8 +375,8 @@ jobs:
           # build wheel
           python -m cibuildwheel --output-dir wheelhouse
 
-          # set the proper platform tag
-          #  - with poetry build + cross-compilation for arm64, the tag could been still x64_64 (https://cibuildwheel.readthedocs.io/en/stable/faq/#how-to-cross-compile)
+          # set the proper platform tag
+          #  - with poetry build + cross-compilation for arm64, the tag could been still x64_64 (https://cibuildwheel.readthedocs.io/en/stable/faq/#how-to-cross-compile)
           #  - we downgrade the displayed macosx version to ensure compatibility with lesser macosx than the ones used on this runner
           pip install "wheel>=0.40"
           wheel tags --platform-tag macosx_${MACOSX_DEPLOYMENT_TARGET_WO_DOT}_${ARCH} --remove wheelhouse/*.whl
@@ -329,12 +392,12 @@ jobs:
           path: wheelhouse/*.whl
 
   build-ubuntu:
-    needs: [setup]
+    needs: [trigger, setup]
     if: needs.setup.outputs.do_ubuntu == 'true'
     strategy:
       matrix:
-        os: ${{ fromJSON(needs.setup.outputs.build).ubuntu }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).ubuntu }}
+        os: ["ubuntu-latest"]
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_build_per_os).ubuntu }}
       fail-fast: false
     defaults:
       run:
@@ -398,6 +461,7 @@ jobs:
           key: dev-deps-${{ runner.os }}-${{ hashFiles('scripts/build-skdecide_dev.sh', 'scripts/Dockerfile_x86_64_dev') }}
 
       - name: Restore ccache cache
+        if: needs.trigger.outputs.is_release == 'false'
         id: ccache-restore
         uses: actions/cache@v4
         with:
@@ -415,13 +479,17 @@ jobs:
             mkdir -p /tmp/docker
             docker image save -o /tmp/docker/skdecide_dev.tar skdecide_dev
           fi
-          # The existence of .ccache directory triggers ccache use in builds-manylinux-wheels.sh
-          test -d .ccache || mkdir .ccache
+          if ${{ needs.trigger.outputs.is_release }} == 'false'; then
+            # The existence of .ccache directory triggers ccache use in builds-manylinux-wheels.sh
+            test -d .ccache || mkdir .ccache
+          fi
           docker build -f scripts/Dockerfile_x86_64 -t skdecide_x86_64 --build-arg PYTHON_VERSION=${{matrix.python-version}} --build-arg SKDECIDE_SKIP_DEPS=${SKDECIDE_SKIP_DEPS} --build-arg BOOST_DIR=${BOOST_DIR} .
           # Fetch wheels from Docker
           docker run --rm -v $PWD:/mytmp skdecide_x86_64 cp -r /io/dist /mytmp
-          # Fetch ccache from Docker
-          docker run --rm -v $PWD:/mytmp skdecide_x86_64 cp -r /io/.ccache /mytmp
+          if ${{ needs.trigger.outputs.is_release }} == 'false'; then
+            # Fetch ccache from Docker
+            docker run --rm -v $PWD:/mytmp skdecide_x86_64 cp -r /io/.ccache /mytmp
+          fi
 
       - name: Update build cache from wheels
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
@@ -438,9 +506,9 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).windows }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).windows }}
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_test_per_os).windows }}
         compiler: [gnu]
-      fail-fast: true
+      fail-fast: false
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -498,6 +566,7 @@ jobs:
 
       - name: Install scikit-decide and test dependencies
         run: |
+          pip install ray[rllib]>=2.20
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
           pip install ${wheelfile}[all] pytest gymnasium[classic-control]
@@ -525,8 +594,8 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).macos }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).macos }}
-      fail-fast: true
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_test_per_os).macos }}
+      fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
       minizinc_config_cmdline: export PATH=$PATH:$(pwd)/bin/MiniZincIDE.app/Contents/Resources
@@ -538,8 +607,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install libomp package
-        run: brew install libomp
+      - name: Install needed brew dependencies
+        run: brew install libomp eccodes
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -582,10 +651,17 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           minizinc --version
 
+      - name: Install prerelease version of pymip (only for macos arm64)
+        if: matrix.os == 'macos-latest'
+        run: |
+          python -m pip install -U pip
+          pip install mip==1.16rc0
+
       - name: Install scikit-decide and test dependencies
         run: |
           python_version=${{ matrix.python-version }}
-          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*x86_64.whl)
+          arch=$(uname -m)
+          wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
           pip install ${wheelfile}[all] pytest gymnasium[classic-control]
 
       - name: Test with pytest
@@ -611,8 +687,8 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(needs.setup.outputs.test).ubuntu }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version_per_os).ubuntu }}
-      fail-fast: true
+        python-version: ${{ fromJSON(needs.setup.outputs.python_version_test_per_os).ubuntu }}
+      fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
       minizinc_config_cmdline: export PATH=$PATH:$(pwd)/bin/squashfs-root/usr/bin; export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/bin/squashfs-root/usr/lib
@@ -696,18 +772,13 @@ jobs:
           python scripts/md2py.py docs/guide/README.md tests/test_guide.py
           python tests/test_guide.py
 
-  build-doc:
-    needs: [ build-ubuntu, setup ]
-    if: needs.setup.outputs.build_doc == 'true'
-    uses: ./.github/workflows/build-doc.yml
-    with:
-      doc-prerequisites-cmdline: export DO_SKIP_MZN_CHECK=1
-
-  upload-nightly:
-    if: (github.repository == 'airbus/scikit-decide') && (github.ref == 'refs/heads/master')
-    needs: [test-ubuntu, test-macos, test-windows]
+  upload-release:
+    needs: [ get-release-version, trigger, test-ubuntu, test-macos, test-windows ]
+    if: |
+      (needs.trigger.outputs.is_release == 'true')
+      || ((needs.trigger.outputs.is_push_on_default_branch == 'true') && (needs.trigger.outputs.on_main_repo == 'true'))
+      || ((needs.trigger.outputs.is_schedule == 'true') && (needs.trigger.outputs.on_main_repo == 'true'))
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/download-artifact@v4
       with:
@@ -715,10 +786,20 @@ jobs:
         merge-multiple: true
         path: dist/
 
-    - run: |
-        zip -r dist.zip dist/
+    - name: Upload artifacts 📦 to release
+      uses: ncipollo/release-action@v1
+      if: needs.trigger.outputs.is_release == 'true'
+      with:
+        artifacts: dist/*.whl
+        tag: ${{ needs.get-release-version.outputs.tag-name }}
+        allowUpdates: true
+        generateReleaseNotes: true
+
+    - if: needs.trigger.outputs.is_release == 'false'
+      run: zip -r dist.zip dist/
 
     - uses: actions/github-script@v7
+      if: needs.trigger.outputs.is_release == 'false'
       id: asset
       with:
         script: |
@@ -848,20 +929,141 @@ jobs:
           return uploadedAsset.data.browser_download_url;
         result-encoding: string
 
-  deploy-doc:
-    needs: [build-doc, test-windows, test-macos, test-ubuntu, upload-nightly]
+  update-notebooks-for-colab-and-binder:
+    runs-on: ubuntu-latest
+    needs: [ trigger, get-release-version, build-ubuntu ]
+    if: needs.trigger.outputs.is_release == 'true'
+    outputs:
+      notebooks-branch: ${{ steps.write-output.outputs.notebooks_branch }}
+      binder-full-ref: ${{ steps.write-output.outputs.binder_full_ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: replace scikit-decide version to install in colab notebooks
+        run: |
+          version=${{ needs.get-release-version.outputs.skdecide-version }}
+          old_pip_spec_pattern="\(skdecide_pip_spec.*\)scikit-decide\[all\]"
+          new_pip_spec_pattern="\1scikit-decide[all]==${version}"
+          if ${{ github.repository != env.MAIN_REPO_NAME && secrets.TEST_PYPI_PASSWORD != '' }} == 'true'; then
+            # install from TestPypi if on a fork
+            new_pip_spec_pattern="${new_pip_spec_pattern} --extra-index-url https://test.pypi.org/simple/"
+          fi
+          old_using_nightly_pattern="\(using_nightly_version\s*=\s*\)True"
+          new_using_nightly_pattern="using_nightly_version = False"
+          shopt -s globstar  # enable **
+          sed -i \
+              -e "s|${old_pip_spec_pattern}|${new_pip_spec_pattern}|g" \
+              -e "s|${old_using_nightly_pattern}|${new_using_nightly_pattern}|g" \
+              notebooks/**/*.ipynb
+      - name: replace scikit-decide version to install in binder environment
+        run: |
+          version=${{ needs.get-release-version.outputs.skdecide-version }}
+          # environment.yml
+          linefilter="/^name/!"
+          old_pip_spec_pattern="\(\s*\)-.*scikit-decide.*$"
+          new_pip_spec_pattern="\1- scikit-decide[all]==$version"
+          if ${{ github.repository != env.MAIN_REPO_NAME && secrets.TEST_PYPI_API_TOKEN != '' }} == 'true'; then
+            # install from TestPypi if on a fork
+            new_pip_spec_pattern="${new_pip_spec_pattern}\n\1- --extra-index-url https://test.pypi.org/simple/"
+          fi
+          sed_command="${linefilter}s|${old_pip_spec_pattern}|${new_pip_spec_pattern}|"
+          echo sed -i -e ${sed_command} binder/environment.yml
+          sed -i -e "${sed_command}" binder/environment.yml
+          # postBuild
+          old_using_nightly_pattern="using_nightly_version=true"
+          new_using_nightly_pattern="using_nightly_version=false"
+          sed_command="s|${old_using_nightly_pattern}|${new_using_nightly_pattern}|"
+          sed -i -e "${sed_command}" binder/postBuild
+      - name: push modifications on a dedicated tag
+        id: push-tuto-release-tag
+        run: |
+          current_tag_name=${{ needs.get-release-version.outputs.tag-name }}
+          new_tag_name="notebooks-${current_tag_name}"
+          echo ${new_tag_name}
+          git config user.name "Actions"
+          git config user.email "actions@github.com"
+          git commit binder notebooks -m "Install appropriate version of scikit-decide"
+          git tag ${new_tag_name} -m "Use release ${current_tag_name} in binder and colab"
+          git push origin ${new_tag_name}
+          # store new tag name as notebooks branch
+          echo "notebooks_branch=${new_tag_name}" >> $GITHUB_ENV
+          echo "binder_full_ref=${{ github.repository }}/${new_tag_name}" >> $GITHUB_ENV
+      - name: write new notebooks branch in job outputs
+        id: write-output
+        run: |
+          echo "notebooks_branch=${notebooks_branch}" >> $GITHUB_OUTPUT
+          echo "binder_full_ref=${binder_full_ref}" >> $GITHUB_OUTPUT
+
+  build-doc:
+    needs: [ build-ubuntu, setup, update-notebooks-for-colab-and-binder ]
     # if: always()
-    #  -> trigger even if one needed job was skipped (namely upload-nightly)
+    #  -> trigger even if one needed job was skipped (namely update-notebooks-for-colab-and-binder)
     #  -> needed jobs successes must be checked explicitely
     if: |
       always()
-      && (github.ref == 'refs/heads/master')
+      && (needs.setup.outputs.build_doc == 'true')
+      && (needs.build-ubuntu.result == 'success')
+    uses: ./.github/workflows/build-doc.yml
+    with:
+      notebooks-branch: ${{ needs.update-notebooks-for-colab-and-binder.outputs.notebooks-branch }}
+      doc-prerequisites-cmdline: export DO_SKIP_MZN_CHECK=1
+
+  deploy:
+    needs: [ trigger, test-ubuntu, test-macos, test-windows ]
+    if: needs.trigger.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: wheels
+
+      - name: Publish distribution 📦 to PyPI
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_PASSWORD }}
+        if: needs.trigger.outputs.on_main_repo == 'true' && env.PYPI_TOKEN != ''
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_PASSWORD }}
+          packages_dir: wheels/
+
+      - name: Publish distribution 📦 to Test PyPI
+        env:
+          TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_PASSWORD }}
+        if: needs.trigger.outputs.on_main_repo == 'false' && env.TEST_PYPI_TOKEN != ''
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.TEST_PYPI_PASSWORD }}
+          packages_dir: wheels/
+          repository_url: https://test.pypi.org/legacy/
+
+  deploy-doc:
+    needs: [trigger, get-release-version, update-notebooks-for-colab-and-binder, build-doc, test-windows, test-macos, test-ubuntu, upload-release, deploy]
+    # if: always()
+    #  -> trigger even if one needed job was skipped (namely upload-release or deploy)
+    #  -> needed jobs successes must be checked explicitely
+    if: |
+      always()
       && (needs.build-doc.result == 'success')
       && (needs.test-windows.result == 'success')
       && (needs.test-macos.result == 'success')
       && (needs.test-ubuntu.result == 'success')
       && (
-        (needs.upload-nightly.result == 'success')
-        || (github.repository != 'airbus/scikit-decide')
+        (
+          (needs.trigger.outputs.is_push_on_default_branch == 'true')
+          && (
+            (needs.upload-release.result == 'success')
+            || (needs.trigger.outputs.on_main_repo == 'false')
+          )
+        )
+        || (
+          (needs.trigger.outputs.is_release == 'true')
+          && (needs.deploy.result == 'success')
+        )
       )
     uses: ./.github/workflows/deploy-doc.yml
+    with:
+      binder-env-fullref: ${{ needs.update-notebooks-for-colab-and-binder.outputs.binder-full-ref }}
+      doc-clean: ${{ needs.trigger.outputs.is_release == 'false'}}
+      doc-version: ${{ needs.get-release-version.outputs.skdecide-version }}

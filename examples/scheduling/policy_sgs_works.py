@@ -10,13 +10,13 @@ from skdecide.hub.solver.do_solver.do_solver_scheduling import (
     SolvingMethod,
     from_solution_to_policy,
 )
+from skdecide.hub.solver.do_solver.sgs_policies import (
+    BasePolicyMethod,
+    PolicyMethodParams,
+)
 from skdecide.hub.solver.meta_policy.meta_policies import MetaPolicy
 from skdecide.hub.solver.policy_evaluators.policy_evaluator import (
     rollout_based_compute_expected_cost_for_policy_scheduling,
-)
-from skdecide.hub.solver.sgs_policies.sgs_policies import (
-    BasePolicyMethod,
-    PolicyMethodParams,
 )
 
 

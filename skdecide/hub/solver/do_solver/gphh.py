@@ -34,8 +34,8 @@ from skdecide.hub.solver.do_solver.do_solver_scheduling import (
     PolicyRCPSP,
     SolvingMethod,
 )
+from skdecide.hub.solver.do_solver.sgs_policies import BasePolicyMethod
 from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
-from skdecide.hub.solver.sgs_policies.sgs_policies import BasePolicyMethod
 
 
 def if_then_else(input, output1, output2):

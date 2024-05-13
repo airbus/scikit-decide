@@ -1,3 +1,4 @@
+import logging
 import random
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
@@ -35,20 +36,17 @@ from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     rebuild_tasks_modes_dict,
 )
 from skdecide.builders.domain.scheduling.task_duration import DeterministicTaskDuration
-from skdecide.hub.domain.rcpsp.rcpsp_sk import (
-    MRCPSP,
-    RCPSP,
-    build_n_determinist_from_stochastic,
-)
-from skdecide.hub.solver.do_solver.do_solver_scheduling import (
+from skdecide.hub.domain.rcpsp.rcpsp_sk import build_n_determinist_from_stochastic
+from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
+from skdecide.hub.solver.do_solver.gphh import GPHH, ParametersGPHH
+from skdecide.hub.solver.do_solver.sgs_policies import (
     BasePolicyMethod,
-    DOSolver,
     PolicyMethodParams,
-    SolvingMethod,
 )
-from skdecide.hub.solver.gphh.gphh import GPHH, ParametersGPHH
 from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
 from skdecide.hub.solver.lazy_astar import LazyAstar
+
+logger = logging.getLogger(__name__)
 
 optimal_solutions = {
     "ToyRCPSPDomain": {"makespan": 10},
@@ -943,4 +941,61 @@ def test_sgs_policies(domain):
         verbose=False,
     )
     print("Cost :", sum([v.cost for v in values]))
+    check_rollout_consistency(domain, states)
+
+
+class MyCallback:
+    """Callback for testing.
+
+    - displays iteration number
+    - stops after max iteration reached
+    - check classes of domain and solver
+
+    """
+
+    def __init__(self, max_iter=2):
+        self.max_iter = max_iter
+        self.iter = 0
+
+    def __call__(self, domain, solver):
+        self.iter += 1
+        logger.warning(f"End of iteration #{self.iter}.")
+        assert isinstance(domain, ToyRCPSPDomain)
+        assert isinstance(solver, DOSolver)
+        stopping = self.iter >= self.max_iter
+        return stopping
+
+
+def test_do_with_cb(caplog):
+    domain = ToyRCPSPDomain()
+    domain.set_inplace_environment(False)
+    state = domain.get_initial_state()
+    print("Initial state : ", state)
+    solver = DOSolver(
+        policy_method_params=PolicyMethodParams(
+            base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
+            delta_index_freedom=0,
+            delta_time_freedom=0,
+        ),
+        method=SolvingMethod.LNS_CP,
+        callback=MyCallback(),
+        # dict_params={"cp_solver_name": CPSolverName.GECODE}
+    )
+    solver.solve(domain_factory=lambda: domain)
+
+    # Check that 2 iterations were done and messages logged by callback
+    assert "End of iteration #2" in caplog.text
+    assert "End of iteration #3" not in caplog.text
+
+    # action_formatter=lambda o: str(o),
+    # outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    states, actions, values = rollout_episode(
+        domain=domain,
+        max_steps=1000,
+        solver=solver,
+        from_memory=state,
+        action_formatter=None,
+        outcome_formatter=None,
+        verbose=False,
+    )
     check_rollout_consistency(domain, states)

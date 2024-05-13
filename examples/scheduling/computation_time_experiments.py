@@ -2,19 +2,11 @@ import time
 
 from rcpsp_datasets import get_complete_path
 
-from skdecide import DiscreteDistribution, rollout_episode
-from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
-    SchedulingAction,
-    SchedulingActionEnum,
-    State,
-)
-from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP, RCPSP
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import (
-    load_domain,
-    load_multiskill_domain,
-)
+from skdecide import rollout_episode
+from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP
+from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
-from skdecide.hub.solver.sgs_policies.sgs_policies import (
+from skdecide.hub.solver.do_solver.sgs_policies import (
     BasePolicyMethod,
     PolicyMethodParams,
 )

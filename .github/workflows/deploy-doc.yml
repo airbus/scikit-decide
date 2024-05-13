@@ -3,10 +3,10 @@ name: Deploy doc
 on:
   workflow_call:
     inputs:
-      doc-version-path:
-        description: "Path where the doc should be deployed"
+      doc-version:
+        description: "version of the library for which we are deploying the doc. If empty, then it is main branch doc."
         required: FALSE
-        default: "/"
+        default: ""
         type: string
       doc-clean:
         description: "Whether the previous doc should be cleaned. (Always ignore subfolders in version/)"
@@ -26,18 +26,20 @@ on:
       binder-env-fullref:
         description: "Full ref of the binder env to build. The build is triggered only if not empty."
         required: false
-        default: "${{ github.repository }}/${{ github.ref_name}}"
+        default: ""
         type: string
 jobs:
   trigger-binder-build:
     runs-on: ubuntu-latest
-    if: inputs.binder-env-fullref != ''
     steps:
       - uses: actions/checkout@v4  # checkout triggering branch to get scripts/trigger_binder.sh
       - name: Trigger a build for default binder env ref on each BinderHub deployments in the mybinder.org federation
         continue-on-error: true
         run: |
           binder_env_full_ref=${{ inputs.binder-env-fullref }}
+          if [ -z "${binder_env_full_ref}" ]; then
+            binder_env_full_ref="${{ github.repository }}/${{ github.ref_name}}"
+          fi
           echo Triggering binder environment build for ${binder_env_full_ref}
           bash scripts/trigger_binder.sh https://ovh.mybinder.org/build/gh/${binder_env_full_ref}
           bash scripts/trigger_binder.sh https://ovh2.mybinder.org/build/gh/${binder_env_full_ref}
@@ -52,12 +54,23 @@ jobs:
         with:
           name: ${{ inputs.doc-artifact-name }}
           path: ${{ inputs.doc-path }}
+      - name: set doc-version-path
+        id: set-doc-version-path
+        run: |
+          doc_version=${{ inputs.doc-version }}
+          if [ -z "${doc_version}" ]; then
+            doc_version_path="/"
+          else
+            doc_version_path="/version/${doc_version}/"
+          fi
+          echo "doc_version_path=${doc_version_path}" >> $GITHUB_OUTPUT
+
       - name: Deploy documentation in a version subfolder on GH pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages # The branch the action should deploy to.
           folder: ${{ inputs.doc-path }} # The folder the action should deploy.
-          target-folder: ${{ inputs.doc-version-path }} # The folder the action should deploy to.
+          target-folder: ${{ steps.set-doc-version-path.outputs.doc_version_path }} # The folder the action should deploy to.
           commit-message: publish documentation
           single-commit: true
           clean: ${{ inputs.doc-clean }}
