@@ -4,25 +4,35 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
-from skdecide import DeterministicPlanningDomain, Memory
-from skdecide.hub.solver.graph_explorer.GraphDomain import GraphDomain
-from skdecide.hub.solver.graph_explorer.GraphExploration import GraphExploration
+from skdecide import DeterministicPlanningDomain
+from skdecide.hub.domain.graph_domain.graph_domain_builders.GraphExploration import (
+    GraphExploration,
+)
+from skdecide.hub.domain.graph_domain.GraphDomain import GraphDomain
 
 
 class FullSpaceExploration(GraphExploration):
+    """Exhaustive computation of deterministic domain transitions to build a GraphDomain from it."""
+
     def __init__(
         self,
         domain: DeterministicPlanningDomain,
-        max_edges=None,
-        max_nodes=None,
-        max_path=None,
+        max_edges: Optional[int] = None,
+        max_nodes: Optional[int] = None,
+        max_path: Optional[int] = None,
     ):
         self.domain = domain
         self.max_edges = max_edges
         self.max_nodes = max_nodes
         self.max_path = max_path
+        if self.max_edges is None:
+            self.max_edges = float("inf")
+        if self.max_nodes is None:
+            self.max_nodes = float("inf")
+        if self.max_path is None:
+            self.max_path = float("inf")
 
     def build_graph_domain(self, init_state: Any = None) -> GraphDomain:
         next_state_map = {}
@@ -35,6 +45,7 @@ class FullSpaceExploration(GraphExploration):
         nb_path = 0
         next_state_map[init_state] = {}
         next_state_attributes[init_state] = {}
+        targets = set()
         while stack:
             (vertex, path) = stack.pop()
             actions = self.domain.get_applicable_actions(vertex).get_elements()
@@ -43,30 +54,32 @@ class FullSpaceExploration(GraphExploration):
                 if next not in next_state_map:
                     next_state_map[next] = {}
                     next_state_attributes[next] = {}
+                    stack.append((next, path + [next]))
                     nb_nodes += 1
                 if action not in next_state_map[vertex]:
                     nb_edges += 1
                 next_state_map[vertex][action] = next
                 next_state_attributes[vertex][action] = {
-                    "cost": self.domain.get_transition_value(
-                        Memory([vertex]), action, next
-                    ).cost,
+                    "cost": self.domain.get_transition_value(vertex, action, next).cost,
                     "reward": self.domain.get_transition_value(
-                        Memory([vertex]), action, next
+                        vertex, action, next
                     ).reward,
                 }
                 if self.domain.is_goal(next):
                     nb_path += 1
-                else:
-                    if next not in next_state_map:
-                        stack.append((next, path + [next]))
+                    targets.add(next)
             if (
                 nb_path > self.max_path
                 or (nb_nodes > self.max_nodes and nb_path >= 1)
                 or (nb_edges > self.max_edges and nb_path >= 1)
             ):
                 break
-        return GraphDomain(next_state_map, next_state_attributes, None, None)
+        return GraphDomain(
+            next_state_map,
+            next_state_attributes,
+            targets=targets,
+            attribute_weight="cost",
+        )
 
 
 def reachable_states(self, s0: Any):

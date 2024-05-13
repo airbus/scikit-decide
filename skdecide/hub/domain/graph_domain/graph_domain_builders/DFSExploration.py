@@ -4,25 +4,37 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from skdecide import DeterministicPlanningDomain, Memory
-from skdecide.hub.solver.graph_explorer.GraphDomain import GraphDomain
-from skdecide.hub.solver.graph_explorer.GraphExploration import GraphExploration
+from skdecide.hub.domain.graph_domain.graph_domain_builders.GraphExploration import (
+    GraphExploration,
+)
+from skdecide.hub.domain.graph_domain.GraphDomain import GraphDomain
 
 
 class DFSExploration(GraphExploration):
+    """Depth first search based method storing graph search into a GraphDomain object,
+    Main interest of using DFS is that it is possible to limit number of edges and paths to goal if necessary.
+    """
+
     def __init__(
         self,
         domain: DeterministicPlanningDomain,
-        max_edges=None,
-        max_nodes=None,
-        max_path=None,
+        max_edges: Optional[int] = None,
+        max_nodes: Optional[int] = None,
+        max_path: Optional[int] = None,
     ):
         self.domain = domain
         self.max_edges = max_edges
         self.max_nodes = max_nodes
         self.max_path = max_path
+        if self.max_edges is None:
+            self.max_edges = float("inf")
+        if self.max_nodes is None:
+            self.max_nodes = float("inf")
+        if self.max_path is None:
+            self.max_path = float("inf")
 
     def build_graph_domain(
         self, init_state: Any = None, transition_extractor=None, verbose=True
@@ -42,11 +54,12 @@ class DFSExploration(GraphExploration):
         next_state_map[init_state] = {}
         next_state_attributes[init_state] = {}
         paths_dict = {}
+        targets = set()
         while stack:
             (vertex, path) = stack.pop()
             actions = self.domain.get_applicable_actions(vertex).get_elements()
             for action in actions:
-                next = self.domain.get_next_state(Memory([vertex]), action)
+                next = self.domain.get_next_state(vertex, action)
                 if action not in next_state_map[vertex]:
                     nb_edges += 1
                 else:
@@ -56,6 +69,7 @@ class DFSExploration(GraphExploration):
                     vertex, action, next
                 )
                 if self.domain.is_goal(next):
+                    targets.add(next)
                     nb_path += 1
                     if verbose:
                         print(nb_path, " / ", self.max_path)
@@ -65,10 +79,6 @@ class DFSExploration(GraphExploration):
                     if next not in next_state_map:
                         stack.append((next, path + [next]))
                         paths_dict[next] = set(tuple(path + [next]))
-                    # else:
-                    #     if tuple(path+[next]) not in paths_dict[next]:
-                    #        stack.append((next, path + [next]))
-                    #        paths_dict[next].add(tuple(path + [next]))
                 if next not in next_state_map:
                     next_state_map[next] = {}
                     next_state_attributes[next] = {}
@@ -79,4 +89,9 @@ class DFSExploration(GraphExploration):
                 or (nb_edges > self.max_edges and nb_path >= 1)
             ):
                 break
-        return GraphDomain(next_state_map, next_state_attributes, None, None)
+        return GraphDomain(
+            next_state_map,
+            next_state_attributes,
+            targets=targets,
+            attribute_weight="cost",
+        )

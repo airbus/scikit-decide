@@ -7,13 +7,15 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Union
 
-from skdecide.hub.solver.graph_explorer.GraphDomain import (
+from skdecide.hub.domain.graph_domain.GraphDomain import (
     GraphDomain,
     GraphDomainUncertain,
 )
 
 
 class GraphExploration:
+    """Abstract class of algorithms that build GraphDomain or GraphDomainUncertain"""
+
     @abstractmethod
     def build_graph_domain(
         self, init_state: Any = None
