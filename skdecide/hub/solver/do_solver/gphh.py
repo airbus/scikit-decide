@@ -170,22 +170,22 @@ def compute_cpm(do_domain):
 
 
 def feature_esd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
-    """Will only work if you store cpm results into the object. dirty trick"""
+    """Will only work if you store cpm results into the object"""
     return cpm[task_id]._ESD / cpm_esd
 
 
 def feature_lsd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
-    """Will only work if you store cpm results into the object. dirty trick"""
+    """Will only work if you store cpm results into the object"""
     return cpm[task_id]._LSD / cpm_esd
 
 
 def feature_efd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
-    """Will only work if you store cpm results into the object. dirty trick"""
+    """Will only work if you store cpm results into the object"""
     return cpm[task_id]._EFD / cpm_esd
 
 
 def feature_lfd(domain: SchedulingDomain, cpm, cpm_esd, task_id: int, **kwargs):
-    """Will only work if you store cpm results into the object. dirty trick"""
+    """Will only work if you store cpm results into the object"""
     return cpm[task_id]._LFD / cpm_esd
 
 
