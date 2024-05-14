@@ -166,7 +166,7 @@ class DOSolver(Solver, DeterministicPolicies):
         policy_method_params: PolicyMethodParams,
         method: SolvingMethod = SolvingMethod.PILE,
         dict_params: Optional[Dict[Any, Any]] = None,
-        callback: Optional[Callable[[Domain, DOSolver], bool]] = None,
+        callback: Optional[Callable[[DOSolver], bool]] = None,
     ):
         self.callback = callback
         self.method = method
@@ -209,9 +209,7 @@ class DOSolver(Solver, DeterministicPolicies):
         if self.callback is None:
             callbacks = []
         else:
-            callbacks = [
-                _DOCallback(callback=self.callback, domain=self.domain, solver=self)
-            ]
+            callbacks = [_DOCallback(callback=self.callback, solver=self)]
         copy_dict_params = deepcopy(self.dict_params)
         if "callbacks" in copy_dict_params:
             callbacks = callbacks + copy_dict_params.pop("callbacks")
@@ -258,11 +256,9 @@ class DOSolver(Solver, DeterministicPolicies):
 class _DOCallback(Callback):
     def __init__(
         self,
-        callback: Callable[[Domain, DOSolver], bool],
-        domain: Domain,
-        solver: Solver,
+        callback: Callable[[DOSolver], bool],
+        solver: DOSolver,
     ):
-        self.domain = domain
         self.solver = solver
         self.callback = callback
 
@@ -280,5 +276,5 @@ class _DOCallback(Callback):
             If `True`, the optimization process is stopped, else it goes on.
 
         """
-        stopping = self.callback(self.domain, self.solver)
+        stopping = self.callback(self.solver)
         return stopping
