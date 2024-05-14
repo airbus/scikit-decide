@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import inspect
+import logging
 from copy import deepcopy
 from enum import Enum
 from typing import NamedTuple, Optional
@@ -17,6 +19,7 @@ from skdecide.builders.domain import UnrestrictedActions
 from skdecide.hub.space.gym import EnumSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver
 
+logger = logging.getLogger(__name__)
 
 # Must be defined outside the grid_domain() fixture
 # so that parallel domains can pickle it
@@ -170,3 +173,50 @@ def test_solve_python(solver_python):
     assert solver_type.check_domain(dom) and (
         (not solver_python["optimal"]) or (cost == 18 and len(plan) == 18)
     )
+
+
+class MyCallback:
+    """Callback for testing.
+
+    - displays iteration number
+    - stops after max iteration reached
+    - check classes of domain and solver
+
+    """
+
+    def __init__(self, solver_cls, max_iter=2):
+        self.solver_cls = solver_cls
+        self.max_iter = max_iter
+        self.iter = 0
+
+    def __call__(self, solver, *args):
+        self.iter += 1
+        logger.warning(f"End of iteration #{self.iter}.")
+        assert isinstance(solver, self.solver_cls)
+        stopping = self.iter >= self.max_iter
+        return stopping
+
+
+def test_solve_python_with_cb(solver_python, caplog):
+    solver_type = load_registered_solver(solver_python["entry"])
+    if "callback" not in inspect.signature(solver_type.__init__).parameters:
+        pytest.skip(
+            f"Solver {solver_python['entry']} is not yet implementing callbacks."
+        )
+
+    dom = GridDomain()
+
+    solver_args = deepcopy(solver_python["config"])
+    if solver_python["entry"] == "StableBaseline":
+        solver_args["algo_class"] = PPO
+    elif solver_python["entry"] == "RayRLlib":
+        solver_args["algo_class"] = DQN
+    # Adding the callback
+    solver_args["callback"] = MyCallback(solver_cls=solver_type)
+
+    with solver_type(**solver_args) as slv:
+        GridDomain.solve_with(slv)
+
+    # Check that 2 iterations only were done and messages logged by callback
+    assert "End of iteration #2" in caplog.text
+    assert "End of iteration #3" not in caplog.text

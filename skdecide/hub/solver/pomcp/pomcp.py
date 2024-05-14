@@ -36,9 +36,27 @@ class D(
 
 
 class POMCP(Solver, DeterministicPolicies):
+    """Partially-Observable Monte Carlo Planning solver."""
+
     T_domain = D
 
-    def __init__(self, max_iterations=5000, max_depth=50, n_samples=5000) -> None:
+    def __init__(
+        self,
+        max_iterations=5000,
+        max_depth=50,
+        n_samples=5000,
+        callback: Callable[[POMCP], bool] = lambda solver: False,
+    ) -> None:
+        """
+
+        # Parameters
+        max_iterations
+        max_depth
+        n_samples
+        callback: function called at each solver iteration. If returning true, the solve process stops.
+
+        """
+        self.callback = callback
         self._max_iterations = max_iterations
         self._max_depth = max_depth
         self._n_samples = n_samples
@@ -86,7 +104,9 @@ class POMCP(Solver, DeterministicPolicies):
 
         # Now, we can make a decision from the new belief state:
         iterations = 0
-        while iterations < self._max_iterations:  # or some other cut-off
+        while iterations < self._max_iterations and not self.callback(
+            self
+        ):  # or some other cut-off
             # sample a state from the current belief
             state = random.choice(self._belief)
             self._tree_search(state, self._act_history, self._obs_history, 0)

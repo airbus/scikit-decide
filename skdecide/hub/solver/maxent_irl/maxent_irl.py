@@ -22,6 +22,8 @@ class D(RLDomain):
 
 
 class MaxentIRL(Solver, Policies, Restorable):
+    """Maximum Entropy Inverse Reinforcement Learning solver."""
+
     T_domain = D
 
     def __init__(
@@ -34,7 +36,23 @@ class MaxentIRL(Solver, Policies, Restorable):
         theta_learning_rate=0.05,
         n_epochs=20000,
         expert_trajectories="maxent_expert_demo.npy",
+        callback: Callable[[MaxentIRL], bool] = lambda solver: False,
     ) -> None:
+        """
+
+        # Parameters
+        n_states
+        n_actions
+        one_feature
+        gamma
+        q_learning_rate
+        theta_learning_rate
+        n_epochs
+        expert_trajectories
+        callback: function called at each solver epoch. If returning true, the solve process stops.
+
+        """
+        self.callback = callback
         self.n_states = n_states
         self.feature_matrix = np.eye(self.n_states)
         self.n_actions = n_actions
@@ -226,6 +244,10 @@ class MaxentIRL(Solver, Policies, Restorable):
                     "./" + self.expert_trajectories[:-4] + "_maxent_q_table",
                     arr=self.q_table,
                 )
+
+            # Stopping because of user's callback?
+            if self.callback(self):
+                break
 
         self.q_table = np.load(
             file=self.expert_trajectories[:-4] + "_maxent_q_table.npy"

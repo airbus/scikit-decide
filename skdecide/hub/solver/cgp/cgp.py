@@ -21,8 +21,7 @@ from skdecide.builders.domain import (
     SingleAgent,
     UnrestrictedActions,
 )
-from skdecide.builders.solver import DeterministicPolicies, Restorable
-from skdecide.hub.space.gym import GymSpace
+from skdecide.builders.solver import DeterministicPolicies
 
 from .pycgp.cgpes import CGP, CGPES, Evaluator
 from .pycgp.cgpfunctions import (
@@ -202,6 +201,8 @@ def denorm(vals, types):
 
 
 class CGPWrapper(Solver, DeterministicPolicies):
+    """Cartesian Genetic Programming solver."""
+
     T_domain = D
 
     def __init__(
@@ -217,8 +218,26 @@ class CGPWrapper(Solver, DeterministicPolicies):
         n_it=1000000,
         genome=None,
         verbose=True,
+        callback: Callable[[CGPWrapper], bool] = lambda solver: False,
     ):
+        """
 
+        # Parameters
+        folder_name
+        library
+        col
+        row
+        nb_ind
+        mutation_rate_nodes
+        mutation_rate_outputs
+        n_cpus
+        n_it
+        genome
+        verbose
+        callback: function called at each solver iteration. If returning true, the solve process stops.
+
+        """
+        self.callback = callback
         if library is None:
             library = self._get_default_function_lib()
 
@@ -296,20 +315,22 @@ class CGPWrapper(Solver, DeterministicPolicies):
             print(cgpFather.genome)
 
         es = CGPES(
-            self._nb_ind,
-            self._mutation_rate_nodes,
-            self._mutation_rate_outputs,
-            cgpFather,
-            evaluator,
-            self._folder_name,
-            self._n_cpus,
+            num_offsprings=self._nb_ind,
+            mutation_rate_nodes=self._mutation_rate_nodes,
+            mutation_rate_outputs=self._mutation_rate_outputs,
+            father=cgpFather,
+            evaluator=evaluator,
+            folder=self._folder_name,
+            num_cpus=self._n_cpus,
             verbose=self._verbose,
+            callback=self.callback,
+            cgpwrapper=self,
         )
-        es.run(self._n_it)
-
         self._domain = domain
         self._es = es
         self._evaluator = evaluator
+
+        es.run(self._n_it)
 
     def _get_next_action(
         self, observation: D.T_agent[D.T_observation]

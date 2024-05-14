@@ -166,7 +166,7 @@ class DOSolver(Solver, DeterministicPolicies):
         policy_method_params: PolicyMethodParams,
         method: SolvingMethod = SolvingMethod.PILE,
         dict_params: Optional[Dict[Any, Any]] = None,
-        callback: Optional[Callable[[DOSolver], bool]] = None,
+        callback: Callable[[DOSolver], bool] = lambda solver: False,
     ):
         self.callback = callback
         self.method = method
@@ -206,10 +206,7 @@ class DOSolver(Solver, DeterministicPolicies):
                 self.dict_params[k] = params[k]
 
         # callbacks
-        if self.callback is None:
-            callbacks = []
-        else:
-            callbacks = [_DOCallback(callback=self.callback, solver=self)]
+        callbacks = [_DOCallback(callback=self.callback, solver=self)]
         copy_dict_params = deepcopy(self.dict_params)
         if "callbacks" in copy_dict_params:
             callbacks = callbacks + copy_dict_params.pop("callbacks")
