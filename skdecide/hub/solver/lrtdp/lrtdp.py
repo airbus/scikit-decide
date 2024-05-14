@@ -60,7 +60,7 @@ try:
 
         def __init__(
             self,
-            domain_factory: Callable[[], T_domain] = None,
+            domain_factory: Callable[[], T_domain],
             heuristic: Optional[
                 Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]]
             ] = None,
@@ -81,7 +81,7 @@ try:
             """Construct a LRTDP solver instance
 
             # Parameters
-                domain_factory (Callable[[], T_domain], optional): The domain instance. Defaults to None.
+                domain_factory (Callable[[], T_domain], optional): The lambda function to create a domain instance.
                 heuristic (Optional[ Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
                     Lambda function taking as arguments the domain and a state, and returning the heuristic
                     estimate from the state to the goal. Defaults to None.

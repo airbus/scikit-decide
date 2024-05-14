@@ -129,7 +129,7 @@ try:
             """Construct a MCTS solver instance
 
             # Parameters
-                domain_factory (Callable[[], T_domain]): The domain instance.
+                domain_factory (Callable[[], T_domain]): The lambda function to create a domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
                 max_depth (int, optional): Maximum depth of each MCTS rollout. Defaults to 1000.
@@ -494,7 +494,7 @@ try:
             """Construct a HMCTS solver instance
 
             # Parameters
-                domain_factory (Callable[[], MCTS.T_domain]): The domain instance.
+                domain_factory (Callable[[], MCTS.T_domain]): The lambda function to create a domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
                 max_depth (int, optional): Maximum depth of each MCTS rollout. Defaults to 1000.
@@ -686,7 +686,7 @@ try:
             """Construct a UCT solver instance
 
             # Parameters
-                domain_factory (Callable[[], MCTS.T_domain]): The domain instance.
+                domain_factory (Callable[[], MCTS.T_domain]): The lambda function to create a domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
                 max_depth (int, optional): Maximum depth of each UCT rollout. Defaults to 1000.
@@ -798,7 +798,7 @@ try:
             """Construct a HUCT solver instance
 
             # Parameters
-                domain_factory (Callable[[], MCTS.T_domain]): The domain instance.
+                domain_factory (Callable[[], MCTS.T_domain]): The lambda function to create a domain instance.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
                 max_depth (int, optional): Maximum depth of each UCT rollout. Defaults to 1000.

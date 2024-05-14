@@ -78,7 +78,7 @@ try:
             """Construct a RIW solver instance
 
             # Parameters
-                domain_factory (Callable[[], T_domain]): The domain instance.
+                domain_factory (Callable[[], T_domain]): The lambda function to create a domain instance.
                 state_features (Callable[[T_domain, D.T_state], Any]): state feature vector
                     used to compute the novelty measure
                 use_state_feature_hash (bool, optional): Boolean indicating whether states

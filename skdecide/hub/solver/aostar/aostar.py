@@ -53,6 +53,11 @@ try:
     class AOstar(
         ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState
     ):
+        """This is the skdecide implementation of the AO* algorithm for searching
+        cost-minimal policies in additive AND/OR graphs with admissible heuristics
+        as described in "Principles of Artificial Intelligence" by Nilsson, N. (1980)
+        """
+
         T_domain = D
 
         def __init__(
@@ -62,13 +67,37 @@ try:
                 Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]
             ] = None,
             discount: float = 1.0,
-            max_tip_expanions: int = 1,
+            max_tip_expansions: int = 1,
             parallel: bool = False,
             shared_memory_proxy=None,
             detect_cycles: bool = False,
             debug_logs: bool = False,
             callback: Callable[[AOstar], bool] = None,
         ) -> None:
+            """Construct a AOstar solver instance
+
+            Args:
+                domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
+                heuristic (Optional[ Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
+                    Lambda function taking as arguments the domain and a state object,
+                    and returning the heuristic estimate from the state to the goal. Defaults to None.
+                discount (float, optional): Value function's discount factor. Defaults to 1.0.
+                max_tip_expansions (int, optional): Maximum number of states to extract from the
+                    priority queue at each iteration before recomputing the policy graph. Defaults to 1.
+                parallel (bool, optional): Parallelize the generation of state-action transitions
+                    on different processes using duplicated domains (True)
+                    or not (False). Defaults to False.
+                shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
+                detect_cycles (bool, optional): Boolean indicating whether cycles in the search graph
+                    should be automatically detected (true) or not (false), knowing that the
+                    AO* algorithm is not meant to work with graph cycles into which it might be
+                    infinitely trapped. Defaults to False.
+                debug_logs (bool, optional): Boolean indicating whether debugging messages should be
+                    logged (true) or not (false). Defaults to False.
+                callback (Callable[[AOstar], bool], optional): Lambda function called before popping the next state from the
+                    priority queue, taking as arguments the solver and the domain, and
+                    returning true if the solver must be stopped. Defaults to None.
+            """
             ParallelSolver.__init__(
                 self,
                 domain_factory=domain_factory,
@@ -77,7 +106,7 @@ try:
             )
             self._solver = None
             self._discount = discount
-            self._max_tip_expansions = max_tip_expanions
+            self._max_tip_expansions = max_tip_expansions
             self._detect_cycles = detect_cycles
             self._debug_logs = debug_logs
             if heuristic is None:
@@ -93,8 +122,11 @@ try:
 
         def close(self):
             """Joins the parallel domains' processes.
-            Not calling this method (or not using the 'with' context statement)
-            results in the solver forever waiting for the domain processes to exit.
+
+            !!! warning
+                Not calling this method (or not using the 'with' context statement)
+                results in the solver forever waiting for the domain processes to exit.
+
             """
             if self._parallel:
                 self._solver.close()
@@ -125,16 +157,44 @@ try:
             self._solver.clear()
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+            """Run the AO* algorithm from a given root solving state
+
+            # Parameters
+                memory (D.T_memory[D.T_state]): State from which AO* graph traversals
+                    are performed (root of the search graph)
+            """
             self._solver.solve(memory)
 
         def _is_solution_defined_for(
             self, observation: D.T_agent[D.T_observation]
         ) -> bool:
+            """Indicates whether the solution policy is defined for a given state
+
+            # Parameters
+                observation (D.T_agent[D.T_observation]): State for which an entry is searched
+                    in the policy graph
+
+            # Returns
+                bool: True if the state has been explored and an action is defined in this state,
+                    False otherwise
+            """
             return self._solver.is_solution_defined_for(observation)
 
         def _get_next_action(
             self, observation: D.T_agent[D.T_observation]
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
+            """Get the best computed action in terms of best Q-value in a given state.
+
+            !!! warning
+                Returns a random action if no action is defined in the given state,
+                which is why it is advised to call :py:meth:`AOstar.is_solution_defined_for` before
+
+            # Parameters
+                observation (D.T_agent[D.T_observation]): State for which the best action is requested
+
+            # Returns
+                D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
+            """
             if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
             action = self._solver.get_next_action(observation)
@@ -151,6 +211,18 @@ try:
                 return action
 
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
+            """Get the best Q-value in a given state
+
+            !!! warning
+                Returns None if no action is defined in the given state, which is why
+                it is advised to call :py:meth:`AOstar.is_solution_defined_for` before
+
+            # Parameters
+                observation (D.T_agent[D.T_observation]): State from which the best Q-value is requested
+
+            # Returns
+                D.T_value: Maximum Q-value of the given state over the applicable actions in this state
+            """
             return self._solver.get_utility(observation)
 
         def get_nb_explored_states(self) -> int:
@@ -162,12 +234,29 @@ try:
             return self._solver.get_nb_explored_states()
 
         def get_explored_states(self) -> Set[D.T_agent[D.T_observation]]:
+            """Get the set of states present in the search graph (i.e. the graph's
+                state nodes minus the nodes' encapsulation and their children)
+
+            Returns:
+                Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
+            """
             return self._solver.get_explored_states()
 
         def get_nb_tip_states(self) -> int:
+            """Get the number of states present in the priority queue (i.e. those
+                explored states that have not been yet expanded)
+
+            Returns:
+                int: Number of states present in the priority queue
+            """
             return self._solver.get_nb_tip_states()
 
         def get_top_tip_state(self) -> D.T_agent[D.T_observation]:
+            """Get the top tip state, i.e. the tip state with the lowest value function
+
+            Returns:
+                D.T_agent[D.T_observation]: Next tip state to be expanded by the algorithm
+            """
             return self._solver.get_top_tip_state()
 
         def get_solving_time(self) -> int:
