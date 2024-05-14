@@ -76,7 +76,7 @@ try:
         ) -> None:
             """Construct a AOstar solver instance
 
-            Args:
+            # Parameters
                 domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
                 heuristic (Optional[ Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
                     Lambda function taking as arguments the domain and a state object,
@@ -237,7 +237,7 @@ try:
             """Get the set of states present in the search graph (i.e. the graph's
                 state nodes minus the nodes' encapsulation and their children)
 
-            Returns:
+            # Returns
                 Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
             """
             return self._solver.get_explored_states()
@@ -246,7 +246,7 @@ try:
             """Get the number of states present in the priority queue (i.e. those
                 explored states that have not been yet expanded)
 
-            Returns:
+            # Returns
                 int: Number of states present in the priority queue
             """
             return self._solver.get_nb_tip_states()
@@ -254,7 +254,7 @@ try:
         def get_top_tip_state(self) -> D.T_agent[D.T_observation]:
             """Get the top tip state, i.e. the tip state with the lowest value function
 
-            Returns:
+            # Returns
                 D.T_agent[D.T_observation]: Next tip state to be expanded by the algorithm
             """
             return self._solver.get_top_tip_state()
