@@ -208,7 +208,7 @@ public:
    *
    * @return std::size_t Solving time in milliseconds
    */
-  std::size_t get_solving_time();
+  std::size_t get_solving_time() const;
 
   typename MapTypeDeducer<State, std::pair<Action, Value>>::Map policy() const;
 

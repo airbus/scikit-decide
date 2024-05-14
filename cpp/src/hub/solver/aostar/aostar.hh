@@ -9,6 +9,7 @@
 #include <memory>
 #include <unordered_set>
 #include <list>
+#include <queue>
 
 #include "utils/associative_container_deducer.hh"
 #include "utils/execution.hh"
@@ -25,12 +26,18 @@ public:
   typedef typename Domain::Value Value;
   typedef Texecution_policy ExecutionPolicy;
 
+  typedef std::function<Predicate(Domain &, const State &)> GoalCheckerFunctor;
+  typedef std::function<Value(Domain &, const State &)> HeuristicFunctor;
+  typedef std::function<bool(const AOStarSolver &, Domain &)> CallbackFunctor;
+
   AOStarSolver(
-      Domain &domain,
-      const std::function<Predicate(Domain &, const State &)> &goal_checker,
-      const std::function<Value(Domain &, const State &)> &heuristic,
-      double discount = 1.0, std::size_t max_tip_expansions = 1,
-      bool detect_cycles = false, bool debug_logs = false);
+      Domain &domain, const GoalCheckerFunctor &goal_checker,
+      const HeuristicFunctor &heuristic, double discount = 1.0,
+      std::size_t max_tip_expansions = 1, bool detect_cycles = false,
+      bool debug_logs = false,
+      const CallbackFunctor &callback = [](const AOStarSolver &, Domain &) {
+        return false;
+      });
 
   // clears the solver (clears the search graph, thus preventing from reusing
   // previous search results)
@@ -40,16 +47,24 @@ public:
   void solve(const State &s);
   bool is_solution_defined_for(const State &s) const;
   const Action &get_best_action(const State &s) const;
-  const double &get_best_value(const State &s) const;
+  Value get_best_value(const State &s) const;
+  std::size_t get_nb_explored_states() const;
+  typename SetTypeDeducer<State>::Set get_explored_states() const;
+  std::size_t get_nb_tip_states() const;
+  const State &get_top_tip_state() const;
+  std::size_t get_solving_time() const;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map
+  get_policy() const;
 
 private:
   Domain &_domain;
-  std::function<bool(Domain &, const State &)> _goal_checker;
-  std::function<Value(Domain &, const State &)> _heuristic;
+  GoalCheckerFunctor _goal_checker;
+  HeuristicFunctor _heuristic;
   double _discount;
   std::size_t _max_tip_expansions;
   bool _detect_cycles;
   bool _debug_logs;
+  CallbackFunctor _callback;
   ExecutionPolicy _execution_policy;
 
   struct ActionNode;
@@ -85,6 +100,13 @@ private:
 
   typedef typename SetTypeDeducer<StateNode, State>::Set Graph;
   Graph _graph;
+
+  typedef std::priority_queue<StateNode *, std::vector<StateNode *>,
+                              StateNodeCompare>
+      PriorityQueue;
+  PriorityQueue _priority_queue;
+
+  std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
 };
 
 } // namespace skdecide

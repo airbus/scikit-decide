@@ -220,7 +220,7 @@ double SK_MARTDP_SOLVER_CLASS::get_residual_moving_average() const {
 }
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
-std::size_t SK_MARTDP_SOLVER_CLASS::get_solving_time() {
+std::size_t SK_MARTDP_SOLVER_CLASS::get_solving_time() const {
   std::size_t milliseconds_duration;
   milliseconds_duration = static_cast<std::size_t>(
       std::chrono::duration_cast<std::chrono::milliseconds>(

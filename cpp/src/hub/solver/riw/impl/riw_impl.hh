@@ -264,19 +264,22 @@ bool SK_RIW_SOLVER_CLASS::is_solution_defined_for(const State &s) {
 SK_RIW_SOLVER_TEMPLATE_DECL
 typename SK_RIW_SOLVER_CLASS::Action
 SK_RIW_SOLVER_CLASS::get_best_action(const State &s) {
-  Action *best_action = nullptr;
+  // best_action must be copied in case of node garbage erasing the owner
+  // state node so that a simple pointer to the corresponding action would
+  // not work
+  std::unique_ptr<Action> best_action;
   Node *next_node = nullptr;
   _execution_policy.protect([this, &s, &best_action, &next_node]() {
     auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
     if ((si != _graph.end()) && (si->best_action != nullptr)) {
-      best_action = si->best_action;
+      best_action = std::make_unique<Action>(*(si->best_action));
       _rollout_policy.advance(_domain, s, *best_action, true, nullptr);
       std::unordered_set<Node *> root_subgraph;
       compute_reachable_subgraph(const_cast<Node &>(*si),
                                  root_subgraph); // we won't change the real key
                                                  // (Node::state) so we are safe
       for (auto &child : si->children) {
-        if (&std::get<0>(child) == best_action) {
+        if (&std::get<0>(child) == best_action.get()) {
           next_node = std::get<2>(child);
           break;
         }
@@ -294,7 +297,7 @@ SK_RIW_SOLVER_CLASS::get_best_action(const State &s) {
       }
     }
   });
-  if (best_action == nullptr) {
+  if (!best_action) {
     Logger::error("SKDECIDE exception: no best action found in state " +
                   s.print());
     throw std::runtime_error(

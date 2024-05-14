@@ -149,7 +149,7 @@ try:
             self._continuous_planning = continuous_planning
             self._debug_logs = debug_logs
             if callback is None:
-                self._callback = lambda slv, i=None: False
+                self._callback = lambda slv: False
             else:
                 self._callback = callback
             self._ipc_notify = True

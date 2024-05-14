@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional, Set, Tuple
 
 from skdecide import Domain, Solver, hub
 from skdecide.builders.domain import (
@@ -67,6 +67,7 @@ try:
             shared_memory_proxy=None,
             detect_cycles: bool = False,
             debug_logs: bool = False,
+            callback: Callable[[AOstar], bool] = None,
         ) -> None:
             ParallelSolver.__init__(
                 self,
@@ -84,6 +85,10 @@ try:
             else:
                 self._heuristic = heuristic
             self._lambdas = [self._heuristic]
+            if callback is None:
+                self._callback = lambda slv: False
+            else:
+                self._callback = callback
             self._ipc_notify = True
 
         def close(self):
@@ -98,17 +103,25 @@ try:
         def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
             self._domain_factory = domain_factory
             self._solver = aostar_solver(
+                solver=self,
                 domain=self.get_domain(),
                 goal_checker=lambda d, s: d.is_goal(s),
-                heuristic=lambda d, s: self._heuristic(d, s)
-                if not self._parallel
-                else d.call(None, 0, s),
+                heuristic=(
+                    (lambda d, s: self._heuristic(d, s))
+                    if not self._parallel
+                    else (lambda d, s: d.call(None, 0, s))
+                ),
                 discount=self._discount,
                 max_tip_expansions=self._max_tip_expansions,
                 detect_cycles=self._detect_cycles,
                 parallel=self._parallel,
                 debug_logs=self._debug_logs,
+                callback=self._callback,
             )
+            self._solver.clear()
+
+        def _reset(self) -> None:
+            """Clears the search graph."""
             self._solver.clear()
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
@@ -124,10 +137,66 @@ try:
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
-            return self._solver.get_next_action(observation)
+            action = self._solver.get_next_action(observation)
+            if action is None:
+                print(
+                    "\x1b[3;33;40m"
+                    + "No best action found in observation "
+                    + str(observation)
+                    + ", applying random action"
+                    + "\x1b[0m"
+                )
+                return self.call_domain_method("get_action_space").sample()
+            else:
+                return action
 
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             return self._solver.get_utility(observation)
+
+        def get_nb_explored_states(self) -> int:
+            """Get the number of states present in the search graph
+
+            # Returns
+                int: Number of states present in the search graph
+            """
+            return self._solver.get_nb_explored_states()
+
+        def get_explored_states(self) -> Set[D.T_agent[D.T_observation]]:
+            return self._solver.get_explored_states()
+
+        def get_nb_tip_states(self) -> int:
+            return self._solver.get_nb_tip_states()
+
+        def get_top_tip_state(self) -> D.T_agent[D.T_observation]:
+            return self._solver.get_top_tip_state()
+
+        def get_solving_time(self) -> int:
+            """Get the solving time in milliseconds since the beginning of the
+                search from the root solving state
+
+            # Returns
+                int: Solving time in milliseconds
+            """
+            return self._solver.get_solving_time()
+
+        def get_policy(
+            self,
+        ) -> Dict[
+            D.T_agent[D.T_observation],
+            Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
+        ]:
+            """Get the (partial) solution policy defined for the states for which
+                the Q-value has been updated at least once (which is optimal for
+                the states reachable by the policy from the root solving state)
+
+            !!! warning
+                Only defined over the states reachable from the root solving state
+
+            # Returns
+                Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
+                    Mapping from states to pairs of action and best Q-value
+            """
+            return self._solver.get_policy()
 
 except ImportError:
     sys.path = record_sys_path
