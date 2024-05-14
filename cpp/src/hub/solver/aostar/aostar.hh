@@ -16,6 +16,17 @@
 
 namespace skdecide {
 
+/**
+ * @brief This is the skdecide implementation of the AO* algorithm for searching
+ * cost-minimal policies in additive AND/OR graphs with admissible heuristics
+ * as described in "Principles of Artificial Intelligence" by Nilsson, N. (1980)
+ *
+ * @tparam Tdomain Type of the domain class
+ * @tparam Texecution_policy Type of the execution policy (one of
+ * 'SequentialExecution' to generate state-action transitions in sequence,
+ * or 'ParallelExecution' to generate state-actio
+ * transitions in parallel on different threads)
+ */
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class AOStarSolver {
 public:
