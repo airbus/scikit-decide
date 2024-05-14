@@ -955,10 +955,9 @@ class MyCallback:
         self.max_iter = max_iter
         self.iter = 0
 
-    def __call__(self, domain, solver):
+    def __call__(self, solver):
         self.iter += 1
         logger.warning(f"End of iteration #{self.iter}.")
-        assert isinstance(domain, ToyRCPSPDomain)
         assert isinstance(solver, DOSolver)
         stopping = self.iter >= self.max_iter
         return stopping
