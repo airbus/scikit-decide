@@ -38,6 +38,8 @@ class D(
 
 
 class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
+    """Lazy A* solver."""
+
     T_domain = D
 
     def __init__(
@@ -48,8 +50,19 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         weight: float = 1.0,
         verbose: bool = False,
         render: bool = False,
+        callback: Callable[[LazyAstar], bool] = lambda solver: False,
     ) -> None:
+        """
 
+        # Parameters
+        heuristic
+        weight
+        verbose
+        render
+        callback: function called at each solver iteration. If returning true, the solve process stops.
+
+        """
+        self.callback = callback
         self._heuristic = (
             (lambda _, __: Value(cost=0.0)) if heuristic is None else heuristic
         )
@@ -136,18 +149,19 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         }
         # enqueued = {source: min([(0, self._weight * self._heuristic(source, target, initial_label[source]).cost)
         # for target in targets], key=lambda x: x[1]) for source in sources}
-        queue = [
+        self.queue = [
             (enqueued[source][1], next(c), source, 0, None, initial_label[source])
             for source in sources
         ]
         # The explored dict is the CLOSED list.
         # It maps explored nodes to a pair of parent closest to the source and label of transition from parent.
-        explored = {}
+        self.explored = {}
         path = []
         estim_total = 0.0
-        while queue:
+        while self.queue and not self.callback(self):
             # Pop the smallest item from queue, i.e. with smallest f-value
-            estim_total, __, curnode, dist, parent, label = pop(queue)
+            estim_total, __, curnode, dist, parent, label = pop(self.queue)
+
             if self._render:
                 self._domain.render(curnode)
             if self._verbose:
@@ -159,16 +173,16 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
                 path = [(parent, label), (curnode, None)]
                 node = parent
                 while node is not None:
-                    (parent, label) = explored[node]
+                    (parent, label) = self.explored[node]
                     if parent is not None:
                         path.insert(0, (parent, label))
                     node = parent
                 break  # return path, dist, enqueued[curnode][0], len(enqueued)
-            if curnode in explored:
+            if curnode in self.explored:
                 continue
-            explored[curnode] = (parent, label)
-            for neighbor, cost, lbl in extender(curnode, label, explored):
-                if neighbor in explored:
+            self.explored[curnode] = (parent, label)
+            for neighbor, cost, lbl in extender(curnode, label, self.explored):
+                if neighbor in self.explored:
                     continue
                 ncost = dist + cost
                 if neighbor in enqueued:
@@ -184,7 +198,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
                     h = self._heuristic(self._domain, neighbor).cost
                 enqueued[neighbor] = ncost, h
                 push(
-                    queue,
+                    self.queue,
                     (
                         ncost + (self._weight * h),
                         next(c),

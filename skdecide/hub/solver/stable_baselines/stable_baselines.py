@@ -7,7 +7,9 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Optional, Type, Union
 
 from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.callbacks import BaseCallback, ConvertCallback
 from stable_baselines3.common.policies import BasePolicy
+from stable_baselines3.common.type_aliases import MaybeCallback
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from skdecide import Domain, Solver
@@ -40,6 +42,7 @@ class StableBaseline(Solver, Policies, Restorable):
         algo_class: Type[BaseAlgorithm],
         baselines_policy: Union[str, Type[BasePolicy]],
         learn_config: Optional[Dict[str, Any]] = None,
+        callback: Callable[[StableBaseline], bool] = lambda solver: False,
         **kwargs: Any,
     ) -> None:
         """Initialize StableBaselines.
@@ -47,11 +50,15 @@ class StableBaseline(Solver, Policies, Restorable):
         # Parameters
         algo_class: The class of Baselines solver (stable_baselines3) to wrap.
         baselines_policy: The class of Baselines policy network (stable_baselines3.common.policies or str) to use.
+        learn_config: the kwargs passed to sb3 algo's `learn()` method
+        callback: function called at each solver iteration. If returning true, the solve process stops.
+
         """
         self._algo_class = algo_class
         self._baselines_policy = baselines_policy
         self._learn_config = learn_config if learn_config is not None else {}
         self._algo_kwargs = kwargs
+        self.callback = callback
 
     @classmethod
     def _check_domain_additional(cls, domain: Domain) -> bool:
@@ -74,7 +81,20 @@ class StableBaseline(Solver, Policies, Restorable):
                 self._baselines_policy, env, **self._algo_kwargs
             )
             self._init_algo(domain)
-        self._algo.learn(**self._learn_config)
+
+        # Add user callback to list of callbacks in learn_config
+        learn_config = dict(self._learn_config)
+        callbacks_list: MaybeCallback = learn_config.get("callback", [])
+        if callbacks_list is None:
+            callbacks_list = []
+        if isinstance(callbacks_list, BaseCallback):
+            callbacks_list = [callbacks_list]
+        elif not isinstance(callbacks_list, list):
+            callbacks_list = [ConvertCallback(callbacks_list)]
+        callbacks_list.append(Sb3Callback(callback=self.callback, solver=self))
+        learn_config["callback"] = callbacks_list
+
+        self._algo.learn(**learn_config)
 
     def _sample_action(
         self, observation: D.T_agent[D.T_observation]
@@ -105,3 +125,15 @@ class StableBaseline(Solver, Policies, Restorable):
     def get_policy(self) -> BasePolicy:
         """Return the computed policy."""
         return self._algo.policy
+
+
+class Sb3Callback(BaseCallback):
+    def __init__(
+        self, callback: Callable[[StableBaseline], bool], solver: StableBaseline
+    ):
+        super().__init__()
+        self.solver = solver
+        self.callback = callback
+
+    def _on_step(self) -> bool:
+        return not self.callback(self.solver)

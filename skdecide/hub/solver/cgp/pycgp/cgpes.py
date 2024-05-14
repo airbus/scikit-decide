@@ -2,13 +2,19 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+from __future__ import annotations  # allow using CGPWrapper in annotations
+
 import os
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 from joblib import Parallel, delayed
 
 from .cgp import CGP
 from .evaluator import Evaluator
+
+if TYPE_CHECKING:  # avoids circular imports
+    from ..cgp import CGPWrapper
 
 
 class CGPES:
@@ -19,10 +25,14 @@ class CGPES:
         mutation_rate_outputs,
         father,
         evaluator,
+        cgpwrapper: CGPWrapper,
+        callback: Callable[[CGPWrapper], bool],
         folder="genomes",
         num_cpus=1,
         verbose=True,
     ):
+        self.callback = callback
+        self.cgpwrapper = cgpwrapper
         self.num_offsprings = num_offsprings
         self.mutation_rate_nodes = mutation_rate_nodes
         self.mutation_rate_outputs = mutation_rate_outputs
@@ -116,3 +126,6 @@ class CGPES:
                     + str(self.current_fitness)
                     + ".txt"
                 )
+            # Stopping because of user's callback?
+            if self.callback(self.cgpwrapper):
+                break

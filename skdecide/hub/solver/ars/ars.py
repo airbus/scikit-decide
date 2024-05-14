@@ -74,6 +74,8 @@ def flatten(c):
 
 
 class AugmentedRandomSearch(Solver, Policies, Restorable):
+    """Augmented Random Search solver."""
+
     T_domain = D
 
     def __init__(
@@ -85,7 +87,22 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
         learning_rate=0.02,
         policy_noise=0.03,
         reward_maximization=True,
+        callback: Callable[[AugmentedRandomSearch], bool] = lambda solver: False,
     ) -> None:
+        """
+
+        # Parameters
+        n_epochs
+        epoch_size
+        directions
+        top_directions
+        learning_rate
+        policy_noise
+        reward_maximization
+        callback: function called at each solver epoch. If returning true, the solve process stops.
+
+        """
+        self.callback = callback
         self.env = None
         self.n_epochs = n_epochs
         self.learning_rate = learning_rate
@@ -216,10 +233,16 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
             self.update_policy(rollouts, sigma_r)
 
             # Printing the final reward of the policy after the update
-            reward_evaluation = self.explore(normalizer)
-            print("Step:", step, "Reward:", reward_evaluation, "Policy", self.policy)
+            self.reward_evaluation = self.explore(normalizer)
+            print(
+                "Step:", step, "Reward:", self.reward_evaluation, "Policy", self.policy
+            )
 
-        print("Final Reward:", reward_evaluation, "Policy", self.policy)
+            # Stopping because of user's callback?
+            if self.callback(self):
+                break
+
+        print("Final Reward:", self.reward_evaluation, "Policy", self.policy)
 
     def _sample_action(
         self, observation: D.T_agent[D.T_observation]

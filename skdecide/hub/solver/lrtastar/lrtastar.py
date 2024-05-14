@@ -36,6 +36,8 @@ class D(
 
 
 class LRTAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
+    """Learning Real-Time A* solver."""
+
     T_domain = D
 
     def _get_next_action(
@@ -60,7 +62,20 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         verbose: bool = False,
         max_iter=5000,
         max_depth=200,
+        callback: Callable[[LRTAstar], bool] = lambda solver: False,
     ) -> None:
+        """
+
+        # Parameters
+        heuristic
+        weight
+        verbose
+        max_iter
+        max_depth
+        callback: function called at each solver iteration. If returning true, the solve process stops.
+
+        """
+        self.callback = callback
         self._heuristic = (
             (lambda _, __: Value(cost=0.0)) if heuristic is None else heuristic
         )
@@ -113,7 +128,7 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         iteration = 0
         best_cost = float("inf")
         # best_path = None
-        while True:
+        while not self.callback(self):
             print(memory)
             dead_end, cumulated_cost, current_roll, list_action = self.doTrial(memory)
             if self._verbose:
