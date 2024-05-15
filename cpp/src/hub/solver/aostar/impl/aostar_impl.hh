@@ -38,7 +38,10 @@ SK_AOSTAR_SOLVER_CLASS::AOStarSolver(Domain &domain,
 }
 
 SK_AOSTAR_SOLVER_TEMPLATE_DECL
-void SK_AOSTAR_SOLVER_CLASS::clear() { _graph.clear(); }
+void SK_AOSTAR_SOLVER_CLASS::clear() {
+  _priority_queue = PriorityQueue();
+  _graph.clear();
+}
 
 SK_AOSTAR_SOLVER_TEMPLATE_DECL
 void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {

@@ -24,8 +24,8 @@ namespace skdecide {
  * @tparam Tdomain Type of the domain class
  * @tparam Texecution_policy Type of the execution policy (one of
  * 'SequentialExecution' to generate state-action transitions in sequence,
- * or 'ParallelExecution' to generate state-action
- * transitions in parallel on different threads)
+ * or 'ParallelExecution' to generate state-action transitions in parallel on
+ * different threads)
  */
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class AOStarSolver {

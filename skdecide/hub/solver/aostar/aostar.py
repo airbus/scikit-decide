@@ -85,8 +85,7 @@ try:
                 max_tip_expansions (int, optional): Maximum number of states to extract from the
                     priority queue at each iteration before recomputing the policy graph. Defaults to 1.
                 parallel (bool, optional): Parallelize the generation of state-action transitions
-                    on different processes using duplicated domains (True)
-                    or not (False). Defaults to False.
+                    on different processes using duplicated domains (True) or not (False). Defaults to False.
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 detect_cycles (bool, optional): Boolean indicating whether cycles in the search graph
                     should be automatically detected (true) or not (false), knowing that the
@@ -94,9 +93,9 @@ try:
                     infinitely trapped. Defaults to False.
                 debug_logs (bool, optional): Boolean indicating whether debugging messages should be
                     logged (true) or not (false). Defaults to False.
-                callback (Callable[[AOstar], bool], optional): Lambda function called before popping the next state from the
-                    priority queue, taking as arguments the solver and the domain, and
-                    returning true if the solver must be stopped. Defaults to None.
+                callback (Callable[[AOstar], bool], optional): Lambda function called before popping
+                    the next state from the priority queue, taking as arguments the solver and the domain,
+                    and returning true if the solver must be stopped. Defaults to None.
             """
             ParallelSolver.__init__(
                 self,

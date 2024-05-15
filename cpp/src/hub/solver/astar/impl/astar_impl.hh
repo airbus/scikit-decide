@@ -7,6 +7,7 @@
 
 #include <queue>
 #include <chrono>
+#include <stdexcept>
 
 #include "utils/string_converter.hh"
 #include "utils/logging.hh"
@@ -21,13 +22,13 @@ namespace skdecide {
 #define SK_ASTAR_SOLVER_CLASS AStarSolver<Tdomain, Texecution_policy>
 
 SK_ASTAR_SOLVER_TEMPLATE_DECL
-SK_ASTAR_SOLVER_CLASS::AStarSolver(
-    Domain &domain,
-    const std::function<Predicate(Domain &, const State &)> &goal_checker,
-    const std::function<Value(Domain &, const State &)> &heuristic,
-    bool debug_logs)
+SK_ASTAR_SOLVER_CLASS::AStarSolver(Domain &domain,
+                                   const GoalCheckerFunctor &goal_checker,
+                                   const HeuristicFunctor &heuristic,
+                                   bool debug_logs,
+                                   const CallbackFunctor &callback)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _debug_logs(debug_logs) {
+      _debug_logs(debug_logs), _callback(callback) {
 
   if (debug_logs) {
     Logger::check_level(logging::debug, "algorithm A*");
@@ -35,14 +36,17 @@ SK_ASTAR_SOLVER_CLASS::AStarSolver(
 }
 
 SK_ASTAR_SOLVER_TEMPLATE_DECL
-void SK_ASTAR_SOLVER_CLASS::clear() { _graph.clear(); }
+void SK_ASTAR_SOLVER_CLASS::clear() {
+  _open_queue = PriorityQueue();
+  _graph.clear();
+}
 
 SK_ASTAR_SOLVER_TEMPLATE_DECL
 void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
   try {
     Logger::info("Running " + ExecutionPolicy::print_type() +
                  " A* solver from state " + s.print());
-    auto start_time = std::chrono::high_resolution_clock::now();
+    _start_time = std::chrono::high_resolution_clock::now();
 
     // Create the root node containing the given state s
     auto si = _graph.emplace(s);
@@ -59,16 +63,16 @@ void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
 
     // Priority queue used to sort non-goal unsolved tip nodes by increasing
     // cost-to-go values (so-called OPEN container)
-    std::priority_queue<Node *, std::vector<Node *>, NodeCompare> open_queue;
-    open_queue.push(&root_node);
+    _open_queue = PriorityQueue();
+    _open_queue.push(&root_node);
 
     // Set of states for which the g-value is optimal (so-called CLOSED
     // container)
     std::unordered_set<Node *> closed_set;
 
-    while (!open_queue.empty()) {
-      auto best_tip_node = open_queue.top();
-      open_queue.pop();
+    while (!_open_queue.empty() && !_callback(*this, _domain)) {
+      auto best_tip_node = _open_queue.top();
+      _open_queue.pop();
 
       // Check that the best tip node has not already been closed before
       // (since this implementation's open_queue does not check for element
@@ -89,29 +93,30 @@ void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
       if (_goal_checker(_domain, best_tip_node->state) ||
           best_tip_node->solved) {
         if (_debug_logs)
-          Logger::debug("Closing a goal state: " +
+          Logger::debug("Closing a goal or previously solved state: " +
                         best_tip_node->state.print());
         auto current_node = best_tip_node;
         if (!(best_tip_node->solved)) {
-          current_node->fscore = 0;
+          current_node->fscore = current_node->gscore;
         } // goal state
 
         while (current_node != &root_node) {
           Node *parent_node = std::get<0>(current_node->best_parent);
-          parent_node->best_action = &std::get<1>(current_node->best_parent);
-          parent_node->fscore =
-              std::get<2>(current_node->best_parent) + current_node->fscore;
+          parent_node->best_action = std::make_pair(
+              &std::get<1>(current_node->best_parent), current_node);
+          // if everything went fine we should have parent_node->fscore ==
+          // current_node->fscore but let's be conservative here just in case
+          parent_node->fscore = parent_node->gscore +
+                                std::get<2>(current_node->best_parent) +
+                                current_node->fscore - current_node->gscore;
           parent_node->solved = true;
           current_node = parent_node;
         }
 
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                            end_time - start_time)
-                            .count();
-        Logger::info("A* finished to solve from state " + s.print() + " in " +
-                     StringConverter::from((double)duration / (double)1e9) +
-                     " seconds.");
+        Logger::info(
+            "A* finished to solve from state " + s.print() + " in " +
+            StringConverter::from((double)get_solving_time() / (double)1e6) +
+            " seconds.");
         return;
       }
 
@@ -123,7 +128,7 @@ void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
       std::for_each(
           ExecutionPolicy::policy, applicable_actions.begin(),
           applicable_actions.end(),
-          [this, &best_tip_node, &open_queue, &closed_set](auto a) {
+          [this, &best_tip_node, &closed_set](auto a) {
             if (_debug_logs)
               Logger::debug("Current expanded action: " + a.print() +
                             ExecutionPolicy::print_thread());
@@ -163,7 +168,7 @@ void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
               neighbor.best_parent =
                   std::make_tuple(best_tip_node, a, transition_cost);
               _execution_policy.protect(
-                  [&open_queue, &neighbor] { open_queue.push(&neighbor); });
+                  [this, &neighbor] { _open_queue.push(&neighbor); });
               if (_debug_logs)
                 Logger::debug(
                     "Update neighbor node: " + neighbor.state.print() +
@@ -185,7 +190,7 @@ void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
 SK_ASTAR_SOLVER_TEMPLATE_DECL
 bool SK_ASTAR_SOLVER_CLASS::is_solution_defined_for(const State &s) const {
   auto si = _graph.find(s);
-  if ((si == _graph.end()) || (si->best_action == nullptr) ||
+  if ((si == _graph.end()) || (si->best_action.first == nullptr) ||
       (si->solved == false)) {
     return false;
   } else {
@@ -197,21 +202,124 @@ SK_ASTAR_SOLVER_TEMPLATE_DECL
 const typename SK_ASTAR_SOLVER_CLASS::Action &
 SK_ASTAR_SOLVER_CLASS::get_best_action(const State &s) const {
   auto si = _graph.find(s);
-  if ((si == _graph.end()) || (si->best_action == nullptr)) {
+  if ((si == _graph.end()) || (si->best_action.first == nullptr)) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return *(si->best_action);
+  return *(si->best_action.first);
 }
 
 SK_ASTAR_SOLVER_TEMPLATE_DECL
-const double &SK_ASTAR_SOLVER_CLASS::get_best_value(const State &s) const {
+typename SK_ASTAR_SOLVER_CLASS::Value
+SK_ASTAR_SOLVER_CLASS::get_best_value(const State &s) const {
   auto si = _graph.find(s);
   if (si == _graph.end()) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return si->fscore;
+  Value val;
+  val.cost(si->fscore - si->gscore);
+  return val;
+}
+
+SK_ASTAR_SOLVER_TEMPLATE_DECL
+std::size_t SK_ASTAR_SOLVER_CLASS::get_nb_explored_states() const {
+  return _graph.size();
+}
+
+SK_ASTAR_SOLVER_TEMPLATE_DECL
+typename SetTypeDeducer<typename SK_ASTAR_SOLVER_CLASS::State>::Set
+SK_ASTAR_SOLVER_CLASS::get_explored_states() const {
+  typename SetTypeDeducer<State>::Set explored_states;
+  for (const auto &s : _graph) {
+    explored_states.insert(s.state);
+  }
+  return explored_states;
+}
+
+SK_ASTAR_SOLVER_TEMPLATE_DECL std::size_t
+SK_ASTAR_SOLVER_CLASS::get_nb_tip_states() const {
+  return _open_queue.size();
+}
+
+SK_ASTAR_SOLVER_TEMPLATE_DECL
+const typename SK_ASTAR_SOLVER_CLASS::State &
+SK_ASTAR_SOLVER_CLASS::get_top_tip_state() const {
+  if (_open_queue.empty()) {
+    Logger::error(
+        "SKDECIDE exception: no top tip state (empty priority queue)");
+    throw std::runtime_error(
+        "SKDECIDE exception: no top tip state (empty priority queue)");
+  }
+  return _open_queue.top()->state;
+}
+
+SK_ASTAR_SOLVER_TEMPLATE_DECL
+std::size_t SK_ASTAR_SOLVER_CLASS::get_solving_time() const {
+  std::size_t milliseconds_duration;
+  milliseconds_duration = static_cast<std::size_t>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::high_resolution_clock::now() - _start_time)
+          .count());
+  return milliseconds_duration;
+}
+
+SK_ASTAR_SOLVER_TEMPLATE_DECL
+std::vector<std::tuple<typename SK_ASTAR_SOLVER_CLASS::State,
+                       typename SK_ASTAR_SOLVER_CLASS::Action,
+                       typename SK_ASTAR_SOLVER_CLASS::Value>>
+SK_ASTAR_SOLVER_CLASS::get_plan(
+    const typename SK_ASTAR_SOLVER_CLASS::State &from_state) const {
+  std::vector<std::tuple<State, Action, Value>> p;
+  auto si = _graph.find(from_state);
+  if (si == _graph.end()) {
+    Logger::error("SKDECIDE exception: no plan found starting in state " +
+                  from_state.print());
+    throw std::runtime_error(
+        "SKDECIDE exception: no plan found starting in state " +
+        from_state.print());
+  }
+  const Node *cur_node = &(*si);
+  std::unordered_set<const Node *> plan_nodes;
+  plan_nodes.insert(cur_node);
+  while (!_goal_checker(_domain, cur_node->state) &&
+         cur_node->best_action.first != nullptr) {
+    Value val;
+    val.cost(cur_node->best_action.second->gscore - cur_node->gscore);
+    p.push_back(
+        std::make_tuple(cur_node->state, *(cur_node->best_action.first), val));
+    cur_node = cur_node->best_action.second;
+    if (!plan_nodes.insert(cur_node).second) {
+      Logger::error("SKDECIDE exception: cycle detected in the solution plan "
+                    "starting in state " +
+                    from_state.print());
+      throw std::runtime_error("SKDECIDE exception: cycle detected in the "
+                               "solution plan starting in state " +
+                               from_state.print());
+    }
+  }
+  return p;
+}
+
+SK_ASTAR_SOLVER_TEMPLATE_DECL typename MapTypeDeducer<
+    typename SK_ASTAR_SOLVER_CLASS::State,
+    std::pair<typename SK_ASTAR_SOLVER_CLASS::Action,
+              typename SK_ASTAR_SOLVER_CLASS::Value>>::Map
+SK_ASTAR_SOLVER_CLASS::get_policy() const {
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
+  for (auto &n : _graph) {
+    if (n.best_action.first != nullptr) {
+      Value val;
+      val.cost(n.fscore - n.gscore);
+      p.insert(
+          std::make_pair(n.state, std::make_pair(*(n.best_action.first), val)));
+    }
+  }
+  return p;
 }
 
 // === AStarSolver::StateNode implementation ===
@@ -219,8 +327,8 @@ const double &SK_ASTAR_SOLVER_CLASS::get_best_value(const State &s) const {
 SK_ASTAR_SOLVER_TEMPLATE_DECL
 SK_ASTAR_SOLVER_CLASS::Node::Node(const State &s)
     : state(s), gscore(std::numeric_limits<double>::infinity()),
-      fscore(std::numeric_limits<double>::infinity()), best_action(nullptr),
-      solved(false) {}
+      fscore(std::numeric_limits<double>::infinity()),
+      best_action({nullptr, nullptr}), solved(false) {}
 
 SK_ASTAR_SOLVER_TEMPLATE_DECL
 const typename SK_ASTAR_SOLVER_CLASS::State &
