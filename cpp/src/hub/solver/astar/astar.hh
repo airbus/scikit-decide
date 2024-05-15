@@ -23,7 +23,7 @@ namespace skdecide {
  * @brief This is the skdecide implementation of the A* algorithm for searching
  * cost-minimal plans in additive OR graphs with admissible heuristics
  * as described in "A Formal Basis for the Heuristic Determination of Minimum
- * Cost Paths"  Hart, P. E.; Nilsson, N.J.; Raphael, B. (1968)
+ * Cost Paths" by Hart, P. E.; Nilsson, N.J.; Raphael, B. (1968)
  *
  * @tparam Tdomain Type of the domain class
  * @tparam Texecution_policy Type of the execution policy (one of

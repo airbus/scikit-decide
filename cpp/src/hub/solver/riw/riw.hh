@@ -132,7 +132,8 @@ public:
    * @brief Construct a new RIWSolver object
    *
    * @param domain The domain instance
-   * @param state_features
+   * @param state_features State feature vector used to compute the novelty
+   * measure
    * @param time_budget Maximum solving time in milliseconds
    * @param rollout_budget Maximum number of rollouts (deactivated when
    * use_labels is true)

@@ -42,13 +42,21 @@ private:
     virtual void solve(const py::object &s) = 0;
     virtual py::bool_ is_solution_defined_for(const py::object &s) = 0;
     virtual py::object get_next_action(const py::object &s) = 0;
-    virtual py::float_ get_utility(const py::object &s) = 0;
+    virtual py::object get_utility(const py::object &s) = 0;
+    virtual py::int_ get_nb_explored_states() = 0;
+    virtual py::set get_explored_states() = 0;
+    virtual py::int_ get_nb_tip_states() = 0;
+    virtual py::object get_top_tip_state() = 0;
+    virtual py::int_ get_solving_time() = 0;
+    virtual py::list get_plan(const py::object &s) = 0;
+    virtual py::dict get_policy() = 0;
   };
 
   template <typename Texecution, template <typename...> class Thashing_policy>
   class Implementation : public BaseImplementation {
   public:
     Implementation(
+        py::object &solver, // Python solver wrapper
         py::object &domain,
         const std::function<py::object(const py::object &, const py::object &)>
             &state_features,
@@ -56,10 +64,12 @@ private:
             &heuristic,
         const std::function<py::object(const py::object &, const py::object &)>
             &termination_checker,
+        const std::function<py::bool_(const py::object &)> &callback = nullptr,
         bool debug_logs = false)
         : _state_features(state_features), _heuristic(heuristic),
-          _termination_checker(termination_checker) {
+          _termination_checker(termination_checker), _callback(callback) {
 
+      _pysolver = std::make_unique<py::object>(solver);
       check_domain(domain);
       _domain = std::make_unique<PyBFWSDomain<Texecution>>(domain);
       _solver = std::make_unique<skdecide::BFWSSolver<
@@ -107,7 +117,8 @@ private:
             }
           },
           [this](PyBFWSDomain<Texecution> &d,
-                 const typename PyBFWSDomain<Texecution>::State &s) -> bool {
+                 const typename PyBFWSDomain<Texecution>::State &s) ->
+          typename PyBFWSDomain<Texecution>::Predicate {
             try {
               auto ftc = [this](const py::object &dd, const py::object &ss,
                                 [[maybe_unused]] const py::object &ii) {
@@ -124,6 +135,25 @@ private:
                       "SKDECIDE exception when calling termination checker: ") +
                   e.what());
               throw;
+            }
+          },
+          [this](const skdecide::BFWSSolver<PyBFWSDomain<Texecution>,
+                                            PyBFWSFeatureVector<Texecution>,
+                                            Thashing_policy, Texecution> &s,
+                 PyBFWSDomain<Texecution> &d) -> bool {
+            // we don't make use of the C++ solver object 's' from Python
+            // but we rather use its Python wrapper 'solver'
+            if (_callback) {
+              try {
+                return _callback(*_pysolver);
+              } catch (const std::exception &e) {
+                Logger::error(std::string("SKDECIDE exception when calling "
+                                          "callback function: ") +
+                              e.what());
+                throw;
+              }
+            } else {
+              return false;
             }
           },
           debug_logs);
@@ -172,14 +202,76 @@ private:
     }
 
     virtual py::object get_next_action(const py::object &s) {
-      return _solver->get_best_action(s).pyobj();
+      try {
+        return _solver->get_best_action(s).pyobj();
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[BFWS.get_next_action] ") + e.what() +
+                     " - returning None");
+        return py::none();
+      }
     }
 
-    virtual py::float_ get_utility(const py::object &s) {
-      return _solver->get_best_value(s);
+    virtual py::object get_utility(const py::object &s) {
+      try {
+        return _solver->get_best_value(s).pyobj();
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[BFWS.get_utility] ") + e.what() +
+                     " - returning None");
+        return py::none();
+      }
+    }
+
+    virtual py::int_ get_nb_explored_states() {
+      return _solver->get_nb_explored_states();
+    }
+
+    virtual py::set get_explored_states() {
+      py::set s;
+      auto &&es = _solver->get_explored_states();
+      for (auto &e : es) {
+        s.add(e.pyobj());
+      }
+      return s;
+    }
+
+    virtual py::int_ get_nb_tip_states() {
+      return _solver->get_nb_tip_states();
+    }
+
+    virtual py::object get_top_tip_state() {
+      try {
+        return _solver->get_top_tip_state().pyobj();
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[BFWS.get_top_tip_state] ") + e.what() +
+                     " - returning None");
+        return py::none();
+      }
+    }
+
+    virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
+
+    virtual py::list get_plan(const py::object &s) {
+      py::list l;
+      auto &&p = _solver->get_plan(s);
+      for (auto &e : p) {
+        l.append(py::make_tuple(std::get<0>(e).pyobj(), std::get<1>(e).pyobj(),
+                                std::get<2>(e).pyobj()));
+      }
+      return l;
+    }
+
+    virtual py::dict get_policy() {
+      py::dict d;
+      auto &&p = _solver->get_policy();
+      for (auto &e : p) {
+        d[e.first.pyobj()] =
+            py::make_tuple(e.second.first.pyobj(), e.second.second.pyobj());
+      }
+      return d;
     }
 
   private:
+    std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<PyBFWSDomain<Texecution>> _domain;
     std::unique_ptr<skdecide::BFWSSolver<PyBFWSDomain<Texecution>,
                                          PyBFWSFeatureVector<Texecution>,
@@ -192,6 +284,7 @@ private:
         _heuristic;
     std::function<py::object(const py::object &, const py::object &)>
         _termination_checker;
+    std::function<py::bool_(const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -256,6 +349,7 @@ private:
 
 public:
   PyBFWSSolver(
+      py::object &solver, // Python solver wrapper
       py::object &domain,
       const std::function<py::object(const py::object &, const py::object &)>
           &state_features,
@@ -264,13 +358,14 @@ public:
       const std::function<py::object(const py::object &, const py::object &)>
           &termination_checker,
       bool use_state_feature_hash = false, bool parallel = false,
+      const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool debug_logs = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  HashingPolicySelector(use_state_feature_hash),
                                  SolverInstantiator(_implementation))
-        .instantiate(domain, state_features, heuristic, termination_checker,
-                     debug_logs);
+        .instantiate(solver, domain, state_features, heuristic,
+                     termination_checker, callback, debug_logs);
   }
 
   void close() { _implementation->close(); }
@@ -287,9 +382,31 @@ public:
     return _implementation->get_next_action(s);
   }
 
-  py::float_ get_utility(const py::object &s) {
+  py::object get_utility(const py::object &s) {
     return _implementation->get_utility(s);
   }
+
+  py::int_ get_nb_explored_states() {
+    return _implementation->get_nb_explored_states();
+  }
+
+  py::set get_explored_states() {
+    return _implementation->get_explored_states();
+  }
+
+  py::int_ get_nb_tip_states() { return _implementation->get_nb_tip_states(); }
+
+  py::object get_top_tip_state() {
+    return _implementation->get_top_tip_state();
+  }
+
+  py::int_ get_solving_time() { return _implementation->get_solving_time(); }
+
+  py::list get_plan(const py::object &s) {
+    return _implementation->get_plan(s);
+  }
+
+  py::dict get_policy() { return _implementation->get_policy(); }
 };
 
 } // namespace skdecide

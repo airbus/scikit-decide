@@ -79,7 +79,7 @@ try:
 
             # Parameters
                 domain_factory (Callable[[], T_domain]): The lambda function to create a domain instance.
-                state_features (Callable[[T_domain, D.T_state], Any]): state feature vector
+                state_features (Callable[[T_domain, D.T_state], Any]): State feature vector
                     used to compute the novelty measure
                 use_state_feature_hash (bool, optional): Boolean indicating whether states
                     must be hashed by using their features (True) or by using their native
