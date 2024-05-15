@@ -177,7 +177,18 @@ try:
             """
             if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
-            return self._solver.get_next_action(observation)
+            action = self._solver.get_next_action(observation)
+            if action is None:
+                print(
+                    "\x1b[3;33;40m"
+                    + "No best action found in observation "
+                    + str(observation)
+                    + ", applying random action"
+                    + "\x1b[0m"
+                )
+                return self.call_domain_method("get_action_space").sample()
+            else:
+                return action
 
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
             """Get the minimum cost-to-go in a given state
@@ -246,8 +257,12 @@ try:
                 D.T_value,
             ]
         ]:
-            """Get the solution plan starting in a given state (throws a runtime exception
-                     if no plan has been previously computed that goes through this state)
+            """Get the solution plan starting in a given state
+
+            !!! warning
+                Returns an empty list if no plan has been previously computed that goes
+                through the given state.
+                Throws a runtime exception if a state cycle is detected in the plan
 
             # Parameters
                 observation (D.T_agent[D.T_observation]): State from which a solution plan

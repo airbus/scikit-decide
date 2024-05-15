@@ -277,11 +277,9 @@ SK_ASTAR_SOLVER_CLASS::get_plan(
   std::vector<std::tuple<State, Action, Value>> p;
   auto si = _graph.find(from_state);
   if (si == _graph.end()) {
-    Logger::error("SKDECIDE exception: no plan found starting in state " +
-                  from_state.print());
-    throw std::runtime_error(
-        "SKDECIDE exception: no plan found starting in state " +
-        from_state.print());
+    Logger::warn("SKDECIDE warning: no plan found starting in state " +
+                 from_state.print());
+    return p;
   }
   const Node *cur_node = &(*si);
   std::unordered_set<const Node *> plan_nodes;

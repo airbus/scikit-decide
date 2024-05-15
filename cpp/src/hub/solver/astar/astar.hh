@@ -156,15 +156,15 @@ public:
 
   /**
    * @brief Get the solution plan starting in a given state (throws a runtime
-   * exception if no plan has been previously computed that goes through this
-   * state)
+   * exception if a state cycle is detected in the plan)
    *
    * @param from_state State from which a solution plan to a goal state is
    * requested
    * @return std::vector<std::tuple<State, Action, Value>> Sequence of tuples of
    * state, action and transition cost (computed as the difference of g-scores
    * between this state and the next one) visited along the execution of the
-   * plan
+   * plan; or an empty plan if no plan was previously computed that goes through
+   * the given state.
    */
   std::vector<std::tuple<State, Action, Value>>
   get_plan(const State &from_state) const;
