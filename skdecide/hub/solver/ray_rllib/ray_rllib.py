@@ -4,13 +4,14 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Optional, Set, Type
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Set, Type, Union
 
 import gymnasium as gym
 import numpy as np
 import ray
 from packaging.version import Version
 from ray.rllib.algorithms.algorithm import Algorithm, AlgorithmConfig
+from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.wrappers.multi_agent_env_compatibility import (
     MultiAgentEnvCompatibility,
 )
@@ -29,6 +30,10 @@ from skdecide.hub.domain.gym import AsLegacyGymV21Env
 from skdecide.hub.space.gym import GymSpace
 
 from .custom_models import TFParametricActionsModel, TorchParametricActionsModel
+
+if TYPE_CHECKING:
+    # imports useful only in annotations, may change according to releases
+    from ray.rllib import RolloutWorker
 
 
 class D(MultiAgentRLDomain):
@@ -55,6 +60,7 @@ class RayRLlib(Solver, Policies, Restorable):
             Callable[[str, Optional["EpisodeV2"], Optional["RolloutWorker"]], str]
         ] = None,
         action_embed_sizes: Optional[Dict[str, int]] = None,
+        callback: Callable[[RayRLlib], bool] = lambda solver: False,
     ) -> None:
         """Initialize Ray RLlib.
 
@@ -67,8 +73,14 @@ class RayRLlib(Solver, Policies, Restorable):
         policy_configs: The mapping from policy id (str) to additional config (dict) (leave default for single policy).
         policy_mapping_fn: The function mapping agent ids to policy ids (leave default for single policy).
         action_embed_sizes: The mapping from policy id (str) to action embedding size (only used with domains filtering allowed actions per state, default to 2)
+        callback: function called at each solver iteration.
+            If returning true, the solve process stops and exit the current train iteration.
+            However, if train_iterations > 1, another train loop will be entered after that.
+            (One can code its callback in such a way that further training loop are stopped directly after that.)
+
         """
         Solver.__init__(self, domain_factory=domain_factory)
+        self.callback = callback
         self._algo_class = algo_class
         self._train_iterations = train_iterations
         self._config = config or algo_class.get_default_config()
@@ -91,6 +103,9 @@ class RayRLlib(Solver, Policies, Restorable):
             )
 
         ray.init(ignore_reinit_error=True)
+        self._algo_callbacks: Optional[DefaultCallbacks] = None
+        self._algo_worker_callbacks: Optional[DefaultCallbacks] = None
+        self._algo_evaluation_worker_callbacks: Optional[DefaultCallbacks] = None
 
     def get_policy(self) -> Dict[str, Policy]:
         """Return the computed policy."""
@@ -119,7 +134,11 @@ class RayRLlib(Solver, Policies, Restorable):
 
         # Training loop
         for _ in range(self._train_iterations):
-            self._algo.train()
+            try:
+                self._algo.train()
+            except SolveEarlyStop as e:
+                # if stopping exception raise, we choose to stop this train iteration
+                pass
 
     def _sample_action(
         self, observation: D.T_agent[D.T_observation]
@@ -137,13 +156,16 @@ class RayRLlib(Solver, Policies, Restorable):
         return True
 
     def _save(self, path: str) -> None:
+        self.forget_callback()  # avoid serializing issues
         self._algo.save(path)
+        self.set_callback()  # put it back in case of further solve
 
     def _load(self, path: str):
         self._init_algo()
         self._algo.restore(path)
+        self.set_callback()  # ensure putting back actual callback
 
-    def _init_algo(self):
+    def _init_algo(self) -> None:
         domain = self._domain_factory()
         wrapped_action_space = domain.get_action_space()
         wrapped_observation_space = domain.get_observation_space()
@@ -282,7 +304,6 @@ class RayRLlib(Solver, Policies, Restorable):
             policy_mapping_fn=self._policy_mapping_fn,
         )
 
-        # Instantiate algo
         register_env(
             "skdecide_env",
             lambda _, domain_factory=self._domain_factory, rayrllib=self: AsRLlibMultiAgentEnv(
@@ -303,7 +324,90 @@ class RayRLlib(Solver, Policies, Restorable):
                 env="skdecide_env", disable_env_checking=self._action_masking
             )
 
+        # set callback class for algo config
+        self.set_callback()
+
+        # Instantiate algo
         self._algo = self._algo_class(config=self._config)
+
+    def set_callback(self):
+        """Set back callback.
+
+        Useful to do it after serializing/deserializing because of potential issues with
+        - lambda functions
+        - dynamic classes
+
+        """
+        # generate specific callback class
+        callbacks_class = generate_rllibcallback_class(
+            callback=self.callback, solver=self
+        )
+        # use it in all algo config, and callbacks attributes
+        self._set_callbackclass(callbacks_class=callbacks_class)
+
+    def forget_callback(self):
+        """Forget about actual callback to avoid serializing issues."""
+        # use default callback class
+        callbacks_class = DefaultCallbacks
+        # use it in algo config & evaluation_config, worker config, and for algo.callbacks, worker.callbacks
+        self._set_callbackclass(callbacks_class=callbacks_class)
+
+    def _set_callbackclass(self, callbacks_class: Type[DefaultCallbacks]):
+        _set_callbackclass_in_config(
+            callbacks_class=callbacks_class, config=self._config
+        )
+        if hasattr(self, "_algo"):
+            tmp = self._algo.callbacks
+            if (
+                self._algo_callbacks
+                and self._algo_callbacks.__class__ is callbacks_class
+            ):
+                self._algo.callbacks = self._algo_callbacks
+            else:
+                self._algo.callbacks = callbacks_class()
+            self._algo_callbacks = tmp
+            if self._algo.evaluation_config:
+                _set_callbackclass_in_config(
+                    callbacks_class=callbacks_class, config=self._algo.evaluation_config
+                )
+            if self._algo.workers:
+                local_worker: RolloutWorker = self._algo.workers.local_worker()
+                if local_worker:
+                    _set_callbackclass_in_config(
+                        callbacks_class=callbacks_class, config=local_worker.config
+                    )
+                    self._algo_worker_callbacks = _swap_callbacks(
+                        algo_or_worker=local_worker,
+                        previous_callbacks=self._algo_worker_callbacks,
+                        callbacks_class=callbacks_class,
+                    )
+                    for pid, policy in local_worker.policy_map.items():
+                        policy.config["callbacks"] = callbacks_class
+
+
+def _set_callbackclass_in_config(
+    callbacks_class: Type[DefaultCallbacks], config: AlgorithmConfig
+) -> None:
+    is_frozen = config._is_frozen
+    if is_frozen:
+        # allow callbacks update
+        config._is_frozen = False
+    config.callbacks(callbacks_class=callbacks_class)
+    config._is_frozen = is_frozen
+
+
+def _swap_callbacks(
+    algo_or_worker: Union[Algorithm, RolloutWorker, Policy],
+    previous_callbacks,
+    callbacks_class,
+):
+    tmp = algo_or_worker.callbacks
+    if previous_callbacks and previous_callbacks.__class__ is callbacks_class:
+        algo_or_worker.callbacks = previous_callbacks
+    else:
+        algo_or_worker.callbacks = callbacks_class()
+    previous_callbacks = tmp
+    return previous_callbacks
 
 
 class AsRLlibMultiAgentEnv(MultiAgentEnvCompatibility):
@@ -497,3 +601,43 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
         done.update({"__all__": all(outcome.termination.values())})
         infos = {k: (v or {}) for k, v in outcome.info.items()}
         return observations, rewards, done, infos
+
+
+class BaseRLlibCallback(DefaultCallbacks):
+    callback: _CallbackWrapper
+    solver: RayRLlib
+
+    def on_episode_step(
+        self,
+        *args,
+        **kwargs,
+    ) -> None:
+        stopping = self.callback(self.solver)
+        if stopping:
+            raise SolveEarlyStop("Solve process stopped by user callback")
+
+
+class _CallbackWrapper:
+    """Wrapper to avoid surprises with lambda functions"""
+
+    def __init__(self, callback: Callable[[RayRLlib], bool]):
+        self.callback = callback
+
+    def __call__(self, solver) -> bool:
+        return self.callback(solver)
+
+
+class SolveEarlyStop(Exception):
+    """Exception raised if a callback tells to stop the solve process."""
+
+
+def generate_rllibcallback_class(
+    callback: _CallbackWrapper, solver: RayRLlib, classname=None
+) -> Type[BaseRLlibCallback]:
+    if classname is None:
+        classname = f"MyCallbackClass{id(solver)}"
+    return type(
+        classname,
+        (BaseRLlibCallback,),
+        dict(solver=solver, callback=_CallbackWrapper(callback=callback)),
+    )
