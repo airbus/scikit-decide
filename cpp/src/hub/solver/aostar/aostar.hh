@@ -56,20 +56,19 @@ public:
    * should be automatically detected (true) or not (false), knowing that the
    * AO* algorithm is not meant to work with graph cycles into which it might be
    * infinitely trapped
-   * @param debug_logs Boolean indicating whether debugging messages should be
-   * logged (true) or not (false)
    * @param callback Functor called before popping the next state from the
    * priority queue, taking as arguments the solver and the domain, and
    * returning true if the solver must be stopped
+   * @param verbose Boolean indicating whether verbose messages should be
+   * logged (true) or not (false)
    */
   AOStarSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
       const HeuristicFunctor &heuristic, double discount = 1.0,
       std::size_t max_tip_expansions = 1, bool detect_cycles = false,
-      bool debug_logs = false,
-      const CallbackFunctor &callback = [](const AOStarSolver &, Domain &) {
-        return false;
-      });
+      const CallbackFunctor &callback = [](const AOStarSolver &,
+                                           Domain &) { return false; },
+      bool verbose = false);
 
   /**
    * @brief Clears the search graph, thus preventing from reusing previous
@@ -176,8 +175,8 @@ private:
   double _discount;
   std::size_t _max_tip_expansions;
   bool _detect_cycles;
-  bool _debug_logs;
   CallbackFunctor _callback;
+  bool _verbose;
   ExecutionPolicy _execution_policy;
 
   struct ActionNode;

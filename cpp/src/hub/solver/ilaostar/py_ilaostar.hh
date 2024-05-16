@@ -49,7 +49,7 @@ private:
             &goal_checker,
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
-        double discount = 1.0, double epsilon = 0.001, bool debug_logs = false)
+        double discount = 1.0, double epsilon = 0.001, bool verbose = false)
         : _goal_checker(goal_checker), _heuristic(heuristic) {
 
       check_domain(domain);
@@ -96,7 +96,7 @@ private:
               throw;
             }
           },
-          discount, epsilon, debug_logs);
+          discount, epsilon, verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -227,12 +227,12 @@ public:
       const std::function<py::object(const py::object &, const py::object &)>
           &heuristic,
       double discount = 1.0, double epsilon = 0.001, bool parallel = false,
-      bool debug_logs = false) {
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(domain, goal_checker, heuristic, discount, epsilon,
-                     debug_logs);
+                     verbose);
   }
 
   void close() { _implementation->close(); }

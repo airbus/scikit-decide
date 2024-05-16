@@ -65,9 +65,10 @@ private:
         std::size_t max_depth = 1000, double exploration = 0.25,
         std::size_t residual_moving_average_window = 100,
         double epsilon = 0.001, double discount = 1.0,
-        bool online_node_garbage = false, bool debug_logs = false,
+        bool online_node_garbage = false,
         const std::function<py::bool_(const py::object &, const py::object &)>
-            &callback = nullptr)
+            &callback = nullptr,
+        bool verbose = false)
         : _state_features(state_features), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
@@ -99,7 +100,7 @@ private:
           },
           time_budget, rollout_budget, max_depth, exploration,
           residual_moving_average_window, epsilon, discount,
-          online_node_garbage, debug_logs,
+          online_node_garbage,
           [this](
               const RIWSolver<PyRIWDomain<Texecution>,
                               PyRIWFeatureVector<Texecution>, Thashing_policy,
@@ -134,7 +135,8 @@ private:
             } else {
               return false;
             }
-          });
+          },
+          verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -367,11 +369,12 @@ public:
       std::size_t max_depth = 1000, double exploration = 0.25,
       std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
-      bool parallel = false, bool debug_logs = false,
+      bool parallel = false,
       const std::function<py::bool_(const py::object &,
                                     const py::object & // last arg used for
                                                        // optional thread_id
-                                    )> &callback = nullptr) {
+                                    )> &callback = nullptr,
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  HashingPolicySelector(use_state_feature_hash),
@@ -380,7 +383,7 @@ public:
         .instantiate(solver, domain, state_features, time_budget,
                      rollout_budget, max_depth, exploration,
                      residual_moving_average_window, epsilon, discount,
-                     online_node_garbage, debug_logs, callback);
+                     online_node_garbage, callback, verbose);
   }
 
   void close() { _implementation->close(); }

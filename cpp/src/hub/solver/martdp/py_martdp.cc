@@ -19,8 +19,9 @@ void init_pymartdp(py::module &m) {
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
                     std::size_t, std::size_t, std::size_t, std::size_t, double,
-                    std::size_t, double, double, double, double, bool, bool,
-                    const std::function<py::bool_(const py::object &)> &>(),
+                    std::size_t, double, double, double, double, bool,
+                    const std::function<py::bool_(const py::object &)> &,
+                    bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
            py::arg("heuristic"), py::arg("time_budget") = 3600000,
            py::arg("rollout_budget") = 100000, py::arg("max_depth") = 1000,
@@ -31,7 +32,7 @@ void init_pymartdp(py::module &m) {
            py::arg("discount") = 1.0, py::arg("action_choice_noise") = 0.1,
            py::arg("dead_end_cost") = 10e4,
            py::arg("online_node_garbage") = false,
-           py::arg("debug_logs") = false, py::arg("callback") = nullptr)
+           py::arg("callback") = nullptr, py::arg("verbose") = false)
       .def("close", &skdecide::PyMARTDPSolver::close)
       .def("clear", &skdecide::PyMARTDPSolver::clear)
       .def("solve", &skdecide::PyMARTDPSolver::solve, py::arg("state"))

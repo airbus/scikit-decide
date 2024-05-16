@@ -262,7 +262,7 @@ class GymIW(IW):
         use_state_feature_hash: bool = False,
         node_ordering: Callable[[float, int, int, float, int, int], bool] = None,
         parallel: bool = True,
-        debug_logs: bool = False,
+        verbose: bool = False,
     ) -> None:
         super().__init__(
             domain_factory=domain_factory,
@@ -270,7 +270,7 @@ class GymIW(IW):
             use_state_feature_hash=use_state_feature_hash,
             node_ordering=node_ordering,
             parallel=parallel,
-            debug_logs=debug_logs,
+            verbose=verbose,
         )
 
     def _get_next_action(
@@ -307,7 +307,7 @@ if IW.check_domain(domain_factory()):
         #    node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_novelty > b_novelty else False if a_novelty < b_novelty else a_gscore < b_gscore,
         #    node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: True if a_gscore < b_gscore else False if a_gscore > b_gscore else a_novelty > b_novelty,
         parallel=False,
-        debug_logs=False,
+        verbose=False,
     )
     with solver_factory() as solver:
         GymIWDomain.solve_with(solver, domain_factory)

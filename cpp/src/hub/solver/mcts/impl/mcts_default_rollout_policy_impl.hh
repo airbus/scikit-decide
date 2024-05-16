@@ -32,7 +32,7 @@ void SK_MCTS_DEFAULT_ROLLOUT_POLICY_CLASS::operator()(
 
     solver.execution_policy().protect(
         [&solver, &n, &current_state, &termination]() {
-          if (solver.debug_logs()) {
+          if (solver.verbose()) {
             Logger::debug("Launching default rollout policy from state " +
                           n.state.print() +
                           Tsolver::ExecutionPolicy::print_thread());
@@ -57,7 +57,7 @@ void SK_MCTS_DEFAULT_ROLLOUT_POLICY_CLASS::operator()(
       current_state = o.observation();
       termination = o.termination();
       current_depth++;
-      if (solver.debug_logs()) {
+      if (solver.verbose()) {
         Logger::debug("Sampled transition: action=" + action.print() +
                       ", next state=" + current_state.print() + ", reward=" +
                       StringConverter::from(o.transition_value().reward()) +

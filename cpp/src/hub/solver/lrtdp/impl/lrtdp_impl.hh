@@ -25,16 +25,16 @@ SK_LRTDP_SOLVER_CLASS::LRTDPSolver(
     const HeuristicFunctor &heuristic, bool use_labels, std::size_t time_budget,
     std::size_t rollout_budget, std::size_t max_depth,
     std::size_t residual_moving_average_window, double epsilon, double discount,
-    bool online_node_garbage, bool debug_logs, const CallbackFunctor &callback)
+    bool online_node_garbage, const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
       _use_labels(use_labels), _time_budget(time_budget),
       _rollout_budget(rollout_budget), _max_depth(max_depth),
       _residual_moving_average_window(residual_moving_average_window),
       _epsilon(epsilon), _discount(discount),
-      _online_node_garbage(online_node_garbage), _debug_logs(debug_logs),
-      _callback(callback), _current_state(nullptr), _nb_rollouts(0) {
+      _online_node_garbage(online_node_garbage), _callback(callback),
+      _verbose(verbose), _current_state(nullptr), _nb_rollouts(0) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm LRTDP");
   }
 
@@ -82,7 +82,7 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State &s) {
                   parallel_rollouts.end(),
                   [this, &root_node](const std::size_t &thread_id) {
                     do {
-                      if (_debug_logs)
+                      if (_verbose)
                         Logger::debug("Starting rollout " +
                                       StringConverter::from(_nb_rollouts) +
                                       ExecutionPolicy::print_thread());
@@ -134,7 +134,7 @@ SK_LRTDP_SOLVER_CLASS::get_best_action(const State &s) {
   _execution_policy.protect([this, &s, &best_action]() {
     auto si = _graph.find(s);
     if ((si != _graph.end()) && (si->best_action != nullptr)) {
-      if (_debug_logs) {
+      if (_verbose) {
         std::string str = "(";
         for (const auto &o : si->best_action->outcomes) {
           str += "\n    " + std::get<2>(o)->state.print();
@@ -249,14 +249,14 @@ SK_LRTDP_SOLVER_CLASS::get_policy() {
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 void SK_LRTDP_SOLVER_CLASS::expand(StateNode *s, const std::size_t *thread_id) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Expanding state " + s->state.print() +
                   ExecutionPolicy::print_thread());
   auto applicable_actions =
       _domain.get_applicable_actions(s->state, thread_id).get_elements();
 
   for (auto a : applicable_actions) {
-    if (_debug_logs)
+    if (_verbose)
       Logger::debug("Current expanded action: " + a.print() +
                     ExecutionPolicy::print_thread());
     s->actions.push_back(std::make_unique<ActionNode>(a));
@@ -279,14 +279,14 @@ void SK_LRTDP_SOLVER_CLASS::expand(StateNode *s, const std::size_t *thread_id) {
               .cost(),
           &next_node));
       outcome_weights.push_back(std::get<0>(an.outcomes.back()));
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug(
             "Current next state expansion: " + next_node.state.print() +
             ExecutionPolicy::print_thread());
 
       if (i.second) { // new node
         if (_goal_checker(_domain, next_node.state, thread_id)) {
-          if (_debug_logs)
+          if (_verbose)
             Logger::debug("Found goal state " + next_node.state.print() +
                           ExecutionPolicy::print_thread());
           next_node.goal = true;
@@ -295,7 +295,7 @@ void SK_LRTDP_SOLVER_CLASS::expand(StateNode *s, const std::size_t *thread_id) {
         } else {
           next_node.best_value =
               _heuristic(_domain, next_node.state, thread_id).cost();
-          if (_debug_logs)
+          if (_verbose)
             Logger::debug("New state " + next_node.state.print() +
                           " with heuristic value " +
                           StringConverter::from(next_node.best_value) +
@@ -317,7 +317,7 @@ double SK_LRTDP_SOLVER_CLASS::q_value(ActionNode *a) {
                (std::get<0>(o) *
                 (std::get<1>(o) + (_discount * std::get<2>(o)->best_value)));
   }
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Updated Q-value of action " + a->action.print() +
                   " with value " + StringConverter::from(a->value) +
                   ExecutionPolicy::print_thread());
@@ -342,7 +342,7 @@ SK_LRTDP_SOLVER_CLASS::greedy_action(StateNode *s,
     }
   }
 
-  if (_debug_logs) {
+  if (_verbose) {
     Logger::debug("Greedy action of state " + s->state.print() + ": " +
                   best_action->action.print() + " with value " +
                   StringConverter::from(best_value) +
@@ -354,7 +354,7 @@ SK_LRTDP_SOLVER_CLASS::greedy_action(StateNode *s,
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 void SK_LRTDP_SOLVER_CLASS::update(StateNode *s, const std::size_t *thread_id) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Updating state " + s->state.print() +
                   ExecutionPolicy::print_thread());
   s->best_action = greedy_action(s, thread_id);
@@ -368,7 +368,7 @@ SK_LRTDP_SOLVER_CLASS::pick_next_state(ActionNode *a) {
   _execution_policy.protect(
       [&a, &s, this]() {
         s = std::get<2>(a->outcomes[a->dist(*_gen)]);
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug("Picked next state " + s->state.print() +
                         " from action " + a->action.print() +
                         ExecutionPolicy::print_thread());
@@ -382,7 +382,7 @@ double SK_LRTDP_SOLVER_CLASS::residual(StateNode *s,
                                        const std::size_t *thread_id) {
   s->best_action = greedy_action(s, thread_id);
   double res = std::fabs(s->best_value - s->best_action->value);
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("State " + s->state.print() + " has residual " +
                   StringConverter::from(res) + ExecutionPolicy::print_thread());
   return res;
@@ -391,7 +391,7 @@ double SK_LRTDP_SOLVER_CLASS::residual(StateNode *s,
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 bool SK_LRTDP_SOLVER_CLASS::check_solved(StateNode *s,
                                          const std::size_t *thread_id) {
-  if (_debug_logs) {
+  if (_verbose) {
     _execution_policy.protect(
         [&s]() {
           Logger::debug("Checking solved status of State " + s->state.print() +
@@ -456,7 +456,7 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(StateNode *s,
     }
   }
 
-  if (_debug_logs) {
+  if (_verbose) {
     _execution_policy.protect(
         [&s, &rv]() {
           Logger::debug("State " + s->state.print() + " is " +
@@ -483,7 +483,7 @@ void SK_LRTDP_SOLVER_CLASS::trial(StateNode *s, const std::size_t *thread_id) {
     _execution_policy.protect(
         [this, &cs, &found_goal, &thread_id]() {
           if (cs->goal) {
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Found goal state " + cs->state.print() +
                             ExecutionPolicy::print_thread());
             found_goal = true;

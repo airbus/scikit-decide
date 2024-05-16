@@ -42,7 +42,7 @@ class FuelFlow:
     def __init__(self, actype: str):
         """Initialisation of the fuel flow model based on Poll-Schumann model.
 
-        Args:
+        # Parameters
             actype (str):
                 Aircraft type for which the fuel flow model is created.
         """
@@ -56,10 +56,9 @@ class FuelFlow:
         delta_time: float,
         path_angle: Optional[float] = 0.0,
     ) -> float:
-
         """Compute fuel flow based on Poll-Schumann model.
 
-        Args:
+        # Parameters
             values_current (Dict[str, float]):
                 Dictionary with current values of altitude [:math:`ft`], speed [:math:`kts`], temperature [:math:`K`], and mass [:math:`Kg`].
             delta_time (float):
@@ -67,7 +66,7 @@ class FuelFlow:
             path_angle (Optional[float], optional):
                 Path angle. Defaults to 0.0 degrees.
 
-        Returns:
+        # Returns
             float: Fuel flow, [:math:`Kg/s`].
         """
 

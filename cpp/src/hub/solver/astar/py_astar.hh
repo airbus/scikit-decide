@@ -56,8 +56,8 @@ private:
             &goal_checker,
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
-        bool debug_logs = false,
-        const std::function<py::bool_(const py::object &)> &callback = nullptr)
+        const std::function<py::bool_(const py::object &)> &callback = nullptr,
+        bool verbose = false)
         : _goal_checker(goal_checker), _heuristic(heuristic),
           _callback(callback) {
 
@@ -106,7 +106,6 @@ private:
               throw;
             }
           },
-          debug_logs,
           [this](const skdecide::AStarSolver<PyAStarDomain<Texecution>,
                                              Texecution> &s,
                  PyAStarDomain<Texecution> &d) -> bool {
@@ -124,7 +123,8 @@ private:
             } else {
               return false;
             }
-          });
+          },
+          verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -292,13 +292,14 @@ public:
           &goal_checker,
       const std::function<py::object(const py::object &, const py::object &)>
           &heuristic,
-      bool parallel = false, bool debug_logs = false,
-      const std::function<py::bool_(const py::object &)> &callback = nullptr) {
+      bool parallel = false,
+      const std::function<py::bool_(const py::object &)> &callback = nullptr,
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
-        .instantiate(solver, domain, goal_checker, heuristic, debug_logs,
-                     callback);
+        .instantiate(solver, domain, goal_checker, heuristic, callback,
+                     verbose);
   }
 
   void close() { _implementation->close(); }

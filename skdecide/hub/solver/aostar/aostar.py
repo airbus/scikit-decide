@@ -71,8 +71,8 @@ try:
             parallel: bool = False,
             shared_memory_proxy=None,
             detect_cycles: bool = False,
-            debug_logs: bool = False,
             callback: Callable[[AOstar], bool] = None,
+            verbose: bool = False,
         ) -> None:
             """Construct a AOstar solver instance
 
@@ -91,11 +91,11 @@ try:
                     should be automatically detected (true) or not (false), knowing that the
                     AO* algorithm is not meant to work with graph cycles into which it might be
                     infinitely trapped. Defaults to False.
-                debug_logs (bool, optional): Boolean indicating whether debugging messages should be
-                    logged (true) or not (false). Defaults to False.
                 callback (Callable[[AOstar], bool], optional): Lambda function called before popping
                     the next state from the priority queue, taking as arguments the solver and the domain,
                     and returning true if the solver must be stopped. Defaults to None.
+                verbose (bool, optional): Boolean indicating whether verbose messages should be
+                    logged (true) or not (false). Defaults to False.
             """
             ParallelSolver.__init__(
                 self,
@@ -107,7 +107,6 @@ try:
             self._discount = discount
             self._max_tip_expansions = max_tip_expansions
             self._detect_cycles = detect_cycles
-            self._debug_logs = debug_logs
             if heuristic is None:
                 self._heuristic = lambda d, s: Value(cost=0)
             else:
@@ -117,6 +116,7 @@ try:
                 self._callback = lambda slv: False
             else:
                 self._callback = callback
+            self._verbose = verbose
             self._ipc_notify = True
 
         def close(self):
@@ -146,8 +146,8 @@ try:
                 max_tip_expansions=self._max_tip_expansions,
                 detect_cycles=self._detect_cycles,
                 parallel=self._parallel,
-                debug_logs=self._debug_logs,
                 callback=self._callback,
+                verbose=self._verbose,
             )
             self._solver.clear()
 

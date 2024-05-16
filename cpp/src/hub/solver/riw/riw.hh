@@ -155,11 +155,11 @@ public:
    * @param online_node_garbage Boolean indicating whether the search graph
    * which is no more reachable from the root solving state should be
    * deleted (true) or not (false)
-   * @param debug_logs Boolean indicating whether debugging messages should be
-   * logged (true) or not (false)
    * @param callback Functor called at the end of each RIW rollout,
    * taking as arguments the solver, the domain and the thread ID from which it
    * is called, and returning true if the solver must be stopped
+   * @param verbose Boolean indicating whether verbose messages should be
+   * logged (true) or not (false)
    */
   RIWSolver(
       Domain &domain, const StateFeatureFunctor &state_features,
@@ -167,11 +167,11 @@ public:
       std::size_t max_depth = 1000, double exploration = 0.25,
       std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
-      bool debug_logs = false,
-      const CallbackFunctor &callback = [](const RIWSolver &, Domain &,
-                                           const std::size_t *) {
-        return false;
-      });
+      const CallbackFunctor &callback =
+          [](const RIWSolver &, Domain &, const std::size_t *) {
+            return false;
+          },
+      bool verbose = false);
 
   /**
    * @brief Clears the search graph, thus preventing from reusing previous
@@ -327,8 +327,8 @@ private:
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
   RolloutPolicy _rollout_policy;
   ExecutionPolicy _execution_policy;
-  atomic_bool _debug_logs;
   CallbackFunctor _callback;
+  atomic_bool _verbose;
 
   std::unique_ptr<std::mt19937> _gen;
   typename ExecutionPolicy::Mutex _gen_mutex;
@@ -404,7 +404,7 @@ private:
         std::mt19937 &gen, typename ExecutionPolicy::Mutex &gen_mutex,
         typename ExecutionPolicy::Mutex &time_mutex,
         typename ExecutionPolicy::Mutex &residuals_protect,
-        const atomic_bool &debug_logs, const CallbackFunctor &callback);
+        const CallbackFunctor &callback, const atomic_bool &verbose);
 
     // solves from state s
     // return true iff no state has been pruned or time or rollout budgets are
@@ -435,8 +435,8 @@ private:
     typename ExecutionPolicy::Mutex &_gen_mutex;
     typename ExecutionPolicy::Mutex &_time_mutex;
     typename ExecutionPolicy::Mutex &_residuals_protect;
-    const atomic_bool &_debug_logs;
     const CallbackFunctor &_callback;
+    const atomic_bool &_verbose;
 
     void rollout(Node &root_node, TupleVector &feature_tuples,
                  atomic_size_t &nb_rollouts, atomic_bool &states_pruned,

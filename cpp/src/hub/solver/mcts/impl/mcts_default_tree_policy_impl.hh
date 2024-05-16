@@ -25,7 +25,7 @@ typename Tsolver::StateNode *SK_MCTS_DEFAULT_TREE_POLICY_CLASS::operator()(
     const typename Tsolver::ActionSelectorOptimization &action_selector,
     typename Tsolver::StateNode &n, std::size_t &d) const {
   try {
-    if (solver.debug_logs()) {
+    if (solver.verbose()) {
       solver.execution_policy().protect(
           [&n]() {
             Logger::debug("Launching default tree policy from state " +

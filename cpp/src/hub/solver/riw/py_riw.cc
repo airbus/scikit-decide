@@ -19,12 +19,13 @@ void init_pyriw(py::module &m) {
                                              // optional thread_id
                         &,
                     bool, bool, std::size_t, std::size_t, std::size_t, double,
-                    std::size_t, double, double, bool, bool, bool,
+                    std::size_t, double, double, bool, bool,
                     const std::function<py::bool_(
                         const py::object &,
                         const py::object &)> // last arg used for optional
                                              // thread_id
-                        &>(),
+                        &,
+                    bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("state_features"),
            py::arg("use_state_feature_hash") = false,
            py::arg("use_simulation_domain") = false,
@@ -33,7 +34,7 @@ void init_pyriw(py::module &m) {
            py::arg("residual_moving_average_window") = 100,
            py::arg("epsilon") = 0.001, py::arg("discount") = 1.0,
            py::arg("online_node_garbage") = false, py::arg("parallel") = false,
-           py::arg("debug_logs") = false, py::arg("callback") = nullptr)
+           py::arg("callback") = nullptr, py::arg("verbose") = false)
       .def("close", &skdecide::PyRIWSolver::close)
       .def("clear", &skdecide::PyRIWSolver::clear)
       .def("solve", &skdecide::PyRIWSolver::solve, py::arg("state"))

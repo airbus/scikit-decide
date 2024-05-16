@@ -19,7 +19,7 @@ void init_pyilaostar(py::module &m) {
                     double, double, bool, bool>(),
            py::arg("domain"), py::arg("goal_checker"), py::arg("heuristic"),
            py::arg("discount") = 1.0, py::arg("epsilon") = 0.001,
-           py::arg("parallel") = false, py::arg("debug_logs") = false)
+           py::arg("parallel") = false, py::arg("verbose") = false)
       .def("close", &skdecide::PyILAOStarSolver::close)
       .def("clear", &skdecide::PyILAOStarSolver::clear)
       .def("solve", &skdecide::PyILAOStarSolver::solve, py::arg("state"))

@@ -172,8 +172,8 @@ SK_RIW_SOLVER_CLASS::RIWSolver(
         Domain &, const State &, const std::size_t *)> &state_features,
     std::size_t time_budget, std::size_t rollout_budget, std::size_t max_depth,
     double exploration, std::size_t residual_moving_average_window,
-    double epsilon, double discount, bool online_node_garbage, bool debug_logs,
-    const CallbackFunctor &callback)
+    double epsilon, double discount, bool online_node_garbage,
+    const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _state_features(state_features),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _exploration(exploration),
@@ -181,9 +181,9 @@ SK_RIW_SOLVER_CLASS::RIWSolver(
       _epsilon(epsilon), _discount(discount),
       _online_node_garbage(online_node_garbage),
       _min_reward(std::numeric_limits<double>::max()), _nb_rollouts(0),
-      _debug_logs(debug_logs), _callback(callback) {
+      _callback(callback), _verbose(verbose) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm RIW");
   }
 
@@ -211,13 +211,12 @@ void SK_RIW_SOLVER_CLASS::solve(const State &s) {
     bool found_solution = false;
 
     for (atomic_size_t w = 1; w <= nb_of_binary_features; w++) {
-      if (WidthSolver(*this, _domain, _state_features, _time_budget,
-                      _rollout_budget, _max_depth, _exploration,
-                      _residual_moving_average_window, _epsilon,
-                      _residual_moving_average, _residuals, _discount,
-                      _min_reward, w, _graph, _rollout_policy,
-                      _execution_policy, *_gen, _gen_mutex, _time_mutex,
-                      _residuals_protect, _debug_logs, _callback)
+      if (WidthSolver(
+              *this, _domain, _state_features, _time_budget, _rollout_budget,
+              _max_depth, _exploration, _residual_moving_average_window,
+              _epsilon, _residual_moving_average, _residuals, _discount,
+              _min_reward, w, _graph, _rollout_policy, _execution_policy, *_gen,
+              _gen_mutex, _time_mutex, _residuals_protect, _callback, _verbose)
               .solve(s, _nb_rollouts, feature_tuples)) {
         found_solution = true;
         break;
@@ -285,7 +284,7 @@ SK_RIW_SOLVER_CLASS::get_best_action(const State &s) {
         }
       }
       if (next_node != nullptr) {
-        if (_debug_logs) {
+        if (_verbose) {
           Logger::debug("Expected outcome of best action " +
                         best_action->print() + ": " + next_node->state.print());
         }
@@ -640,7 +639,7 @@ SK_RIW_SOLVER_CLASS::WidthSolver::WidthSolver(
     std::mt19937 &gen, typename ExecutionPolicy::Mutex &gen_mutex,
     typename ExecutionPolicy::Mutex &time_mutex,
     typename ExecutionPolicy::Mutex &residuals_protect,
-    const atomic_bool &debug_logs, const CallbackFunctor &callback)
+    const CallbackFunctor &callback, const atomic_bool &verbose)
     : _parent_solver(parent_solver), _domain(domain),
       _state_features(state_features), _time_budget(time_budget),
       _rollout_budget(rollout_budget), _max_depth(max_depth),
@@ -651,8 +650,8 @@ SK_RIW_SOLVER_CLASS::WidthSolver::WidthSolver(
       _min_reward_changed(false), _width(width), _graph(graph),
       _rollout_policy(rollout_policy), _execution_policy(execution_policy),
       _gen(gen), _gen_mutex(gen_mutex), _time_mutex(time_mutex),
-      _residuals_protect(residuals_protect), _debug_logs(debug_logs),
-      _callback(callback) {}
+      _residuals_protect(residuals_protect), _callback(callback),
+      _verbose(verbose) {}
 
 SK_RIW_SOLVER_TEMPLATE_DECL
 bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(const State &s,
@@ -712,7 +711,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(const State &s,
                    (_parent_solver.get_residual_moving_average() > _epsilon));
         });
 
-    if (_debug_logs)
+    if (_verbose)
       Logger::debug(
           "time budget: " +
           StringConverter::from((double)_parent_solver.get_solving_time() /
@@ -755,7 +754,7 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
   nb_rollouts += 1;
   Node *current_node = &root_node;
 
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("New rollout" + ExecutionPolicy::print_thread() +
                   " from state: " + current_node->state.print() +
                   ", depth=" + StringConverter::from(current_node->depth) +
@@ -772,7 +771,7 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
     _execution_policy.protect(
         [this, &current_node, &unsolved_children, &probabilities,
          &thread_id]() {
-          if (_debug_logs)
+          if (_verbose)
             Logger::debug(
                 "Current state" + ExecutionPolicy::print_thread() + ": " +
                 current_node->state.print() +
@@ -829,7 +828,7 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
 
     if (fill_child_node(current_node, pick, new_node,
                         thread_id)) { // terminal state
-      if (_debug_logs) {
+      if (_verbose) {
         _execution_policy.protect(
             [&current_node]() {
               Logger::debug(
@@ -847,7 +846,7 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
     } else if (!novelty(feature_tuples, *current_node,
                         new_node)) { // no new tuple or not reached with lower
                                      // depth => terminal node
-      if (_debug_logs) {
+      if (_verbose) {
         _execution_policy.protect(
             [&current_node]() {
               Logger::debug(
@@ -867,7 +866,7 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
       update_node(*current_node, true);
       break_loop = true;
     } else if (current_node->depth >= _max_depth) {
-      if (_debug_logs) {
+      if (_verbose) {
         _execution_policy.protect(
             [&current_node]() {
               Logger::debug(
@@ -883,7 +882,7 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
       reached_end_of_trajectory_once = true;
       break_loop = true;
     } else if (_parent_solver.get_solving_time() >= _time_budget) {
-      if (_debug_logs) {
+      if (_verbose) {
         _execution_policy.protect(
             [&current_node]() {
               Logger::debug(
@@ -947,9 +946,9 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::novelty(TupleVector &feature_tuples,
         });
   }
   n.novelty = nov;
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Novelty: " + StringConverter::from(nov));
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Novelty depth check: " + StringConverter::from(novel_depth));
   return novel_depth;
 }
@@ -992,7 +991,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::fill_child_node(
 
   _execution_policy.protect(
       [this, &node, &node_child, &action_number]() {
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug(
               "Applying " + ExecutionPolicy::print_thread() +
               " action: " + std::get<0>(node->children[action_number]).print() +
@@ -1039,7 +1038,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::fill_child_node(
         [this, &node, &next_node, &new_node, &outcome]() {
           next_node.parents.insert(node);
           if (new_node) {
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug(
                   "Exploring" + ExecutionPolicy::print_thread() +
                   " new outcome: " + next_node.state.print() +
@@ -1054,7 +1053,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::fill_child_node(
               _min_reward_changed = true;
             }
           } else { // outcome already explored
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug(
                   "Exploring" + ExecutionPolicy::print_thread() +
                   " known outcome: " + next_node.state.print() +
@@ -1082,7 +1081,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::fill_child_node(
     next_node.depth =
         std::min((std::size_t)next_node.depth, (std::size_t)node->depth + 1);
     node = node_child;
-    if (_debug_logs) {
+    if (_verbose) {
       _execution_policy.protect(
           [&node]() {
             Logger::debug("Exploring" + ExecutionPolicy::print_thread() +

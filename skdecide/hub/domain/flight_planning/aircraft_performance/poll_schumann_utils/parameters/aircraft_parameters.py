@@ -9,11 +9,11 @@ from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_util
 def turbine_entry_temperature_at_max_take_off(first_flight: float) -> float:
     """Calculate turbine entry temperature at maximum take-off rating.
 
-    Args:
+    # Parameters
         first_flight (float):
             Year of first flight of the aircraft.
 
-    Returns:
+    # Returns
         float: Turbine entry temperature at maximum take-off rating, [:math:`K`]
     """
     return 2000.0 * (1 - np.exp(62.8 - 0.0325 * first_flight))
@@ -22,11 +22,11 @@ def turbine_entry_temperature_at_max_take_off(first_flight: float) -> float:
 def turbine_entry_temperature_at_max_continuous_climb(tet_mto: float) -> float:
     """Calculate turbine entry temperature at maximum continuous climb rating.
 
-    Args:
+    # Parameters
         tet_mto (float):
             Turbine entry temperature at maximum take-off rating, [:math:`K`]
 
-    Returns:
+    # Returns
         float: Turbine entry temperature at maximum continuous climb rating, [:math:`K`]
     """
     return 0.92 * tet_mto
@@ -35,11 +35,11 @@ def turbine_entry_temperature_at_max_continuous_climb(tet_mto: float) -> float:
 def impact_pressure_max_operating_limits(max_mach_num: float) -> float:
     """Calculate maximum permitted operational impact pressure.
 
-    Args:
+    # Parameters
         max_mach_num (float):
             Maximum permitted operational Mach number for aircraft type.
 
-    Returns:
+    # Returns
         float: Maximum permitted operational impact pressure for aircraft type, ``p_i_max``, [:math:`Pa`]
 
     Notes:
@@ -58,11 +58,11 @@ def impact_pressure_max_operating_limits(max_mach_num: float) -> float:
 def max_calibrated_airspeed_over_speed_of_sound(max_mach_num: float) -> float:
     """Calculate max calibrated airspeed over the speed of sound at ISA mean sea level.
 
-    Args:
+    # Parameters
         max_mach_num (float):
             Maximum permitted operational Mach number for aircraft type.
 
-    Returns:
+    # Returns
         float: Maximum calibrated airspeed over the speed of sound at ISA mean sea level, ``v_cas_mo_over_c_msl``
     """
     return 0.57 * (max_mach_num + 0.10)
@@ -71,13 +71,13 @@ def max_calibrated_airspeed_over_speed_of_sound(max_mach_num: float) -> float:
 def crossover_pressure_altitude(max_mach_num: float, p_i_max: float) -> float:
     """Calculate crossover pressure altitude.
 
-    Args:
+    # Parameters
         max_mach_num (float):
             Maximum permitted operational Mach number for aircraft type.
         p_i_max (float):
             Maximum permitted operational impact pressure for aircraft type, [:math:`Pa`]
 
-    Returns:
+    # Returns
         float: Crossover pressure altitude, [:math:`ft`]
     """
     return p_i_max / (

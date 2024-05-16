@@ -58,9 +58,10 @@ private:
         std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
         std::size_t residual_moving_average_window = 100,
         double epsilon = 0.001, double discount = 1.0,
-        bool online_node_garbage = false, bool debug_logs = false,
+        bool online_node_garbage = false,
         const std::function<py::bool_(const py::object &, const py::object &)>
-            &callback = nullptr)
+            &callback = nullptr,
+        bool verbose = false)
         : _goal_checker(goal_checker), _heuristic(heuristic),
           _callback(callback) {
 
@@ -105,7 +106,7 @@ private:
           },
           use_labels, time_budget, rollout_budget, max_depth,
           residual_moving_average_window, epsilon, discount,
-          online_node_garbage, debug_logs,
+          online_node_garbage,
           [this](const skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>,
                                              Texecution> &s,
                  PyLRTDPDomain<Texecution> &d,
@@ -138,7 +139,8 @@ private:
             } else {
               return false;
             }
-          });
+          },
+          verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -290,18 +292,19 @@ public:
       std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
       std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
-      bool parallel = false, bool debug_logs = false,
+      bool parallel = false,
       const std::function<py::bool_(const py::object &,
                                     const py::object & // last arg used for
                                                        // optional thread_id
-                                    )> &callback = nullptr) {
+                                    )> &callback = nullptr,
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, goal_checker, heuristic, use_labels,
                      time_budget, rollout_budget, max_depth,
                      residual_moving_average_window, epsilon, discount,
-                     online_node_garbage, debug_logs, callback);
+                     online_node_garbage, callback, verbose);
   }
 
   void close() { _implementation->close(); }

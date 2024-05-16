@@ -94,12 +94,12 @@ SK_BFWS_SOLVER_CLASS::BFWSSolver(
     Domain &domain, const StateFeatureFunctor &state_features,
     const HeuristicFunctor &heuristic,
     const TerminationCheckerFunctor &termination_checker,
-    const CallbackFunctor &callback, bool debug_logs)
+    const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _state_features(state_features), _heuristic(heuristic),
       _termination_checker(termination_checker), _callback(callback),
-      _debug_logs(debug_logs) {
+      _verbose(verbose) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm BFWS");
   }
 }
@@ -159,7 +159,7 @@ void SK_BFWS_SOLVER_CLASS::solve(const State &s) {
         continue;
       }
 
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("Current best tip node (h=" +
                       StringConverter::from(best_tip_node->heuristic) +
                       ", n=" + StringConverter::from(best_tip_node->novelty) +
@@ -167,7 +167,7 @@ void SK_BFWS_SOLVER_CLASS::solve(const State &s) {
 
       if (_termination_checker(_domain, best_tip_node->state) ||
           best_tip_node->solved) {
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug("Found a terminal or previously solved state: " +
                         best_tip_node->state.print());
         auto current_node = best_tip_node;
@@ -204,11 +204,11 @@ void SK_BFWS_SOLVER_CLASS::solve(const State &s) {
           ExecutionPolicy::policy, applicable_actions.begin(),
           applicable_actions.end(),
           [this, &best_tip_node, &closed_set, &heuristic_features_map](auto a) {
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Current expanded action: " + a.print() +
                             ExecutionPolicy::print_thread());
             auto next_state = _domain.get_next_state(best_tip_node->state, a);
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Exploring next state " + next_state.print() +
                             ExecutionPolicy::print_thread());
             std::pair<typename Graph::iterator, bool> i;
@@ -232,7 +232,7 @@ void SK_BFWS_SOLVER_CLASS::solve(const State &s) {
             double tentative_gscore = best_tip_node->gscore + transition_cost;
 
             if ((i.second) || (tentative_gscore < neighbor.gscore)) {
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug("New gscore: " +
                               StringConverter::from(best_tip_node->gscore) +
                               "+" + StringConverter::from(transition_cost) +
@@ -244,7 +244,7 @@ void SK_BFWS_SOLVER_CLASS::solve(const State &s) {
             }
 
             neighbor.heuristic = _heuristic(_domain, neighbor.state).cost();
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug(
                   "Heuristic: " + StringConverter::from(neighbor.heuristic) +
                   ExecutionPolicy::print_thread());
@@ -253,7 +253,7 @@ void SK_BFWS_SOLVER_CLASS::solve(const State &s) {
               neighbor.novelty = this->novelty(heuristic_features_map,
                                                neighbor.heuristic, neighbor);
               _open_queue.push(&neighbor);
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug(
                     "Novelty: " + StringConverter::from(neighbor.novelty) +
                     ExecutionPolicy::print_thread());

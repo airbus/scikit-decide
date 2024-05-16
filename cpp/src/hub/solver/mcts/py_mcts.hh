@@ -45,14 +45,14 @@ using PyMCTSDomain = PythonDomainProxy<Texecution>;
       double discount, double ucb_constant, bool online_node_garbage,          \
       const CustomPolicyFunctor &custom_policy,                                \
       const HeuristicFunctor &heuristic, double state_expansion_rate,          \
-      double action_expansion_rate, bool debug_logs,                           \
-      const CallbackFunctor &callback
+      double action_expansion_rate, const CallbackFunctor &callback,           \
+      bool verbose
 
 #define MCTS_SOLVER_ARGS                                                       \
   solver, domain, time_budget, rollout_budget, max_depth,                      \
       residual_moving_average_window, epsilon, discount, ucb_constant,         \
       online_node_garbage, custom_policy, heuristic, state_expansion_rate,     \
-      action_expansion_rate, debug_logs, callback
+      action_expansion_rate, callback, verbose
 
 class PyMCTSSolver {
 public:
@@ -115,7 +115,7 @@ private:
       _solver = std::make_unique<PyMCTSSolver>(
           *_domain, time_budget, rollout_budget, max_depth,
           residual_moving_average_window, epsilon, discount,
-          online_node_garbage, debug_logs, init_callback(), init_tree_policy(),
+          online_node_garbage, init_callback(), verbose, init_tree_policy(),
           init_expander(_heuristic, state_expansion_rate,
                         action_expansion_rate),
           init_action_selector<TactionSelectorOptimization<PyMCTSSolver>>(
@@ -738,8 +738,8 @@ public:
                    PyMCTSOptions::RolloutPolicy::Random,
                PyMCTSOptions::BackPropagator back_propagator =
                    PyMCTSOptions::BackPropagator::Graph,
-               bool parallel = false, bool debug_logs = false,
-               const CallbackFunctor &callback = nullptr);
+               bool parallel = false, const CallbackFunctor &callback = nullptr,
+               bool verbose = false);
 
   void close() { _implementation->close(); }
 

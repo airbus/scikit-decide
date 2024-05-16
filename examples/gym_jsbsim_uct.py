@@ -394,7 +394,7 @@ if UCT.check_domain(domain_factory()):
         continuous_planning=True,
         online_node_garbage=True,
         parallel=False,
-        debug_logs=False,
+        verbose=False,
     )
     with solver_factory() as solver:
         GymUCTRawDomain.solve_with(solver, domain_factory)

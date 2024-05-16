@@ -396,11 +396,11 @@ public:
    * @param online_node_garbage Boolean indicating whether the search graph
    * which is no more reachable from the root solving state should be
    * deleted (true) or not (false)
-   * @param debug_logs Boolean indicating whether debugging messages should be
-   * logged (true) or not (false)
    * @param callback Functor called at the end of each MCTS trial rollout,
    * taking as arguments the solver, the domain and the thread ID from which it
    * is called, and returning true if the solver must be stopped
+   * @param verbose Boolean indicating whether verbose messages should be
+   * logged (true) or not (false)
    * @param tree_policy tree policy instance in charge of simulating
    * trajectories from the root solving state down to some non-expanded state
    * node
@@ -423,11 +423,11 @@ public:
       std::size_t residual_moving_average_window = 100,
       double epsilon = 0.0, // not a stopping criterion by default
       double discount = 1.0, bool online_node_garbage = false,
-      bool debug_logs = false,
       const CallbackFunctor &callback =
           [](const MCTSSolver &, Domain &, const std::size_t *) {
             return false;
           },
+      bool verbose = false,
       std::unique_ptr<TreePolicy> tree_policy = std::make_unique<TreePolicy>(),
       std::unique_ptr<Expander> expander = std::make_unique<Expander>(),
       std::unique_ptr<ActionSelectorOptimization> action_selector_optimization =
@@ -571,7 +571,7 @@ public:
   Graph &graph();
   std::mt19937 &gen();
   typename ExecutionPolicy::Mutex &gen_mutex();
-  bool debug_logs() const;
+  bool verbose() const;
 
 private:
   Domain &_domain;
@@ -584,8 +584,8 @@ private:
   atomic_size_t _nb_rollouts;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
   bool _online_node_garbage;
-  atomic_bool _debug_logs;
   CallbackFunctor _callback;
+  atomic_bool _verbose;
 
   std::unique_ptr<ExecutionPolicy> _execution_policy;
   std::unique_ptr<TransitionMode> _transition_mode;

@@ -81,8 +81,8 @@ try:
             dead_end_cost: float = 10000,
             online_node_garbage: bool = False,
             continuous_planning: bool = True,
-            debug_logs: bool = False,
             callback: Callable[[MARTDP], bool] = None,
+            verbose: bool = False,
         ) -> None:
             """Construct a MA-RTDP solver instance
 
@@ -119,12 +119,12 @@ try:
                 continuous_planning (bool, optional): Boolean whether the solver should optimize again the policy
                     from the current solving state (True) or not (False) even if the policy is already defined
                     in this state. Defaults to True.
-                debug_logs (bool, optional): Boolean indicating whether debugging messages should be logged (True)
-                    or not (False). Defaults to False.
                 callback (Callable[[MARTDP], bool], optional): Function called at the end of each MA-RTDP trial,
                     taking as arguments the solver, and returning True if the solver must be stopped.
                     The :py:meth`MARTDP.get_domain` method callable on the solver instance can be used to retrieve
                     the user domain. Defaults to None.
+                verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
+                    or not (False). Defaults to False.
             """
             self._domain = domain_factory()
             self._solver = None
@@ -147,11 +147,11 @@ try:
             self._dead_end_cost = dead_end_cost
             self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
-            self._debug_logs = debug_logs
             if callback is None:
                 self._callback = lambda slv: False
             else:
                 self._callback = callback
+            self._verbose = verbose
             self._ipc_notify = True
 
         def _init_solve(self, domain_factory: Callable[[], T_domain]) -> None:
@@ -172,8 +172,8 @@ try:
                 action_choice_noise=self._action_choice_noise,
                 dead_end_cost=self._dead_end_cost,
                 online_node_garbage=self._online_node_garbage,
-                debug_logs=self._debug_logs,
                 callback=self._callback,
+                verbose=self._verbose,
             )
             self._solver.clear()
 
@@ -337,7 +337,7 @@ try:
                 Only defined over the states reachable from the last root solving state
                 when node garbage was set to True in the MA-RTDP instance's constructor
 
-            Returns:
+            # Returns
                 Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_agent[Value[D.T_value]]], ]:
                     Mapping from joint states to pairs of joint action and best Q-value
             """

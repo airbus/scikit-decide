@@ -10,7 +10,7 @@ def equivalent_fuel_flow_rate_at_cruise(
 ) -> float:
     """Convert fuel mass flow rate at sea level to equivalent fuel flow rate at cruise conditions.
 
-    Args:
+    # Parameters
         fuel_flow_sls (float):
             Fuel mass flow rate at sea level, [:math:`kg/s`].
         theta_amb (float):
@@ -20,7 +20,7 @@ def equivalent_fuel_flow_rate_at_cruise(
         mach_num (float):
             Mach number, [:math:`-`].
 
-    Returns:
+    # Returns
         float: Equivalent fuel mass flow rate at cruise conditions, [:math:`kg/s`].
     """
 
@@ -38,7 +38,7 @@ def clip_mach_number(
 ):
     """Compute the Mach number from the true airspeed and ambient temperature.
 
-    Args:
+    # Parameters
         true_airspeed (float):
             True airspeed, [:math:`m/s`].
         air_temperature (float):
@@ -46,7 +46,7 @@ def clip_mach_number(
         max_mach_number (float):
             Maximum permitted operational Mach number for aircraft type.
 
-    Returns:
+    # Returns
         Tuple[np.ndarray, np.ndarray]: Adjusted true airspeed and Mach number.
     """
 
@@ -68,7 +68,7 @@ def rate_of_climb_descent(
 ) -> float:
     """Compute the rate of climb or descent (ft/min) from the path angle and speed.
 
-    Args:
+    # Parameters
         altitude_current (float):
             Current altitude, [:math:`ft`].
         altitude_next (float):
@@ -76,7 +76,7 @@ def rate_of_climb_descent(
         delta_time (float):
             Time step, [:math:`s`].
 
-    Returns:
+    # Returns
         float: Rate of climb or descent, [:math:`ft/min`].
     """
 
@@ -89,13 +89,13 @@ def rate_of_climb_descent(
 def acceleration(speed_current, delta_time) -> float:
     """Calculate the acceleration/deceleration at each waypoint.
 
-    Args:
+    # Parameters
         speed_current (float):
             Current speed, [:math:`kts`].
         delta_time (float):
             Time step, [:math:`s`].
 
-    Returns:
+    # Returns
         float: Acceleration, [:math:`kts/s`].
     """
 

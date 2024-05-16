@@ -274,7 +274,7 @@ if RIW.check_domain(domain):
         max_depth=10,
         exploration=0.25,
         parallel=False,
-        debug_logs=False,
+        verbose=False,
     )
     with solver_factory() as solver:
         GymRIWDomain.solve_with(solver, domain_factory)

@@ -65,7 +65,7 @@ try:
             epsilon: float = 0.001,
             parallel: bool = False,
             shared_memory_proxy=None,
-            debug_logs: bool = False,
+            verbose: bool = False,
         ) -> None:
             ParallelSolver.__init__(
                 self,
@@ -76,12 +76,12 @@ try:
             self._solver = None
             self._discount = discount
             self._epsilon = epsilon
-            self._debug_logs = debug_logs
             if heuristic is None:
                 self._heuristic = lambda d, s: Value(cost=0)
             else:
                 self._heuristic = heuristic
             self._lambdas = [self._heuristic]
+            self._verbose = verbose
             self._ipc_notify = True
 
         def close(self):
@@ -98,13 +98,13 @@ try:
             self._solver = ilaostar_solver(
                 domain=self.get_domain(),
                 goal_checker=lambda d, s: d.is_goal(s),
-                heuristic=lambda d, s: self._heuristic(d, s)
-                if not self._parallel
-                else d.call(None, 0, s),
+                heuristic=lambda d, s: (
+                    self._heuristic(d, s) if not self._parallel else d.call(None, 0, s)
+                ),
                 discount=self._discount,
                 epsilon=self._epsilon,
                 parallel=self._parallel,
-                debug_logs=self._debug_logs,
+                verbose=self._verbose,
             )
             self._solver.clear()
 

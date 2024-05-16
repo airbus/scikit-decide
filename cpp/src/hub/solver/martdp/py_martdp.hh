@@ -63,8 +63,8 @@ private:
         double epsilon = 0.0, // not a stopping criterion by default
         double discount = 1.0, double action_choice_noise = 0.1,
         double dead_end_cost = 10e4, bool online_node_garbage = false,
-        bool debug_logs = false,
-        const std::function<py::bool_(const py::object &)> &callback = nullptr)
+        const std::function<py::bool_(const py::object &)> &callback = nullptr,
+        bool verbose = false)
         : _goal_checker(goal_checker), _heuristic(heuristic),
           _callback(callback) {
 
@@ -121,7 +121,6 @@ private:
               time_budget, rollout_budget, max_depth, max_feasibility_trials,
               graph_expansion_rate, residual_moving_average_window, epsilon,
               discount, action_choice_noise, dead_end_cost, online_node_garbage,
-              debug_logs,
               [this](
                   const skdecide::MARTDPSolver<PyMARTDPDomain<Texecution>> &s,
                   PyMARTDPDomain<Texecution> &d) -> bool {
@@ -146,7 +145,8 @@ private:
                 } else {
                   return false;
                 }
-              });
+              },
+              verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -298,8 +298,8 @@ public:
       double epsilon = 0.0, // not a stopping criterion by default
       double discount = 1.0, double action_choice_noise = 0.1,
       double dead_end_cost = 10e4, bool online_node_garbage = false,
-      bool debug_logs = false,
-      const std::function<py::bool_(const py::object &)> &callback = nullptr) {
+      const std::function<py::bool_(const py::object &)> &callback = nullptr,
+      bool verbose = false) {
 
     // we keep the execution selector logics in case we would implement a
     // parallel version of MARTDP in the future
@@ -309,7 +309,7 @@ public:
                      rollout_budget, max_depth, max_feasibility_trials,
                      graph_expansion_rate, residual_moving_average_window,
                      epsilon, discount, action_choice_noise, dead_end_cost,
-                     online_node_garbage, debug_logs, callback);
+                     online_node_garbage, callback, verbose);
   }
 
   void close() { _implementation->close(); }

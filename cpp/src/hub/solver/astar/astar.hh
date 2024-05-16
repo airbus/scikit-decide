@@ -53,18 +53,18 @@ public:
    * object, and returning true if the state is the goal
    * @param heuristic Functor taking as arguments the domain and a state object,
    * and returning the heuristic estimate from the state to the goal
-   * @param debug_logs Boolean indicating whether debugging messages should be
-   * logged (true) or not (false)
    * @param callback Functor called before popping the next state from the
    * (priority) open queue, taking as arguments the solver and the domain, and
    * returning true if the solver must be stopped
+   * @param verbose Boolean indicating whether verbose messages should be
+   * logged (true) or not (false)
    */
   AStarSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
-      const HeuristicFunctor &heuristic, bool debug_logs = false,
-      const CallbackFunctor &callback = [](const AStarSolver &, Domain &) {
-        return false;
-      });
+      const HeuristicFunctor &heuristic,
+      const CallbackFunctor &callback = [](const AStarSolver &,
+                                           Domain &) { return false; },
+      bool verbose = false);
 
   /**
    * @brief Clears the search graph, thus preventing from reusing previous
@@ -183,8 +183,8 @@ private:
   Domain &_domain;
   GoalCheckerFunctor _goal_checker;
   HeuristicFunctor _heuristic;
-  bool _debug_logs;
   CallbackFunctor _callback;
+  bool _verbose;
   ExecutionPolicy _execution_policy;
 
   struct Node {

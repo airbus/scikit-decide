@@ -72,8 +72,8 @@ try:
             continuous_planning: bool = True,
             parallel: bool = False,
             shared_memory_proxy=None,
-            debug_logs: bool = False,
             callback: Callable[[RIW, Optional[int]], bool] = None,
+            verbose: bool = False,
         ) -> None:
             """Construct a RIW solver instance
 
@@ -113,8 +113,6 @@ try:
                 parallel (bool, optional): Parallelize RIW rollouts on different processes using duplicated domains (True)
                     or not (False). Defaults to False.
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
-                debug_logs (bool, optional): Boolean indicating whether debugging messages should be logged (True)
-                    or not (False). Defaults to False.
                 callback (Callable[[RIW, Optional[int]], optional): Function called at the end of each RIW rollout,
                     taking as arguments the solver and the thread/process ID (i.e. parallel domain ID, which is equal to None
                     in case of sequential execution, i.e. when 'parallel' is set to False in this constructor) from
@@ -125,6 +123,8 @@ try:
                     can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
                     `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
                     callback's process ID argument. Defaults to None.
+                verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
+                    or not (False). Defaults to False.
             """
             ParallelSolver.__init__(
                 self,
@@ -146,11 +146,11 @@ try:
             self._discount = discount
             self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
-            self._debug_logs = debug_logs
             if callback is None:
                 self._callback = lambda slv, i=None: False
             else:
                 self._callback = callback
+            self._verbose = verbose
             self._lambdas = [self._state_features]
             self._ipc_notify = True
 
@@ -187,8 +187,8 @@ try:
                 discount=self._discount,
                 online_node_garbage=self._online_node_garbage,
                 parallel=self._parallel,
-                debug_logs=self._debug_logs,
                 callback=self._callback,
+                verbose=self._verbose,
             )
             self._solver.clear()
 

@@ -37,7 +37,7 @@ public:
       Domain &domain,
       const std::function<Predicate(Domain &, const State &)> &goal_checker,
       const std::function<Value(Domain &, const State &)> &heuristic,
-      double discount = 1.0, double epsilon = 0.001, bool debug_logs = false);
+      double discount = 1.0, double epsilon = 0.001, bool verbose = false);
 
   // clears the solver (clears the search graph, thus preventing from reusing
   // previous search results)
@@ -62,7 +62,7 @@ private:
   std::function<Value(Domain &, const State &)> _heuristic;
   atomic_double _discount;
   atomic_double _epsilon;
-  bool _debug_logs;
+  bool _verbose;
   ExecutionPolicy _execution_policy;
 
   struct ActionNode;

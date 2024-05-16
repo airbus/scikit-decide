@@ -418,7 +418,7 @@ if __name__ == "__main__":
                 "online_node_garbage": True,
                 "continuous_planning": False,
                 "parallel": True,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # ILAO*
@@ -433,7 +433,7 @@ if __name__ == "__main__":
                 "discount": 1.0,
                 "epsilon": 0.001,
                 "parallel": True,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # UCT-Distribution (reinforcement learning / search)
@@ -446,7 +446,7 @@ if __name__ == "__main__":
                 "rollout_budget": 100,
                 "max_depth": 50,
                 "ucb_constant": 1.0 / sqrt(2.0),
-                "transition_mode": MCTS.Options.TransitionMode.Distribution,
+                "transition_mode": MCTS.TransitionMode.DISTRIBUTION,
                 "online_node_garbage": True,
                 "continuous_planning": False,
                 "heuristic": lambda d, s: (
@@ -458,7 +458,7 @@ if __name__ == "__main__":
                     10000,
                 ),
                 "parallel": True,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
     ]

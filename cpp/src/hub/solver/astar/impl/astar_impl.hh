@@ -25,12 +25,12 @@ SK_ASTAR_SOLVER_TEMPLATE_DECL
 SK_ASTAR_SOLVER_CLASS::AStarSolver(Domain &domain,
                                    const GoalCheckerFunctor &goal_checker,
                                    const HeuristicFunctor &heuristic,
-                                   bool debug_logs,
-                                   const CallbackFunctor &callback)
+                                   const CallbackFunctor &callback,
+                                   bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _debug_logs(debug_logs), _callback(callback) {
+      _callback(callback), _verbose(verbose) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm A*");
   }
 }
@@ -84,7 +84,7 @@ void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
         continue;
       }
 
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug(
             "Current best tip node: " + best_tip_node->state.print() +
             ", gscore=" + StringConverter::from(best_tip_node->gscore) +
@@ -92,7 +92,7 @@ void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
 
       if (_goal_checker(_domain, best_tip_node->state) ||
           best_tip_node->solved) {
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug("Closing a goal or previously solved state: " +
                         best_tip_node->state.print());
         auto current_node = best_tip_node;
@@ -129,11 +129,11 @@ void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
           ExecutionPolicy::policy, applicable_actions.begin(),
           applicable_actions.end(),
           [this, &best_tip_node, &closed_set](auto a) {
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Current expanded action: " + a.print() +
                             ExecutionPolicy::print_thread());
             auto next_state = _domain.get_next_state(best_tip_node->state, a);
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Exploring next state " + next_state.print() +
                             ExecutionPolicy::print_thread());
             std::pair<typename Graph::iterator, bool> i;
@@ -169,7 +169,7 @@ void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
                   std::make_tuple(best_tip_node, a, transition_cost);
               _execution_policy.protect(
                   [this, &neighbor] { _open_queue.push(&neighbor); });
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug(
                     "Update neighbor node: " + neighbor.state.print() +
                     ", gscore=" + StringConverter::from(neighbor.gscore) +

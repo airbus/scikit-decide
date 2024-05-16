@@ -352,7 +352,7 @@ if __name__ == "__main__":
                 ),
                 "parallel": False,
                 "shared_memory_proxy": MyShmProxy(),
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # UCT (reinforcement learning / search)
@@ -431,7 +431,7 @@ if __name__ == "__main__":
                 "termination_checker": lambda d, s: d.is_goal(s),
                 "parallel": False,
                 "shared_memory_proxy": MyShmProxy(),
-                "debug_logs": False,
+                "verbose": False,
             },
         },
     ]

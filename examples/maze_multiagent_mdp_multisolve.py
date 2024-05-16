@@ -572,7 +572,7 @@ if __name__ == "__main__":
                     "callback": lambda slv: martdp_callback(slv),
                     "online_node_garbage": True,
                     "continuous_planning": False,
-                    "debug_logs": False,
+                    "verbose": False,
                 },
                 "singleagent_solver_kwargs": {
                     "domain_factory": lambda: lambda multiagent_domain, agent: SingleAgentMaze(
@@ -587,7 +587,7 @@ if __name__ == "__main__":
                     "continuous_planning": False,
                     "online_node_garbage": False,
                     "parallel": False,
-                    "debug_logs": False,
+                    "verbose": False,
                 },
             },
         },
@@ -618,7 +618,7 @@ if __name__ == "__main__":
                     "online_node_garbage": True,
                     "continuous_planning": False,
                     "callback": lambda slv, i=None: mcts_callback(slv),
-                    "debug_logs": False,
+                    "verbose": False,
                 },
                 "singleagent_solver_kwargs": {
                     "domain_factory": lambda: lambda multiagent_domain, agent: SingleAgentMaze(
@@ -633,7 +633,7 @@ if __name__ == "__main__":
                     "continuous_planning": False,
                     "online_node_garbage": False,
                     "parallel": False,
-                    "debug_logs": False,
+                    "verbose": False,
                 },
             },
         },

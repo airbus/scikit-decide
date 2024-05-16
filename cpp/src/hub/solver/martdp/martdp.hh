@@ -86,11 +86,11 @@ public:
    * @param online_node_garbage Boolean indicating whether the search graph
    * which is no more reachable from the root solving state should be
    * deleted (true) or not (false)
-   * @param debug_logs Boolean indicating whether debugging messages should be
-   * logged (true) or not (false)
    * @param callback Functor called at the end of each RTDP trial (rollout),
    * taking as arguments the solver and the domain from which it
    * is called, and returning true if the solver must be stopped
+   * @param verbose Boolean indicating whether verbose messages should be
+   * logged (true) or not (false)
    */
   MARTDPSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
@@ -102,10 +102,9 @@ public:
       double epsilon = 0.0, // not a stopping criterion by default
       double discount = 1.0, double action_choice_noise = 0.1,
       const double &dead_end_cost = 10e4, bool online_node_garbage = false,
-      bool debug_logs = false,
-      const CallbackFunctor &callback = [](const MARTDPSolver &, Domain &) {
-        return false;
-      });
+      const CallbackFunctor &callback = [](const MARTDPSolver &,
+                                           Domain &) { return false; },
+      bool verbose = false);
 
   /**
    * @brief Clears the search graph, thus preventing from reusing previous
@@ -226,8 +225,8 @@ private:
   double _discount;
   double _dead_end_cost;
   bool _online_node_garbage;
-  bool _debug_logs;
   CallbackFunctor _callback;
+  bool _verbose;
   std::unique_ptr<std::mt19937> _gen;
 
   double _residual_moving_average;

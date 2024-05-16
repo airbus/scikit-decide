@@ -103,7 +103,7 @@ public:
    * @param callback Functor called before popping the next state from the
    * (priority) open queue, taking as arguments the solver and the domain, and
    * returning true if the solver must be stopped
-   * @param debug_logs Boolean indicating whether debugging messages should be
+   * @param verbose Boolean indicating whether verbose messages should be
    * logged (true) or not (false)
    */
   IWSolver(
@@ -118,7 +118,7 @@ public:
                                    // better plans after a goal has been reached
       const CallbackFunctor &callback = [](const IWSolver &,
                                            Domain &) { return false; },
-      bool debug_logs = false);
+      bool verbose = false);
 
   /**
    * @brief Clears the search graph, thus preventing from reusing previous
@@ -276,7 +276,7 @@ private:
   std::size_t _time_budget;
   std::list<std::tuple<std::size_t, std::size_t, double>> _intermediate_scores;
   CallbackFunctor _callback;
-  bool _debug_logs;
+  bool _verbose;
 
   struct Node {
     State state;
@@ -325,7 +325,7 @@ private:
                 Graph &graph, std::size_t time_budget,
                 std::list<std::tuple<std::size_t, std::size_t, double>>
                     &intermediate_scores,
-                const CallbackFunctor &callback, bool debug_logs);
+                const CallbackFunctor &callback, bool verbose);
 
     // solves from state s
     // returned pair p: p.first==true iff solvable, p.second==true iff states
@@ -347,7 +347,7 @@ private:
     std::list<std::tuple<std::size_t, std::size_t, double>>
         &_intermediate_scores;
     const CallbackFunctor &_callback;
-    bool _debug_logs;
+    bool _verbose;
     ExecutionPolicy _execution_policy;
     typedef std::vector<
         std::pair<std::size_t, typename FeatureVector::value_type>>

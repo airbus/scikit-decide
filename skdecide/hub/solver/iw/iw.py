@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Set, Tuple
 
 from skdecide import Domain, Solver, hub
 from skdecide.builders.domain import (
@@ -62,7 +62,7 @@ try:
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[IW], bool] = None,
-            debug_logs: bool = False,
+            verbose: bool = False,
         ) -> None:
             ParallelSolver.__init__(
                 self,
@@ -76,12 +76,12 @@ try:
             self._use_state_feature_hash = use_state_feature_hash
             self._node_ordering = node_ordering
             self._time_budget = time_budget
-            self._debug_logs = debug_logs
             self._lambdas = [self._state_features]
             if callback is None:
                 self._callback = lambda slv: False
             else:
                 self._callback = callback
+            self._verbose = verbose
             self._ipc_notify = True
 
         def close(self):
@@ -108,7 +108,7 @@ try:
                 time_budget=self._time_budget,
                 parallel=self._parallel,
                 callback=self._callback,
-                debug_logs=self._debug_logs,
+                verbose=self._verbose,
             )
             self._solver.clear()
 

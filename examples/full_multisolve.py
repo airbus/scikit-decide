@@ -183,7 +183,7 @@ if __name__ == "__main__":
             "config": {
                 "heuristic": lambda d, s: d.heuristic(s),
                 "parallel": False,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # LRTA* (classical planning)
@@ -211,7 +211,7 @@ if __name__ == "__main__":
                 "max_depth": 1000,
                 "ucb_constant": 1.0 / sqrt(2.0),
                 "parallel": False,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # PPO: Proximal Policy Optimization (deep reinforcement learning)
@@ -256,7 +256,7 @@ if __name__ == "__main__":
                 "online_node_garbage": True,
                 "continuous_planning": True,
                 "parallel": False,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # IW (classical planning)
@@ -269,7 +269,7 @@ if __name__ == "__main__":
                 "node_ordering": lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty
                 > b_novelty,
                 "parallel": False,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # BFWS (classical planning)
@@ -282,7 +282,7 @@ if __name__ == "__main__":
                 "heuristic": lambda d, s: d.heuristic(s),
                 "termination_checker": lambda d, s: d.is_goal(s),
                 "parallel": False,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
     ]

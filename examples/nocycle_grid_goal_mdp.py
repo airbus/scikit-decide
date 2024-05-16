@@ -198,10 +198,12 @@ class MyDomain(D):
     def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
         # return ImplicitSpace(lambda s: s.x == self.num_cols - 1 and s.y == self.num_rows - 1)
         return ImplicitSpace(
-            lambda s: True
-            if (s.x == self.num_cols - 1 and s.y == self.num_rows - 1)
-            or (s.x == -1 and s.y == -1)
-            else False
+            lambda s: (
+                True
+                if (s.x == self.num_cols - 1 and s.y == self.num_rows - 1)
+                or (s.x == -1 and s.y == -1)
+                else False
+            )
         )  # trick to consider dead-end state as a goal to  avoid modeling cycles
 
     def _get_initial_state_(self) -> D.T_state:
@@ -216,14 +218,14 @@ if __name__ == "__main__":
     try:
         options, remainder = getopt.getopt(
             sys.argv[1:],
-            "x:y:b:c:l:p:",
+            "x:y:b:c:p:v:",
             [
                 "rows=",
                 "columns=",
                 "budget",
                 "detect_cycles=",
-                "debug_logs=",
                 "parallel=",
+                "verbose=",
             ],
         )
     except getopt.GetoptError as err:
@@ -236,8 +238,8 @@ if __name__ == "__main__":
     columns = 10
     budget = 20
     detect_cycles = False
-    debug_logs = False
     parallel = True
+    verbose = False
 
     for opt, arg in options:
         if opt in ("-x", "--rows"):
@@ -248,10 +250,10 @@ if __name__ == "__main__":
             budget = int(arg)
         elif opt in ("-c", "--detect_cycles"):
             detect_cycles = True if arg == "yes" else False
-        elif opt in ("-l", "--debug_logs"):
-            debug_logs = True if arg == "yes" else False
         elif opt in ("-p", "--parallel"):
             parallel = True if arg == "yes" else False
+        elif opt in ("-v", "--verbose"):
+            verbose = True if arg == "yes" else False
 
     domain_factory = lambda: MyDomain(rows, columns, budget)
 
@@ -266,13 +268,13 @@ if __name__ == "__main__":
                 "discount": 1.0,
                 "max_tip_expanions": 1,
                 "detect_cycles": False,
-                "debug_logs": False,
                 "heuristic": lambda d, s: Value(
                     cost=sqrt(
                         (s.x - (rows - 1)) * (s.x - (rows - 1))
                         + (s.y - (columns - 1)) * (s.y - (columns - 1))
                     )
                 ),
+                "verbose": False,
             },
         }
     ]

@@ -68,11 +68,11 @@ try:
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[BFWS], bool] = None,
-            debug_logs: bool = False,
+            verbose: bool = False,
         ) -> None:
             """Construct a BFWS solver instance
 
-            Args:
+            # Parameters
                 domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
                 state_features (Callable[[Domain, D.T_state], Any]): State feature vector
                     used to compute the novelty measure
@@ -88,7 +88,7 @@ try:
                 callback (Callable[[BFWS], bool], optional): Lambda function called before popping
                     the next state from the (priority) open queue, taking as arguments the solver and the domain,
                     and returning true if the solver must be stopped. Defaults to None.
-                debug_logs (bool, optional): Boolean indicating whether debugging messages should be
+                verbose (bool, optional): Boolean indicating whether verbose messages should be
                     logged (true) or not (false). Defaults to False.
             """
             ParallelSolver.__init__(
@@ -101,7 +101,6 @@ try:
             self._domain = None
             self._state_features = state_features
             self._termination_checker = termination_checker
-            self._debug_logs = debug_logs
             if heuristic is None:
                 self._heuristic = lambda d, s: Value(cost=0)
             else:
@@ -115,6 +114,7 @@ try:
                 self._callback = lambda slv: False
             else:
                 self._callback = callback
+            self._verbose = verbose
             self._ipc_notify = True
 
         def close(self):
@@ -148,7 +148,7 @@ try:
                 ),
                 parallel=self._parallel,
                 callback=self._callback,
-                debug_logs=self._debug_logs,
+                verbose=self._verbose,
             )
             self._solver.clear()
 

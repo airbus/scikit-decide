@@ -71,9 +71,9 @@ SK_MCTS_SOLVER_TEMPLATE_DECL
 SK_MCTS_SOLVER_CLASS::MCTSSolver(
     Domain &domain, std::size_t time_budget, std::size_t rollout_budget,
     std::size_t max_depth, std::size_t residual_moving_average_window,
-    double epsilon, double discount, bool online_node_garbage, bool debug_logs,
-    const CallbackFunctor &callback, std::unique_ptr<TreePolicy> tree_policy,
-    std::unique_ptr<Expander> expander,
+    double epsilon, double discount, bool online_node_garbage,
+    const CallbackFunctor &callback, bool verbose,
+    std::unique_ptr<TreePolicy> tree_policy, std::unique_ptr<Expander> expander,
     std::unique_ptr<ActionSelectorOptimization> action_selector_optimization,
     std::unique_ptr<ActionSelectorExecution> action_selector_execution,
     std::unique_ptr<RolloutPolicy> rollout_policy,
@@ -82,9 +82,8 @@ SK_MCTS_SOLVER_CLASS::MCTSSolver(
       _rollout_budget(rollout_budget), _max_depth(max_depth),
       _residual_moving_average_window(residual_moving_average_window),
       _epsilon(epsilon), _discount(discount), _nb_rollouts(0),
-      _online_node_garbage(online_node_garbage), _debug_logs(debug_logs),
-      _callback(callback),
-      _execution_policy(std::make_unique<ExecutionPolicy>()),
+      _online_node_garbage(online_node_garbage), _callback(callback),
+      _verbose(verbose), _execution_policy(std::make_unique<ExecutionPolicy>()),
       _transition_mode(std::make_unique<TransitionMode>()),
       _tree_policy(std::move(tree_policy)), _expander(std::move(expander)),
       _action_selector_optimization(std::move(action_selector_optimization)),
@@ -93,7 +92,7 @@ SK_MCTS_SOLVER_CLASS::MCTSSolver(
       _back_propagator(std::move(back_propagator)), _current_state(nullptr),
       _residual_moving_average(0) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm MCTS");
   }
 
@@ -178,7 +177,7 @@ SK_MCTS_SOLVER_CLASS::get_best_action(const State &s) {
       action = (*_action_selector_execution)(*this, nullptr, *si);
     }
     if (action != nullptr) {
-      if (_debug_logs) {
+      if (_verbose) {
         std::string str = "(";
         for (const auto &o : action->outcomes) {
           str += "\n    " + o.first->state.print();
@@ -379,7 +378,7 @@ SK_MCTS_SOLVER_CLASS::gen_mutex() {
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-bool SK_MCTS_SOLVER_CLASS::debug_logs() const { return _debug_logs; }
+bool SK_MCTS_SOLVER_CLASS::verbose() const { return _verbose; }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 void SK_MCTS_SOLVER_CLASS::compute_reachable_subgraph(

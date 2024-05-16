@@ -16,13 +16,14 @@ void init_pyaostar(py::module &m) {
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
-                    double, std::size_t, bool, bool, bool,
-                    const std::function<py::bool_(const py::object &)> &>(),
+                    double, std::size_t, bool, bool,
+                    const std::function<py::bool_(const py::object &)> &,
+                    bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
            py::arg("heuristic"), py::arg("discount") = 1.0,
            py::arg("max_tip_expansions") = 1, py::arg("detect_cycles") = false,
-           py::arg("parallel") = false, py::arg("debug_logs") = false,
-           py::arg("callback") = nullptr)
+           py::arg("parallel") = false, py::arg("callback") = nullptr,
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyAOStarSolver::close)
       .def("clear", &skdecide::PyAOStarSolver::clear)
       .def("solve", &skdecide::PyAOStarSolver::solve, py::arg("state"))

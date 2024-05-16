@@ -105,7 +105,7 @@ public:
    * @param callback Functor called before popping the next state from the
    * (priority) open queue, taking as arguments the solver and the domain, and
    * returning true if the solver must be stopped
-   * @param debug_logs Boolean indicating whether debugging messages should be
+   * @param verbose Boolean indicating whether verbose messages should be
    * logged (true) or not (false)
    */
   BFWSSolver(
@@ -114,7 +114,7 @@ public:
       const TerminationCheckerFunctor &termination_checker,
       const CallbackFunctor &callback = [](const BFWSSolver &,
                                            Domain &) { return false; },
-      bool debug_logs = false);
+      bool verbose = false);
 
   /**
    * @brief Clears the search graph, thus preventing from reusing previous
@@ -235,7 +235,7 @@ private:
   HeuristicFunctor _heuristic;
   TerminationCheckerFunctor _termination_checker;
   CallbackFunctor _callback;
-  bool _debug_logs;
+  bool _verbose;
   ExecutionPolicy _execution_policy;
 
   typedef std::pair<std::size_t, typename FeatureVector::value_type> PairType;

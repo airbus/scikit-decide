@@ -68,7 +68,7 @@ private:
             &node_ordering = nullptr,
         std::size_t time_budget = 0,
         const std::function<py::bool_(const py::object &)> &callback = nullptr,
-        bool debug_logs = false)
+        bool verbose = false)
         : _state_features(state_features), _node_ordering(node_ordering),
           _callback(callback) {
 
@@ -147,7 +147,7 @@ private:
                   return false;
                 }
               },
-              debug_logs);
+              verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -372,13 +372,13 @@ public:
           &node_ordering = nullptr,
       std::size_t time_budget = 0, bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
-      bool debug_logs = false) {
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  HashingPolicySelector(use_state_feature_hash),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, state_features, node_ordering, time_budget,
-                     callback, debug_logs);
+                     callback, verbose);
   }
 
   void close() { _implementation->close(); }

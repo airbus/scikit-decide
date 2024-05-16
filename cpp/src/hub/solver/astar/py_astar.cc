@@ -16,11 +16,11 @@ void init_pyastar(py::module &m) {
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
-                    bool, bool,
-                    const std::function<py::bool_(const py::object &)> &>(),
+                    bool, const std::function<py::bool_(const py::object &)> &,
+                    bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
            py::arg("heuristic"), py::arg("parallel") = false,
-           py::arg("debug_logs") = false, py::arg("callback") = nullptr)
+           py::arg("callback") = nullptr, py::arg("verbose") = false)
       .def("close", &skdecide::PyAStarSolver::close)
       .def("clear", &skdecide::PyAStarSolver::clear)
       .def("solve", &skdecide::PyAStarSolver::solve, py::arg("state"))

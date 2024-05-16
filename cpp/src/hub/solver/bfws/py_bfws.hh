@@ -65,7 +65,7 @@ private:
         const std::function<py::object(const py::object &, const py::object &)>
             &termination_checker,
         const std::function<py::bool_(const py::object &)> &callback = nullptr,
-        bool debug_logs = false)
+        bool verbose = false)
         : _state_features(state_features), _heuristic(heuristic),
           _termination_checker(termination_checker), _callback(callback) {
 
@@ -156,7 +156,7 @@ private:
               return false;
             }
           },
-          debug_logs);
+          verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -359,13 +359,13 @@ public:
           &termination_checker,
       bool use_state_feature_hash = false, bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
-      bool debug_logs = false) {
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  HashingPolicySelector(use_state_feature_hash),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, state_features, heuristic,
-                     termination_checker, callback, debug_logs);
+                     termination_checker, callback, verbose);
   }
 
   void close() { _implementation->close(); }

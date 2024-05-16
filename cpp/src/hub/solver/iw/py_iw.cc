@@ -27,7 +27,7 @@ void init_pyiw(py::module &m) {
            py::arg("use_state_feature_hash") = false,
            py::arg("node_ordering") = nullptr, py::arg("time_budget") = 0,
            py::arg("parallel") = false, py::arg("callback") = nullptr,
-           py::arg("debug_logs") = false)
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyIWSolver::close)
       .def("clear", &skdecide::PyIWSolver::clear)
       .def("solve", &skdecide::PyIWSolver::solve, py::arg("state"))

@@ -55,8 +55,9 @@ private:
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
         double discount = 1.0, std::size_t max_tip_expansions = 1,
-        bool detect_cycles = false, bool debug_logs = false,
-        const std::function<py::bool_(const py::object &)> &callback = nullptr)
+        bool detect_cycles = false,
+        const std::function<py::bool_(const py::object &)> &callback = nullptr,
+        bool verbose = false)
         : _goal_checker(goal_checker), _heuristic(heuristic),
           _callback(callback) {
 
@@ -105,7 +106,7 @@ private:
               throw;
             }
           },
-          discount, max_tip_expansions, detect_cycles, debug_logs,
+          discount, max_tip_expansions, detect_cycles,
           [this](const skdecide::AOStarSolver<PyAOStarDomain<Texecution>,
                                               Texecution> &s,
                  PyAOStarDomain<Texecution> &d) -> bool {
@@ -123,7 +124,8 @@ private:
             } else {
               return false;
             }
-          });
+          },
+          verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -283,13 +285,13 @@ public:
           &heuristic,
       double discount = 1.0, std::size_t max_tip_expansions = 1,
       bool detect_cycles = false, bool parallel = false,
-      bool debug_logs = false,
-      const std::function<py::bool_(const py::object &)> &callback = nullptr) {
+      const std::function<py::bool_(const py::object &)> &callback = nullptr,
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, goal_checker, heuristic, discount,
-                     max_tip_expansions, detect_cycles, debug_logs, callback);
+                     max_tip_expansions, detect_cycles, callback, verbose);
   }
 
   void close() { _implementation->close(); }

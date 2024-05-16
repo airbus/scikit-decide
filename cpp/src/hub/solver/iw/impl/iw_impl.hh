@@ -97,12 +97,12 @@ SK_IW_SOLVER_CLASS::IWSolver(
     const NodeOrderingFunctor &node_ordering,
     std::size_t time_budget, // time budget to continue searching for better
                              // plans after a goal has been reached
-    const CallbackFunctor &callback, bool debug_logs)
+    const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _state_features(state_features),
       _node_ordering(node_ordering), _time_budget(time_budget),
-      _callback(callback), _debug_logs(debug_logs), _width(0) {
+      _callback(callback), _verbose(verbose), _width(0) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm IW");
   }
 }
@@ -126,12 +126,12 @@ void SK_IW_SOLVER_CLASS::solve(const State &s) {
     for (_width = 1; _width <= nb_of_binary_features; _width++) {
       _width_solver = std::make_unique<WidthSolver>(
           *this, _domain, _state_features, _node_ordering, _width, _graph,
-          _time_budget, _intermediate_scores, _callback, _debug_logs);
+          _time_budget, _intermediate_scores, _callback, _verbose);
       std::pair<bool, bool> res =
           _width_solver->solve(s, _start_time, found_goal);
       if (res.first) { // solution found with width w
         if (get_solving_time() < _time_budget) {
-          if (_debug_logs)
+          if (_verbose)
             Logger::debug("Remaining time budget, trying to improve the "
                           "solution by augmenting the search width");
         } else {
@@ -360,12 +360,12 @@ SK_IW_SOLVER_CLASS::WidthSolver::WidthSolver(
     std::size_t time_budget,
     std::list<std::tuple<std::size_t, std::size_t, double>>
         &intermediate_scores,
-    const CallbackFunctor &callback, bool debug_logs)
+    const CallbackFunctor &callback, bool verbose)
     : _parent_solver(parent_solver), _domain(domain),
       _state_features(state_features), _node_ordering(node_ordering),
       _width(width), _graph(graph), _time_budget(time_budget),
       _intermediate_scores(intermediate_scores), _callback(callback),
-      _debug_logs(debug_logs) {}
+      _verbose(verbose) {}
 
 SK_IW_SOLVER_TEMPLATE_DECL
 std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
@@ -422,7 +422,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
         continue;
       }
 
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug(
             "Current best tip node: " + best_tip_node->state.print() +
             ", gscore=" + StringConverter::from(best_tip_node->gscore) +
@@ -432,7 +432,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
       closed_set.insert(best_tip_node);
 
       if (_domain.is_goal(best_tip_node->state) || best_tip_node->solved) {
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug("Found a goal or previously solved state: " +
                         best_tip_node->state.print());
         auto current_node = best_tip_node;
@@ -477,7 +477,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
             static_cast<std::size_t>(duration), _width, root_node.fscore));
 
         if (static_cast<std::size_t>(duration) < _time_budget) {
-          if (_debug_logs)
+          if (_verbose)
             Logger::debug("Remaining time budget, continuing searching for "
                           "better plans with current width...");
           continue;
@@ -494,7 +494,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
       }
 
       if (_domain.is_terminal(best_tip_node->state)) { // dead-end state
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug("Found a dead-end state: " +
                         best_tip_node->state.print());
         continue;
@@ -507,7 +507,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
           ExecutionPolicy::policy, applicable_actions.begin(),
           applicable_actions.end(),
           [this, &best_tip_node, &feature_tuples, &states_pruned](auto a) {
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Current expanded action: " + a.print() +
                             ExecutionPolicy::print_thread());
             auto next_state = _domain.get_next_state(best_tip_node->state, a);
@@ -518,7 +518,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
             Node &neighbor = const_cast<Node &>(
                 *(i.first)); // we won't change the real key (StateNode::state)
                              // so we are safe
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Exploring next state (among " +
                             StringConverter::from(_graph.size()) + ")" +
                             ExecutionPolicy::print_thread());
@@ -532,7 +532,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
             std::size_t tentative_depth = best_tip_node->depth + 1;
 
             if ((i.second) || (tentative_gscore < neighbor.gscore)) {
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug("New gscore: " +
                               StringConverter::from(best_tip_node->gscore) +
                               "+" + StringConverter::from(transition_cost) +
@@ -544,7 +544,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
             }
 
             if ((i.second) || (tentative_depth < neighbor.depth)) {
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug("New depth: " +
                               StringConverter::from(best_tip_node->depth) +
                               "+" + StringConverter::from(1) + "=" +
@@ -556,13 +556,13 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
             _execution_policy.protect(
                 [this, &feature_tuples, &neighbor, &states_pruned] {
                   if (this->novelty(feature_tuples, neighbor) > _width) {
-                    if (_debug_logs)
+                    if (_verbose)
                       Logger::debug("Pruning state " + neighbor.state.print() +
                                     ExecutionPolicy::print_thread());
                     states_pruned = true;
                     neighbor.pruned = true;
                   } else {
-                    if (_debug_logs)
+                    if (_verbose)
                       Logger::debug("Adding state to open queue (among " +
                                     StringConverter::from(_open_queue->size()) +
                                     ")" + ExecutionPolicy::print_thread());
@@ -617,7 +617,7 @@ SK_IW_SOLVER_CLASS::WidthSolver::novelty(TupleVector &feature_tuples,
           }
         });
   }
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Novelty: " + StringConverter::from(nov));
   n.novelty = nov;
   return nov;

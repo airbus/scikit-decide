@@ -27,7 +27,7 @@ void init_pybfws(py::module &m) {
            py::arg("heuristic"), py::arg("termination_checker"),
            py::arg("use_state_feature_hash") = false,
            py::arg("parallel") = false, py::arg("callback") = nullptr,
-           py::arg("debug_logs") = false)
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyBFWSSolver::close)
       .def("clear", &skdecide::PyBFWSSolver::clear)
       .def("solve", &skdecide::PyBFWSSolver::solve, py::arg("state"))

@@ -24,18 +24,18 @@ SK_MARTDP_SOLVER_CLASS::MARTDPSolver(
     std::size_t max_feasibility_trials, double graph_expansion_rate,
     std::size_t residual_moving_average_window, double epsilon, double discount,
     double action_choice_noise, const double &dead_end_cost,
-    bool online_node_garbage, bool debug_logs, const CallbackFunctor &callback)
+    bool online_node_garbage, const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _max_feasibility_trials(max_feasibility_trials),
       _graph_expansion_rate(graph_expansion_rate),
       _residual_moving_average_window(residual_moving_average_window),
       _epsilon(epsilon), _discount(discount), _dead_end_cost(dead_end_cost),
-      _online_node_garbage(online_node_garbage), _debug_logs(debug_logs),
-      _callback(callback), _residual_moving_average(0), _current_state(nullptr),
+      _online_node_garbage(online_node_garbage), _callback(callback),
+      _verbose(verbose), _residual_moving_average(0), _current_state(nullptr),
       _nb_rollouts(0), _nb_agents(0) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm MA-RTDP");
   }
 
@@ -103,7 +103,7 @@ void SK_MARTDP_SOLVER_CLASS::solve(const State &s) {
     _residuals.clear();
 
     do {
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("Starting rollout " +
                       StringConverter::from(_nb_rollouts));
 
@@ -149,7 +149,7 @@ SK_MARTDP_SOLVER_CLASS::get_best_action(const State &s) {
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   } else {
-    if (_debug_logs) {
+    if (_verbose) {
       std::string str = "(";
       for (const auto &o : si->action->outcomes) {
         str += "\n    " + o.first->state.print();
@@ -249,7 +249,7 @@ SK_MARTDP_SOLVER_CLASS::policy() const {
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
 void SK_MARTDP_SOLVER_CLASS::expand_state(StateNode *s) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Trying to expand state " + s->state.print());
 
   if (s->actions.empty()) {
@@ -271,7 +271,7 @@ void SK_MARTDP_SOLVER_CLASS::expand_state(StateNode *s) {
 SK_MARTDP_SOLVER_TEMPLATE_DECL
 typename SK_MARTDP_SOLVER_CLASS::StateNode *
 SK_MARTDP_SOLVER_CLASS::expand_action(ActionNode *a) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Trying to expand action " + a->action.print());
   EnvironmentOutcome outcome = _domain.sample(a->parent->state, a->action);
   auto i = _graph.emplace(outcome.observation());
@@ -293,13 +293,13 @@ SK_MARTDP_SOLVER_CLASS::expand_action(ActionNode *a) {
 
   // Update the outcome's reward and visits count
   if (ins.second) { // new outcome
-    if (_debug_logs)
+    if (_verbose)
       Logger::debug("Discovered new outcome " + next_node.state.print());
     a->dist_to_outcome.push_back(ins.first);
     a->expansions_count += 1;
     next_node.parents.insert(a);
   } else { // known outcome
-    if (_debug_logs)
+    if (_verbose)
       Logger::debug("Discovered known outcome " + next_node.state.print());
     std::pair<double, std::size_t> &mp = ins.first->second;
     mp.first = ((double)(mp.second * mp.first) + transition_cost) /
@@ -319,24 +319,24 @@ SK_MARTDP_SOLVER_CLASS::expand_action(ActionNode *a) {
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
 bool SK_MARTDP_SOLVER_CLASS::generate_more_actions(StateNode *s) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Generating (more) actions for state " + s->state.print());
   bool new_actions = false;
 
   for (std::size_t agent = 0; agent < _nb_agents; agent++) {
-    if (_debug_logs)
+    if (_verbose)
       Logger::debug("Trying agent " + _agents[agent].print() + " actions");
     auto agent_applicable_actions =
         _domain.get_agent_applicable_actions(s->state, Action(), _agents[agent])
             .get_elements();
 
     if (agent_applicable_actions.empty()) {
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("No agent applicable actions");
       continue;
     } else {
       for (auto action : agent_applicable_actions) {
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug("Trying agent action " + action.print());
         Action agent_actions;
         agent_actions[_agents[agent]] = action;
@@ -391,7 +391,7 @@ bool SK_MARTDP_SOLVER_CLASS::generate_more_actions(StateNode *s) {
             // add one sampled outcome
             expand_action(action_node);
           }
-        } else if (_debug_logs)
+        } else if (_verbose)
           Logger::debug("Failed finding a joint applicable action");
       }
     }
@@ -403,14 +403,14 @@ bool SK_MARTDP_SOLVER_CLASS::generate_more_actions(StateNode *s) {
 SK_MARTDP_SOLVER_TEMPLATE_DECL
 typename SK_MARTDP_SOLVER_CLASS::ActionNode *
 SK_MARTDP_SOLVER_CLASS::greedy_action(StateNode *s) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Updating state " + s->state.print());
 
   double best_value = std::numeric_limits<double>::infinity();
   ActionNode *best_action = nullptr;
 
   for (const ActionNode &act : s->actions) {
-    if (_debug_logs)
+    if (_verbose)
       Logger::debug("Computing Q-value of (" + s->state.print() + ", " +
                     act.action.print() + ")");
 
@@ -438,12 +438,12 @@ SK_MARTDP_SOLVER_CLASS::greedy_action(StateNode *s) {
       best_action = &action;
     }
 
-    if (_debug_logs)
+    if (_verbose)
       Logger::debug("Updated Q-value of action " + action.action.print() +
                     " with value " + StringConverter::from(action.all_value));
   }
 
-  if (_debug_logs) {
+  if (_verbose) {
     if (best_action) {
       Logger::debug("Greedy action of state " + s->state.print() + ": " +
                     best_action->action.print() + " with value " +
@@ -465,13 +465,13 @@ SK_MARTDP_SOLVER_CLASS::greedy_action(StateNode *s) {
 SK_MARTDP_SOLVER_TEMPLATE_DECL
 typename SK_MARTDP_SOLVER_CLASS::StateNode *
 SK_MARTDP_SOLVER_CLASS::pick_next_state(ActionNode *a) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Picking next state from State " + a->parent->state.print() +
                   " with action " + a->action.print());
 
   StateNode *next_node = expand_action(a);
 
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Picked next state " + next_node->state.print() +
                   " from state " + a->parent->state.print() + " and action " +
                   a->action.print());
@@ -480,7 +480,7 @@ SK_MARTDP_SOLVER_CLASS::pick_next_state(ActionNode *a) {
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
 void SK_MARTDP_SOLVER_CLASS::backtrack_values(StateNode *s) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Backtracking values from state " + s->state.print());
   std::unordered_set<StateNode *> frontier;
   std::unordered_set<StateNode *> visited;
@@ -505,7 +505,7 @@ void SK_MARTDP_SOLVER_CLASS::backtrack_values(StateNode *s) {
 SK_MARTDP_SOLVER_TEMPLATE_DECL
 void SK_MARTDP_SOLVER_CLASS::initialize_node(StateNode &n,
                                              const Predicate &termination) {
-  if (_debug_logs) {
+  if (_verbose) {
     Logger::debug("Initializing new state node " + n.state.print());
   }
 
@@ -550,11 +550,11 @@ void SK_MARTDP_SOLVER_CLASS::trial(StateNode *s) {
     depth++;
 
     if (cs->all_goal) {
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("Found goal state " + cs->state.print());
       break;
     } else if (cs->all_termination) {
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("Found dead-end state " + cs->state.print());
       break;
     }

@@ -81,11 +81,11 @@ public:
    * @param online_node_garbage Boolean indicating whether the search graph
    * which is no more reachable from the root solving state should be
    * deleted (true) or not (false)
-   * @param debug_logs Boolean indicating whether debugging messages should be
-   * logged (true) or not (false)
    * @param callback Functor called at the end of each LRTDP trial (rollout),
    * taking as arguments the solver, the domain and the thread ID from which it
    * is called, and returning true if the solver must be stopped
+   * @param verbose Boolean indicating whether verbose messages should be
+   * logged (true) or not (false)
    */
   LRTDPSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
@@ -94,11 +94,11 @@ public:
       std::size_t max_depth = 1000,
       std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
-      bool debug_logs = false,
-      const CallbackFunctor &callback = [](const LRTDPSolver &, Domain &,
-                                           const std::size_t *) {
-        return false;
-      });
+      const CallbackFunctor &callback =
+          [](const LRTDPSolver &, Domain &, const std::size_t *) {
+            return false;
+          },
+      bool verbose = false);
 
   /**
    * @brief Clears the search graph, thus preventing from reusing previous
@@ -213,8 +213,8 @@ private:
   atomic_double _epsilon;
   atomic_double _discount;
   bool _online_node_garbage;
-  atomic_bool _debug_logs;
   CallbackFunctor _callback;
+  atomic_bool _verbose;
   ExecutionPolicy _execution_policy;
 
   std::unique_ptr<std::mt19937> _gen;

@@ -151,10 +151,10 @@ def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
 def plot_trajectory(lat1, lon1, lat2, lon2, trajectory: pd.DataFrame) -> Figure:
     """Plot the trajectory of an object
 
-    Args:
+    # Parameters
         trajectory (pd.DataFrame): the trajectory of the object
 
-    Returns:
+    # Returns
         Figure: the figure
     """
 
@@ -211,10 +211,10 @@ def plot_trajectory(lat1, lon1, lat2, lon2, trajectory: pd.DataFrame) -> Figure:
 def plot_trajectory_no_map(lat1, lon1, lat2, lon2, trajectory: pd.DataFrame) -> Figure:
     """Plot the trajectory of an object
 
-    Args:
+    # Parameters
         trajectory (pd.DataFrame): the trajectory of the object
 
-    Returns:
+    # Returns
         Figure: the figure
     """
 

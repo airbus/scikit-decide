@@ -22,7 +22,7 @@ PyMCTSSolver::PyMCTSSolver(
     PyMCTSOptions::ActionSelector action_selector_execution,
     PyMCTSOptions::RolloutPolicy rollout_policy,
     PyMCTSOptions::BackPropagator back_propagator, bool parallel,
-    bool debug_logs, const CallbackFunctor &callback)
+    const CallbackFunctor &callback, bool verbose)
     : _filtered_custom_policy(custom_policy) {
 
   TemplateInstantiator::select(
@@ -37,7 +37,7 @@ PyMCTSSolver::PyMCTSSolver(
                    residual_moving_average_window, epsilon, discount,
                    ucb_constant, online_node_garbage, _filtered_custom_policy,
                    heuristic, state_expansion_rate, action_expansion_rate,
-                   debug_logs, callback);
+                   callback, verbose);
 }
 
 } // namespace skdecide
@@ -96,11 +96,12 @@ void init_pymcts(py::module &m) {
                skdecide::PyMCTSOptions::ActionSelector,
                skdecide::PyMCTSOptions::ActionSelector,
                skdecide::PyMCTSOptions::RolloutPolicy,
-               skdecide::PyMCTSOptions::BackPropagator, bool, bool,
+               skdecide::PyMCTSOptions::BackPropagator, bool,
                const std::function<py::bool_(
                    const py::object &,
                    const py::object &)> // last arg used for optional thread_id
-                   &>(),
+                   &,
+               bool>(),
            py::arg("solver"), py::arg("domain"),
            py::arg("time_budget") = 3600000, py::arg("rollout_budget") = 100000,
            py::arg("max_depth") = 1000,
@@ -125,8 +126,8 @@ void init_pymcts(py::module &m) {
                skdecide::PyMCTSOptions::RolloutPolicy::Random,
            py::arg("back_propagator") =
                skdecide::PyMCTSOptions::BackPropagator::Graph,
-           py::arg("parallel") = false, py::arg("debug_logs") = false,
-           py::arg("callback") = nullptr)
+           py::arg("parallel") = false, py::arg("callback") = nullptr,
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyMCTSSolver::close)
       .def("clear", &skdecide::PyMCTSSolver::clear)
       .def("solve", &skdecide::PyMCTSSolver::solve, py::arg("state"))

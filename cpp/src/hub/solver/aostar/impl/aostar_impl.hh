@@ -20,19 +20,16 @@ namespace skdecide {
 #define SK_AOSTAR_SOLVER_CLASS AOStarSolver<Tdomain, Texecution_policy>
 
 SK_AOSTAR_SOLVER_TEMPLATE_DECL
-SK_AOSTAR_SOLVER_CLASS::AOStarSolver(Domain &domain,
-                                     const GoalCheckerFunctor &goal_checker,
-                                     const HeuristicFunctor &heuristic,
-                                     double discount,
-                                     std::size_t max_tip_expansions,
-                                     bool detect_cycles, bool debug_logs,
-                                     const CallbackFunctor &callback)
+SK_AOSTAR_SOLVER_CLASS::AOStarSolver(
+    Domain &domain, const GoalCheckerFunctor &goal_checker,
+    const HeuristicFunctor &heuristic, double discount,
+    std::size_t max_tip_expansions, bool detect_cycles,
+    const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
       _discount(discount), _max_tip_expansions(max_tip_expansions),
-      _detect_cycles(detect_cycles), _debug_logs(debug_logs),
-      _callback(callback) {
+      _detect_cycles(detect_cycles), _callback(callback), _verbose(verbose) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm AO*");
   }
 }
@@ -65,7 +62,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
     _priority_queue.push(&root_node);
 
     while (!_priority_queue.empty() && !_callback(*this, _domain)) {
-      if (_debug_logs) {
+      if (_verbose) {
         Logger::debug("Current number of tip nodes: " +
                       StringConverter::from(_priority_queue.size()));
         Logger::debug("Current number of explored nodes: " +
@@ -79,7 +76,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
         StateNode *best_tip_node = _priority_queue.top();
         _priority_queue.pop();
         frontier.insert(best_tip_node);
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug("Current best tip node: " +
                         best_tip_node->state.print());
 
@@ -89,7 +86,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
         std::for_each(
             ExecutionPolicy::policy, applicable_actions.begin(),
             applicable_actions.end(), [this, &best_tip_node](auto a) {
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug("Current expanded action: " + a.print() +
                               ExecutionPolicy::print_thread());
               _execution_policy.protect([&best_tip_node, &a] {
@@ -102,7 +99,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
                   _domain.get_next_state_distribution(best_tip_node->state, a)
                       .get_values();
               for (auto ns : next_states) {
-                if (_debug_logs)
+                if (_verbose)
                   Logger::debug(
                       "Current next state expansion: " + ns.state().print() +
                       ExecutionPolicy::print_thread());
@@ -123,7 +120,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
                     [&next_node, &an] { next_node.parents.push_back(&an); });
                 if (i.second) { // new node
                   if (_goal_checker(_domain, next_node.state)) {
-                    if (_debug_logs)
+                    if (_verbose)
                       Logger::debug("Found goal state " +
                                     next_node.state.print() +
                                     ExecutionPolicy::print_thread());
@@ -132,7 +129,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
                   } else {
                     next_node.best_value =
                         _heuristic(_domain, next_node.state).cost();
-                    if (_debug_logs)
+                    if (_verbose)
                       Logger::debug(
                           "New state " + next_node.state.print() +
                           " with heuristic value " +

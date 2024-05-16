@@ -67,12 +67,12 @@ try:
             ] = None,
             parallel: bool = False,
             shared_memory_proxy=None,
-            debug_logs: bool = False,
             callback: Callable[[Astar], bool] = None,
+            verbose: bool = False,
         ) -> None:
             """Construct a Astar solver instance
 
-            Args:
+            # Parameters
                 domain_factory (Callable[[], Domain], optional): The lambda function to create a domain instance.
                 heuristic (Optional[ Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
                     Lambda function taking as arguments the domain and a state object,
@@ -80,11 +80,11 @@ try:
                 parallel (bool, optional): Parallelize the generation of state-action transitions
                     on different processes using duplicated domains (True) or not (False). Defaults to False.
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
-                debug_logs (bool, optional): Boolean indicating whether debugging messages should be
-                    logged (true) or not (false). Defaults to False.
                 callback (Callable[[AOstar], bool], optional): Lambda function called before popping
                     the next state from the (priority) open queue, taking as arguments the solver and the domain,
                     and returning true if the solver must be stopped. Defaults to None.
+                verbose (bool, optional): Boolean indicating whether verbose messages should be
+                    logged (true) or not (false). Defaults to False.
             """
             ParallelSolver.__init__(
                 self,
@@ -93,7 +93,6 @@ try:
                 shared_memory_proxy=shared_memory_proxy,
             )
             self._solver = None
-            self._debug_logs = debug_logs
             if heuristic is None:
                 self._heuristic = lambda d, s: Value(cost=0)
             else:
@@ -103,6 +102,7 @@ try:
                 self._callback = lambda slv: False
             else:
                 self._callback = callback
+            self._verbose = verbose
             self._ipc_notify = True
 
         def close(self):
@@ -126,8 +126,8 @@ try:
                     else (lambda d, s: d.call(None, 0, s))
                 ),
                 parallel=self._parallel,
-                debug_logs=self._debug_logs,
                 callback=self._callback,
+                verbose=self._verbose,
             )
             self._solver.clear()
 

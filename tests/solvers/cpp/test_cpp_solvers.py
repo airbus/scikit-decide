@@ -30,6 +30,7 @@ from skdecide.utils import load_registered_solver
 
 logger = logging.getLogger(__name__)
 
+
 # Must be defined outside the grid_domain() fixture
 # so that parallel domains can pickle it
 # /!\ Is it worth defining the domain as a fixture?
@@ -132,7 +133,7 @@ class GridDomain(D):
                 "heuristic": lambda d, s: Value(
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": True,
         },
@@ -142,7 +143,7 @@ class GridDomain(D):
                 "heuristic": lambda d, s: Value(
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": True,
         },
@@ -154,13 +155,13 @@ class GridDomain(D):
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
                 "termination_checker": lambda d, s: d.is_goal(s),
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": True,
         },
         {
             "entry": "IW",
-            "config": {"state_features": lambda d, s: (s.x, s.y), "debug_logs": False},
+            "config": {"state_features": lambda d, s: (s.x, s.y), "verbose": False},
             "optimal": True,
         },
         {
@@ -174,7 +175,7 @@ class GridDomain(D):
                 "use_simulation_domain": True,
                 "online_node_garbage": True,
                 "continuous_planning": True,
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": False,
         },
@@ -185,7 +186,7 @@ class GridDomain(D):
                 "rollout_budget": 10,
                 "max_depth": 10,
                 "continuous_planning": True,
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": False,
         },
@@ -203,7 +204,7 @@ class GridDomain(D):
                 "epsilon": 0.001,
                 "online_node_garbage": True,
                 "continuous_planning": False,
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": True,
         },
@@ -215,7 +216,7 @@ class GridDomain(D):
                 ),
                 "discount": 1.0,
                 "epsilon": 0.001,
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": True,
         },
