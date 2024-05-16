@@ -335,6 +335,7 @@ if __name__ == "__main__":
             "name": "Lazy A* (classical planning)",
             "entry": "LazyAstar",
             "config": {
+                "domain_factory": lambda: MyDomain(),
                 "heuristic": lambda d, s: Value(
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
@@ -383,6 +384,7 @@ if __name__ == "__main__":
             "name": "PPO: Proximal Policy Optimization (deep reinforcement learning)",
             "entry": "StableBaseline",
             "config": {
+                "domain_factory": lambda: MyDomain(),
                 "algo_class": PPO,
                 "baselines_policy": "MlpPolicy",
                 "learn_config": {"total_timesteps": 30000},

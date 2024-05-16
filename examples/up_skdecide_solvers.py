@@ -72,10 +72,11 @@ domain = domain_factory()
 
 if RayRLlib.check_domain(domain):
     with RayRLlib(
+        domain_factory=domain_factory,
         algo_class=DQN,
         train_iterations=1,
     ) as solver:
-        UPDomain.solve_with(solver, domain_factory)
+        UPDomain.solve_with(solver)
         rollout(
             domain_factory(),
             solver,
@@ -134,8 +135,8 @@ domain = domain_factory()
 ## Step 3: solving the UP problem with scikit-decide's Python A* engine
 
 if LazyAstar.check_domain(domain):
-    with LazyAstar() as solver:
-        UPDomain.solve_with(solver, domain_factory)
+    with LazyAstar(domain_factory=domain_factory) as solver:
+        UPDomain.solve_with(solver)
         rollout(
             domain,
             solver,

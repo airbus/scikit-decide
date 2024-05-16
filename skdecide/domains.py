@@ -116,7 +116,6 @@ class Domain(
     def solve_with(
         cls,
         solver: Solver,
-        domain_factory: Optional[Callable[[], Domain]] = None,
         load_path: Optional[str] = None,
         from_memory: Optional[D.T_memory[T_state]] = None,
     ) -> Solver:
@@ -129,7 +128,6 @@ class Domain(
 
         # Parameters
         solver: The solver.
-        domain_factory: A callable with no argument returning the domain to solve (factory is the domain class if None).
         load_path: The path to restore the solver state from (if None, the solving process will be launched instead).
         from_memory: The source memory (state or history) from which we begin the solving process.
             To be used, if the solving process must begin from a specific state,
@@ -139,21 +137,13 @@ class Domain(
         # Returns
         The new solver (auto-cast to the level of the domain).
         """
-        if domain_factory is None:
-            domain_factory = cls
         if load_path is not None:
-            # TODO: avoid repeating this code somehow (identical in solver.solve(...))? Is factory necessary (vs cls)?
-            def cast_domain_factory():
-                domain = domain_factory()
-                autocast_all(domain, domain, solver.T_domain)
-                return domain
-
-            solver.load(load_path, cast_domain_factory)
+            solver.load(load_path)
         else:
             if isinstance(solver, FromAnyState):
-                solver.solve(domain_factory, from_memory=from_memory)
+                solver.solve(from_memory=from_memory)
             elif from_memory is None:
-                solver.solve(domain_factory)
+                solver.solve()
             else:
                 raise ValueError(
                     f"`from_memory` must be None when used with a solver not having {FromAnyState.__name__} characteristic."

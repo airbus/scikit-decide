@@ -71,11 +71,12 @@ domain = domain_factory()
 
 if UPSolver.check_domain(domain):
     with UPSolver(
+        domain_factory=domain_factory,
         operation_mode=OneshotPlanner,
         name="pyperplan",
         engine_params={"output_stream": sys.stdout},
     ) as solver:
-        UPDomain.solve_with(solver, domain_factory)
+        UPDomain.solve_with(solver)
         rollout(
             domain,
             solver,
@@ -135,11 +136,12 @@ domain = domain_factory()
 
 if UPSolver.check_domain(domain):
     with UPSolver(
+        domain_factory=domain_factory,
         operation_mode=OneshotPlanner,
         name="enhsp-opt",
         engine_params={"output_stream": sys.stdout},
     ) as solver:
-        UPDomain.solve_with(solver, domain_factory)
+        UPDomain.solve_with(solver)
         rollout(
             domain,
             solver,

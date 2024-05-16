@@ -76,8 +76,10 @@ class GymDomainForDiscreteSolvers(D):
 def test_gymdomain():
     ENV_NAME = "MountainCarContinuous-v0"
     domain_factory = lambda: GymDomain(gym.make(ENV_NAME))
-    solver = CGP("TEMP_CGP", n_it=2, verbose=False)
-    GymDomain.solve_with(solver, domain_factory)
+    solver = CGP(
+        domain_factory=domain_factory, folder_name="TEMP_CGP", n_it=2, verbose=False
+    )
+    GymDomain.solve_with(solver)
     domain = domain_factory()
     observation = domain.reset()
     domain.render()

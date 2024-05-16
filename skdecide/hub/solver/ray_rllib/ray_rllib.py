@@ -46,6 +46,7 @@ class RayRLlib(Solver, Policies, Restorable):
 
     def __init__(
         self,
+        domain_factory: Callable[[], Domain],
         algo_class: Type[Algorithm],
         train_iterations: int,
         config: Optional[AlgorithmConfig] = None,
@@ -58,6 +59,8 @@ class RayRLlib(Solver, Policies, Restorable):
         """Initialize Ray RLlib.
 
         # Parameters
+        domain_factory: A callable with no argument returning the domain to solve (can be a mere domain class).
+            The resulting domain will be auto-cast to the level expected by the solver.
         algo_class: The class of Ray RLlib trainer/agent to wrap.
         train_iterations: The number of iterations to call the trainer's train() method.
         config: The configuration dictionary for the trainer.
@@ -65,6 +68,7 @@ class RayRLlib(Solver, Policies, Restorable):
         policy_mapping_fn: The function mapping agent ids to policy ids (leave default for single policy).
         action_embed_sizes: The mapping from policy id (str) to action embedding size (only used with domains filtering allowed actions per state, default to 2)
         """
+        Solver.__init__(self, domain_factory=domain_factory)
         self._algo_class = algo_class
         self._train_iterations = train_iterations
         self._config = config or algo_class.get_default_config()
@@ -108,10 +112,10 @@ class RayRLlib(Solver, Policies, Restorable):
                 isinstance(o, GymSpace) for o in domain.get_observation_space().values()
             )
 
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self) -> None:
         # Reuse algo if possible (enables further learning)
         if not hasattr(self, "_algo"):
-            self._init_algo(domain_factory)
+            self._init_algo()
 
         # Training loop
         for _ in range(self._train_iterations):
@@ -135,12 +139,12 @@ class RayRLlib(Solver, Policies, Restorable):
     def _save(self, path: str) -> None:
         self._algo.save(path)
 
-    def _load(self, path: str, domain_factory: Callable[[], D]):
-        self._init_algo(domain_factory)
+    def _load(self, path: str):
+        self._init_algo()
         self._algo.restore(path)
 
-    def _init_algo(self, domain_factory: Callable[[], D]):
-        domain = domain_factory()
+    def _init_algo(self):
+        domain = self._domain_factory()
         wrapped_action_space = domain.get_action_space()
         wrapped_observation_space = domain.get_observation_space()
         # Test if the domain is using restricted actions or not
@@ -281,7 +285,7 @@ class RayRLlib(Solver, Policies, Restorable):
         # Instantiate algo
         register_env(
             "skdecide_env",
-            lambda _, domain_factory=domain_factory, rayrllib=self: AsRLlibMultiAgentEnv(
+            lambda _, domain_factory=self._domain_factory, rayrllib=self: AsRLlibMultiAgentEnv(
                 domain=domain_factory(),
                 action_masking=rayrllib._action_masking,
                 state_access=rayrllib._state_access,

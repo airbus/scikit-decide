@@ -18,15 +18,17 @@ domain = domain_factory()
 
 # Check domain compatibility
 if RayRLlib.check_domain(domain):
-    solver_factory = lambda: RayRLlib(PPO, train_iterations=5)
+    solver_factory = lambda: RayRLlib(
+        domain_factory=domain_factory, algo_class=PPO, train_iterations=5
+    )
 
     # Start solving
     with solver_factory() as solver:
-        GymDomain.solve_with(solver, domain_factory)
+        GymDomain.solve_with(solver)
         solver.save("TEMP_RLlib")  # Save results
 
         # Continue solving (just to demonstrate the capability to learn further)
-        solver.solve(domain_factory)
+        solver.solve()
         solver.save("TEMP_RLlib")  # Save updated results
 
         # Test solution
@@ -41,7 +43,7 @@ if RayRLlib.check_domain(domain):
 
     # Restore (latest results) from scratch and re-run
     with solver_factory() as solver:
-        GymDomain.solve_with(solver, domain_factory, load_path="TEMP_RLlib")
+        GymDomain.solve_with(solver, load_path="TEMP_RLlib")
         rollout(
             domain,
             solver,

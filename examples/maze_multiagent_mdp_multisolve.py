@@ -575,9 +575,6 @@ if __name__ == "__main__":
                     "verbose": False,
                 },
                 "singleagent_solver_kwargs": {
-                    "domain_factory": lambda: lambda multiagent_domain, agent: SingleAgentMaze(
-                        multiagent_domain._maze, multiagent_domain._agents_goals[agent]
-                    ),
                     "heuristic": lambda d, s: Value(
                         cost=sqrt((d._goal.x - s.x) ** 2 + (d._goal.y - s.y) ** 2)
                     ),
@@ -621,9 +618,6 @@ if __name__ == "__main__":
                     "verbose": False,
                 },
                 "singleagent_solver_kwargs": {
-                    "domain_factory": lambda: lambda multiagent_domain, agent: SingleAgentMaze(
-                        multiagent_domain._maze, multiagent_domain._agents_goals[agent]
-                    ),
                     "heuristic": lambda d, s: Value(
                         cost=sqrt((d._goal.x - s.x) ** 2 + (d._goal.y - s.y) ** 2)
                     ),

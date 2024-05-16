@@ -213,10 +213,10 @@ try:
             """
             ParallelSolver.__init__(
                 self,
-                domain_factory=domain_factory,
                 parallel=parallel,
                 shared_memory_proxy=shared_memory_proxy,
             )
+            Solver.__init__(self, domain_factory=domain_factory)
             self._solver = None
             self._domain = None
             self._time_budget = time_budget
@@ -253,8 +253,7 @@ try:
                 self._solver.close()
             ParallelSolver.close(self)
 
-        def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            self._domain_factory = domain_factory
+        def _init_solve(self) -> None:
             self._solver = mcts_solver(
                 solver=self,
                 domain=self.get_domain(),
@@ -600,8 +599,8 @@ try:
             self._action_choice_noise = action_choice_noise
             self._heuristic_records = {}
 
-        def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-            super()._init_solve(domain_factory)
+        def _init_solve(self) -> None:
+            super()._init_solve()
             self._heuristic_records = {}
 
         def _value_heuristic(

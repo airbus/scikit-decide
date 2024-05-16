@@ -277,7 +277,7 @@ if RIW.check_domain(domain):
         verbose=False,
     )
     with solver_factory() as solver:
-        GymRIWDomain.solve_with(solver, domain_factory)
+        GymRIWDomain.solve_with(solver)
         initial_state = solver._domain.reset()
         rollout(
             domain,

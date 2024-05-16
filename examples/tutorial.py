@@ -162,6 +162,8 @@ Pick a solver (lazy A*) and solve the maze optimally.
 assert LazyAstar.check_domain(domain)
 
 # Compute solution and visualize it
-with LazyAstar() as solver:
-    MyDomain.solve_with(solver, lambda: MyDomain(State(1, 1), State(19, 19), maze_str))
+with LazyAstar(
+    domain_factory=lambda: MyDomain(State(1, 1), State(19, 19), maze_str)
+) as solver:
+    MyDomain.solve_with(solver)
     rollout(domain, solver, max_steps=100, max_framerate=10, verbose=False)

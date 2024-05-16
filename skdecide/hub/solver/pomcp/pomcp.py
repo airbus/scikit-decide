@@ -42,6 +42,7 @@ class POMCP(Solver, DeterministicPolicies):
 
     def __init__(
         self,
+        domain_factory: Callable[[], Domain],
         max_iterations=5000,
         max_depth=50,
         n_samples=5000,
@@ -50,6 +51,7 @@ class POMCP(Solver, DeterministicPolicies):
         """
 
         # Parameters
+        domain_factory
         max_iterations
         max_depth
         n_samples
@@ -57,6 +59,7 @@ class POMCP(Solver, DeterministicPolicies):
 
         """
         self.callback = callback
+        Solver.__init__(self, domain_factory=domain_factory)
         self._max_iterations = max_iterations
         self._max_depth = max_depth
         self._n_samples = n_samples
@@ -74,8 +77,8 @@ class POMCP(Solver, DeterministicPolicies):
         # for the range of possible cost values.
         self._VLV = 100 * self._max_depth
 
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
-        self._domain = domain_factory()
+    def _solve(self) -> None:
+        self._domain = self._domain_factory()
         self._initial_belief = []
         d = self._domain.get_initial_state_distribution()
         for _ in range(self._n_samples):
@@ -263,11 +266,12 @@ if __name__ == "__main__":
     domain_factory = lambda: MasterMind(3, 3)
     domain = domain_factory()
     if POMCP.check_domain(domain):
-        solver = MasterMind.solve_with(POMCP, domain_factory)
-        rollout(
-            domain,
-            solver,
-            num_episodes=5,
-            max_steps=1000,
-            outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-        )
+        with POMCP(domain_factory=domain_factory) as solver:
+            MasterMind.solve_with(solver)
+            rollout(
+                domain,
+                solver,
+                num_episodes=5,
+                max_steps=1000,
+                outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
+            )

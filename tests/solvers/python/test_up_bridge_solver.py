@@ -54,11 +54,12 @@ def test_up_bridge_solver_classic():
     domain = domain_factory()
 
     with UPSolver(
+        domain_factory=domain_factory,
         operation_mode=OneshotPlanner,
         name="pyperplan",
         engine_params={"output_stream": sys.stdout},
     ) as solver:
-        UPDomain.solve_with(solver, domain_factory)
+        UPDomain.solve_with(solver)
         s = domain.get_initial_state()
         step = 0
         p = []
@@ -128,11 +129,12 @@ def test_up_bridge_solver_numeric():
 
     # Cannot run on Windows: see https://github.com/aiplan4eu/up-fast-downward/issues/15
     with UPSolver(
+        domain_factory=domain_factory,
         operation_mode=OneshotPlanner,
         name="fast-downward-opt",
         engine_params={"output_stream": sys.stdout},
     ) as solver:
-        UPDomain.solve_with(solver, domain_factory)
+        UPDomain.solve_with(solver)
 
         s = domain.get_initial_state()
         step = 0

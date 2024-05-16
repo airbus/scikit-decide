@@ -110,11 +110,13 @@ domain = domain_factory()
 
 # Check domain compatibility
 if RayRLlib.check_domain(domain):
-    solver_factory = lambda: RayRLlib(DQN, train_iterations=5)
+    solver_factory = lambda: RayRLlib(
+        domain_factory=domain_factory, algo_class=DQN, train_iterations=5
+    )
 
     # Start solving
     with solver_factory() as solver:
-        GridWorldFilteredActions.solve_with(solver, domain_factory)
+        GridWorldFilteredActions.solve_with(solver)
 
         # Test solution
         rollout(

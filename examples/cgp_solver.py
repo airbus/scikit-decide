@@ -28,9 +28,11 @@ ENV_NAME = "MountainCarContinuous-v0"
 domain_factory = lambda: GymDomain(gym.make(ENV_NAME))
 domain = domain_factory()
 if CGP.check_domain(domain):
-    solver_factory = lambda: CGP("TEMP_CGP", n_it=25)
+    solver_factory = lambda: CGP(
+        domain_factory=domain_factory, folder_name="TEMP_CGP", n_it=25
+    )
     with solver_factory() as solver:
-        GymDomain.solve_with(solver, domain_factory)
+        GymDomain.solve_with(solver)
         rollout(
             domain,
             solver,

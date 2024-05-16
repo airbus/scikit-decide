@@ -156,10 +156,12 @@ def test_ray_rllib_solver():
         num_cpus_per_worker=0.5
     )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
     solver_kwargs = dict(algo_class=PPO, train_iterations=1)
-    solver_factory = lambda: RayRLlib(config=config_factory(), **solver_kwargs)
+    solver_factory = lambda: RayRLlib(
+        domain_factory=domain_factory, config=config_factory(), **solver_kwargs
+    )
 
     # solve
-    solver: RayRLlib = RockPaperScissors.solve_with(solver_factory(), domain_factory)
+    solver: RayRLlib = RockPaperScissors.solve_with(solver_factory())
     assert hasattr(solver, "_algo")
 
     # test get_policy()
@@ -181,7 +183,7 @@ def test_ray_rllib_solver():
 
     # load and rollout
     solver2 = solver_factory()
-    solver2.load(tmp_save_dir, domain_factory)
+    solver2.load(tmp_save_dir)
     rollout(
         domain,
         solver2,
@@ -203,7 +205,7 @@ def test_ray_rllib_solver_with_filtered_actions():
         num_cpus_per_worker=0.5
     )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
     solver = GridWorldFilteredActions.solve_with(
-        RayRLlib(config=config, **solver_kwargs), domain_factory
+        RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs),
     )
     assert hasattr(solver, "_algo")
 
@@ -226,7 +228,7 @@ def test_ray_rllib_solver_on_single_agent_domain():
         num_cpus_per_worker=0.5
     )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
     solver = GymDomain.solve_with(
-        RayRLlib(config=config, **solver_kwargs), domain_factory
+        RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs)
     )
     assert hasattr(solver, "_algo")
 

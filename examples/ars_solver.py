@@ -154,11 +154,10 @@ if __name__ == "__main__":
             learning_rate=learning_rate,
             policy_noise=policy_noise,
             reward_maximization=reward_maximization,
+            domain_factory=lambda: domain_type(**selected_domain["config"]),
         )
         with solver_factory() as solver:
-            GymDomain.solve_with(
-                solver, lambda: domain_type(**selected_domain["config"])
-            )
+            GymDomain.solve_with(solver)
             # Test solver solution on domain
             print("==================== TEST SOLVER ====================")
             print(

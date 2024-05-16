@@ -100,6 +100,7 @@ def fitness_makespan_correlation():
     )
 
     solver = GPHH(
+        domain_factory=lambda: domain,
         training_domains=training_domains,
         weight=-1,
         verbose=True,
@@ -109,7 +110,7 @@ def fitness_makespan_correlation():
         params_gphh=params_gphh,
     )
 
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
 
     solver.permutation_distance = PermutationDistance.KTD
     solver.init_reference_permutations(
@@ -194,6 +195,7 @@ def run_gphh():
         start = time.time()
 
         solver = GPHH(
+            domain_factory=lambda: domain,
             training_domains=training_domains,
             domain_model=training_domains[3],
             weight=-1,
@@ -204,7 +206,7 @@ def run_gphh():
             params_gphh=ParametersGPHH.fast_test()
             # params_gphh=ParametersGPHH.default()
         )
-        solver.solve(domain_factory=lambda: domain)
+        solver.solve()
         end = time.time()
         runtimes.append((end - start))
         heuristic = solver.hof
@@ -263,6 +265,7 @@ def run_pooled_gphh():
 
         files = os.listdir(folder)
         solver = GPHH(
+            domain_factory=lambda: domain,
             training_domains=training_domains,
             domain_model=training_domains[0],
             weight=-1,
@@ -366,12 +369,13 @@ def run_gphh_with_settings():
     )
 
     solver = GPHH(
+        domain_factory=lambda: domain,
         training_domains=training_domains,
         weight=-1,
         verbose=True,
         params_gphh=params_gphh,
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     states, actions, values = rollout_episode(
         domain=domain,
         max_steps=1000,
@@ -431,12 +435,13 @@ def compare_settings():
             domain: RCPSP = load_domain(get_complete_path("j301_1.sm"))
             domain.set_inplace_environment(False)
             solver = GPHH(
+                domain_factory=lambda: domain,
                 training_domains=domains_loaded,
                 weight=-1,
                 verbose=False,
                 params_gphh=params,
             )
-            solver.solve(domain_factory=lambda: domain)
+            solver.solve()
 
             for test_domain_str in test_domain_names:
                 domain: RCPSP = load_domain(get_complete_path(test_domain_str))
@@ -563,6 +568,7 @@ def run_comparaison_stochastic():
         domain.set_inplace_environment(False)
         state = domain.get_initial_state()
         solver = DOSolver(
+            domain_factory=lambda: domain,
             policy_method_params=PolicyMethodParams(
                 base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
                 delta_index_freedom=0,
@@ -570,7 +576,7 @@ def run_comparaison_stochastic():
             ),
             method=do_solver,
         )
-        solver.solve(domain_factory=lambda: domain)
+        solver.solve()
         print(do_solver)
         states, actions, values = rollout_episode(
             domain=domain,
@@ -590,6 +596,7 @@ def run_comparaison_stochastic():
             train_dom.set_inplace_environment(False)
             state = train_dom.get_initial_state()
             solver = DOSolver(
+                domain_factory=lambda: train_dom,
                 policy_method_params=PolicyMethodParams(
                     base_policy_method=BasePolicyMethod.SGS_STRICT,
                     delta_index_freedom=0,
@@ -597,7 +604,7 @@ def run_comparaison_stochastic():
                 ),
                 method=do_solver,
             )
-            solver.solve(domain_factory=lambda: train_dom)
+            solver.solve()
             print(do_solver)
             domain: RCPSP = test_domain
             domain.set_inplace_environment(False)
@@ -621,6 +628,7 @@ def run_comparaison_stochastic():
         domain.set_inplace_environment(False)
         state = domain.get_initial_state()
         solver = DOSolver(
+            domain_factory=lambda: domain,
             policy_method_params=PolicyMethodParams(
                 base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
                 delta_index_freedom=0,
@@ -628,7 +636,7 @@ def run_comparaison_stochastic():
             ),
             method=do_solver,
         )
-        solver.solve(domain_factory=lambda: domain)
+        solver.solve()
         print(do_solver)
         states, actions, values = rollout_episode(
             domain=domain,
@@ -697,6 +705,7 @@ def run_comparaison_stochastic():
             )
 
             solver = GPHH(
+                domain_factory=lambda: domain,
                 training_domains=training_domains,
                 weight=-1,
                 verbose=False,
@@ -706,7 +715,7 @@ def run_comparaison_stochastic():
                 params_gphh=params_gphh
                 # set_feature=set_feature)
             )
-            solver.solve(domain_factory=lambda: domain)
+            solver.solve()
 
             domain: RCPSP = test_domain
             domain.set_inplace_environment(False)
@@ -811,6 +820,7 @@ def run_comparaison():
         domain.set_inplace_environment(False)
         state = domain.get_initial_state()
         solver = DOSolver(
+            domain_factory=lambda: domain,
             policy_method_params=PolicyMethodParams(
                 base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
                 delta_index_freedom=0,
@@ -818,7 +828,7 @@ def run_comparaison():
             ),
             method=do_solver,
         )
-        solver.solve(domain_factory=lambda: domain)
+        solver.solve()
         print(do_solver)
         states, actions, values = rollout_episode(
             domain=domain,
@@ -839,6 +849,7 @@ def run_comparaison():
         domain.set_inplace_environment(False)
         state = domain.get_initial_state()
         solver = DOSolver(
+            domain_factory=lambda: domain,
             policy_method_params=PolicyMethodParams(
                 base_policy_method=BasePolicyMethod.SGS_STRICT,
                 delta_index_freedom=0,
@@ -846,7 +857,7 @@ def run_comparaison():
             ),
             method=do_solver,
         )
-        solver.solve(domain_factory=lambda: domain)
+        solver.solve()
         print(do_solver)
         states, actions, values = rollout_episode(
             domain=domain,
@@ -867,6 +878,7 @@ def run_comparaison():
         domain.set_inplace_environment(False)
         state = domain.get_initial_state()
         solver = DOSolver(
+            domain_factory=lambda: domain,
             policy_method_params=PolicyMethodParams(
                 base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
                 delta_index_freedom=0,
@@ -874,7 +886,7 @@ def run_comparaison():
             ),
             method=do_solver,
         )
-        solver.solve(domain_factory=lambda: domain)
+        solver.solve()
         print(do_solver)
         states, actions, values = rollout_episode(
             domain=domain,
@@ -948,6 +960,7 @@ def run_comparaison():
         )
 
         solver = GPHH(
+            domain_factory=lambda: domain,
             training_domains=training_domains,
             weight=-1,
             verbose=False,
@@ -956,7 +969,7 @@ def run_comparaison():
             training_domains_names=training_domains_names,
             params_gphh=params_gphh,
         )
-        solver.solve(domain_factory=lambda: domain)
+        solver.solve()
 
         for test_domain_str in test_domain_names:
             domain: RCPSP = domains_loaded[test_domain_str]
@@ -1012,6 +1025,7 @@ def compute_ref_permutations():
         td = load_domain(get_complete_path(td_name))
         td.set_inplace_environment(False)
         solver = DOSolver(
+            domain_factory=lambda: td,
             policy_method_params=PolicyMethodParams(
                 base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
                 delta_index_freedom=0,
@@ -1019,7 +1033,7 @@ def compute_ref_permutations():
             ),
             method=SolvingMethod.CP,
         )
-        solver.solve(domain_factory=lambda: td)
+        solver.solve()
         raw_permutation = solver.best_solution.rcpsp_permutation
         full_permutation = [int(x + 2) for x in raw_permutation]
         full_permutation.insert(0, 1)

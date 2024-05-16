@@ -109,8 +109,10 @@ def test_up_bridge_domain_planning():
     domain_factory = lambda: UPDomain(problem, state_encoding="native")
     domain = domain_factory()
 
-    with LazyAstar() as solver:
-        UPDomain.solve_with(solver, domain_factory)
+    with LazyAstar(
+        domain_factory=domain_factory,
+    ) as solver:
+        UPDomain.solve_with(solver)
         s = domain.get_initial_state()
         step = 0
         p = []
@@ -201,10 +203,11 @@ def test_up_bridge_domain_rl():
     observation_space = domain.get_observation_space()
 
     with RayRLlib(
+        domain_factory=domain_factory,
         algo_class=DQN,
         train_iterations=1,
     ) as solver:
-        UPDomain.solve_with(solver, domain_factory)
+        UPDomain.solve_with(solver)
         rollout(
             domain_factory(),
             solver,

@@ -30,8 +30,10 @@ def test_flight_planning():
         graph_width="normal",
     )
     domain = domain_factory()
-    solver = LazyAstar(heuristic=lambda d, s: d.heuristic(s))
-    domain.solve_with(solver=solver, domain_factory=domain_factory)
+    solver = LazyAstar(
+        domain_factory=domain_factory, heuristic=lambda d, s: d.heuristic(s)
+    )
+    domain.solve_with(solver=solver)
 
     assert solver.check_domain(domain)
 
@@ -63,7 +65,9 @@ def test_flight_planning_fuel_loop():
         fuel_loop_tol=1.0,
     )
     domain = domain_factory()
-    solver = LazyAstar(heuristic=lambda d, s: d.heuristic(s))
-    domain.solve_with(solver=solver, domain_factory=domain_factory)
+    solver = LazyAstar(
+        domain_factory=domain_factory, heuristic=lambda d, s: d.heuristic(s)
+    )
+    domain.solve_with(solver=solver)
 
     assert solver.check_domain(domain)

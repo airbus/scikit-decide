@@ -40,6 +40,7 @@ def run_and_compare_policies_sampled_scenarios():
     state = domain.get_initial_state()
     domain.set_inplace_environment(True)
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
             delta_index_freedom=0,
@@ -48,7 +49,7 @@ def run_and_compare_policies_sampled_scenarios():
         method=SolvingMethod.LS,
         dict_params={"nb_iteration_max": 20},
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     policy_methods = [
         PolicyMethodParams(
             base_policy_method=method, delta_time_freedom=0, delta_index_freedom=0

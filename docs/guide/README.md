@@ -74,7 +74,7 @@ print(compatible_solvers)
 
 # select Lazy A* solver and instanciate with default parameters
 from skdecide.hub.solver.lazy_astar import LazyAstar
-mysolver = LazyAstar()
+mysolver = LazyAstar(domain_factory=MyDomain)
 ```
 
 ### Compute a solution
@@ -119,7 +119,7 @@ mysolver._cleanup()
 ::: tip
 Note that this is automatically done if you use the solver within a `with` statement:
 ```python
-with LazyAstar() as mysolver:
+with LazyAstar(domain_factory=MyDomain) as mysolver:
     MyDomain.solve_with(mysolver)
     utils.rollout(MyDomain(), mysolver)
 ```

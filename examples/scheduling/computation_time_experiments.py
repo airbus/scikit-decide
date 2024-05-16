@@ -37,6 +37,7 @@ def run_expe():
     do_solver = SolvingMethod.PILE  # Greedy solver.
     domain: RCPSP = load_domain(get_complete_path("j1201_1.sm"))
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
             # policy will just follow the output gantt of the greedy solver
@@ -45,7 +46,7 @@ def run_expe():
         ),
         method=do_solver,
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     states_deepcopy = do_rollout_comparaison(domain, solver, False)
     states_inplace = do_rollout_comparaison(domain, solver, True)
 
@@ -61,6 +62,7 @@ def run_expe():
             domain.duration_dict[task][mode] *= 20
     domain.set_inplace_environment(False)
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
             delta_index_freedom=0,
@@ -68,7 +70,7 @@ def run_expe():
         ),
         method=do_solver,
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     states_deepcopy = do_rollout_comparaison(domain, solver, False)
     states_inplace = do_rollout_comparaison(domain, solver, True)
 

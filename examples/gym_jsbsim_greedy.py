@@ -10,7 +10,7 @@ import gymnasium as gym
 from gym_jsbsim.catalogs.catalog import Catalog as prp
 from gym_jsbsim.envs.taxi_utils import *
 
-from skdecide import Solver
+from skdecide import Domain, Solver
 from skdecide.builders.solver import DeterministicPolicies, FromAnyState, Utilities
 from skdecide.hub.domain.gym import DeterministicGymDomain, GymDiscreteActionDomain
 from skdecide.utils import rollout
@@ -103,14 +103,15 @@ class GymGreedyDomain(D):
 class GreedyPlanner(Solver, DeterministicPolicies, Utilities, FromAnyState):
     T_domain = D
 
-    def __init__(self):
+    def __init__(self, domain_factory: Callable[[], Domain]):
+        Solver.__init__(self, domain_factory=domain_factory)
         self._domain = None
         self._best_action = None
         self._best_reward = None
         self._current_pos = None
 
-    def _init_solve(self, domain_factory: Callable[[], D]) -> None:
-        self._domain = domain_factory()
+    def _init_solve(self) -> None:
+        self._domain = self._domain_factory()
         self._domain.reset()
         lon = self._domain._gym_env.sim.get_property_value(prp.position_long_gc_deg)
         lat = self._domain._gym_env.sim.get_property_value(prp.position_lat_geod_deg)
@@ -162,8 +163,8 @@ domain = domain_factory()
 domain.reset()
 
 if GreedyPlanner.check_domain(domain):
-    with GreedyPlanner() as solver:
-        GymGreedyDomain.solve_with(solver, domain_factory)
+    with GreedyPlanner(domain_factory=domain_factory) as solver:
+        GymGreedyDomain.solve_with(solver)
         initial_state = solver._domain.reset()
         rollout(
             domain,

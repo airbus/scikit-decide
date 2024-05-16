@@ -163,11 +163,13 @@ class DOSolver(Solver, DeterministicPolicies):
 
     def __init__(
         self,
+        domain_factory: Callable[[], Domain],
         policy_method_params: PolicyMethodParams,
         method: SolvingMethod = SolvingMethod.PILE,
         dict_params: Optional[Dict[Any, Any]] = None,
         callback: Callable[[DOSolver], bool] = lambda solver: False,
     ):
+        Solver.__init__(self, domain_factory=domain_factory)
         self.callback = callback
         self.method = method
         self.policy_method_params = policy_method_params
@@ -195,8 +197,8 @@ class DOSolver(Solver, DeterministicPolicies):
 
         return smap
 
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
-        self.domain = domain_factory()
+    def _solve(self) -> None:
+        self.domain = self._domain_factory()
         self.do_domain = build_do_domain(self.domain)
         solvers = build_solver(solving_method=self.method, do_domain=self.do_domain)
         solver_class = solvers[0]

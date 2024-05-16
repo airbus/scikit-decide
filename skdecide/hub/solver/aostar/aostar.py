@@ -100,10 +100,10 @@ try:
             """
             ParallelSolver.__init__(
                 self,
-                domain_factory=domain_factory,
                 parallel=parallel,
                 shared_memory_proxy=shared_memory_proxy,
             )
+            Solver.__init__(self, domain_factory=domain_factory)
             self._solver = None
             self._discount = discount
             self._max_tip_expansions = max_tip_expansions
@@ -126,8 +126,7 @@ try:
                 self._solver.close()
             ParallelSolver.close(self)
 
-        def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
-            self._domain_factory = domain_factory
+        def _init_solve(self) -> None:
             self._solver = aostar_solver(
                 solver=self,
                 domain=self.get_domain(),
