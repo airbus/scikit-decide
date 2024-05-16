@@ -63,7 +63,7 @@ try:
             domain_factory: Callable[[], T_domain],
             heuristic: Optional[
                 Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]]
-            ] = None,
+            ] = lambda d, s: Value(cost=0),
             use_labels: bool = True,
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
@@ -75,7 +75,9 @@ try:
             continuous_planning: bool = True,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[LRTDP, Optional[int]], bool] = None,
+            callback: Callable[
+                [LRTDP, Optional[int]], bool
+            ] = lambda slv, i=None: False,
             verbose: bool = False,
         ) -> None:
             """Construct a LRTDP solver instance
@@ -84,7 +86,8 @@ try:
                 domain_factory (Callable[[], T_domain], optional): The lambda function to create a domain instance.
                 heuristic (Optional[ Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
                     Lambda function taking as arguments the domain and a state, and returning the heuristic
-                    estimate from the state to the goal. Defaults to None.
+                    estimate from the state to the goal.
+                    Defaults to (lambda d, s: Value(cost=0)).
                 use_labels (bool, optional): Boolean indicating whether labels must be used (True) or not
                     (False, in which case the algorithm is equivalent to the standard RTDP). Defaults to True.
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
@@ -116,7 +119,7 @@ try:
                     execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
                     can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
                     `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
-                    callback's process ID argument. Defaults to None.
+                    callback's process ID argument. Defaults to (lambda slv, i=None: False).
                 verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
                     or not (False). Defaults to False.
             """
@@ -127,10 +130,7 @@ try:
                 shared_memory_proxy=shared_memory_proxy,
             )
             self._solver = None
-            if heuristic is None:
-                self._heuristic = lambda d, s: Value(cost=0)
-            else:
-                self._heuristic = heuristic
+            self._heuristic = heuristic
             self._lambdas = [self._heuristic]
             self._use_labels = use_labels
             self._time_budget = time_budget
@@ -141,10 +141,7 @@ try:
             self._discount = discount
             self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
-            if callback is None:
-                self._callback = lambda slv, i=None: False
-            else:
-                self._callback = callback
+            self._callback = callback
             self._verbose = verbose
             self._ipc_notify = True
 

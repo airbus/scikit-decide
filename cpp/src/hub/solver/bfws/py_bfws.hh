@@ -59,15 +59,15 @@ private:
         py::object &solver, // Python solver wrapper
         py::object &domain,
         const std::function<py::object(const py::object &, const py::object &)>
+            &goal_checker,
+        const std::function<py::object(const py::object &, const py::object &)>
             &state_features,
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
-        const std::function<py::object(const py::object &, const py::object &)>
-            &termination_checker,
         const std::function<py::bool_(const py::object &)> &callback = nullptr,
         bool verbose = false)
-        : _state_features(state_features), _heuristic(heuristic),
-          _termination_checker(termination_checker), _callback(callback) {
+        : _goal_checker(goal_checker), _state_features(state_features),
+          _heuristic(heuristic), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
       check_domain(domain);
@@ -76,6 +76,27 @@ private:
           PyBFWSDomain<Texecution>, PyBFWSFeatureVector<Texecution>,
           Thashing_policy, Texecution>>(
           *_domain,
+          [this](PyBFWSDomain<Texecution> &d,
+                 const typename PyBFWSDomain<Texecution>::State &s) ->
+          typename PyBFWSDomain<Texecution>::Predicate {
+            try {
+              auto ftc = [this](const py::object &dd, const py::object &ss,
+                                [[maybe_unused]] const py::object &ii) {
+                return _goal_checker(dd, ss);
+              };
+              std::unique_ptr<py::object> r = d.call(nullptr, ftc, s.pyobj());
+              typename skdecide::GilControl<Texecution>::Acquire acquire;
+              bool rr = r->template cast<bool>();
+              r.reset();
+              return rr;
+            } catch (const std::exception &e) {
+              Logger::error(
+                  std::string(
+                      "SKDECIDE exception when calling goal checker: ") +
+                  e.what());
+              throw;
+            }
+          },
           [this](PyBFWSDomain<Texecution> &d,
                  const typename PyBFWSDomain<Texecution>::State &s)
               -> std::unique_ptr<PyBFWSFeatureVector<Texecution>> {
@@ -112,27 +133,6 @@ private:
               Logger::error(
                   std::string(
                       "SKDECIDE exception when calling heuristic estimator: ") +
-                  e.what());
-              throw;
-            }
-          },
-          [this](PyBFWSDomain<Texecution> &d,
-                 const typename PyBFWSDomain<Texecution>::State &s) ->
-          typename PyBFWSDomain<Texecution>::Predicate {
-            try {
-              auto ftc = [this](const py::object &dd, const py::object &ss,
-                                [[maybe_unused]] const py::object &ii) {
-                return _termination_checker(dd, ss);
-              };
-              std::unique_ptr<py::object> r = d.call(nullptr, ftc, s.pyobj());
-              typename skdecide::GilControl<Texecution>::Acquire acquire;
-              bool rr = r->template cast<bool>();
-              r.reset();
-              return rr;
-            } catch (const std::exception &e) {
-              Logger::error(
-                  std::string(
-                      "SKDECIDE exception when calling termination checker: ") +
                   e.what());
               throw;
             }
@@ -279,11 +279,11 @@ private:
         _solver;
 
     std::function<py::object(const py::object &, const py::object &)>
+        _goal_checker;
+    std::function<py::object(const py::object &, const py::object &)>
         _state_features;
     std::function<py::object(const py::object &, const py::object &)>
         _heuristic;
-    std::function<py::object(const py::object &, const py::object &)>
-        _termination_checker;
     std::function<py::bool_(const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
@@ -352,11 +352,11 @@ public:
       py::object &solver, // Python solver wrapper
       py::object &domain,
       const std::function<py::object(const py::object &, const py::object &)>
+          &goal_checker,
+      const std::function<py::object(const py::object &, const py::object &)>
           &state_features,
       const std::function<py::object(const py::object &, const py::object &)>
           &heuristic,
-      const std::function<py::object(const py::object &, const py::object &)>
-          &termination_checker,
       bool use_state_feature_hash = false, bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
@@ -364,8 +364,8 @@ public:
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  HashingPolicySelector(use_state_feature_hash),
                                  SolverInstantiator(_implementation))
-        .instantiate(solver, domain, state_features, heuristic,
-                     termination_checker, callback, verbose);
+        .instantiate(solver, domain, goal_checker, state_features, heuristic,
+                     callback, verbose);
   }
 
   void close() { _implementation->close(); }

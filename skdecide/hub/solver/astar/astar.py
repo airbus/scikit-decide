@@ -64,10 +64,10 @@ try:
             domain_factory: Callable[[], Domain],
             heuristic: Optional[
                 Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]
-            ] = None,
+            ] = lambda d, s: Value(cost=0),
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[Astar], bool] = None,
+            callback: Callable[[Astar], bool] = lambda slv: False,
             verbose: bool = False,
         ) -> None:
             """Construct a Astar solver instance
@@ -76,15 +76,16 @@ try:
                 domain_factory (Callable[[], Domain], optional): The lambda function to create a domain instance.
                 heuristic (Optional[ Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
                     Lambda function taking as arguments the domain and a state object,
-                    and returning the heuristic estimate from the state to the goal. Defaults to None.
+                    and returning the heuristic estimate from the state to the goal.
+                    Defaults to (lambda d, s: Value(cost=0)).
                 parallel (bool, optional): Parallelize the generation of state-action transitions
                     on different processes using duplicated domains (True) or not (False). Defaults to False.
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 callback (Callable[[AOstar], bool], optional): Lambda function called before popping
                     the next state from the (priority) open queue, taking as arguments the solver and the domain,
-                    and returning true if the solver must be stopped. Defaults to None.
+                    and returning true if the solver must be stopped. Defaults to (lambda slv: False).
                 verbose (bool, optional): Boolean indicating whether verbose messages should be
-                    logged (true) or not (false). Defaults to False.
+                    logged (True) or not (False). Defaults to False.
             """
             ParallelSolver.__init__(
                 self,
@@ -93,15 +94,9 @@ try:
                 shared_memory_proxy=shared_memory_proxy,
             )
             self._solver = None
-            if heuristic is None:
-                self._heuristic = lambda d, s: Value(cost=0)
-            else:
-                self._heuristic = heuristic
+            self._heuristic = heuristic
             self._lambdas = [self._heuristic]
-            if callback is None:
-                self._callback = lambda slv: False
-            else:
-                self._callback = callback
+            self._callback = callback
             self._verbose = verbose
             self._ipc_notify = True
 

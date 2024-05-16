@@ -68,7 +68,10 @@ try:
                         D.T_agent[D.T_concurrency[D.T_event]],
                     ],
                 ]
-            ] = None,
+            ] = lambda d, s: (
+                {a: Value(cost=0) for a in s},
+                {a: None for a in s},
+            ),
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
             max_depth: int = 1000,
@@ -81,7 +84,7 @@ try:
             dead_end_cost: float = 10000,
             online_node_garbage: bool = False,
             continuous_planning: bool = True,
-            callback: Callable[[MARTDP], bool] = None,
+            callback: Callable[[MARTDP], bool] = lambda slv: False,
             verbose: bool = False,
         ) -> None:
             """Construct a MA-RTDP solver instance
@@ -91,7 +94,8 @@ try:
                 heuristic (Optional[ Callable[ [T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]], ], ] ], optional):
                     Lambda function taking as arguments the domain and a state, and returning a pair of
                     dictionary from agents to the individual heuristic estimates from the state to the goal,
-                    and of dictionary from agents to best guess individual actions. Defaults to None.
+                    and of dictionary from agents to best guess individual actions.
+                    Defaults to lambda d, s: ({a: Value(cost=0) for a in s}, {a: None for a in s},).
                 time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
                 rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
                 max_depth (int, optional): Maximum depth of each MA-RTDP trial (rollout). Defaults to 1000.
@@ -122,19 +126,13 @@ try:
                 callback (Callable[[MARTDP], bool], optional): Function called at the end of each MA-RTDP trial,
                     taking as arguments the solver, and returning True if the solver must be stopped.
                     The :py:meth`MARTDP.get_domain` method callable on the solver instance can be used to retrieve
-                    the user domain. Defaults to None.
+                    the user domain. Defaults to (lambda slv: False).
                 verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
                     or not (False). Defaults to False.
             """
             self._domain = domain_factory()
             self._solver = None
-            if heuristic is None:
-                self._heuristic = lambda d, s: (
-                    {a: Value(cost=0) for a in s},
-                    {a: None for a in s},
-                )
-            else:
-                self._heuristic = heuristic
+            self._heuristic = heuristic
             self._time_budget = time_budget
             self._rollout_budget = rollout_budget
             self._max_depth = max_depth
@@ -147,10 +145,7 @@ try:
             self._dead_end_cost = dead_end_cost
             self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
-            if callback is None:
-                self._callback = lambda slv: False
-            else:
-                self._callback = callback
+            self._callback = callback
             self._verbose = verbose
             self._ipc_notify = True
 

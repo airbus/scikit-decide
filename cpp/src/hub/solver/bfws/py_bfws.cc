@@ -23,8 +23,8 @@ void init_pybfws(py::module &m) {
                     bool, bool,
                     const std::function<py::bool_(const py::object &)> &,
                     bool>(),
-           py::arg("solver"), py::arg("domain"), py::arg("state_features"),
-           py::arg("heuristic"), py::arg("termination_checker"),
+           py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
+           py::arg("state_features"), py::arg("heuristic"),
            py::arg("use_state_feature_hash") = false,
            py::arg("parallel") = false, py::arg("callback") = nullptr,
            py::arg("verbose") = false)

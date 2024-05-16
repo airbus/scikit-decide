@@ -72,7 +72,7 @@ try:
             continuous_planning: bool = True,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[RIW, Optional[int]], bool] = None,
+            callback: Callable[[RIW, Optional[int]], bool] = lambda slv, i=None: False,
             verbose: bool = False,
         ) -> None:
             """Construct a RIW solver instance
@@ -122,7 +122,7 @@ try:
                     execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
                     can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
                     `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
-                    callback's process ID argument. Defaults to None.
+                    callback's process ID argument. Defaults to (lambda slv, i=None: False).
                 verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
                     or not (False). Defaults to False.
             """
@@ -146,10 +146,7 @@ try:
             self._discount = discount
             self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
-            if callback is None:
-                self._callback = lambda slv, i=None: False
-            else:
-                self._callback = callback
+            self._callback = callback
             self._verbose = verbose
             self._lambdas = [self._state_features]
             self._ipc_notify = True

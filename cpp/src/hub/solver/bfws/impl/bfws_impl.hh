@@ -90,14 +90,14 @@ bool SK_BFWS_STATE_FEATURE_HASH_CLASS::Equal::operator()(const Key &k1,
   BFWSSolver<Tdomain, Tfeature_vector, Thashing_policy, Texecution_policy>
 
 SK_BFWS_SOLVER_TEMPLATE_DECL
-SK_BFWS_SOLVER_CLASS::BFWSSolver(
-    Domain &domain, const StateFeatureFunctor &state_features,
-    const HeuristicFunctor &heuristic,
-    const TerminationCheckerFunctor &termination_checker,
-    const CallbackFunctor &callback, bool verbose)
-    : _domain(domain), _state_features(state_features), _heuristic(heuristic),
-      _termination_checker(termination_checker), _callback(callback),
-      _verbose(verbose) {
+SK_BFWS_SOLVER_CLASS::BFWSSolver(Domain &domain,
+                                 const GoalCheckerFunctor &goal_checker,
+                                 const StateFeatureFunctor &state_features,
+                                 const HeuristicFunctor &heuristic,
+                                 const CallbackFunctor &callback, bool verbose)
+    : _domain(domain), _goal_checker(goal_checker),
+      _state_features(state_features), _heuristic(heuristic),
+      _callback(callback), _verbose(verbose) {
 
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm BFWS");
@@ -125,9 +125,9 @@ void SK_BFWS_SOLVER_CLASS::solve(const State &s) {
     // Create the root node containing the given state s
     auto si = _graph.emplace(Node(s, _domain, _state_features));
     if (si.first->solved ||
-        _termination_checker(_domain,
-                             s)) { // problem already solved from this state
-                                   // (was present in _graph and already solved)
+        _goal_checker(_domain,
+                      s)) { // problem already solved from this state
+                            // (was present in _graph and already solved)
       return;
     }
     Node &root_node = const_cast<Node &>(*(
@@ -165,10 +165,10 @@ void SK_BFWS_SOLVER_CLASS::solve(const State &s) {
                       ", n=" + StringConverter::from(best_tip_node->novelty) +
                       "): " + best_tip_node->state.print());
 
-      if (_termination_checker(_domain, best_tip_node->state) ||
+      if (_goal_checker(_domain, best_tip_node->state) ||
           best_tip_node->solved) {
         if (_verbose)
-          Logger::debug("Found a terminal or previously solved state: " +
+          Logger::debug("Found a goal or previously solved state: " +
                         best_tip_node->state.print());
         auto current_node = best_tip_node;
         if (!(best_tip_node->solved)) {
@@ -366,7 +366,7 @@ SK_BFWS_SOLVER_CLASS::get_plan(
   const Node *cur_node = &(*si);
   std::unordered_set<const Node *> plan_nodes;
   plan_nodes.insert(cur_node);
-  while (!_termination_checker(_domain, cur_node->state) &&
+  while (!_goal_checker(_domain, cur_node->state) &&
          cur_node->best_action.first != nullptr) {
     Value val;
     val.cost(cur_node->best_action.second->gscore - cur_node->gscore);

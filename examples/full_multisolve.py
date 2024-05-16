@@ -280,7 +280,6 @@ if __name__ == "__main__":
             "config": {
                 "state_features": lambda d, s: d.state_features(s),
                 "heuristic": lambda d, s: d.heuristic(s),
-                "termination_checker": lambda d, s: d.is_goal(s),
                 "parallel": False,
                 "verbose": False,
             },

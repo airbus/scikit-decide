@@ -96,10 +96,11 @@ public:
    * measure
    * @param node_ordering Functor called to rank two search nodes A and B,
    * taking as inputs A's g-score, A's novelty, A's search depth, B's g-score,
-   * B's novelty, B's search depth, and returning true when B should preferred
-   * to A (defaults to rank nodes based on their g-scores)
-   * @param time_budget Maximum time allowed to continue searching for better
-   * plans after a first plan reaching a goal has been found
+   * B's novelty, B's search depth, and returning true when B should be
+   * preferred to A (defaults to rank nodes based on their g-scores)
+   * @param time_budget Maximum time allowed (in milliseconds) to continue
+   * searching for better plans after a first plan reaching a goal has been
+   * found
    * @param callback Functor called before popping the next state from the
    * (priority) open queue, taking as arguments the solver and the domain, and
    * returning true if the solver must be stopped

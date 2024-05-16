@@ -88,20 +88,19 @@ public:
                                                        const State &s)>
       StateFeatureFunctor;
   typedef std::function<Value(Domain &, const State &)> HeuristicFunctor;
-  typedef std::function<Predicate(Domain &, const State &)>
-      TerminationCheckerFunctor;
+  typedef std::function<Predicate(Domain &, const State &)> GoalCheckerFunctor;
   typedef std::function<bool(const BFWSSolver &, Domain &)> CallbackFunctor;
 
   /**
    * @brief Construct a new BFWSSolver object
    *
    * @param domain The domain instance
+   * @param goal_checker Functor taking as arguments the domain and a
+   * state object, and returning true if the state is a goal
    * @param state_features State feature vector used to compute the novelty
    * measure
    * @param heuristic Functor taking as arguments the domain and a state object,
    * and returning the heuristic estimate from the state to the goal
-   * @param termination_checker Functor taking as arguments the domain and a
-   * state object, and returning true if the state is terminal
    * @param callback Functor called before popping the next state from the
    * (priority) open queue, taking as arguments the solver and the domain, and
    * returning true if the solver must be stopped
@@ -109,9 +108,9 @@ public:
    * logged (true) or not (false)
    */
   BFWSSolver(
-      Domain &domain, const StateFeatureFunctor &state_features,
+      Domain &domain, const GoalCheckerFunctor &goal_checker,
+      const StateFeatureFunctor &state_features,
       const HeuristicFunctor &heuristic,
-      const TerminationCheckerFunctor &termination_checker,
       const CallbackFunctor &callback = [](const BFWSSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -233,7 +232,7 @@ private:
   Domain &_domain;
   StateFeatureFunctor _state_features;
   HeuristicFunctor _heuristic;
-  TerminationCheckerFunctor _termination_checker;
+  GoalCheckerFunctor _goal_checker;
   CallbackFunctor _callback;
   bool _verbose;
   ExecutionPolicy _execution_policy;

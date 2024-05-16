@@ -154,7 +154,6 @@ class GridDomain(D):
                 "heuristic": lambda d, s: Value(
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
-                "termination_checker": lambda d, s: d.is_goal(s),
                 "verbose": False,
             },
             "optimal": True,

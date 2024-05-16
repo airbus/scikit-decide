@@ -57,13 +57,41 @@ try:
             domain_factory: Callable[[], Domain],
             state_features: Callable[[Domain, D.T_state], Any],
             use_state_feature_hash: bool = False,
-            node_ordering: Callable[[float, int, int, float, int, int], bool] = None,
+            node_ordering: Callable[[float, int, int, float, int, int], bool] = (
+                lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_gscore
+                > b_gscore
+            ),
             time_budget: int = 0,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[IW], bool] = None,
+            callback: Callable[[IW], bool] = lambda slv: False,
             verbose: bool = False,
         ) -> None:
+            """Construct a IW solver instance
+
+            # Parameters
+                domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
+                state_features (Callable[[Domain, D.T_state], Any]): State feature vector
+                    used to compute the novelty measure
+                use_state_feature_hash (bool, optional): Boolean indicating whether states
+                    must be hashed by using their features (True) or by using their native
+                    hash function (False). Defaults to False.
+                node_ordering (_type_, optional): Lambda function called to rank two search nodes
+                    A and B, taking as inputs A's g-score, A's novelty, A's search depth,
+                    B's g-score, B's novelty, B's search depth, and returning true when B should be
+                    preferred to A (defaults to rank nodes based on their g-scores).
+                    Defaults to ( lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_gscore > b_gscore ).
+                time_budget (int, optional): Maximum time allowed (in milliseconds) to continue searching
+                    for better plans after a first plan reaching a goal has been found. Defaults to 0.
+                parallel (bool, optional): Parallelize the generation of state-action transitions
+                    on different processes using duplicated domains (True) or not (False). Defaults to False.
+                shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
+                callback (_type_, optional): Lambda function called before popping
+                    the next state from the (priority) open queue, taking as arguments the solver and the domain,
+                    and returning true if the solver must be stopped. Defaults to (lambda slv:False).
+                verbose (bool, optional): Boolean indicating whether verbose messages should be
+                    logged (True) or not (False). Defaults to False.
+            """
             ParallelSolver.__init__(
                 self,
                 domain_factory=domain_factory,
@@ -77,10 +105,7 @@ try:
             self._node_ordering = node_ordering
             self._time_budget = time_budget
             self._lambdas = [self._state_features]
-            if callback is None:
-                self._callback = lambda slv: False
-            else:
-                self._callback = callback
+            self._callback = callback
             self._verbose = verbose
             self._ipc_notify = True
 

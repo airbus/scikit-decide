@@ -65,13 +65,13 @@ try:
             domain_factory: Callable[[], Domain],
             heuristic: Optional[
                 Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]
-            ] = None,
+            ] = lambda d, s: Value(cost=0),
             discount: float = 1.0,
             max_tip_expansions: int = 1,
             parallel: bool = False,
             shared_memory_proxy=None,
             detect_cycles: bool = False,
-            callback: Callable[[AOstar], bool] = None,
+            callback: Callable[[AOstar], bool] = lambda slv: False,
             verbose: bool = False,
         ) -> None:
             """Construct a AOstar solver instance
@@ -80,7 +80,8 @@ try:
                 domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
                 heuristic (Optional[ Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
                     Lambda function taking as arguments the domain and a state object,
-                    and returning the heuristic estimate from the state to the goal. Defaults to None.
+                    and returning the heuristic estimate from the state to the goal.
+                    Defaults to (lambda d, s: Value(cost=0)).
                 discount (float, optional): Value function's discount factor. Defaults to 1.0.
                 max_tip_expansions (int, optional): Maximum number of states to extract from the
                     priority queue at each iteration before recomputing the policy graph. Defaults to 1.
@@ -93,9 +94,9 @@ try:
                     infinitely trapped. Defaults to False.
                 callback (Callable[[AOstar], bool], optional): Lambda function called before popping
                     the next state from the priority queue, taking as arguments the solver and the domain,
-                    and returning true if the solver must be stopped. Defaults to None.
+                    and returning true if the solver must be stopped. Defaults to (lambda slv: False).
                 verbose (bool, optional): Boolean indicating whether verbose messages should be
-                    logged (true) or not (false). Defaults to False.
+                    logged (True) or not (False). Defaults to False.
             """
             ParallelSolver.__init__(
                 self,
@@ -107,15 +108,9 @@ try:
             self._discount = discount
             self._max_tip_expansions = max_tip_expansions
             self._detect_cycles = detect_cycles
-            if heuristic is None:
-                self._heuristic = lambda d, s: Value(cost=0)
-            else:
-                self._heuristic = heuristic
+            self._heuristic = heuristic
             self._lambdas = [self._heuristic]
-            if callback is None:
-                self._callback = lambda slv: False
-            else:
-                self._callback = callback
+            self._callback = callback
             self._verbose = verbose
             self._ipc_notify = True
 

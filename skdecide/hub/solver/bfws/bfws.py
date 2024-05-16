@@ -61,13 +61,12 @@ try:
             self,
             domain_factory: Callable[[], Domain],
             state_features: Callable[[Domain, D.T_state], Any],
-            heuristic: Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]],
-            termination_checker: Callable[
-                [Domain, D.T_state], D.T_agent[D.T_predicate]
-            ],
+            heuristic: Callable[
+                [Domain, D.T_state], D.T_agent[Value[D.T_value]]
+            ] = lambda d, s: Value(cost=0),
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[BFWS], bool] = None,
+            callback: Callable[[BFWS], bool] = lambda slv: False,
             verbose: bool = False,
         ) -> None:
             """Construct a BFWS solver instance
@@ -78,18 +77,16 @@ try:
                     used to compute the novelty measure
                 heuristic (Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]):
                     Lambda function taking as arguments the domain and a state object,
-                    and returning the heuristic estimate from the state to the goal. Defaults to None.
-                termination_checker (Callable[ [Domain, D.T_state], D.T_agent[D.T_predicate] ]):
-                    Lambda function taking as arguments the domain and a state object,
-                    and returning True if the state is terminal. Defaults to None.
+                    and returning the heuristic estimate from the state to the goal.
+                    Defaults to (lambda d, s: Value(cost=0)).
                 parallel (bool, optional): Parallelize the generation of state-action transitions
                     on different processes using duplicated domains (True) or not (False). Defaults to False.
                 shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
                 callback (Callable[[BFWS], bool], optional): Lambda function called before popping
                     the next state from the (priority) open queue, taking as arguments the solver and the domain,
-                    and returning true if the solver must be stopped. Defaults to None.
+                    and returning true if the solver must be stopped. Defaults to (lambda slv: False).
                 verbose (bool, optional): Boolean indicating whether verbose messages should be
-                    logged (true) or not (false). Defaults to False.
+                    logged (True) or not (False). Defaults to False.
             """
             ParallelSolver.__init__(
                 self,
@@ -100,20 +97,12 @@ try:
             self._solver = None
             self._domain = None
             self._state_features = state_features
-            self._termination_checker = termination_checker
-            if heuristic is None:
-                self._heuristic = lambda d, s: Value(cost=0)
-            else:
-                self._heuristic = heuristic
+            self._heuristic = heuristic
             self._lambdas = [
                 self._state_features,
                 self._heuristic,
-                self._termination_checker,
             ]
-            if callback is None:
-                self._callback = lambda slv: False
-            else:
-                self._callback = callback
+            self._callback = callback
             self._verbose = verbose
             self._ipc_notify = True
 
@@ -131,6 +120,7 @@ try:
             self._solver = bfws_solver(
                 solver=self,
                 domain=self.get_domain(),
+                goal_checker=lambda d, s: d.is_goal(s),
                 state_features=(
                     (lambda d, s: self._state_features(d, s))
                     if not self._parallel
@@ -140,11 +130,6 @@ try:
                     (lambda d, s: self._heuristic(d, s))
                     if not self._parallel
                     else (lambda d, s: d.call(None, 1, s))
-                ),
-                termination_checker=(
-                    (lambda d, s: self._termination_checker(d, s))
-                    if not self._parallel
-                    else (lambda d, s: d.call(None, 2, s))
                 ),
                 parallel=self._parallel,
                 callback=self._callback,

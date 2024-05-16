@@ -123,7 +123,7 @@ try:
             continuous_planning: bool = True,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[MCTS, Optional[int]], bool] = None,
+            callback: Callable[[MCTS, Optional[int]], bool] = lambda slv, i=None: False,
             verbose: bool = False,
         ) -> None:
             """Construct a MCTS solver instance
@@ -147,10 +147,10 @@ try:
                     no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
                 custom_policy (Callable[ [T_domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]], ], optional):
                     Custom policy function to use in the rollout policy from non-expanded state nodes when the rollout policy is
-                    :py:attribute`MCTS.RolloutPolicy.CUSTOM`. Defaults to None.
+                    :py:attribute`MCTS.RolloutPolicy.CUSTOM`. Defaults to None (no custom policy in use).
                 heuristic (Callable[ [T_domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int], ], optional):
                     Optional Heuristic function to initialize non-expanded state nodes (returns a pair of value estimate and
-                    fake number of visit counts). Defaults to None.
+                    fake number of visit counts). Defaults to None (no heuristic in use).
                 state_expansion_rate (float, optional): Value $rs$ used when the expander is :py:attribute`MCTS.Expander.PARTIAL`
                     such that the probability of discovering new applicable actions in a given state node with already $na$ discovered
                     applicable actions is equal to $e^{-rs \cdot na}$. Defaults to 0.1.
@@ -207,7 +207,7 @@ try:
                     execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
                     can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
                     `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
-                    callback's process ID argument. Defaults to None.
+                    callback's process ID argument. Defaults to (lambda slv, i=None: False).
                 verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
                     or not (False). Defaults to False.
             """
@@ -239,10 +239,7 @@ try:
             self._rollout_policy = rollout_policy
             self._back_propagator = back_propagator
             self._continuous_planning = continuous_planning
-            if callback is None:
-                self._callback = lambda slv, i=None: False
-            else:
-                self._callback = callback
+            self._callback = callback
             self._verbose = verbose
             self._lambdas = [self._custom_policy, self._heuristic]
             self._ipc_notify = True
@@ -488,7 +485,9 @@ try:
             continuous_planning: bool = True,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[HMCTS, Optional[int]], bool] = None,
+            callback: Callable[
+                [HMCTS, Optional[int]], bool
+            ] = lambda slv, i=None: False,
             verbose: bool = False,
         ):
             """Construct a HMCTS solver instance
@@ -512,7 +511,7 @@ try:
                     no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
                 heuristic (Callable[ [MCTS.T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]] ], ], optional):
                     Multi-agent compound heuristic as returned by the :py:class`MAHD` algorithm from independent
-                    agent heuristic contributions. Defaults to None.
+                    agent heuristic contributions. Defaults to None (no heuristic in use).
                 heuristic_confidence (int, optional): Fake state node visits set on non-expanded state nodes for which the
                     multi-agent compound heuristic is computed by :py:class`MAHD`. Defaults to 1000.
                 action_choice_noise (float, optional): Probability used to sample random actions instead of executing the
@@ -565,7 +564,7 @@ try:
                     execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
                     can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
                     `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
-                    callback's process ID argument. Defaults to None.
+                    callback's process ID argument. Defaults to (lambda slv, i=None: False).
                 verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
                     or not (False). Defaults to False.
             """
@@ -680,7 +679,7 @@ try:
             continuous_planning: bool = True,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[UCT, Optional[int]], bool] = None,
+            callback: Callable[[UCT, Optional[int]], bool] = lambda slv, i=None: False,
             verbose: bool = False,
         ) -> None:
             """Construct a UCT solver instance
@@ -704,10 +703,10 @@ try:
                     no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
                 custom_policy (Callable[ [MCTS.T_domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]], ], optional):
                     Custom policy function to use in the rollout policy from non-expanded state nodes when the rollout policy is
-                    :py:attribute`MCTS.RolloutPolicy.CUSTOM`. Defaults to None.
+                    :py:attribute`MCTS.RolloutPolicy.CUSTOM`. Defaults to None (no custom policy in use).
                 heuristic (Callable[ [MCTS.T_domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int], ], optional):
                     Optional Heuristic function to initialize non-expanded state nodes (returns a pair of value estimate and
-                    fake number of visit counts). Defaults to None.
+                    fake number of visit counts). Defaults to None (no heuristic in use).
                 transition_mode (MCTS.TransitionMode, optional): Transition mode enum (one of :py:attribute`MCTS.TransitionMode.STEP`,
                     :py:attribute`MCTS.TransitionMode.SAMPLE` or :py:attribute`MCTS.TransitionMode.DISTRIBUTION` to progress the
                     trajectories with, respectively, the 'step' or 'sample' or 'get_next_state_distribution' method of the domain
@@ -735,7 +734,7 @@ try:
                     execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
                     can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
                     `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
-                    callback's process ID argument. Defaults to None.
+                    callback's process ID argument. Defaults to (lambda slv, i=None: False).
                 verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
                     or not (False). Defaults to False.
             """
@@ -792,7 +791,7 @@ try:
             continuous_planning: bool = True,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[HUCT, Optional[int]], bool] = None,
+            callback: Callable[[HUCT, Optional[int]], bool] = lambda slv, i=None: False,
             verbose: bool = False,
         ) -> None:
             """Construct a HUCT solver instance
@@ -816,7 +815,7 @@ try:
                     no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
                 heuristic (Callable[ [MCTS.T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]] ], ], optional):
                     Multi-agent compound heuristic as returned by the :py:class`MAHD` algorithm from independent
-                    agent heuristic contributions. Defaults to None.
+                    agent heuristic contributions. Defaults to None (no heuristic in use).
                 heuristic_confidence (int, optional): Fake state node visits set on non-expanded state nodes for which the
                     multi-agent compound heuristic is computed by :py:class`MAHD`. Defaults to 1000.
                 action_choice_noise (float, optional): Probability used to sample random actions instead of executing the
@@ -840,7 +839,7 @@ try:
                     execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
                     can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
                     `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
-                    callback's process ID argument. Defaults to None.
+                    callback's process ID argument. Defaults to (lambda slv, i=None: False).
                 verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
                     or not (False). Defaults to False.
             """
