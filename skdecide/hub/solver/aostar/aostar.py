@@ -253,6 +253,9 @@ try:
         def get_top_tip_state(self) -> D.T_agent[D.T_observation]:
             """Get the top tip state, i.e. the tip state with the lowest value function
 
+            !!! warning
+                Returns None if the priority queue is empty
+
             # Returns
                 D.T_agent[D.T_observation]: Next tip state to be expanded by the algorithm
             """
