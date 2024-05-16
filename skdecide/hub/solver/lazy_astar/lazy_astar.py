@@ -44,6 +44,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
 
     def __init__(
         self,
+        domain_factory: Callable[[], Domain],
         heuristic: Optional[
             Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]
         ] = None,
@@ -55,6 +56,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         """
 
         # Parameters
+        domain_factory
         heuristic
         weight
         verbose
@@ -63,6 +65,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
 
         """
         self.callback = callback
+        Solver.__init__(self, domain_factory=domain_factory)
         self._heuristic = (
             (lambda _, __: Value(cost=0.0)) if heuristic is None else heuristic
         )
@@ -80,19 +83,13 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         """Return the computed policy."""
         return self._policy
 
-    def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
+    def _init_solve(self) -> None:
         """Initialize solver before calling `solve_from()`
 
         In particular, initialize the underlying domain.
 
-        This is a helper function called by default from #FromAnyState.init_solve(), the difference being that the domain factory
-        here returns domains auto-cast to the level expected by the solver.
-
-        # Parameters
-        domain_factory: A callable with no argument returning the domain to solve (can be just a domain class).
-
         """
-        self._domain = domain_factory()
+        self._domain = self._domain_factory()
 
     def _solve_from(
         self,

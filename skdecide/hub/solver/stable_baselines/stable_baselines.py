@@ -39,6 +39,7 @@ class StableBaseline(Solver, Policies, Restorable):
 
     def __init__(
         self,
+        domain_factory: Callable[[], Domain],
         algo_class: Type[BaseAlgorithm],
         baselines_policy: Union[str, Type[BasePolicy]],
         learn_config: Optional[Dict[str, Any]] = None,
@@ -48,12 +49,15 @@ class StableBaseline(Solver, Policies, Restorable):
         """Initialize StableBaselines.
 
         # Parameters
+        domain_factory: A callable with no argument returning the domain to solve (can be a mere domain class).
+            The resulting domain will be auto-cast to the level expected by the solver.
         algo_class: The class of Baselines solver (stable_baselines3) to wrap.
         baselines_policy: The class of Baselines policy network (stable_baselines3.common.policies or str) to use.
         learn_config: the kwargs passed to sb3 algo's `learn()` method
         callback: function called at each solver iteration. If returning true, the solve process stops.
 
         """
+        Solver.__init__(self, domain_factory=domain_factory)
         self._algo_class = algo_class
         self._baselines_policy = baselines_policy
         self._learn_config = learn_config if learn_config is not None else {}
@@ -66,14 +70,14 @@ class StableBaseline(Solver, Policies, Restorable):
             domain.get_observation_space(), GymSpace
         )
 
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
+    def _solve(self) -> None:
         # TODO: improve code for parallelism
         #  (https://stable-baselines3.readthedocs.io/en/master/guide/examples.html
         #  #multiprocessing-unleashing-the-power-of-vectorized-environments)?
         if not hasattr(
             self, "_algo"
         ):  # reuse algo if possible (enables further learning)
-            domain = domain_factory()
+            domain = self._domain_factory()
             env = DummyVecEnv(
                 [lambda: AsGymnasiumEnv(domain)]
             )  # the algorithms require a vectorized environment to run
@@ -108,8 +112,8 @@ class StableBaseline(Solver, Policies, Restorable):
     def _save(self, path: str) -> None:
         self._algo.save(path)
 
-    def _load(self, path: str, domain_factory: Callable[[], D]):
-        domain = domain_factory()
+    def _load(self, path: str):
+        domain = self._domain_factory()
         env = DummyVecEnv([lambda: AsGymnasiumEnv(domain)])
         self._algo = self._algo_class.load(path, env=env)
         self._init_algo(domain)

@@ -4,12 +4,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, List
-
 from skdecide.parallel_domains import PipeParallelDomain, ShmParallelDomain
-
-if TYPE_CHECKING:  # avoids circular imports
-    from skdecide.domains import Domain
 
 __all__ = ["ParallelSolver"]
 
@@ -21,17 +16,14 @@ class ParallelSolver:
 
     def __init__(
         self,
-        domain_factory: Callable[[], Domain],
         parallel: bool = False,
         shared_memory_proxy=None,
     ):
         """Creates a parallelizable solver
         # Parameters
-        domain_factory: A callable with no argument returning the domain to solve (factory is the domain class if None).
         parallel: True if the solver is run in parallel mode.
         shared_memory_proxy: Shared memory proxy to use if not None, otherwise run piped parallel domains.
         """
-        self._domain_factory = domain_factory
         self._parallel = parallel
         self._shared_memory_proxy = shared_memory_proxy
         self._domain = None

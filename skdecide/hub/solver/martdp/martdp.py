@@ -130,7 +130,9 @@ try:
                 verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
                     or not (False). Defaults to False.
             """
-            self._domain = domain_factory()
+
+            Solver.__init__(self, domain_factory=domain_factory)
+            self._domain = self._domain_factory()
             self._solver = None
             self._heuristic = heuristic
             self._time_budget = time_budget
@@ -149,8 +151,7 @@ try:
             self._verbose = verbose
             self._ipc_notify = True
 
-        def _init_solve(self, domain_factory: Callable[[], T_domain]) -> None:
-            self._domain_factory = domain_factory
+        def _init_solve(self) -> None:
             self._solver = martdp_solver(
                 solver=self,
                 domain=self.get_domain(),

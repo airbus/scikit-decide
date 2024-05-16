@@ -26,11 +26,12 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         singleagent_solver_class,
         multiagent_domain_class,
         singleagent_domain_class,
-        multiagent_domain_factory: Callable[[], Domain] = None,
+        multiagent_domain_factory: Callable[[], Domain],
         singleagent_domain_factory: Callable[[Domain, Any], Domain] = None,
         multiagent_solver_kwargs=None,
         singleagent_solver_kwargs=None,
     ) -> None:
+        Solver.__init__(self, domain_factory=multiagent_domain_factory)
         if multiagent_solver_kwargs is None:
             multiagent_solver_kwargs = {}
         if "heuristic" in multiagent_solver_kwargs:
@@ -58,16 +59,19 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
             self._singleagent_solver_kwargs = {}
 
         for a in self._multiagent_domain.get_agents():
+            singleagent_solver_kwargs = dict(self._singleagent_solver_kwargs)
+            if self._singleagent_domain_factory is None:
+                singleagent_solver_kwargs[
+                    "domain_factory"
+                ] = lambda: self._singleagent_domain_class()
+            else:
+                singleagent_solver_kwargs[
+                    "domain_factory"
+                ] = lambda: self._singleagent_domain_factory(self._multiagent_domain, a)
             self._singleagent_solvers[a] = self._singleagent_solver_class(
-                **self._singleagent_solver_kwargs
+                **singleagent_solver_kwargs
             )
-            self._singleagent_solvers[a].init_solve(
-                domain_factory=lambda: (
-                    self._singleagent_domain_factory(self._multiagent_domain, a)
-                    if self._singleagent_domain_factory is not None
-                    else None
-                ),
-            )
+            self._singleagent_solvers[a].init_solve(),
 
         self._singleagent_solutions = {
             a: {} for a in self._multiagent_domain.get_agents()
@@ -75,24 +79,21 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
 
     def _solve(
         self,
-        domain_factory: Callable[[], D],
         from_memory: Optional[D.T_memory[D.T_state]] = None,
     ) -> None:
         self._multiagent_domain_class.solve_with(
             solver=self._multiagent_solver,
-            domain_factory=domain_factory,
             from_memory=from_memory,
         )
 
     def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
         self._multiagent_domain_class.solve_with(
             solver=self._multiagent_solver,
-            domain_factory=self._domain_factory,
             from_memory=memory,
         )
 
-    def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
-        self._domain_factory = domain_factory
+    def _init_solve(self) -> None:
+        pass
 
     def _get_next_action(
         self, observation: D.T_agent[D.T_observation]

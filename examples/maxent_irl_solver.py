@@ -13,6 +13,7 @@ domain = domain_factory()
 print("===>", domain.get_action_space().unwrapped())
 if MaxentIRL.check_domain(domain):
     solver_factory = lambda: MaxentIRL(
+        domain_factory=domain_factory,
         n_states=400,
         n_actions=3,
         one_feature=20,
@@ -20,7 +21,7 @@ if MaxentIRL.check_domain(domain):
         n_epochs=10000,
     )
     with solver_factory() as solver:
-        GymDomain.solve_with(solver, domain_factory)
+        GymDomain.solve_with(solver)
         rollout(
             domain,
             solver,

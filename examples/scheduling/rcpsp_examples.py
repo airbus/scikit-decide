@@ -54,6 +54,7 @@ def do_singlemode():
     state = domain.get_initial_state()
     print("Initial state : ", state)
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
             delta_index_freedom=0,
@@ -61,7 +62,7 @@ def do_singlemode():
         ),
         method=do_solver,
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     print(do_solver)
 
     states, actions, values = rollout_episode(
@@ -82,6 +83,7 @@ def do_multimode():
     domain: RCPSP = load_domain(get_complete_path("j1010_2.mm"))
     state = domain.get_initial_state()
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
             delta_index_freedom=0,
@@ -89,7 +91,7 @@ def do_multimode():
         ),
         method=SolvingMethod.CP,
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     states, actions, values = rollout_episode(
         domain=domain,
         solver=solver,
@@ -126,6 +128,7 @@ def do_multiskill():
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
             delta_index_freedom=0,
@@ -134,7 +137,7 @@ def do_multiskill():
         method=SolvingMethod.LNS_CP,
     )
     solver.get_available_methods(domain)
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     states, actions, values = rollout_episode(
         domain=domain,
         solver=solver,

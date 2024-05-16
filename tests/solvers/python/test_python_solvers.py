@@ -156,6 +156,7 @@ def test_solve_python(solver_python):
     dom = GridDomain()
     solver_type = load_registered_solver(solver_python["entry"])
     solver_args = deepcopy(solver_python["config"])
+    solver_args["domain_factory"] = GridDomain
     if solver_python["entry"] == "StableBaseline":
         solver_args["algo_class"] = PPO
     elif solver_python["entry"] == "RayRLlib":
@@ -203,10 +204,8 @@ def test_solve_python_with_cb(solver_python, caplog):
         pytest.skip(
             f"Solver {solver_python['entry']} is not yet implementing callbacks."
         )
-
-    dom = GridDomain()
-
     solver_args = deepcopy(solver_python["config"])
+    solver_args["domain_factory"] = GridDomain
     if solver_python["entry"] == "StableBaseline":
         solver_args["algo_class"] = PPO
     elif solver_python["entry"] == "RayRLlib":

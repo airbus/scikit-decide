@@ -4,13 +4,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from unified_planning.engines import Engine
 from unified_planning.exceptions import UPValueError
 from unified_planning.shortcuts import FluentExp, SequentialSimulator
 
-from skdecide import Solver, Value
+from skdecide import Domain, Solver, Value
 from skdecide.builders.solver import DeterministicPolicies, Utilities
 from skdecide.hub.domain.up import SkUPAction, SkUPState, UPDomain
 
@@ -31,8 +31,9 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
 
     def __init__(
         self,
+        domain_factory: Callable[[], Domain],
         operation_mode: Engine,
-        engine_params: Dict[str, Any] = {},
+        engine_params: Optional[Dict[str, Any]] = None,
         **operation_mode_params,
     ) -> None:
         """Initialize UPSolver.
@@ -42,16 +43,19 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
         engine_params: The optional dict parameters to pass to the UP engine's solve method.
         operation_mode_params: The optional dict parameters to pass to the constructor of the UP operation mode object.
         """
-        super().__init__()
+        Solver.__init__(self, domain_factory=domain_factory)
         self._operation_mode = operation_mode
         self._operation_mode_params = operation_mode_params
-        self._engine_params = engine_params
+        if engine_params is None:
+            self._engine_params = {}
+        else:
+            self._engine_params = engine_params
         self._plan = []
         self._policy = {}
         self._values = {}
 
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
-        self._domain = domain_factory()
+    def _solve(self) -> None:
+        self._domain = self._domain_factory()
         problem = self._domain._problem
         om_params = (
             self._operation_mode_params
@@ -61,7 +65,7 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
         with self._operation_mode(**om_params) as planner:
             result = planner.solve(problem, **self._engine_params)
             self._plan = [SkUPAction(a) for a in result.plan.actions]
-            plan_extractor_domain = domain_factory()
+            plan_extractor_domain = self._domain_factory()
             state = plan_extractor_domain.get_initial_state()
             self._values[state] = Value(cost=0)
             plan_cost = Value(cost=0)

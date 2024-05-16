@@ -6,7 +6,7 @@ from enum import Enum
 from math import asin, atan2, cos, radians, sin, sqrt
 
 # typing
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
 # plotting
 import matplotlib.pyplot as plt
@@ -386,7 +386,8 @@ class FlightPlanningDomain(
         take_off_weight: int = None,
         fuel_loaded: float = None,
         fuel_loop: bool = False,
-        fuel_loop_solver_factory: Optional[Callable[[], Solver]] = None,
+        fuel_loop_solver_cls: Optional[Type[Solver]] = None,
+        fuel_loop_solver_kwargs: Optional[Dict[str, Any]] = None,
         fuel_loop_tol: float = 1e-3,
         climbing_slope: float = None,
         descending_slope: float = None,
@@ -429,8 +430,10 @@ class FlightPlanningDomain(
                 Fuel loaded in the aricraft for the flight plan. Defaults to None.
             fuel_loop (bool, optional):
                 Boolean to create a fuel loop to optimize the fuel loaded for the flight. Defaults to False
-            fuel_loop_solver_factory (solver factory, optional):
-                Solver factory used in the fuel loop. Defaults to LazyAstar.
+            fuel_loop_solver_cls (type[Solver], optional):
+                Solver class used in the fuel loop. Defaults to LazyAstar.
+            fuel_loop_solver_kwargs (Dict[str, Any], optional):
+                Kwargs to initialize the solver used in the fuel loop.
             climbing_slope (float, optional):
                 Climbing slope of the aircraft, has to be between 10.0 and 25.0. Defaults to None.
             descending_slope (float, optional):
@@ -527,18 +530,20 @@ class FlightPlanningDomain(
 
         # Initialisation of the flight plan, with the initial state
         if fuel_loop:
-            if fuel_loop_solver_factory is None:
+            if fuel_loop_solver_cls is None:
                 LazyAstar = load_registered_solver("LazyAstar")
-                fuel_loop_solver_factory = lambda: LazyAstar(
-                    heuristic=lambda d, s: d.heuristic(s)
-                )
+                fuel_loop_solver_cls = LazyAstar
+                fuel_loop_solver_kwargs = dict(heuristic=lambda d, s: d.heuristic(s))
+            elif fuel_loop_solver_kwargs is None:
+                fuel_loop_solver_kwargs = {}
             fuel_loaded = fuel_optimisation(
                 origin=origin,
                 destination=destination,
                 actype=self.actype,
                 constraints=constraints,
                 weather_date=weather_date,
-                solver_factory=fuel_loop_solver_factory,
+                solver_cls=fuel_loop_solver_cls,
+                solver_kwargs=fuel_loop_solver_kwargs,
                 fuel_tol=fuel_loop_tol,
             )
             # Adding fuel reserve (but we can't put more fuel than maxFuel)
@@ -1573,7 +1578,8 @@ def fuel_optimisation(
     actype: str,
     constraints: dict,
     weather_date: WeatherDate,
-    solver_factory: Callable[[], Solver],
+    solver_cls: Type[Solver],
+    solver_kwargs: Dict[str, Any],
     max_steps: int = 100,
     fuel_tol: float = 1e-3,
 ) -> float:
@@ -1599,8 +1605,11 @@ def fuel_optimisation(
         fuel_loaded (float):
             Fuel loaded in the plane for the flight
 
-        solver_factory:
-            Solver factory used in the fuel loop
+        solver_cls (type[Solver]):
+            Solver class used in the fuel loop.
+
+        solver_kwargs (Dict[str, Any]):
+            Kwargs to initialize the solver used in the fuel loop.
 
         max_steps (int):
             max steps to use in the internal fuel loop
@@ -1630,7 +1639,9 @@ def fuel_optimisation(
             fuel_loaded=new_fuel,
             starting_time=0.0,
         )
-
+        solver_kwargs = dict(solver_kwargs)
+        solver_kwargs["domain_factory"] = domain_factory
+        solver_factory = lambda: solver_cls(**solver_kwargs)
         fuel_prec = new_fuel
         new_fuel = simple_fuel_loop(
             solver_factory=solver_factory,
@@ -1646,7 +1657,7 @@ def fuel_optimisation(
 def simple_fuel_loop(solver_factory, domain_factory, max_steps: int = 100) -> float:
     domain = domain_factory()
     with solver_factory() as solver:
-        domain.solve_with(solver, domain_factory)
+        domain.solve_with(solver)
         observation: State = domain.reset()
         solver.reset()
 

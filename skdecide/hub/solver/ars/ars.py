@@ -73,13 +73,14 @@ def flatten(c):
             yield from flatten(x)
 
 
-class AugmentedRandomSearch(Solver, Policies, Restorable):
+class AugmentedRandomSearch(Solver, Policies):
     """Augmented Random Search solver."""
 
     T_domain = D
 
     def __init__(
         self,
+        domain_factory: Callable[[], Domain],
         n_epochs=1000,
         epoch_size=1000,
         directions=10,
@@ -92,6 +93,7 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
         """
 
         # Parameters
+        domain_factory
         n_epochs
         epoch_size
         directions
@@ -103,6 +105,7 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
 
         """
         self.callback = callback
+        Solver.__init__(self, domain_factory=domain_factory)
         self.env = None
         self.n_epochs = n_epochs
         self.learning_rate = learning_rate
@@ -175,9 +178,8 @@ class AugmentedRandomSearch(Solver, Policies, Restorable):
         else:
             return 2 * np.random.random_sample() - 1
 
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
-
-        self.env = domain_factory()
+    def _solve(self) -> None:
+        self.env = self._domain_factory()
         np.random.seed(0)
         input_size = self.get_dimension_space(
             self.env.get_observation_space().unwrapped()

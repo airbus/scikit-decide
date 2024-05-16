@@ -455,8 +455,8 @@ def run_astar():
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
     print("Initial state : ", state)
-    solver = LazyAstar(heuristic=None, verbose=True)
-    solver.solve(domain_factory=lambda: domain, from_memory=state)
+    solver = LazyAstar(domain_factory=lambda: domain, heuristic=None, verbose=True)
+    solver.solve(from_memory=state)
     states, actions, values = rollout_episode(
         domain=domain,
         max_steps=1000,
@@ -498,6 +498,7 @@ def run_do():
     state = domain.get_initial_state()
     print("Initial state : ", state)
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
             delta_index_freedom=0,
@@ -505,7 +506,7 @@ def run_do():
         ),
         method=SolvingMethod.LNS_CP_CALENDAR,
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     states, actions, values = rollout_episode(
         domain=domain,
         max_steps=1000,

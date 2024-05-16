@@ -11,6 +11,7 @@ from typing import Callable
 import networkx as nx
 import numpy as np
 
+from skdecide import Domain
 from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     SchedulingAction,
@@ -42,18 +43,27 @@ class GreedyChoice(Enum):
 class PilePolicy(Solver, DeterministicPolicies):
     T_domain = D
 
-    def __init__(self, greedy_method: GreedyChoice = GreedyChoice.MOST_SUCCESSORS):
+    def __init__(
+        self,
+        domain_factory: Callable[[], Domain],
+        greedy_method: GreedyChoice = GreedyChoice.MOST_SUCCESSORS,
+    ):
         """Greedy Pile/Queue based solver for scheduling problems.
 
         This solver/policy is greedily scheduling task based on some rule specified by GreedyChoice enumerator.
         The resulting solution is not insured to respect specific constraints/needs for the scheduling problem.
+
         # Parameters
+        domain_factory: A callable with no argument returning the domain to solve (can be a mere domain class).
+            The resulting domain will be auto-cast to the level expected by the solver.
         greedy_method : Greedy method to use.
+
         """
+        Solver.__init__(self, domain_factory=domain_factory)
         self.greedy_method = greedy_method
 
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
-        self.domain = domain_factory()
+    def _solve(self) -> None:
+        self.domain = self._domain_factory()
         self.graph = self.domain.graph
         self.nx_graph: nx.DiGraph = self.graph.to_networkx()
         self.successors_map = {}

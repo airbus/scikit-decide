@@ -12,7 +12,7 @@ import gymnasium as gym
 import numpy as np
 import pylab
 
-from skdecide import D, RLDomain, Solver
+from skdecide import D, Domain, RLDomain, Solver
 from skdecide.builders.solver import Policies, Restorable
 from skdecide.hub.solver.cgp import cgp
 
@@ -21,13 +21,14 @@ class D(RLDomain):
     pass
 
 
-class MaxentIRL(Solver, Policies, Restorable):
+class MaxentIRL(Solver, Policies):
     """Maximum Entropy Inverse Reinforcement Learning solver."""
 
     T_domain = D
 
     def __init__(
         self,
+        domain_factory: Callable[[], Domain],
         n_states=400,
         n_actions=3,
         one_feature=20,
@@ -41,6 +42,7 @@ class MaxentIRL(Solver, Policies, Restorable):
         """
 
         # Parameters
+        domain_factory
         n_states
         n_actions
         one_feature
@@ -53,6 +55,7 @@ class MaxentIRL(Solver, Policies, Restorable):
 
         """
         self.callback = callback
+        Solver.__init__(self, domain_factory=domain_factory)
         self.n_states = n_states
         self.feature_matrix = np.eye(self.n_states)
         self.n_actions = n_actions
@@ -157,8 +160,8 @@ class MaxentIRL(Solver, Policies, Restorable):
                 demonstrations[x][y][1] = rawFile["actions"][index]
                 index += 1
 
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
-        self.env = domain_factory()
+    def _solve(self) -> None:
+        self.env = self._domain_factory()
         if self.q_table is not None:
             return
         self.q_table = np.zeros((self.n_states, self.n_actions))
@@ -270,10 +273,4 @@ class MaxentIRL(Solver, Policies, Restorable):
         self.score = 0
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
-        pass
-
-    def _save(self, path: str) -> None:
-        pass
-
-    def _load(self, path: str, domain_factory: Callable[[], D]) -> None:
         pass

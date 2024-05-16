@@ -15,11 +15,13 @@ domain = domain_factory()
 
 # Check domain compatibility
 if RayRLlib.check_domain(domain):
-    solver_factory = lambda: RayRLlib(PPO, train_iterations=5)
+    solver_factory = lambda: RayRLlib(
+        domain_factory=domain_factory, algo_class=PPO, train_iterations=5
+    )
 
     # Start solving
     with solver_factory() as solver:
-        SimpleGridWorld.solve_with(solver, domain_factory)
+        SimpleGridWorld.solve_with(solver)
 
         # Test solution
         rollout(

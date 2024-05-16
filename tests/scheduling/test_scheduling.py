@@ -625,6 +625,7 @@ def test_do(domain, do_solver):
     state = domain.get_initial_state()
     print("Initial state : ", state)
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
             delta_index_freedom=0,
@@ -632,7 +633,7 @@ def test_do(domain, do_solver):
         ),
         method=do_solver,
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     print(do_solver)
     states, actions, values = rollout_episode(
         domain=domain,
@@ -663,6 +664,7 @@ def test_do_mskill(domain_multiskill, do_solver_multiskill):
     state = domain_multiskill.get_initial_state()
     print("Initial state : ", state)
     solver = DOSolver(
+        domain_factory=lambda: domain_multiskill,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
             delta_index_freedom=0,
@@ -670,7 +672,7 @@ def test_do_mskill(domain_multiskill, do_solver_multiskill):
         ),
         method=do_solver_multiskill,
     )
-    solver.solve(domain_factory=lambda: domain_multiskill)
+    solver.solve()
     print(do_solver_multiskill)
     states, actions, values = rollout_episode(
         domain=domain_multiskill,
@@ -702,8 +704,8 @@ def test_planning_algos(domain, solver_str):
     state = domain.get_initial_state()
     print("Initial state : ", state)
     if solver_str == "LazyAstar":
-        solver = LazyAstar(heuristic=None, verbose=False)
-    solver.solve(domain_factory=lambda: domain, from_memory=state)
+        solver = LazyAstar(domain_factory=lambda: domain, heuristic=None, verbose=False)
+    solver.solve(from_memory=state)
     states, actions, values = rollout_episode(
         domain=domain,
         max_steps=1000,
@@ -770,6 +772,7 @@ def test_optimality(domain, do_solver):
     state = domain.get_initial_state()
     print("Initial state : ", state)
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
             delta_index_freedom=0,
@@ -777,7 +780,7 @@ def test_optimality(domain, do_solver):
         ),
         method=do_solver,
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     print(do_solver)
     states, actions, values = rollout_episode(
         domain=domain,
@@ -809,6 +812,7 @@ def test_gecode_optimality(domain, do_solver):
     state = domain.get_initial_state()
     print("Initial state : ", state)
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
             delta_index_freedom=0,
@@ -817,7 +821,7 @@ def test_gecode_optimality(domain, do_solver):
         method=do_solver[0],
         dict_params={"cp_solver_name": do_solver[1]},
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     print(do_solver)
     states, actions, values = rollout_episode(
         domain=domain,
@@ -897,6 +901,7 @@ def test_sgs_policies(domain):
 
     # Using a stochastic domain as reference + executing on stochastic domain
     solver = GPHH(
+        domain_factory=lambda: domain,
         training_domains=training_domains,
         domain_model=domain,
         weight=-1,
@@ -904,7 +909,7 @@ def test_sgs_policies(domain):
         training_domains_names=training_domains_names,
         params_gphh=ParametersGPHH.fast_test(),
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
     solver.set_domain(domain)
     states, actions, values = rollout_episode(
         domain=domain,
@@ -920,6 +925,7 @@ def test_sgs_policies(domain):
 
     # Using a deterministic domain as reference + executing on deterministic domain
     solver = GPHH(
+        domain_factory=lambda: training_domains[0],
         training_domains=training_domains,
         domain_model=training_domains[0],
         weight=-1,
@@ -927,7 +933,7 @@ def test_sgs_policies(domain):
         training_domains_names=training_domains_names,
         params_gphh=ParametersGPHH.fast_test(),
     )
-    solver.solve(domain_factory=lambda: training_domains[0])
+    solver.solve()
     solver.set_domain(training_domains[0])
     states, actions, values = rollout_episode(
         domain=training_domains[0],
@@ -969,6 +975,7 @@ def test_do_with_cb(caplog):
     state = domain.get_initial_state()
     print("Initial state : ", state)
     solver = DOSolver(
+        domain_factory=lambda: domain,
         policy_method_params=PolicyMethodParams(
             base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
             delta_index_freedom=0,
@@ -978,7 +985,7 @@ def test_do_with_cb(caplog):
         callback=MyCallback(),
         # dict_params={"cp_solver_name": CPSolverName.GECODE}
     )
-    solver.solve(domain_factory=lambda: domain)
+    solver.solve()
 
     # Check that 2 iterations were done and messages logged by callback
     assert "End of iteration #2" in caplog.text

@@ -448,6 +448,7 @@ class GPHH(Solver, DeterministicPolicies):
 
     def __init__(
         self,
+        domain_factory: Callable[[], SchedulingDomain],
         training_domains: List[T_domain],
         domain_model: SchedulingDomain,
         weight: int,
@@ -458,6 +459,7 @@ class GPHH(Solver, DeterministicPolicies):
         training_domains_names=None,
         verbose: bool = False,
     ):
+        Solver.__init__(self, domain_factory=domain_factory)
         self.training_domains = training_domains
         self.domain_model = domain_model
         self.params_gphh = params_gphh
@@ -496,6 +498,7 @@ class GPHH(Solver, DeterministicPolicies):
                 # Run CP
                 td.set_inplace_environment(False)
                 solver = DOSolver(
+                    domain_factory=lambda: td,
                     policy_method_params=PolicyMethodParams(
                         base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
                         delta_index_freedom=0,
@@ -503,7 +506,7 @@ class GPHH(Solver, DeterministicPolicies):
                     ),
                     method=SolvingMethod.CP,
                 )
-                solver.solve(domain_factory=lambda: td)
+                solver.solve()
                 raw_permutation = solver.best_solution.rcpsp_permutation
                 full_permutation = [x + 2 for x in raw_permutation]
                 full_permutation.insert(0, 1)
@@ -543,8 +546,8 @@ class GPHH(Solver, DeterministicPolicies):
     #         else:
     #             self.reference_makespans[td] = reference_makespans[td_name]
 
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
-        self.domain = domain_factory()
+    def _solve(self) -> None:
+        self.domain = self._domain_factory()
 
         tournament_ratio = self.params_gphh.tournament_ratio
         pop_size = self.params_gphh.pop_size

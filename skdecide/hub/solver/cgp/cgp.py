@@ -207,6 +207,7 @@ class CGPWrapper(Solver, DeterministicPolicies):
 
     def __init__(
         self,
+        domain_factory: Callable[[], Domain],
         folder_name,
         library=None,
         col=100,
@@ -223,6 +224,7 @@ class CGPWrapper(Solver, DeterministicPolicies):
         """
 
         # Parameters
+        domain_factory
         folder_name
         library
         col
@@ -237,6 +239,7 @@ class CGPWrapper(Solver, DeterministicPolicies):
         callback: function called at each solver iteration. If returning true, the solve process stops.
 
         """
+        Solver.__init__(self, domain_factory=domain_factory)
         self.callback = callback
         if library is None:
             library = self._get_default_function_lib()
@@ -290,8 +293,8 @@ class CGPWrapper(Solver, DeterministicPolicies):
 
         return valide_action_space and validate_observation_space
 
-    def _solve(self, domain_factory: Callable[[], D]) -> None:
-        domain = domain_factory()
+    def _solve(self) -> None:
+        domain = self._domain_factory()
 
         evaluator = SkDecideEvaluator(domain)
         if self._genome is None:

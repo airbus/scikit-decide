@@ -5,8 +5,9 @@
 """This module contains base classes for quickly building solvers."""
 from __future__ import annotations
 
-from typing import List
+from typing import Callable, List
 
+from skdecide import autocast_all
 from skdecide.builders.solver.fromanystatesolvability import FromInitialState
 from skdecide.builders.solver.policy import DeterministicPolicies
 from skdecide.domains import Domain
@@ -33,9 +34,30 @@ class Solver(FromInitialState):
     - **(assessability)**: Utilities -> QValues
     - **(policy)**: Policies -> UncertainPolicies -> DeterministicPolicies
     - **(restorability)**: Restorable
+
     """
 
     T_domain = Domain
+
+    def __init__(
+        self,
+        domain_factory: Callable[[], Domain],
+    ):
+        """
+
+        # Parameters
+        domain_factory: A callable with no argument returning the domain to solve (can be a mere domain class).
+            The resulting domain will be auto-cast to the level expected by the solver.
+
+        """
+
+        def cast_domain_factory():
+            domain = domain_factory()
+            autocast_all(domain, domain, self.T_domain)
+            return domain
+
+        self._domain_factory = cast_domain_factory
+        self._original_domain_factory = domain_factory
 
     @classmethod
     def get_domain_requirements(cls) -> List[type]:

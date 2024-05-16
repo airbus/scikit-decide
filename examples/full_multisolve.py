@@ -165,21 +165,18 @@ if __name__ == "__main__":
         {
             "name": "Simple greedy",
             "entry": "SimpleGreedy",
-            "need_domain_factory": False,
             "config": {},
         },
         # Lazy A* (classical planning)
         {
             "name": "Lazy A* (classical planning)",
             "entry": "LazyAstar",
-            "need_domain_factory": False,
             "config": {"heuristic": lambda d, s: d.heuristic(s), "verbose": False},
         },
         # A* (planning)
         {
             "name": "A* (planning)",
             "entry": "Astar",
-            "need_domain_factory": True,
             "config": {
                 "heuristic": lambda d, s: d.heuristic(s),
                 "parallel": False,
@@ -190,7 +187,6 @@ if __name__ == "__main__":
         {
             "name": "LRTAStar",
             "entry": "LRTAstar",
-            "need_domain_factory": False,
             "config": {
                 "max_depth": 200,
                 "max_iter": 1000,
@@ -202,7 +198,6 @@ if __name__ == "__main__":
         {
             "name": "UCT (reinforcement learning / search)",
             "entry": "UCT",
-            "need_domain_factory": True,
             "config": {
                 "time_budget": 200,
                 "rollout_budget": 100000,
@@ -218,7 +213,6 @@ if __name__ == "__main__":
         {
             "name": "PPO: Proximal Policy Optimization (deep reinforcement learning)",
             "entry": "StableBaseline",
-            "need_domain_factory": False,
             "config": {
                 "algo_class": PPO,
                 "baselines_policy": "MlpPolicy",
@@ -230,21 +224,18 @@ if __name__ == "__main__":
         {
             "name": "POMCP: Partially Observable Monte-Carlo Planning (online planning for POMDP)",
             "entry": "POMCP",
-            "need_domain_factory": False,
             "config": {},
         },
         # CGP: Cartesian Genetic Programming (evolution strategy)
         {
             "name": "CGP: Cartesian Genetic Programming (evolution strategy)",
             "entry": "CGP",
-            "need_domain_factory": False,
             "config": {"folder_name": "TEMP", "n_it": 25},
         },
         # Rollout-IW (classical planning)
         {
             "name": "Rollout-IW (classical planning)",
             "entry": "RIW",
-            "need_domain_factory": True,
             "config": {
                 "state_features": lambda d, s: d.state_features(s),
                 "use_state_feature_hash": False,
@@ -263,7 +254,6 @@ if __name__ == "__main__":
         {
             "name": "IW (classical planning)",
             "entry": "IW",
-            "need_domain_factory": True,
             "config": {
                 "state_features": lambda d, s: d.state_features(s),
                 "node_ordering": lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty
@@ -276,7 +266,6 @@ if __name__ == "__main__":
         {
             "name": "BFWS (planning) - (num_rows * num_cols) binary encoding (1 binary variable <=> 1 cell)",
             "entry": "BFWS",
-            "need_domain_factory": True,
             "config": {
                 "state_features": lambda d, s: d.state_features(s),
                 "heuristic": lambda d, s: d.heuristic(s),
@@ -406,24 +395,21 @@ if __name__ == "__main__":
                     actual_domain_type = domain_type
                     actual_domain_config = selected_domain["config"]
                     actual_domain = domain
-                    if selected_solver["need_domain_factory"]:
-                        if selected_domain["entry"].__name__ == "GymDomain" and (
-                            selected_solver["entry"].__name__ == "IW"
-                            or selected_solver["entry"].__name__ == "RIW"
-                            or selected_solver["entry"].__name__ == "BFWS"
-                            or selected_solver["entry"].__name__ == "UCT"
-                        ):
-                            actual_domain_type = GymDomainForWidthSolvers
-                            if selected_domain["name"] == "Cart Pole (Gymnasium)":
-                                actual_domain_config["termination_is_goal"] = False
-                            actual_domain = actual_domain_type(**actual_domain_config)
-                        selected_solver["config"][
-                            "domain_factory"
-                        ] = lambda: actual_domain_type(**actual_domain_config)
+                    if selected_domain["entry"].__name__ == "GymDomain" and (
+                        selected_solver["entry"].__name__ == "IW"
+                        or selected_solver["entry"].__name__ == "RIW"
+                        or selected_solver["entry"].__name__ == "BFWS"
+                        or selected_solver["entry"].__name__ == "UCT"
+                    ):
+                        actual_domain_type = GymDomainForWidthSolvers
+                        if selected_domain["name"] == "Cart Pole (Gymnasium)":
+                            actual_domain_config["termination_is_goal"] = False
+                        actual_domain = actual_domain_type(**actual_domain_config)
+                    selected_solver["config"][
+                        "domain_factory"
+                    ] = lambda: actual_domain_type(**actual_domain_config)
                     with solver_type(**selected_solver["config"]) as solver:
-                        actual_domain_type.solve_with(
-                            solver, lambda: actual_domain_type(**actual_domain_config)
-                        )
+                        actual_domain_type.solve_with(solver)
                         rollout(actual_domain, solver, **selected_domain["rollout"])
                 if hasattr(domain, "close"):
                     domain.close()
