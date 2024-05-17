@@ -37,8 +37,8 @@ void init_pyiw(py::module &m) {
            py::arg("state"))
       .def("get_utility", &skdecide::PyIWSolver::get_utility, py::arg("state"))
       .def("get_current_width", &skdecide::PyIWSolver::get_current_width)
-      .def("get_nb_of_explored_states",
-           &skdecide::PyIWSolver::get_nb_of_explored_states)
+      .def("get_nb_explored_states",
+           &skdecide::PyIWSolver::get_nb_explored_states)
       .def("get_explored_states", &skdecide::PyIWSolver::get_explored_states)
       .def("get_nb_tip_states", &skdecide::PyIWSolver::get_nb_tip_states)
       .def("get_top_tip_state", &skdecide::PyIWSolver::get_top_tip_state)

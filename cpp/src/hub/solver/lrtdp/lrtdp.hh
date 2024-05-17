@@ -145,7 +145,7 @@ public:
    * is advised to call LRTDPSolver::is_solution_defined_for before)
    *
    * @param s State from which the best Q-value is requested
-   * @return double Maximum Q-value of the given state over the applicable
+   * @return double Minimum Q-value of the given state over the applicable
    * actions in this state
    */
   Value get_best_value(const State &s);

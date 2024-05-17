@@ -43,7 +43,7 @@ private:
     virtual py::object get_next_action(const py::object &s) = 0;
     virtual py::object get_utility(const py::object &s) = 0;
     virtual py::int_ get_current_width() = 0;
-    virtual py::int_ get_nb_of_explored_states() = 0;
+    virtual py::int_ get_nb_explored_states() = 0;
     virtual py::set get_explored_states() = 0;
     virtual py::int_ get_nb_of_pruned_states() = 0;
     virtual py::int_ get_nb_tip_states() = 0;
@@ -220,8 +220,8 @@ private:
       return _solver->get_current_width();
     }
 
-    virtual py::int_ get_nb_of_explored_states() {
-      return _solver->get_nb_of_explored_states();
+    virtual py::int_ get_nb_explored_states() {
+      return _solver->get_nb_explored_states();
     }
 
     virtual py::int_ get_nb_of_pruned_states() {
@@ -401,8 +401,8 @@ public:
 
   py::int_ get_current_width() { return _implementation->get_current_width(); }
 
-  py::int_ get_nb_of_explored_states() {
-    return _implementation->get_nb_of_explored_states();
+  py::int_ get_nb_explored_states() {
+    return _implementation->get_nb_explored_states();
   }
 
   py::set get_explored_states() {

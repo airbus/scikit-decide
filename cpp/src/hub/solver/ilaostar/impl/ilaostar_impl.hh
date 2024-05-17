@@ -22,13 +22,15 @@ namespace skdecide {
 #define SK_ILAOSTAR_SOLVER_CLASS ILAOStarSolver<Tdomain, Texecution_policy>
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
-SK_ILAOSTAR_SOLVER_CLASS::ILAOStarSolver(
-    Domain &domain,
-    const std::function<Predicate(Domain &, const State &)> &goal_checker,
-    const std::function<Value(Domain &, const State &)> &heuristic,
-    double discount, double epsilon, bool verbose)
+SK_ILAOSTAR_SOLVER_CLASS::ILAOStarSolver(Domain &domain,
+                                         const GoalCheckerFunctor &goal_checker,
+                                         const HeuristicFunctor &heuristic,
+                                         double discount, double epsilon,
+                                         const CallbackFunctor &callback,
+                                         bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _discount(discount), _epsilon(epsilon), _verbose(verbose) {
+      _discount(discount), _epsilon(epsilon), _callback(callback),
+      _verbose(verbose) {
 
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm ILAO*");
@@ -43,7 +45,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::solve(const State &s) {
   try {
     Logger::info("Running " + ExecutionPolicy::print_type() +
                  " ILAO* solver from state " + s.print());
-    auto start_time = std::chrono::high_resolution_clock::now();
+    _start_time = std::chrono::high_resolution_clock::now();
 
     auto si = _graph.emplace(s);
     StateNode &root_node = const_cast<StateNode &>(
@@ -63,7 +65,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::solve(const State &s) {
       return;
     }
 
-    while (!root_node.solved) {
+    while (!root_node.solved && !_callback(*this, _domain)) {
       // perform postorder depth first search until not reaching unexpanded tip
       // nodes
       while (root_node.reach_tip_node) {
@@ -99,13 +101,10 @@ void SK_ILAOSTAR_SOLVER_CLASS::solve(const State &s) {
       }
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        end_time - start_time)
-                        .count();
-    Logger::info("ILAO* finished to solve from state " + s.print() + " in " +
-                 StringConverter::from((double)duration / (double)1e9) +
-                 " seconds.");
+    Logger::info(
+        "ILAO* finished to solve from state " + s.print() + " in " +
+        StringConverter::from((double)get_solving_time() / (double)1e6) +
+        " seconds.");
   } catch (const std::exception &e) {
     Logger::error("ILAO* failed solving from state " + s.print() +
                   ". Reason: " + e.what());
@@ -128,6 +127,8 @@ const typename SK_ILAOSTAR_SOLVER_CLASS::Action &
 SK_ILAOSTAR_SOLVER_CLASS::get_best_action(const State &s) const {
   auto si = _graph.find(s);
   if ((si == _graph.end()) || (si->best_action == nullptr)) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
@@ -135,23 +136,48 @@ SK_ILAOSTAR_SOLVER_CLASS::get_best_action(const State &s) const {
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
-double SK_ILAOSTAR_SOLVER_CLASS::get_best_value(const State &s) const {
+typename SK_ILAOSTAR_SOLVER_CLASS::Value
+SK_ILAOSTAR_SOLVER_CLASS::get_best_value(const State &s) const {
   auto si = _graph.find(s);
   if (si == _graph.end()) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return si->best_value;
+  Value val;
+  val.cost(si->best_value);
+  return val;
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
-std::size_t SK_ILAOSTAR_SOLVER_CLASS::get_nb_of_explored_states() const {
+std::size_t SK_ILAOSTAR_SOLVER_CLASS::get_nb_explored_states() const {
   return _graph.size();
+}
+
+SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
+typename SetTypeDeducer<typename SK_ILAOSTAR_SOLVER_CLASS::State>::Set
+SK_ILAOSTAR_SOLVER_CLASS::get_explored_states() const {
+  typename SetTypeDeducer<State>::Set explored_states;
+  for (const auto &s : _graph) {
+    explored_states.insert(s.state);
+  }
+  return explored_states;
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 std::size_t SK_ILAOSTAR_SOLVER_CLASS::best_solution_graph_size() const {
   return _best_solution_graph.size();
+}
+
+SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
+std::size_t SK_ILAOSTAR_SOLVER_CLASS::get_solving_time() const {
+  std::size_t milliseconds_duration;
+  milliseconds_duration = static_cast<std::size_t>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::high_resolution_clock::now() - _start_time)
+          .count());
+  return milliseconds_duration;
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
@@ -449,7 +475,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::update_solved_bits() {
   // and the error bound falls below epsilon
   // (note: Hansen and Zilberstein seem to suggest that the convergence
   //  test should be a disjunction but in this case the mean first
-  //  passage time computed during the evaluatiopn of the error
+  //  passage time computed during the evaluation of the error
   //  bound would be erroneous if the best solution graph can
   //  can reach an unexpanded tip node)
   if (_verbose)

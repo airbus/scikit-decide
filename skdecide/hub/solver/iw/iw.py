@@ -211,13 +211,13 @@ try:
             """
             return self._solver.get_utility(observation)
 
-        def get_nb_of_explored_states(self) -> int:
+        def get_nb_explored_states(self) -> int:
             """Get the number of states present in the search graph
 
             # Returns
                 int: Number of states present in the search graph
             """
-            return self._solver.get_nb_of_explored_states()
+            return self._solver.get_nb_explored_states()
 
         def get_explored_states(self) -> Set[D.T_agent[D.T_observation]]:
             """Get the set of states present in the search graph (i.e. the graph's

@@ -215,7 +215,7 @@ try:
                 observation (D.T_agent[D.T_observation]): State from which the best Q-value is requested
 
             # Returns
-                D.T_value: Maximum Q-value of the given state over the applicable actions in this state
+                D.T_value: Minimum Q-value of the given state over the applicable actions in this state
             """
             return self._solver.get_utility(observation)
 
