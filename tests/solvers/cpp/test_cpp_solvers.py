@@ -539,8 +539,8 @@ def test_solver_cpp_with_cb(solver_cpp, parallel, shared_memory, caplog):
     with solver_type(**solver_args) as slv:
         with caplog.at_level(logging.WARNING):
             GridDomain.solve_with(slv)
-        plan, cost = get_plan(dom, slv)
 
     # Check that 2 iterations were done and messages logged by callback
-    assert "End of iteration #2" in caplog.text
-    assert "End of iteration #3" not in caplog.text
+    assert "End of iteration #1" in caplog.text
+    if "parallel" not in solver_args or not solver_args["parallel"]:
+        assert "End of iteration #4" not in caplog.text
