@@ -41,16 +41,24 @@ private:
     virtual void solve(const py::object &s) = 0;
     virtual py::bool_ is_solution_defined_for(const py::object &s) = 0;
     virtual py::object get_next_action(const py::object &s) = 0;
-    virtual py::float_ get_utility(const py::object &s) = 0;
-    virtual py::int_ get_nb_of_explored_states() = 0;
+    virtual py::object get_utility(const py::object &s) = 0;
+    virtual py::int_ get_current_width() = 0;
+    virtual py::int_ get_nb_explored_states() = 0;
+    virtual py::set get_explored_states() = 0;
     virtual py::int_ get_nb_of_pruned_states() = 0;
+    virtual py::int_ get_nb_tip_states() = 0;
+    virtual py::object get_top_tip_state() = 0;
     virtual py::list get_intermediate_scores() = 0;
+    virtual py::int_ get_solving_time() = 0;
+    virtual py::list get_plan(const py::object &s) = 0;
+    virtual py::dict get_policy() = 0;
   };
 
   template <typename Texecution, template <typename...> class Thashing_policy>
   class Implementation : public BaseImplementation {
   public:
     Implementation(
+        py::object &solver, // Python solver wrapper
         py::object &domain,
         const std::function<py::object(const py::object &, const py::object &)>
             &state_features,
@@ -58,8 +66,11 @@ private:
                                  const std::size_t &, const double &,
                                  const std::size_t &, const std::size_t &)>
             &node_ordering = nullptr,
-        std::size_t time_budget = 0, bool debug_logs = false)
-        : _state_features(state_features), _node_ordering(node_ordering) {
+        std::size_t time_budget = 0,
+        const std::function<py::bool_(const py::object &)> &callback = nullptr,
+        bool verbose = false)
+        : _state_features(state_features), _node_ordering(node_ordering),
+          _callback(callback) {
 
       std::function<bool(const double &, const std::size_t &,
                          const std::size_t &, const double &,
@@ -85,6 +96,7 @@ private:
         };
       }
 
+      _pysolver = std::make_unique<py::object>(solver);
       check_domain(domain);
       _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
       _solver =
@@ -115,7 +127,27 @@ private:
                   throw;
                 }
               },
-              pno, time_budget, debug_logs);
+              pno, time_budget,
+              [this](const skdecide::IWSolver<PyIWDomain<Texecution>,
+                                              PyIWFeatureVector<Texecution>,
+                                              Thashing_policy, Texecution> &s,
+                     PyIWDomain<Texecution> &d) -> bool {
+                // we don't make use of the C++ solver object 's' from Python
+                // but we rather use its Python wrapper 'solver'
+                if (_callback) {
+                  try {
+                    return _callback(*_pysolver);
+                  } catch (const std::exception &e) {
+                    Logger::error(std::string("SKDECIDE exception when calling "
+                                              "callback function: ") +
+                                  e.what());
+                    throw;
+                  }
+                } else {
+                  return false;
+                }
+              },
+              verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -167,25 +199,56 @@ private:
     virtual py::object get_next_action(const py::object &s) {
       try {
         return _solver->get_best_action(s).pyobj();
-      } catch (const std::runtime_error &) {
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[IW.get_next_action] ") + e.what() +
+                     " - returning None");
         return py::none();
       }
     }
 
-    virtual py::float_ get_utility(const py::object &s) {
+    virtual py::object get_utility(const py::object &s) {
       try {
-        return _solver->get_best_value(s);
-      } catch (const std::runtime_error &) {
+        return _solver->get_best_value(s).pyobj();
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[IW.get_utility] ") + e.what() +
+                     " - returning None");
         return py::none();
       }
     }
 
-    virtual py::int_ get_nb_of_explored_states() {
-      return _solver->get_nb_of_explored_states();
+    virtual py::int_ get_current_width() {
+      return _solver->get_current_width();
+    }
+
+    virtual py::int_ get_nb_explored_states() {
+      return _solver->get_nb_explored_states();
     }
 
     virtual py::int_ get_nb_of_pruned_states() {
       return _solver->get_nb_of_pruned_states();
+    }
+
+    virtual py::set get_explored_states() {
+      py::set s;
+      auto &&es = _solver->get_explored_states();
+      for (auto &e : es) {
+        s.add(e.pyobj());
+      }
+      return s;
+    }
+
+    virtual py::int_ get_nb_tip_states() {
+      return _solver->get_nb_tip_states();
+    }
+
+    virtual py::object get_top_tip_state() {
+      try {
+        return _solver->get_top_tip_state().pyobj();
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[IW.get_top_tip_state] ") + e.what() +
+                     " - returning None");
+        return py::none();
+      }
     }
 
     virtual py::list get_intermediate_scores() {
@@ -197,7 +260,30 @@ private:
       return l;
     }
 
+    virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
+
+    virtual py::list get_plan(const py::object &s) {
+      py::list l;
+      auto &&p = _solver->get_plan(s);
+      for (auto &e : p) {
+        l.append(py::make_tuple(std::get<0>(e).pyobj(), std::get<1>(e).pyobj(),
+                                std::get<2>(e).pyobj()));
+      }
+      return l;
+    }
+
+    virtual py::dict get_policy() {
+      py::dict d;
+      auto &&p = _solver->get_policy();
+      for (auto &e : p) {
+        d[e.first.pyobj()] =
+            py::make_tuple(e.second.first.pyobj(), e.second.second.pyobj());
+      }
+      return d;
+    }
+
   private:
+    std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<PyIWDomain<Texecution>> _domain;
     std::unique_ptr<skdecide::IWSolver<PyIWDomain<Texecution>,
                                        PyIWFeatureVector<Texecution>,
@@ -210,6 +296,7 @@ private:
                        const double &, const std::size_t &,
                        const std::size_t &)>
         _node_ordering;
+    std::function<py::bool_(const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -274,6 +361,7 @@ private:
 
 public:
   PyIWSolver(
+      py::object &solver, // Python solver wrapper
       py::object &domain,
       const std::function<py::object(const py::object &, const py::object &)>
           &state_features,
@@ -283,13 +371,14 @@ public:
                                const std::size_t &, const std::size_t &)>
           &node_ordering = nullptr,
       std::size_t time_budget = 0, bool parallel = false,
-      bool debug_logs = false) {
+      const std::function<py::bool_(const py::object &)> &callback = nullptr,
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  HashingPolicySelector(use_state_feature_hash),
                                  SolverInstantiator(_implementation))
-        .instantiate(domain, state_features, node_ordering, time_budget,
-                     debug_logs);
+        .instantiate(solver, domain, state_features, node_ordering, time_budget,
+                     callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -306,12 +395,24 @@ public:
     return _implementation->get_next_action(s);
   }
 
-  py::float_ get_utility(const py::object &s) {
+  py::object get_utility(const py::object &s) {
     return _implementation->get_utility(s);
   }
 
-  py::int_ get_nb_of_explored_states() {
-    return _implementation->get_nb_of_explored_states();
+  py::int_ get_current_width() { return _implementation->get_current_width(); }
+
+  py::int_ get_nb_explored_states() {
+    return _implementation->get_nb_explored_states();
+  }
+
+  py::set get_explored_states() {
+    return _implementation->get_explored_states();
+  }
+
+  py::int_ get_nb_tip_states() { return _implementation->get_nb_tip_states(); }
+
+  py::object get_top_tip_state() {
+    return _implementation->get_top_tip_state();
   }
 
   py::int_ get_nb_of_pruned_states() {
@@ -321,6 +422,14 @@ public:
   py::list get_intermediate_scores() {
     return _implementation->get_intermediate_scores();
   }
+
+  py::int_ get_solving_time() { return _implementation->get_solving_time(); }
+
+  py::list get_plan(const py::object &s) {
+    return _implementation->get_plan(s);
+  }
+
+  py::dict get_policy() { return _implementation->get_policy(); }
 };
 
 } // namespace skdecide

@@ -419,7 +419,7 @@ if __name__ == "__main__":
                 "continuous_planning": False,
                 "parallel": False,
                 "shared_memory_proxy": GridShmProxy(),
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # ILAO*
@@ -435,7 +435,7 @@ if __name__ == "__main__":
                 "epsilon": 0.001,
                 "parallel": False,
                 "shared_memory_proxy": GridShmProxy(),
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # UCT (reinforcement learning / search)
@@ -460,7 +460,7 @@ if __name__ == "__main__":
                 ),
                 "parallel": False,
                 "shared_memory_proxy": GridShmProxy(),
-                "debug_logs": False,
+                "verbose": False,
             },
         },
     ]

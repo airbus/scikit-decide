@@ -12,18 +12,22 @@ namespace py = pybind11;
 void init_pybfws(py::module &m) {
   py::class_<skdecide::PyBFWSSolver> py_bfws_solver(m, "_BFWSSolver_");
   py_bfws_solver
-      .def(py::init<py::object &,
+      .def(py::init<py::object &, // Python solver
+                    py::object &, // Python domain
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
-                    bool, bool, bool>(),
-           py::arg("domain"), py::arg("state_features"), py::arg("heuristic"),
-           py::arg("termination_checker"),
+                    bool, bool,
+                    const std::function<py::bool_(const py::object &)> &,
+                    bool>(),
+           py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
+           py::arg("state_features"), py::arg("heuristic"),
            py::arg("use_state_feature_hash") = false,
-           py::arg("parallel") = false, py::arg("debug_logs") = false)
+           py::arg("parallel") = false, py::arg("callback") = nullptr,
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyBFWSSolver::close)
       .def("clear", &skdecide::PyBFWSSolver::clear)
       .def("solve", &skdecide::PyBFWSSolver::solve, py::arg("state"))
@@ -32,5 +36,13 @@ void init_pybfws(py::module &m) {
       .def("get_next_action", &skdecide::PyBFWSSolver::get_next_action,
            py::arg("state"))
       .def("get_utility", &skdecide::PyBFWSSolver::get_utility,
-           py::arg("state"));
+           py::arg("state"))
+      .def("get_nb_explored_states",
+           &skdecide::PyBFWSSolver::get_nb_explored_states)
+      .def("get_explored_states", &skdecide::PyBFWSSolver::get_explored_states)
+      .def("get_nb_tip_states", &skdecide::PyBFWSSolver::get_nb_tip_states)
+      .def("get_top_tip_state", &skdecide::PyBFWSSolver::get_top_tip_state)
+      .def("get_solving_time", &skdecide::PyBFWSSolver::get_solving_time)
+      .def("get_plan", &skdecide::PyBFWSSolver::get_plan)
+      .def("get_policy", &skdecide::PyBFWSSolver::get_policy);
 }

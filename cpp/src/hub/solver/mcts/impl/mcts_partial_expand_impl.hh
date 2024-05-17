@@ -36,7 +36,7 @@ SK_MCTS_PARTIAL_EXPAND_CLASS::operator()(Tsolver &solver,
                                          const std::size_t *thread_id,
                                          typename Tsolver::StateNode &n) const {
   try {
-    if (solver.debug_logs()) {
+    if (solver.verbose()) {
       solver.execution_policy().protect(
           [&n]() {
             Logger::debug("Testing expansion of state " + n.state.print() +
@@ -72,7 +72,7 @@ SK_MCTS_PARTIAL_EXPAND_CLASS::operator()(Tsolver &solver,
               action_node->parent = &n;
             }
 
-            if (solver.debug_logs()) {
+            if (solver.verbose()) {
               Logger::debug(
                   "Sampled a new action: " + action_node->action.print() +
                   Tsolver::ExecutionPolicy::print_thread());
@@ -103,7 +103,7 @@ SK_MCTS_PARTIAL_EXPAND_CLASS::operator()(Tsolver &solver,
           solver.gen_mutex());
 
       action_node = actions[action_id];
-      if (solver.debug_logs()) {
+      if (solver.verbose()) {
         solver.execution_policy().protect(
             [&action_node]() {
               Logger::debug("Sampled among known actions: " +
@@ -202,7 +202,7 @@ SK_MCTS_PARTIAL_EXPAND_CLASS::operator()(Tsolver &solver,
       ns = nullptr; // we have not discovered anything new
     }
 
-    if (solver.debug_logs()) {
+    if (solver.verbose()) {
       if (ns) {
         solver.execution_policy().protect(
             [&ns]() {

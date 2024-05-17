@@ -7,6 +7,7 @@
 
 #include <boost/range/irange.hpp>
 #include <iostream>
+#include <stdexcept>
 
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
@@ -92,80 +93,59 @@ bool SK_IW_STATE_FEATURE_HASH_CLASS::Equal::operator()(const Key &k1,
 
 SK_IW_SOLVER_TEMPLATE_DECL
 SK_IW_SOLVER_CLASS::IWSolver(
-    Domain &domain,
-    const std::function<std::unique_ptr<FeatureVector>(
-        Domain &d, const State &s)> &state_features,
-    const std::function<bool(const double &, const std::size_t &,
-                             const std::size_t &, const double &,
-                             const std::size_t &, const std::size_t &)>
-        &node_ordering,
+    Domain &domain, const StateFeatureFunctor &state_features,
+    const NodeOrderingFunctor &node_ordering,
     std::size_t time_budget, // time budget to continue searching for better
                              // plans after a goal has been reached
-    bool debug_logs)
+    const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _state_features(state_features),
-      _time_budget(time_budget), _debug_logs(debug_logs) {
+      _node_ordering(node_ordering), _time_budget(time_budget),
+      _callback(callback), _verbose(verbose), _width(0) {
 
-  if (!node_ordering) {
-    _node_ordering = [](const double &a_gscore, const std::size_t &a_novelty,
-                        const std::size_t &a_depth, const double &b_gscore,
-                        const std::size_t &b_novelty,
-                        const std::size_t &b_depth) -> bool {
-      return a_gscore > b_gscore;
-    };
-  } else {
-    _node_ordering = node_ordering;
-  }
-
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm IW");
   }
 }
 
 SK_IW_SOLVER_TEMPLATE_DECL
-void SK_IW_SOLVER_CLASS::clear() { _graph.clear(); }
+void SK_IW_SOLVER_CLASS::clear() {
+  _width_solver.reset();
+  _graph.clear();
+}
 
 SK_IW_SOLVER_TEMPLATE_DECL
 void SK_IW_SOLVER_CLASS::solve(const State &s) {
   try {
     Logger::info("Running " + ExecutionPolicy::print_type() +
                  " IW solver from state " + s.print());
-    auto start_time = std::chrono::high_resolution_clock::now();
+    _start_time = std::chrono::high_resolution_clock::now();
     std::size_t nb_of_binary_features = _state_features(_domain, s)->size();
     bool found_goal = false;
     _intermediate_scores.clear();
 
-    for (std::size_t w = 1; w <= nb_of_binary_features; w++) {
+    for (_width = 1; _width <= nb_of_binary_features; _width++) {
+      _width_solver = std::make_unique<WidthSolver>(
+          *this, _domain, _state_features, _node_ordering, _width, _graph,
+          _time_budget, _intermediate_scores, _callback, _verbose);
       std::pair<bool, bool> res =
-          WidthSolver(_domain, _state_features, _node_ordering, w, _graph,
-                      _time_budget, _intermediate_scores, _debug_logs)
-              .solve(s, start_time, found_goal);
+          _width_solver->solve(s, _start_time, found_goal);
       if (res.first) { // solution found with width w
-        auto now_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            now_time - start_time)
-                            .count();
-
-        if (static_cast<std::size_t>(duration) < _time_budget) {
-          if (_debug_logs)
+        if (get_solving_time() < _time_budget) {
+          if (_verbose)
             Logger::debug("Remaining time budget, trying to improve the "
                           "solution by augmenting the search width");
         } else {
-          auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                              now_time - start_time)
-                              .count();
-          Logger::info("IW finished to solve from state " + s.print() + " in " +
-                       StringConverter::from((double)duration / (double)1e9) +
-                       " seconds.");
+          Logger::info(
+              "IW finished to solve from state " + s.print() + " in " +
+              StringConverter::from((double)get_solving_time() / (double)1e6) +
+              " seconds.");
           return;
         }
       } else if (found_goal) {
-        auto now_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                            now_time - start_time)
-                            .count();
-        Logger::info("IW finished to solve from state " + s.print() + " in " +
-                     StringConverter::from((double)duration / (double)1e9) +
-                     " seconds.");
+        Logger::info(
+            "IW finished to solve from state " + s.print() + " in " +
+            StringConverter::from((double)get_solving_time() / (double)1e6) +
+            " seconds.");
         return;
       } else if (!res.second) { // no states pruned => problem is unsolvable
         break;
@@ -183,7 +163,7 @@ void SK_IW_SOLVER_CLASS::solve(const State &s) {
 SK_IW_SOLVER_TEMPLATE_DECL
 bool SK_IW_SOLVER_CLASS::is_solution_defined_for(const State &s) const {
   auto si = _graph.find(Node(s, _domain, _state_features));
-  if ((si == _graph.end()) || (si->best_action == nullptr) ||
+  if ((si == _graph.end()) || (si->best_action.first == nullptr) ||
       (si->solved == false)) {
     return false;
   } else {
@@ -195,17 +175,23 @@ SK_IW_SOLVER_TEMPLATE_DECL
 const typename SK_IW_SOLVER_CLASS::Action &
 SK_IW_SOLVER_CLASS::get_best_action(const State &s) const {
   auto si = _graph.find(Node(s, _domain, _state_features));
-  if ((si == _graph.end()) || (si->best_action == nullptr)) {
+  if ((si == _graph.end()) || (si->best_action.first == nullptr)) {
     Logger::error("SKDECIDE exception: no best action found in state " +
                   s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return *(si->best_action);
+  return *(si->best_action.first);
 }
 
 SK_IW_SOLVER_TEMPLATE_DECL
-const double &SK_IW_SOLVER_CLASS::get_best_value(const State &s) const {
+const std::size_t &SK_IW_SOLVER_CLASS::get_current_width() const {
+  return _width;
+}
+
+SK_IW_SOLVER_TEMPLATE_DECL
+typename SK_IW_SOLVER_CLASS::Value
+SK_IW_SOLVER_CLASS::get_best_value(const State &s) const {
   auto si = _graph.find(Node(s, _domain, _state_features));
   if (si == _graph.end()) {
     Logger::error("SKDECIDE exception: no best action found in state " +
@@ -213,12 +199,24 @@ const double &SK_IW_SOLVER_CLASS::get_best_value(const State &s) const {
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return si->fscore;
+  Value val;
+  val.cost(si->fscore - si->gscore);
+  return val;
 }
 
 SK_IW_SOLVER_TEMPLATE_DECL
-std::size_t SK_IW_SOLVER_CLASS::get_nb_of_explored_states() const {
+std::size_t SK_IW_SOLVER_CLASS::get_nb_explored_states() const {
   return _graph.size();
+}
+
+SK_IW_SOLVER_TEMPLATE_DECL
+typename SetTypeDeducer<typename SK_IW_SOLVER_CLASS::State>::Set
+SK_IW_SOLVER_CLASS::get_explored_states() const {
+  typename SetTypeDeducer<State>::Set explored_states;
+  for (const auto &s : _graph) {
+    explored_states.insert(s.state);
+  }
+  return explored_states;
 }
 
 SK_IW_SOLVER_TEMPLATE_DECL
@@ -232,10 +230,103 @@ std::size_t SK_IW_SOLVER_CLASS::get_nb_of_pruned_states() const {
   return cnt;
 }
 
+SK_IW_SOLVER_TEMPLATE_DECL std::size_t
+SK_IW_SOLVER_CLASS::get_nb_tip_states() const {
+  if (!_width_solver) {
+    Logger::error("SKDECIDE exception: inactive width sub-solver when "
+                  "requesting the number of tip states");
+    throw std::runtime_error(
+        "SKDECIDE exception: inactive width sub-solver when "
+        "requesting the number of tip states");
+  }
+  return _width_solver->get_open_queue().size();
+}
+
+SK_IW_SOLVER_TEMPLATE_DECL
+const typename SK_IW_SOLVER_CLASS::State &
+SK_IW_SOLVER_CLASS::get_top_tip_state() const {
+  if (!_width_solver) {
+    Logger::error("SKDECIDE exception: inactive width sub-solver when "
+                  "requesting the top tip state");
+    throw std::runtime_error(
+        "SKDECIDE exception: inactive width sub-solver when "
+        "requesting the top tip state");
+  }
+  if (_width_solver->get_open_queue().empty()) {
+    Logger::error(
+        "SKDECIDE exception: no top tip state (empty priority queue)");
+    throw std::runtime_error(
+        "SKDECIDE exception: no top tip state (empty priority queue)");
+  }
+  return _width_solver->get_open_queue().top()->state;
+}
+
 SK_IW_SOLVER_TEMPLATE_DECL
 const std::list<std::tuple<std::size_t, std::size_t, double>> &
 SK_IW_SOLVER_CLASS::get_intermediate_scores() const {
   return _intermediate_scores;
+}
+
+SK_IW_SOLVER_TEMPLATE_DECL
+std::size_t SK_IW_SOLVER_CLASS::get_solving_time() const {
+  std::size_t milliseconds_duration;
+  milliseconds_duration = static_cast<std::size_t>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::high_resolution_clock::now() - _start_time)
+          .count());
+  return milliseconds_duration;
+}
+
+SK_IW_SOLVER_TEMPLATE_DECL
+std::vector<std::tuple<typename SK_IW_SOLVER_CLASS::State,
+                       typename SK_IW_SOLVER_CLASS::Action,
+                       typename SK_IW_SOLVER_CLASS::Value>>
+SK_IW_SOLVER_CLASS::get_plan(
+    const typename SK_IW_SOLVER_CLASS::State &from_state) const {
+  std::vector<std::tuple<State, Action, Value>> p;
+  auto si = _graph.find(Node(from_state, _domain, _state_features));
+  if (si == _graph.end()) {
+    Logger::warn("SKDECIDE warning: no plan found starting in state " +
+                 from_state.print());
+    return p;
+  }
+  const Node *cur_node = &(*si);
+  std::unordered_set<const Node *> plan_nodes;
+  plan_nodes.insert(cur_node);
+  while (!_domain.is_goal(cur_node->state) &&
+         cur_node->best_action.first != nullptr) {
+    Value val;
+    val.cost(cur_node->best_action.second->gscore - cur_node->gscore);
+    p.push_back(
+        std::make_tuple(cur_node->state, *(cur_node->best_action.first), val));
+    cur_node = cur_node->best_action.second;
+    if (!plan_nodes.insert(cur_node).second) {
+      Logger::error("SKDECIDE exception: cycle detected in the solution plan "
+                    "starting in state " +
+                    from_state.print());
+      throw std::runtime_error("SKDECIDE exception: cycle detected in the "
+                               "solution plan starting in state " +
+                               from_state.print());
+    }
+  }
+  return p;
+}
+
+SK_IW_SOLVER_TEMPLATE_DECL
+typename MapTypeDeducer<typename SK_IW_SOLVER_CLASS::State,
+                        std::pair<typename SK_IW_SOLVER_CLASS::Action,
+                                  typename SK_IW_SOLVER_CLASS::Value>>::Map
+SK_IW_SOLVER_CLASS::get_policy() const {
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
+  for (auto &n : _graph) {
+    if (n.best_action.first != nullptr) {
+      Value val;
+      val.cost(n.fscore - n.gscore);
+      p.insert(
+          std::make_pair(n.state, std::make_pair(*(n.best_action.first), val)));
+    }
+  }
+  return p;
 }
 
 // === IWSolver::Node implementation ===
@@ -248,8 +339,8 @@ SK_IW_SOLVER_CLASS::Node::Node(
     : state(s), gscore(std::numeric_limits<double>::infinity()),
       fscore(std::numeric_limits<double>::infinity()),
       novelty(std::numeric_limits<std::size_t>::max()),
-      depth(std::numeric_limits<std::size_t>::max()), best_action(nullptr),
-      pruned(false), solved(false) {
+      depth(std::numeric_limits<std::size_t>::max()),
+      best_action({nullptr, nullptr}), pruned(false), solved(false) {
   features = state_features(d, s);
 }
 
@@ -263,21 +354,18 @@ SK_IW_SOLVER_CLASS::Node::Key::operator()(const Node &n) const {
 
 SK_IW_SOLVER_TEMPLATE_DECL
 SK_IW_SOLVER_CLASS::WidthSolver::WidthSolver(
-    Domain &domain,
-    const std::function<std::unique_ptr<FeatureVector>(
-        Domain &d, const State &s)> &state_features,
-    const std::function<bool(const double &, const std::size_t &,
-                             const std::size_t &, const double &,
-                             const std::size_t &, const std::size_t &)>
-        &node_ordering,
-    std::size_t width, Graph &graph, std::size_t time_budget,
+    IWSolver &parent_solver, Domain &domain,
+    const StateFeatureFunctor &state_features,
+    const NodeOrderingFunctor &node_ordering, std::size_t width, Graph &graph,
+    std::size_t time_budget,
     std::list<std::tuple<std::size_t, std::size_t, double>>
         &intermediate_scores,
-    bool debug_logs)
-    : _domain(domain), _state_features(state_features),
-      _node_ordering(node_ordering), _width(width), _graph(graph),
-      _time_budget(time_budget), _intermediate_scores(intermediate_scores),
-      _debug_logs(debug_logs) {}
+    const CallbackFunctor &callback, bool verbose)
+    : _parent_solver(parent_solver), _domain(domain),
+      _state_features(state_features), _node_ordering(node_ordering),
+      _width(width), _graph(graph), _time_budget(time_budget),
+      _intermediate_scores(intermediate_scores), _callback(callback),
+      _verbose(verbose) {}
 
 SK_IW_SOLVER_TEMPLATE_DECL
 std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
@@ -306,16 +394,10 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
     root_node.gscore = 0;
     bool states_pruned = false;
 
-    auto node_ordering = [this](const auto &a, const auto &b) -> bool {
-      return _node_ordering(a->gscore, a->novelty, a->depth, b->gscore,
-                            b->novelty, b->depth);
-    };
-
     // Priority queue used to sort non-goal unsolved tip nodes by increasing
-    // cost-to-go values (so-called OPEN container)
-    std::priority_queue<Node *, std::vector<Node *>, decltype(node_ordering)>
-        open_queue(node_ordering);
-    open_queue.push(&root_node);
+    // lexicographical node ordering values (so-called OPEN container)
+    _open_queue = std::make_unique<PriorityQueue>(NodeCompare(_node_ordering));
+    _open_queue->push(&root_node);
 
     // Set of states that have already been explored
     std::unordered_set<Node *> closed_set;
@@ -326,9 +408,9 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
     novelty(feature_tuples,
             root_node); // initialize feature_tuples with the root node's bits
 
-    while (!open_queue.empty()) {
-      auto best_tip_node = open_queue.top();
-      open_queue.pop();
+    while (!(_open_queue->empty()) && !_callback(_parent_solver, _domain)) {
+      auto best_tip_node = _open_queue->top();
+      _open_queue->pop();
 
       // Check that the best tip node has not already been closed before
       // (since this implementation's open_queue does not check for element
@@ -340,7 +422,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
         continue;
       }
 
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug(
             "Current best tip node: " + best_tip_node->state.print() +
             ", gscore=" + StringConverter::from(best_tip_node->gscore) +
@@ -350,8 +432,11 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
       closed_set.insert(best_tip_node);
 
       if (_domain.is_goal(best_tip_node->state) || best_tip_node->solved) {
+        if (_verbose)
+          Logger::debug("Found a goal or previously solved state: " +
+                        best_tip_node->state.print());
         auto current_node = best_tip_node;
-        double tentative_fscore = 0;
+        double tentative_fscore = root_node.gscore;
 
         while (current_node != &root_node) {
           Node *parent_node = std::get<0>(current_node->best_parent);
@@ -362,15 +447,19 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
         if (!found_goal || root_node.fscore > tentative_fscore) {
           current_node = best_tip_node;
           if (!(best_tip_node->solved)) {
-            current_node->fscore = 0;
+            current_node->fscore = current_node->gscore;
           } // goal state
           best_tip_node->solved = true;
 
           while (current_node != &root_node) {
             Node *parent_node = std::get<0>(current_node->best_parent);
-            parent_node->best_action = &std::get<1>(current_node->best_parent);
-            parent_node->fscore =
-                std::get<2>(current_node->best_parent) + current_node->fscore;
+            parent_node->best_action = std::make_pair(
+                &std::get<1>(current_node->best_parent), current_node);
+            // if everything went fine we should have parent_node->fscore ==
+            // current_node->fscore but let's be conservative here just in case
+            parent_node->fscore = parent_node->gscore +
+                                  std::get<2>(current_node->best_parent) +
+                                  current_node->fscore - current_node->gscore;
             parent_node->solved = true;
             current_node = parent_node;
           }
@@ -388,7 +477,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
             static_cast<std::size_t>(duration), _width, root_node.fscore));
 
         if (static_cast<std::size_t>(duration) < _time_budget) {
-          if (_debug_logs)
+          if (_verbose)
             Logger::debug("Remaining time budget, continuing searching for "
                           "better plans with current width...");
           continue;
@@ -405,7 +494,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
       }
 
       if (_domain.is_terminal(best_tip_node->state)) { // dead-end state
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug("Found a dead-end state: " +
                         best_tip_node->state.print());
         continue;
@@ -417,9 +506,8 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
       std::for_each(
           ExecutionPolicy::policy, applicable_actions.begin(),
           applicable_actions.end(),
-          [this, &best_tip_node, &open_queue, &feature_tuples,
-           &states_pruned](auto a) {
-            if (_debug_logs)
+          [this, &best_tip_node, &feature_tuples, &states_pruned](auto a) {
+            if (_verbose)
               Logger::debug("Current expanded action: " + a.print() +
                             ExecutionPolicy::print_thread());
             auto next_state = _domain.get_next_state(best_tip_node->state, a);
@@ -430,7 +518,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
             Node &neighbor = const_cast<Node &>(
                 *(i.first)); // we won't change the real key (StateNode::state)
                              // so we are safe
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Exploring next state (among " +
                             StringConverter::from(_graph.size()) + ")" +
                             ExecutionPolicy::print_thread());
@@ -444,7 +532,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
             std::size_t tentative_depth = best_tip_node->depth + 1;
 
             if ((i.second) || (tentative_gscore < neighbor.gscore)) {
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug("New gscore: " +
                               StringConverter::from(best_tip_node->gscore) +
                               "+" + StringConverter::from(transition_cost) +
@@ -456,7 +544,7 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
             }
 
             if ((i.second) || (tentative_depth < neighbor.depth)) {
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug("New depth: " +
                               StringConverter::from(best_tip_node->depth) +
                               "+" + StringConverter::from(1) + "=" +
@@ -465,22 +553,22 @@ std::pair<bool, bool> SK_IW_SOLVER_CLASS::WidthSolver::solve(
               neighbor.depth = tentative_depth;
             }
 
-            _execution_policy.protect([this, &feature_tuples, &open_queue,
-                                       &neighbor, &states_pruned] {
-              if (this->novelty(feature_tuples, neighbor) > _width) {
-                if (_debug_logs)
-                  Logger::debug("Pruning state " + neighbor.state.print() +
-                                ExecutionPolicy::print_thread());
-                states_pruned = true;
-                neighbor.pruned = true;
-              } else {
-                if (_debug_logs)
-                  Logger::debug("Adding state to open queue (among " +
-                                StringConverter::from(open_queue.size()) + ")" +
-                                ExecutionPolicy::print_thread());
-                open_queue.push(&neighbor);
-              }
-            });
+            _execution_policy.protect(
+                [this, &feature_tuples, &neighbor, &states_pruned] {
+                  if (this->novelty(feature_tuples, neighbor) > _width) {
+                    if (_verbose)
+                      Logger::debug("Pruning state " + neighbor.state.print() +
+                                    ExecutionPolicy::print_thread());
+                    states_pruned = true;
+                    neighbor.pruned = true;
+                  } else {
+                    if (_verbose)
+                      Logger::debug("Adding state to open queue (among " +
+                                    StringConverter::from(_open_queue->size()) +
+                                    ")" + ExecutionPolicy::print_thread());
+                    _open_queue->push(&neighbor);
+                  }
+                });
           });
     }
 
@@ -529,7 +617,7 @@ SK_IW_SOLVER_CLASS::WidthSolver::novelty(TupleVector &feature_tuples,
           }
         });
   }
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Novelty: " + StringConverter::from(nov));
   n.novelty = nov;
   return nov;
@@ -563,6 +651,26 @@ void SK_IW_SOLVER_CLASS::WidthSolver::generate_tuples(
       }
     }
   }
+}
+
+SK_IW_SOLVER_TEMPLATE_DECL
+const typename SK_IW_SOLVER_CLASS::WidthSolver::PriorityQueue &
+SK_IW_SOLVER_CLASS::WidthSolver::get_open_queue() const {
+  return *_open_queue;
+}
+
+// === IWSolver::WidthSolver::NodeCompare implementation ===
+
+SK_IW_SOLVER_TEMPLATE_DECL
+SK_IW_SOLVER_CLASS::WidthSolver::NodeCompare::NodeCompare(
+    const NodeOrderingFunctor &node_ordering)
+    : _node_ordering(node_ordering) {}
+
+SK_IW_SOLVER_TEMPLATE_DECL bool
+SK_IW_SOLVER_CLASS::WidthSolver::NodeCompare::operator()(Node *&a,
+                                                         Node *&b) const {
+  return _node_ordering(a->gscore, a->novelty, a->depth, b->gscore, b->novelty,
+                        b->depth);
 }
 
 } // namespace skdecide

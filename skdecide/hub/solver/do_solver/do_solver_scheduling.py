@@ -264,12 +264,12 @@ class _DOCallback(Callback):
     ) -> Optional[bool]:
         """Called at the end of an optimization step.
 
-        Args:
+        # Parameters
             step: index of step
             res: current result storage
             solver: solvers using the callback
 
-        Returns:
+        # Returns
             If `True`, the optimization process is stopped, else it goes on.
 
         """

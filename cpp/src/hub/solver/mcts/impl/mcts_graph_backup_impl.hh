@@ -41,7 +41,7 @@ struct GraphBackup<Tsolver>::UpdateFrontierImplementation {
             ((double)(parent_node->visits_count + 1));
         parent_node->visits_count += 1;
         new_frontier.insert(parent_node);
-        if (solver.debug_logs()) {
+        if (solver.verbose()) {
           Logger::debug(
               "Updating state " + parent_node->state.print() +
               ": value=" + StringConverter::from(parent_node->value) +
@@ -83,7 +83,7 @@ struct GraphBackup<Tsolver>::UpdateFrontierImplementation {
                   ((double)(parent_node->visits_count + 1));
               parent_node->visits_count += 1;
               new_frontier.insert(parent_node);
-              if (solver.debug_logs()) {
+              if (solver.verbose()) {
                 Logger::debug(
                     "Updating state " + parent_node->state.print() +
                     ": value=" + StringConverter::from(parent_node->value) +
@@ -106,7 +106,7 @@ SK_MCTS_GRAPH_BACKUP_TEMPLATE_DECL
 void SK_MCTS_GRAPH_BACKUP_CLASS::operator()(
     Tsolver &solver, const std::size_t *thread_id,
     typename Tsolver::StateNode &n) const {
-  if (solver.debug_logs()) {
+  if (solver.verbose()) {
     solver.execution_policy().protect(
         [&n]() {
           Logger::debug("Back-propagating values from state " +

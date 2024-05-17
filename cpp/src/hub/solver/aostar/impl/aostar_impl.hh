@@ -5,7 +5,6 @@
 #ifndef SKDECIDE_AOSTAR_IMPL_HH
 #define SKDECIDE_AOSTAR_IMPL_HH
 
-#include <queue>
 #include <chrono>
 
 #include "utils/string_converter.hh"
@@ -22,29 +21,31 @@ namespace skdecide {
 
 SK_AOSTAR_SOLVER_TEMPLATE_DECL
 SK_AOSTAR_SOLVER_CLASS::AOStarSolver(
-    Domain &domain,
-    const std::function<Predicate(Domain &, const State &)> &goal_checker,
-    const std::function<Value(Domain &, const State &)> &heuristic,
-    double discount, std::size_t max_tip_expansions, bool detect_cycles,
-    bool debug_logs)
+    Domain &domain, const GoalCheckerFunctor &goal_checker,
+    const HeuristicFunctor &heuristic, double discount,
+    std::size_t max_tip_expansions, bool detect_cycles,
+    const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
       _discount(discount), _max_tip_expansions(max_tip_expansions),
-      _detect_cycles(detect_cycles), _debug_logs(debug_logs) {
+      _detect_cycles(detect_cycles), _callback(callback), _verbose(verbose) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm AO*");
   }
 }
 
 SK_AOSTAR_SOLVER_TEMPLATE_DECL
-void SK_AOSTAR_SOLVER_CLASS::clear() { _graph.clear(); }
+void SK_AOSTAR_SOLVER_CLASS::clear() {
+  _priority_queue = PriorityQueue();
+  _graph.clear();
+}
 
 SK_AOSTAR_SOLVER_TEMPLATE_DECL
 void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
   try {
     Logger::info("Running " + ExecutionPolicy::print_type() +
                  " AO* solver from state " + s.print());
-    auto start_time = std::chrono::high_resolution_clock::now();
+    _start_time = std::chrono::high_resolution_clock::now();
 
     auto si = _graph.emplace(s);
     if (si.first->solved ||
@@ -56,25 +57,26 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
     StateNode &root_node = const_cast<StateNode &>(
         *(si.first)); // we won't change the real key (StateNode::state) so we
                       // are safe
-    std::priority_queue<StateNode *, std::vector<StateNode *>, StateNodeCompare>
-        q; // contains only non-goal unsolved tip nodes
-    q.push(&root_node);
+    _priority_queue =
+        PriorityQueue(); // contains only non-goal unsolved tip nodes
+    _priority_queue.push(&root_node);
 
-    while (!q.empty()) {
-      if (_debug_logs) {
+    while (!_priority_queue.empty() && !_callback(*this, _domain)) {
+      if (_verbose) {
         Logger::debug("Current number of tip nodes: " +
-                      StringConverter::from(q.size()));
+                      StringConverter::from(_priority_queue.size()));
         Logger::debug("Current number of explored nodes: " +
                       StringConverter::from(_graph.size()));
       }
-      std::size_t nb_expansions = std::min(q.size(), _max_tip_expansions);
+      std::size_t nb_expansions =
+          std::min(_priority_queue.size(), _max_tip_expansions);
       std::unordered_set<StateNode *> frontier;
       for (std::size_t cnt = 0; cnt < nb_expansions; cnt++) {
         // Select best tip node of best partial graph
-        StateNode *best_tip_node = q.top();
-        q.pop();
+        StateNode *best_tip_node = _priority_queue.top();
+        _priority_queue.pop();
         frontier.insert(best_tip_node);
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug("Current best tip node: " +
                         best_tip_node->state.print());
 
@@ -84,7 +86,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
         std::for_each(
             ExecutionPolicy::policy, applicable_actions.begin(),
             applicable_actions.end(), [this, &best_tip_node](auto a) {
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug("Current expanded action: " + a.print() +
                               ExecutionPolicy::print_thread());
               _execution_policy.protect([&best_tip_node, &a] {
@@ -97,7 +99,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
                   _domain.get_next_state_distribution(best_tip_node->state, a)
                       .get_values();
               for (auto ns : next_states) {
-                if (_debug_logs)
+                if (_verbose)
                   Logger::debug(
                       "Current next state expansion: " + ns.state().print() +
                       ExecutionPolicy::print_thread());
@@ -118,7 +120,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
                     [&next_node, &an] { next_node.parents.push_back(&an); });
                 if (i.second) { // new node
                   if (_goal_checker(_domain, next_node.state)) {
-                    if (_debug_logs)
+                    if (_verbose)
                       Logger::debug("Found goal state " +
                                     next_node.state.print() +
                                     ExecutionPolicy::print_thread());
@@ -127,7 +129,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
                   } else {
                     next_node.best_value =
                         _heuristic(_domain, next_node.state).cost();
-                    if (_debug_logs)
+                    if (_verbose)
                       Logger::debug(
                           "New state " + next_node.state.print() +
                           " with heuristic value " +
@@ -193,8 +195,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
       }
 
       // Recompute best partial graph
-      q = std::priority_queue<StateNode *, std::vector<StateNode *>,
-                              StateNodeCompare>();
+      _priority_queue = PriorityQueue();
       frontier.insert(&root_node);
       while (!frontier.empty()) {
         std::unordered_set<StateNode *> new_frontier;
@@ -205,7 +206,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
                 new_frontier.insert(std::get<2>(ns));
               }
             } else { // tip node
-              q.push(fs);
+              _priority_queue.push(fs);
             }
           }
         }
@@ -213,13 +214,10 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
       }
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        end_time - start_time)
-                        .count();
-    Logger::info("AO* finished to solve from state " + s.print() + " in " +
-                 StringConverter::from((double)duration / (double)1e9) +
-                 " seconds.");
+    Logger::info(
+        "AO* finished to solve from state " + s.print() + " in " +
+        StringConverter::from((double)get_solving_time() / (double)1e6) +
+        " seconds.");
   } catch (const std::exception &e) {
     Logger::error("AO* failed solving from state " + s.print() +
                   ". Reason: " + e.what());
@@ -243,6 +241,8 @@ const typename SK_AOSTAR_SOLVER_CLASS::Action &
 SK_AOSTAR_SOLVER_CLASS::get_best_action(const State &s) const {
   auto si = _graph.find(s);
   if ((si == _graph.end()) || (si->best_action == nullptr)) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
@@ -250,13 +250,77 @@ SK_AOSTAR_SOLVER_CLASS::get_best_action(const State &s) const {
 }
 
 SK_AOSTAR_SOLVER_TEMPLATE_DECL
-const double &SK_AOSTAR_SOLVER_CLASS::get_best_value(const State &s) const {
+typename SK_AOSTAR_SOLVER_CLASS::Value
+SK_AOSTAR_SOLVER_CLASS::get_best_value(const State &s) const {
   auto si = _graph.find(s);
   if (si == _graph.end()) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return si->best_value;
+  Value val;
+  val.cost(si->best_value);
+  return val;
+}
+
+SK_AOSTAR_SOLVER_TEMPLATE_DECL
+std::size_t SK_AOSTAR_SOLVER_CLASS::get_nb_explored_states() const {
+  return _graph.size();
+}
+
+SK_AOSTAR_SOLVER_TEMPLATE_DECL
+typename SetTypeDeducer<typename SK_AOSTAR_SOLVER_CLASS::State>::Set
+SK_AOSTAR_SOLVER_CLASS::get_explored_states() const {
+  typename SetTypeDeducer<State>::Set explored_states;
+  for (const auto &s : _graph) {
+    explored_states.insert(s.state);
+  }
+  return explored_states;
+}
+
+SK_AOSTAR_SOLVER_TEMPLATE_DECL std::size_t
+SK_AOSTAR_SOLVER_CLASS::get_nb_tip_states() const {
+  return _priority_queue.size();
+}
+
+SK_AOSTAR_SOLVER_TEMPLATE_DECL
+const typename SK_AOSTAR_SOLVER_CLASS::State &
+SK_AOSTAR_SOLVER_CLASS::get_top_tip_state() const {
+  if (_priority_queue.empty()) {
+    Logger::error(
+        "SKDECIDE exception: no top tip state (empty priority queue)");
+    throw std::runtime_error(
+        "SKDECIDE exception: no top tip state (empty priority queue)");
+  }
+  return _priority_queue.top()->state;
+}
+
+SK_AOSTAR_SOLVER_TEMPLATE_DECL
+std::size_t SK_AOSTAR_SOLVER_CLASS::get_solving_time() const {
+  std::size_t milliseconds_duration;
+  milliseconds_duration = static_cast<std::size_t>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::high_resolution_clock::now() - _start_time)
+          .count());
+  return milliseconds_duration;
+}
+
+SK_AOSTAR_SOLVER_TEMPLATE_DECL typename MapTypeDeducer<
+    typename SK_AOSTAR_SOLVER_CLASS::State,
+    std::pair<typename SK_AOSTAR_SOLVER_CLASS::Action,
+              typename SK_AOSTAR_SOLVER_CLASS::Value>>::Map
+SK_AOSTAR_SOLVER_CLASS::get_policy() const {
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
+  for (auto &n : _graph) {
+    if (n.best_action != nullptr) {
+      Value val;
+      val.cost(n.best_value);
+      p.insert(
+          std::make_pair(n.state, std::make_pair(n.best_action->action, val)));
+    }
+  }
+  return p;
 }
 
 // === AOStarSolver::StateNode implementation ===

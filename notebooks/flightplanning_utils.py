@@ -100,7 +100,7 @@ class WeatherRetrieverFromEcmwf:
     ):
         """Wind data data retriever from ECMWF
 
-        Args:
+        # Parameters
             url (str, optional): the URL of the service. Defaults to "https://cds.climate.copernicus.eu/api/v2".
             key (str, optional): the API key. Defaults to None.
             pressure_levels (Iterable[str], optional): The pressure levels. Defaults to [ "150", "175", "200", "225", "250", "300", "350", "400", "450", "500", "550", "600", "650", "700", "750", "775", "800", "825", "850", "875", "900", "925", "950", "975", "1000", ].
@@ -113,10 +113,10 @@ class WeatherRetrieverFromEcmwf:
     def get(self, dt: datetime):
         """Get the weather data for a given datetime
 
-        Args:
+        # Parameters
             dt (datetime): the datetime
 
-        Returns:
+        # Returns
             _type_: _description_
         """
         file = NamedTemporaryFile(suffix=".grib")
@@ -146,7 +146,7 @@ class WindInterpolator:
     def __init__(self, path: str):
         """The wind interpolator class
 
-        Args:
+        # Parameters
             path (str): path to the wind file
         """
         self.dataset = cfgrib.open_dataset(
@@ -164,7 +164,7 @@ class WindInterpolator:
     def get_dataset(self) -> xr.Dataset:
         """Get the dataset
 
-        Returns:
+        # Returns
             xr.Dataset: the dataset
         """
         return self.dataset
@@ -172,10 +172,10 @@ class WindInterpolator:
     def get_windfield(self, ts: float) -> pd.DataFrame:
         """Get the wind field at a given time
 
-        Args:
+        # Parameters
             ts (float): the time in seconds from the start of the dataset
 
-        Returns:
+        # Returns
             pd.DataFrame: a dataframe with the wind field
         """
         time = self.dataset.time[0] + np.timedelta64(int(ts), "s")
@@ -201,16 +201,16 @@ class WindInterpolator:
         plot_barbs: bool = False,
         ax: plt.axes = None,
     ) -> plt.axes:
-        """_summary_
+        """Plot the wind data
 
-        Args:
+        # Parameters
             alt (float, optional): altitude layer to plot. Defaults to 35000.0.
             t (Union[float, Iterable[float]], optional): value of time step (in second) or list/array of time step (in s). Defaults to 0.0.
             plot_wind (bool, optional): plot the wind vector field. Defaults to False.
             plot_barbs (bool, optional): plot the barbs. Defaults to False.
             ax (plt.axes, optional): Axes object where to plot the wind. Defaults to None.
 
-        Returns:
+        # Returns
             plt.axes: The axes with the plot
         """
         if isinstance(t, Collection):
@@ -287,13 +287,13 @@ def flying(
 ) -> pd.DataFrame:
     """Compute the trajectory of a flying object from a given point to a given point
 
-    Args:
+    # Parameters
         from_ (pd.DataFrame): the trajectory of the object so far
         to_ (Tuple[float, float]): the destination of the object
         ds (xr.Dataset): dataset containing the wind field
         fflow (Callable): fuel flow function
 
-    Returns:
+    # Returns
         pd.DataFrame: the final trajectory of the object
     """
     pos = from_.to_dict("records")[0]
@@ -386,11 +386,11 @@ def plot_trajectory(
 ) -> Figure:
     """Plot the trajectory of an object
 
-    Args:
+    # Parameters
         trajectory (pd.DataFrame): the trajectory of the object
         ds (xr.Dataset): the dataset containing the wind field
 
-    Returns:
+    # Returns
         Figure: the figure
     """
 

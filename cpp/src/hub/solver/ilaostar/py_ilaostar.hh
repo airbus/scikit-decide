@@ -34,9 +34,11 @@ private:
     virtual void solve(const py::object &s) = 0;
     virtual py::bool_ is_solution_defined_for(const py::object &s) = 0;
     virtual py::object get_next_action(const py::object &s) = 0;
-    virtual py::float_ get_utility(const py::object &s) = 0;
-    virtual py::int_ get_nb_of_explored_states() = 0;
+    virtual py::object get_utility(const py::object &s) = 0;
+    virtual py::int_ get_nb_explored_states() = 0;
+    virtual py::set get_explored_states() = 0;
     virtual py::int_ best_solution_graph_size() = 0;
+    virtual py::int_ get_solving_time() = 0;
     virtual py::dict get_policy() = 0;
   };
 
@@ -44,14 +46,19 @@ private:
   class Implementation : public BaseImplementation {
   public:
     Implementation(
+        py::object &solver, // Python solver wrapper
         py::object &domain,
         const std::function<py::object(const py::object &, const py::object &)>
             &goal_checker,
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
-        double discount = 1.0, double epsilon = 0.001, bool debug_logs = false)
-        : _goal_checker(goal_checker), _heuristic(heuristic) {
+        double discount = 1.0, double epsilon = 0.001,
+        const std::function<py::bool_(const py::object &)> &callback = nullptr,
+        bool verbose = false)
+        : _goal_checker(goal_checker), _heuristic(heuristic),
+          _callback(callback) {
 
+      _pysolver = std::make_unique<py::object>(solver);
       check_domain(domain);
       _domain = std::make_unique<PyILAOStarDomain<Texecution>>(domain);
       _solver = std::make_unique<
@@ -96,7 +103,26 @@ private:
               throw;
             }
           },
-          discount, epsilon, debug_logs);
+          discount, epsilon,
+          [this](const skdecide::ILAOStarSolver<PyILAOStarDomain<Texecution>,
+                                                Texecution> &s,
+                 PyILAOStarDomain<Texecution> &d) -> bool {
+            // we don't make use of the C++ solver object 's' from Python
+            // but we rather use its Python wrapper 'solver'
+            if (_callback) {
+              try {
+                return _callback(*_pysolver);
+              } catch (const std::exception &e) {
+                Logger::error(std::string("SKDECIDE exception when calling "
+                                          "callback function: ") +
+                              e.what());
+                throw;
+              }
+            } else {
+              return false;
+            }
+          },
+          verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -139,26 +165,41 @@ private:
     virtual py::object get_next_action(const py::object &s) {
       try {
         return _solver->get_best_action(s).pyobj();
-      } catch (const std::runtime_error &) {
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[ILAOStar.get_next_action] ") + e.what() +
+                     " - returning None");
         return py::none();
       }
     }
 
-    virtual py::float_ get_utility(const py::object &s) {
+    virtual py::object get_utility(const py::object &s) {
       try {
-        return _solver->get_best_value(s);
-      } catch (const std::runtime_error &) {
+        return _solver->get_best_value(s).pyobj();
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[ILAOStar.get_utility] ") + e.what() +
+                     " - returning None");
         return py::none();
       }
     }
 
-    virtual py::int_ get_nb_of_explored_states() {
-      return _solver->get_nb_of_explored_states();
+    virtual py::int_ get_nb_explored_states() {
+      return _solver->get_nb_explored_states();
+    }
+
+    virtual py::set get_explored_states() {
+      py::set s;
+      auto &&es = _solver->get_explored_states();
+      for (auto &e : es) {
+        s.add(e.pyobj());
+      }
+      return s;
     }
 
     virtual py::int_ best_solution_graph_size() {
       return _solver->best_solution_graph_size();
     }
+
+    virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
 
     virtual py::dict get_policy() {
       py::dict d;
@@ -171,6 +212,7 @@ private:
     }
 
   private:
+    std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<PyILAOStarDomain<Texecution>> _domain;
     std::unique_ptr<
         skdecide::ILAOStarSolver<PyILAOStarDomain<Texecution>, Texecution>>
@@ -180,6 +222,7 @@ private:
         _goal_checker;
     std::function<py::object(const py::object &, const py::object &)>
         _heuristic;
+    std::function<py::bool_(const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -221,18 +264,20 @@ private:
 
 public:
   PyILAOStarSolver(
+      py::object &solver, // Python solver wrapper
       py::object &domain,
       const std::function<py::object(const py::object &, const py::object &)>
           &goal_checker,
       const std::function<py::object(const py::object &, const py::object &)>
           &heuristic,
       double discount = 1.0, double epsilon = 0.001, bool parallel = false,
-      bool debug_logs = false) {
+      const std::function<py::bool_(const py::object &)> &callback = nullptr,
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
-        .instantiate(domain, goal_checker, heuristic, discount, epsilon,
-                     debug_logs);
+        .instantiate(solver, domain, goal_checker, heuristic, discount, epsilon,
+                     callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -249,17 +294,23 @@ public:
     return _implementation->get_next_action(s);
   }
 
-  py::float_ get_utility(const py::object &s) {
+  py::object get_utility(const py::object &s) {
     return _implementation->get_utility(s);
   }
 
-  py::int_ get_nb_of_explored_states() {
-    return _implementation->get_nb_of_explored_states();
+  py::int_ get_nb_explored_states() {
+    return _implementation->get_nb_explored_states();
+  }
+
+  py::set get_explored_states() {
+    return _implementation->get_explored_states();
   }
 
   py::int_ best_solution_graph_size() {
     return _implementation->best_solution_graph_size();
   }
+
+  py::int_ get_solving_time() { return _implementation->get_solving_time(); }
 
   py::dict get_policy() { return _implementation->get_policy(); }
 };

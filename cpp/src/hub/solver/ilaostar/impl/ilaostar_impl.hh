@@ -22,15 +22,17 @@ namespace skdecide {
 #define SK_ILAOSTAR_SOLVER_CLASS ILAOStarSolver<Tdomain, Texecution_policy>
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
-SK_ILAOSTAR_SOLVER_CLASS::ILAOStarSolver(
-    Domain &domain,
-    const std::function<Predicate(Domain &, const State &)> &goal_checker,
-    const std::function<Value(Domain &, const State &)> &heuristic,
-    double discount, double epsilon, bool debug_logs)
+SK_ILAOSTAR_SOLVER_CLASS::ILAOStarSolver(Domain &domain,
+                                         const GoalCheckerFunctor &goal_checker,
+                                         const HeuristicFunctor &heuristic,
+                                         double discount, double epsilon,
+                                         const CallbackFunctor &callback,
+                                         bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _discount(discount), _epsilon(epsilon), _debug_logs(debug_logs) {
+      _discount(discount), _epsilon(epsilon), _callback(callback),
+      _verbose(verbose) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm ILAO*");
   }
 }
@@ -43,7 +45,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::solve(const State &s) {
   try {
     Logger::info("Running " + ExecutionPolicy::print_type() +
                  " ILAO* solver from state " + s.print());
-    auto start_time = std::chrono::high_resolution_clock::now();
+    _start_time = std::chrono::high_resolution_clock::now();
 
     auto si = _graph.emplace(s);
     StateNode &root_node = const_cast<StateNode &>(
@@ -58,12 +60,12 @@ void SK_ILAOSTAR_SOLVER_CLASS::solve(const State &s) {
         _goal_checker(_domain,
                       s)) { // problem already solved from this state (was
                             // present in _graph and already solved)
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("Found goal state " + s.print());
       return;
     }
 
-    while (!root_node.solved) {
+    while (!root_node.solved && !_callback(*this, _domain)) {
       // perform postorder depth first search until not reaching unexpanded tip
       // nodes
       while (root_node.reach_tip_node) {
@@ -89,7 +91,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::solve(const State &s) {
       // states and speed-up the search
       update_solved_bits();
 
-      if (_debug_logs) {
+      if (_verbose) {
         std::string graph_str = "{";
         for (const auto &bs : _best_solution_graph) {
           graph_str += " " + bs->state.print() + " ;";
@@ -99,13 +101,10 @@ void SK_ILAOSTAR_SOLVER_CLASS::solve(const State &s) {
       }
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        end_time - start_time)
-                        .count();
-    Logger::info("ILAO* finished to solve from state " + s.print() + " in " +
-                 StringConverter::from((double)duration / (double)1e9) +
-                 " seconds.");
+    Logger::info(
+        "ILAO* finished to solve from state " + s.print() + " in " +
+        StringConverter::from((double)get_solving_time() / (double)1e6) +
+        " seconds.");
   } catch (const std::exception &e) {
     Logger::error("ILAO* failed solving from state " + s.print() +
                   ". Reason: " + e.what());
@@ -128,6 +127,8 @@ const typename SK_ILAOSTAR_SOLVER_CLASS::Action &
 SK_ILAOSTAR_SOLVER_CLASS::get_best_action(const State &s) const {
   auto si = _graph.find(s);
   if ((si == _graph.end()) || (si->best_action == nullptr)) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
@@ -135,23 +136,48 @@ SK_ILAOSTAR_SOLVER_CLASS::get_best_action(const State &s) const {
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
-double SK_ILAOSTAR_SOLVER_CLASS::get_best_value(const State &s) const {
+typename SK_ILAOSTAR_SOLVER_CLASS::Value
+SK_ILAOSTAR_SOLVER_CLASS::get_best_value(const State &s) const {
   auto si = _graph.find(s);
   if (si == _graph.end()) {
+    Logger::error("SKDECIDE exception: no best action found in state " +
+                  s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return si->best_value;
+  Value val;
+  val.cost(si->best_value);
+  return val;
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
-std::size_t SK_ILAOSTAR_SOLVER_CLASS::get_nb_of_explored_states() const {
+std::size_t SK_ILAOSTAR_SOLVER_CLASS::get_nb_explored_states() const {
   return _graph.size();
+}
+
+SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
+typename SetTypeDeducer<typename SK_ILAOSTAR_SOLVER_CLASS::State>::Set
+SK_ILAOSTAR_SOLVER_CLASS::get_explored_states() const {
+  typename SetTypeDeducer<State>::Set explored_states;
+  for (const auto &s : _graph) {
+    explored_states.insert(s.state);
+  }
+  return explored_states;
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 std::size_t SK_ILAOSTAR_SOLVER_CLASS::best_solution_graph_size() const {
   return _best_solution_graph.size();
+}
+
+SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
+std::size_t SK_ILAOSTAR_SOLVER_CLASS::get_solving_time() const {
+  std::size_t milliseconds_duration;
+  milliseconds_duration = static_cast<std::size_t>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::high_resolution_clock::now() - _start_time)
+          .count());
+  return milliseconds_duration;
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
@@ -171,7 +197,7 @@ SK_ILAOSTAR_SOLVER_CLASS::policy() const {
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 void SK_ILAOSTAR_SOLVER_CLASS::expand(StateNode &s) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Expanding state " + s.state.print());
   auto applicable_actions =
       _domain.get_applicable_actions(s.state).get_elements();
@@ -179,7 +205,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::expand(StateNode &s) {
   std::for_each(
       ExecutionPolicy::policy, applicable_actions.begin(),
       applicable_actions.end(), [this, &s](auto a) {
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug("Current expanded action: " + a.print() +
                         ExecutionPolicy::print_thread());
         _execution_policy.protect(
@@ -189,7 +215,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::expand(StateNode &s) {
             _domain.get_next_state_distribution(s.state, a).get_values();
 
         for (auto ns : next_states) {
-          if (_debug_logs)
+          if (_verbose)
             Logger::debug("Current next state expansion: " +
                           ns.state().print() + ExecutionPolicy::print_thread());
           std::pair<typename Graph::iterator, bool> i;
@@ -205,7 +231,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::expand(StateNode &s) {
 
           if (i.second) { // new node
             if (_goal_checker(_domain, next_node.state)) {
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug("Found goal state " + next_node.state.print() +
                               ExecutionPolicy::print_thread());
               next_node.goal = true;
@@ -214,7 +240,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::expand(StateNode &s) {
             } else {
               next_node.best_value =
                   _heuristic(_domain, next_node.state).cost();
-              if (_debug_logs)
+              if (_verbose)
                 Logger::debug("New state " + next_node.state.print() +
                               " with heuristic value " +
                               StringConverter::from(next_node.best_value) +
@@ -227,7 +253,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::expand(StateNode &s) {
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 void SK_ILAOSTAR_SOLVER_CLASS::depth_first_search(StateNode &s) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Running post-order depth-first search from state " +
                   s.state.print());
   std::unordered_set<StateNode *> visited;
@@ -239,16 +265,16 @@ void SK_ILAOSTAR_SOLVER_CLASS::depth_first_search(StateNode &s) {
     StateNode *cs = open.top();
 
     if (cs->solved) {
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("Found solved state " + cs->state.print());
       open.pop();
     } else if (cs->goal) {
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("Found goal state " + cs->state.print());
       cs->best_value = 0;
       open.pop();
     } else if (cs->actions.empty()) {
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("Found unexpanded tip node " + cs->state.print());
       s.reach_tip_node = true;
       expand(*cs);
@@ -256,7 +282,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::depth_first_search(StateNode &s) {
       open.pop();
     } else if (visited.find(cs) ==
                visited.end()) { // first visit, we push successor nodes
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("Visiting successors of state " + cs->state.print());
       visited.insert(cs);
       for (const auto &o : cs->best_action->outcomes) {
@@ -266,7 +292,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::depth_first_search(StateNode &s) {
         }
       }
     } else { // second visit, we update and pop the node
-      if (_debug_logs)
+      if (_verbose)
         Logger::debug("Closing state " + cs->state.print());
       update(*cs);
       open.pop();
@@ -276,7 +302,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::depth_first_search(StateNode &s) {
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 void SK_ILAOSTAR_SOLVER_CLASS::compute_best_solution_graph(StateNode &s) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Computing best solution graph from state " +
                   s.state.print());
   _best_solution_graph.clear();
@@ -291,17 +317,17 @@ void SK_ILAOSTAR_SOLVER_CLASS::compute_best_solution_graph(StateNode &s) {
         for (const auto &ns : fs->best_action->outcomes) {
           StateNode *nst = std::get<2>(ns);
           if ((nst->goal) || (nst->solved)) {
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Found terminal (either goal or solved) node " +
                             nst->state.print());
             nst->reach_tip_node = false;
           } else if (nst->actions.empty()) {
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Found unexpanded tip node " + nst->state.print());
             nst->reach_tip_node = true;
           } else if (_best_solution_graph.find(nst) ==
                      _best_solution_graph.end()) {
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug("Inserting node " + nst->state.print());
             nst->reach_tip_node = false;
             _best_solution_graph.insert(nst);
@@ -316,7 +342,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::compute_best_solution_graph(StateNode &s) {
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 double SK_ILAOSTAR_SOLVER_CLASS::update(StateNode &s) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Updating state " + s.state.print());
   double record_value = s.best_value;
   double best_value = std::numeric_limits<double>::infinity();
@@ -328,7 +354,7 @@ double SK_ILAOSTAR_SOLVER_CLASS::update(StateNode &s) {
       a->value += std::get<0>(o) *
                   (std::get<1>(o) + (_discount * std::get<2>(o)->best_value));
     }
-    if (_debug_logs)
+    if (_verbose)
       Logger::debug("Computed Q-value of action " + a->action.print() + " : " +
                     StringConverter::from(a->value));
     if ((a->value) < best_value) {
@@ -344,7 +370,7 @@ double SK_ILAOSTAR_SOLVER_CLASS::update(StateNode &s) {
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 void SK_ILAOSTAR_SOLVER_CLASS::value_iteration() {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Running value iteration");
   atomic_double residual = std::numeric_limits<double>::infinity();
 
@@ -356,14 +382,14 @@ void SK_ILAOSTAR_SOLVER_CLASS::value_iteration() {
                   });
   }
 
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Value iteration converged with residual " +
                   StringConverter::from(residual));
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 bool SK_ILAOSTAR_SOLVER_CLASS::update_reachability(StateNode &s) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Updating unexpanded tip node reachability of state " +
                   s.state.print());
   bool record = s.reach_tip_node;
@@ -373,7 +399,7 @@ bool SK_ILAOSTAR_SOLVER_CLASS::update_reachability(StateNode &s) {
     reach_tip_node = reach_tip_node || (std::get<2>(o)->reach_tip_node);
   }
 
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Unexpanded tip node reachability : " +
                   StringConverter::from(reach_tip_node));
   s.reach_tip_node = reach_tip_node;
@@ -382,7 +408,7 @@ bool SK_ILAOSTAR_SOLVER_CLASS::update_reachability(StateNode &s) {
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 void SK_ILAOSTAR_SOLVER_CLASS::compute_reachability() {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Computing reachability of unexpanded tip nodes");
   atomic_bool changes = true;
 
@@ -394,13 +420,13 @@ void SK_ILAOSTAR_SOLVER_CLASS::compute_reachability() {
                   });
   }
 
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Unexpanded tip node reachability converged");
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 double SK_ILAOSTAR_SOLVER_CLASS::update_mfpt(StateNode &s) {
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Updating mean first passage time of state " +
                   s.state.print());
   double record_value = s.first_passage_time;
@@ -411,7 +437,7 @@ double SK_ILAOSTAR_SOLVER_CLASS::update_mfpt(StateNode &s) {
         std::get<0>(o) * (1.0 + (std::get<2>(o)->first_passage_time));
   }
 
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Mean first passage time : " +
                   StringConverter::from(first_passage_time));
   s.first_passage_time = first_passage_time;
@@ -427,7 +453,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::compute_mfpt() {
   // first passage time by a dynamic programming scheme at _epsilon
   // precision should be acceptable.
 
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Computing mean first passage times");
   atomic_double residual = std::numeric_limits<double>::infinity();
   while (residual > _epsilon) {
@@ -437,7 +463,7 @@ void SK_ILAOSTAR_SOLVER_CLASS::compute_mfpt() {
                     residual = std::max((double)residual, update_mfpt(*s));
                   });
   }
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug(
         "Mean first passage time computation converged with residual " +
         StringConverter::from(residual));
@@ -449,17 +475,17 @@ void SK_ILAOSTAR_SOLVER_CLASS::update_solved_bits() {
   // and the error bound falls below epsilon
   // (note: Hansen and Zilberstein seem to suggest that the convergence
   //  test should be a disjunction but in this case the mean first
-  //  passage time computed during the evaluatiopn of the error
+  //  passage time computed during the evaluation of the error
   //  bound would be erroneous if the best solution graph can
   //  can reach an unexpanded tip node)
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Updating solved bits");
   std::for_each(
       ExecutionPolicy::policy, _best_solution_graph.begin(),
       _best_solution_graph.end(), [this](auto &s) {
         s->solved = !(s->reach_tip_node) &&
                     (((s->first_passage_time) * (s->residual)) < _epsilon);
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug(
               "Unexpanded tip node reachability and error bound of state " +
               s->state.print() + " : " +

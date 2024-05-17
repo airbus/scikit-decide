@@ -51,7 +51,7 @@ typename Tsolver::ActionNode *SK_MCTS_UCB1_ACTION_SELECTOR_CLASS::operator()(
           }
         }
 
-        if (solver.debug_logs()) {
+        if (solver.verbose()) {
           Logger::debug(
               "UCB1 selection from state " + n.state.print() +
               ": value=" + StringConverter::from(best_value) + ", action=" +

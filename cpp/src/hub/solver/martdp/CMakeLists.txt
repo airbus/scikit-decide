@@ -7,7 +7,7 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         PYTHON_MARTDP_SOLVER_TEMPLATE_FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/impl/py_martdp_solver.cc.in"
         "${CMAKE_CURRENT_BINARY_DIR}"
-        "Texecution" "skdecide::SequentialExecution!Seq;skdecide::ParallelExecution!Par")
+        "Texecution" "skdecide::SequentialExecution!Seq")
 
     ADD_LIBRARY(py_martdp STATIC
                 ${CMAKE_CURRENT_SOURCE_DIR}/py_martdp.cc

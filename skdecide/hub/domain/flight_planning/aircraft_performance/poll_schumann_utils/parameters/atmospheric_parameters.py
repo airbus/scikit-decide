@@ -26,10 +26,9 @@ def reynolds_number(
     air_temperature: float,
     air_pressure: float,
 ) -> float:
-
     """Calculate the Reynolds number.
 
-    Args:
+    # Parameters
         wing_span (float):
             Wing surface area, [:math:`m`]
         wing_aspect_ratio (float):
@@ -41,7 +40,7 @@ def reynolds_number(
         air_pressure (float):
             Air pressure, [:math:`Pa`]
 
-    Returns:
+    # Returns
         float: Reynolds number, [:math:`-`]
     """
     # compute wing chord
@@ -65,11 +64,11 @@ def reynolds_number(
 def local_speed_of_sound(air_temperature: float) -> float:
     """Calculate the local speed of sound.
 
-    Args:
+    # Parameters
         air_temperature (float):
             Air temperature, [:math:`K`]
 
-    Returns:
+    # Returns
         float: Local speed of sound, [:math:`m/s`]
     """
     return (constants.gamma * constants.R * air_temperature) ** 0.5
@@ -78,13 +77,13 @@ def local_speed_of_sound(air_temperature: float) -> float:
 def air_density(air_pressure: float, air_temperature: float) -> float:
     """Calculate the air density.
 
-    Args:
+    # Parameters
         air_pressure (float):
             Air pressure, [:math:`Pa`]
         air_temperature (float):
             Air temperature, [:math:`K`]
 
-    Returns:
+    # Returns
         float: Air density, [:math:`kg/m^3`]
     """
     return air_pressure / (constants.R * (air_temperature + 1e-8))
@@ -93,11 +92,11 @@ def air_density(air_pressure: float, air_temperature: float) -> float:
 def dynamic_viscosity(air_temperature: float) -> float:
     """Calculate approximation of the dynamic viscosity.
 
-    Args:
+    # Parameters
         air_temperature (float):
             Air temperature, [:math:`K`]
 
-    Returns:
+    # Returns
         float: Dynamic viscosity, [:math:`kg m^{-1} s^{-1}`]
     """
 
@@ -128,7 +127,7 @@ def lift_coefficient(
 ) -> float:
     """Calculate the lift coefficient.
 
-    Args:
+    # Parameters
         wing_surface_area (float):
             Wing surface area, [:math:`m^2`]
         aircraft_mass (float):
@@ -140,7 +139,7 @@ def lift_coefficient(
         climb_angle (float):
             Climb angle, [:math:`deg`]
 
-    Returns:
+    # Returns
         float: Lift coefficient, [:math:`-`]
     """
 
@@ -155,11 +154,11 @@ def lift_coefficient(
 def skin_friction_coefficient(reynolds_number: float) -> float:
     """Calculate the skin friction coefficient.
 
-    Args:
+    # Parameters
         reynolds_number (float):
             Reynolds number, [:math:`-`]
 
-    Returns:
+    # Returns
         float: Skin friction coefficient, [:math:`-`]
     """
     return 0.0269 / (reynolds_number**0.14)
@@ -168,13 +167,13 @@ def skin_friction_coefficient(reynolds_number: float) -> float:
 def zero_lift_drag_coefficient(c_f: float, psi_0: float) -> float:
     """Calculate the zero-lift drag coefficient.
 
-    Args:
+    # Parameters
         c_f (float):
             Skin friction coefficient, [:math:`-`]
         psi_0 (float):
             Miscellaneous drag factor, [:math:`-`]
 
-    Returns:
+    # Returns
         float: Zero-lift drag coefficient, [:math:`-`]
     """
     return c_f * psi_0
@@ -185,13 +184,13 @@ def oswald_efficiency_factor(
 ) -> float:
     """Calculate the Oswald efficiency factor.
 
-    Args:
+    # Parameters
         c_drag_0 (float):
             Zero-lift drag coefficient, [:math:`-`]
         aircraft_parameters (Dict[str, float]):
             Aircraft parameters.
 
-    Returns:
+    # Returns
         float: Oswald efficiency factor, [:math:`-`]
     """
     numer = 1.075 if aircraft_parameters["winglets"] == "no" else 1.0
@@ -206,13 +205,13 @@ def oswald_efficiency_factor(
 def _non_vortex_lift_dependent_drag_factor(c_drag_0: float, cos_sweep: float) -> float:
     """Calculate the miscellaneous lift-dependent drag factor.
 
-    Args:
+    # Parameters
         c_drag_0 (float):
             Zero-lift drag coefficient, [:math:`-`]
         cos_sweep (float):
             Cosine of the wing sweep angle, [:math:`-`]
 
-    Returns:
+    # Returns
         float: Miscellaneous lift-dependent drag factor, [:math:`-`]
     """
     return 0.80 * (1 - 0.53 * cos_sweep) * c_drag_0
@@ -223,7 +222,7 @@ def wave_drag_coefficient(
 ) -> float:
     """Calculate the wave drag coefficient.
 
-    Args:
+    # Parameters
         mach_num (float):
             Mach number, [:math:`-`]
         c_lift (float):
@@ -231,7 +230,7 @@ def wave_drag_coefficient(
         aircraft_parameters (Dict[str, float]):
             Aircraft parameters.
 
-    Returns:
+    # Returns
         float: Wave drag coefficient, [:math:`-`]
     """
     m_cc = aircraft_parameters["wing_constant"] - 0.10 * (
@@ -265,7 +264,7 @@ def airframe_drag_coefficient(
 ) -> float:
     """Calculate total airframe drag coefficient.
 
-    Args:
+    # Parameters
         c_drag_0 (float):
             Zero-lift drag coefficient, [:math:`-`]
         c_drag_w (float):
@@ -277,7 +276,7 @@ def airframe_drag_coefficient(
         wing_aspect_ratio (float):
             Wing aspect ratio, [:math:`-`]
 
-    Returns:
+    # Returns
         float: Total airframe drag coefficient, [:math:`-`]
     """
     return c_drag_0 + c_drag_w + c_lift**2 / (math.pi * e_ls * wing_aspect_ratio)
@@ -293,7 +292,7 @@ def thrust_force(
 ) -> float:
     """Calculate thrust force summed over all engines.
 
-    Args:
+    # Parameters
         aircraft_mass (float):
             Aircraft mass, [:math:`kg`]
         c_l (float):
@@ -305,7 +304,7 @@ def thrust_force(
         theta (float):
             Flight path angle, [:math:`deg`]
 
-    Returns:
+    # Returns
         float: Thrust force, [:math:`N`]
     """
     theta_rad = math.radians(theta)
@@ -323,7 +322,7 @@ def engine_thrust_coefficient(
 ) -> float:
     """Calculate engine thrust coefficient.
 
-    Args:
+    # Parameters
         f_thrust (float):
             Thrust force, [:math:`N`]
         mach_num (float):
@@ -333,7 +332,7 @@ def engine_thrust_coefficient(
         wing_surface_area (float):
             Wing surface area, [:math:`m^2`]
 
-    Returns:
+    # Returns
         float: Engine thrust coefficient, [:math:`-`]
     """
     return f_thrust / (
@@ -350,7 +349,7 @@ def overall_propulsion_efficiency(
 ) -> float:
     """Calculate overall propulsion efficiency.
 
-    Args:
+    # Parameters
         mach_num (float):
             Mach number, [:math:`-`]
         c_t (float):
@@ -362,7 +361,7 @@ def overall_propulsion_efficiency(
         eta_over_eta_b_min (float):
             Minimum engine efficiency, [:math:`-`]
 
-    Returns:
+    # Returns
         float: Overall propulsion efficiency, [:math:`-`]
     """
     eta_over_eta_b = propulsion_efficiency_over_max_propulsion_efficiency(
@@ -384,7 +383,7 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
 ) -> float:
     """Calculate propulsion efficiency over maximum propulsion efficiency.
 
-    Args:
+    # Parameters
         mach_num (float):
             Mach number, [:math:`-`]
         c_t (float):
@@ -392,7 +391,7 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
         c_t_eta_b (float):
             Thrust coefficient at maximum efficiency, [:math:`-`]
 
-    Returns:
+    # Returns
         float: Propulsion efficiency over maximum propulsion efficiency, [:math:`-`]
     """
     c_t_over_c_t_eta_b = c_t / c_t_eta_b
@@ -423,7 +422,7 @@ def thrust_coefficient_at_max_efficiency(
 ) -> float:
     """Calculate thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
 
-    Args:
+    # Parameters
         mach_num (float):
             Mach number, [:math:`-`]
         m_des (float):
@@ -431,7 +430,7 @@ def thrust_coefficient_at_max_efficiency(
         c_t_des (float):
             Thrust coefficient at design Mach number, [:math:`-`]
 
-    Returns:
+    # Returns
         float: Thrust coefficient at maximum overall propulsion efficiency, [:math:`-`]
     """
     m_over_m_des = mach_num / m_des
@@ -445,7 +444,7 @@ def max_overall_propulsion_efficiency(
 ) -> float:
     """Calculate maximum overall propulsion efficiency.
 
-    Args:
+    # Parameters
         mach_num (float):
             Mach number, [:math:`-`]
         eta_1 (float):
@@ -453,7 +452,7 @@ def max_overall_propulsion_efficiency(
         eta_2 (float):
             Efficiency parameter 2, [:math:`-`]
 
-    Returns:
+    # Returns
         float: Maximum overall propulsion efficiency, [:math:`-`]
     """
     return eta_1 * mach_num**eta_2
@@ -475,7 +474,7 @@ def fuel_mass_flow_rate(
 ) -> float:
     """Calculate fuel mass flow rate.
 
-    Args:
+    # Parameters
         air_pressure (float):
             Air pressure, [:math:`Pa`]
         air_temperature (float):
@@ -491,7 +490,7 @@ def fuel_mass_flow_rate(
         q_fuel (float):
             Fuel heating value, [:math:`J/kg`]
 
-    Returns:
+    # Returns
         float: Fuel mass flow rate, [:math:`kg/s`]
     """
     return (
@@ -514,10 +513,9 @@ def fuel_flow_correction(
     fuel_flow_max_sls: float,
     flight_phase: str,
 ) -> float:
-
     """Correct fuel flow.
 
-    Args:
+    # Parameters
         fuel_flow (float):
             Fuel flow, [:math:`kg/s`]
         altitude_ft (float):
@@ -535,7 +533,7 @@ def fuel_flow_correction(
         flight_phase (str):
             Flight phase, [:math:`-`]
 
-    Returns:
+    # Returns
         float: Corrected fuel flow, [:math:`kg/s`]
     """
 

@@ -10,6 +10,7 @@
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
 
+#include "pybind11/pytypes.h"
 #include "utils/execution.hh"
 #include "utils/python_gil_control.hh"
 #include "utils/python_domain_proxy.hh"
@@ -39,10 +40,13 @@ private:
     virtual void solve(const py::object &s) = 0;
     virtual py::bool_ is_solution_defined_for(const py::object &s) = 0;
     virtual py::object get_next_action(const py::object &s) = 0;
-    virtual py::float_ get_utility(const py::object &s) = 0;
-    virtual py::int_ get_nb_of_explored_states() = 0;
-    virtual py::int_ get_nb_of_pruned_states() = 0;
+    virtual py::object get_utility(const py::object &s) = 0;
+    virtual py::int_ get_nb_explored_states() = 0;
+    virtual py::int_ get_nb_pruned_states() = 0;
+    virtual py::tuple get_exploration_statistics() = 0;
     virtual py::int_ get_nb_rollouts() = 0;
+    virtual py::float_ get_residual_moving_average() = 0;
+    virtual py::int_ get_solving_time() = 0;
     virtual py::dict get_policy() = 0;
     virtual py::list get_action_prefix() = 0;
   };
@@ -52,20 +56,22 @@ private:
   class Implementation : public BaseImplementation {
   public:
     Implementation(
+        py::object &solver, // Python solver wrapper
         py::object &domain,
         const std::function<py::object(py::object &, const py::object &,
                                        const py::object &)>
             &state_features, // last arg used for optional thread_id
         std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
         std::size_t max_depth = 1000, double exploration = 0.25,
-        std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
-        double discount = 1.0, bool online_node_garbage = false,
-        bool debug_logs = false,
-        const std::function<bool(const std::size_t &, const std::size_t &,
-                                 const double &, const double &)> &watchdog =
-            nullptr)
-        : _state_features(state_features), _watchdog(watchdog) {
+        std::size_t residual_moving_average_window = 100,
+        double epsilon = 0.001, double discount = 1.0,
+        bool online_node_garbage = false,
+        const std::function<py::bool_(const py::object &, const py::object &)>
+            &callback = nullptr,
+        bool verbose = false)
+        : _state_features(state_features), _callback(callback) {
 
+      _pysolver = std::make_unique<py::object>(solver);
       check_domain(domain);
       _domain = std::make_unique<PyRIWDomain<Texecution>>(domain);
       _solver = std::make_unique<
@@ -93,19 +99,44 @@ private:
             }
           },
           time_budget, rollout_budget, max_depth, exploration,
-          epsilon_moving_average_window, epsilon, discount, online_node_garbage,
-          debug_logs,
-          [this](const std::size_t &elapsed_time,
-                 const std::size_t &nb_rollouts, const double &best_value,
-                 const double &epsilon_moving_average) -> bool {
-            if (_watchdog) {
+          residual_moving_average_window, epsilon, discount,
+          online_node_garbage,
+          [this](
+              const RIWSolver<PyRIWDomain<Texecution>,
+                              PyRIWFeatureVector<Texecution>, Thashing_policy,
+                              Trollout_policy, Texecution> &s,
+              PyRIWDomain<Texecution> &d,
+              const std::size_t *thread_id) -> bool {
+            // we don't make use of the C++ solver object 's' from Python
+            // but we rather use its Python wrapper 'solver'
+            if (_callback) {
+              std::unique_ptr<py::bool_> r;
               typename skdecide::GilControl<Texecution>::Acquire acquire;
-              return _watchdog(elapsed_time, nb_rollouts, best_value,
-                               epsilon_moving_average);
+              try {
+                if (thread_id) {
+                  r = std::make_unique<py::bool_>(
+                      _callback(*_pysolver, py::int_(*thread_id)));
+                } else {
+                  r = std::make_unique<py::bool_>(
+                      _callback(*_pysolver, py::none()));
+                }
+                bool rr = r->template cast<bool>();
+                r.reset();
+                return rr;
+              } catch (const py::error_already_set *e) {
+                Logger::error(std::string("SKDECIDE exception when calling "
+                                          "callback function: ") +
+                              e->what());
+                std::runtime_error err(e->what());
+                r.reset();
+                delete e;
+                throw err;
+              }
             } else {
-              return true;
+              return false;
             }
-          });
+          },
+          verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -173,32 +204,47 @@ private:
     virtual py::object get_next_action(const py::object &s) {
       try {
         return _solver->get_best_action(s).pyobj();
-      } catch (const std::runtime_error &) {
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[RIW.get_next_action] ") + e.what() +
+                     " - returning None");
         return py::none();
       }
     }
 
-    virtual py::float_ get_utility(const py::object &s) {
+    virtual py::object get_utility(const py::object &s) {
       try {
-        return _solver->get_best_value(s);
-      } catch (const std::runtime_error &) {
+        return _solver->get_best_value(s).pyobj();
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[RIW.get_utility] ") + e.what() +
+                     " - returning None");
         return py::none();
       }
     }
 
-    virtual py::int_ get_nb_of_explored_states() {
-      return _solver->get_nb_of_explored_states();
+    virtual py::int_ get_nb_explored_states() {
+      return _solver->get_nb_explored_states();
     }
 
-    virtual py::int_ get_nb_of_pruned_states() {
-      return _solver->get_nb_of_pruned_states();
+    virtual py::int_ get_nb_pruned_states() {
+      return _solver->get_nb_pruned_states();
+    }
+
+    virtual py::tuple get_exploration_statistics() {
+      auto &&t = _solver->get_exploration_statistics();
+      return py::make_tuple(t.first, t.second);
     }
 
     virtual py::int_ get_nb_rollouts() { return _solver->get_nb_rollouts(); }
 
+    virtual py::float_ get_residual_moving_average() {
+      return _solver->get_residual_moving_average();
+    }
+
+    virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
+
     virtual py::dict get_policy() {
       py::dict d;
-      auto &&p = _solver->policy();
+      auto &&p = _solver->get_policy();
       for (auto &e : p) {
         d[e.first.pyobj()] =
             py::make_tuple(e.second.first.pyobj(), e.second.second);
@@ -216,6 +262,7 @@ private:
     }
 
   private:
+    std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<PyRIWDomain<Texecution>> _domain;
     std::unique_ptr<
         RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>,
@@ -225,9 +272,8 @@ private:
     std::function<py::object(py::object &, const py::object &,
                              const py::object &)>
         _state_features; // last arg used for optional thread_id
-    std::function<bool(const std::size_t &, const std::size_t &, const double &,
-                       const double &)>
-        _watchdog;
+    std::function<py::bool_(const py::object &, const py::object &)>
+        _callback; // last arg used for optional thread_id
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -312,28 +358,32 @@ private:
 
 public:
   PyRIWSolver(
+      py::object &solver, // Python solver wrapper
       py::object &domain,
       const std::function<py::object(py::object &, const py::object &,
-                                     const py::object &)>
-          &state_features, // last arg used for optional thread_id
+                                     const py::object & // last arg used for
+                                                        // optional thread_id
+                                     )> &state_features,
       bool use_state_feature_hash = false, bool use_simulation_domain = false,
       std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
       std::size_t max_depth = 1000, double exploration = 0.25,
-      std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
+      std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
-      bool parallel = false, bool debug_logs = false,
-      const std::function<bool(const std::size_t &, const std::size_t &,
-                               const double &, const double &)> &watchdog =
-          nullptr) {
+      bool parallel = false,
+      const std::function<py::bool_(const py::object &,
+                                    const py::object & // last arg used for
+                                                       // optional thread_id
+                                    )> &callback = nullptr,
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  HashingPolicySelector(use_state_feature_hash),
                                  RolloutPolicySelector(use_simulation_domain),
                                  SolverInstantiator(_implementation))
-        .instantiate(domain, state_features, time_budget, rollout_budget,
-                     max_depth, exploration, epsilon_moving_average_window,
-                     epsilon, discount, online_node_garbage, debug_logs,
-                     watchdog);
+        .instantiate(solver, domain, state_features, time_budget,
+                     rollout_budget, max_depth, exploration,
+                     residual_moving_average_window, epsilon, discount,
+                     online_node_garbage, callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -350,19 +400,29 @@ public:
     return _implementation->get_next_action(s);
   }
 
-  py::float_ get_utility(const py::object &s) {
+  py::object get_utility(const py::object &s) {
     return _implementation->get_utility(s);
   }
 
-  py::int_ get_nb_of_explored_states() {
-    return _implementation->get_nb_of_explored_states();
+  py::int_ get_nb_explored_states() {
+    return _implementation->get_nb_explored_states();
   }
 
-  py::int_ get_nb_of_pruned_states() {
-    return _implementation->get_nb_of_pruned_states();
+  py::int_ get_nb_pruned_states() {
+    return _implementation->get_nb_pruned_states();
+  }
+
+  py::tuple get_exploration_statistics() {
+    return _implementation->get_exploration_statistics();
   }
 
   py::int_ get_nb_rollouts() { return _implementation->get_nb_rollouts(); }
+
+  py::float_ get_residual_moving_average() {
+    return _implementation->get_residual_moving_average();
+  }
+
+  py::int_ get_solving_time() { return _implementation->get_solving_time(); }
 
   py::dict get_policy() { return _implementation->get_policy(); }
 

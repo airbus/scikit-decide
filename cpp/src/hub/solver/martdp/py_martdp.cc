@@ -12,27 +12,27 @@ namespace py = pybind11;
 void init_pymartdp(py::module &m) {
   py::class_<skdecide::PyMARTDPSolver> py_martdp_solver(m, "_MARTDPSolver_");
   py_martdp_solver
-      .def(py::init<py::object &,
+      .def(py::init<py::object &, // Python solver
+                    py::object &, // Python domain
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
                     std::size_t, std::size_t, std::size_t, std::size_t, double,
-                    std::size_t, double, double, double, double, bool, bool,
-                    bool,
-                    const std::function<bool(const py::int_ &, const py::int_ &,
-                                             const py::float_ &,
-                                             const py::float_ &)> &>(),
-           py::arg("domain"), py::arg("goal_checker"), py::arg("heuristic"),
-           py::arg("time_budget") = 3600000, py::arg("rollout_budget") = 100000,
-           py::arg("max_depth") = 1000, py::arg("max_feasibility_trials") = 0,
+                    std::size_t, double, double, double, double, bool,
+                    const std::function<py::bool_(const py::object &)> &,
+                    bool>(),
+           py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
+           py::arg("heuristic"), py::arg("time_budget") = 3600000,
+           py::arg("rollout_budget") = 100000, py::arg("max_depth") = 1000,
+           py::arg("max_feasibility_trials") = 0,
            py::arg("graph_expansion_rate") = 0.1,
-           py::arg("epsilon_moving_average_window") = 100,
+           py::arg("residual_moving_average_window") = 100,
            py::arg("epsilon") = 0.0, // not a stopping criterion by default
            py::arg("discount") = 1.0, py::arg("action_choice_noise") = 0.1,
            py::arg("dead_end_cost") = 10e4,
-           py::arg("online_node_garbage") = false, py::arg("parallel") = false,
-           py::arg("debug_logs") = false, py::arg("watchdog") = nullptr)
+           py::arg("online_node_garbage") = false,
+           py::arg("callback") = nullptr, py::arg("verbose") = false)
       .def("close", &skdecide::PyMARTDPSolver::close)
       .def("clear", &skdecide::PyMARTDPSolver::clear)
       .def("solve", &skdecide::PyMARTDPSolver::solve, py::arg("state"))
@@ -42,8 +42,13 @@ void init_pymartdp(py::module &m) {
            py::arg("state"))
       .def("get_utility", &skdecide::PyMARTDPSolver::get_utility,
            py::arg("state"))
-      .def("get_nb_of_explored_states",
-           &skdecide::PyMARTDPSolver::get_nb_of_explored_states)
+      .def("get_nb_explored_states",
+           &skdecide::PyMARTDPSolver::get_nb_explored_states)
+      .def("get_state_nb_actions",
+           &skdecide::PyMARTDPSolver::get_state_nb_actions, py::arg("state"))
       .def("get_nb_rollouts", &skdecide::PyMARTDPSolver::get_nb_rollouts)
+      .def("get_residual_moving_average",
+           &skdecide::PyMARTDPSolver::get_residual_moving_average)
+      .def("get_solving_time", &skdecide::PyMARTDPSolver::get_solving_time)
       .def("get_policy", &skdecide::PyMARTDPSolver::get_policy);
 }

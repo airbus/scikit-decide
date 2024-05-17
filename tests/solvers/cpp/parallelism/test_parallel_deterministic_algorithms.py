@@ -364,7 +364,7 @@ if __name__ == "__main__":
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
                 "parallel": True,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # IW (planning)
@@ -376,7 +376,7 @@ if __name__ == "__main__":
                 "state_features": lambda d, s: [s.x, s.y],
                 "use_state_feature_hash": False,
                 "parallel": True,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # Rollout-IW (classical planning)
@@ -394,7 +394,7 @@ if __name__ == "__main__":
                 "online_node_garbage": True,
                 "continuous_planning": False,
                 "parallel": True,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # BFWS (planning)
@@ -407,9 +407,8 @@ if __name__ == "__main__":
                 "heuristic": lambda d, s: Value(
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
-                "termination_checker": lambda d, s: d.is_goal(s),
                 "parallel": True,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # UCT-Step (reinforcement learning / search)
@@ -422,7 +421,7 @@ if __name__ == "__main__":
                 "rollout_budget": 100,
                 "max_depth": 50,
                 "ucb_constant": 1.0 / sqrt(2.0),
-                "transition_mode": MCTS.Options.TransitionMode.Step,
+                "transition_mode": MCTS.TransitionMode.STEP,
                 "online_node_garbage": True,
                 "continuous_planning": False,
                 "heuristic": lambda d, s: (
@@ -434,7 +433,7 @@ if __name__ == "__main__":
                     10000,
                 ),
                 "parallel": True,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # UCT-Sample (reinforcement learning / search)
@@ -447,7 +446,7 @@ if __name__ == "__main__":
                 "rollout_budget": 100,
                 "max_depth": 50,
                 "ucb_constant": 1.0 / sqrt(2.0),
-                "transition_mode": MCTS.Options.TransitionMode.Sample,
+                "transition_mode": MCTS.TransitionMode.SAMPLE,
                 "online_node_garbage": True,
                 "continuous_planning": False,
                 "heuristic": lambda d, s: (
@@ -459,7 +458,7 @@ if __name__ == "__main__":
                     10000,
                 ),
                 "parallel": True,
-                "debug_logs": False,
+                "verbose": False,
             },
         },
     ]

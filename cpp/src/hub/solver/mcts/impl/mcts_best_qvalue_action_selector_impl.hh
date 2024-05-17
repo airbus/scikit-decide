@@ -40,7 +40,7 @@ SK_MCTS_BEST_QVALUE_ACTION_SELECTOR_CLASS::operator()(
           }
         }
 
-        if (solver.debug_logs()) {
+        if (solver.verbose()) {
           Logger::debug(
               "Best Q-value selection from state " + n.state.print() +
               ": value=" + StringConverter::from(best_value) + ", action=" +

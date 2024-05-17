@@ -189,7 +189,7 @@ class State:
     def __init__(self, trajectory, pos):
         """Initialisation of a state
 
-        Args:
+        # Parameters
             trajectory : Trajectory information of the flight
             pos : Current position in the airways graph
         """
@@ -396,7 +396,7 @@ class FlightPlanningDomain(
     ):
         """Initialisation of a flight planning instance
 
-        Args:
+        # Parameters
             origin (Union[str, tuple]):
                 ICAO code of the airport, or a tuple (lat,lon,alt), of the origin of the flight plan. Altitude should be in ft
             destination (Union[str, tuple]):
@@ -565,12 +565,11 @@ class FlightPlanningDomain(
                         "ts": self.start_time,
                         "lat": self.lat1,
                         "lon": self.lon1,
-                        "mass": aircraft_params["amass_mtow"]
-                        if take_off_weight is None
-                        else take_off_weight
-                        - 0.8
-                        * (
-                            self.ac["limits"]["MFC"] - self.fuel_loaded
+                        "mass": (
+                            aircraft_params["amass_mtow"]
+                            if take_off_weight is None
+                            else take_off_weight
+                            - 0.8 * (self.ac["limits"]["MFC"] - self.fuel_loaded)
                         ),  # Here we compute the weight difference between the fuel loaded and the fuel capacity
                         "mach": self.mach,
                         "fuel": 0.0,
@@ -592,11 +591,11 @@ class FlightPlanningDomain(
     def _get_next_state(self, memory: D.T_state, action: D.T_event) -> D.T_state:
         """Compute the next state
 
-        Args:
+        # Parameters
             memory (D.T_state): The current state
             action (D.T_event): The action to perform
 
-        Returns:
+        # Returns
             D.T_state: The next state
         """
 
@@ -655,12 +654,12 @@ class FlightPlanningDomain(
         Get the value (reward or cost) of a transition.
         Set cost to distance travelled between points
 
-        Args:
+        # Parameters
             memory (D.T_state): The current state
             action (D.T_event): The action to perform
             next_state (Optional[D.T_state], optional): The next state. Defaults to None.
 
-        Returns:
+        # Returns
             Value[D.T_value]: Cost to go from memory to next state
         """
         assert memory != next_state, "Next state is the same as the current state"
@@ -708,10 +707,10 @@ class FlightPlanningDomain(
         """
         Get the domain terminal state information to compare with the constraints
 
-        Args:
+        # Parameters
             state (State): terminal state to retrieve the information on fuel and time.
 
-        Returns:
+        # Returns
             dict: dictionnary containing both fuel and time information.
         """
         fuel = 0.0
@@ -781,7 +780,7 @@ class FlightPlanningDomain(
         """
         Render visually the map.
 
-        Returns:
+        # Returns
             matplotlib figure
         """
         return plot_trajectory(
@@ -796,11 +795,11 @@ class FlightPlanningDomain(
         """
         Heuristic to be used by search algorithms, depending on the objective and constraints.
 
-        Args:
+        # Parameters
             s (D.T_state): Actual state
             objective (str, optional): Objective function. Defaults to None.
 
-        Returns:
+        # Returns
             Value[D.T_value]: Heuristic value of the state.
         """
 
@@ -881,7 +880,7 @@ class FlightPlanningDomain(
                     delta_time=dt,
                     path_angle=math.degrees(
                         (alt_to - pos["alt"]) * ft / (distance_to_goal)
-                    )
+                    ),
                     # approximation for small angles: tan(alpha) ~ alpha
                 )
             else:
@@ -947,7 +946,7 @@ class FlightPlanningDomain(
         """
         Creation of the airway graph.
 
-        Args:
+        # Parameters
             p0 : Origin of the flight plan
             p1 : Destination of the flight plan
             nb_forward_points (int): Number of forward points in the graph
@@ -957,7 +956,7 @@ class FlightPlanningDomain(
             descending_slope (float, optional):  Descent slope of the plane during descent phase. Defaults to None.
             graph_width (float, optional): Graph width of the graph. Defaults to None.
 
-        Returns:
+        # Returns
             A 3D matrix containing for each points its latitude, longitude, altitude between origin & destination.
         """
 
@@ -1295,11 +1294,11 @@ class FlightPlanningDomain(
     ) -> pd.DataFrame:
         """Compute the trajectory of a flying object from a given point to a given point
 
-        Args:
+        # Parameters
             from_ (pd.DataFrame): the trajectory of the object so far
             to_ (Tuple[float, float]): the destination of the object
 
-        Returns:
+        # Returns
             pd.DataFrame: the final trajectory of the object
         """
         pos = from_.to_dict("records")[0]
@@ -1370,7 +1369,7 @@ class FlightPlanningDomain(
             pos["fuel"] = self.perf_model.compute_fuel_consumption(
                 values_current,
                 delta_time=dt,
-                path_angle=math.degrees((alt_to - pos["alt"]) * ft / (gs * dt))
+                path_angle=math.degrees((alt_to - pos["alt"]) * ft / (gs * dt)),
                 # approximation for small angles: tan(alpha) ~ alpha
             )
 
@@ -1581,7 +1580,7 @@ def fuel_optimisation(
     """
     Function to optimise the fuel loaded in the plane, doing multiple fuel loops to approach an optimal
 
-    Args:
+    # Parameters
         origin (Union[str, tuple]):
             ICAO code of the departure airport of th flight plan e.g LFPG for Paris-CDG, or a tuple (lat,lon)
 
@@ -1609,7 +1608,7 @@ def fuel_optimisation(
         fuel_tol (float):
             tolerance on fuel used to stop the optimization
 
-    Returns:
+    # Returns
         float:
             Return the quantity of fuel to be loaded in the plane for the flight
     """

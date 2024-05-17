@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import inspect
+import logging
 from copy import deepcopy
 from enum import Enum
 from math import sqrt
@@ -23,8 +24,11 @@ from skdecide import (
     Value,
 )
 from skdecide.builders.domain import UnrestrictedActions
+from skdecide.builders.solver import ParallelSolver
 from skdecide.hub.space.gym import EnumSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver
+
+logger = logging.getLogger(__name__)
 
 
 # Must be defined outside the grid_domain() fixture
@@ -129,7 +133,7 @@ class GridDomain(D):
                 "heuristic": lambda d, s: Value(
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": True,
         },
@@ -139,7 +143,7 @@ class GridDomain(D):
                 "heuristic": lambda d, s: Value(
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": True,
         },
@@ -150,14 +154,13 @@ class GridDomain(D):
                 "heuristic": lambda d, s: Value(
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
-                "termination_checker": lambda d, s: d.is_goal(s),
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": True,
         },
         {
             "entry": "IW",
-            "config": {"state_features": lambda d, s: (s.x, s.y), "debug_logs": False},
+            "config": {"state_features": lambda d, s: (s.x, s.y), "verbose": False},
             "optimal": True,
         },
         {
@@ -171,7 +174,7 @@ class GridDomain(D):
                 "use_simulation_domain": True,
                 "online_node_garbage": True,
                 "continuous_planning": True,
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": False,
         },
@@ -182,7 +185,7 @@ class GridDomain(D):
                 "rollout_budget": 10,
                 "max_depth": 10,
                 "continuous_planning": True,
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": False,
         },
@@ -200,7 +203,7 @@ class GridDomain(D):
                 "epsilon": 0.001,
                 "online_node_garbage": True,
                 "continuous_planning": False,
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": True,
         },
@@ -212,7 +215,7 @@ class GridDomain(D):
                 ),
                 "discount": 1.0,
                 "epsilon": 0.001,
-                "debug_logs": False,
+                "verbose": False,
             },
             "optimal": True,
         },
@@ -488,3 +491,56 @@ def test_solver_cpp(solver_cpp, parallel, shared_memory):
     assert solver_type.check_domain(dom) and (
         (not solver_cpp["optimal"]) or parallel or (cost == 18 and len(plan) == 18)
     )
+
+
+class MyCallback:
+    """Callback for testing.
+
+    - displays iteration number
+    - stops after max iteration reached
+    - check classes of domain and solver
+
+    """
+
+    def __init__(self, solver_cls, max_iter=2):
+        self.solver_cls = solver_cls
+        self.max_iter = max_iter
+        self.iter = 0
+
+    def __call__(self, solver, *args):
+        self.iter += 1
+        logger.warning(f"End of iteration #{self.iter}.")
+        assert isinstance(solver, self.solver_cls)
+        stopping = self.iter >= self.max_iter
+        return stopping
+
+
+def test_solver_cpp_with_cb(solver_cpp, parallel, shared_memory, caplog):
+    if solver_cpp["entry"] == "UCT":
+        pytest.skip("There is a heap corruption in MCTS solver")
+
+    solver_type = load_registered_solver(solver_cpp["entry"])
+    if "callback" not in inspect.signature(solver_type.__init__).parameters:
+        pytest.skip(f"Solver {solver_cpp['entry']} is not yet implementing callbacks.")
+
+    dom = GridDomain()
+    solver_args = deepcopy(solver_cpp["config"])
+    if "parallel" in inspect.signature(solver_type.__init__).parameters:
+        solver_args["parallel"] = parallel
+    if (
+        "shared_memory_proxy" in inspect.signature(solver_type.__init__).parameters
+        and shared_memory
+    ):
+        solver_args["shared_memory_proxy"] = GridShmProxy()
+    solver_args["domain_factory"] = lambda: GridDomain()
+    # Adding the callback
+    solver_args["callback"] = MyCallback(solver_cls=solver_type)
+
+    with solver_type(**solver_args) as slv:
+        with caplog.at_level(logging.WARNING):
+            GridDomain.solve_with(slv)
+
+    # Check that 2 iterations were done and messages logged by callback
+    assert "End of iteration #1" in caplog.text
+    if "parallel" not in solver_args or not solver_args["parallel"]:
+        assert "End of iteration #4" not in caplog.text

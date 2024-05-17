@@ -289,7 +289,7 @@ class GymRIW(RIW):
         online_node_garbage: bool = False,
         continuous_planning: bool = True,
         parallel: bool = True,
-        debug_logs: bool = False,
+        verbose: bool = False,
     ) -> None:
         super().__init__(
             domain_factory=domain_factory,
@@ -303,7 +303,7 @@ class GymRIW(RIW):
             online_node_garbage=online_node_garbage,
             continuous_planning=continuous_planning,
             parallel=parallel,
-            debug_logs=debug_logs,
+            verbose=verbose,
         )
 
     def _get_next_action(
@@ -349,7 +349,7 @@ if RIW.check_domain(domain):
         max_depth=100,
         exploration=0.5,
         parallel=False,
-        debug_logs=False,
+        verbose=False,
     )
     with solver_factory() as solver:
         GymRIWDomain.solve_with(solver, domain_factory)

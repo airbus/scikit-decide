@@ -113,7 +113,7 @@ struct FullExpand<Tsolver>::ExpandActionImplementation::Impl<
               }
 
               if (next_node.actions.empty()) {
-                if (solver.debug_logs())
+                if (solver.verbose())
                   Logger::debug(
                       "Candidate next state: " + next_node.state.print() +
                       Tsolver::ExecutionPolicy::print_thread());
@@ -250,7 +250,7 @@ struct FullExpand<Tsolver>::ExpandActionImplementation::Impl<
           [&action]() { action.dist = std::discrete_distribution<>({1.0}); },
           action.parent->mutex);
 
-      if (solver.debug_logs()) {
+      if (solver.verbose()) {
         solver.execution_policy().protect(
             [&next_node]() {
               Logger::debug("Candidate next state: " + next_node.state.print() +
@@ -302,7 +302,7 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver &solver,
                                       const std::size_t *thread_id,
                                       typename Tsolver::StateNode &n) const {
   try {
-    if (solver.debug_logs()) {
+    if (solver.verbose()) {
       solver.execution_policy().protect(
           [&n]() {
             Logger::debug("Testing expansion of state " + n.state.print() +
@@ -312,7 +312,7 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver &solver,
     }
 
     if (n.expanded) {
-      if (solver.debug_logs()) {
+      if (solver.verbose()) {
         Logger::debug("State already fully expanded" +
                       Tsolver::ExecutionPolicy::print_thread());
       }
@@ -323,7 +323,7 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver &solver,
     solver.execution_policy().protect(
         [&n, &solver, &thread_id]() {
           if (n.actions.empty()) {
-            if (solver.debug_logs()) {
+            if (solver.verbose()) {
               Logger::debug(
                   "State never expanded, generating all next actions" +
                   Tsolver::ExecutionPolicy::print_thread());
@@ -348,7 +348,7 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver &solver,
         n.mutex);
 
     // Check for untried outcomes
-    if (solver.debug_logs()) {
+    if (solver.verbose()) {
       Logger::debug("Checking for untried outcomes" +
                     Tsolver::ExecutionPolicy::print_thread());
     }
@@ -387,7 +387,7 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver &solver,
         n.mutex);
 
     if (untried_outcomes.empty()) { // nothing to expand
-      if (solver.debug_logs()) {
+      if (solver.verbose()) {
         Logger::debug("All outcomes already tried" +
                       Tsolver::ExecutionPolicy::print_thread());
       }
@@ -404,14 +404,14 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver &solver,
       auto &uo = untried_outcomes[outcome_id];
 
       if (uo.second == nullptr) { // unexpanded action
-        if (solver.debug_logs()) {
+        if (solver.verbose()) {
           Logger::debug(
               "Found one unexpanded action: " + uo.first->action.print() +
               Tsolver::ExecutionPolicy::print_thread());
         }
         return expand_action(solver, thread_id, n, *(uo.first));
       } else { // expanded action, just return the selected next state
-        if (solver.debug_logs()) {
+        if (solver.verbose()) {
           solver.execution_policy().protect(
               [&uo]() {
                 Logger::debug("Found one untried outcome: action " +

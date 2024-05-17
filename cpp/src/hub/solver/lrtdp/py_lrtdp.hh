@@ -34,9 +34,11 @@ private:
     virtual void solve(const py::object &s) = 0;
     virtual py::bool_ is_solution_defined_for(const py::object &s) = 0;
     virtual py::object get_next_action(const py::object &s) = 0;
-    virtual py::float_ get_utility(const py::object &s) = 0;
-    virtual py::int_ get_nb_of_explored_states() = 0;
+    virtual py::object get_utility(const py::object &s) = 0;
+    virtual py::int_ get_nb_explored_states() = 0;
     virtual py::int_ get_nb_rollouts() = 0;
+    virtual py::float_ get_residual_moving_average() = 0;
+    virtual py::int_ get_solving_time() = 0;
     virtual py::dict get_policy() = 0;
   };
 
@@ -44,6 +46,7 @@ private:
   class Implementation : public BaseImplementation {
   public:
     Implementation(
+        py::object &solver, // Python solver wrapper
         py::object &domain,
         const std::function<py::object(py::object &, const py::object &,
                                        const py::object &)>
@@ -53,15 +56,16 @@ private:
             &heuristic, // last arg used for optional thread_id
         bool use_labels = true, std::size_t time_budget = 3600000,
         std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
-        std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
-        double discount = 1.0, bool online_node_garbage = false,
-        bool debug_logs = false,
-        const std::function<bool(const std::size_t &, const std::size_t &,
-                                 const double &, const double &)> &watchdog =
-            nullptr)
+        std::size_t residual_moving_average_window = 100,
+        double epsilon = 0.001, double discount = 1.0,
+        bool online_node_garbage = false,
+        const std::function<py::bool_(const py::object &, const py::object &)>
+            &callback = nullptr,
+        bool verbose = false)
         : _goal_checker(goal_checker), _heuristic(heuristic),
-          _watchdog(watchdog) {
+          _callback(callback) {
 
+      _pysolver = std::make_unique<py::object>(solver);
       check_domain(domain);
       _domain = std::make_unique<PyLRTDPDomain<Texecution>>(domain);
       _solver = std::make_unique<
@@ -101,19 +105,42 @@ private:
             }
           },
           use_labels, time_budget, rollout_budget, max_depth,
-          epsilon_moving_average_window, epsilon, discount, online_node_garbage,
-          debug_logs,
-          [this](const std::size_t &elapsed_time,
-                 const std::size_t &nb_rollouts, const double &best_value,
-                 const double &epsilon_moving_average) -> bool {
-            if (_watchdog) {
+          residual_moving_average_window, epsilon, discount,
+          online_node_garbage,
+          [this](const skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>,
+                                             Texecution> &s,
+                 PyLRTDPDomain<Texecution> &d,
+                 const std::size_t *thread_id) -> bool {
+            // we don't make use of the C++ solver object 's' from Python
+            // but we rather use its Python wrapper 'solver'
+            if (_callback) {
+              std::unique_ptr<py::bool_> r;
               typename skdecide::GilControl<Texecution>::Acquire acquire;
-              return _watchdog(elapsed_time, nb_rollouts, best_value,
-                               epsilon_moving_average);
+              try {
+                if (thread_id) {
+                  r = std::make_unique<py::bool_>(
+                      _callback(*_pysolver, py::int_(*thread_id)));
+                } else {
+                  r = std::make_unique<py::bool_>(
+                      _callback(*_pysolver, py::none()));
+                }
+                bool rr = r->template cast<bool>();
+                r.reset();
+                return rr;
+              } catch (const py::error_already_set *e) {
+                Logger::error(std::string("SKDECIDE exception when calling "
+                                          "callback function: ") +
+                              e->what());
+                std::runtime_error err(e->what());
+                r.reset();
+                delete e;
+                throw err;
+              }
             } else {
-              return true;
+              return false;
             }
-          });
+          },
+          verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -156,36 +183,47 @@ private:
     virtual py::object get_next_action(const py::object &s) {
       try {
         return _solver->get_best_action(s).pyobj();
-      } catch (const std::runtime_error &) {
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[LRTDP.get_next_action] ") + e.what() +
+                     " - returning None");
         return py::none();
       }
     }
 
-    virtual py::float_ get_utility(const py::object &s) {
+    virtual py::object get_utility(const py::object &s) {
       try {
-        return _solver->get_best_value(s);
-      } catch (const std::runtime_error &) {
+        return _solver->get_best_value(s).pyobj();
+      } catch (const std::runtime_error &e) {
+        Logger::warn(std::string("[LRTDP.get_utility] ") + e.what() +
+                     " - returning None");
         return py::none();
       }
     }
 
-    virtual py::int_ get_nb_of_explored_states() {
-      return _solver->get_nb_of_explored_states();
+    virtual py::int_ get_nb_explored_states() {
+      return _solver->get_nb_explored_states();
     }
 
     virtual py::int_ get_nb_rollouts() { return _solver->get_nb_rollouts(); }
 
+    virtual py::float_ get_residual_moving_average() {
+      return _solver->get_residual_moving_average();
+    }
+
+    virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
+
     virtual py::dict get_policy() {
       py::dict d;
-      auto &&p = _solver->policy();
+      auto &&p = _solver->get_policy();
       for (auto &e : p) {
         d[e.first.pyobj()] =
-            py::make_tuple(e.second.first.pyobj(), e.second.second);
+            py::make_tuple(e.second.first.pyobj(), e.second.second.pyobj());
       }
       return d;
     }
 
   private:
+    std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<PyLRTDPDomain<Texecution>> _domain;
     std::unique_ptr<
         skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>>
@@ -197,9 +235,8 @@ private:
     std::function<py::object(py::object &, const py::object &,
                              const py::object &)>
         _heuristic; // last arg used for optional thread_id
-    std::function<bool(const std::size_t &, const std::size_t &, const double &,
-                       const double &)>
-        _watchdog;
+    std::function<py::bool_(const py::object &, const py::object &)>
+        _callback; // last arg used for optional thread_id
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -241,28 +278,33 @@ private:
 
 public:
   PyLRTDPSolver(
+      py::object &solver, // Python solver wrapper
       py::object &domain,
       const std::function<py::object(py::object &, const py::object &,
-                                     const py::object &)>
-          &goal_checker, // last arg used for optional thread_id
+                                     const py::object & // last arg used for
+                                                        // optional thread_id
+                                     )> &goal_checker,
       const std::function<py::object(py::object &, const py::object &,
-                                     const py::object &)>
-          &heuristic, // last arg used for optional thread_id
+                                     const py::object & // last arg used for
+                                                        // optional thread_id
+                                     )> &heuristic,
       bool use_labels = true, std::size_t time_budget = 3600000,
       std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
-      std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
+      std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
-      bool parallel = false, bool debug_logs = false,
-      const std::function<bool(const std::size_t &, const std::size_t &,
-                               const double &, const double &)> &watchdog =
-          nullptr) {
+      bool parallel = false,
+      const std::function<py::bool_(const py::object &,
+                                    const py::object & // last arg used for
+                                                       // optional thread_id
+                                    )> &callback = nullptr,
+      bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
-        .instantiate(domain, goal_checker, heuristic, use_labels, time_budget,
-                     rollout_budget, max_depth, epsilon_moving_average_window,
-                     epsilon, discount, online_node_garbage, debug_logs,
-                     watchdog);
+        .instantiate(solver, domain, goal_checker, heuristic, use_labels,
+                     time_budget, rollout_budget, max_depth,
+                     residual_moving_average_window, epsilon, discount,
+                     online_node_garbage, callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -279,15 +321,21 @@ public:
     return _implementation->get_next_action(s);
   }
 
-  py::float_ get_utility(const py::object &s) {
+  py::object get_utility(const py::object &s) {
     return _implementation->get_utility(s);
   }
 
-  py::int_ get_nb_of_explored_states() {
-    return _implementation->get_nb_of_explored_states();
+  py::int_ get_nb_explored_states() {
+    return _implementation->get_nb_explored_states();
   }
 
   py::int_ get_nb_rollouts() { return _implementation->get_nb_rollouts(); }
+
+  py::float_ get_residual_moving_average() {
+    return _implementation->get_residual_moving_average();
+  }
+
+  py::int_ get_solving_time() { return _implementation->get_solving_time(); }
 
   py::dict get_policy() { return _implementation->get_policy(); }
 };

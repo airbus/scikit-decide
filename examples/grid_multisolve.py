@@ -352,7 +352,7 @@ if __name__ == "__main__":
                 ),
                 "parallel": False,
                 "shared_memory_proxy": MyShmProxy(),
-                "debug_logs": False,
+                "verbose": False,
             },
         },
         # UCT (reinforcement learning / search)
@@ -428,10 +428,9 @@ if __name__ == "__main__":
                 "heuristic": lambda d, s: Value(
                     cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
                 ),
-                "termination_checker": lambda d, s: d.is_goal(s),
                 "parallel": False,
                 "shared_memory_proxy": MyShmProxy(),
-                "debug_logs": False,
+                "verbose": False,
             },
         },
     ]

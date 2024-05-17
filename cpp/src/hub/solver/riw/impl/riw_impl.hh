@@ -171,19 +171,19 @@ SK_RIW_SOLVER_CLASS::RIWSolver(
     const std::function<std::unique_ptr<FeatureVector>(
         Domain &, const State &, const std::size_t *)> &state_features,
     std::size_t time_budget, std::size_t rollout_budget, std::size_t max_depth,
-    double exploration, std::size_t epsilon_moving_average_window,
-    double epsilon, double discount, bool online_node_garbage, bool debug_logs,
-    const WatchdogFunctor &watchdog)
+    double exploration, std::size_t residual_moving_average_window,
+    double epsilon, double discount, bool online_node_garbage,
+    const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _state_features(state_features),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth), _exploration(exploration),
-      _epsilon_moving_average_window(epsilon_moving_average_window),
+      _residual_moving_average_window(residual_moving_average_window),
       _epsilon(epsilon), _discount(discount),
       _online_node_garbage(online_node_garbage),
       _min_reward(std::numeric_limits<double>::max()), _nb_rollouts(0),
-      _debug_logs(debug_logs), _watchdog(watchdog) {
+      _callback(callback), _verbose(verbose) {
 
-  if (debug_logs) {
+  if (verbose) {
     Logger::check_level(logging::debug, "algorithm RIW");
   }
 
@@ -202,7 +202,7 @@ void SK_RIW_SOLVER_CLASS::solve(const State &s) {
   try {
     Logger::info("Running " + ExecutionPolicy::print_type() +
                  " RIW solver from state " + s.print());
-    auto start_time = std::chrono::high_resolution_clock::now();
+    _start_time = std::chrono::high_resolution_clock::now();
     _nb_rollouts = 0;
     std::size_t nb_of_binary_features =
         _state_features(_domain, s, nullptr)->size();
@@ -211,14 +211,13 @@ void SK_RIW_SOLVER_CLASS::solve(const State &s) {
     bool found_solution = false;
 
     for (atomic_size_t w = 1; w <= nb_of_binary_features; w++) {
-      if (WidthSolver(*this, _domain, _state_features, _time_budget,
-                      _rollout_budget, _max_depth, _exploration,
-                      _epsilon_moving_average_window, _epsilon,
-                      _epsilon_moving_average, _epsilons, _discount,
-                      _min_reward, w, _graph, _rollout_policy,
-                      _execution_policy, *_gen, _gen_mutex, _time_mutex,
-                      _epsilons_protect, _debug_logs, _watchdog)
-              .solve(s, start_time, _nb_rollouts, feature_tuples)) {
+      if (WidthSolver(
+              *this, _domain, _state_features, _time_budget, _rollout_budget,
+              _max_depth, _exploration, _residual_moving_average_window,
+              _epsilon, _residual_moving_average, _residuals, _discount,
+              _min_reward, w, _graph, _rollout_policy, _execution_policy, *_gen,
+              _gen_mutex, _time_mutex, _residuals_protect, _callback, _verbose)
+              .solve(s, _nb_rollouts, feature_tuples)) {
         found_solution = true;
         break;
       }
@@ -226,7 +225,7 @@ void SK_RIW_SOLVER_CLASS::solve(const State &s) {
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        end_time - start_time)
+                        end_time - _start_time)
                         .count();
     auto exploration_statistics = get_exploration_statistics();
     std::string solution_str(found_solution ? ("finished to solve")
@@ -247,38 +246,61 @@ void SK_RIW_SOLVER_CLASS::solve(const State &s) {
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-bool SK_RIW_SOLVER_CLASS::is_solution_defined_for(const State &s) const {
-  auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
-  if ((si == _graph.end()) ||
-      (si->best_action == nullptr)) { // || (si->solved == false)) {
-    return false;
-  } else {
-    return true;
-  }
+bool SK_RIW_SOLVER_CLASS::is_solution_defined_for(const State &s) {
+  bool res;
+  _execution_policy.protect([this, &s, &res]() {
+    auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
+    if ((si == _graph.end()) ||
+        (si->best_action == nullptr)) { // || (si->solved == false)) {
+      res = false;
+    } else {
+      res = true;
+    }
+  });
+  return res;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
 typename SK_RIW_SOLVER_CLASS::Action
 SK_RIW_SOLVER_CLASS::get_best_action(const State &s) {
-  auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
-  if ((si == _graph.end()) || (si->best_action == nullptr)) {
+  // best_action must be copied in case of node garbage erasing the owner
+  // state node so that a simple pointer to the corresponding action would
+  // not work
+  std::unique_ptr<Action> best_action;
+  Node *next_node = nullptr;
+  _execution_policy.protect([this, &s, &best_action, &next_node]() {
+    auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
+    if ((si != _graph.end()) && (si->best_action != nullptr)) {
+      best_action = std::make_unique<Action>(*(si->best_action));
+      _rollout_policy.advance(_domain, s, *best_action, true, nullptr);
+      std::unordered_set<Node *> root_subgraph;
+      compute_reachable_subgraph(const_cast<Node &>(*si),
+                                 root_subgraph); // we won't change the real key
+                                                 // (Node::state) so we are safe
+      for (auto &child : si->children) {
+        if (&std::get<0>(child) == best_action.get()) {
+          next_node = std::get<2>(child);
+          break;
+        }
+      }
+      if (next_node != nullptr) {
+        if (_verbose) {
+          Logger::debug("Expected outcome of best action " +
+                        best_action->print() + ": " + next_node->state.print());
+        }
+        std::unordered_set<Node *> child_subgraph;
+        if (_online_node_garbage) {
+          compute_reachable_subgraph(*next_node, child_subgraph);
+        }
+        update_graph(root_subgraph, child_subgraph);
+      }
+    }
+  });
+  if (!best_action) {
     Logger::error("SKDECIDE exception: no best action found in state " +
                   s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
-  }
-  _rollout_policy.advance(_domain, s, *(si->best_action), true, nullptr);
-  Action best_action = *(si->best_action);
-  std::unordered_set<Node *> root_subgraph;
-  compute_reachable_subgraph(const_cast<Node &>(*si),
-                             root_subgraph); // we won't change the real key
-                                             // (Node::state) so we are safe
-  Node *next_node = nullptr;
-  for (auto &child : si->children) {
-    if (&std::get<0>(child) == si->best_action) {
-      next_node = std::get<2>(child);
-      break;
-    }
   }
   if (next_node == nullptr) {
     Logger::error("SKDECIDE exception: best action's next node from state " +
@@ -287,57 +309,63 @@ SK_RIW_SOLVER_CLASS::get_best_action(const State &s) {
         "SKDECIDE exception: best action's next node from state " + s.print() +
         " not found in the graph");
   }
-  if (_debug_logs) {
-    Logger::debug("Expected outcome of best action " +
-                  si->best_action->print() + ": " + next_node->state.print());
-  }
-  std::unordered_set<Node *> child_subgraph;
-  if (_online_node_garbage) {
-    compute_reachable_subgraph(*next_node, child_subgraph);
-  }
-  update_graph(root_subgraph, child_subgraph);
-  return best_action;
+  return *best_action;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-double SK_RIW_SOLVER_CLASS::get_best_value(const State &s) const {
-  auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
-  if (si == _graph.end()) {
+typename SK_RIW_SOLVER_CLASS::Value
+SK_RIW_SOLVER_CLASS::get_best_value(const State &s) {
+  const atomic_double *value = nullptr;
+  _execution_policy.protect([this, &s, &value]() {
+    auto si = _graph.find(Node(s, _domain, _state_features, nullptr));
+    if (si != _graph.end()) {
+      value = &(si->value);
+    }
+  });
+  if (value == nullptr) {
     Logger::error("SKDECIDE exception: no best action found in state " +
                   s.print());
     throw std::runtime_error(
         "SKDECIDE exception: no best action found in state " + s.print());
   }
-  return si->value;
+  Value val;
+  val.reward(*value);
+  return val;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-std::size_t SK_RIW_SOLVER_CLASS::get_nb_of_explored_states() const {
-  return _graph.size();
+std::size_t SK_RIW_SOLVER_CLASS::get_nb_explored_states() {
+  std::size_t sz = 0;
+  _execution_policy.protect([this, &sz]() { sz = _graph.size(); });
+  return sz;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-std::size_t SK_RIW_SOLVER_CLASS::get_nb_of_pruned_states() const {
+std::size_t SK_RIW_SOLVER_CLASS::get_nb_pruned_states() {
   std::size_t cnt = 0;
-  for (const auto &n : _graph) {
-    if (n.pruned) {
-      cnt++;
+  _execution_policy.protect([this, &cnt]() {
+    for (const auto &n : _graph) {
+      if (n.pruned) {
+        cnt++;
+      }
     }
-  }
+  });
   return cnt;
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
 std::pair<std::size_t, std::size_t>
-SK_RIW_SOLVER_CLASS::get_exploration_statistics() const {
+SK_RIW_SOLVER_CLASS::get_exploration_statistics() {
   std::size_t pruned = 0;
   std::size_t explored = 0;
-  for (const auto &n : _graph) {
-    explored++;
-    if (n.pruned) {
-      pruned++;
+  _execution_policy.protect([this, &pruned, &explored]() {
+    for (const auto &n : _graph) {
+      explored++;
+      if (n.pruned) {
+        pruned++;
+      }
     }
-  }
+  });
   return std::make_pair(explored, pruned);
 }
 
@@ -347,23 +375,55 @@ std::size_t SK_RIW_SOLVER_CLASS::get_nb_rollouts() const {
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
+double SK_RIW_SOLVER_CLASS::get_residual_moving_average() {
+  double val = 0.0;
+  _execution_policy.protect(
+      [this, &val]() {
+        if (_residuals.size() >= _residual_moving_average_window) {
+          val = (double)_residual_moving_average;
+        } else {
+          val = std::numeric_limits<double>::infinity();
+        }
+      },
+      _residuals_protect);
+  return val;
+}
+
+SK_RIW_SOLVER_TEMPLATE_DECL
+std::size_t SK_RIW_SOLVER_CLASS::get_solving_time() {
+  std::size_t milliseconds_duration;
+  _execution_policy.protect(
+      [this, &milliseconds_duration]() {
+        milliseconds_duration = static_cast<std::size_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::high_resolution_clock::now() - _start_time)
+                .count());
+      },
+      _time_mutex);
+  return milliseconds_duration;
+}
+
+SK_RIW_SOLVER_TEMPLATE_DECL
 std::list<typename SK_RIW_SOLVER_CLASS::Action>
 SK_RIW_SOLVER_CLASS::action_prefix() const {
   return _rollout_policy.action_prefix();
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-typename MapTypeDeducer<
-    typename SK_RIW_SOLVER_CLASS::State,
-    std::pair<typename SK_RIW_SOLVER_CLASS::Action, double>>::Map
-SK_RIW_SOLVER_CLASS::policy() {
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
-  for (auto &n : _graph) {
-    if (n.best_action != nullptr) {
-      p.insert(std::make_pair(n.state,
-                              std::make_pair(*n.best_action, (double)n.value)));
+typename MapTypeDeducer<typename SK_RIW_SOLVER_CLASS::State,
+                        std::pair<typename SK_RIW_SOLVER_CLASS::Action,
+                                  typename SK_RIW_SOLVER_CLASS::Value>>::Map
+SK_RIW_SOLVER_CLASS::get_policy() {
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
+  _execution_policy.protect([this, &p]() {
+    for (auto &n : _graph) {
+      if (n.best_action != nullptr) {
+        Value val;
+        val.reward(n.value);
+        p.insert(std::make_pair(n.state, std::make_pair(*n.best_action, val)));
+      }
     }
-  }
+  });
   return p;
 }
 
@@ -571,34 +631,32 @@ SK_RIW_SOLVER_CLASS::WidthSolver::WidthSolver(
     const StateFeatureFunctor &state_features, const atomic_size_t &time_budget,
     const atomic_size_t &rollout_budget, const atomic_size_t &max_depth,
     const atomic_double &exploration,
-    const atomic_size_t &epsilon_moving_average_window,
-    const atomic_double &epsilon, atomic_double &epsilon_moving_average,
-    std::list<double> &epsilons, const atomic_double &discount,
+    const atomic_size_t &residual_moving_average_window,
+    const atomic_double &epsilon, atomic_double &residual_moving_average,
+    std::list<double> &residuals, const atomic_double &discount,
     atomic_double &min_reward, const atomic_size_t &width, Graph &graph,
     RolloutPolicy &rollout_policy, ExecutionPolicy &execution_policy,
     std::mt19937 &gen, typename ExecutionPolicy::Mutex &gen_mutex,
     typename ExecutionPolicy::Mutex &time_mutex,
-    typename ExecutionPolicy::Mutex &epsilons_protect,
-    const atomic_bool &debug_logs, const WatchdogFunctor &watchdog)
+    typename ExecutionPolicy::Mutex &residuals_protect,
+    const CallbackFunctor &callback, const atomic_bool &verbose)
     : _parent_solver(parent_solver), _domain(domain),
       _state_features(state_features), _time_budget(time_budget),
       _rollout_budget(rollout_budget), _max_depth(max_depth),
       _exploration(exploration),
-      _epsilon_moving_average_window(epsilon_moving_average_window),
-      _epsilon(epsilon), _epsilon_moving_average(epsilon_moving_average),
-      _epsilons(epsilons), _discount(discount), _min_reward(min_reward),
+      _residual_moving_average_window(residual_moving_average_window),
+      _epsilon(epsilon), _residual_moving_average(residual_moving_average),
+      _residuals(residuals), _discount(discount), _min_reward(min_reward),
       _min_reward_changed(false), _width(width), _graph(graph),
       _rollout_policy(rollout_policy), _execution_policy(execution_policy),
       _gen(gen), _gen_mutex(gen_mutex), _time_mutex(time_mutex),
-      _epsilons_protect(epsilons_protect), _debug_logs(debug_logs),
-      _watchdog(watchdog) {}
+      _residuals_protect(residuals_protect), _callback(callback),
+      _verbose(verbose) {}
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(
-    const State &s,
-    const std::chrono::time_point<std::chrono::high_resolution_clock>
-        &start_time,
-    atomic_size_t &nb_rollouts, TupleVector &feature_tuples) {
+bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(const State &s,
+                                             atomic_size_t &nb_rollouts,
+                                             TupleVector &feature_tuples) {
   try {
     Logger::info("Running " + ExecutionPolicy::print_type() + " RIW(" +
                  StringConverter::from(_width) + ") solver from state " +
@@ -632,50 +690,39 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(
 
     boost::integer_range<std::size_t> parallel_rollouts(
         0, _domain.get_parallel_capacity());
-    atomic_size_t etime = 0;
-    atomic_size_t epsilons_size = 0;
-    _epsilon_moving_average = 0.0;
-    _epsilons.clear();
+    _residual_moving_average = 0.0;
+    _residuals.clear();
 
     std::for_each(
         ExecutionPolicy::policy, parallel_rollouts.begin(),
         parallel_rollouts.end(),
-        [this, &start_time, &root_node, &feature_tuples, &nb_rollouts,
-         &states_pruned, &reached_end_of_trajectory_once, &etime,
-         &epsilons_size](const std::size_t &thread_id) {
-          double eps_moving_average = 0.0;
-
+        [this, &root_node, &feature_tuples, &nb_rollouts, &states_pruned,
+         &reached_end_of_trajectory_once](const std::size_t &thread_id) {
           // Start rollouts
           do {
             double root_node_record_value = root_node.value;
             rollout(root_node, feature_tuples, nb_rollouts, states_pruned,
-                    reached_end_of_trajectory_once, start_time, &thread_id);
-            epsilons_size = update_epsilon_moving_average(
-                root_node, root_node_record_value);
-            eps_moving_average =
-                (epsilons_size >= _epsilon_moving_average_window)
-                    ? (double)_epsilon_moving_average
-                    : std::numeric_limits<double>::infinity();
-          } while (_watchdog(etime = elapsed_time(start_time), nb_rollouts,
-                             root_node.value, eps_moving_average) &&
-                   !root_node.solved && (etime < _time_budget) &&
+                    reached_end_of_trajectory_once, &thread_id);
+            update_residual_moving_average(root_node, root_node_record_value);
+          } while (!_callback(_parent_solver, _domain, &thread_id) &&
+                   !root_node.solved &&
+                   (_parent_solver.get_solving_time() < _time_budget) &&
                    (nb_rollouts < _rollout_budget) &&
-                   (eps_moving_average > _epsilon));
+                   (_parent_solver.get_residual_moving_average() > _epsilon));
         });
 
-    if (_debug_logs)
+    if (_verbose)
       Logger::debug(
-          "time budget: " + StringConverter::from(elapsed_time(start_time)) +
+          "time budget: " +
+          StringConverter::from((double)_parent_solver.get_solving_time() /
+                                (double)1e6) +
           " ms, rollout budget: " + StringConverter::from(nb_rollouts) +
           ", states pruned: " + StringConverter::from(states_pruned));
 
-    if (!_watchdog(etime = elapsed_time(start_time), nb_rollouts,
-                   root_node.value,
-                   (epsilons_size >= _epsilon_moving_average_window)
-                       ? (double)_epsilon_moving_average
-                       : std::numeric_limits<double>::infinity()) &&
-        etime < _time_budget && nb_rollouts < _rollout_budget &&
-        !reached_end_of_trajectory_once && states_pruned) {
+    if (!_callback(_parent_solver, _domain, nullptr) &&
+        _parent_solver.get_solving_time() < _time_budget &&
+        nb_rollouts < _rollout_budget && !reached_end_of_trajectory_once &&
+        states_pruned) {
       Logger::info("RIW(" + StringConverter::from(_width) +
                    ") could not find a solution from state " + s.print());
       return false;
@@ -702,14 +749,12 @@ SK_RIW_SOLVER_TEMPLATE_DECL
 void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
     Node &root_node, TupleVector &feature_tuples, atomic_size_t &nb_rollouts,
     atomic_bool &states_pruned, atomic_bool &reached_end_of_trajectory_once,
-    const std::chrono::time_point<std::chrono::high_resolution_clock>
-        &start_time,
     const std::size_t *thread_id) {
   // Start new rollout
   nb_rollouts += 1;
   Node *current_node = &root_node;
 
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("New rollout" + ExecutionPolicy::print_thread() +
                   " from state: " + current_node->state.print() +
                   ", depth=" + StringConverter::from(current_node->depth) +
@@ -726,7 +771,7 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
     _execution_policy.protect(
         [this, &current_node, &unsolved_children, &probabilities,
          &thread_id]() {
-          if (_debug_logs)
+          if (_verbose)
             Logger::debug(
                 "Current state" + ExecutionPolicy::print_thread() + ": " +
                 current_node->state.print() +
@@ -783,7 +828,7 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
 
     if (fill_child_node(current_node, pick, new_node,
                         thread_id)) { // terminal state
-      if (_debug_logs) {
+      if (_verbose) {
         _execution_policy.protect(
             [&current_node]() {
               Logger::debug(
@@ -801,7 +846,7 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
     } else if (!novelty(feature_tuples, *current_node,
                         new_node)) { // no new tuple or not reached with lower
                                      // depth => terminal node
-      if (_debug_logs) {
+      if (_verbose) {
         _execution_policy.protect(
             [&current_node]() {
               Logger::debug(
@@ -821,7 +866,7 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
       update_node(*current_node, true);
       break_loop = true;
     } else if (current_node->depth >= _max_depth) {
-      if (_debug_logs) {
+      if (_verbose) {
         _execution_policy.protect(
             [&current_node]() {
               Logger::debug(
@@ -836,8 +881,8 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::rollout(
       update_node(*current_node, true);
       reached_end_of_trajectory_once = true;
       break_loop = true;
-    } else if (elapsed_time(start_time) >= _time_budget) {
-      if (_debug_logs) {
+    } else if (_parent_solver.get_solving_time() >= _time_budget) {
+      if (_verbose) {
         _execution_policy.protect(
             [&current_node]() {
               Logger::debug(
@@ -901,9 +946,9 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::novelty(TupleVector &feature_tuples,
         });
   }
   n.novelty = nov;
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Novelty: " + StringConverter::from(nov));
-  if (_debug_logs)
+  if (_verbose)
     Logger::debug("Novelty depth check: " + StringConverter::from(novel_depth));
   return novel_depth;
 }
@@ -946,7 +991,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::fill_child_node(
 
   _execution_policy.protect(
       [this, &node, &node_child, &action_number]() {
-        if (_debug_logs)
+        if (_verbose)
           Logger::debug(
               "Applying " + ExecutionPolicy::print_thread() +
               " action: " + std::get<0>(node->children[action_number]).print() +
@@ -993,7 +1038,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::fill_child_node(
         [this, &node, &next_node, &new_node, &outcome]() {
           next_node.parents.insert(node);
           if (new_node) {
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug(
                   "Exploring" + ExecutionPolicy::print_thread() +
                   " new outcome: " + next_node.state.print() +
@@ -1008,7 +1053,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::fill_child_node(
               _min_reward_changed = true;
             }
           } else { // outcome already explored
-            if (_debug_logs)
+            if (_verbose)
               Logger::debug(
                   "Exploring" + ExecutionPolicy::print_thread() +
                   " known outcome: " + next_node.state.print() +
@@ -1036,7 +1081,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::fill_child_node(
     next_node.depth =
         std::min((std::size_t)next_node.depth, (std::size_t)node->depth + 1);
     node = node_child;
-    if (_debug_logs) {
+    if (_verbose) {
       _execution_policy.protect(
           [&node]() {
             Logger::debug("Exploring" + ExecutionPolicy::print_thread() +
@@ -1080,47 +1125,28 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::update_node(Node &node, bool solved) {
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
-std::size_t SK_RIW_SOLVER_CLASS::WidthSolver::update_epsilon_moving_average(
+void SK_RIW_SOLVER_CLASS::WidthSolver::update_residual_moving_average(
     const Node &node, const double &node_record_value) {
-  std::size_t epsilons_size = 0;
-  if (_epsilon_moving_average_window > 0) {
-    double current_epsilon = std::fabs(node_record_value - node.value);
+  if (_residual_moving_average_window > 0) {
+    double current_residual = std::fabs(node_record_value - node.value);
     _execution_policy.protect(
-        [this, &epsilons_size, &current_epsilon]() {
-          if (_epsilons.size() < _epsilon_moving_average_window) {
-            _epsilon_moving_average =
-                ((double)((_epsilon_moving_average * _epsilons.size()) +
-                          current_epsilon)) /
-                ((double)(_epsilons.size() + 1));
+        [this, &current_residual]() {
+          if (_residuals.size() < _residual_moving_average_window) {
+            _residual_moving_average =
+                ((double)((_residual_moving_average * _residuals.size()) +
+                          current_residual)) /
+                ((double)(_residuals.size() + 1));
           } else {
-            _epsilon_moving_average =
-                ((double)_epsilon_moving_average) +
-                ((current_epsilon - _epsilons.front()) /
-                 ((double)_epsilon_moving_average_window));
-            _epsilons.pop_front();
+            _residual_moving_average =
+                ((double)_residual_moving_average) +
+                ((current_residual - _residuals.front()) /
+                 ((double)_residual_moving_average_window));
+            _residuals.pop_front();
           }
-          _epsilons.push_back(current_epsilon);
-          epsilons_size = _epsilons.size();
+          _residuals.push_back(current_residual);
         },
-        _epsilons_protect);
+        _residuals_protect);
   }
-  return epsilons_size;
-}
-
-SK_RIW_SOLVER_TEMPLATE_DECL
-std::size_t SK_RIW_SOLVER_CLASS::WidthSolver::elapsed_time(
-    const std::chrono::time_point<std::chrono::high_resolution_clock>
-        &start_time) {
-  std::size_t milliseconds_duration;
-  _execution_policy.protect(
-      [&milliseconds_duration, &start_time]() {
-        milliseconds_duration = static_cast<std::size_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::high_resolution_clock::now() - start_time)
-                .count());
-      },
-      _time_mutex);
-  return milliseconds_duration;
 }
 
 } // namespace skdecide

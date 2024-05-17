@@ -273,12 +273,16 @@ class MultiAgentMaze(D):
                 occupied_cells[tuple(next_state[agent])] = agent
         return TransitionOutcome(
             state=HashableDict(next_state),
-            value=transition_value
-            if not self._flatten_data
-            else Value(cost=sum(v.cost for a, v in transition_value.items())),
-            termination=dead_end
-            if not self._flatten_data
-            else all(t for a, t in dead_end.items()),
+            value=(
+                transition_value
+                if not self._flatten_data
+                else Value(cost=sum(v.cost for a, v in transition_value.items()))
+            ),
+            termination=(
+                dead_end
+                if not self._flatten_data
+                else all(t for a, t in dead_end.items())
+            ),
             info=None,
         )
 
@@ -520,16 +524,24 @@ class SingleAgentMaze(D):
         return MultiDiscreteSpace([self._num_cols, self._num_rows])
 
 
-def martdp_watchdog(elapsed_time, nb_rollouts, best_value, epsilon_moving_average):
-    print("Best value: {}".format(best_value))
-    print("Epsilon moving average: {}".format(epsilon_moving_average))
-    return epsilon_moving_average > 0.1
+def martdp_callback(solver):
+    print(
+        "Best value: {}".format(
+            solver.get_utility(solver.get_domain().get_initial_state())
+        )
+    )
+    print("Residual moving average: {}".format(solver.get_residual_moving_average()))
+    return solver.get_residual_moving_average() <= 0.1
 
 
-def mcts_watchdog(elapsed_time, nb_rollouts, best_value, epsilon_moving_average):
-    print("Best value: {}".format(best_value))
-    print("Epsilon moving average: {}".format(epsilon_moving_average))
-    return epsilon_moving_average > 0.01
+def mcts_callback(solver, i=None):
+    print(
+        "Best value: {}".format(
+            solver.get_utility(solver.get_domain().get_initial_state())
+        )
+    )
+    print("Residual moving average: {}".format(solver.get_residual_moving_average()))
+    return solver.get_residual_moving_average() <= 0.01
 
 
 if __name__ == "__main__":
@@ -552,17 +564,15 @@ if __name__ == "__main__":
                     "domain_factory": lambda: MultiAgentMaze(),
                     "time_budget": 600000,
                     "max_depth": 50,
-                    "epsilon_moving_average_window": 10,
+                    "residual_moving_average_window": 10,
                     "max_feasibility_trials": 10,
                     "graph_expansion_rate": 0.01,
                     "action_choice_noise": 0.1,
                     "dead_end_cost": 1000,
-                    "watchdog": lambda etime, nbr, bval, ema: martdp_watchdog(
-                        etime, nbr, bval, ema
-                    ),
+                    "callback": lambda slv: martdp_callback(slv),
                     "online_node_garbage": True,
                     "continuous_planning": False,
-                    "debug_logs": False,
+                    "verbose": False,
                 },
                 "singleagent_solver_kwargs": {
                     "domain_factory": lambda: lambda multiagent_domain, agent: SingleAgentMaze(
@@ -577,7 +587,7 @@ if __name__ == "__main__":
                     "continuous_planning": False,
                     "online_node_garbage": False,
                     "parallel": False,
-                    "debug_logs": False,
+                    "verbose": False,
                 },
             },
         },
@@ -598,19 +608,17 @@ if __name__ == "__main__":
                     "domain_factory": lambda: MultiAgentMaze(flatten_data=True),
                     "time_budget": 600000,
                     "max_depth": 50,
-                    "epsilon_moving_average_window": 10,
+                    "residual_moving_average_window": 10,
                     "heuristic_confidence": 1000,
                     "action_choice_noise": 0.1,
-                    "expander": HMCTS.Options.Expander.Partial,
+                    "expander": HMCTS.Expander.PARTIAL,
                     "state_expansion_rate": 0.01,
                     "action_expansion_rate": 0.01,
-                    "transition_mode": HMCTS.Options.TransitionMode.Sample,
+                    "transition_mode": HMCTS.TransitionMode.SAMPLE,
                     "online_node_garbage": True,
                     "continuous_planning": False,
-                    "watchdog": lambda etime, nbr, bval, ema: mcts_watchdog(
-                        etime, nbr, bval, ema
-                    ),
-                    "debug_logs": False,
+                    "callback": lambda slv, i=None: mcts_callback(slv),
+                    "verbose": False,
                 },
                 "singleagent_solver_kwargs": {
                     "domain_factory": lambda: lambda multiagent_domain, agent: SingleAgentMaze(
@@ -625,7 +633,7 @@ if __name__ == "__main__":
                     "continuous_planning": False,
                     "online_node_garbage": False,
                     "parallel": False,
-                    "debug_logs": False,
+                    "verbose": False,
                 },
             },
         },

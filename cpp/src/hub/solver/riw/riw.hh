@@ -89,6 +89,24 @@ template <typename Tdomain> struct SimulationRollout {
   std::list<typename Tdomain::Action> action_prefix() const;
 };
 
+/**
+ * @brief This is the skdecide implementation of "Planning with Pixels in
+ * (Almost) Real Time" by Wilmer Bandres, Blai Bonet, Hector Geffner (AAAI 2018)
+ *
+ * @tparam Tdomain Type of the domain class
+ * @tparam Tfeature_vector Type of of the state feature vector used to compute
+ * the novelty measure
+ * @tparam Thashing_policy Type of the hashing class used to hash states (one of
+ * 'DomainStateHash' to use the state hash function, or 'StateFeatureHash' to
+ * hash states based on their features)
+ * @tparam Trollout_policy Type of the rollout policy (one of
+ * 'EnvironmentRollout' to progress the trajectories with the 'step' domain
+ * method, or 'SimulationRollout' to progress the trajectories with the 'sample'
+ * domain method depending on the domain's dynamics capabilities)
+ * @tparam Texecution_policy Type of the execution policy (one of
+ * 'SequentialExecution' to execute rollouts in sequence, or 'ParallelExecution'
+ * to execute rollouts in parallel on different threads)
+ */
 template <typename Tdomain, typename Tfeature_vector,
           template <typename...> class Thashing_policy = DomainStateHash,
           template <typename...> class Trollout_policy = EnvironmentRollout,
@@ -98,6 +116,7 @@ public:
   typedef Tdomain Domain;
   typedef typename Domain::State State;
   typedef typename Domain::Action Action;
+  typedef typename Domain::Value Value;
   typedef Tfeature_vector FeatureVector;
   typedef Thashing_policy<Domain, FeatureVector> HashingPolicy;
   typedef Trollout_policy<Domain> RolloutPolicy;
@@ -106,37 +125,187 @@ public:
   typedef std::function<std::unique_ptr<FeatureVector>(
       Domain &d, const State &s, const std::size_t *thread_id)>
       StateFeatureFunctor;
-  typedef std::function<bool(const std::size_t &, const std::size_t &,
-                             const double &, const double &)>
-      WatchdogFunctor;
+  typedef std::function<bool(const RIWSolver &, Domain &, const std::size_t *)>
+      CallbackFunctor;
 
+  /**
+   * @brief Construct a new RIWSolver object
+   *
+   * @param domain The domain instance
+   * @param state_features State feature vector used to compute the novelty
+   * measure
+   * @param time_budget Maximum solving time in milliseconds
+   * @param rollout_budget Maximum number of rollouts (deactivated when
+   * use_labels is true)
+   * @param max_depth Maximum depth of each LRTDP trial (rollout)
+   * @param exploration Probability of choosing a non-solved child of a given
+   * node (more precisely, a first-time explored child is chosen with a
+   * probability 'exploration', and a already-explored but non-solved child is
+   * chosen with a probability of '1 - exploration' divided by its novelty
+   * measure; probabilities among children are then normalized)
+   * @param residual_moving_average_window Number of latest computed residual
+   * values to memorize in order to compute the average Bellman error (residual)
+   * at the root state of the search
+   * @param epsilon Maximum Bellman error (residual) allowed to decide that a
+   * state is solved, or to decide when no labels are used that the value
+   * function of the root state of the search has converged (in the latter case:
+   * the root state's Bellman error is averaged over the
+   * residual_moving_average_window)
+   * @param discount Value function's discount factor
+   * @param online_node_garbage Boolean indicating whether the search graph
+   * which is no more reachable from the root solving state should be
+   * deleted (true) or not (false)
+   * @param callback Functor called at the end of each RIW rollout,
+   * taking as arguments the solver, the domain and the thread ID from which it
+   * is called, and returning true if the solver must be stopped
+   * @param verbose Boolean indicating whether verbose messages should be
+   * logged (true) or not (false)
+   */
   RIWSolver(
       Domain &domain, const StateFeatureFunctor &state_features,
       std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
       std::size_t max_depth = 1000, double exploration = 0.25,
-      std::size_t epsilon_moving_average_window = 100, double epsilon = 0.001,
+      std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
-      bool debug_logs = false,
-      const WatchdogFunctor &watchdog = [](const std::size_t &,
-                                           const std::size_t &, const double &,
-                                           const double &) { return true; });
+      const CallbackFunctor &callback =
+          [](const RIWSolver &, Domain &, const std::size_t *) {
+            return false;
+          },
+      bool verbose = false);
 
-  // clears the solver (clears the search graph, thus preventing from reusing
-  // previous search results)
+  /**
+   * @brief Clears the search graph, thus preventing from reusing previous
+   * search results)
+   *
+   */
   void clear();
 
-  // solves from state s
+  /**
+   * @brief Call the LRTDP algorithm
+   *
+   * @param s Root state of the search from which RIW rollouts are launched
+   */
   void solve(const State &s);
 
-  bool is_solution_defined_for(const State &s) const;
+  /**
+   * @brief Indicates whether the solution policy is defined for a given state
+   *
+   * @param s State for which an entry is searched in the policy graph
+   * @return true If the state has been explored and an action is defined in
+   * this state
+   * @return false If the state has not been explored or no action is defined in
+   * this state
+   */
+  bool is_solution_defined_for(const State &s);
+
+  /**
+   * @brief Get the best computed action in terms of best Q-value in a given
+   * state (throws a runtime error exception if no action is defined in the
+   * given state, which is why it is advised to call
+   * RIWSolver::is_solution_defined_for before).  The search
+   * subgraph which is no more reachable after executing the returned action is
+   * also deleted if node garbage was set to true in the RIWSolver instance's
+   * constructor.
+   *
+   * @param s State for which the best action is requested
+   * @return Action Best computed action
+   */
   Action get_best_action(const State &s);
-  double get_best_value(const State &s) const;
-  std::size_t get_nb_of_explored_states() const;
-  std::size_t get_nb_of_pruned_states() const;
-  std::pair<std::size_t, std::size_t> get_exploration_statistics() const;
+
+  /**
+   * @brief Get the best Q-value in a given state (throws a runtime
+   * error exception if no action is defined in the given state, which is why it
+   * is advised to call RIWSolver::is_solution_defined_for before)
+   *
+   * @param s State from which the best Q-value is requested
+   * @return double Maximum Q-value of the given state over the applicable
+   * actions in this state
+   */
+  Value get_best_value(const State &s);
+
+  /**
+   * @brief Get the number of states present in the search graph (which can be
+   * lower than the number of actually explored states if node garbage was
+   * set to true in the RIWSolver instance's constructor)
+   *
+   * @return std::size_t Number of states present in the search graph
+   */
+  std::size_t get_nb_explored_states();
+
+  /**
+   * @brief Get the number of states present in the search graph that have been
+   * pruned by the novelty test (which can be lower than the number of actually
+   * explored states if node garbage was set to true in the RIWSolver
+   * instance's constructor)
+   *
+   * @return std::size_t Number of states present in the search graph that have
+   * been pruned by the novelty test
+   */
+  std::size_t get_nb_pruned_states();
+
+  /**
+   * @brief Get the exploration statistics as number of states present in the
+   * search graph and number of such states that have been pruned by the novelty
+   * test (both statistics can be lower than the number of actually
+   * explored states if node garbage was set to true in the RIWSolver
+   * instance's constructor)
+   *
+   * @return std::pair<std::size_t, std::size_t> Pair of number of states
+   * present in the search graph and of number of such states that have been
+   * pruned by the novelty test
+   */
+  std::pair<std::size_t, std::size_t> get_exploration_statistics();
+
+  /**
+   * @brief Get the number of rollouts since the beginning of the search from
+   * the root solving state
+   *
+   * @return std::size_t Number of RIW rollouts
+   */
   std::size_t get_nb_rollouts() const;
+
+  /**
+   * @brief Get the average Bellman error (residual)
+   * at the root state of the search, or an infinite value if the number of
+   * computed residuals is lower than the epsilon moving average window set in
+   * the LRTDP instance's constructor
+   *
+   * @return double Bellman error at the root state of the search averaged over
+   * the epsilon moving average window
+   */
+  double get_residual_moving_average();
+
+  /**
+   * @brief Get the solving time in milliseconds since the beginning of the
+   * search from the root solving state
+   *
+   * @return std::size_t Solving time in milliseconds
+   */
+  std::size_t get_solving_time();
+
+  /**
+   * @brief Get the (partial) solution policy defined for the states for which
+   * the Q-value has been updated at least once (which is optimal if the
+   * algorithm has converged and labels are used); warning: only defined over
+   * the states reachable from the last root solving state when node garbage was
+   * set to true in the RIWSolver instance's constructor
+   *
+   * @return Mapping from states to pairs of action and best Q-value
+   */
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map get_policy();
+
+  /**
+   * @brief Get the list of actions returned by the solver so far after each
+   * call to the RIWSolver::get_best_action method (mostly internal use in order
+   * to rebuild the sequence of visited states until reaching the current
+   * solving state, when using the 'EnvironmentRollout' policy for which we can
+   * only progress the transition function with steps that hide the current
+   * state of the environment)
+   *
+   * @return std::list<Action> List of actions executed by the solver so far
+   * after each call to the RIWSolver::get_best_action method
+   */
   std::list<Action> action_prefix() const;
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy();
 
 private:
   typedef typename ExecutionPolicy::template atomic<std::size_t> atomic_size_t;
@@ -149,24 +318,25 @@ private:
   atomic_size_t _rollout_budget;
   atomic_size_t _max_depth;
   atomic_double _exploration;
-  atomic_size_t _epsilon_moving_average_window;
+  atomic_size_t _residual_moving_average_window;
   atomic_double _epsilon;
   atomic_double _discount;
   bool _online_node_garbage;
   atomic_double _min_reward;
   atomic_size_t _nb_rollouts;
+  std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
   RolloutPolicy _rollout_policy;
   ExecutionPolicy _execution_policy;
-  atomic_bool _debug_logs;
-  WatchdogFunctor _watchdog;
+  CallbackFunctor _callback;
+  atomic_bool _verbose;
 
   std::unique_ptr<std::mt19937> _gen;
   typename ExecutionPolicy::Mutex _gen_mutex;
   typename ExecutionPolicy::Mutex _time_mutex;
-  typename ExecutionPolicy::Mutex _epsilons_protect;
+  typename ExecutionPolicy::Mutex _residuals_protect;
 
-  atomic_double _epsilon_moving_average;
-  std::list<double> _epsilons;
+  atomic_double _residual_moving_average;
+  std::list<double> _residuals;
 
   struct Node {
     State state;
@@ -226,23 +396,21 @@ private:
         const StateFeatureFunctor &state_features,
         const atomic_size_t &time_budget, const atomic_size_t &rollout_budget,
         const atomic_size_t &max_depth, const atomic_double &exploration,
-        const atomic_size_t &epsilon_moving_average_window,
-        const atomic_double &epsilon, atomic_double &epsilon_moving_average,
-        std::list<double> &epsilons, const atomic_double &discount,
+        const atomic_size_t &residual_moving_average_window,
+        const atomic_double &epsilon, atomic_double &residual_moving_average,
+        std::list<double> &residuals, const atomic_double &discount,
         atomic_double &min_reward, const atomic_size_t &width, Graph &graph,
         RolloutPolicy &rollout_policy, ExecutionPolicy &execution_policy,
         std::mt19937 &gen, typename ExecutionPolicy::Mutex &gen_mutex,
         typename ExecutionPolicy::Mutex &time_mutex,
-        typename ExecutionPolicy::Mutex &epsilons_protect,
-        const atomic_bool &debug_logs, const WatchdogFunctor &watchdog);
+        typename ExecutionPolicy::Mutex &residuals_protect,
+        const CallbackFunctor &callback, const atomic_bool &verbose);
 
     // solves from state s
     // return true iff no state has been pruned or time or rollout budgets are
     // consumed
-    bool solve(const State &s,
-               const std::chrono::time_point<std::chrono::high_resolution_clock>
-                   &start_time,
-               atomic_size_t &nb_rollouts, TupleVector &feature_tuples);
+    bool solve(const State &s, atomic_size_t &nb_rollouts,
+               TupleVector &feature_tuples);
 
   private:
     RIWSolver &_parent_solver;
@@ -252,10 +420,10 @@ private:
     const atomic_size_t &_rollout_budget;
     const atomic_size_t &_max_depth;
     const atomic_double &_exploration;
-    const atomic_size_t &_epsilon_moving_average_window;
+    const atomic_size_t &_residual_moving_average_window;
     const atomic_double &_epsilon;
-    atomic_double &_epsilon_moving_average;
-    std::list<double> &_epsilons;
+    atomic_double &_residual_moving_average;
+    std::list<double> &_residuals;
     const atomic_double &_discount;
     atomic_double &_min_reward;
     atomic_bool _min_reward_changed;
@@ -266,17 +434,14 @@ private:
     std::mt19937 &_gen;
     typename ExecutionPolicy::Mutex &_gen_mutex;
     typename ExecutionPolicy::Mutex &_time_mutex;
-    typename ExecutionPolicy::Mutex &_epsilons_protect;
-    const atomic_bool &_debug_logs;
-    const WatchdogFunctor &_watchdog;
+    typename ExecutionPolicy::Mutex &_residuals_protect;
+    const CallbackFunctor &_callback;
+    const atomic_bool &_verbose;
 
-    void
-    rollout(Node &root_node, TupleVector &feature_tuples,
-            atomic_size_t &nb_rollouts, atomic_bool &states_pruned,
-            atomic_bool &reached_end_of_trajectory_once,
-            const std::chrono::time_point<std::chrono::high_resolution_clock>
-                &start_time,
-            const std::size_t *thread_id);
+    void rollout(Node &root_node, TupleVector &feature_tuples,
+                 atomic_size_t &nb_rollouts, atomic_bool &states_pruned,
+                 atomic_bool &reached_end_of_trajectory_once,
+                 const std::size_t *thread_id);
 
     // Input: feature tuple vector, node for which to compute novelty depth,
     // boolean indicating whether this node is new or not Returns true if at
@@ -295,11 +460,8 @@ private:
 
     void update_node(Node &node, bool solved);
 
-    std::size_t update_epsilon_moving_average(const Node &node,
-                                              const double &node_record_value);
-    std::size_t elapsed_time(
-        const std::chrono::time_point<std::chrono::high_resolution_clock>
-            &start_time);
+    void update_residual_moving_average(const Node &node,
+                                        const double &node_record_value);
   }; // WidthSolver class
 
   void compute_reachable_subgraph(Node &node,
