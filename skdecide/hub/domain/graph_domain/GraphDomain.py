@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import networkx as nx
 
@@ -56,19 +56,11 @@ class GraphDomainUncertain(
     FullyObservable,
     PositiveCosts,
 ):
-    # def merge(self, graph_domain):
-    #     next_state_map = self.next_state_map
-    #     next_state_attributes = self.next_state_attributes
-    #     for k in graph_domain.next_state_map:
-    #         if k not in next_state_map:
-    #             next_state_map[k] = graph_domain.next_state_map[k]
-    #             next_state_attributes[k] = graph_domain.next_state_attributes[k]
-    #         else:
-    #             for action in graph_domain.next_state_map[k]:
-    #                 if action not in next_state_map[k]:
-    #                     next_state_map[k][action] = graph_domain.next_state_map[k][action]
-    #                     next_state_attributes[k][action] = graph_domain.next_state_attributes[k][action]
-    #     return GraphDomain(next_state_map, next_state_attributes, self.targets, self.attribute_weight)
+    """
+    This domain is for uncertain goal MDP where the full transitions, probabilities and cost are already computed.
+    In this case, using the dictionary structures will improve the computing performance of the domain and therefore
+    its solving time
+    """
 
     def __init__(
         self,
@@ -78,6 +70,14 @@ class GraphDomainUncertain(
         state_terminal: Dict[D.T_state, bool],
         state_goal: Dict[D.T_state, bool],
     ):
+        """
+        # Parameters
+        - next_state_map : a dictionary whose keys are state and values are dictionary with actions as keys
+            and as value another dict with next state as keys and with (proba, cost) as value.
+            This format could be changed in the future.
+        - state_terminal: a dictionary indicating for each state if it's terminal or not
+        - state_goal: a dictionary indicating for each state if it's a goal or not
+        """
         self.next_state_map = next_state_map  # State, action, -> next state
         self.state_terminal = state_terminal
         self.state_goal = state_goal
@@ -143,16 +143,39 @@ class GraphDomainUncertain(
         )[0]
 
 
-class GraphDomain(
-    Domain,
-    DeterministicTransitions,
-    Actions,
-    Goals,
-    Markovian,
-    FullyObservable,
-    PositiveCosts,
-):
-    def merge(self, graph_domain):
+class GraphDomain(DeterministicPlanningDomain):
+    """
+    This domain is for deterministic planning domain where the full transitions and cost are already computed.
+    In this case, using the dictionary structures will improve the computing performance of the domain and therefore
+    its solving time.
+    """
+
+    def __init__(
+        self,
+        next_state_map: Dict[D.T_state, Dict[D.T_event, D.T_state]],
+        next_state_attributes: Dict[D.T_state, Dict[D.T_event, Dict[str, float]]],
+        targets: Optional[Set[D.T_state]] = None,
+        attribute_weight="weight",
+    ):
+        """
+
+        # Parameters
+        - next_state_map: is a dictionary with keys the state and values a dictionary
+        with action as keys and next state as values
+        - next_state_attributes: for each transition, stores float attributes (typically cost of transition)
+        - target : set of goal states
+        - attribute_weight: key in next_state_attributes to consider as the cost attribute.
+        """
+        self.next_state_map = next_state_map  # State, action, -> next state
+        self.next_state_attributes = next_state_attributes
+        if targets is None:
+            self.targets = set()
+        else:
+            self.targets = set(targets)
+        self.attribute_weight = attribute_weight
+
+    def merge(self, graph_domain: GraphDomain):
+        """Return a new graph domain merged from self and another instance of GraphDomain."""
         next_state_map = self.next_state_map
         next_state_attributes = self.next_state_attributes
         for k in graph_domain.next_state_map:
@@ -172,25 +195,10 @@ class GraphDomain(
             next_state_map, next_state_attributes, self.targets, self.attribute_weight
         )
 
-    def __init__(
-        self,
-        next_state_map,
-        next_state_attributes,
-        targets=None,
-        attribute_weight="weight",
-    ):
-        self.next_state_map = next_state_map  # State, action, -> next state
-        self.next_state_attributes = next_state_attributes
-        if targets is None:
-            self.targets = set()
-        else:
-            self.targets = set(targets)
-        self.attribute_weight = attribute_weight
-
     def _get_next_state(
         self, memory: D.T_memory[D.T_state], event: D.T_event
     ) -> D.T_state:
-        return self.next_state_map[memory[-1]][event]
+        return self.next_state_map[memory][event]
 
     def _get_transition_value(
         self,
@@ -199,7 +207,7 @@ class GraphDomain(
         next_state: Optional[D.T_state] = None,
     ) -> Value[D.T_value]:
         return Value(
-            cost=self.next_state_attributes[memory[-1]][event][self.attribute_weight]
+            cost=self.next_state_attributes[memory][event][self.attribute_weight]
         )
 
     def is_terminal(self, state: D.T_state) -> bool:
@@ -208,10 +216,8 @@ class GraphDomain(
     def _get_action_space_(self) -> Space[D.T_event]:
         return ImplicitSpace(lambda x: True)
 
-    def _get_applicable_actions_from(
-        self, memory: D.T_memory[D.T_state]
-    ) -> Space[D.T_event]:
-        return ActionSpace(list(self.next_state_map[memory[-1]].keys()))
+    def _get_applicable_actions_from(self, memory: D.T_state) -> Space[D.T_event]:
+        return ActionSpace(list(self.next_state_map[memory].keys()))
 
     def _get_goals_(self) -> Space[D.T_observation]:
         return ImplicitSpace(lambda x: (x in self.targets))

@@ -14,9 +14,9 @@ from skdecide.hub.solver.do_solver.sgs_policies import (
     BasePolicyMethod,
     PolicyMethodParams,
 )
-from skdecide.hub.solver.meta_policy.meta_policies import MetaPolicy
-from skdecide.hub.solver.policy_evaluators.policy_evaluator import (
-    rollout_based_compute_expected_cost_for_policy_scheduling,
+from skdecide.hub.solver.meta_policy_scheduling.meta_policies import MetaPolicy
+from skdecide.hub.solver.meta_policy_scheduling.policy_evaluator import (
+    rollout_based_policy_estimation_fast_scheduling,
 )
 
 
@@ -77,8 +77,7 @@ def run_and_compare_policies_sampled_scenarios():
     }
     meta_policy = MetaPolicy(
         policies={k: policies[k] for k in policies},
-        execution_domain=domain,
-        known_domain=domain,
+        domain=domain,
         nb_rollout_estimation=1,
         verbose=True,
     )
@@ -93,7 +92,7 @@ def run_and_compare_policies_sampled_scenarios():
                 policy_dict,
                 preds,
                 succs,
-            ) = rollout_based_compute_expected_cost_for_policy_scheduling(
+            ) = rollout_based_policy_estimation_fast_scheduling(
                 d, policies[key], nb_rollout=1
             )
             value_function_dict[key] += value_function_d[state]

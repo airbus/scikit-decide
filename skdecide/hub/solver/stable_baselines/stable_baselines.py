@@ -89,8 +89,10 @@ class StableBaseline(Solver, Policies, Restorable):
         self._algo.save(path)
 
     def _load(self, path: str, domain_factory: Callable[[], D]):
-        self._algo = self._algo_class.load(path)
-        self._init_algo(domain_factory())
+        domain = domain_factory()
+        env = DummyVecEnv([lambda: AsGymnasiumEnv(domain)])
+        self._algo = self._algo_class.load(path, env=env)
+        self._init_algo(domain)
 
     def _init_algo(self, domain: D):
         self._wrap_action = lambda a: next(

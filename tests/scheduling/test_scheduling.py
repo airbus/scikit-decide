@@ -36,6 +36,7 @@ from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     rebuild_tasks_modes_dict,
 )
 from skdecide.builders.domain.scheduling.task_duration import DeterministicTaskDuration
+from skdecide.hub.domain.graph_domain.graph_domain_builders import DFS_MDP_Exploration
 from skdecide.hub.domain.rcpsp.rcpsp_sk import build_n_determinist_from_stochastic
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
 from skdecide.hub.solver.do_solver.gphh import GPHH, ParametersGPHH
@@ -43,7 +44,6 @@ from skdecide.hub.solver.do_solver.sgs_policies import (
     BasePolicyMethod,
     PolicyMethodParams,
 )
-from skdecide.hub.solver.graph_explorer.DFS_Uncertain_Exploration import DFSExploration
 from skdecide.hub.solver.lazy_astar import LazyAstar
 
 logger = logging.getLogger(__name__)
@@ -839,8 +839,6 @@ def test_gecode_optimality(domain, do_solver):
 
 @pytest.mark.parametrize("domain", [(ToySRCPSPDomain())])
 def test_compute_all_graph(domain):
-    # Check also examples/scheduling/pi2/rcpsp_pi2/check_uncertain_domain to maybe check if the DFSExploration
-    # create well the graph.
     from itertools import count
 
     c = count()
@@ -856,7 +854,7 @@ def test_compute_all_graph(domain):
     )
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
-    explorer = DFSExploration(
+    explorer = DFS_MDP_Exploration(
         domain=domain, max_edges=2000, score_function=score_state, max_nodes=2000
     )
     graph_exploration = explorer.build_graph_domain(init_state=state)
@@ -957,10 +955,9 @@ class MyCallback:
         self.max_iter = max_iter
         self.iter = 0
 
-    def __call__(self, domain, solver):
+    def __call__(self, solver):
         self.iter += 1
         logger.warning(f"End of iteration #{self.iter}.")
-        assert isinstance(domain, ToyRCPSPDomain)
         assert isinstance(solver, DOSolver)
         stopping = self.iter >= self.max_iter
         return stopping

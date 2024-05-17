@@ -35,7 +35,13 @@ from skdecide.hub.domain.rcpsp.rcpsp_sk import (
 )
 
 
-def from_last_state_to_solution(state: State, domain: SchedulingDomain):
+def from_last_state_to_solution(
+    state: State, domain: SchedulingDomain
+) -> RCPSPSolution:
+    """Transform a scheduling state into a RCPSPSolution
+    This function reads the schedule from the state object and transform it back to a discrete-optimization solution
+    object.
+    """
     modes = [state.tasks_mode.get(j, 1) for j in sorted(domain.get_tasks_ids())]
     modes = modes[1:-1]
     schedule = {
@@ -61,7 +67,11 @@ def build_do_domain(
         MultiModeMultiSkillRCPSPCalendar,
         SingleModeRCPSP_Stochastic_Durations,
     ]
-):
+) -> Union[RCPSPModel, MS_RCPSPModel]:
+    """Transform the scheduling domain (from scikit-decide) into a discrete-optimization problem.
+
+    This only works for scheduling template given in the type docstring.
+    """
     if isinstance(scheduling_domain, SingleModeRCPSP):
         modes_details = scheduling_domain.get_tasks_modes().copy()
         mode_details_do = {}
@@ -266,13 +276,13 @@ def build_do_domain(
             source_task=min(scheduling_domain.get_tasks_ids()),
             one_unit_per_task_max=False,
         )
-        # TODO : for imopse this should be True
 
 
 def build_sk_domain(
     rcpsp_do_domain: Union[MS_RCPSPModel, RCPSPModel],
     varying_ressource: bool = False,
-):
+) -> Union[RCPSP, MSRCPSP, MRCPSP, MSRCPSPCalendar]:
+    """Build a scheduling domain (scikit-decide) from a discrete-optimization problem"""
     if (
         isinstance(rcpsp_do_domain, RCPSPModel)
         and rcpsp_do_domain.is_varying_resource()

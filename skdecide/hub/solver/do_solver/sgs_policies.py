@@ -23,16 +23,40 @@ from skdecide.builders.solver.policy import DeterministicPolicies
 
 
 class BasePolicyMethod(Enum):
+    """Base options to define Scheduling policies
+
+    # Attributes
+    - FOLLOW_GANTT: Strictly return scheduling policy based on the gantt chart.
+                  Based on the time stored in the state, task are started at the right time.
+    - SGS_PRECEDENCE: At a given state, look for the first available task in an ordered permutation
+                    that is start-able and do it. If no activity is launchable, just advance in time.
+    - SGS_READY:  [Same as SGS_PRECEDENCE, one of those 2 will be in deprecation]
+    - SGS_STRICT: At a given state, look for the first task in the permutation that is not started or scheduled yet,
+                If it's not available to start yet, we advance in time until it is. Warning : this will only work
+                when the permutation of tasks fulfills the precedence constraints.
+    - SGS_TIME_FREEDOM: At a given state, look for the first task "TASK" in the permutation that is not started or scheduled yet,
+                      If it's not available to start yet, some other task are considered candidates based their time
+                      closeness to the starting time of "TASK", the policy will consider starting task that are close to
+                      the one that was first expected. ```delta_time_freedom``` is the parameter that impacts this setting.
+    - SGS_INDEX_FREEDOM: At a given state, look for the first task "TASK" in the permutation that is not started or scheduled yet,
+                      If it's not available to start yet, some other task are considered candidates based their "ordering"
+                      closeness to the starting time of "TASK", the policy will consider starting task that are close to
+                      the one that was first expected. ```delta_index_freedom``` is the parameter that impacts this setting.
+    # Parameters
+    memory: The memory to set internally.
+    """
+
     FOLLOW_GANTT = 0
     SGS_PRECEDENCE = 1
     SGS_READY = 2
     SGS_STRICT = 3
     SGS_TIME_FREEDOM = 4
     SGS_INDEX_FREEDOM = 5
-    PILE = 6
 
 
 class PolicyMethodParams:
+    """Wrapped params for scheduling policy parameters, see BasePolicyMethod for more details"""
+
     def __init__(
         self,
         base_policy_method: BasePolicyMethod,
@@ -45,6 +69,19 @@ class PolicyMethodParams:
 
 
 class PolicyRCPSP(DeterministicPolicies):
+    """Policy object containing results of scheduling solver policy.
+
+    # Attributes
+    domain: scheduling domain where the policy will be applied
+    policy_method_params: params of the policy
+    permutation_task: list of tasks ids, representing a priority list for scheduling
+    modes_dictionnary: when relevant (multimode rcpsp for e.g) specifies in which mode a task is executed
+    schedule: when given, details the schedule to follow : this will be relevant for deterministic scheduling problems
+    resource_allocation: when relevant (multiskill problems for e.g), list the allocated (unitary) resources to the tasks
+    resource_allocation_priority: for each task, store a preference order for resources to be allocated to the task.
+                                  Resource will be greedily allocated based on this priority
+    """
+
     T_domain = D
 
     def __init__(
@@ -109,6 +146,7 @@ def action_in_applicable_actions(
 def next_action_follow_static_gantt(
     policy_rcpsp: PolicyRCPSP, state: State, check_if_applicable: bool = False, **kwargs
 ):
+    """Implements the policy with the parameters FOLLOW_GANTT (see its doc)"""
     obs: State = state
     t = obs.t
     ongoing_task = obs.tasks_ongoing
@@ -144,7 +182,7 @@ def next_action_follow_static_gantt(
                     the_action.resource_unit_names = policy_rcpsp.resource_allocation[
                         tasks[0]
                     ]
-    if True:
+    if check_if_applicable:
         action_available = action_in_applicable_actions(
             policy_rcpsp.domain, state, the_action
         )
@@ -162,6 +200,7 @@ def next_action_follow_static_gantt(
 def next_action_sgs_first_task_precedence_ready(
     policy_rcpsp: PolicyRCPSP, state: State, check_if_applicable: bool = False, **kwargs
 ):
+    """Implements the policy with the parameters SGS_PRECEDENCE (see its doc)"""
     obs: State = state
 
     next_task_to_launch = None
@@ -247,6 +286,7 @@ def next_action_sgs_first_task_ready(
     domain_sk_decide: Union[MultiModeRCPSP, SingleModeRCPSP] = None,
     **kwargs,
 ):
+    """Implements the policy with the parameters SGS_READY (see its doc)"""
     obs: State = state
     t = obs.t
     tasks_remaining = set(state.tasks_remaining)
@@ -299,6 +339,7 @@ def next_action_sgs_strict(
     domain_sk_decide: Union[MultiModeRCPSP, SingleModeRCPSP] = None,
     **kwargs,
 ):
+    """Implements the policy with the parameters SGS_STRICT (see its doc)"""
     obs: State = state
     t = obs.t
     possible_task_to_launch = policy_rcpsp.domain.task_possible_to_launch_precedence(
@@ -365,6 +406,7 @@ def next_action_sgs_time_freedom(
     delta_time_freedom: int = 10,
     **kwargs,
 ):
+    """Implements the policy with the parameters SGS_TIME_FREEDOM (see its doc)"""
     obs: State = state
     possible_task_to_launch = policy_rcpsp.domain.task_possible_to_launch_precedence(
         state=state
@@ -432,6 +474,9 @@ def next_action_sgs_index_freedom(
     delta_index_freedom: int = 10,
     **kwargs,
 ):
+    """
+    Implements the policy with the parameters SGS_INDEX_FREEDOM (see its doc)
+    """
     obs: State = state
     possible_task_to_launch = policy_rcpsp.domain.task_possible_to_launch_precedence(
         state=state
