@@ -266,7 +266,7 @@ if __name__ == "__main__":
                 "domain_factory": domain_factory,
                 "parallel": False,
                 "discount": 1.0,
-                "max_tip_expanions": 1,
+                "max_tip_expansions": 1,
                 "detect_cycles": False,
                 "heuristic": lambda d, s: Value(
                     cost=sqrt(
