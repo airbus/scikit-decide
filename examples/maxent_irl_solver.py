@@ -21,7 +21,7 @@ if MaxentIRL.check_domain(domain):
         n_epochs=10000,
     )
     with solver_factory() as solver:
-        GymDomain.solve_with(solver)
+        solver.solve()
         rollout(
             domain,
             solver,

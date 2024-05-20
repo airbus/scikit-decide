@@ -397,7 +397,7 @@ if UCT.check_domain(domain_factory()):
         verbose=False,
     )
     with solver_factory() as solver:
-        GymUCTRawDomain.solve_with(solver)
+        solver.solve()
         solver._domain.reset()
         rollout(
             domain_factory(),

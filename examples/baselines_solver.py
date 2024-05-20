@@ -37,7 +37,7 @@ if StableBaseline.check_domain(domain):
         verbose=1,
     )
     with solver_factory() as solver:
-        GymDomain.solve_with(solver)
+        solver.solve()
         solver.save("TEMP_Baselines")
         rollout(
             domain,
@@ -55,7 +55,7 @@ Restore saved solution and re-run rollout.
 
 # %%
 with solver_factory() as solver:
-    GymDomain.solve_with(solver, load_path="TEMP_Baselines")
+    solver.load("TEMP_Baselines")
     rollout(
         domain,
         solver,

@@ -32,7 +32,7 @@ if CGP.check_domain(domain):
         domain_factory=domain_factory, folder_name="TEMP_CGP", n_it=25
     )
     with solver_factory() as solver:
-        GymDomain.solve_with(solver)
+        solver.solve()
         rollout(
             domain,
             solver,

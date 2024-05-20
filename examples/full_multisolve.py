@@ -409,7 +409,7 @@ if __name__ == "__main__":
                         "domain_factory"
                     ] = lambda: actual_domain_type(**actual_domain_config)
                     with solver_type(**selected_solver["config"]) as solver:
-                        actual_domain_type.solve_with(solver)
+                        solver.solve()
                         rollout(actual_domain, solver, **selected_domain["rollout"])
                 if hasattr(domain, "close"):
                     domain.close()

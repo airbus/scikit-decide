@@ -59,7 +59,7 @@ def test_up_bridge_solver_classic():
         name="pyperplan",
         engine_params={"output_stream": sys.stdout},
     ) as solver:
-        UPDomain.solve_with(solver)
+        solver.solve()
         s = domain.get_initial_state()
         step = 0
         p = []
@@ -134,7 +134,7 @@ def test_up_bridge_solver_numeric():
         name="fast-downward-opt",
         engine_params={"output_stream": sys.stdout},
     ) as solver:
-        UPDomain.solve_with(solver)
+        solver.solve()
 
         s = domain.get_initial_state()
         step = 0

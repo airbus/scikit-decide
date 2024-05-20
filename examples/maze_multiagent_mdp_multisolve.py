@@ -554,8 +554,6 @@ if __name__ == "__main__":
             "config": {
                 "multiagent_solver_class": MARTDP,
                 "singleagent_solver_class": LRTDP,
-                "multiagent_domain_class": MultiAgentMaze,
-                "singleagent_domain_class": SingleAgentMaze,
                 "multiagent_domain_factory": lambda: MultiAgentMaze(),
                 "singleagent_domain_factory": lambda multiagent_domain, agent: SingleAgentMaze(
                     multiagent_domain._maze, multiagent_domain._agents_goals[agent]
@@ -595,8 +593,6 @@ if __name__ == "__main__":
             "config": {
                 "multiagent_solver_class": HMCTS,
                 "singleagent_solver_class": LRTDP,
-                "multiagent_domain_class": MultiAgentMaze,
-                "singleagent_domain_class": SingleAgentMaze,
                 "multiagent_domain_factory": lambda: MultiAgentMaze(),
                 "singleagent_domain_factory": lambda multiagent_domain, agent: SingleAgentMaze(
                     multiagent_domain._maze, multiagent_domain._agents_goals[agent]
@@ -676,7 +672,7 @@ if __name__ == "__main__":
                 assert solver_type.check_domain(domain)
                 # Solve with selected solver
                 with solver_type(**selected_solver["config"]) as solver:
-                    MultiAgentMaze.solve_with(solver)
+                    solver.solve()
                     rollout(
                         domain,
                         solver,

@@ -478,7 +478,7 @@ if __name__ == "__main__":
             for i in range(50):
                 s["config"]["shared_memory_proxy"] = None
                 with solver_type(**s["config"]) as solver:
-                    MyDomain.solve_with(solver)  # ,lambda:MyDomain(5,5))
+                    solver.solve()
                     rollout(
                         domain,
                         solver,
@@ -489,7 +489,7 @@ if __name__ == "__main__":
             for i in range(50):
                 s["config"]["shared_memory_proxy"] = GridShmProxy()
                 with solver_type(**s["config"]) as solver:
-                    MyDomain.solve_with(solver)  # ,lambda:MyDomain(5,5))
+                    solver.solve()
                     rollout(
                         domain,
                         solver,

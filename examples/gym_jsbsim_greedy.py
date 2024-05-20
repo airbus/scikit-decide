@@ -164,7 +164,7 @@ domain.reset()
 
 if GreedyPlanner.check_domain(domain):
     with GreedyPlanner(domain_factory=domain_factory) as solver:
-        GymGreedyDomain.solve_with(solver)
+        solver.solve()
         initial_state = solver._domain.reset()
         rollout(
             domain,

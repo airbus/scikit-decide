@@ -5,7 +5,7 @@
 """This module contains base classes for quickly building solvers."""
 from __future__ import annotations
 
-from typing import Callable, List
+from typing import Callable, List, Optional, Type
 
 from skdecide import autocast_all
 from skdecide.builders.solver.fromanystatesolvability import FromInitialState
@@ -38,6 +38,8 @@ class Solver(FromInitialState):
     """
 
     T_domain = Domain
+
+    _already_autocast = False
 
     def __init__(
         self,
@@ -177,6 +179,20 @@ class Solver(FromInitialState):
         is a good habit to always call solvers within a 'with' statement.
         """
         self._cleanup()
+
+    def autocast(self, domain_cls: Optional[Type[Domain]] = None) -> None:
+        """Autocast itself to the level corresponding to the given domain class.
+
+        # Parameters
+        domain_cls: the domain class to which level the solver needs to autocast itself.
+            By default, use the original domain factory passed to its constructor.
+
+        """
+        if not self._already_autocast:
+            if domain_cls is None:
+                domain_cls = type(self._original_domain_factory())
+            autocast_all(self, self.T_domain, domain_cls)
+            self._already_autocast = True
 
 
 # ALTERNATE BASE CLASSES (for typical combinations)

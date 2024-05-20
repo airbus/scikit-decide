@@ -21,7 +21,7 @@ if RayRLlib.check_domain(domain):
 
     # Start solving
     with solver_factory() as solver:
-        SimpleGridWorld.solve_with(solver)
+        solver.solve()
 
         # Test solution
         rollout(

@@ -480,7 +480,7 @@ if __name__ == "__main__":
                 assert solver_type.check_domain(domain)
                 # Solve with selected solver
                 with solver_type(**selected_solver["config"]) as solver:
-                    MyDomain.solve_with(solver)  # ,lambda:MyDomain(5,5))
+                    solver.solve()
                     rollout(
                         domain,
                         solver,
