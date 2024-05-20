@@ -453,5 +453,8 @@ if __name__ == "__main__":
                     with solver_type(**selected_solver["config"]) as solver:
                         solver.solve()
                         rollout(actual_domain, solver, **selected_domain["rollout"])
+
                 if hasattr(domain, "close"):
-                    domain.close()
+                    # error when relaunching due to pygame.quit() called by classic control gymnasium environments
+                    # domain.close()
+                    pass
