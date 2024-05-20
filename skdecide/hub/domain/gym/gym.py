@@ -937,9 +937,12 @@ class DeterministicGymDomain(D):
         # gym_env.render() can modify the environment
         # and generate deepcopy errors later in _get_next_state
         # thus we use a copy of the env to render it instead.
-        gym_env_for_rendering = deepcopy(self._gym_env)
-        render = gym_env_for_rendering.render()
-        return render
+        if self._set_state is None or self._get_state is None:
+            gym_env_for_rendering = deepcopy(self._gym_env)
+            render = gym_env_for_rendering.render()
+            return render
+        else:
+            self._gym_env.render()
 
     def close(self):
         return self._gym_env.close()

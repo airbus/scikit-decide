@@ -23,9 +23,9 @@ NB: to be able to launch this example, you need to install scikit-decide with al
     to the proper certificate (https://stackoverflow.com/a/31060428).
 
 """
-
+from dataclasses import dataclass
 from math import sqrt
-from typing import Any, Callable
+from typing import Callable, Optional
 
 import gymnasium as gym
 import numpy as np
@@ -86,6 +86,37 @@ class GymDomainForWidthSolvers(D):
         return Value(cost=0)
 
 
+def get_state_continuous_mountain_car(env):
+    return env.state
+
+
+def set_state_continuous_mountain_car(env, state):
+    env.state = state
+
+
+@dataclass
+class CartPoleState:
+    state: np.array
+    steps_beyond_terminated: Optional[int]
+
+    def __eq__(self, other: "CartPoleState"):
+        return (
+            np.array_equal(self.state, other.state)
+            and self.steps_beyond_terminated == other.steps_beyond_terminated
+        )
+
+
+def get_state_cart_pole(env):
+    return CartPoleState(
+        state=env.state, steps_beyond_terminated=env.steps_beyond_terminated
+    )
+
+
+def set_state_get_state_cart_pole(env, state: CartPoleState):
+    env.state = state.state
+    env.steps_beyond_terminated = state.steps_beyond_terminated
+
+
 if __name__ == "__main__":
 
     try_domains = [
@@ -125,6 +156,9 @@ if __name__ == "__main__":
             "name": "Cart Pole (Gymnasium)",
             "entry": "GymDomain",
             "config": {"gym_env": gym.make("CartPole-v1", render_mode="human")},
+            "config_gym4width": dict(
+                get_state=get_state_cart_pole, set_state=set_state_get_state_cart_pole
+            ),
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 1000,
@@ -139,6 +173,10 @@ if __name__ == "__main__":
             "config": {
                 "gym_env": gym.make("MountainCarContinuous-v0", render_mode="human")
             },
+            "config_gym4width": dict(
+                get_state=get_state_continuous_mountain_car,
+                set_state=set_state_continuous_mountain_car,
+            ),
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 1000,
@@ -393,7 +431,7 @@ if __name__ == "__main__":
                 else:
                     # Solve with selected solver
                     actual_domain_type = domain_type
-                    actual_domain_config = selected_domain["config"]
+                    actual_domain_config = dict(selected_domain["config"])  # copy
                     actual_domain = domain
                     if selected_domain["entry"].__name__ == "GymDomain" and (
                         selected_solver["entry"].__name__ == "IW"
@@ -404,6 +442,10 @@ if __name__ == "__main__":
                         actual_domain_type = GymDomainForWidthSolvers
                         if selected_domain["name"] == "Cart Pole (Gymnasium)":
                             actual_domain_config["termination_is_goal"] = False
+                        if "config_gym4width" in selected_domain:
+                            actual_domain_config.update(
+                                selected_domain["config_gym4width"]
+                            )
                         actual_domain = actual_domain_type(**actual_domain_config)
                     selected_solver["config"][
                         "domain_factory"

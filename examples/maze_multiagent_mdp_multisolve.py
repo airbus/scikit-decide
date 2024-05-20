@@ -396,6 +396,11 @@ class MultiAgentMaze(D):
         plt.pause(0.0001)
 
 
+class FlattenedMultiAgentMaze(MultiAgentMaze, SingleAgent):
+    def __init__(self, maze_str=DEFAULT_MAZE, nb_agents=4):
+        super().__init__(maze_str=maze_str, nb_agents=nb_agents, flatten_data=True)
+
+
 class D(
     Domain,
     SingleAgent,
@@ -598,7 +603,7 @@ if __name__ == "__main__":
                     multiagent_domain._maze, multiagent_domain._agents_goals[agent]
                 ),
                 "multiagent_solver_kwargs": {
-                    "domain_factory": lambda: MultiAgentMaze(flatten_data=True),
+                    "domain_factory": lambda: FlattenedMultiAgentMaze(),
                     "time_budget": 600000,
                     "max_depth": 50,
                     "residual_moving_average_window": 10,
