@@ -76,7 +76,7 @@ if UPSolver.check_domain(domain):
         name="pyperplan",
         engine_params={"output_stream": sys.stdout},
     ) as solver:
-        UPDomain.solve_with(solver)
+        solver.solve()
         rollout(
             domain,
             solver,
@@ -141,7 +141,7 @@ if UPSolver.check_domain(domain):
         name="enhsp-opt",
         engine_params={"output_stream": sys.stdout},
     ) as solver:
-        UPDomain.solve_with(solver)
+        solver.solve()
         rollout(
             domain,
             solver,

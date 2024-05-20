@@ -1657,7 +1657,7 @@ def fuel_optimisation(
 def simple_fuel_loop(solver_factory, domain_factory, max_steps: int = 100) -> float:
     domain = domain_factory()
     with solver_factory() as solver:
-        domain.solve_with(solver)
+        solver.solve()
         observation: State = domain.reset()
         solver.reset()
 

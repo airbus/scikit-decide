@@ -112,45 +112,6 @@ class Domain(
     T_predicate = T_predicate
     T_info = T_info
 
-    @classmethod
-    def solve_with(
-        cls,
-        solver: Solver,
-        load_path: Optional[str] = None,
-        from_memory: Optional[D.T_memory[T_state]] = None,
-    ) -> Solver:
-        """Solve the domain with a new or loaded solver and return it auto-cast to the level of the domain.
-
-        By default, #Solver.check_domain() provides some boilerplate code and internally
-        calls #Solver._check_domain_additional() (which returns True by default but can be overridden  to define
-        specific checks in addition to the "domain requirements"). The boilerplate code automatically checks whether all
-        domain requirements are met.
-
-        # Parameters
-        solver: The solver.
-        load_path: The path to restore the solver state from (if None, the solving process will be launched instead).
-        from_memory: The source memory (state or history) from which we begin the solving process.
-            To be used, if the solving process must begin from a specific state,
-            and only for solvers having the characteristic #FromAnyState, else raise a ValueError.
-            Ignored if load_path is used.
-
-        # Returns
-        The new solver (auto-cast to the level of the domain).
-        """
-        if load_path is not None:
-            solver.load(load_path)
-        else:
-            if isinstance(solver, FromAnyState):
-                solver.solve(from_memory=from_memory)
-            elif from_memory is None:
-                solver.solve()
-            else:
-                raise ValueError(
-                    f"`from_memory` must be None when used with a solver not having {FromAnyState.__name__} characteristic."
-                )
-        autocast_all(solver, solver.T_domain, cls)
-        return solver
-
 
 # ALTERNATE BASE CLASSES (for typical combinations)
 

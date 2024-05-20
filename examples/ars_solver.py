@@ -157,7 +157,7 @@ if __name__ == "__main__":
             domain_factory=lambda: domain_type(**selected_domain["config"]),
         )
         with solver_factory() as solver:
-            GymDomain.solve_with(solver)
+            solver.solve()
             # Test solver solution on domain
             print("==================== TEST SOLVER ====================")
             print(

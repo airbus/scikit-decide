@@ -82,7 +82,7 @@ mysolver = LazyAstar(domain_factory=MyDomain)
 Here is how to solve `MyDomain` with `mysolver`:
 
 ```python
-MyDomain.solve_with(mysolver)
+mysolver.solve()
 ```
 
 ### Test the solution
@@ -120,7 +120,7 @@ mysolver._cleanup()
 Note that this is automatically done if you use the solver within a `with` statement:
 ```python
 with LazyAstar(domain_factory=MyDomain) as mysolver:
-    MyDomain.solve_with(mysolver)
+    mysolver.solve()
     utils.rollout(MyDomain(), mysolver)
 ```
 :::

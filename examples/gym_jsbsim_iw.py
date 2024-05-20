@@ -310,7 +310,7 @@ if IW.check_domain(domain_factory()):
         verbose=False,
     )
     with solver_factory() as solver:
-        GymIWDomain.solve_with(solver)
+        solver.solve()
         evaluation_domain = EvaluationDomain(solver._domain)
         evaluation_domain.reset()
         rollout(

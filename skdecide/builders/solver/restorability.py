@@ -15,7 +15,6 @@ class Restorable:
     """A solver must inherit this class if its state can be saved and reloaded (to continue computation later on or
     reuse its solution)."""
 
-    @autocastable
     def save(self, path: str) -> None:
         """Save the solver state to given path.
 
@@ -32,14 +31,17 @@ class Restorable:
         """
         raise NotImplementedError
 
-    @autocastable
     def load(self, path: str) -> None:
         """Restore the solver state from given path.
+
+        After calling self._load(), autocast itself so that rollout methods apply
+        to the domain original characteristics.
 
         # Parameters
         path: The path where the solver state was saved.
         """
-        return self._load(path)
+        self._load(path)
+        self.autocast()
 
     def _load(self, path: str) -> None:
         """Restore the solver state from given path.

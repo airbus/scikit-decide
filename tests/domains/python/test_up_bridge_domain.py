@@ -112,7 +112,7 @@ def test_up_bridge_domain_planning():
     with LazyAstar(
         domain_factory=domain_factory,
     ) as solver:
-        UPDomain.solve_with(solver)
+        solver.solve()
         s = domain.get_initial_state()
         step = 0
         p = []
@@ -207,7 +207,7 @@ def test_up_bridge_domain_rl():
         algo_class=DQN,
         train_iterations=1,
     ) as solver:
-        UPDomain.solve_with(solver)
+        solver.solve()
         rollout(
             domain_factory(),
             solver,

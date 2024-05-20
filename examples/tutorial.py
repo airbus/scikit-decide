@@ -165,5 +165,5 @@ assert LazyAstar.check_domain(domain)
 with LazyAstar(
     domain_factory=lambda: MyDomain(State(1, 1), State(19, 19), maze_str)
 ) as solver:
-    MyDomain.solve_with(solver)
+    solver.solve()
     rollout(domain, solver, max_steps=100, max_framerate=10, verbose=False)

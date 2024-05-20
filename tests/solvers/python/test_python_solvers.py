@@ -163,7 +163,7 @@ def test_solve_python(solver_python):
         solver_args["algo_class"] = DQN
 
     with solver_type(**solver_args) as slv:
-        GridDomain.solve_with(slv)
+        slv.solve()
         plan, cost = get_plan(dom, slv)
         # test get_plan and get_policy
         if hasattr(slv, "get_policy"):
@@ -214,7 +214,7 @@ def test_solve_python_with_cb(solver_python, caplog):
     solver_args["callback"] = MyCallback(solver_cls=solver_type)
 
     with solver_type(**solver_args) as slv:
-        GridDomain.solve_with(slv)
+        slv.solve()
 
     # Check that 2 iterations only were done and messages logged by callback
     assert "End of iteration #2" in caplog.text

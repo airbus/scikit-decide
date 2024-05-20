@@ -161,8 +161,12 @@ def test_ray_rllib_solver():
     )
 
     # solve
-    solver: RayRLlib = RockPaperScissors.solve_with(solver_factory())
+    solver = solver_factory()
+    solver.solve()
     assert hasattr(solver, "_algo")
+
+    # solve further
+    solver.solve()
 
     # test get_policy()
     policy = solver.get_policy()
@@ -204,9 +208,8 @@ def test_ray_rllib_solver_with_filtered_actions():
     config = DQN.get_default_config().resources(
         num_cpus_per_worker=0.5
     )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
-    solver = GridWorldFilteredActions.solve_with(
-        RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs),
-    )
+    solver = RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs)
+    solver.solve()
     assert hasattr(solver, "_algo")
 
     # rollout
@@ -227,9 +230,8 @@ def test_ray_rllib_solver_on_single_agent_domain():
     config = PPO.get_default_config().resources(
         num_cpus_per_worker=0.5
     )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
-    solver = GymDomain.solve_with(
-        RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs)
-    )
+    solver = RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs)
+    solver.solve()
     assert hasattr(solver, "_algo")
 
     # rollout

@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, Set, Tuple
+import inspect
+from typing import Any, Callable, Optional, Set, Tuple, Type
 
 from skdecide import Domain, Solver
 from skdecide.builders.domain import MultiAgent, Sequential, SingleAgent
@@ -22,12 +23,11 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
 
     def __init__(
         self,
-        multiagent_solver_class,
-        singleagent_solver_class,
-        multiagent_domain_class,
-        singleagent_domain_class,
+        multiagent_solver_class: Type[Solver],
+        singleagent_solver_class: Type[Solver],
         multiagent_domain_factory: Callable[[], Domain],
-        singleagent_domain_factory: Callable[[Domain, Any], Domain] = None,
+        singleagent_domain_class: Optional[Type[Domain]] = None,
+        singleagent_domain_factory: Optional[Callable[[Domain, Any], Domain]] = None,
         multiagent_solver_kwargs=None,
         singleagent_solver_kwargs=None,
     ) -> None:
@@ -43,15 +43,28 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         multiagent_solver_kwargs["heuristic"] = lambda d, o: self._multiagent_heuristic(
             o
         )
+        if ("domain_factory" not in multiagent_solver_kwargs) and (
+            "domain_factory"
+            in inspect.signature(multiagent_solver_class.__init__).parameters
+        ):
+            multiagent_solver_kwargs["domain_factory"] = multiagent_domain_factory
         self._multiagent_solver = multiagent_solver_class(**multiagent_solver_kwargs)
-        self._multiagent_domain_class = multiagent_domain_class
         self._multiagent_domain_factory = multiagent_domain_factory
         self._multiagent_domain = self._multiagent_domain_factory()
 
         self._singleagent_solver_class = singleagent_solver_class
         self._singleagent_solver_kwargs = singleagent_solver_kwargs
-        self._singleagent_domain_class = singleagent_domain_class
-        self._singleagent_domain_factory = singleagent_domain_factory
+        if singleagent_domain_factory is None:
+            if singleagent_domain_class is None:
+                raise ValueError(
+                    "singleagent_domain_factory and singleagent_domain_class cannot be None together."
+                )
+            else:
+                self._singleagent_domain_factory = (
+                    lambda multiagent_domain, agent: singleagent_domain_class()
+                )
+        else:
+            self._singleagent_domain_factory = singleagent_domain_factory
 
         self._singleagent_domains = {}
         self._singleagent_solvers = {}
@@ -60,40 +73,25 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
 
         for a in self._multiagent_domain.get_agents():
             singleagent_solver_kwargs = dict(self._singleagent_solver_kwargs)
-            if self._singleagent_domain_factory is None:
-                singleagent_solver_kwargs[
-                    "domain_factory"
-                ] = lambda: self._singleagent_domain_class()
-            else:
-                singleagent_solver_kwargs[
-                    "domain_factory"
-                ] = lambda: self._singleagent_domain_factory(self._multiagent_domain, a)
+            singleagent_solver_kwargs[
+                "domain_factory"
+            ] = lambda: self._singleagent_domain_factory(self._multiagent_domain, a)
             self._singleagent_solvers[a] = self._singleagent_solver_class(
                 **singleagent_solver_kwargs
             )
-            self._singleagent_solvers[a].init_solve(),
+            self._singleagent_solvers[a]._init_solve(),
 
         self._singleagent_solutions = {
             a: {} for a in self._multiagent_domain.get_agents()
         }
 
-    def _solve(
-        self,
-        from_memory: Optional[D.T_memory[D.T_state]] = None,
-    ) -> None:
-        self._multiagent_domain_class.solve_with(
-            solver=self._multiagent_solver,
-            from_memory=from_memory,
-        )
-
     def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-        self._multiagent_domain_class.solve_with(
-            solver=self._multiagent_solver,
-            from_memory=memory,
+        self._multiagent_solver._solve_from(
+            memory=memory,
         )
 
     def _init_solve(self) -> None:
-        pass
+        self._multiagent_solver._init_solve()
 
     def _get_next_action(
         self, observation: D.T_agent[D.T_observation]

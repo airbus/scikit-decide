@@ -24,7 +24,7 @@ if RayRLlib.check_domain(domain):
 
     # Start solving
     with solver_factory() as solver:
-        GymDomain.solve_with(solver)
+        solver.solve()
         solver.save("TEMP_RLlib")  # Save results
 
         # Continue solving (just to demonstrate the capability to learn further)
@@ -43,7 +43,7 @@ if RayRLlib.check_domain(domain):
 
     # Restore (latest results) from scratch and re-run
     with solver_factory() as solver:
-        GymDomain.solve_with(solver, load_path="TEMP_RLlib")
+        solver.load("TEMP_RLlib")
         rollout(
             domain,
             solver,

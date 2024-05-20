@@ -267,7 +267,7 @@ if __name__ == "__main__":
     domain = domain_factory()
     if POMCP.check_domain(domain):
         with POMCP(domain_factory=domain_factory) as solver:
-            MasterMind.solve_with(solver)
+            solver.solve()
             rollout(
                 domain,
                 solver,

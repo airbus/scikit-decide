@@ -76,7 +76,7 @@ if RayRLlib.check_domain(domain):
         algo_class=DQN,
         train_iterations=1,
     ) as solver:
-        UPDomain.solve_with(solver)
+        solver.solve()
         rollout(
             domain_factory(),
             solver,
@@ -136,7 +136,7 @@ domain = domain_factory()
 
 if LazyAstar.check_domain(domain):
     with LazyAstar(domain_factory=domain_factory) as solver:
-        UPDomain.solve_with(solver)
+        solver.solve()
         rollout(
             domain,
             solver,
