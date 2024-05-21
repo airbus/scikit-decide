@@ -1,8 +1,9 @@
+import logging
 import time
 
 from rcpsp_datasets import get_complete_path
 
-from skdecide import rollout_episode
+from skdecide import rollout
 from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP
 from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
@@ -15,7 +16,7 @@ from skdecide.hub.solver.do_solver.sgs_policies import (
 def do_rollout_comparaison(domain: RCPSP, solver, inplace: bool = True):
     domain.set_inplace_environment(inplace)
     tic = time.perf_counter()
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         solver=solver,
         from_memory=domain.get_initial_state(),
@@ -23,7 +24,9 @@ def do_rollout_comparaison(domain: RCPSP, solver, inplace: bool = True):
         outcome_formatter=None,
         action_formatter=None,
         verbose=False,
-    )
+        goal_logging_level=logging.DEBUG,
+        return_episodes=True,
+    )[0]
     toc = time.perf_counter()
     print(
         f"{toc - tic:0.4f} seconds to rollout policy with inplace={inplace} environment, "

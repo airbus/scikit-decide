@@ -2,7 +2,7 @@ import random
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 
-from skdecide import DiscreteDistribution, Distribution, rollout_episode
+from skdecide import DiscreteDistribution, Distribution, rollout
 from skdecide.builders.domain.scheduling.modes import (
     ConstantModeConsumption,
     ModeConsumption,
@@ -437,13 +437,15 @@ def run_example():
     # domain.set_inplace_environment(False)
     # solver = lazy_astar.LazyAstar(heuristic=None, verbose=True)
     # solver.solve(domain_factory=lambda: domain, from_memory=state)
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=solver,
         from_memory=state,
         outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-    )
+        action_formatter=None,
+        return_episodes=True,
+    )[0]
     print(states[-1])
 
 
@@ -457,13 +459,15 @@ def run_astar():
     print("Initial state : ", state)
     solver = LazyAstar(domain_factory=lambda: domain, heuristic=None, verbose=True)
     solver.solve(from_memory=state)
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=solver,
         from_memory=state,
         outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-    )
+        action_formatter=None,
+        return_episodes=True,
+    )[0]
     print("Cost :", sum([v.cost for v in values]))
 
     from skdecide.hub.solver.do_solver.sk_to_do_binding import (
@@ -486,10 +490,12 @@ def run_astar():
 
 def run_do():
     from skdecide.hub.solver.do_solver.do_solver_scheduling import (
-        BasePolicyMethod,
         DOSolver,
-        PolicyMethodParams,
         SolvingMethod,
+    )
+    from skdecide.hub.solver.do_solver.sgs_policies import (
+        BasePolicyMethod,
+        PolicyMethodParams,
     )
 
     domain = MyExampleRCPSPDomain()
@@ -507,14 +513,15 @@ def run_do():
         method=SolvingMethod.LNS_CP_CALENDAR,
     )
     solver.solve()
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=solver,
         from_memory=state,
         action_formatter=lambda o: str(o),
         outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-    )
+        return_episodes=True,
+    )[0]
     print("Cost :", sum([v.cost for v in values]))
     from skdecide.hub.solver.do_solver.sk_to_do_binding import (
         from_last_state_to_solution,
