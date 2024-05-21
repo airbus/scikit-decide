@@ -140,7 +140,7 @@ test = ["coveralls", "pytest (>=5.1.2)", "pytest-cov", "pytest-mpl (>=0.11)", "p
 name = "certifi"
 version = "2024.2.2"
 description = "Python package for providing Mozilla's CA Bundle."
-optional = true
+optional = false
 python-versions = ">=3.6"
 files = [
     {file = "certifi-2024.2.2-py3-none-any.whl", hash = "sha256:dc383c07b76109f368f6106eee2b593b04a011ea4d55f652c6ca24a754d1cdd1"},
@@ -213,7 +213,7 @@ pycparser = "*"
 name = "charset-normalizer"
 version = "3.3.2"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
-optional = true
+optional = false
 python-versions = ">=3.7.0"
 files = [
     {file = "charset-normalizer-3.3.2.tar.gz", hash = "sha256:f30c3cb33b24454a82faecaf01b19c18562b1e89558fb6c56de4d9118a032fd5"},
@@ -522,7 +522,7 @@ dev = ["automl-sphinx-theme (>=0.1.11)", "black", "build", "mypy", "pre-commit",
 name = "contourpy"
 version = "1.1.0"
 description = "Python library for calculating contours of 2D quadrilateral grids"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "contourpy-1.1.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:89f06eff3ce2f4b3eb24c1055a26981bffe4e7264acd86f15b97e40530b794bc"},
@@ -584,7 +584,7 @@ test-no-images = ["pytest", "pytest-cov", "wurlitzer"]
 name = "contourpy"
 version = "1.1.1"
 description = "Python library for calculating contours of 2D quadrilateral grids"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "contourpy-1.1.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:46e24f5412c948d81736509377e255f6040e94216bf1a9b5ea1eaa9d29f6ec1b"},
@@ -737,7 +737,7 @@ full = ["minizinc"]
 name = "cycler"
 version = "0.12.1"
 description = "Composable style cycles"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "cycler-0.12.1-py3-none-any.whl", hash = "sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30"},
@@ -1011,7 +1011,7 @@ typing = ["typing-extensions (>=4.8)"]
 name = "fonttools"
 version = "4.51.0"
 description = "Tools to manipulate font files"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "fonttools-4.51.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:84d7751f4468dd8cdd03ddada18b8b0857a5beec80bce9f435742abc9a851a74"},
@@ -1230,7 +1230,7 @@ toy-text = ["pygame (==2.1.3)", "pygame (==2.1.3)"]
 name = "idna"
 version = "3.7"
 description = "Internationalized Domain Names in Applications (IDNA)"
-optional = true
+optional = false
 python-versions = ">=3.5"
 files = [
     {file = "idna-3.7-py3-none-any.whl", hash = "sha256:82fee1fc78add43492d3a1898bfa6d8a904cc97d8427f683ed8e798d07761aa0"},
@@ -1564,7 +1564,7 @@ test = ["ipykernel", "pre-commit", "pytest (<8)", "pytest-cov", "pytest-timeout"
 name = "kiwisolver"
 version = "1.4.5"
 description = "A fast implementation of the Cassowary constraint solver"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
     {file = "kiwisolver-1.4.5-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:05703cf211d585109fcd72207a31bb170a0f22144d68298dc5e61b3c946518af"},
@@ -1872,7 +1872,7 @@ files = [
 name = "matplotlib"
 version = "3.7.5"
 description = "Python plotting package"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "matplotlib-3.7.5-cp310-cp310-macosx_10_12_universal2.whl", hash = "sha256:4a87b69cb1cb20943010f63feb0b2901c17a3b435f75349fd9865713bfa63925"},
@@ -2203,7 +2203,7 @@ files = [
 name = "networkx"
 version = "3.1"
 description = "Python package for creating and manipulating graphs and networks"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "networkx-3.1-py3-none-any.whl", hash = "sha256:4f33f68cb2afcf86f28a45f43efc27a9386b535d567d2127f8f61d51dec58d36"},
@@ -2256,7 +2256,7 @@ numpy = ">=1.22,<1.27"
 name = "numpy"
 version = "1.24.4"
 description = "Fundamental package for array computing in Python"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "numpy-1.24.4-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:c0bfb52d2169d58c1cdb8cc1f16989101639b34c7d3ce60ed70b19c63eba0b64"},
@@ -2435,7 +2435,7 @@ files = [
 name = "openap"
 version = "1.3.1"
 description = "Open Aircraft Performance Model (OpenAP) in Python"
-optional = true
+optional = false
 python-versions = "*"
 files = []
 develop = false
@@ -2510,7 +2510,7 @@ files = [
 name = "pandas"
 version = "2.0.3"
 description = "Powerful data structures for data analysis, time series, and statistics"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "pandas-2.0.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:e4c7c9f27a4185304c7caf96dc7d91bc60bc162221152de697c98eb0b2648dd8"},
@@ -2634,7 +2634,7 @@ files = [
 name = "pillow"
 version = "10.3.0"
 description = "Python Imaging Library (Fork)"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "pillow-10.3.0-cp310-cp310-macosx_10_10_x86_64.whl", hash = "sha256:90b9e29824800e90c84e4022dd5cc16eb2d9605ee13f05d47641eb183cd73d45"},
@@ -3159,7 +3159,7 @@ docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-trio"]
 name = "pyparsing"
 version = "3.1.2"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
-optional = true
+optional = false
 python-versions = ">=3.6.8"
 files = [
     {file = "pyparsing-3.1.2-py3-none-any.whl", hash = "sha256:f9db75911801ed778fe61bb643079ff86601aca99fcae6345aa67292038fb742"},
@@ -3367,7 +3367,7 @@ six = ">=1.5"
 name = "pytz"
 version = "2024.1"
 description = "World timezone definitions, modern and historical"
-optional = true
+optional = false
 python-versions = "*"
 files = [
     {file = "pytz-2024.1-py2.py3-none-any.whl", hash = "sha256:328171f4e3623139da4983451950b28e95ac706e13f3f2630a879749e7a8b319"},
@@ -3438,7 +3438,7 @@ files = [
 name = "pyyaml"
 version = "6.0.1"
 description = "YAML parser and emitter for Python"
-optional = true
+optional = false
 python-versions = ">=3.6"
 files = [
     {file = "PyYAML-6.0.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:d858aa552c999bc8a8d57426ed01e40bef403cd8ccdd0fc5f6f04a00414cac2a"},
@@ -3672,13 +3672,13 @@ rpds-py = ">=0.7.0"
 
 [[package]]
 name = "requests"
-version = "2.31.0"
+version = "2.32.0"
 description = "Python HTTP for Humans."
-optional = true
-python-versions = ">=3.7"
+optional = false
+python-versions = ">=3.8"
 files = [
-    {file = "requests-2.31.0-py3-none-any.whl", hash = "sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f"},
-    {file = "requests-2.31.0.tar.gz", hash = "sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1"},
+    {file = "requests-2.32.0-py3-none-any.whl", hash = "sha256:f2c3881dddb70d056c5bd7600a4fae312b2a300e39be6a118d30b90bd27262b5"},
+    {file = "requests-2.32.0.tar.gz", hash = "sha256:fa5490319474c82ef1d2c9bc459d3652e3ae4ef4c4ebdd18a21145a47ca4b6b8"},
 ]
 
 [package.dependencies]
@@ -3822,7 +3822,7 @@ files = [
 name = "scikit-fuzzy"
 version = "0.4.2"
 description = "Fuzzy logic toolkit for SciPy"
-optional = true
+optional = false
 python-versions = "*"
 files = [
     {file = "scikit-fuzzy-0.4.2.tar.gz", hash = "sha256:1ab12424d847ede1bc79670d8058167be7c8dd660b00756e9b844817ceb1e12e"},
@@ -3887,7 +3887,7 @@ test = ["asv", "matplotlib (>=3.5)", "pooch (>=1.6.0)", "pytest (>=7.0)", "pytes
 name = "scipy"
 version = "1.9.3"
 description = "Fundamental algorithms for scientific computing in Python"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "scipy-1.9.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:1884b66a54887e21addf9c16fb588720a8309a57b2e258ae1c7986d4444d3bc0"},
@@ -4338,7 +4338,7 @@ files = [
 name = "tzdata"
 version = "2024.1"
 description = "Provider of IANA time zone data"
-optional = true
+optional = false
 python-versions = ">=2"
 files = [
     {file = "tzdata-2024.1-py2.py3-none-any.whl", hash = "sha256:9068bc196136463f5245e51efda838afa15aaeca9903f49050dfa2679db4d252"},
@@ -4434,7 +4434,7 @@ pytamer = "0.1.19"
 name = "urllib3"
 version = "2.2.1"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "urllib3-2.2.1-py3-none-any.whl", hash = "sha256:450b20ec296a467077128bff42b73080516e71b56ff59a60a02bef2232c4fa9d"},
