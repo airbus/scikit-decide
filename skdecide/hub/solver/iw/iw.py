@@ -70,27 +70,27 @@ try:
             """Construct a IW solver instance
 
             # Parameters
-                domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
-                state_features (Callable[[Domain, D.T_state], Any]): State feature vector
-                    used to compute the novelty measure
-                use_state_feature_hash (bool, optional): Boolean indicating whether states
-                    must be hashed by using their features (True) or by using their native
-                    hash function (False). Defaults to False.
-                node_ordering (_type_, optional): Lambda function called to rank two search nodes
-                    A and B, taking as inputs A's g-score, A's novelty, A's search depth,
-                    B's g-score, B's novelty, B's search depth, and returning true when B should be
-                    preferred to A (defaults to rank nodes based on their g-scores).
-                    Defaults to ( lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_gscore > b_gscore ).
-                time_budget (int, optional): Maximum time allowed (in milliseconds) to continue searching
-                    for better plans after a first plan reaching a goal has been found. Defaults to 0.
-                parallel (bool, optional): Parallelize the generation of state-action transitions
-                    on different processes using duplicated domains (True) or not (False). Defaults to False.
-                shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
-                callback (_type_, optional): Lambda function called before popping
-                    the next state from the (priority) open queue, taking as arguments the solver and the domain,
-                    and returning true if the solver must be stopped. Defaults to (lambda slv:False).
-                verbose (bool, optional): Boolean indicating whether verbose messages should be
-                    logged (True) or not (False). Defaults to False.
+            domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
+            state_features (Callable[[Domain, D.T_state], Any]): State feature vector
+                used to compute the novelty measure
+            use_state_feature_hash (bool, optional): Boolean indicating whether states
+                must be hashed by using their features (True) or by using their native
+                hash function (False). Defaults to False.
+            node_ordering (_type_, optional): Lambda function called to rank two search nodes
+                A and B, taking as inputs A's g-score, A's novelty, A's search depth,
+                B's g-score, B's novelty, B's search depth, and returning true when B should be
+                preferred to A (defaults to rank nodes based on their g-scores).
+                Defaults to ( lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_gscore > b_gscore ).
+            time_budget (int, optional): Maximum time allowed (in milliseconds) to continue searching
+                for better plans after a first plan reaching a goal has been found. Defaults to 0.
+            parallel (bool, optional): Parallelize the generation of state-action transitions
+                on different processes using duplicated domains (True) or not (False). Defaults to False.
+            shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
+            callback (_type_, optional): Lambda function called before popping
+                the next state from the (priority) open queue, taking as arguments the solver and the domain,
+                and returning true if the solver must be stopped. Defaults to (lambda slv:False).
+            verbose (bool, optional): Boolean indicating whether verbose messages should be
+                logged (True) or not (False). Defaults to False.
             """
             ParallelSolver.__init__(
                 self,
@@ -144,8 +144,8 @@ try:
             """Run the IW algorithm from a given root solving state
 
             # Parameters
-                memory (D.T_memory[D.T_state]): State from which IW graph traversals
-                    are performed (root of the search graph)
+            memory (D.T_memory[D.T_state]): State from which IW graph traversals
+                are performed (root of the search graph)
             """
             self._solver.solve(memory)
 
@@ -156,12 +156,12 @@ try:
                 several previously computed plans) is defined for a given state
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State for which an entry is searched
-                    in the policy graph
+            observation (D.T_agent[D.T_observation]): State for which an entry is searched
+                in the policy graph
 
             # Returns
-                bool: True if a plan that goes through the state has been previously computed,
-                    False otherwise
+            bool: True if a plan that goes through the state has been previously computed,
+                False otherwise
             """
             return self._solver.is_solution_defined_for(observation)
 
@@ -169,16 +169,18 @@ try:
             self, observation: D.T_agent[D.T_observation]
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             """Get the best computed action in terms of minimum cost-to-go in a given state.
+                The solver is run from `observation` if no solution is defined (i.e. has been
+                previously computed) in `observation`.
 
             !!! warning
                 Returns a random action if no action is defined in the given state,
-                which is why it is advised to call :py:meth:`IW.is_solution_defined_for` before
+                which is why it is advised to call `IW.is_solution_defined_for` before
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State for which the best action is requested
+            observation (D.T_agent[D.T_observation]): State for which the best action is requested
 
             # Returns
-                D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
+            D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
             """
             if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
@@ -200,13 +202,13 @@ try:
 
             !!! warning
                 Returns None if no action is defined in the given state, which is why
-                it is advised to call :py:meth:`IW.is_solution_defined_for` before
+                it is advised to call `IW.is_solution_defined_for` before
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State from which the minimum cost-to-go is requested
+            observation (D.T_agent[D.T_observation]): State from which the minimum cost-to-go is requested
 
             # Returns
-                D.T_value: Minimum cost-to-go of the given state over the applicable actions in this state
+            D.T_value: Minimum cost-to-go of the given state over the applicable actions in this state
             """
             return self._solver.get_utility(observation)
 
@@ -214,7 +216,7 @@ try:
             """Get the number of states present in the search graph
 
             # Returns
-                int: Number of states present in the search graph
+            int: Number of states present in the search graph
             """
             return self._solver.get_nb_explored_states()
 
@@ -223,7 +225,7 @@ try:
                 state nodes minus the nodes' encapsulation and their neighbors)
 
             # Returns
-                Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
+            Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
             """
             return self._solver.get_explored_states()
 
@@ -232,8 +234,8 @@ try:
                 ones present in the search graph
 
             # Returns
-                int: Number of states pruned by the novelty
-                    measure among the ones present in the search graph graph
+            int: Number of states pruned by the novelty
+                measure among the ones present in the search graph graph
             """
             return self._solver.get_nb_of_pruned_states()
 
@@ -247,8 +249,8 @@ try:
                 Throws a runtime exception if no active width sub-solver is active
 
             # Returns
-                int: Number of states present in the (priority) open queue
-                    of the current width search procedure
+            int: Number of states present in the (priority) open queue
+                of the current width search procedure
             """
             return self._solver.get_nb_tip_states()
 
@@ -262,19 +264,19 @@ try:
                 of the current width search procedure is empty
 
             # Returns
-                D.T_agent[D.T_observation]: Next tip state to be closed by the current width
-                    search procedure
+            D.T_agent[D.T_observation]: Next tip state to be closed by the current width
+                search procedure
             """
             return self._solver.get_top_tip_state()
 
         def get_intermediate_scores(self) -> List[Tuple[int, int, float]]:
             """Get the history of tuples of time point (in milliseconds), current
-                         width, and root state's f-score, recorded each time a goal state is
-                         encountered during the search
+                width, and root state's f-score, recorded each time a goal state is
+                encountered during the search
 
             # Returns
-                List[Tuple[int, int, float]]: List of tuples of time point (in milliseconds),
-                    current width, and root state's f-score
+            List[Tuple[int, int, float]]: List of tuples of time point (in milliseconds),
+                current width, and root state's f-score
             """
             return self._solver.get_intermediate_scores()
 

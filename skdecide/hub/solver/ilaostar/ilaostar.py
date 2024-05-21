@@ -76,23 +76,23 @@ try:
             """Construct a ILAO* solver instance
 
             # Parameters
-                domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
-                heuristic (Optional[ Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
-                    Lambda function taking as arguments the domain and a state object,
-                    and returning the heuristic estimate from the state to the goal.
-                    Defaults to (lambda d, s: Value(cost=0)).
-                discount (float, optional): Value function's discount factor. Defaults to 1.0.
-                epsilon (float, optional): Maximum Bellman error (residual) allowed to decide that
-                    the value function of the root state of the search has converged. Defaults to 0.001.
-                parallel (bool, optional): Parallelize the generation of state-action transitions and the update
-                    of state attributes (e.g. Bellman residuals) on different processes using duplicated domains (True)
-                    or not (False). Defaults to False.
-                shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
-                callback (_type_, optional): Lambda function called at the beginning of each policy update
-                    depth-first search, taking as arguments the solver and the domain, and returning true if
-                    the solver must be stopped. Defaults to (lambda slv: False).
-                verbose (bool, optional): Boolean indicating whether verbose messages should be
-                    logged (True) or not (False). Defaults to False.
+            domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
+            heuristic (Optional[ Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
+                Lambda function taking as arguments the domain and a state object,
+                and returning the heuristic estimate from the state to the goal.
+                Defaults to (lambda d, s: Value(cost=0)).
+            discount (float, optional): Value function's discount factor. Defaults to 1.0.
+            epsilon (float, optional): Maximum Bellman error (residual) allowed to decide that
+                the value function of the root state of the search has converged. Defaults to 0.001.
+            parallel (bool, optional): Parallelize the generation of state-action transitions and the update
+                of state attributes (e.g. Bellman residuals) on different processes using duplicated domains (True)
+                or not (False). Defaults to False.
+            shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
+            callback (_type_, optional): Lambda function called at the beginning of each policy update
+                depth-first search, taking as arguments the solver and the domain, and returning true if
+                the solver must be stopped. Defaults to (lambda slv: False).
+            verbose (bool, optional): Boolean indicating whether verbose messages should be
+                logged (True) or not (False). Defaults to False.
             """
             ParallelSolver.__init__(
                 self,
@@ -142,8 +142,8 @@ try:
             """Run the ILAO* algorithm from a given root solving state
 
             # Parameters
-                memory (D.T_memory[D.T_state]): State from which ILAO* graph traversals
-                    are performed (root of the search graph)
+            memory (D.T_memory[D.T_state]): State from which ILAO* graph traversals
+                are performed (root of the search graph)
             """
             self._solver.solve(memory)
 
@@ -154,12 +154,12 @@ try:
                 several previously computed plans) is defined for a given state
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State for which an entry is searched
-                    in the policy graph
+            observation (D.T_agent[D.T_observation]): State for which an entry is searched
+                in the policy graph
 
             # Returns
-                bool: True if a plan that goes through the state has been previously computed,
-                    False otherwise
+            bool: True if a plan that goes through the state has been previously computed,
+                False otherwise
             """
             return self._solver.is_solution_defined_for(observation)
 
@@ -167,16 +167,18 @@ try:
             self, observation: D.T_agent[D.T_observation]
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             """Get the best computed action in terms of of best Q-value in a given state.
+                The solver is run from `observation` if no solution is defined (i.e. has been
+                previously computed) in `observation`.
 
             !!! warning
                 Returns a random action if no action is defined in the given state,
-                which is why it is advised to call :py:meth:`ILAOstar.is_solution_defined_for` before
+                which is why it is advised to call `ILAOstar.is_solution_defined_for` before
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State for which the best action is requested
+            observation (D.T_agent[D.T_observation]): State for which the best action is requested
 
             # Returns
-                D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
+            D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
             """
             if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
@@ -198,13 +200,13 @@ try:
 
             !!! warning
                 Returns None if no action is defined in the given state, which is why
-                it is advised to call :py:meth:`ILAOstar.is_solution_defined_for` before
+                it is advised to call `ILAOstar.is_solution_defined_for` before
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State from which the best Q-value is requested
+            observation (D.T_agent[D.T_observation]): State from which the best Q-value is requested
 
             # Returns
-                D.T_value: Minimum Q-Value of the given state over the applicable actions in this state
+            D.T_value: Minimum Q-Value of the given state over the applicable actions in this state
             """
             return self._solver.get_utility(observation)
 
@@ -212,7 +214,7 @@ try:
             """Get the number of states present in the search graph
 
             # Returns
-                int: Number of states present in the search graph
+            int: Number of states present in the search graph
             """
             return self._solver.get_nb_of_explored_states()
 
@@ -221,7 +223,7 @@ try:
                 state nodes minus the nodes' encapsulation and their children)
 
             # Returns
-                Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
+            Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
             """
             return self._solver.get_explored_states()
 
@@ -229,7 +231,7 @@ try:
             """Get the number of states present in the current best policy graph
 
             # Returns
-                int: Number of states present in the current best policy graph
+            int: Number of states present in the current best policy graph
             """
             return self._solver.best_solution_graph_size()
 
@@ -238,7 +240,7 @@ try:
                 search from the root solving state
 
             # Returns
-                int: Solving time in milliseconds
+            int: Solving time in milliseconds
             """
             return self._solver.get_solving_time()
 
@@ -256,8 +258,8 @@ try:
                 Only defined over the states reachable from the root solving state
 
             # Returns
-                Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
-                    Mapping from states to pairs of action and best Q-value
+            Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
+                Mapping from states to pairs of action and best Q-value
             """
             return self._solver.get_policy()
 

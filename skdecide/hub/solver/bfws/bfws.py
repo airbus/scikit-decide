@@ -72,21 +72,21 @@ try:
             """Construct a BFWS solver instance
 
             # Parameters
-                domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
-                state_features (Callable[[Domain, D.T_state], Any]): State feature vector
-                    used to compute the novelty measure
-                heuristic (Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]):
-                    Lambda function taking as arguments the domain and a state object,
-                    and returning the heuristic estimate from the state to the goal.
-                    Defaults to (lambda d, s: Value(cost=0)).
-                parallel (bool, optional): Parallelize the generation of state-action transitions
-                    on different processes using duplicated domains (True) or not (False). Defaults to False.
-                shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
-                callback (Callable[[BFWS], bool], optional): Lambda function called before popping
-                    the next state from the (priority) open queue, taking as arguments the solver and the domain,
-                    and returning true if the solver must be stopped. Defaults to (lambda slv: False).
-                verbose (bool, optional): Boolean indicating whether verbose messages should be
-                    logged (True) or not (False). Defaults to False.
+            domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
+            state_features (Callable[[Domain, D.T_state], Any]): State feature vector
+                used to compute the novelty measure
+            heuristic (Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]):
+                Lambda function taking as arguments the domain and a state object,
+                and returning the heuristic estimate from the state to the goal.
+                Defaults to (lambda d, s: Value(cost=0)).
+            parallel (bool, optional): Parallelize the generation of state-action transitions
+                on different processes using duplicated domains (True) or not (False). Defaults to False.
+            shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
+            callback (Callable[[BFWS], bool], optional): Lambda function called before popping
+                the next state from the (priority) open queue, taking as arguments the solver and the domain,
+                and returning true if the solver must be stopped. Defaults to (lambda slv: False).
+            verbose (bool, optional): Boolean indicating whether verbose messages should be
+                logged (True) or not (False). Defaults to False.
             """
             ParallelSolver.__init__(
                 self,
@@ -144,8 +144,8 @@ try:
             """Run the BFWS algorithm from a given root solving state
 
             # Parameters
-                memory (D.T_memory[D.T_state]): State from which BFWS graph traversals
-                    are performed (root of the search graph)
+            memory (D.T_memory[D.T_state]): State from which BFWS graph traversals
+                are performed (root of the search graph)
             """
             self._solver.solve(memory)
 
@@ -156,12 +156,12 @@ try:
                 several previously computed plans) is defined for a given state
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State for which an entry is searched
-                    in the policy graph
+            observation (D.T_agent[D.T_observation]): State for which an entry is searched
+                in the policy graph
 
             # Returns
-                bool: True if a plan that goes through the state has been previously computed,
-                    False otherwise
+            bool: True if a plan that goes through the state has been previously computed,
+                False otherwise
             """
             return self._solver.is_solution_defined_for(observation)
 
@@ -169,16 +169,18 @@ try:
             self, observation: D.T_agent[D.T_observation]
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             """Get the best computed action in terms of minimum cost-to-go in a given state.
+                The solver is run from `observation` if no solution is defined (i.e. has been
+                previously computed) in `observation`.
 
             !!! warning
                 Returns a random action if no action is defined in the given state,
-                which is why it is advised to call :py:meth:`BFWS.is_solution_defined_for` before
+                which is why it is advised to call `BFWS.is_solution_defined_for` before
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State for which the best action is requested
+            observation (D.T_agent[D.T_observation]): State for which the best action is requested
 
             # Returns
-                D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
+            D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
             """
             if not self._is_solution_defined_for(observation):
                 self._solve_from(observation)
@@ -200,13 +202,13 @@ try:
 
             !!! warning
                 Returns None if no action is defined in the given state, which is why
-                it is advised to call :py:meth:`BFWS.is_solution_defined_for` before
+                it is advised to call `BFWS.is_solution_defined_for` before
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State from which the minimum cost-to-go is requested
+            observation (D.T_agent[D.T_observation]): State from which the minimum cost-to-go is requested
 
             # Returns
-                D.T_value: Minimum cost-to-go of the given state over the applicable actions in this state
+            D.T_value: Minimum cost-to-go of the given state over the applicable actions in this state
             """
             return self._solver.get_utility(observation)
 
@@ -214,7 +216,7 @@ try:
             """Get the number of states present in the search graph
 
             # Returns
-                int: Number of states present in the search graph
+            int: Number of states present in the search graph
             """
             return self._solver.get_nb_explored_states()
 
@@ -223,7 +225,7 @@ try:
                 state nodes minus the nodes' encapsulation and their neighbors)
 
             # Returns
-                Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
+            Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
             """
             return self._solver.get_explored_states()
 
@@ -232,7 +234,7 @@ try:
                 explored states that have not been yet closed by BFWS)
 
             # Returns
-                int: Number of states present in the (priority) open queue
+            int: Number of states present in the (priority) open queue
             """
             return self._solver.get_nb_tip_states()
 
@@ -243,7 +245,7 @@ try:
                 Returns None if the priority queue is empty
 
             # Returns
-                D.T_agent[D.T_observation]: Next tip state to be closed by BFWS
+            D.T_agent[D.T_observation]: Next tip state to be closed by BFWS
             """
             return self._solver.get_top_tip_state()
 
@@ -252,7 +254,7 @@ try:
                 search from the root solving state
 
             # Returns
-                int: Solving time in milliseconds
+            int: Solving time in milliseconds
             """
             return self._solver.get_solving_time()
 
@@ -273,14 +275,14 @@ try:
                 Throws a runtime exception if a state cycle is detected in the plan
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State from which a solution plan
-                    to a goal state is requested
+            observation (D.T_agent[D.T_observation]): State from which a solution plan
+                to a goal state is requested
 
             # Returns
-                List[ Tuple[ D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]], D.T_value, ] ]:
-                    Sequence of tuples of state, action and transition cost (computed as the
-                        difference of g-scores between this state and the next one) visited
-                        along the execution of the plan
+            List[ Tuple[ D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]], D.T_value, ] ]:
+                Sequence of tuples of state, action and transition cost (computed as the
+                difference of g-scores between this state and the next one) visited
+                along the execution of the plan
             """
             return self._solver.get_plan(observation)
 
@@ -298,8 +300,8 @@ try:
                 Only defined over the states reachable from the root solving state
 
             # Returns
-                Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
-                    Mapping from states to pairs of action and minimum cost-to-go
+            Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
+                Mapping from states to pairs of action and minimum cost-to-go
             """
             return self._solver.get_policy()
 
