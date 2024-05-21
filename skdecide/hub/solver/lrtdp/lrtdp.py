@@ -83,45 +83,45 @@ try:
             """Construct a LRTDP solver instance
 
             # Parameters
-                domain_factory (Callable[[], T_domain], optional): The lambda function to create a domain instance.
-                heuristic (Optional[ Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
-                    Lambda function taking as arguments the domain and a state, and returning the heuristic
-                    estimate from the state to the goal.
-                    Defaults to (lambda d, s: Value(cost=0)).
-                use_labels (bool, optional): Boolean indicating whether labels must be used (True) or not
-                    (False, in which case the algorithm is equivalent to the standard RTDP). Defaults to True.
-                time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
-                rollout_budget (int, optional): Maximum number of rollouts (deactivated when
-                    use_labels is True). Defaults to 100000.
-                max_depth (int, optional): Maximum depth of each LRTDP trial (rollout). Defaults to 1000.
-                residual_moving_average_window (int, optional): Number of latest computed residual values
-                    to memorize in order to compute the average Bellman error (residual) at the root state
-                    of the search (deactivated when use_labels is True). Defaults to 100.
-                epsilon (float, optional): Maximum Bellman error (residual) allowed to decide that a state
-                    is solved, or to decide when no labels are used that the value function of the root state
-                    of the search has converged (in the latter case: the root state's Bellman error is averaged
-                    over the residual_moving_average_window, deactivated when use_labels is True). Defaults to 0.001.
-                discount (float, optional): Value function's discount factor. Defaults to 1.0.
-                online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
-                    no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
-                continuous_planning (bool, optional): Boolean whether the solver should optimize again the policy
-                    from the current solving state (True) or not (False) even if the policy is already defined
-                    in this state. Defaults to True.
-                parallel (bool, optional): Parallelize LRTDP trials on different processes using duplicated domains (True)
-                    or not (False). Defaults to False.
-                shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
-                callback (Callable[[LRTDP, Optional[int]], optional): Function called at the end of each LRTDP trial,
-                    taking as arguments the solver and the thread/process ID (i.e. parallel domain ID, which is equal to None
-                    in case of sequential execution, i.e. when 'parallel' is set to False in this constructor) from
-                    which the callback is called, and returning True if the solver must be stopped. The callback lambda
-                    function cannot take the (potentially parallelized) domain as argument because we could not otherwise
-                    serialize (i.e. pickle) the solver to pass it to the corresponding parallel domain process in case of parallel
-                    execution. Nevertheless, the :py:meth`ParallelSolver.get_domain` method callable on the solver instance
-                    can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
-                    `:py:class`ParallelDomain` in parallel execution from which domain methods can be called by using the
-                    callback's process ID argument. Defaults to (lambda slv, i=None: False).
-                verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
-                    or not (False). Defaults to False.
+            domain_factory (Callable[[], T_domain], optional): The lambda function to create a domain instance.
+            heuristic (Optional[ Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
+                Lambda function taking as arguments the domain and a state, and returning the heuristic
+                estimate from the state to the goal.
+                Defaults to (lambda d, s: Value(cost=0)).
+            use_labels (bool, optional): Boolean indicating whether labels must be used (True) or not
+                (False, in which case the algorithm is equivalent to the standard RTDP). Defaults to True.
+            time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
+            rollout_budget (int, optional): Maximum number of rollouts (deactivated when
+                use_labels is True). Defaults to 100000.
+            max_depth (int, optional): Maximum depth of each LRTDP trial (rollout). Defaults to 1000.
+            residual_moving_average_window (int, optional): Number of latest computed residual values
+                to memorize in order to compute the average Bellman error (residual) at the root state
+                of the search (deactivated when use_labels is True). Defaults to 100.
+            epsilon (float, optional): Maximum Bellman error (residual) allowed to decide that a state
+                is solved, or to decide when no labels are used that the value function of the root state
+                of the search has converged (in the latter case: the root state's Bellman error is averaged
+                over the residual_moving_average_window, deactivated when use_labels is True). Defaults to 0.001.
+            discount (float, optional): Value function's discount factor. Defaults to 1.0.
+            online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
+                no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
+            continuous_planning (bool, optional): Boolean whether the solver should optimize again the policy
+                from the current solving state (True) or not (False) even if the policy is already defined
+                in this state. Defaults to True.
+            parallel (bool, optional): Parallelize LRTDP trials on different processes using duplicated domains (True)
+                or not (False). Defaults to False.
+            shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
+            callback (Callable[[LRTDP, Optional[int]], optional): Function called at the end of each LRTDP trial,
+                taking as arguments the solver and the thread/process ID (i.e. parallel domain ID, which is equal to None
+                in case of sequential execution, i.e. when 'parallel' is set to False in this constructor) from
+                which the callback is called, and returning True if the solver must be stopped. The callback lambda
+                function cannot take the (potentially parallelized) domain as argument because we could not otherwise
+                serialize (i.e. pickle) the solver to pass it to the corresponding parallel domain process in case of parallel
+                execution. Nevertheless, the `ParallelSolver.get_domain` method callable on the solver instance
+                can be used to retrieve either the user domain in sequential execution, or the parallel domains proxy
+                `ParallelDomain` in parallel execution from which domain methods can be called by using the
+                callback's process ID argument. Defaults to (lambda slv, i=None: False).
+            verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
+                or not (False). Defaults to False.
             """
             ParallelSolver.__init__(
                 self,
@@ -193,8 +193,8 @@ try:
             """Run the LRTDP algorithm from a given root solving state
 
             # Parameters
-                memory (D.T_memory[D.T_state]): State from which to run the LRTDP algorithm
-                    (root of the search graph)
+            memory (D.T_memory[D.T_state]): State from which to run the LRTDP algorithm
+                (root of the search graph)
             """
             self._solver.solve(memory)
 
@@ -204,12 +204,12 @@ try:
             """Indicates whether the solution policy is defined for a given state
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State for which an entry is searched
-                    in the policy graph
+            observation (D.T_agent[D.T_observation]): State for which an entry is searched
+                in the policy graph
 
             # Returns
-                bool: True if the state has been explored and an action is defined in this state,
-                    False otherwise
+            bool: True if the state has been explored and an action is defined in this state,
+                False otherwise
             """
             return self._solver.is_solution_defined_for(observation)
 
@@ -219,16 +219,19 @@ try:
             """Get the best computed action in terms of best Q-value in a given state. The search
                 subgraph which is no more reachable after executing the returned action is
                 also deleted if node garbage was set to True in the LRTDP instance's constructor.
+                The solver is run from `observation` if `continuous_planning` was set to True
+                in the LRTDP instance's constructor or if no solution is defined (i.e. has been
+                previously computed) in `observation`.
 
             !!! warning
                 Returns a random action if no action is defined in the given state,
-                which is why it is advised to call :py:meth:`LRTDP.is_solution_defined_for` before
+                which is why it is advised to call `LRTDP.is_solution_defined_for` before
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State for which the best action is requested
+            observation (D.T_agent[D.T_observation]): State for which the best action is requested
 
             # Returns
-                D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
+            D.T_agent[D.T_concurrency[D.T_event]]: Best computed action
             """
             if self._continuous_planning or not self._is_solution_defined_for(
                 observation
@@ -252,13 +255,13 @@ try:
 
             !!! warning
                 Returns None if no action is defined in the given state, which is why
-                it is advised to call :py:meth:`LRTDP.is_solution_defined_for` before
+                it is advised to call `LRTDP.is_solution_defined_for` before
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): State from which the best Q-value is requested
+            observation (D.T_agent[D.T_observation]): State from which the best Q-value is requested
 
             # Returns
-                D.T_value: Minimum Q-value of the given state over the applicable actions in this state
+            D.T_value: Minimum Q-value of the given state over the applicable actions in this state
             """
             return self._solver.get_utility(observation)
 
@@ -268,7 +271,7 @@ try:
                 set to True in the LRTDP instance's constructor)
 
             # Returns
-                int: Number of states present in the search graph
+            int: Number of states present in the search graph
             """
             return self._solver.get_nb_explored_states()
 
@@ -277,7 +280,7 @@ try:
                 the root solving state
 
             # Returns
-                int: Number of rollouts (LRTDP trials)
+            int: Number of rollouts (LRTDP trials)
             """
             return self._solver.get_nb_rollouts()
 
@@ -287,8 +290,8 @@ try:
                 the epsilon moving average window set in the LRTDP instance's constructor
 
             # Returns
-                float: Bellman error at the root state of the search averaged over
-                    the epsilon moving average window
+            float: Bellman error at the root state of the search averaged over
+                the epsilon moving average window
             """
             return self._solver.get_residual_moving_average()
 
@@ -297,7 +300,7 @@ try:
                 search from the root solving state
 
             # Returns
-                int: Solving time in milliseconds
+            int: Solving time in milliseconds
             """
             return self._solver.get_solving_time()
 
@@ -316,8 +319,8 @@ try:
                 when node garbage was set to True in the LRTDP instance's constructor
 
             # Returns
-                Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
-                    Mapping from states to pairs of action and best Q-value
+            Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
+                Mapping from states to pairs of action and best Q-value
             """
             return self._solver.get_policy()
 

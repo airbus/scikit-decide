@@ -90,45 +90,45 @@ try:
             """Construct a MA-RTDP solver instance
 
             # Parameters
-                domain_factory (Callable[[], T_domain], optional): The lambda function to create a domain instance.
-                heuristic (Optional[ Callable[ [T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]], ], ] ], optional):
-                    Lambda function taking as arguments the domain and a state, and returning a pair of
-                    dictionary from agents to the individual heuristic estimates from the state to the goal,
-                    and of dictionary from agents to best guess individual actions.
-                    Defaults to lambda d, s: ({a: Value(cost=0) for a in s}, {a: None for a in s},).
-                time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
-                rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
-                max_depth (int, optional): Maximum depth of each MA-RTDP trial (rollout). Defaults to 1000.
-                max_feasibility_trials (int, optional): Number of trials for a given agent's applicable action
-                    to insert it in the joint applicable action set by reshuffling the agents' actions
-                    applicability ordering (set to the number of agents in the domain if it is equal to 0
-                    in this constructor). Defaults to 0.
-                residual_moving_average_window (int, optional): Number of latest computed residual values
-                    to memorize in order to compute the average Bellman error (residual) at the root state
-                    of the search. Defaults to 100.
-                epsilon (float, optional): Maximum Bellman error (residual) allowed to decide that a state
-                    is solved, or to decide when no labels are used that the value function of the root state
-                    of the search has converged (in the latter case: the root state's Bellman error is averaged
-                    over the residual_moving_average_window). Defaults to 0.001.
-                discount (float, optional): Value function's discount factor. Defaults to 1.0.
-                action_choice_noise (float, optional): Bernoulli probability of choosing an agent's
-                    random applicable action instead of the best current one when trying to
-                    generate a feasible joint applicable action from another agent's viewpoint. Defaults to 0.1.
-                dead_end_cost (float, optional): Cost of a joint dead-end state (note that the
-                    transition cost function which is independently decomposed over the agents
-                    cannot easily model such joint dead-end state costs, which is why we allow
-                    for setting this global dead-end cost in this constructor). Defaults to 10000.
-                online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
-                    no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
-                continuous_planning (bool, optional): Boolean whether the solver should optimize again the policy
-                    from the current solving state (True) or not (False) even if the policy is already defined
-                    in this state. Defaults to True.
-                callback (Callable[[MARTDP], bool], optional): Function called at the end of each MA-RTDP trial,
-                    taking as arguments the solver, and returning True if the solver must be stopped.
-                    The :py:meth`MARTDP.get_domain` method callable on the solver instance can be used to retrieve
-                    the user domain. Defaults to (lambda slv: False).
-                verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
-                    or not (False). Defaults to False.
+            domain_factory (Callable[[], T_domain], optional): The lambda function to create a domain instance.
+            heuristic (Optional[ Callable[ [T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]], ], ] ], optional):
+                Lambda function taking as arguments the domain and a state, and returning a pair of
+                dictionary from agents to the individual heuristic estimates from the state to the goal,
+                and of dictionary from agents to best guess individual actions.
+                Defaults to lambda d, s: ({a: Value(cost=0) for a in s}, {a: None for a in s},).
+            time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
+            rollout_budget (int, optional): Maximum number of rollouts. Defaults to 100000.
+            max_depth (int, optional): Maximum depth of each MA-RTDP trial (rollout). Defaults to 1000.
+            max_feasibility_trials (int, optional): Number of trials for a given agent's applicable action
+                to insert it in the joint applicable action set by reshuffling the agents' actions
+                applicability ordering (set to the number of agents in the domain if it is equal to 0
+                in this constructor). Defaults to 0.
+            residual_moving_average_window (int, optional): Number of latest computed residual values
+                to memorize in order to compute the average Bellman error (residual) at the root state
+                of the search. Defaults to 100.
+            epsilon (float, optional): Maximum Bellman error (residual) allowed to decide that a state
+                is solved, or to decide when no labels are used that the value function of the root state
+                of the search has converged (in the latter case: the root state's Bellman error is averaged
+                over the residual_moving_average_window). Defaults to 0.001.
+            discount (float, optional): Value function's discount factor. Defaults to 1.0.
+            action_choice_noise (float, optional): Bernoulli probability of choosing an agent's
+                random applicable action instead of the best current one when trying to
+                generate a feasible joint applicable action from another agent's viewpoint. Defaults to 0.1.
+            dead_end_cost (float, optional): Cost of a joint dead-end state (note that the
+                transition cost function which is independently decomposed over the agents
+                cannot easily model such joint dead-end state costs, which is why we allow
+                for setting this global dead-end cost in this constructor). Defaults to 10000.
+            online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
+                no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
+            continuous_planning (bool, optional): Boolean whether the solver should optimize again the policy
+                from the current solving state (True) or not (False) even if the policy is already defined
+                in this state. Defaults to True.
+            callback (Callable[[MARTDP], bool], optional): Function called at the end of each MA-RTDP trial,
+                taking as arguments the solver, and returning True if the solver must be stopped.
+                The `MARTDP.get_domain` method callable on the solver instance can be used to retrieve
+                the user domain. Defaults to (lambda slv: False).
+            verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
+                or not (False). Defaults to False.
             """
 
             Solver.__init__(self, domain_factory=domain_factory)
@@ -181,8 +181,8 @@ try:
             """Run the MA-RTDP algorithm from a given root solving joint state
 
             # Parameters
-                memory (D.T_memory[D.T_state]): Joint state from which to run the MA-RTDP
-                    algorithm (root of the search graph)
+            memory (D.T_memory[D.T_state]): Joint state from which to run the MA-RTDP
+                algorithm (root of the search graph)
             """
             self._solver.solve(memory)
 
@@ -192,36 +192,39 @@ try:
             """Indicates whether the solution policy is defined for a given joint state
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): Joint state for which an entry is
-                    searched in the policy graph
+            observation (D.T_agent[D.T_observation]): Joint state for which an entry is
+                searched in the policy graph
 
             # Returns
-                bool: True if the state has been explored and an action is defined in this state,
-                    False otherwise
+            bool: True if the state has been explored and an action is defined in this state,
+                False otherwise
             """
             return self._solver.is_solution_defined_for(observation)
 
         def _get_next_action(
             self, observation: D.T_agent[D.T_observation]
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
+            """Get the best computed joint action in terms of best Q-value in a given joint state.
+                The search subgraph which is no more reachable after executing the returned action is
+                also deleted if node garbage was set to True in the MA-RTDP instance's constructor.
+                The solver is run from `observation` if `continuous_planning` was set to True
+                in the MA-RTDP instance's constructor or if no solution is defined (i.e. has been
+                previously computed) in `observation`.
+
+            !!! warning
+                Returns a random action if no action is defined in the given state,
+                which is why it is advised to call `MARTDP.is_solution_defined_for` before
+
+            # Parameters
+            observation (D.T_agent[D.T_observation]): Joint state for which the best action
+                is requested
+
+            # Returns
+            D.T_agent[D.T_concurrency[D.T_event]]: Best computed joint action
+            """
             if self._continuous_planning or not self._is_solution_defined_for(
                 observation
             ):
-                """Get the best computed joint action in terms of best Q-value in a given joint state.
-                    The search subgraph which is no more reachable after executing the returned action is
-                    also deleted if node garbage was set to True in the MA-RTDP instance's constructor.
-
-                !!! warning
-                    Returns a random action if no action is defined in the given state,
-                    which is why it is advised to call :py:meth:`MARTDP.is_solution_defined_for` before
-
-                # Parameters
-                    observation (D.T_agent[D.T_observation]): Joint state for which the best action
-                        is requested
-
-                # Returns
-                    D.T_agent[D.T_concurrency[D.T_event]]: Best computed joint action
-                """
                 self._solve_from(observation)
             action = self._solver.get_next_action(observation)
             if action is None:
@@ -243,15 +246,15 @@ try:
 
             !!! warning
                 Returns None if no action is defined in the given state, which is why
-                it is advised to call :py:meth:`MARTDP.is_solution_defined_for` before
+                it is advised to call `MARTDP.is_solution_defined_for` before
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): Joint state from which the best Q-value
-                     is requested
+            observation (D.T_agent[D.T_observation]): Joint state from which the best Q-value
+                    is requested
 
             # Returns
-                D.T_agent[Value[D.T_value]]: Maximum Q-value of the given joint state over the
-                    applicable joint actions in this state
+            D.T_agent[Value[D.T_value]]: Maximum Q-value of the given joint state over the
+                applicable joint actions in this state
             """
             return self._solver.get_utility(observation)
 
@@ -269,7 +272,7 @@ try:
                 set to True in the MA-RTDP instance's constructor)
 
             # Returns
-                int: Number of states present in the search graph
+            int: Number of states present in the search graph
             """
             return self._solver.get_nb_explored_states()
 
@@ -278,7 +281,7 @@ try:
                 the root solving state
 
             # Returns
-                int: Number of rollouts (MA-RTDP trials)
+            int: Number of rollouts (MA-RTDP trials)
             """
             return self._solver.get_nb_rollouts()
 
@@ -291,11 +294,11 @@ try:
                 MARTDPSolver::get_best_action method)
 
             # Parameters
-                observation (D.T_agent[D.T_observation]): Joint state from which the
-                    number of generated applicable actions is requested
+            observation (D.T_agent[D.T_observation]): Joint state from which the
+                number of generated applicable actions is requested
 
             # Returns
-                int: Number of generated applicable joint actions in the given state
+            int: Number of generated applicable joint actions in the given state
             """
             return self._solver.get_state_nb_actions(observation)
 
@@ -305,8 +308,8 @@ try:
                 the epsilon moving average window set in the MARTDP instance's constructor
 
             # Returns
-                float: Bellman error at the root state of the search averaged over
-                    the epsilon moving average window
+            float: Bellman error at the root state of the search averaged over
+                the epsilon moving average window
             """
             return self._solver.get_residual_moving_average()
 
@@ -315,7 +318,7 @@ try:
                 search from the root solving state
 
             # Returns
-                int: Solving time in milliseconds
+            int: Solving time in milliseconds
             """
             return self._solver.get_solving_time()
 
@@ -334,8 +337,8 @@ try:
                 when node garbage was set to True in the MA-RTDP instance's constructor
 
             # Returns
-                Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_agent[Value[D.T_value]]], ]:
-                    Mapping from joint states to pairs of joint action and best Q-value
+            Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_agent[Value[D.T_value]]], ]:
+                Mapping from joint states to pairs of joint action and best Q-value
             """
             return self._solver.get_policy()
 
