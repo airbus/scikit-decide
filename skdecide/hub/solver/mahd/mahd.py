@@ -19,6 +19,12 @@ class D(Domain, MultiAgent, Sequential):
 
 
 class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
+    """This is an experimental implementation of a centralized multi-agent heuristic solver
+    which makes use of a master heuristic-search solver (i.e. MARTDP, HMCTS, HUCT) to solve
+    the centralized multi-agent domain by calling a heuristic sub-solver (i.e. LRTDP, ILAO*,
+    A*) independently on each agent's domain to compute the heuristic
+    estimates of each agent as if it involved alone in the environment."""
+
     T_domain = D
 
     def __init__(
@@ -31,6 +37,31 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         multiagent_solver_kwargs=None,
         singleagent_solver_kwargs=None,
     ) -> None:
+        """Construct a MAHD solver instance
+
+        # Parameters
+        multiagent_solver_class (Type[Solver]): Class type of the higher-level multi-agent solver
+            called on the main multi-agent domain
+        singleagent_solver_class (Type[Solver]): Class type of the lower-level single-agent solver
+            called on the single-agent domain used to compute single agent heuristic estimates
+        multiagent_domain_factory (Callable[[], Domain]): Lambda function called to create a
+            multi-agent domain instance
+        singleagent_domain_class (Optional[Type[Domain]], optional): Class type of the single-agent
+            domain used to compute single agent heuristic estimates. Defaults to None.
+        singleagent_domain_factory (Optional[Callable[[Domain, Any], Domain]], optional): Lambda function
+            which takes as arguments the multi-agent domain and one agent, and that returns a domain
+            instance for this single agent; it is called to create the single-agent domain used
+            to compute single agent heuristic estimates. Defaults to None.
+        multiagent_solver_kwargs (_type_, optional): Optional arguments to be passed to the higher-level
+            multi-agent solver. Defaults to None.
+        singleagent_solver_kwargs (_type_, optional): Optional arguments to be passed to the lower-level
+            single-agent solver. Defaults to None.
+
+        !!! warning
+            One of `singleagent_domain_class` or `singleagent_domain_factory` must be not None, otherwise
+            a `ValueError` exception is raised.
+
+        """
         Solver.__init__(self, domain_factory=multiagent_domain_factory)
         if multiagent_solver_kwargs is None:
             multiagent_solver_kwargs = {}
@@ -86,24 +117,70 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         }
 
     def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+        """Run the higher-level multi-agent heuristic solver from a given joint state
+
+        # Parameters
+        memory (D.T_memory[D.T_state]): Joint state from which to run the MAHD algorithm
+        """
         self._multiagent_solver._solve_from(
             memory=memory,
         )
 
     def _init_solve(self) -> None:
+        """Initializes the higher-level multi-agent solving process"""
         self._multiagent_solver._init_solve()
 
     def _get_next_action(
         self, observation: D.T_agent[D.T_observation]
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
+        """Gets the best computed joint action according to the higher-level heuristic
+            multi-agent solver in a given joint state.
+
+        # Parameters
+        observation (D.T_agent[D.T_observation]): Joint state for which the best action
+            is requested
+
+        # Returns
+        D.T_agent[D.T_concurrency[D.T_event]]: Best computed joint action
+        """
         return self._multiagent_solver._get_next_action(observation)
 
     def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
+        """Gets the best value in a given joint state according to the higher-level
+        heuristic multi-agent solver
+
+        # Parameters
+        observation (D.T_agent[D.T_observation]): Joint state from which the best value
+                is requested
+
+        # Returns
+        D.T_value: _description_
+        """
         return self._multiagent_solver._get_utility(observation)
 
     def _multiagent_heuristic(
         self, observation: D.T_agent[D.T_observation]
     ) -> Tuple[D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]]:
+        """Computes the multi-agent relaxed heuristics to be used by the higher-level
+            multi-agent solver as a pair of 2 dictionaries: one from single agents to
+            their individual heuristic estimates, and one from single agents to their
+            heuristic best actions in the given joint state
+
+        # Parameters
+        observation (D.T_agent[D.T_observation]): Joint state from which the relaxed
+            multi-agent heuristics are computed
+
+        !!! warning
+            Throws a `RuntimeError` exception if the single-agent solver cannot compute a
+            heuristic action for one of the agents and that no applicable action can be
+            then sampled for this agent
+
+        # Returns
+        Tuple[D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]]:
+            Pair of 2 dictionaries: one from single agents to their individual
+            heuristic estimates, and one from single agents to their
+            heuristic best actions in the given joint state
+        """
         h = {}
         for a, s in self._singleagent_solvers.items():
             if observation[a] not in self._singleagent_solutions[a]:
@@ -184,6 +261,17 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         return h
 
     def _get_singleagent_domain(self, agent):
+        """Gets the single-agent domain of a given agent, potentially
+            building it from the single-agent domain factory given in the
+            MAHD instance's constructor if it has not been yet created for
+            this agent
+
+        # Parameters
+            agent (_type_): Agent for which the single-agent domain is requested
+
+        # Returns
+            _type_: Single-agent domain instance
+        """
         if agent not in self._singleagent_domains:
             self._singleagent_domains[agent] = self._singleagent_domain_factory(
                 self._multiagent_domain, agent
@@ -191,11 +279,17 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         return self._singleagent_domains[agent]
 
     def _initialize(self):
+        """Initializes the higher-level multi-agent solver and each lower-level
+        single-agent solver
+        """
         self._multiagent_solver._initialize()
         for a, s in self._singleagent_solvers.items():
             s._initialize()
 
     def _cleanup(self):
+        """Cleans up the higher-level multi-agent solver and each lower-level
+        single-agent solver
+        """
         self._multiagent_solver._cleanup()
         for a, s in self._singleagent_solvers.items():
             s._cleanup()
