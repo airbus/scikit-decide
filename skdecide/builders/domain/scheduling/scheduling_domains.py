@@ -1530,6 +1530,15 @@ class SingleModeRCPSP(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Single mode (classic) Resource project scheduling problem template.
+    It consists in :
+    - a deterministic scheduling problem with precedence constraint between task
+    - a set of renewable resource with constant availability (capacity)
+    - task having deterministic resource consumption
+    The goal is to minimize the overall makespan, respecting the cumulative resource consumption constraint
+    """
+
     pass
 
 
@@ -1552,6 +1561,16 @@ class SingleModeRCPSPCalendar(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Single mode Resource project scheduling problem with varying resource availability template.
+    It consists in :
+    - a deterministic scheduling problem with precedence constraint between task
+    - a set of renewable resource with variable availability through time
+    - task having deterministic resource consumption
+    The goal is to minimize the overall makespan, respecting the cumulative resource consumption constraint
+    at any time
+    """
+
     pass
 
 
@@ -1573,6 +1592,16 @@ class MultiModeRCPSP(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Multimode (classic) Resource project scheduling problem template.
+    It consists in :
+    - a deterministic scheduling problem with precedence constraint between task
+    - a set of renewable resource with constant availability (capacity)
+    - a set of non-renewable resource (consumable)
+    - task having several modes of execution, giving for each mode a deterministic resource consumption and duration
+    The goal is to minimize the overall makespan, respecting the cumulative resource consumption constraint
+    """
+
     pass
 
 
@@ -1594,6 +1623,16 @@ class MultiModeRCPSPWithCost(
     WithModeCosts,
     WithResourceCosts,
 ):
+    """
+    Multimode (classic) Resource project scheduling problem template with cost based on modes.
+    It consists in :
+    - a deterministic scheduling problem with precedence constraint between task
+    - a set of renewable resource with constant availability (capacity)
+    - a set of non-renewable resource (consumable)
+    - task having several modes of execution, giving for each mode a deterministic resource consumption and duration
+    The goal is to minimize the overall cost that is function of the mode chosen for each task
+    """
+
     pass
 
 
@@ -1608,7 +1647,6 @@ class MultiModeRCPSPCalendar(
     WithoutTimeLag,
     WithoutTimeWindow,
     WithoutResourceSkills,
-    # WithoutResourceAvailabilityChange,
     DeterministicResourceAvailabilityChanges,
     WithoutConditionalTasks,
     ConstantResourceConsumption,
@@ -1616,6 +1654,16 @@ class MultiModeRCPSPCalendar(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Multimode (classic) Resource project scheduling problem template with cost based on modes.
+    It consists in :
+    - a deterministic scheduling problem with precedence constraint between task
+    - a set of renewable resource with variable availability (capacity)
+    - a set of non-renewable resource (consumable)
+    - task having several modes of execution, giving for each mode a deterministic resource consumption and duration
+    The goal is to minimize the overall makespan
+    """
+
     pass
 
 
@@ -1638,6 +1686,17 @@ class MultiModeRCPSPCalendar_Stochastic_Durations(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Multimode (classic) Resource project scheduling problem template.
+    It consists in :
+    - a deterministic scheduling problem with precedence constraint between task
+    - a set of renewable resource with variable availability (capacity)
+    - a set of non-renewable resource (consumable)
+    - task having several modes of execution, giving for each mode a deterministic resource consumption and
+    a stochastic duration
+    The goal is to minimize the overall makespan
+    """
+
     pass
 
 
@@ -1660,6 +1719,18 @@ class MultiModeMultiSkillRCPSP(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Multimode multiskill Resource project scheduling problem template
+    It consists in :
+    - a deterministic scheduling problem with precedence constraint between task
+    - a set of renewable resource with constant availability (capacity)
+    - resource can be unitary and have skills
+    - a set of non-renewable resource (consumable)
+    - task having several modes of execution, giving for each mode a deterministic resource consumption,
+    deterministic duration and skills needed
+    The goal is to minimize the overall makespan, allocating unit resource to tasks fulfilling the skills requirement.
+    """
+
     pass
 
 
@@ -1683,6 +1754,18 @@ class MultiModeMultiSkillRCPSPCalendar(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Multimode multiskill Resource project scheduling problem with resource variability template
+    It consists in :
+    - a deterministic scheduling problem with precedence constraint between task
+    - a set of renewable resource with variable availability
+    - resource can be unitary and have skills
+    - a set of non-renewable resource (consumable)
+    - task having several modes of execution, giving for each mode a deterministic resource consumption,
+    deterministic duration and skills needed
+    The goal is to minimize the overall makespan, allocating unit resource to tasks fulfilling the skills requirement.
+    """
+
     pass
 
 
@@ -1703,6 +1786,17 @@ class MultiModeRCPSP_Stochastic_Durations(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Multimode Resource project scheduling problem with stochastic durations template.
+    It consists in :
+    - a scheduling problem with precedence constraint between task
+    - a set of renewable resource with constant availability (capacity)
+    - a set of non-renewable resource (consumable)
+    - task having several modes of execution, giving for each mode a deterministic resource consumption and
+    a stochastic duration
+    The goal is to minimize the overall expected makespan
+    """
+
     pass
 
 
@@ -1724,6 +1818,15 @@ class SingleModeRCPSP_Stochastic_Durations(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Resource project scheduling problem template.
+    It consists in :
+    - a scheduling problem with precedence constraint between task
+    - a set of renewable resource with constant availability (capacity)
+    - task having a deterministic resource consumption and a stochastic duration
+    The goal is to minimize the overall expected makespan
+    """
+
     pass
 
 
@@ -1745,6 +1848,16 @@ class SingleModeRCPSP_Stochastic_Durations_WithConditionalTasks(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Resource project scheduling problem with stochastic duration and conditional tasks template.
+    It consists in :
+    - a deterministic scheduling problem with precedence constraint between task
+    - a set of renewable resource with constant availability (capacity)
+    - task having a deterministic resource consumption and a stochastic duration given as a distribution
+    - based on duration of tasks, some optional tasks have to be executed.
+    The goal is to minimize the overall expected makespan
+    """
+
     pass
 
 
@@ -1766,4 +1879,14 @@ class SingleModeRCPSP_Simulated_Stochastic_Durations_WithConditionalTasks(
     WithoutModeCosts,
     WithoutResourceCosts,
 ):
+    """
+    Resource project scheduling problem with stochastic duration and conditional tasks template.
+    It consists in :
+    - a deterministic scheduling problem with precedence constraint between task
+    - a set of renewable resource with constant availability (capacity)
+    - task having a deterministic resource consumption and a stochastic duration that is simulated as blackbox
+    - based on duration of tasks, some optional tasks have to be executed.
+    The goal is to minimize the overall expected makespan
+    """
+
     pass
