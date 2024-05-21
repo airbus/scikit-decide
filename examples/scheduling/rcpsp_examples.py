@@ -1,6 +1,6 @@
 from examples.scheduling.rcpsp_datasets import get_complete_path
 from examples.scheduling.rcpsp_multiskill_datasets import get_data_available_ms
-from skdecide import rollout_episode
+from skdecide import rollout
 from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP, RCPSP
 from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import (
     load_domain,
@@ -17,13 +17,15 @@ def random_walk():
     domain: RCPSP = load_domain(get_complete_path("j301_1.sm"))
     state = domain.get_initial_state()
     domain.set_inplace_environment(False)
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         solver=None,
         from_memory=state,
         max_steps=500,
         outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-    )
+        action_formatter=None,
+        return_episodes=True,
+    )[0]
     print(sum([v.cost for v in values]))
     print("rollout done")
     print("end times: ")
@@ -65,13 +67,15 @@ def do_singlemode():
     solver.solve()
     print(do_solver)
 
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         solver=solver,
         from_memory=state,
         max_steps=500,
         outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-    )
+        action_formatter=None,
+        return_episodes=True,
+    )[0]
     print(sum([v.cost for v in values]))
     print("rollout done")
     print("end times: ")
@@ -92,14 +96,15 @@ def do_multimode():
         method=SolvingMethod.CP,
     )
     solver.solve()
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         solver=solver,
         from_memory=state,
         max_steps=1000,
         action_formatter=lambda a: f"{a}",
         outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-    )
+        return_episodes=True,
+    )[0]
     print("rollout done")
     print("end times: ")
     for task_id in states[-1].tasks_details.keys():
@@ -109,14 +114,15 @@ def do_multimode():
 def random_walk_multiskill():
     domain: MSRCPSP = load_multiskill_domain(get_data_available_ms()[0])
     state = domain.get_initial_state()
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         solver=None,
         from_memory=state,
         max_steps=1000,
         action_formatter=lambda a: f"{a}",
         outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-    )
+        return_episodes=True,
+    )[0]
     print("rollout done")
     print("end times: ")
     for task_id in states[-1].tasks_details.keys():
@@ -138,14 +144,15 @@ def do_multiskill():
     )
     solver.get_available_methods(domain)
     solver.solve()
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         solver=solver,
         from_memory=state,
         max_steps=3000,
         action_formatter=lambda a: f"{a}",
         outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-    )
+        return_episodes=True,
+    )[0]
     print(sum([v.cost for v in values]))
     print("rollout done")
     print("end times: ")

@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Set, Union
 import pytest
 from discrete_optimization.generic_tools.cp_tools import CPSolverName
 
-from skdecide import DiscreteDistribution, Distribution, rollout_episode
+from skdecide import DiscreteDistribution, Distribution, rollout
 from skdecide.builders.domain.scheduling.conditional_tasks import (
     WithoutConditionalTasks,
 )
@@ -476,7 +476,7 @@ class ToySimulatedCondSRCPSPDomain(
 )
 def test_rollout(domain, random_seed):
     state = domain.get_initial_state()
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=None,
@@ -484,7 +484,8 @@ def test_rollout(domain, random_seed):
         action_formatter=None,
         outcome_formatter=None,
         verbose=False,
-    )
+        return_episodes=True,
+    )[0]
     check_rollout_consistency(domain, states)
 
 
@@ -635,7 +636,7 @@ def test_do(domain, do_solver):
     )
     solver.solve()
     print(do_solver)
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=solver,
@@ -643,7 +644,8 @@ def test_do(domain, do_solver):
         action_formatter=None,
         outcome_formatter=None,
         verbose=False,
-    )
+        return_episodes=True,
+    )[0]
     # action_formatter=lambda o: str(o),
     # outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
     check_rollout_consistency(domain, states)
@@ -674,7 +676,7 @@ def test_do_mskill(domain_multiskill, do_solver_multiskill):
     )
     solver.solve()
     print(do_solver_multiskill)
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain_multiskill,
         max_steps=1000,
         solver=solver,
@@ -682,7 +684,8 @@ def test_do_mskill(domain_multiskill, do_solver_multiskill):
         action_formatter=None,
         outcome_formatter=None,
         verbose=False,
-    )
+        return_episodes=True,
+    )[0]
     check_rollout_consistency(domain_multiskill, states)
 
 
@@ -706,7 +709,7 @@ def test_planning_algos(domain, solver_str):
     if solver_str == "LazyAstar":
         solver = LazyAstar(domain_factory=lambda: domain, heuristic=None, verbose=False)
     solver.solve(from_memory=state)
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=solver,
@@ -714,7 +717,8 @@ def test_planning_algos(domain, solver_str):
         action_formatter=None,
         outcome_formatter=None,
         verbose=False,
-    )
+        return_episodes=True,
+    )[0]
     check_rollout_consistency(domain, states)
 
 
@@ -734,7 +738,7 @@ def test_conditional_task_models(domain):
     np.random.seed(42)
     for i in range(n_rollout):
         state = domain.get_initial_state()
-        states, actions, values = rollout_episode(
+        states, actions, values = rollout(
             domain=domain,
             max_steps=1000,
             solver=None,
@@ -742,7 +746,8 @@ def test_conditional_task_models(domain):
             verbose=False,
             outcome_formatter=None,
             action_formatter=None,
-        )
+            return_episodes=True,
+        )[0]
         if (
             ConditionElementsExample.PROBLEM_OPERATION_2
             in states[-1]._current_conditions
@@ -782,7 +787,7 @@ def test_optimality(domain, do_solver):
     )
     solver.solve()
     print(do_solver)
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=solver,
@@ -790,7 +795,8 @@ def test_optimality(domain, do_solver):
         action_formatter=None,
         outcome_formatter=None,
         verbose=False,
-    )
+        return_episodes=True,
+    )[0]
     tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
     makespan = max([tasks_complete_dict[x].end for x in states[-1].tasks_complete])
     if isinstance(domain, ToyRCPSPDomain):
@@ -823,7 +829,7 @@ def test_gecode_optimality(domain, do_solver):
     )
     solver.solve()
     print(do_solver)
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=solver,
@@ -831,7 +837,8 @@ def test_gecode_optimality(domain, do_solver):
         action_formatter=None,
         outcome_formatter=None,
         verbose=False,
-    )
+        return_episodes=True,
+    )[0]
 
     tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
     makespan = max([tasks_complete_dict[x].end for x in states[-1].tasks_complete])
@@ -911,7 +918,7 @@ def test_sgs_policies(domain):
     )
     solver.solve()
     solver.set_domain(domain)
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=solver,
@@ -919,7 +926,8 @@ def test_sgs_policies(domain):
         action_formatter=None,
         outcome_formatter=None,
         verbose=False,
-    )
+        return_episodes=True,
+    )[0]
     print("Cost :", sum([v.cost for v in values]))
     check_rollout_consistency(domain, states)
 
@@ -935,7 +943,7 @@ def test_sgs_policies(domain):
     )
     solver.solve()
     solver.set_domain(training_domains[0])
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=training_domains[0],
         max_steps=1000,
         solver=solver,
@@ -943,7 +951,8 @@ def test_sgs_policies(domain):
         action_formatter=None,
         outcome_formatter=None,
         verbose=False,
-    )
+        return_episodes=True,
+    )[0]
     print("Cost :", sum([v.cost for v in values]))
     check_rollout_consistency(domain, states)
 
@@ -993,7 +1002,7 @@ def test_do_with_cb(caplog):
 
     # action_formatter=lambda o: str(o),
     # outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=solver,
@@ -1001,5 +1010,6 @@ def test_do_with_cb(caplog):
         action_formatter=None,
         outcome_formatter=None,
         verbose=False,
-    )
+        return_episodes=True,
+    )[0]
     check_rollout_consistency(domain, states)

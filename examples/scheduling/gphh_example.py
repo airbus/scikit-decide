@@ -1,4 +1,5 @@
 import json
+import logging
 import operator
 import os
 import pickle
@@ -6,7 +7,7 @@ import pickle
 import numpy as np
 
 from examples.scheduling.rcpsp_datasets import get_complete_path, get_data_available
-from skdecide import rollout_episode
+from skdecide import rollout
 from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP
 from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
@@ -138,14 +139,17 @@ def fitness_makespan_correlation():
 
         domain.set_inplace_environment(False)
         state = domain.get_initial_state()
-        states, actions, values = rollout_episode(
+        states, actions, values = rollout(
             domain=domain,
             max_steps=1000,
             solver=gphh_policy,
             from_memory=state,
             verbose=False,
+            goal_logging_level=logging.DEBUG,
             outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-        )
+            action_formatter=None,
+            return_episodes=True,
+        )[0]
 
         policy_makespan = states[-1].t
 
@@ -218,14 +222,17 @@ def run_gphh():
         pickle.dump(dict(hof=heuristic), file)
         file.close()
         solver.set_domain(domain)
-        states, actions, values = rollout_episode(
+        states, actions, values = rollout(
             domain=domain,
             max_steps=1000,
             solver=solver,
             from_memory=state,
             verbose=False,
+            goal_logging_level=logging.DEBUG,
             outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-        )
+            action_formatter=None,
+            return_episodes=True,
+        )[0]
         print("Cost :", sum([v.cost for v in values]))
         makespans.append(sum([v.cost for v in values]))
 
@@ -301,14 +308,17 @@ def run_pooled_gphh():
             pool_aggregation_method=PoolAggregationMethod.MEAN,
             remove_extremes_values=remove_extreme_values,
         )
-        states, actions, values = rollout_episode(
+        states, actions, values = rollout(
             domain=domain,
             max_steps=1000,
             solver=pooled_gphh_solver,
             from_memory=state,
             verbose=False,
+            goal_logging_level=logging.DEBUG,
             outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-        )
+            action_formatter=None,
+            return_episodes=True,
+        )[0]
         print("Cost :", sum([v.cost for v in values]))
         makespans.append(sum([v.cost for v in values]))
 
@@ -376,14 +386,17 @@ def run_gphh_with_settings():
         params_gphh=params_gphh,
     )
     solver.solve()
-    states, actions, values = rollout_episode(
+    states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
         solver=solver,
         from_memory=state,
         verbose=False,
+        goal_logging_level=logging.DEBUG,
         outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-    )
+        action_formatter=None,
+        return_episodes=True,
+    )[0]
     print("Cost :", sum([v.cost for v in values]))
 
 
@@ -448,14 +461,17 @@ def compare_settings():
                 domain.set_inplace_environment(False)
                 state = domain.get_initial_state()
                 solver.set_domain(domain)
-                states, actions, values = rollout_episode(
+                states, actions, values = rollout(
                     domain=domain,
                     max_steps=1000,
                     solver=solver,
                     from_memory=state,
                     verbose=False,
+                    goal_logging_level=logging.DEBUG,
                     outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-                )
+                    action_formatter=None,
+                    return_episodes=True,
+                )[0]
                 print("One GPHH done")
                 print("Best evolved heuristic: ", solver.best_heuristic)
                 print("Cost: ", sum([v.cost for v in values]))
@@ -547,14 +563,17 @@ def run_comparaison_stochastic():
         for i in range(repeat_runs):
             state = domain.get_initial_state()
             solver = None
-            states, actions, values = rollout_episode(
+            states, actions, values = rollout(
                 domain=domain,
                 max_steps=1000,
                 solver=solver,
                 from_memory=state,
                 verbose=False,
+                goal_logging_level=logging.DEBUG,
                 outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-            )
+                action_formatter=None,
+                return_episodes=True,
+            )[0]
             print("One random Walk complete")
             print("Cost :", sum([v.cost for v in values]))
             all_results[original_domain_name]["random_walk"].append(
@@ -578,14 +597,17 @@ def run_comparaison_stochastic():
         )
         solver.solve()
         print(do_solver)
-        states, actions, values = rollout_episode(
+        states, actions, values = rollout(
             domain=domain,
             solver=solver,
             from_memory=state,
             max_steps=500,
             verbose=False,
+            goal_logging_level=logging.DEBUG,
             outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-        )
+            action_formatter=None,
+            return_episodes=True,
+        )[0]
         print("Cost: ", sum([v.cost for v in values]))
         print("CP done")
         all_results[original_domain_name]["cp"].append(sum([v.cost for v in values]))
@@ -608,14 +630,17 @@ def run_comparaison_stochastic():
             print(do_solver)
             domain: RCPSP = test_domain
             domain.set_inplace_environment(False)
-            states, actions, values = rollout_episode(
+            states, actions, values = rollout(
                 domain=domain,
                 solver=solver,
                 from_memory=state,
                 max_steps=500,
                 verbose=False,
+                goal_logging_level=logging.DEBUG,
                 outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-            )
+                action_formatter=None,
+                return_episodes=True,
+            )[0]
             print("Cost: ", sum([v.cost for v in values]))
             print("CP_SGS done")
             all_results[original_domain_name]["cp_sgs"].append(
@@ -638,14 +663,17 @@ def run_comparaison_stochastic():
         )
         solver.solve()
         print(do_solver)
-        states, actions, values = rollout_episode(
+        states, actions, values = rollout(
             domain=domain,
             solver=solver,
             from_memory=state,
             max_steps=500,
             verbose=False,
+            goal_logging_level=logging.DEBUG,
             outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-        )
+            action_formatter=None,
+            return_episodes=True,
+        )[0]
         print("Cost: ", sum([v.cost for v in values]))
         print("PILE done")
         all_results[original_domain_name]["pile"].append(sum([v.cost for v in values]))
@@ -721,14 +749,17 @@ def run_comparaison_stochastic():
             domain.set_inplace_environment(False)
             state = domain.get_initial_state()
             solver.set_domain(domain)
-            states, actions, values = rollout_episode(
+            states, actions, values = rollout(
                 domain=domain,
                 max_steps=1000,
                 solver=solver,
                 from_memory=state,
                 verbose=False,
+                goal_logging_level=logging.DEBUG,
                 outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-            )
+                action_formatter=None,
+                return_episodes=True,
+            )[0]
             print("One GPHH done")
             print("Best evolved heuristic: ", solver.best_heuristic)
             print("Cost: ", sum([v.cost for v in values]))
@@ -798,14 +829,17 @@ def run_comparaison():
         for i in range(n_walks):
             state = domain.get_initial_state()
             solver = None
-            states, actions, values = rollout_episode(
+            states, actions, values = rollout(
                 domain=domain,
                 max_steps=1000,
                 solver=solver,
                 from_memory=state,
                 verbose=False,
+                goal_logging_level=logging.DEBUG,
                 outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-            )
+                action_formatter=None,
+                return_episodes=True,
+            )[0]
             print("One random Walk complete")
             print("Cost :", sum([v.cost for v in values]))
             all_results[test_domain_str]["random_walk"].append(
@@ -830,14 +864,17 @@ def run_comparaison():
         )
         solver.solve()
         print(do_solver)
-        states, actions, values = rollout_episode(
+        states, actions, values = rollout(
             domain=domain,
             solver=solver,
             from_memory=state,
             max_steps=500,
             verbose=False,
+            goal_logging_level=logging.DEBUG,
             outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-        )
+            action_formatter=None,
+            return_episodes=True,
+        )[0]
         print("Cost: ", sum([v.cost for v in values]))
         print("CP done")
         all_results[test_domain_str]["cp"].append(sum([v.cost for v in values]))
@@ -859,14 +896,17 @@ def run_comparaison():
         )
         solver.solve()
         print(do_solver)
-        states, actions, values = rollout_episode(
+        states, actions, values = rollout(
             domain=domain,
             solver=solver,
             from_memory=state,
             max_steps=500,
             verbose=False,
+            goal_logging_level=logging.DEBUG,
             outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-        )
+            action_formatter=None,
+            return_episodes=True,
+        )[0]
         print("Cost: ", sum([v.cost for v in values]))
         print("CP_SGS done")
         all_results[test_domain_str]["cp_sgs"].append(sum([v.cost for v in values]))
@@ -888,14 +928,17 @@ def run_comparaison():
         )
         solver.solve()
         print(do_solver)
-        states, actions, values = rollout_episode(
+        states, actions, values = rollout(
             domain=domain,
             solver=solver,
             from_memory=state,
             max_steps=500,
             verbose=False,
+            goal_logging_level=logging.DEBUG,
             outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-        )
+            action_formatter=None,
+            return_episodes=True,
+        )[0]
         print("Cost: ", sum([v.cost for v in values]))
         print("PILE done")
         all_results[test_domain_str]["pile"].append(sum([v.cost for v in values]))
@@ -976,14 +1019,17 @@ def run_comparaison():
             domain.set_inplace_environment(False)
             state = domain.get_initial_state()
             solver.set_domain(domain)
-            states, actions, values = rollout_episode(
+            states, actions, values = rollout(
                 domain=domain,
                 max_steps=1000,
                 solver=solver,
                 from_memory=state,
                 verbose=False,
+                goal_logging_level=logging.DEBUG,
                 outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-            )
+                action_formatter=None,
+                return_episodes=True,
+            )[0]
             print("One GPHH done")
             print("Best evolved heuristic: ", solver.best_heuristic)
             print("Cost: ", sum([v.cost for v in values]))
@@ -1042,14 +1088,17 @@ def compute_ref_permutations():
         all_permutations[td_name] = full_permutation
 
         state = td.get_initial_state()
-        states, actions, values = rollout_episode(
+        states, actions, values = rollout(
             domain=td,
             max_steps=1000,
             solver=solver,
             from_memory=state,
             verbose=False,
+            goal_logging_level=logging.DEBUG,
             outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-        )
+            action_formatter=None,
+            return_episodes=True,
+        )[0]
 
         makespan = sum([v.cost for v in values])
         all_makespans[td_name] = makespan

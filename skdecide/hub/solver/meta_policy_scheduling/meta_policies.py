@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
-from skdecide import rollout_episode
+from skdecide import rollout
 from skdecide.builders.domain.scheduling.scheduling_domains import D, SchedulingDomain
 from skdecide.builders.solver import DeterministicPolicies
 
@@ -62,14 +62,16 @@ class MetaPolicy(DeterministicPolicies):
             for method in self.policies:
                 results[method] = 0.0
                 for j in range(self.nb_rollout_estimation):
-                    states, actions, values = rollout_episode(
+                    states, actions, values = rollout(
                         domain=self.domain,
                         solver=self.policies[method],
                         outcome_formatter=None,
                         action_formatter=None,
                         verbose=False,
+                        goal_logging_level=logging.DEBUG,
                         from_memory=observation.copy(),
-                    )
+                        return_episodes=True,
+                    )[0]
                     results[method] += states[-1].t - observation.t
                     actions_map[method] = actions[0]
             if self.verbose:

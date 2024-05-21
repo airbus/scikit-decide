@@ -516,36 +516,6 @@ class GPHH(Solver, DeterministicPolicies):
             else:
                 self.reference_permutations[td] = reference_permutations[td_name]
 
-    # def init_reference_makespans(self, reference_makespans={}, training_domains_names=[]) -> None:
-    #     self.reference_makespans = {}
-    #     for i in range(len(self.training_domains)):
-    #         td = self.training_domains[i]
-    #         td_name = training_domains_names[i]
-    #     # for td in self.training_domains:
-    #         print('td:',td)
-    #         if td_name not in reference_makespans.keys():
-    #             # Run CP
-    #             td.set_inplace_environment(False)
-    #             solver = DOSolver(policy_method_params=PolicyMethodParams(base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
-    #                                                           delta_index_freedom=0,
-    #                                                           delta_time_freedom=0),
-    #                               method=SolvingMethod.CP)
-    #             solver.solve(domain_factory=lambda: td)
-    #
-    #             state = td.get_initial_state()
-    #             states, actions, values = rollout_episode(domain=td,
-    #                                                       max_steps=1000,
-    #                                                       solver=solver,
-    #                                                       from_memory=state,
-    #                                                       verbose=False,
-    #                                                       outcome_formatter=lambda
-    #                                                           o: f'{o.observation} - cost: {o.value.cost:.2f}')
-    #
-    #             makespan = sum([v.cost for v in values])
-    #             self.reference_makespans[td] = makespan
-    #         else:
-    #             self.reference_makespans[td] = reference_makespans[td_name]
-
     def _solve(self) -> None:
         self.domain = self._domain_factory()
 
@@ -712,41 +682,7 @@ class GPHH(Solver, DeterministicPolicies):
             vals.append(do_makespan)
 
         fitness = [np.mean(vals)]
-        # fitness = [np.max(vals)]
         return fitness
-
-    # def evaluate_heuristic_sgs_deviation(self, individual, domains) -> float:
-    #     vals = []
-    #     func_heuristic = self.toolbox.compile(expr=individual)
-    #     # selected_domains = random.sample(domains, 3)
-    #     selected_domains = domains
-    #
-    #     for domain in selected_domains:
-    #         policy = GPHHPolicy(domain, domain,
-    #                             func_heuristic,
-    #                             features=self.list_feature,
-    #                             params_gphh=self.params_gphh, recompute_cpm=False, cpm_data=self.cpm_data
-    #                             )
-    #         state = domain.get_initial_state().copy()
-    #         domain.set_inplace_environment(True)  # we can use True because we don't use the value
-    #
-    #         states, actions, values = rollout_episode(domain=domain,
-    #                                                   max_steps=10000,
-    #                                                   solver=policy,
-    #                                                   from_memory=state,
-    #                                                   verbose=False,
-    #                                                   outcome_formatter=lambda
-    #                                                       o: f'{o.observation} - cost: {o.value.cost:.2f}')
-    #
-    #         makespan = states[-1].t
-    #         ref_makespan = self.reference_makespans[domain]
-    #         makespan_deviation = (makespan - ref_makespan) / ref_makespan
-    #         # print('mk: ', makespan, ' - mk_dev: ', makespan_deviation, ' - ref: ', ref_makespan)
-    #         vals.append(makespan_deviation)
-    #
-    #     # fitness = [np.mean(vals)]
-    #     fitness = [np.mean(vals)]
-    #     return fitness
 
     def initialize_cpm_data_for_training(self):
         self.cpm_data = {}
