@@ -12,6 +12,7 @@ from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP
 
 
 def load_domain(file_path):
+    """"""
     from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel
     from discrete_optimization.rcpsp.rcpsp_parser import parse_file
 
