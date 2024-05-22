@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
 from discrete_optimization.generic_tools.callbacks.callback import Callback
 from discrete_optimization.generic_tools.do_problem import Problem
@@ -53,12 +53,15 @@ class SolvingMethod(Enum):
 
 
 def build_solver(
-    solving_method: SolvingMethod, do_domain: Problem
-) -> Tuple[SolverDO, Dict[str, Any]]:
+    solving_method: Optional[SolvingMethod],
+    solver_type: Optional[Type[SolverDO]],
+    do_domain: Problem,
+) -> Tuple[Type[SolverDO], Dict[str, Any]]:
     """Build the discrete-optimization solver for a given solving method
 
     # Parameters
-    solving_method: method of the solver
+    solving_method: method of the solver (enum)
+    solver_type: potentially a solver class already specified by the do_solver
     do_domain: discrete-opt problem to solve.
     """
     if isinstance(do_domain, RCPSPModel):
@@ -78,6 +81,8 @@ def build_solver(
     else:
         raise ValueError("do_domain should be either a RCPSPModel or a MS_RCPSPModel.")
     available = look_for_solver(do_domain)
+    if solver_type is not None:
+        return solver_type, solvers_map[solver_type]
     smap = [
         (av, solvers_map[av])
         for av in available
@@ -155,6 +160,7 @@ class DOSolver(Solver, DeterministicPolicies):
     # Attributes
     - policy_method_params:  params for the returned policy.
     - method: method of the discrete-optim solver used
+    - solver_type: direct method class of do solver (will be used instead of method if solver_type is not None)
     - dict_params: specific params passed to the do-solver
     - callback: scikit-decide callback to be called inside do-solver when relevant.
     """
@@ -165,13 +171,15 @@ class DOSolver(Solver, DeterministicPolicies):
         self,
         domain_factory: Callable[[], Domain],
         policy_method_params: PolicyMethodParams,
-        method: SolvingMethod = SolvingMethod.PILE,
+        method: Optional[SolvingMethod] = None,
+        do_solver_type: Optional[Type[SolverDO]] = None,
         dict_params: Optional[Dict[Any, Any]] = None,
         callback: Callable[[DOSolver], bool] = lambda solver: False,
     ):
         Solver.__init__(self, domain_factory=domain_factory)
         self.callback = callback
         self.method = method
+        self.do_solver_type = do_solver_type
         self.policy_method_params = policy_method_params
         self.dict_params = dict_params
         if self.dict_params is None:
@@ -200,7 +208,11 @@ class DOSolver(Solver, DeterministicPolicies):
     def _solve(self) -> None:
         self.domain = self._domain_factory()
         self.do_domain = build_do_domain(self.domain)
-        solvers = build_solver(solving_method=self.method, do_domain=self.do_domain)
+        solvers = build_solver(
+            solving_method=self.method,
+            solver_type=self.do_solver_type,
+            do_domain=self.do_domain,
+        )
         solver_class = solvers[0]
         key, params = solvers[1]
         for k in params:
