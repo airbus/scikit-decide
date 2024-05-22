@@ -5,6 +5,12 @@ from typing import Any, Dict, List, Optional, Set, Union
 
 import pytest
 from discrete_optimization.generic_tools.cp_tools import CPSolverName
+from discrete_optimization.rcpsp.rcpsp_solvers import (
+    CPSatRCPSPSolver,
+    LargeNeighborhoodSearchScheduling,
+    LS_RCPSP_Solver,
+    PileSolverRCPSP,
+)
 
 from skdecide import DiscreteDistribution, Distribution, rollout
 from skdecide.builders.domain.scheduling.conditional_tasks import (
@@ -636,6 +642,52 @@ def test_do(domain, do_solver):
     )
     solver.solve()
     print(do_solver)
+    states, actions, values = rollout(
+        domain=domain,
+        max_steps=1000,
+        solver=solver,
+        from_memory=state,
+        action_formatter=None,
+        outcome_formatter=None,
+        verbose=False,
+        return_episodes=True,
+    )[0]
+    # action_formatter=lambda o: str(o),
+    # outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
+    check_rollout_consistency(domain, states)
+
+
+@pytest.mark.parametrize(
+    "domain",
+    [
+        (ToyRCPSPDomain()),
+        (ToyMRCPSPDomain_WithCost()),
+    ],
+)
+@pytest.mark.parametrize(
+    "do_solver_type",
+    [
+        PileSolverRCPSP,
+        CPSatRCPSPSolver,
+        LargeNeighborhoodSearchScheduling,
+        LS_RCPSP_Solver,
+    ],
+)
+def test_do_solver_type(domain, do_solver_type):
+    print("domain: ", domain)
+    domain.set_inplace_environment(False)
+    state = domain.get_initial_state()
+    print("Initial state : ", state)
+    solver = DOSolver(
+        domain_factory=lambda: domain,
+        do_solver_type=do_solver_type,
+        policy_method_params=PolicyMethodParams(
+            base_policy_method=BasePolicyMethod.SGS_PRECEDENCE,
+            delta_index_freedom=0,
+            delta_time_freedom=0,
+        ),
+    )
+    solver.solve()
     states, actions, values = rollout(
         domain=domain,
         max_steps=1000,
