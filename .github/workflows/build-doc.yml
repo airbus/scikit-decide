@@ -38,7 +38,7 @@ jobs:
   build-doc:
     runs-on: ubuntu-latest
     env:
-      python-version: "3.9"
+      python-version: "3.10"
     steps:
       - name: Set env variables for github links in doc
         run: |
