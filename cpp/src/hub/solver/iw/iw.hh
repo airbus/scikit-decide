@@ -51,9 +51,9 @@ template <typename Tdomain, typename Tfeature_vector> struct StateFeatureHash {
 };
 
 /**
- * @brief This is the skdecide implementation of the Iterated Width as described
- * in "Width and Serialization of Classical Planning Problems" by Nir Lipovetzky
- * and Hector Geffner (2012)
+ * @brief This is the skdecide implementation of the Iterated Width algorithm as
+ * described in "Width and Serialization of Classical Planning Problems" by Nir
+ * Lipovetzky and Hector Geffner (2012)
  *
  * @tparam Tdomain Type of the domain class
  * @tparam Tfeature_vector Type of of the state feature vector used to compute

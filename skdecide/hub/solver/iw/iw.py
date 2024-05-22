@@ -50,7 +50,7 @@ try:
         pass
 
     class IW(ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState):
-        """This is the skdecide implementation of the Iterated Width as described
+        """This is the skdecide implementation of the Iterated Width algorithm as described
         in "Width and Serialization of Classical Planning Problems" by Nir Lipovetzky
         and Hector Geffner (2012)
         """
