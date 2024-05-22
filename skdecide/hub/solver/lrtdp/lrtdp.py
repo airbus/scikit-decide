@@ -89,7 +89,7 @@ try:
                 estimate from the state to the goal.
                 Defaults to (lambda d, s: Value(cost=0)).
             use_labels (bool, optional): Boolean indicating whether labels must be used (True) or not
-                (False, in which case the algorithm is equivalent to the standard RTDP). Defaults to True.
+                (False), in which case the algorithm is equivalent to the standard RTDP). Defaults to True.
             time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
             rollout_budget (int, optional): Maximum number of rollouts (deactivated when
                 use_labels is True). Defaults to 100000.
