@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Callable, Optional, Set, Tuple, Type
+from typing import Any, Callable, List, Optional, Set, Tuple, Type
 
 from skdecide import Domain, Solver
 from skdecide.builders.domain import MultiAgent, Sequential, SingleAgent
@@ -36,6 +36,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         singleagent_domain_factory: Optional[Callable[[Domain, Any], Domain]] = None,
         multiagent_solver_kwargs=None,
         singleagent_solver_kwargs=None,
+        callback: Callable[[MAHD], bool] = lambda solver: False,
     ) -> None:
         """Construct a MAHD solver instance
 
@@ -56,6 +57,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
             multi-agent solver. Defaults to None.
         singleagent_solver_kwargs (_type_, optional): Optional arguments to be passed to the lower-level
             single-agent solver. Defaults to None.
+        callback: function called at each solver iteration. If returning true, the solve process stops.
 
         !!! warning
             One of `singleagent_domain_class` or `singleagent_domain_factory` must be not None, otherwise
@@ -63,6 +65,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
 
         """
         Solver.__init__(self, domain_factory=multiagent_domain_factory)
+        self.callback = callback
         if multiagent_solver_kwargs is None:
             multiagent_solver_kwargs = {}
         if "heuristic" in multiagent_solver_kwargs:
@@ -79,6 +82,15 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
             in inspect.signature(multiagent_solver_class.__init__).parameters
         ):
             multiagent_solver_kwargs["domain_factory"] = multiagent_domain_factory
+        # add callback to multiagent solver
+        if "callback" in inspect.signature(multiagent_solver_class.__init__).parameters:
+            mahd_callback = MahdCallback(solver=self, callback=callback)
+            if "callback" in multiagent_solver_kwargs:
+                callbacks = [mahd_callback, multiagent_solver_kwargs["callback"]]
+                multiagent_solver_kwargs["callback"] = CallbackList(callbacks=callbacks)
+            else:
+                multiagent_solver_kwargs["callback"] = mahd_callback
+
         self._multiagent_solver = multiagent_solver_class(**multiagent_solver_kwargs)
         self._multiagent_domain_factory = multiagent_domain_factory
         self._multiagent_domain = self._multiagent_domain_factory()
@@ -293,3 +305,23 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         self._multiagent_solver._cleanup()
         for a, s in self._singleagent_solvers.items():
             s._cleanup()
+
+
+class MahdCallback:
+    def __init__(self, solver: MAHD, callback: Callable[[MAHD], bool]):
+        self.callback = callback
+        self.solver = solver
+
+    def __call__(self, solver: Solver, *args, **kwargs):
+        return self.callback(self.solver)
+
+
+class CallbackList:
+    def __init__(self, callbacks: List[Callable[[...], bool]]):
+        self.callbacks = callbacks
+
+    def __call__(self, *args, **kwargs):
+        stopping = False
+        for callback in self.callbacks:
+            stopping = stopping or callback(*args, **kwargs)
+        return stopping
