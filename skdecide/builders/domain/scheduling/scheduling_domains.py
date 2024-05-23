@@ -99,14 +99,14 @@ from skdecide.builders.domain.scheduling.time_windows import (
 
 
 class SchedulingObjectiveEnum(Enum):
-    """
-    Enum defining the different scheduling objectives:
-    - MAKESPAN: makespan (to be minimize)
-    - COST: cost of resources (to be minimized)
-    """
+    """Enum defining the different scheduling objectives"""
 
     MAKESPAN = 0
     COST = 1
+
+
+SchedulingObjectiveEnum.MAKESPAN.__doc__ = "makespan (to be minimized)"
+SchedulingObjectiveEnum.COST.__doc__ = "cost of resources (to be minimized)"
 
 
 class D(

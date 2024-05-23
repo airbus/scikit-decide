@@ -33,15 +33,7 @@ class D(SchedulingDomain):
 
 
 class SolvingMethod(Enum):
-    """
-    - PILE : solve scheduling problem with greedy queue method
-    - GA : solve scheduling problem with genetic algorithm
-    - LS : solve scheduling problem with local search algorithm (hill climber or simulated annealing)
-    - LP : solve scheduling problem with constraint programming solver
-    - CP : solve scheduling problem with constraint programming solver
-    - LNS_LP : solve scheduling problem with large neighborhood search + LP solver
-    - LNS_CP : solve scheduling problem with large neighborhood search + CP solver
-    """
+    """Type of discrete-optimization algorithm to use"""
 
     PILE = "greedy"
     GA = "ga"
@@ -50,6 +42,19 @@ class SolvingMethod(Enum):
     CP = "cp"
     LNS_LP = "lns-lp"
     LNS_CP = "lns-scheduling"
+
+
+SolvingMethod.PILE.__doc__ = "solve scheduling problem with greedy queue method"
+SolvingMethod.GA.__doc__ = "solve scheduling problem with genetic algorithm"
+SolvingMethod.LS.__doc__ = "solve scheduling problem with local search algorithm (hill climber or simulated annealing)"
+SolvingMethod.LP.__doc__ = "solve scheduling problem with linear programming solver"
+SolvingMethod.CP.__doc__ = "solve scheduling problem with constraint programming solver"
+SolvingMethod.LNS_LP.__doc__ = (
+    "solve scheduling problem with large neighborhood search + LP solver"
+)
+SolvingMethod.LNS_CP.__doc__ = (
+    "solve scheduling problem with large neighborhood search + CP solver"
+)
 
 
 def build_solver(

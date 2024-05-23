@@ -23,28 +23,7 @@ from skdecide.builders.solver.policy import DeterministicPolicies
 
 
 class BasePolicyMethod(Enum):
-    """Base options to define Scheduling policies
-
-    # Attributes
-    - FOLLOW_GANTT: Strictly return scheduling policy based on the gantt chart.
-                  Based on the time stored in the state, task are started at the right time.
-    - SGS_PRECEDENCE: At a given state, look for the first available task in an ordered permutation
-                    that is start-able and do it. If no activity is launchable, just advance in time.
-    - SGS_READY:  [Same as SGS_PRECEDENCE, one of those 2 will be in deprecation]
-    - SGS_STRICT: At a given state, look for the first task in the permutation that is not started or scheduled yet,
-                If it's not available to start yet, we advance in time until it is. Warning : this will only work
-                when the permutation of tasks fulfills the precedence constraints.
-    - SGS_TIME_FREEDOM: At a given state, look for the first task "TASK" in the permutation that is not started or scheduled yet,
-                      If it's not available to start yet, some other task are considered candidates based their time
-                      closeness to the starting time of "TASK", the policy will consider starting task that are close to
-                      the one that was first expected. ```delta_time_freedom``` is the parameter that impacts this setting.
-    - SGS_INDEX_FREEDOM: At a given state, look for the first task "TASK" in the permutation that is not started or scheduled yet,
-                      If it's not available to start yet, some other task are considered candidates based their "ordering"
-                      closeness to the starting time of "TASK", the policy will consider starting task that are close to
-                      the one that was first expected. ```delta_index_freedom``` is the parameter that impacts this setting.
-    # Parameters
-    memory: The memory to set internally.
-    """
+    """Base options to define Scheduling policies"""
 
     FOLLOW_GANTT = 0
     SGS_PRECEDENCE = 1
@@ -52,6 +31,39 @@ class BasePolicyMethod(Enum):
     SGS_STRICT = 3
     SGS_TIME_FREEDOM = 4
     SGS_INDEX_FREEDOM = 5
+
+
+BasePolicyMethod.FOLLOW_GANTT.__doc__ = """
+    Strictly return scheduling policy based on the gantt chart.
+    Based on the time stored in the state, task are started at the right time.
+"""
+BasePolicyMethod.SGS_PRECEDENCE.__doc__ = """
+    At a given state, look for the first available task
+    in an ordered permutation that is start-able and do it.
+    If no activity is launchable, just advance in time.
+"""
+BasePolicyMethod.SGS_READY.__doc__ = """
+    Same as SGS_PRECEDENCE, one of those 2 will be in deprecation soon.
+"""
+BasePolicyMethod.SGS_STRICT.__doc__ = """
+    At a given state, look for the first task in the permutation that is not started or scheduled yet.
+    If it's not available to start yet, we advance in time until it is.
+
+    !!! warning
+        This will only work when the permutation of tasks fulfills the precedence constraints.
+"""
+BasePolicyMethod.SGS_TIME_FREEDOM.__doc__ = """
+    At a given state, look for the first task "TASK" in the permutation that is not started or scheduled yet,
+    If it's not available to start yet, some other task are considered candidates based their time
+    closeness to the starting time of "TASK", the policy will consider starting task that are close to
+    the one that was first expected. ```delta_time_freedom``` is the parameter that impacts this setting.
+"""
+BasePolicyMethod.SGS_INDEX_FREEDOM.__doc__ = """
+    At a given state, look for the first task "TASK" in the permutation that is not started or scheduled yet,
+    If it's not available to start yet, some other task are considered candidates based their "ordering"
+    closeness to the starting time of "TASK", the policy will consider starting task that are close to
+    the one that was first expected. ```delta_index_freedom``` is the parameter that impacts this setting.
+"""
 
 
 class PolicyMethodParams:

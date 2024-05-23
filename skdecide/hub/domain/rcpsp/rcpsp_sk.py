@@ -28,18 +28,18 @@ class D(MultiModeRCPSP):
 
 
 class MRCPSP(D):
-    """
-    Multimode RCPSP domain
+    """Multimode RCPSP domain
+
     # Attributes
-    - resource_names: list of resource names
-    - task_ids: list of tasks ids
-    - tasks_mode: dictionary giving details of resource consumption and duration for each tasks/modes :
-        format is the following : {task_id: {mode_1: {"duration": 2, "res_1": 1}, mode_2: {"duration": 3, "res_2": 2}}}
-    - successors: dictionary of precedence constraint:
-        format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
-    - max_horizon: the max horizon for scheduling
-    - resource_availability: for each resource, gives its (constant) capacity
-    - resource_renewable: for each resource, indicates if it's renewable or not
+     resource_names: list of resource names
+    task_ids: list of tasks ids
+    tasks_mode: dictionary giving details of resource consumption and duration for each tasks/modes :
+      format is the following : {task_id: {mode_1: {"duration": 2, "res_1": 1}, mode_2: {"duration": 3, "res_2": 2}}}
+    successors: dictionary of precedence constraint:
+      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+    max_horizon: the max horizon for scheduling
+    resource_availability: for each resource, gives its (constant) capacity
+    resource_renewable: for each resource, indicates if it's renewable or not
     """
 
     def __init__(
@@ -110,18 +110,18 @@ class D(MultiModeRCPSPCalendar):
 
 
 class MRCPSPCalendar(D):
-    """
-    Multimode RCPSP with calendars domain
+    """Multimode RCPSP with calendars domain
+
     # Attributes
-    - resource_names: list of resource names
-    - task_ids: list of tasks ids
-    - tasks_mode: dictionary giving details of resource consumption and duration for each tasks/modes :
-        format is the following : {task_id: {mode_1: {"duration": 2, "res_1": 1}, mode_2: {"duration": 3, "res_2": 2}}}
-    - successors: dictionary of precedence constraint:
-        format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
-    - max_horizon: the max horizon for scheduling
-    - resource_availability: for each resource, gives its capacity through time as a list of integer
-    - resource_renewable: for each resource, indicates if it's renewable or not
+    resource_names: list of resource names
+    task_ids: list of tasks ids
+    tasks_mode: dictionary giving details of resource consumption and duration for each tasks/modes :
+      format is the following : {task_id: {mode_1: {"duration": 2, "res_1": 1}, mode_2: {"duration": 3, "res_2": 2}}}
+    successors: dictionary of precedence constraint:
+      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+    max_horizon: the max horizon for scheduling
+    resource_availability: for each resource, gives its capacity through time as a list of integer
+    resource_renewable: for each resource, indicates if it's renewable or not
     """
 
     def _get_quantity_resource(self, resource: str, time: int, **kwargs) -> int:
@@ -195,18 +195,18 @@ class MRCPSPCalendar(D):
 
 
 class RCPSP(MRCPSP, SingleMode):
-    """
-    Monomode RCPSP domain
+    """Monomode RCPSP domain
+
     # Attributes
-    - resource_names: list of resource names
-    - task_ids: list of tasks ids
-    - tasks_mode: dictionary giving details of resource consumption and duration for each tasks :
-        format is the following : {task_id: {1: {"duration": 2, "res_1": 1}}, only 1 mode in this template
-    - successors: dictionary of precedence constraint:
-        format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
-    - max_horizon: the max horizon for scheduling
-    - resource_availability: for each resource, gives its constant capacity
-    - resource_renewable: for each resource, indicates if it's renewable or not
+    resource_names: list of resource names
+    task_ids: list of tasks ids
+    tasks_mode: dictionary giving details of resource consumption and duration for each tasks :
+      format is the following : {task_id: {1: {"duration": 2, "res_1": 1}}, only 1 mode in this template
+    successors: dictionary of precedence constraint:
+      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+    max_horizon: the max horizon for scheduling
+    resource_availability: for each resource, gives its constant capacity
+    resource_renewable: for each resource, indicates if it's renewable or not
     """
 
     def __init__(
@@ -238,18 +238,18 @@ class RCPSP(MRCPSP, SingleMode):
 
 
 class RCPSPCalendar(MRCPSPCalendar, SingleMode):
-    """
-    Monomode RCPSP with calendars domain
+    """Monomode RCPSP with calendars domain
+
     # Attributes
-    - resource_names: list of resource names
-    - task_ids: list of tasks ids
-    - tasks_mode: dictionary giving details of resource consumption and duration for each tasks :
-        format is the following : {task_id: {1: {"duration": 2, "res_1": 1}}, only 1 mode in this template
-    - successors: dictionary of precedence constraint:
-        format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
-    - max_horizon: the max horizon for scheduling
-    - resource_availability: for each resource, gives its capacity through time
-    - resource_renewable: for each resource, indicates if it's renewable or not
+    resource_names: list of resource names
+    task_ids: list of tasks ids
+    tasks_mode: dictionary giving details of resource consumption and duration for each tasks :
+      format is the following : {task_id: {1: {"duration": 2, "res_1": 1}}, only 1 mode in this template
+    successors: dictionary of precedence constraint:
+      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+    max_horizon: the max horizon for scheduling
+    resource_availability: for each resource, gives its capacity through time
+    resource_renewable: for each resource, indicates if it's renewable or not
     """
 
     def __init__(
@@ -281,19 +281,19 @@ class RCPSPCalendar(MRCPSPCalendar, SingleMode):
 
 
 class Stochastic_RCPSP(MultiModeRCPSP_Stochastic_Durations):
-    """
-    Stochastic RCPSP
+    """Stochastic RCPSP
+
     # Attributes
-    - resource_names: list of resource names
-    - task_ids: list of tasks ids
-    - tasks_mode: dictionary giving details of resource consumption and duration for each tasks :
-        format is the following : {task_id: {1: {"res_1": 1}, 2: {"res_1": 2}}
-    - duration_distribution: dictionary giving distribution of task duration function of mode.
-    - successors: dictionary of precedence constraint:
-        format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
-    - max_horizon: the max horizon for scheduling
-    - resource_availability: for each resource, gives its constant capacity
-    - resource_renewable: for each resource, indicates if it's renewable or not
+    resource_names: list of resource names
+    task_ids: list of tasks ids
+    tasks_mode: dictionary giving details of resource consumption and duration for each tasks :
+      format is the following : {task_id: {1: {"res_1": 1}, 2: {"res_1": 2}}
+    duration_distribution: dictionary giving distribution of task duration function of mode.
+    successors: dictionary of precedence constraint:
+      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+    max_horizon: the max horizon for scheduling
+    resource_availability: for each resource, gives its constant capacity
+    resource_renewable: for each resource, indicates if it's renewable or not
     """
 
     def _get_max_horizon(self) -> int:
@@ -427,19 +427,19 @@ class D(MultiModeRCPSPCalendar_Stochastic_Durations):
 
 
 class SMRCPSPCalendar(D):
-    """
-    Stochastic RCPSP With calendars domain
+    """Stochastic RCPSP With calendars domain
+
     # Attributes
-    - resource_names: list of resource names
-    - task_ids: list of tasks ids
-    - tasks_mode: dictionary giving details of resource consumption and duration for each tasks :
-        format is the following : {task_id: {1: {"res_1": 1}, 2: {"res_1": 2}}
-    - duration_distribution: dictionary giving distribution of task duration function of mode.
-    - successors: dictionary of precedence constraint:
-        format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
-    - max_horizon: the max horizon for scheduling
-    - resource_availability: for each resource, gives its variable capacity
-    - resource_renewable: for each resource, indicates if it's renewable or not
+    resource_names: list of resource names
+    task_ids: list of tasks ids
+    tasks_mode: dictionary giving details of resource consumption and duration for each tasks :
+      format is the following : {task_id: {1: {"res_1": 1}, 2: {"res_1": 2}}
+    duration_distribution: dictionary giving distribution of task duration function of mode.
+    successors: dictionary of precedence constraint:
+      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+    max_horizon: the max horizon for scheduling
+    resource_availability: for each resource, gives its variable capacity
+    resource_renewable: for each resource, indicates if it's renewable or not
     """
 
     def _get_task_duration_distribution(
@@ -525,14 +525,14 @@ class D(MultiModeMultiSkillRCPSP):
 
 
 class MSRCPSP(D):
-    """
-    Multi-skill RCPSP domain
+    """Multi-skill RCPSP domain
+
     # Attributes
-    -skills_names: list of skills id
-    -resource_unit_names: list of unitary skilled resource
-    -resource_type_names: list of cumulative resource
-    -resource_skills: for each resource_unit and skills store the skill level
-    -others : see classical RCPSP doc
+    skills_names: list of skills id
+    resource_unit_names: list of unitary skilled resource
+    resource_type_names: list of cumulative resource
+    resource_skills: for each resource_unit and skills store the skill level
+    others : see classical RCPSP doc
     """
 
     def __init__(
