@@ -1,7 +1,6 @@
 # Copyright (c) AIRBUS and its affiliates.
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-
 import ast
 import importlib
 import inspect
@@ -12,6 +11,7 @@ import pkgutil
 import re
 import sys
 import urllib
+from enum import Enum
 from functools import lru_cache
 from glob import glob
 from typing import Any, List, Tuple
@@ -71,6 +71,8 @@ def get_ref(object):
     name = getattr(object, "__qualname__", None)
     if name is None:
         name = getattr(object, "__name__", None)
+        if isinstance(object, Enum):
+            name = getattr(object, "name", None)
         if name is None:
             name = object._name
     reflist = [name]
@@ -103,8 +105,20 @@ def format_doc(doc):
         flags=re.MULTILINE,
     )
 
+    doc = re.sub(
+        r"^(?<=# Attributes\n)(?P<content>(?:\n?\s*\w.*)+)",
+        lambda m: list_content(m.group("content")),
+        doc,
+        flags=re.MULTILINE,
+    )
+
     # Replace "# Title" (e.g. "# Parameters") by "#### Title"
-    doc = re.sub(r"^# (?=Parameters|Returns|Example)", "#### ", doc, flags=re.MULTILINE)
+    doc = re.sub(
+        r"^# (?=Parameters|Attributes|Returns|Example)",
+        "#### ",
+        doc,
+        flags=re.MULTILINE,
+    )
 
     # Replace "!!! container" (e.g. "!!! tip") by "::: container [...] :::"
     def strip_content(content):
@@ -154,10 +168,16 @@ def add_func_method_infos(func_method, autodoc):
 def add_basic_member_infos(member, autodoc):
     try:
         autodoc["ref"] = get_ref(member)
-        source, line = inspect.getsourcelines(member)
-        autodoc["source"] = "".join(source)  # TODO: keep?
-        autodoc["line"] = line
-        doc = inspect.getdoc(member)
+        if isinstance(member, Enum):
+            doc = inspect.getdoc(member)
+            if doc == inspect.getdoc(type(member)):
+                # same doc as the enum class (if enum member doc have not been specified): do not repeat it
+                doc = ""
+        else:
+            source, line = inspect.getsourcelines(member)
+            autodoc["source"] = "".join(source)
+            autodoc["line"] = line
+            doc = inspect.getdoc(member)
         if doc is not None:
             autodoc["doc"] = format_doc(doc)
     except Exception:  # can happen e.g. when member is TypeVar
@@ -430,7 +450,8 @@ if __name__ == "__main__":
                                 or submember_name == "__init__"
                             ):
                                 add_func_method_infos(submember, autodoc_submember)
-
+                            elif isinstance(submember, Enum):
+                                autodoc_submember["type"] = "enum"
                             else:
                                 # Class variables (e.g. T_memory, T_agent...)
                                 autodoc_submember["type"] = "variable"
