@@ -469,9 +469,6 @@ class GridShmProxy:
 
 
 def test_solver_cpp(solver_cpp, parallel, shared_memory):
-    if solver_cpp["entry"] == "UCT":
-        pytest.skip("There is a heap corruption in MCTS solver")
-
     dom = GridDomain()
     solver_type = load_registered_solver(solver_cpp["entry"])
     solver_args = deepcopy(solver_cpp["config"])
@@ -516,9 +513,6 @@ class MyCallback:
 
 
 def test_solver_cpp_with_cb(solver_cpp, parallel, shared_memory, caplog):
-    if solver_cpp["entry"] == "UCT":
-        pytest.skip("There is a heap corruption in MCTS solver")
-
     solver_type = load_registered_solver(solver_cpp["entry"])
     if "callback" not in inspect.signature(solver_type.__init__).parameters:
         pytest.skip(f"Solver {solver_cpp['entry']} is not yet implementing callbacks.")
