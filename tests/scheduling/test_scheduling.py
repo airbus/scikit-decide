@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Set, Union
 import pytest
 from discrete_optimization.generic_tools.cp_tools import CPSolverName
 from discrete_optimization.rcpsp.rcpsp_solvers import (
-    CPSatRCPSPSolver,
+    GA_RCPSP_Solver,
     LargeNeighborhoodSearchScheduling,
     LS_RCPSP_Solver,
     PileSolverRCPSP,
@@ -668,7 +668,7 @@ def test_do(domain, do_solver):
     "do_solver_type",
     [
         PileSolverRCPSP,
-        CPSatRCPSPSolver,
+        GA_RCPSP_Solver,
         LargeNeighborhoodSearchScheduling,
         LS_RCPSP_Solver,
     ],

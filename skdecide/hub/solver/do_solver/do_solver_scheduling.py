@@ -68,6 +68,10 @@ def build_solver(
     solving_method: method of the solver (enum)
     solver_type: potentially a solver class already specified by the do_solver
     do_domain: discrete-opt problem to solve.
+
+    # Returns
+    A class of do-solver, associated with some default parameters to be passed to its constructor and solve function
+    (and potentially init_model function)
     """
     if isinstance(do_domain, RCPSPModel):
         from discrete_optimization.rcpsp.rcpsp_solvers import (
@@ -87,14 +91,17 @@ def build_solver(
         raise ValueError("do_domain should be either a RCPSPModel or a MS_RCPSPModel.")
     available = look_for_solver(do_domain)
     if solver_type is not None:
-        return solver_type, solvers_map[solver_type]
+        if solver_type in solvers_map:
+            return solver_type, solvers_map[solver_type][1]
+        else:
+            return solver_type, {}
     smap = [
         (av, solvers_map[av])
         for av in available
         if solvers_map[av][0] == solving_method.value
     ]
     if len(smap) > 0:
-        return smap[0]
+        return smap[0][0], smap[0][1][1]
     else:
         raise ValueError(
             f"solving_method {solving_method} not available for {do_domain_cls}."
@@ -219,7 +226,7 @@ class DOSolver(Solver, DeterministicPolicies):
             do_domain=self.do_domain,
         )
         solver_class = solvers[0]
-        key, params = solvers[1]
+        params = solvers[1]
         for k in params:
             if k not in self.dict_params:
                 self.dict_params[k] = params[k]

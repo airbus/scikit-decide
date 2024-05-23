@@ -1,3 +1,5 @@
+from discrete_optimization.rcpsp.rcpsp_solvers import CP_MRCPSP_MZN, CP_RCPSP_MZN
+
 from examples.scheduling.rcpsp_datasets import get_complete_path
 from examples.scheduling.rcpsp_multiskill_datasets import get_data_available_ms
 from skdecide import rollout
@@ -50,7 +52,6 @@ def random_walk():
 
 
 def do_singlemode():
-    do_solver = SolvingMethod.CP
     domain: RCPSP = load_domain(get_complete_path("j301_1.sm"))
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
@@ -62,11 +63,9 @@ def do_singlemode():
             delta_index_freedom=0,
             delta_time_freedom=0,
         ),
-        method=do_solver,
+        do_solver_type=CP_RCPSP_MZN,
     )
     solver.solve()
-    print(do_solver)
-
     states, actions, values = rollout(
         domain=domain,
         solver=solver,
@@ -93,7 +92,7 @@ def do_multimode():
             delta_index_freedom=0,
             delta_time_freedom=0,
         ),
-        method=SolvingMethod.CP,
+        do_solver_type=CP_MRCPSP_MZN,
     )
     solver.solve()
     states, actions, values = rollout(
