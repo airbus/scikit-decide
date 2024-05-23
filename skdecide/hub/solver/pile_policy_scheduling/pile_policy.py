@@ -24,20 +24,20 @@ D = SchedulingDomain
 
 
 class GreedyChoice(Enum):
-    """Enumeration representing different greedy method to use in PilePolicy
-
-    Attributes:
-        MOST_SUCCESSORS (int): Start first the tasks that have the most successors in the precedence graph
-        SAMPLE_MOST_SUCCESSORS (int): Sample next task to schedule based on a probability weight proportional
-        to its number of successors in the precedence graph.
-        FASTEST (int): Schedule first the task that has the lowest duration
-        TOTALLY_RANDOM (int): Sample random next task to schedule next.
-    """
+    """Enumeration representing different greedy method to use in PilePolicy"""
 
     MOST_SUCCESSORS = 1
     SAMPLE_MOST_SUCCESSORS = 2
     FASTEST = 3
     TOTALLY_RANDOM = 4
+
+
+GreedyChoice.MOST_SUCCESSORS.__doc__ = (
+    "Start first the tasks that have the most successors in the precedence graph"
+)
+GreedyChoice.SAMPLE_MOST_SUCCESSORS.__doc__ = "Sample next task to schedule based on a probability weight proportional to its number of successors in the precedence graph"
+GreedyChoice.FASTEST.__doc__ = "Schedule first the task that has the lowest duration"
+GreedyChoice.TOTALLY_RANDOM.__doc__ = "Sample random next task to schedule next"
 
 
 class PilePolicy(Solver, DeterministicPolicies):

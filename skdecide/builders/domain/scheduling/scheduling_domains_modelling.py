@@ -75,18 +75,20 @@ class SinglyLinkedList(Collection):
 
 
 class SchedulingActionEnum(Enum):
-    """
-    Enum defining the different types of scheduling actions:
-    - START: start a task
-    - PAUSE: pause a task
-    - RESUME: resume a task
-    - TIME_PR: do not apply actions on tasks and progress in time
-    """
+    """Enum defining the different types of scheduling actions"""
 
     START = 0
     PAUSE = 1
     RESUME = 2
     TIME_PR = 3
+
+
+SchedulingActionEnum.START.__doc__ = "start a task"
+SchedulingActionEnum.PAUSE.__doc__ = "pause a task"
+SchedulingActionEnum.RESUME.__doc__ = "resume a task"
+SchedulingActionEnum.TIME_PR.__doc__ = (
+    "do not apply actions on tasks and progress in time"
+)
 
 
 class State:
