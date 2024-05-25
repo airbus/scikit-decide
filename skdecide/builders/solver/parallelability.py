@@ -32,7 +32,7 @@ class ParallelSolver:
 
     def _initialize(self):
         """Launches the parallel domains.
-        This method requires to have previously recorded the self._domain_factory (e.g. after calling _init_solve),
+        This method requires to have previously recorded the self._domain_factory (e.g. after calling Solver.__init__()),
         the set of lambda functions passed to the solver's constructor (e.g. heuristic lambda for heuristic-based solvers),
         and whether the parallel domain jobs should notify their status via the IPC protocol (required when interacting with
         other programming languages like C++)

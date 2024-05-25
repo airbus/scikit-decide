@@ -83,7 +83,6 @@ class FromAnyState(FromInitialState):
             The nature of the solutions produced here depends on other solver's characteristics like
             #policy and #assessibility.
         """
-        self._init_solve()
         if from_memory is None:
             domain = self._domain_factory()
             if not isinstance(domain, Initializable):
@@ -98,9 +97,6 @@ class FromAnyState(FromInitialState):
     @autocastable
     def solve_from(self, memory: D.T_memory[D.T_state]) -> None:
         """Run the solving process from a given state.
-
-        !!! tip
-            Create the domain first by calling the @FromAnyState.init_solve() method
 
         After solving by calling self._solve_from(), autocast itself so that rollout methods apply
         to the domain original characteristics.
@@ -118,22 +114,11 @@ class FromAnyState(FromInitialState):
     def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
         """Run the solving process from a given state.
 
-        !!! tip
-            Create the domain first by calling the @FromAnyState._init_solve() method
-
         # Parameters
         memory: The source memory (state or history) of the transition.
 
         !!! tip
             The nature of the solutions produced here depends on other solver's characteristics like
             #policy and #assessibility.
-        """
-        raise NotImplementedError
-
-    def _init_solve(self) -> None:
-        """Initialize solver before calling `solve_from()`
-
-        In particular, initialize the underlying domain.
-
         """
         raise NotImplementedError

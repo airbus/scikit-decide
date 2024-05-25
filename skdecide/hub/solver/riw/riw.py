@@ -132,24 +132,32 @@ try:
                 shared_memory_proxy=shared_memory_proxy,
             )
             Solver.__init__(self, domain_factory=domain_factory)
-            self._solver = None
-            self._domain = None
-            self._state_features = state_features
-            self._use_state_feature_hash = use_state_feature_hash
-            self._use_simulation_domain = use_simulation_domain
-            self._time_budget = time_budget
-            self._rollout_budget = rollout_budget
-            self._max_depth = max_depth
-            self._exploration = exploration
-            self._residual_moving_average_window = residual_moving_average_window
-            self._epsilon = epsilon
-            self._discount = discount
-            self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
-            self._callback = callback
-            self._verbose = verbose
-            self._lambdas = [self._state_features]
+            self._lambdas = [state_features]
             self._ipc_notify = True
+
+            self._solver = riw_solver(
+                solver=self,
+                domain=self.get_domain(),
+                state_features=(
+                    (lambda d, s, i=None: state_features(d, s))
+                    if not parallel
+                    else (lambda d, s, i=None: d.call(i, 0, s))
+                ),
+                use_state_feature_hash=use_state_feature_hash,
+                use_simulation_domain=use_simulation_domain,
+                time_budget=time_budget,
+                rollout_budget=rollout_budget,
+                max_depth=max_depth,
+                exploration=exploration,
+                residual_moving_average_window=residual_moving_average_window,
+                epsilon=epsilon,
+                discount=discount,
+                online_node_garbage=online_node_garbage,
+                parallel=parallel,
+                callback=callback,
+                verbose=verbose,
+            )
 
         def close(self):
             """Joins the parallel domains' processes.
@@ -162,31 +170,6 @@ try:
             if self._parallel:
                 self._solver.close()
             ParallelSolver.close(self)
-
-        def _init_solve(self) -> None:
-            self._solver = riw_solver(
-                solver=self,
-                domain=self.get_domain(),
-                state_features=(
-                    (lambda d, s, i=None: self._state_features(d, s))
-                    if not self._parallel
-                    else (lambda d, s, i=None: d.call(i, 0, s))
-                ),
-                use_state_feature_hash=self._use_state_feature_hash,
-                use_simulation_domain=self._use_simulation_domain,
-                time_budget=self._time_budget,
-                rollout_budget=self._rollout_budget,
-                max_depth=self._max_depth,
-                exploration=self._exploration,
-                residual_moving_average_window=self._residual_moving_average_window,
-                epsilon=self._epsilon,
-                discount=self._discount,
-                online_node_garbage=self._online_node_garbage,
-                parallel=self._parallel,
-                callback=self._callback,
-                verbose=self._verbose,
-            )
-            self._solver.clear()
 
         def _reset(self) -> None:
             """Clears the search graph."""

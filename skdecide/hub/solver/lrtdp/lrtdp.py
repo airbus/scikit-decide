@@ -129,21 +129,35 @@ try:
                 shared_memory_proxy=shared_memory_proxy,
             )
             Solver.__init__(self, domain_factory=domain_factory)
-            self._solver = None
-            self._heuristic = heuristic
-            self._lambdas = [self._heuristic]
-            self._use_labels = use_labels
-            self._time_budget = time_budget
-            self._rollout_budget = rollout_budget
-            self._max_depth = max_depth
-            self._residual_moving_average_window = residual_moving_average_window
-            self._epsilon = epsilon
-            self._discount = discount
-            self._online_node_garbage = online_node_garbage
+            self._lambdas = [heuristic]
             self._continuous_planning = continuous_planning
-            self._callback = callback
-            self._verbose = verbose
             self._ipc_notify = True
+
+            self._solver = lrtdp_solver(
+                solver=self,
+                domain=self.get_domain(),
+                goal_checker=(
+                    (lambda d, s, i=None: d.is_goal(s))
+                    if not parallel
+                    else (lambda d, s, i=None: d.is_goal(s, i))
+                ),
+                heuristic=(
+                    (lambda d, s, i=None: heuristic(d, s))
+                    if not parallel
+                    else (lambda d, s, i=None: d.call(i, 0, s))
+                ),
+                use_labels=use_labels,
+                time_budget=time_budget,
+                rollout_budget=rollout_budget,
+                max_depth=max_depth,
+                residual_moving_average_window=residual_moving_average_window,
+                epsilon=epsilon,
+                discount=discount,
+                online_node_garbage=online_node_garbage,
+                parallel=parallel,
+                callback=callback,
+                verbose=verbose,
+            )
 
         def close(self):
             """Joins the parallel domains' processes.
@@ -156,34 +170,6 @@ try:
             if self._parallel:
                 self._solver.close()
             ParallelSolver.close(self)
-
-        def _init_solve(self) -> None:
-            self._solver = lrtdp_solver(
-                solver=self,
-                domain=self.get_domain(),
-                goal_checker=(
-                    (lambda d, s, i=None: d.is_goal(s))
-                    if not self._parallel
-                    else (lambda d, s, i=None: d.is_goal(s, i))
-                ),
-                heuristic=(
-                    (lambda d, s, i=None: self._heuristic(d, s))
-                    if not self._parallel
-                    else (lambda d, s, i=None: d.call(i, 0, s))
-                ),
-                use_labels=self._use_labels,
-                time_budget=self._time_budget,
-                rollout_budget=self._rollout_budget,
-                max_depth=self._max_depth,
-                residual_moving_average_window=self._residual_moving_average_window,
-                epsilon=self._epsilon,
-                discount=self._discount,
-                online_node_garbage=self._online_node_garbage,
-                parallel=self._parallel,
-                callback=self._callback,
-                verbose=self._verbose,
-            )
-            self._solver.clear()
 
         def _reset(self) -> None:
             """Clears the search graph."""
