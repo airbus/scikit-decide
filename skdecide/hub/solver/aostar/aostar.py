@@ -98,21 +98,31 @@ try:
             verbose (bool, optional): Boolean indicating whether verbose messages should be
                 logged (True) or not (False). Defaults to False.
             """
+            Solver.__init__(self, domain_factory=domain_factory)
             ParallelSolver.__init__(
                 self,
                 parallel=parallel,
                 shared_memory_proxy=shared_memory_proxy,
             )
-            Solver.__init__(self, domain_factory=domain_factory)
-            self._solver = None
-            self._discount = discount
-            self._max_tip_expansions = max_tip_expansions
-            self._detect_cycles = detect_cycles
-            self._heuristic = heuristic
-            self._lambdas = [self._heuristic]
-            self._callback = callback
-            self._verbose = verbose
+            self._lambdas = [heuristic]
             self._ipc_notify = True
+
+            self._solver = aostar_solver(
+                solver=self,
+                domain=self.get_domain(),
+                goal_checker=lambda d, s: d.is_goal(s),
+                heuristic=(
+                    (lambda d, s: heuristic(d, s))
+                    if not parallel
+                    else (lambda d, s: d.call(None, 0, s))
+                ),
+                discount=discount,
+                max_tip_expansions=max_tip_expansions,
+                detect_cycles=detect_cycles,
+                parallel=parallel,
+                callback=callback,
+                verbose=verbose,
+            )
 
         def close(self):
             """Joins the parallel domains' processes.
@@ -125,25 +135,6 @@ try:
             if self._parallel:
                 self._solver.close()
             ParallelSolver.close(self)
-
-        def _init_solve(self) -> None:
-            self._solver = aostar_solver(
-                solver=self,
-                domain=self.get_domain(),
-                goal_checker=lambda d, s: d.is_goal(s),
-                heuristic=(
-                    (lambda d, s: self._heuristic(d, s))
-                    if not self._parallel
-                    else (lambda d, s: d.call(None, 0, s))
-                ),
-                discount=self._discount,
-                max_tip_expansions=self._max_tip_expansions,
-                detect_cycles=self._detect_cycles,
-                parallel=self._parallel,
-                callback=self._callback,
-                verbose=self._verbose,
-            )
-            self._solver.clear()
 
         def _reset(self) -> None:
             """Clears the search graph."""

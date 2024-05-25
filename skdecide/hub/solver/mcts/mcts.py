@@ -215,38 +215,60 @@ try:
             verbose (bool, optional): Boolean indicating whether verbose messages should be logged (True)
                 or not (False). Defaults to False.
             """
+            Solver.__init__(self, domain_factory=domain_factory)
             ParallelSolver.__init__(
                 self,
                 parallel=parallel,
                 shared_memory_proxy=shared_memory_proxy,
             )
-            Solver.__init__(self, domain_factory=domain_factory)
             self._solver = None
             self._domain = None
-            self._time_budget = time_budget
-            self._rollout_budget = rollout_budget
-            self._max_depth = max_depth
-            self._residual_moving_average_window = residual_moving_average_window
-            self._epsilon = epsilon
-            self._discount = discount
-            self._ucb_constant = ucb_constant
-            self._online_node_garbage = online_node_garbage
-            self._custom_policy = custom_policy
-            self._heuristic = heuristic
-            self._state_expansion_rate = state_expansion_rate
-            self._action_expansion_rate = action_expansion_rate
-            self._transition_mode = transition_mode
-            self._tree_policy = tree_policy
-            self._expander = expander
-            self._action_selector_optimization = action_selector_optimization
-            self._action_selector_execution = action_selector_execution
-            self._rollout_policy = rollout_policy
-            self._back_propagator = back_propagator
             self._continuous_planning = continuous_planning
-            self._callback = callback
-            self._verbose = verbose
-            self._lambdas = [self._custom_policy, self._heuristic]
+            self._lambdas = [custom_policy, heuristic]
             self._ipc_notify = True
+
+            self._solver = mcts_solver(
+                solver=self,
+                domain=self.get_domain(),
+                time_budget=time_budget,
+                rollout_budget=rollout_budget,
+                max_depth=max_depth,
+                residual_moving_average_window=residual_moving_average_window,
+                epsilon=epsilon,
+                discount=discount,
+                ucb_constant=ucb_constant,
+                online_node_garbage=online_node_garbage,
+                custom_policy=(
+                    None
+                    if custom_policy is None
+                    else (
+                        (lambda d, s, i=None: custom_policy(d, s))
+                        if not parallel
+                        else (lambda d, s, i=None: d.call(i, 0, s))
+                    )
+                ),
+                heuristic=(
+                    None
+                    if heuristic is None
+                    else (
+                        (lambda d, s, i=None: heuristic(d, s))
+                        if not parallel
+                        else (lambda d, s, i=None: d.call(i, 1, s))
+                    )
+                ),
+                state_expansion_rate=state_expansion_rate,
+                action_expansion_rate=action_expansion_rate,
+                transition_mode=transition_mode.value,
+                tree_policy=tree_policy.value,
+                expander=expander.value,
+                action_selector_optimization=action_selector_optimization.value,
+                action_selector_execution=action_selector_execution.value,
+                rollout_policy=rollout_policy.value,
+                back_propagator=back_propagator.value,
+                parallel=parallel,
+                callback=callback,
+                verbose=verbose,
+            )
 
         def close(self):
             """Joins the parallel domains' processes.
@@ -256,51 +278,6 @@ try:
             if self._parallel:
                 self._solver.close()
             ParallelSolver.close(self)
-
-        def _init_solve(self) -> None:
-            self._solver = mcts_solver(
-                solver=self,
-                domain=self.get_domain(),
-                time_budget=self._time_budget,
-                rollout_budget=self._rollout_budget,
-                max_depth=self._max_depth,
-                residual_moving_average_window=self._residual_moving_average_window,
-                epsilon=self._epsilon,
-                discount=self._discount,
-                ucb_constant=self._ucb_constant,
-                online_node_garbage=self._online_node_garbage,
-                custom_policy=(
-                    None
-                    if self._custom_policy is None
-                    else (
-                        (lambda d, s, i=None: self._custom_policy(d, s))
-                        if not self._parallel
-                        else (lambda d, s, i=None: d.call(i, 0, s))
-                    )
-                ),
-                heuristic=(
-                    None
-                    if self._heuristic is None
-                    else (
-                        (lambda d, s, i=None: self._heuristic(d, s))
-                        if not self._parallel
-                        else (lambda d, s, i=None: d.call(i, 1, s))
-                    )
-                ),
-                state_expansion_rate=self._state_expansion_rate,
-                action_expansion_rate=self._action_expansion_rate,
-                transition_mode=self._transition_mode.value,
-                tree_policy=self._tree_policy.value,
-                expander=self._expander.value,
-                action_selector_optimization=self._action_selector_optimization.value,
-                action_selector_execution=self._action_selector_execution.value,
-                rollout_policy=self._rollout_policy.value,
-                back_propagator=self._back_propagator.value,
-                parallel=self._parallel,
-                callback=self._callback,
-                verbose=self._verbose,
-            )
-            self._solver.clear()
 
         def _reset(self) -> None:
             """Clears the search graph."""
@@ -606,8 +583,9 @@ try:
             self._action_choice_noise = action_choice_noise
             self._heuristic_records = {}
 
-        def _init_solve(self) -> None:
-            super()._init_solve()
+        def _reset(self) -> None:
+            """Clears the search graph and the heuristic records."""
+            super()._reset()
             self._heuristic_records = {}
 
         def _value_heuristic(

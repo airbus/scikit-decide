@@ -152,9 +152,7 @@ class Solver(FromInitialState):
         pass
 
     def _initialize(self):
-        """Runs long-lasting initialization code here, or code to be executed at the
-        entering of a 'with' context statement.
-        """
+        """Runs long-lasting initialization code here."""
         pass
 
     def _cleanup(self):
@@ -169,7 +167,6 @@ class Solver(FromInitialState):
         clean their status before exiting the Python interpreter, thus it
         is a good habit to always call solvers within a 'with' statement.
         """
-        self._initialize()
         return self
 
     def __exit__(self, type, value, tb):

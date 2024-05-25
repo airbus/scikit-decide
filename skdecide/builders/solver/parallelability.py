@@ -20,9 +20,13 @@ class ParallelSolver:
         shared_memory_proxy=None,
     ):
         """Creates a parallelizable solver
+
         # Parameters
         parallel: True if the solver is run in parallel mode.
         shared_memory_proxy: Shared memory proxy to use if not None, otherwise run piped parallel domains.
+
+
+
         """
         self._parallel = parallel
         self._shared_memory_proxy = shared_memory_proxy
@@ -32,7 +36,7 @@ class ParallelSolver:
 
     def _initialize(self):
         """Launches the parallel domains.
-        This method requires to have previously recorded the self._domain_factory (e.g. after calling _init_solve),
+        This method requires to have previously recorded the self._domain_factory,
         the set of lambda functions passed to the solver's constructor (e.g. heuristic lambda for heuristic-based solvers),
         and whether the parallel domain jobs should notify their status via the IPC protocol (required when interacting with
         other programming languages like C++)

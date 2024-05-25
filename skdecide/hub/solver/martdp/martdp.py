@@ -131,45 +131,28 @@ try:
 
             Solver.__init__(self, domain_factory=domain_factory)
             self._domain = self._domain_factory()
-            self._solver = None
-            self._heuristic = heuristic
-            self._time_budget = time_budget
-            self._rollout_budget = rollout_budget
-            self._max_depth = max_depth
-            self._max_feasibility_trials = max_feasibility_trials
-            self._graph_expansion_rate = graph_expansion_rate
-            self._residual_moving_average_window = residual_moving_average_window
-            self._epsilon = epsilon
-            self._discount = discount
-            self._action_choice_noise = action_choice_noise
-            self._dead_end_cost = dead_end_cost
-            self._online_node_garbage = online_node_garbage
             self._continuous_planning = continuous_planning
-            self._callback = callback
-            self._verbose = verbose
             self._ipc_notify = True
 
-        def _init_solve(self) -> None:
             self._solver = martdp_solver(
                 solver=self,
                 domain=self.get_domain(),
                 goal_checker=lambda d, s: d.is_goal(s),
-                heuristic=lambda d, s: self._heuristic(d, s),
-                time_budget=self._time_budget,
-                rollout_budget=self._rollout_budget,
-                max_depth=self._max_depth,
-                max_feasibility_trials=self._max_feasibility_trials,
-                graph_expansion_rate=self._graph_expansion_rate,
-                residual_moving_average_window=self._residual_moving_average_window,
-                epsilon=self._epsilon,
-                discount=self._discount,
-                action_choice_noise=self._action_choice_noise,
-                dead_end_cost=self._dead_end_cost,
-                online_node_garbage=self._online_node_garbage,
-                callback=self._callback,
-                verbose=self._verbose,
+                heuristic=lambda d, s: heuristic(d, s),
+                time_budget=time_budget,
+                rollout_budget=rollout_budget,
+                max_depth=max_depth,
+                max_feasibility_trials=max_feasibility_trials,
+                graph_expansion_rate=graph_expansion_rate,
+                residual_moving_average_window=residual_moving_average_window,
+                epsilon=epsilon,
+                discount=discount,
+                action_choice_noise=action_choice_noise,
+                dead_end_cost=dead_end_cost,
+                online_node_garbage=online_node_garbage,
+                callback=callback,
+                verbose=verbose,
             )
-            self._solver.clear()
 
         def _reset(self) -> None:
             """Clears the search graph."""

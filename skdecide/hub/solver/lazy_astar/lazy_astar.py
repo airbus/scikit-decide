@@ -66,6 +66,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         """
         self.callback = callback
         Solver.__init__(self, domain_factory=domain_factory)
+        self._domain = self._domain_factory()
         self._heuristic = (
             (lambda _, __: Value(cost=0.0)) if heuristic is None else heuristic
         )
@@ -83,22 +84,11 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         """Return the computed policy."""
         return self._policy
 
-    def _init_solve(self) -> None:
-        """Initialize solver before calling `solve_from()`
-
-        In particular, initialize the underlying domain.
-
-        """
-        self._domain = self._domain_factory()
-
     def _solve_from(
         self,
         memory: D.T_state,
     ) -> None:
         """Run the solving process from a given state.
-
-        !!! tip
-            Create the domain first by calling the @FromAnyState._init_solve() method
 
         # Parameters
         memory: The source memory (state or history) of the transition.
