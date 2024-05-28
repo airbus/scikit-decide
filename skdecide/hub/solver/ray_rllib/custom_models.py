@@ -148,4 +148,4 @@ class TorchParametricActionsModel(TorchModelV2, nn.Module):
         return action_logits + inf_mask, state
 
     def value_function(self):
-        return self.action_embed_model.value_function()
+        return self.pred_action_embed_model.value_function()
