@@ -2433,26 +2433,21 @@ files = [
 
 [[package]]
 name = "openap"
-version = "1.3.1"
+version = "1.5"
 description = "Open Aircraft Performance Model (OpenAP) in Python"
 optional = true
-python-versions = "*"
-files = []
-develop = false
+python-versions = ">=3.9"
+files = [
+    {file = "openap-1.5-py3-none-any.whl", hash = "sha256:58eb78541989de35dbb918f0dcc0e317edcfe2ad48f0f896e05479b9e879c22f"},
+    {file = "openap-1.5.tar.gz", hash = "sha256:5ce3f731993586915f86a0c05380f6de7fc1b5d843cdb15f13b43272397df047"},
+]
 
 [package.dependencies]
-matplotlib = "*"
-numpy = "*"
-pandas = "*"
-pyyaml = "*"
-scikit-fuzzy = "*"
-scipy = "*"
-
-[package.source]
-type = "git"
-url = "https://github.com/nhuet/openap.git"
-reference = "v1.3.1"
-resolved_reference = "7eeb672afc34cb49dc564963b6bbc5298d6cc819"
+matplotlib = ">=3.1"
+numpy = ">=1.24"
+pandas = ">=1.2"
+pyyaml = ">=5.1"
+scipy = ">=1.7"
 
 [[package]]
 name = "ortools"
@@ -3819,21 +3814,6 @@ files = [
 ]
 
 [[package]]
-name = "scikit-fuzzy"
-version = "0.4.2"
-description = "Fuzzy logic toolkit for SciPy"
-optional = true
-python-versions = "*"
-files = [
-    {file = "scikit-fuzzy-0.4.2.tar.gz", hash = "sha256:1ab12424d847ede1bc79670d8058167be7c8dd660b00756e9b844817ceb1e12e"},
-]
-
-[package.dependencies]
-networkx = ">=1.9.0"
-numpy = ">=1.6.0"
-scipy = ">=0.9.0"
-
-[[package]]
 name = "scikit-image"
 version = "0.21.0"
 description = "Image processing in Python"
@@ -4495,4 +4475,4 @@ solvers = ["discrete-optimization", "gymnasium", "joblib", "numpy", "ray", "stab
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "6ebd568c7b70dfbd5c454ccc0e35ddce169db6d52738f3b3e5b1b7eeadfa91f7"
+content-hash = "4d978bf4f091bb99ddbf6f929cf23b499f92a6c1a2ebd10c0d6ccd2108893b3d"
