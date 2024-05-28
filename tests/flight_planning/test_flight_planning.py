@@ -1,7 +1,6 @@
 import sys
 
 import pytest
-from openap.prop import aircraft
 
 from skdecide.hub.solver.lazy_astar import LazyAstar
 
@@ -45,6 +44,8 @@ def test_flight_planning():
     sys.platform.startswith("win"), reason="pygrib does not install on windows"
 )
 def test_flight_planning_fuel_loop():
+    from openap.prop import aircraft
+
     from skdecide.hub.domain.flight_planning.domain import FlightPlanningDomain
 
     origin = "LFPG"
