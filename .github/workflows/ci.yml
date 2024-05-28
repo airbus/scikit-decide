@@ -943,7 +943,7 @@ jobs:
           version=${{ needs.get-release-version.outputs.skdecide-version }}
           old_pip_spec_pattern="\(skdecide_pip_spec.*\)scikit-decide\[all\]"
           new_pip_spec_pattern="\1scikit-decide[all]==${version}"
-          if ${{ github.repository != env.MAIN_REPO_NAME && secrets.TEST_PYPI_PASSWORD != '' }} == 'true'; then
+          if ${{ github.repository != env.MAIN_REPO_NAME && secrets.TEST_PYPI_API_TOKEN != '' }} == 'true'; then
             # install from TestPypi if on a fork
             new_pip_spec_pattern="${new_pip_spec_pattern} --extra-index-url https://test.pypi.org/simple/"
           fi
@@ -1021,20 +1021,20 @@ jobs:
 
       - name: Publish distribution 📦 to PyPI
         env:
-          PYPI_TOKEN: ${{ secrets.PYPI_PASSWORD }}
-        if: needs.trigger.outputs.on_main_repo == 'true' && env.PYPI_TOKEN != ''
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        if: needs.trigger.outputs.on_main_repo == 'true' && env.PYPI_API_TOKEN != ''
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_PASSWORD }}
+          password: ${{ secrets.PYPI_API_TOKEN }}
           packages_dir: wheels/
 
       - name: Publish distribution 📦 to Test PyPI
         env:
-          TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_PASSWORD }}
-        if: needs.trigger.outputs.on_main_repo == 'false' && env.TEST_PYPI_TOKEN != ''
+          TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        if: needs.trigger.outputs.on_main_repo == 'false' && env.TEST_PYPI_API_TOKEN != ''
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.TEST_PYPI_PASSWORD }}
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           packages_dir: wheels/
           repository_url: https://test.pypi.org/legacy/
 
