@@ -197,7 +197,7 @@ class UPDomain(D):
         self._action_encoding = action_encoding
         self._action_space = None  # not computed by default
         self._observation_space = None  # not computed by default
-        self._static_fluents = None
+        self._static_fluent_values = None
         self._fnodes_variables_map = None
         self._fnodes_vars_ordering = None
         self._states_up2np = None
@@ -241,12 +241,13 @@ class UPDomain(D):
         self._states_up2np = {}
         self._states_np2up = {}
         init_state = self._simulator.get_initial_state()
-        self._static_fluents = {}
+        static_fluents = self._problem.get_static_fluents()
+        self._static_fluent_values = {}
         ci = init_state
         while ci is not None:
             for fn, fv in ci._values.items():
                 if (
-                    fn.fluent() not in self._static_fluents
+                    fn.fluent() not in static_fluents
                     and fn.fluent().name != "total-cost"
                 ):
                     self._fnodes_vars_ordering.append(fn)
@@ -294,7 +295,7 @@ class UPDomain(D):
                     elif fn.fluent().type.is_time_type():
                         raise RuntimeError("Time types not handled by UPDomain")
                 elif fn.fluent().name != "total-cost":
-                    self._static_fluents[fn] = fv
+                    self._static_fluent_values[fn] = fv
             ci = ci._father
 
     def _convert_to_skup_state_(self, state):
@@ -308,7 +309,7 @@ class UPDomain(D):
                 values = {}
                 for fn, s in state.items():
                     values[fn] = self._fnodes_variables_map[fn][3](s)
-                values.update(self._static_fluents)
+                values.update(self._static_fluent_values)
                 skup_state = SkUPState(UPState(values))
                 self._states_up2np[skup_state] = state
                 self._states_np2up[kstate] = skup_state
@@ -321,7 +322,7 @@ class UPDomain(D):
                 values = {}
                 for i, fn in enumerate(self._fnodes_vars_ordering):
                     values[fn] = self._fnodes_variables_map[fn][3](state.item(i))
-                values.update(self._static_fluents)
+                values.update(self._static_fluent_values)
                 skup_state = SkUPState(UPState(values))
                 self._states_up2np[skup_state] = state
                 self._states_np2up[kstate] = skup_state
