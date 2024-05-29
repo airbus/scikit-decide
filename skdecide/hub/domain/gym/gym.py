@@ -335,7 +335,7 @@ class GymWidthDomain:
             for s in range(len(space.spaces)):
                 self._init_bee1_features(space.spaces[s], state[s])
         elif isinstance(space, gym.spaces.dict.Dict):
-            for k, s in space.spaces:
+            for k, s in space.spaces.items():
                 self._init_bee1_features(s, state[k])
         else:
             raise RuntimeError("Unknown Gym space element of type " + str(type(space)))
@@ -452,7 +452,7 @@ class GymWidthDomain:
             for s in range(len(space.spaces)):
                 self._init_bee2_features(space.spaces[s], state[s])
         elif isinstance(space, gym.spaces.dict.Dict):
-            for k, s in space.spaces:
+            for k, s in space.spaces.items():
                 self._init_bee2_features(s, state[k])
         else:
             raise RuntimeError("Unknown Gym space element of type " + str(type(space)))
@@ -575,7 +575,7 @@ class GymWidthDomain:
             return features
         elif isinstance(space, gym.spaces.dict.Dict):
             features = []
-            for k, v in space.spaces:
+            for k, v in space.spaces.items():
                 l = self._binary_features(v, element[k])
                 features += l
             return features
@@ -874,9 +874,11 @@ class DeterministicGymDomain(D):
                 None,
                 None,
                 None,
-                self._get_state(self._gym_env)
-                if (self._get_state is not None and self._set_state is not None)
-                else None,
+                (
+                    self._get_state(self._gym_env)
+                    if (self._get_state is not None and self._set_state is not None)
+                    else None
+                ),
             ],
         )
 
@@ -905,9 +907,11 @@ class DeterministicGymDomain(D):
                 memory._state,
                 action,
                 outcome,
-                self._get_state(env)
-                if (self._get_state is not None and self._set_state is not None)
-                else None,
+                (
+                    self._get_state(env)
+                    if (self._get_state is not None and self._set_state is not None)
+                    else None
+                ),
             ],
         )
 
