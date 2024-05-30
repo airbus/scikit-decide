@@ -149,12 +149,3 @@ def return_twin_axes(color_list=None, figsize=(10, 10)):
     for tl in ax2.get_yticklabels():
         tl.set_color(color_list[1])
     return f, ax1, ax2
-
-
-if __name__ == "__main__":
-    print(
-        [
-            (val, convert(val * 100, init="Pa", target="ft"))
-            for val in [1000, 500, 300, 250, 200, 100, 50]
-        ]
-    )

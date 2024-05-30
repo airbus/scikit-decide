@@ -133,14 +133,3 @@ class MasterMind(D):
                         cows[j] = True
                         break
         return Score(total_bulls=sum(bulls), total_cows=sum(cows))
-
-
-if __name__ == "__main__":
-    from skdecide.utils import rollout
-
-    domain = MasterMind(3, 3)
-    rollout(
-        domain,
-        max_steps=1000,
-        outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-    )
