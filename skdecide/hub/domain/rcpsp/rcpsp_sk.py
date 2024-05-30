@@ -731,23 +731,3 @@ class MSRCPSPCalendar(D):
 
     def _get_objectives(self) -> List[int]:
         return [SchedulingObjectiveEnum.MAKESPAN]
-
-
-if __name__ == "__main__":
-    from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
-
-    domain = load_domain()
-    state = domain.get_initial_state()
-    print("Initial state : ", state)
-    actions = domain.get_applicable_actions(state)
-    print([str(action) for action in actions.get_elements()])
-    action = actions.get_elements()[0]
-    new_state = domain.get_next_state(state, action)
-    print("New state ", new_state)
-    actions = domain.get_applicable_actions(new_state)
-    print("New actions : ", [str(action) for action in actions.get_elements()])
-    action = actions.get_elements()[0]
-    print(action)
-    new_state = domain.get_next_state(new_state, action)
-    print("New state :", new_state)
-    print("_is_terminal: ", domain._is_terminal(state))

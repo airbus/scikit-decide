@@ -257,21 +257,3 @@ def get_probability(distribution, element, n=100):
             if x == element:
                 p += 1
         return p / n
-
-
-if __name__ == "__main__":
-    from skdecide.hub.domain.mastermind import MasterMind
-    from skdecide.utils import rollout
-
-    domain_factory = lambda: MasterMind(3, 3)
-    domain = domain_factory()
-    if POMCP.check_domain(domain):
-        with POMCP(domain_factory=domain_factory) as solver:
-            solver.solve()
-            rollout(
-                domain,
-                solver,
-                num_episodes=5,
-                max_steps=1000,
-                outcome_formatter=lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
-            )

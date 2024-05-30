@@ -700,13 +700,3 @@ def avgas_conv(
         )
 
     return AG
-
-
-if __name__ == "__main__":
-
-    # run doctest to check the validity of the examples in the doc strings.
-
-    import doctest
-    import sys
-
-    doctest.testmod(sys.modules[__name__])

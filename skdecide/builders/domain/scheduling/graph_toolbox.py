@@ -100,18 +100,3 @@ class Graph:
 
     def predecessors_map(self):
         return {n: list(self.graph_nx.predecessors(n)) for n in self.graph_nx.nodes()}
-
-
-if __name__ == "__main__":
-    nodes = [(0, {"name": 0}), (1, {"name": 1})]
-    edges = [(0, 1, {"weight": 1.1}), (1, 0, {"weight": 2})]
-    graph = Graph(nodes, edges, False)
-    graph_nx = graph.to_networkx()
-    print(graph.get_attr_edge(0, 1, "weight"))
-    print(graph.get_attr_edge(1, 0, "weight"))
-    print(graph.get_attr_edge(0, 0, "weight"))  # None
-
-    print(graph_nx.size())
-    print(nx.number_of_nodes(graph_nx), nx.number_of_edges(graph_nx))
-    print(graph_nx[0][1]["weight"])
-    print(graph_nx[1][0]["weight"])
