@@ -55,6 +55,7 @@ class GymDomainForWidthSolvers(D):
         gym_env: gym.Env,
         set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
         get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
+        gym_env_for_rendering: Optional[gym.Env] = None,
         termination_is_goal: bool = True,
         continuous_feature_fidelity: int = 5,
         discretization_factor: int = 3,
@@ -66,6 +67,7 @@ class GymDomainForWidthSolvers(D):
             gym_env=gym_env,
             set_state=set_state,
             get_state=get_state,
+            gym_env_for_rendering=gym_env_for_rendering,
             termination_is_goal=termination_is_goal,
             max_depth=max_depth,
         )
@@ -87,11 +89,11 @@ class GymDomainForWidthSolvers(D):
 
 
 def get_state_continuous_mountain_car(env):
-    return env.state
+    return env.unwrapped.state
 
 
 def set_state_continuous_mountain_car(env, state):
-    env.state = state
+    env.unwrapped.state = state
 
 
 @dataclass
@@ -108,13 +110,14 @@ class CartPoleState:
 
 def get_state_cart_pole(env):
     return CartPoleState(
-        state=env.state, steps_beyond_terminated=env.steps_beyond_terminated
+        state=env.unwrapped.state,
+        steps_beyond_terminated=env.unwrapped.steps_beyond_terminated,
     )
 
 
 def set_state_get_state_cart_pole(env, state: CartPoleState):
-    env.state = state.state
-    env.steps_beyond_terminated = state.steps_beyond_terminated
+    env.unwrapped.state = state.state
+    env.unwrapped.steps_beyond_terminated = state.steps_beyond_terminated
 
 
 if __name__ == "__main__":
@@ -155,14 +158,21 @@ if __name__ == "__main__":
         {
             "name": "Cart Pole (Gymnasium)",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("CartPole-v1", render_mode="human")},
-            "config_gym4width": dict(
-                get_state=get_state_cart_pole, set_state=set_state_get_state_cart_pole
+            "config": dict(gym_env=gym.make("CartPole-v1")),  # for solving
+            "config_rollout": dict(  # for rollout
+                gym_env=gym.make("CartPole-v1", render_mode="human")
             ),
+            "config_gym4width": dict(  # for solving with GymForWidthSolvers
+                gym_env=gym.make("CartPole-v1"),
+                get_state=get_state_cart_pole,
+                set_state=set_state_get_state_cart_pole,
+                gym_env_for_rendering=gym.make("CartPole-v1", render_mode="human"),
+            ),
+            "config_gym4width_rollout": dict(),  # for rollout with GymForWidthSolvers
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 1000,
-                "max_framerate": 30,
+                "max_framerate": None,
                 "outcome_formatter": None,
             },
         },
@@ -170,17 +180,23 @@ if __name__ == "__main__":
         {
             "name": "Mountain Car continuous (Gymnasium)",
             "entry": "GymDomain",
-            "config": {
-                "gym_env": gym.make("MountainCarContinuous-v0", render_mode="human")
-            },
-            "config_gym4width": dict(
+            "config": dict(gym_env=gym.make("MountainCarContinuous-v0")),  # for solving
+            "config_rollout": dict(  # for rollout
+                gym_env=gym.make("MountainCarContinuous-v0", render_mode="human")
+            ),
+            "config_gym4width": dict(  # for solving with GymForWidthSolvers
+                gym_env=gym.make("MountainCarContinuous-v0"),
                 get_state=get_state_continuous_mountain_car,
                 set_state=set_state_continuous_mountain_car,
+                gym_env_for_rendering=gym.make(
+                    "MountainCarContinuous-v0", render_mode="human"
+                ),
             ),
+            "config_gym4width_rollout": dict(),  # for rollout with GymForWidthSolvers
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 1000,
-                "max_framerate": 30,
+                "max_framerate": None,
                 "outcome_formatter": None,
             },
         },
@@ -427,12 +443,22 @@ if __name__ == "__main__":
                 print("==================== TEST SOLVER ====================")
                 # Check if Random Walk selected or other
                 if solver_type is None:
-                    rollout(domain, solver=None, **selected_domain["rollout"])
+                    rollout_domain_config = dict(selected_domain["config"])
+                    if "config_rollout" in selected_domain:
+                        rollout_domain_config.update(
+                            selected_domain["config_rollout"]
+                        )  # specificities for rollout
+                    rollout_domain = domain_type(**rollout_domain_config)
+                    rollout(rollout_domain, solver=None, **selected_domain["rollout"])
                 else:
                     # Solve with selected solver
                     actual_domain_type = domain_type
                     actual_domain_config = dict(selected_domain["config"])  # copy
-                    actual_domain = domain
+                    rollout_domain_config = dict(actual_domain_config)  # copy
+                    if "config_rollout" in selected_domain:
+                        rollout_domain_config.update(
+                            selected_domain["config_rollout"]
+                        )  # specificities for rollout
                     if selected_domain["entry"].__name__ == "GymDomain" and (
                         selected_solver["entry"].__name__ == "IW"
                         or selected_solver["entry"].__name__ == "RIW"
@@ -444,15 +470,25 @@ if __name__ == "__main__":
                             actual_domain_config["termination_is_goal"] = False
                         if "config_gym4width" in selected_domain:
                             actual_domain_config.update(
-                                selected_domain["config_gym4width"]
+                                selected_domain[
+                                    "config_gym4width"
+                                ]  # specificities for GymDomainForWidthSolvers
                             )
-                        actual_domain = actual_domain_type(**actual_domain_config)
+                        rollout_domain_config = dict(actual_domain_config)  # copy
+                        if "config_gym4width_rollout" in selected_domain:
+                            rollout_domain_config.update(
+                                selected_domain[
+                                    "config_gym4width_rollout"
+                                ]  # specificities for rollout
+                            )
                     selected_solver["config"][
                         "domain_factory"
                     ] = lambda: actual_domain_type(**actual_domain_config)
+
                     with solver_type(**selected_solver["config"]) as solver:
                         solver.solve()
-                        rollout(actual_domain, solver, **selected_domain["rollout"])
+                        rollout_domain = actual_domain_type(**rollout_domain_config)
+                        rollout(rollout_domain, solver, **selected_domain["rollout"])
 
                 if hasattr(domain, "close"):
                     # error when relaunching due to pygame.quit() called by classic control gymnasium environments
