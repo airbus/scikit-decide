@@ -850,6 +850,7 @@ class DeterministicGymDomain(D):
         gym_env: gym.Env,
         set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
         get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
+        gym_env_for_rendering: Optional[gym.Env] = None,
     ) -> None:
         """Initialize DeterministicGymDomain.
 
@@ -859,11 +860,28 @@ class DeterministicGymDomain(D):
                    If None, default behavior is to deepcopy the environment when changing state
         get_state: Function to call to get the state of the gym environment.
                    If None, default behavior is to deepcopy the environment when changing state
+        gym_env_for_rendering: The Gym environment (gym.env) to render, if different from `gym_env`,
+            only possible if `set_state` and `get_state` are defined.
+            This is useful when using `render_mode="human"`, because gymnasium env render during `step()`
+            without `render()` being called by the user which can be cumbersome.
+
+            In that case, you should
+            - define gym_env without render mode,
+            - define gym_env_for_rendering with the human render mode
+
+            Then, we use set_state and get_state to put gym_env_for_rendering in the same state as gym_env
+            before rendering.
+
         """
         self._gym_env = gym_env
         self._set_state = set_state
         self._get_state = get_state
         self._init_env = None
+        if set_state is not None and get_state is not None:
+            if gym_env_for_rendering is None:
+                self._gym_env_for_rendering = gym_env
+            else:
+                self._gym_env_for_rendering = gym_env_for_rendering
 
     def _get_initial_state_(self) -> D.T_state:
         initial_state = self._gym_env.reset()[0]
@@ -941,11 +959,19 @@ class DeterministicGymDomain(D):
         # and generate deepcopy errors later in _get_next_state
         # thus we use a copy of the env to render it instead.
         if self._set_state is None or self._get_state is None:
-            gym_env_for_rendering = deepcopy(self._gym_env)
-            render = gym_env_for_rendering.render()
-            return render
+            gym_env_for_rendering = deepcopy(memory._context[0])
+            return gym_env_for_rendering.render()
         else:
-            self._gym_env.render()
+            if (
+                hasattr(self._gym_env_for_rendering, "has_reset")
+                and not self._gym_env_for_rendering.has_reset
+            ):
+                self._gym_env_for_rendering.reset()
+            if not check_equality_state(
+                memory._context[4], self._get_state(self._gym_env_for_rendering)
+            ):
+                self._set_state(self._gym_env_for_rendering, memory._context[4])
+            return self._gym_env_for_rendering.render()
 
     def close(self):
         return self._gym_env.close()
@@ -999,6 +1025,7 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         gym_env: gym.Env,
         set_state: Callable[[gym.Env, D.T_memory[D.T_state]], None] = None,
         get_state: Callable[[gym.Env], D.T_memory[D.T_state]] = None,
+        gym_env_for_rendering: Optional[gym.Env] = None,
         termination_is_goal: bool = False,
         max_depth: int = 50,
     ) -> None:
@@ -1010,10 +1037,26 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
                    If None, default behavior is to deepcopy the environment when changing state
         get_state: Function to call to get the state of the gym environment.
                    If None, default behavior is to deepcopy the environment when changing state
+        gym_env_for_rendering: The Gym environment (gym.env) to render, if different from `gym_env`,
+            only possible if `set_state` and `get_state` are defined.
+            This is useful when using `render_mode="human"`, because gymnasium env render during `step()`
+            without `render()` being called by the user which can be cumbersome.
+
+            In that case, you should
+            - define gym_env without render mode,
+            - define gym_env_for_rendering with the human render mode
+
+            Then, we use set_state and get_state to put gym_env_for_rendering in the same state as gym_env
+            before rendering.
         termination_is_goal: True if the termination condition is a goal (and not a dead-end)
         max_depth: maximum depth of states to explore from the initial state
         """
-        super().__init__(gym_env, set_state, get_state)
+        super().__init__(
+            gym_env=gym_env,
+            set_state=set_state,
+            get_state=get_state,
+            gym_env_for_rendering=gym_env_for_rendering,
+        )
         self._termination_is_goal = termination_is_goal
         self._max_depth = max_depth
         self._initial_state = None
