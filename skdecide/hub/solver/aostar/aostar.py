@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Callable, Dict, Optional, Set, Tuple
+from typing import Callable, Dict, Set, Tuple
 
 from skdecide import Domain, Solver, hub
 from skdecide.builders.domain import (
@@ -63,8 +63,8 @@ try:
         def __init__(
             self,
             domain_factory: Callable[[], Domain],
-            heuristic: Optional[
-                Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]
+            heuristic: Callable[
+                [Domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
             discount: float = 1.0,
             max_tip_expansions: int = 1,
@@ -78,7 +78,7 @@ try:
 
             # Parameters
             domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
-            heuristic (Optional[ Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
+            heuristic (Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]], optional):
                 Lambda function taking as arguments the domain and a state object,
                 and returning the heuristic estimate from the state to the goal.
                 Defaults to (lambda d, s: Value(cost=0)).

@@ -61,8 +61,8 @@ try:
         def __init__(
             self,
             domain_factory: Callable[[], T_domain],
-            heuristic: Optional[
-                Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]]
+            heuristic: Callable[
+                [T_domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
             use_labels: bool = True,
             time_budget: int = 3600000,
@@ -84,7 +84,7 @@ try:
 
             # Parameters
             domain_factory (Callable[[], T_domain], optional): The lambda function to create a domain instance.
-            heuristic (Optional[ Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]] ], optional):
+            heuristic (Callable[[T_domain, D.T_state], D.T_agent[Value[D.T_value]]], optional):
                 Lambda function taking as arguments the domain and a state, and returning the heuristic
                 estimate from the state to the goal.
                 Defaults to (lambda d, s: Value(cost=0)).

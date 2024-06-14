@@ -103,13 +103,17 @@ try:
             discount: float = 1.0,
             ucb_constant: float = 1.0 / sqrt(2.0),
             online_node_garbage: bool = False,
-            custom_policy: Callable[
-                [T_domain, D.T_agent[D.T_observation]],
-                D.T_agent[D.T_concurrency[D.T_event]],
+            custom_policy: Optional[
+                Callable[
+                    [T_domain, D.T_agent[D.T_observation]],
+                    D.T_agent[D.T_concurrency[D.T_event]],
+                ]
             ] = None,
-            heuristic: Callable[
-                [T_domain, D.T_agent[D.T_observation]],
-                Tuple[D.T_agent[Value[D.T_value]], int],
+            heuristic: Optional[
+                Callable[
+                    [T_domain, D.T_agent[D.T_observation]],
+                    Tuple[D.T_agent[Value[D.T_value]], int],
+                ]
             ] = None,
             state_expansion_rate: float = 0.1,
             action_expansion_rate: float = 0.1,
