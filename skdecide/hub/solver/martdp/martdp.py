@@ -60,14 +60,12 @@ try:
         def __init__(
             self,
             domain_factory: Callable[[], T_domain],
-            heuristic: Optional[
-                Callable[
-                    [T_domain, D.T_state],
-                    Tuple[
-                        D.T_agent[Value[D.T_value]],
-                        D.T_agent[D.T_concurrency[D.T_event]],
-                    ],
-                ]
+            heuristic: Callable[
+                [T_domain, D.T_state],
+                Tuple[
+                    D.T_agent[Value[D.T_value]],
+                    D.T_agent[D.T_concurrency[D.T_event]],
+                ],
             ] = lambda d, s: (
                 {a: Value(cost=0) for a in s},
                 {a: None for a in s},
@@ -91,7 +89,7 @@ try:
 
             # Parameters
             domain_factory (Callable[[], T_domain], optional): The lambda function to create a domain instance.
-            heuristic (Optional[ Callable[ [T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]], ], ] ], optional):
+            heuristic (Callable[ [T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]], ], ], optional):
                 Lambda function taking as arguments the domain and a state, and returning a pair of
                 dictionary from agents to the individual heuristic estimates from the state to the goal,
                 and of dictionary from agents to best guess individual actions.
