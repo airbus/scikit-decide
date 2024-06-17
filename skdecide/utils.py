@@ -20,6 +20,7 @@ from skdecide import (
     EnvironmentOutcome,
     Solver,
     Space,
+    Value,
     autocast_all,
     autocastable,
 )
@@ -161,6 +162,7 @@ def rollout(
     outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = lambda o: str(o),
     return_episodes: bool = False,
     goal_logging_level: int = logging.INFO,
+    rollout_callback: Optional[RolloutCallback] = None,
 ) -> Optional[List[Tuple[List[D.T_observation], List[D.T_event], List[D.T_value]]]]:
     """This method will run one or more episodes in a domain according to the policy of a solver.
 
@@ -186,6 +188,9 @@ def rollout(
         logger.debug(
             "Logger is in verbose mode: all debug messages will be there for you to enjoy （〜^∇^ )〜"
         )
+
+    if rollout_callback is None:
+        rollout_callback = RolloutCallback()
 
     if solver is None:
         # Create solver-like random walker that works for any domain
@@ -236,10 +241,14 @@ def rollout(
             "num_episodes should be equal to 1."
         )
 
+    rollout_callback.at_rollout_start()
+
     has_render = isinstance(domain, Renderable)
     has_goal = isinstance(domain, Goals)
     has_memory = not isinstance(domain, Markovian)
     for i_episode in range(num_episodes):
+        rollout_callback.at_episode_start()
+
         # Initialize episode
         solver.reset()
         if from_memory is None:
@@ -292,11 +301,23 @@ def rollout(
                     f"Episode {i_episode + 1} terminated after {step + 1} steps."
                 )
                 break
+            # user callback -> stopping?
+            stopping = rollout_callback.at_episode_step(
+                i_episode=i_episode,
+                step=step,
+                domain=domain,
+                solver=solver,
+                action=action,
+                outcome=outcome,
+            )
+            if stopping:
+                break
             if max_framerate is not None:
                 wait = 1 / max_framerate - (time.perf_counter() - old_time)
                 if wait > 0:
                     time.sleep(wait)
             step += 1
+
         if render and has_render:
             domain.render()
         if has_goal:
@@ -307,7 +328,63 @@ def rollout(
             )
         if return_episodes:
             episodes.append((observations, actions, values))
+        rollout_callback.at_episode_end()
+    rollout_callback.at_rollout_end()
     if verbose:
         logger.setLevel(previous_log_level)
     if return_episodes:
         return episodes
+
+
+class RolloutCallback:
+    """Callback used during rollout to add custom behaviour.
+
+    One should derives from this one in order to hook in different stages of the rollout.
+
+    """
+
+    def at_rollout_start(self):
+        """Called at rollout start."""
+        ...
+
+    def at_rollout_end(self):
+        """Called at rollout end."""
+        ...
+
+    def at_episode_start(self):
+        """Called before each episode."""
+        ...
+
+    def at_episode_end(self):
+        """Called after each episode."""
+        ...
+
+    def at_episode_step(
+        self,
+        i_episode: int,
+        step: int,
+        domain: Domain,
+        solver: Union[Solver, Policies],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+        outcome: EnvironmentOutcome[
+            D.T_agent[D.T_observation],
+            D.T_agent[Value[D.T_value]],
+            D.T_agent[D.T_predicate],
+            D.T_agent[D.T_info],
+        ],
+    ) -> bool:
+        """
+
+        # Parameters
+        i_episode: current episode number
+        step: current step number within the episode
+        domain: domain considered
+        solver: solver considered (or randomwalk policy if solver was None in rollout)
+        action: last action sampled
+        outcome: outcome of the last action applied to the domain
+
+        # Returns
+        stopping: if True, the rollout for the current episode stops and the next episode starts.
+
+        """
+        return False
