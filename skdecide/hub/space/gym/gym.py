@@ -527,17 +527,28 @@ try :
             self._gym_space = gym_spaces.Box(low, high, shape, dtype)
             super().__init__(child_space=self._gym_space, max_len=max_len)
 
-        def get_elements(self) -> Iterable[T]:
-            return super().get_elements()
+
 
         def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
             return [
-                sample for sample in sample_n
-            ]
+            list(
+                next(iter(self.to_unwrapped([e])))
+                if isinstance(self._gym_space, GymSpace)
+                else e
+                for e in sample
+            )
+            for sample in sample_n
+        ]
 
         def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
             return [
-                sample  for sample in sample_n
-            ] 
+            list(
+                    next(iter(self.from_unwrapped([e])))
+                    if isinstance(self._gym_space, GymSpace)
+                    else e
+                    for e in sample
+                )
+            for sample in sample_n
+        ]
 except:
     logger.warning("Ray not installed, the Repeated Space is not available")

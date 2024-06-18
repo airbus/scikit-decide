@@ -659,7 +659,7 @@ class UPDomain(D):
                     ),
                 )
             elif self._state_encoding == "repeated":
-                self._observation_space = RepeatedSpace(
+                self._observation_space = RepeatedSpace(Box(
                     low=-1,
                     high=10000,
                     shape=(self.max_param+2,),
@@ -670,7 +670,7 @@ class UPDomain(D):
                             for fn in self._fnodes_vars_ordering
                         )
                         else np.int32
-                    ),
+                    )),
                     max_len=len(self.Rep_mapping))
             else:
                 return None
