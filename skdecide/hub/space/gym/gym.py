@@ -15,6 +15,8 @@ import numpy as np
 
 from skdecide import EnumerableSpace, SamplableSpace, SerializableSpace, T
 
+from skdecide.utils import logger
+
 
 class GymSpace(Generic[T], SamplableSpace[T], SerializableSpace[T]):
     """This class wraps a gymnasium space (gym.spaces) as a scikit-decide space.
@@ -509,3 +511,33 @@ class DataSpace(GymSpace[T]):
     def from_unwrapped(self, sample_n: Iterable[Dict]) -> Iterable[T]:
         # TODO: convert to simple types (get rid of ndarray created by gym dict space...)?
         return [self._data_class(**sample) for sample in sample_n]
+
+
+try : 
+    from ray.rllib.utils.spaces.repeated import Repeated
+    class RepeatedSpace(Repeated, GymSpace[T]):
+        """This class creates a Ray Repeated space from an enumeration and wraps it as a
+        scikit-decide enumerable space.
+
+        !!! warning
+            Using this class requires gymnasium and Ray to be installed.
+        """
+
+        def __init__(self, low, high, max_len, shape=None, dtype=np.float32):
+            self._gym_space = gym_spaces.Box(low, high, shape, dtype)
+            super().__init__(child_space=self._gym_space, max_len=max_len)
+
+        def get_elements(self) -> Iterable[T]:
+            return super().get_elements()
+
+        def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+            return [
+                sample for sample in sample_n
+            ]
+
+        def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+            return [
+                sample  for sample in sample_n
+            ] 
+except:
+    logger.warning("Ray not installed, the Repeated Space is not available")
