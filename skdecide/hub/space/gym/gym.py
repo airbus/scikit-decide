@@ -513,42 +513,56 @@ class DataSpace(GymSpace[T]):
         return [self._data_class(**sample) for sample in sample_n]
 
 
-try : 
-    from ray.rllib.utils.spaces.repeated import Repeated
-    class RepeatedSpace(Repeated, GymSpace[T]):
-        """This class creates a Ray Repeated space from an enumeration and wraps it as a
-        scikit-decide enumerable space.
+class RepeatedSpace(GymSpace[T]):
+    """This class wraps a gymnasium Space (gym.spaces.Space) to allow dynamic length of elements."""
 
-        !!! warning
-            Using this class requires gymnasium and Ray to be installed.
-        """
-
-        def __init__(self, low, high, max_len, shape=None, dtype=np.float32):
-            self._gym_space = gym_spaces.Box(low, high, shape, dtype)
-            super().__init__(child_space=self._gym_space, max_len=max_len)
-
+    def __init__(
+        self,
+        space:gym.Space,
+        max_len: int,
+        element_class: type = list,
+    ):
+        self._gym_space = space
+        self.max_len = max_len
+        self._element_class = element_class
 
 
-        def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
-            return [
-            list(
-                next(iter(self.to_unwrapped([e])))
+        self._to_list = (
+            (lambda e: e) if element_class is list else (lambda e: e.to_list())
+        )
+        self._from_list = (
+            (lambda e: e)
+            if element_class is list
+            else (lambda e: self._element_class.from_list(e))
+        )
+
+    def sample(self):
+        length = np.random.randint(1, self.max_len + 1)
+        return self._element_class([self._gym_space.sample() for _ in range(length)])
+    
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return [
+            [
+                next(iter(self._gym_space.to_unwrapped([e])))
                 if isinstance(self._gym_space, GymSpace)
                 else e
-                for e in sample
+                for e in self._to_list(sample)
+            ]
+            for sample in sample_n
+        ]
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return [
+            self._from_list(
+                [
+                    next(iter(self._gym_space.from_unwrapped([e])))
+                    if isinstance(self.space, GymSpace)
+                    else e
+                    for e in sample
+                ]
             )
             for sample in sample_n
         ]
 
-        def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
-            return [
-            list(
-                    next(iter(self.from_unwrapped([e])))
-                    if isinstance(self._gym_space, GymSpace)
-                    else e
-                    for e in sample
-                )
-            for sample in sample_n
-        ]
-except:
-    logger.warning("Ray not installed, the Repeated Space is not available")
+    def __repr__(self):
+        return f"DynamicSpace({self.space}, max_len={self.max_len})"
