@@ -556,7 +556,7 @@ class RepeatedSpace(GymSpace[T]):
             self._from_list(
                 [
                     next(iter(self._gym_space.from_unwrapped([e])))
-                    if isinstance(self.space, GymSpace)
+                    if isinstance(self._gym_space, GymSpace)
                     else e
                     for e in sample
                 ]
@@ -565,4 +565,4 @@ class RepeatedSpace(GymSpace[T]):
         ]
 
     def __repr__(self):
-        return f"DynamicSpace({self.space}, max_len={self.max_len})"
+        return f"DynamicSpace({self._gym_space}, max_len={self.max_len})"
