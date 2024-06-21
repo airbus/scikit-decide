@@ -1008,6 +1008,57 @@ def test_sgs_policies(domain):
     print("Cost :", sum([v.cost for v in values]))
     check_rollout_consistency(domain, states)
 
+    # using params_gphh_kwargs
+    with pytest.raises(KeyError):
+        # illicit value
+        solver = GPHH(
+            domain_factory=lambda: training_domains[0],
+            training_domains=training_domains,
+            domain_model=training_domains[0],
+            weight=-1,
+            verbose=False,
+            training_domains_names=training_domains_names,
+            params_gphh=ParametersGPHH.fast_test(),
+            params_gphh_kwargs=dict(base_policy_method=98),
+        )
+        solver.solve()
+        solver.set_domain(training_domains[0])
+        states, actions, values = rollout(
+            domain=training_domains[0],
+            max_steps=1000,
+            solver=solver,
+            from_memory=state,
+            action_formatter=None,
+            outcome_formatter=None,
+            verbose=False,
+            return_episodes=True,
+        )[0]
+    # licit value
+    solver = GPHH(
+        domain_factory=lambda: training_domains[0],
+        training_domains=training_domains,
+        domain_model=training_domains[0],
+        weight=-1,
+        verbose=False,
+        training_domains_names=training_domains_names,
+        params_gphh=ParametersGPHH.fast_test(),
+        params_gphh_kwargs=dict(base_policy_method=BasePolicyMethod.SGS_PRECEDENCE),
+    )
+    solver.solve()
+    solver.set_domain(training_domains[0])
+    states, actions, values = rollout(
+        domain=training_domains[0],
+        max_steps=1000,
+        solver=solver,
+        from_memory=state,
+        action_formatter=None,
+        outcome_formatter=None,
+        verbose=False,
+        return_episodes=True,
+    )[0]
+    print("Cost :", sum([v.cost for v in values]))
+    check_rollout_consistency(domain, states)
+
 
 class MyCallback:
     """Callback for testing.

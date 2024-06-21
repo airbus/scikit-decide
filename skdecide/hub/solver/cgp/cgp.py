@@ -9,6 +9,10 @@ from typing import Callable
 
 import gymnasium as gym
 import numpy as np
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    FloatHyperparameter,
+    IntegerHyperparameter,
+)
 
 from skdecide import Domain, Solver
 from skdecide.builders.domain import (
@@ -204,6 +208,15 @@ class CGPWrapper(Solver, DeterministicPolicies):
     """Cartesian Genetic Programming solver."""
 
     T_domain = D
+
+    hyperparameters = [
+        IntegerHyperparameter(name="col"),
+        IntegerHyperparameter(name="row"),
+        IntegerHyperparameter(name="nb_ind"),
+        FloatHyperparameter(name="mutation_rate_nodes"),
+        FloatHyperparameter(name="mutation_rate_outputs"),
+        IntegerHyperparameter(name="n_it"),
+    ]
 
     def __init__(
         self,
