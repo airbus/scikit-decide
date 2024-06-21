@@ -82,6 +82,13 @@ class RayRLlib(Solver, Policies, Restorable):
             name="train_batch_size_log2",  # train_batch_size = 2 ** train_batch_size_log2
             low=4,
             high=8,
+            depends_on=("algo_class", [DQN, SAC]),
+        ),
+        IntegerHyperparameter(
+            name="sgd_minibatch_size_log2",  # sgd_minibatch_size = 2 ** sgd_minibatch_size_log2
+            low=4,
+            high=8,
+            depends_on=("algo_class", [PPO]),
         ),
         FloatHyperparameter(
             name="entropy_coeff_log",  # entropy_coeff = 10 ** entropy_coeff_log
@@ -160,6 +167,10 @@ class RayRLlib(Solver, Policies, Restorable):
             # train_batch_size
             train_batch_size_log2 = kwargs.pop("train_batch_size_log2")
             kwargs["train_batch_size"] = 2**train_batch_size_log2
+        if "sgd_minibatch_size_log2" in kwargs:
+            # sgd_minibatch_size
+            sgd_minibatch_size_log2 = kwargs.pop("sgd_minibatch_size_log2")
+            kwargs["sgd_minibatch_size"] = 2**sgd_minibatch_size_log2
         if "gamma_complement_log" in kwargs:
             # gamma
             gamma_complement_log = kwargs.pop("gamma_complement_log")
