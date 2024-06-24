@@ -146,7 +146,11 @@ if LazyAstar.check_domain(domain):
             outcome_formatter=None,
         )
 
-## Step 4: solving the UP problem with scikit-decide RayRLlib solver
+
+# Example 3: Solving the UP problem with scikit-decide RayRLlib solver
+print(
+    "\n\n=== EXAMPLE 3: Solving the UP problem with scikit-decide RayRLlib solver ===\n"
+)
 import unified_planning
 
 from unified_planning.shortcuts import (
@@ -234,3 +238,12 @@ solver = RayRLlib(
     train_iterations=1,)
 
 solver.solve()
+
+rollout(
+    domain_factory(),
+    solver,
+    num_episodes=1,
+    max_steps=100,
+    #max_framerate=30,
+    outcome_formatter=None,
+)

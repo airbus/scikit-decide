@@ -565,4 +565,4 @@ class RepeatedSpace(GymSpace[T]):
         ]
 
     def __repr__(self):
-        return f"DynamicSpace({self._gym_space}, max_len={self.max_len})"
+        return f"RepeatedSpace({self._gym_space}, max_len={self.max_len})"
