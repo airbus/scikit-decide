@@ -224,7 +224,7 @@ class MultiAgentMaze(D):
                         state.y < self._num_rows - 1
                         and self._maze[state.y + 1][state.x - 1] == 1
                     ):
-                        next_state_2 = AgentState(x=state.x - 1, y=state.y + 1)
+                        next_state_3 = AgentState(x=state.x - 1, y=state.y + 1)
             elif action[agent] == AgentAction.right:
                 if (
                     state.x < self._num_cols - 1
@@ -237,7 +237,7 @@ class MultiAgentMaze(D):
                         state.y < self._num_rows - 1
                         and self._maze[state.y + 1][state.x + 1] == 1
                     ):
-                        next_state_2 = AgentState(x=state.x + 1, y=state.y + 1)
+                        next_state_3 = AgentState(x=state.x + 1, y=state.y + 1)
             elif action[agent] == AgentAction.up:
                 if state.y > 0 and self._maze[state.y - 1][state.x] == 1:
                     next_state_1 = AgentState(x=state.x, y=state.y - 1)
@@ -247,7 +247,7 @@ class MultiAgentMaze(D):
                         state.x < self._num_cols - 1
                         and self._maze[state.y - 1][state.x + 1] == 1
                     ):
-                        next_state_2 = AgentState(x=state.x + 1, y=state.y - 1)
+                        next_state_3 = AgentState(x=state.x + 1, y=state.y - 1)
             elif action[agent] == AgentAction.down:
                 if (
                     state.y < self._num_rows - 1
@@ -260,7 +260,7 @@ class MultiAgentMaze(D):
                         state.x < self._num_cols - 1
                         and self._maze[state.y + 1][state.x + 1] == 1
                     ):
-                        next_state_2 = AgentState(x=state.x + 1, y=state.y + 1)
+                        next_state_3 = AgentState(x=state.x + 1, y=state.y + 1)
             next_state[agent] = rd.choices(
                 [next_state_1, next_state_2, next_state_3], [0.8, 0.1, 0.1], k=1
             )[0]
@@ -461,7 +461,7 @@ class SingleAgentMaze(D):
                     memory.y < self._num_rows - 1
                     and self._maze[memory.y + 1][memory.x - 1] == 1
                 ):
-                    next_state_2 = AgentState(x=memory.x - 1, y=memory.y + 1)
+                    next_state_3 = AgentState(x=memory.x - 1, y=memory.y + 1)
         if action == AgentAction.right:
             if (
                 memory.x < self._num_cols - 1
@@ -474,7 +474,7 @@ class SingleAgentMaze(D):
                     memory.y < self._num_rows - 1
                     and self._maze[memory.y + 1][memory.x + 1] == 1
                 ):
-                    next_state_2 = AgentState(x=memory.x + 1, y=memory.y + 1)
+                    next_state_3 = AgentState(x=memory.x + 1, y=memory.y + 1)
         if action == AgentAction.up:
             if memory.y > 0 and self._maze[memory.y - 1][memory.x] == 1:
                 next_state_1 = AgentState(x=memory.x, y=memory.y - 1)
@@ -484,7 +484,7 @@ class SingleAgentMaze(D):
                     memory.x < self._num_cols - 1
                     and self._maze[memory.y - 1][memory.x + 1] == 1
                 ):
-                    next_state_2 = AgentState(x=memory.x + 1, y=memory.y - 1)
+                    next_state_3 = AgentState(x=memory.x + 1, y=memory.y - 1)
         if action == AgentAction.down:
             if (
                 memory.y < self._num_rows - 1
@@ -497,7 +497,7 @@ class SingleAgentMaze(D):
                     memory.x < self._num_cols - 1
                     and self._maze[memory.y + 1][memory.x + 1] == 1
                 ):
-                    next_state_2 = AgentState(x=memory.x + 1, y=memory.y + 1)
+                    next_state_3 = AgentState(x=memory.x + 1, y=memory.y + 1)
         return DiscreteDistribution(
             [(next_state_1, 0.8), (next_state_2, 0.1), (next_state_3, 0.1)]
         )
