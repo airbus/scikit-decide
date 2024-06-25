@@ -100,7 +100,7 @@ class D(
     T_state = StrDict[AgentState]  # Type of states
     T_observation = T_state  # Type of observations
     T_event = StrDict[AgentAction]  # Type of events
-    T_value = StrDict[Value]  # Type of transition values (rewards or costs)
+    T_value = int  # Type of transition values (rewards or costs)
     T_predicate = StrDict[bool]  # Type of logical checks
     T_info = (
         None  # Type of additional information given as part of an environment outcome
@@ -416,7 +416,7 @@ class D(
     T_state = AgentState  # Type of states
     T_observation = T_state  # Type of observations
     T_event = AgentAction  # Type of events
-    T_value = Value  # Type of transition values (rewards or costs)
+    T_value = int  # Type of transition values (rewards or costs)
     T_predicate = bool  # Type of logical checks
     T_info = (
         None  # Type of additional information given as part of an environment outcome
