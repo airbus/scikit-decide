@@ -97,22 +97,30 @@ try:
             verbose (bool, optional): Boolean indicating whether verbose messages should be
                 logged (True) or not (False). Defaults to False.
             """
+            Solver.__init__(self, domain_factory=domain_factory)
             ParallelSolver.__init__(
                 self,
                 parallel=parallel,
                 shared_memory_proxy=shared_memory_proxy,
             )
-            Solver.__init__(self, domain_factory=domain_factory)
-            self._solver = None
-            self._domain = None
-            self._state_features = state_features
-            self._use_state_feature_hash = use_state_feature_hash
-            self._node_ordering = node_ordering
-            self._time_budget = time_budget
-            self._lambdas = [self._state_features]
-            self._callback = callback
-            self._verbose = verbose
+            self._lambdas = [state_features]
             self._ipc_notify = True
+
+            self._solver = iw_solver(
+                solver=self,
+                domain=self.get_domain(),
+                state_features=(
+                    (lambda d, s: state_features(d, s))
+                    if not self._parallel
+                    else (lambda d, s: d.call(None, 0, s))
+                ),
+                use_state_feature_hash=use_state_feature_hash,
+                node_ordering=node_ordering,
+                time_budget=time_budget,
+                parallel=parallel,
+                callback=callback,
+                verbose=verbose,
+            )
 
         def close(self):
             """Joins the parallel domains' processes.
@@ -122,24 +130,6 @@ try:
             if self._parallel:
                 self._solver.close()
             ParallelSolver.close(self)
-
-        def _init_solve(self) -> None:
-            self._solver = iw_solver(
-                solver=self,
-                domain=self.get_domain(),
-                state_features=(
-                    (lambda d, s: self._state_features(d, s))
-                    if not self._parallel
-                    else (lambda d, s: d.call(None, 0, s))
-                ),
-                use_state_feature_hash=self._use_state_feature_hash,
-                node_ordering=self._node_ordering,
-                time_budget=self._time_budget,
-                parallel=self._parallel,
-                callback=self._callback,
-                verbose=self._verbose,
-            )
-            self._solver.clear()
 
         def _reset(self) -> None:
             """Clears the search graph."""

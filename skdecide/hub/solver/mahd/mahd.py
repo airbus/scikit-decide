@@ -122,7 +122,6 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
             self._singleagent_solvers[a] = self._singleagent_solver_class(
                 **singleagent_solver_kwargs
             )
-            self._singleagent_solvers[a]._init_solve(),
 
         self._singleagent_solutions = {
             a: {} for a in self._multiagent_domain.get_agents()
@@ -137,10 +136,6 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         self._multiagent_solver._solve_from(
             memory=memory,
         )
-
-    def _init_solve(self) -> None:
-        """Initializes the higher-level multi-agent solving process"""
-        self._multiagent_solver._init_solve()
 
     def _get_next_action(
         self, observation: D.T_agent[D.T_observation]

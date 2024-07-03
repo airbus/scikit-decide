@@ -105,19 +105,18 @@ class GreedyPlanner(Solver, DeterministicPolicies, Utilities, FromAnyState):
 
     def __init__(self, domain_factory: Callable[[], Domain]):
         Solver.__init__(self, domain_factory=domain_factory)
-        self._domain = None
-        self._best_action = None
-        self._best_reward = None
-        self._current_pos = None
-
-    def _init_solve(self) -> None:
         self._domain = self._domain_factory()
         self._domain.reset()
         lon = self._domain._gym_env.sim.get_property_value(prp.position_long_gc_deg)
         lat = self._domain._gym_env.sim.get_property_value(prp.position_lat_geod_deg)
         self._current_pos = (lat, lon)
+        self._best_action = None
+        self._best_reward = None
 
     def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+        if self._domain is None:
+            self._domain = self._domain_factory()
+            self._domain.reset()
         self._best_action = None
         self._best_reward = -float("inf")
         self._current_pos = None
