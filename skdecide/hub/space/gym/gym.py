@@ -15,8 +15,6 @@ import numpy as np
 
 from skdecide import EnumerableSpace, SamplableSpace, SerializableSpace, T
 
-from skdecide.utils import logger
-
 
 class GymSpace(Generic[T], SamplableSpace[T], SerializableSpace[T]):
     """This class wraps a gymnasium space (gym.spaces) as a scikit-decide space.
@@ -511,58 +509,3 @@ class DataSpace(GymSpace[T]):
     def from_unwrapped(self, sample_n: Iterable[Dict]) -> Iterable[T]:
         # TODO: convert to simple types (get rid of ndarray created by gym dict space...)?
         return [self._data_class(**sample) for sample in sample_n]
-
-
-class RepeatedSpace(GymSpace[T]):
-    """This class wraps a gymnasium Space (gym.spaces.Space) to allow dynamic length of elements."""
-
-    def __init__(
-        self,
-        space:gym.Space,
-        max_len: int,
-        element_class: type = list,
-    ):
-        self._gym_space = space
-        self.max_len = max_len
-        self._element_class = element_class
-
-
-        self._to_list = (
-            (lambda e: e) if element_class is list else (lambda e: e.to_list())
-        )
-        self._from_list = (
-            (lambda e: e)
-            if element_class is list
-            else (lambda e: self._element_class.from_list(e))
-        )
-
-    def sample(self):
-        length = np.random.randint(1, self.max_len + 1)
-        return self._element_class([self._gym_space.sample() for _ in range(length)])
-    
-    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
-        return [
-            [
-                next(iter(self._gym_space.to_unwrapped([e])))
-                if isinstance(self._gym_space, GymSpace)
-                else e
-                for e in self._to_list(sample)
-            ]
-            for sample in sample_n
-        ]
-
-    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
-        return [
-            self._from_list(
-                [
-                    next(iter(self._gym_space.from_unwrapped([e])))
-                    if isinstance(self._gym_space, GymSpace)
-                    else e
-                    for e in sample
-                ]
-            )
-            for sample in sample_n
-        ]
-
-    def __repr__(self):
-        return f"RepeatedSpace({self._gym_space}, max_len={self.max_len})"
