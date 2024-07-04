@@ -54,7 +54,7 @@ class FuelFlow:
         self,
         values_current: Dict[str, float],
         delta_time: float,
-        path_angle: Optional[float] = 0.0,
+        vs: Optional[float] = 0.0,
     ) -> float:
         """Compute fuel flow based on Poll-Schumann model.
 
@@ -63,8 +63,8 @@ class FuelFlow:
                 Dictionary with current values of altitude [:math:`ft`], speed [:math:`kts`], temperature [:math:`K`], and mass [:math:`Kg`].
             delta_time (float):
                 Time step in seconds [:math:`s`].
-            path_angle (Optional[float], optional):
-                Path angle. Defaults to 0.0 degrees.
+            vs (Optional[float], optional):
+                Vertical speed [:math: `ft/min`]. Defaults to 0.0 ft/min.
 
         # Returns
             float: Fuel flow, [:math:`Kg/s`].
@@ -77,9 +77,7 @@ class FuelFlow:
         mass_current = values_current["mass"]
 
         # values next
-        altitude_next = altitude_current + speed_current * delta_time * math.radians(
-            path_angle
-        )
+        altitude_next = altitude_current + vs * delta_time / 60  # s -> min
         # atmospheric quantities
         air_pressure = units.ft_to_pl(altitude_current) * 100.0
 
