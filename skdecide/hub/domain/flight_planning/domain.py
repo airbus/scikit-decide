@@ -883,10 +883,7 @@ class FlightPlanningDomain(
                 cost = self.perf_model.compute_fuel_consumption(
                     values_current,
                     delta_time=dt,
-                    path_angle=math.degrees(
-                        (alt_to - pos["alt"]) * ft / (distance_to_goal)
-                    ),
-                    # approximation for small angles: tan(alpha) ~ alpha
+                    vs=(alt_to - pos["alt"]) * 60 / dt,
                 )
             else:
                 cost = self.perf_model.compute_fuel_consumption(
@@ -1374,7 +1371,7 @@ class FlightPlanningDomain(
             pos["fuel"] = self.perf_model.compute_fuel_consumption(
                 values_current,
                 delta_time=dt,
-                path_angle=math.degrees((alt_to - pos["alt"]) * ft / (gs * dt)),
+                vs=(alt_to - pos["alt"]) * 60 / dt,  # ft/min
                 # approximation for small angles: tan(alpha) ~ alpha
             )
 
