@@ -71,7 +71,7 @@ up-pyperplan = { version = ">=1.1.0", python = ">=3.10", optional = true }
 cartopy = { version = ">=0.22.0", python = ">=3.9", optional = true }
 pygrib = [
     { version = "<=2.1.5", platform = "linux", optional = true },
-    { version = "<=2.1.5", platform = "darwin", optional = true },
+    { version = ">=2.1.5", platform = "darwin", optional = true },
 ]
 
 [tool.poetry.extras]
