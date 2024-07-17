@@ -9,7 +9,7 @@ from unified_planning.shortcuts import (
     UserType,
 )
 
-from RepeatedUP1 import UPDomain
+from skdecide.hub.domain.up import UPDomain
 from skdecide.utils import rollout
 from ray.rllib.algorithms.dqn import DQN
 from solver import RayRLlib
