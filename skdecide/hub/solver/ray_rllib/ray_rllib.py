@@ -221,7 +221,6 @@ class RayRLlib(Solver, Policies, Restorable):
         }
         # Trick to assign o's unwrapped value to self._unwrap_obs
         # (no unwrapping method for single elements in enumerable spaces)
-        print('1')
         self._unwrap_obs = (
             lambda obs, agent, domain=domain, wrapped_action_space=wrapped_action_space, wrapped_observation_space=wrapped_observation_space: next(
                 iter(wrapped_observation_space[agent].to_unwrapped([obs[agent]]))
@@ -245,7 +244,6 @@ class RayRLlib(Solver, Policies, Restorable):
             }
         )
         # Overwrite multi-agent config
-        print('2')
         pol_obs_spaces = (
             {
                 self._policy_mapping_fn(k, None, None): v.unwrapped()
@@ -461,7 +459,6 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
                     }
                 )
             else:
-                print('3')
                 self.observation_space = gym.spaces.Dict(
                     {
                         k: gym.spaces.Dict(
@@ -492,7 +489,6 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
             if not self._action_masking:
                 self.observation_space = self._wrapped_observation_space
             else:
-                print('4')
                 self.observation_space = gym.spaces.Dict(
                     {
                         k: gym.spaces.Dict(
@@ -533,7 +529,6 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
             applicable_actions = self._domain.get_applicable_actions(
                 self._state_access(raw_observation)
             )
-            print('5')
             observation = {
                 # Trick to assign v's unwrapped value to k
                 # (no unwrapping method for single elements in enumerable spaces)
@@ -584,7 +579,6 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
             applicable_actions = self._domain.get_applicable_actions(
                 self._state_access(outcome.observation)
             )
-            print('6')
             observations = {
                 # Trick to assign v's unwrapped value to k
                 # (no unwrapping method for single elements in enumerable spaces)
