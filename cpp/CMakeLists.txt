@@ -65,7 +65,7 @@ LIST(APPEND INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
 # SDK
 IF (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     ADD_SUBDIRECTORY(sdk/backward-cpp)
-    LIST(APPEND LIBS Backward::Interface)
+    LIST(APPEND LIBS Backward::Backward)
 ELSE ()
     SET(BACWARD_ENABLE "")
 ENDIF ()
