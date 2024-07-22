@@ -63,12 +63,8 @@ FIND_PACKAGE(Boost)
 LIST(APPEND INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
 
 # SDK
-IF (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    ADD_SUBDIRECTORY(sdk/backward-cpp)
-    LIST(APPEND LIBS backward)
-ELSE ()
-    SET(BACWARD_ENABLE "")
-ENDIF ()
+ADD_SUBDIRECTORY(sdk/backward-cpp)
+LIST(APPEND LIBS backward)
 
 SET(JSON_BuildTests OFF CACHE INTERNAL "")
 SET(JSON_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/sdk/json/single_include/nlohmann)
