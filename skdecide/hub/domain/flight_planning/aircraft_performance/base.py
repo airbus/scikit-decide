@@ -1,9 +1,12 @@
 # models fuel flows
 # typing
+import math
+from inspect import signature
 from typing import Dict, Optional
 
+import numpy as np
 import openap
-from openap.extra.aero import crossover_alt, distance, ft, kts, latlon, mach2tas
+from openap.extra.aero import crossover_alt, distance, fpm, ft, kts, latlon, mach2tas
 
 # other
 from openap.prop import aircraft
@@ -32,11 +35,11 @@ class AircraftPerformanceModel:
         self,
         values_current: Dict[str, float],
         delta_time: float,
-        path_angle: Optional[float] = 0.0,
+        vs: Optional[float] = 0.0,
     ) -> float:
 
         return self.perf_model.compute_fuel_consumption(
-            values_current, delta_time, path_angle=path_angle
+            values_current, delta_time, vs=vs
         )
 
     def compute_crossover_altitude(self) -> float:
@@ -53,7 +56,7 @@ class OpenAP(AircraftPerformanceModel):
         self,
         values_current: Dict[str, float],
         delta_time: float,
-        path_angle: Optional[float] = 0.0,
+        vs: Optional[float] = 0.0,
     ) -> float:
 
         mass_current, altitude_current, speed_current = (
@@ -61,9 +64,13 @@ class OpenAP(AircraftPerformanceModel):
             values_current["alt"],
             values_current["speed"],
         )
-        ff = self.fuel_flow(
-            mass_current, speed_current, altitude_current, path_angle=path_angle
-        )
+        if "vs" in signature(self.fuel_flow).parameters:
+            ff = self.fuel_flow(mass_current, speed_current, altitude_current, vs=vs)
+        else:
+            path_angle = math.degrees(np.arctan2(vs * fpm, speed_current * kts))
+            ff = self.fuel_flow(
+                mass_current, speed_current, altitude_current, path_angle=path_angle
+            )
 
         return delta_time * ff
 
@@ -81,11 +88,9 @@ class PollSchumannModel(AircraftPerformanceModel):
         self,
         values_current: Dict[str, float],
         delta_time: float,
-        path_angle: Optional[float] = 0.0,
+        vs: Optional[float] = 0.0,
     ) -> float:
-        ff = self.fuel_flow(
-            values_current, delta_time=delta_time, path_angle=path_angle
-        )
+        ff = self.fuel_flow(values_current, delta_time=delta_time, vs=vs)
 
         return delta_time * ff
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scikit-decide"
-version = "1.0.1.dev8+88ac7d6f" # placeholder for poetry-dynamic-versioning
+version = "0.0.0" # placeholder for poetry-dynamic-versioning
 description = "The AI framework for Reinforcement Learning, Automated Planning and Scheduling"
 authors = ["Airbus AI Research <scikit-decide@airbus.com>"]
 license = "MIT"
@@ -36,7 +36,7 @@ script = "builder.py"
 generate-setup-file = true
 
 [tool.poetry-dynamic-versioning]
-enable = false
+enable = true
 vcs = "git"
 format-jinja = """
     {%- if distance == 0 -%}
@@ -55,7 +55,7 @@ pynng = ">=0.6.2"
 pathos = ">=0.2.7"
 scipy = { version = ">=1.9.2", optional = true }
 gymnasium = { version = ">=0.28.1", optional = true }
-numpy = { version = ">=1.20.1", optional = true }
+numpy = { version = "^1.20.1", optional = true }
 matplotlib = { version = ">=3.3.4", optional = true }
 joblib = { version = ">=1.0.1", optional = true }
 stable-baselines3 = { version = ">=2.0.0", optional = true }
@@ -168,7 +168,7 @@ UPSolver = "skdecide.hub.solver.up:UPSolver [solvers]"
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.2"
 pytest-cov = "^2.11.1"
-tqdm = "^4.59.0"
+tqdm = "^4.66.3"
 nbmake = "^1.0"
 docopt = ">=0.6.2"
 commonmark = ">=0.9.1"

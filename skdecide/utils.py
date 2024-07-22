@@ -24,7 +24,13 @@ from skdecide import (
     autocast_all,
     autocastable,
 )
-from skdecide.builders.domain import FullyObservable, Goals, Markovian, Renderable
+from skdecide.builders.domain import (
+    FullyObservable,
+    Goals,
+    Initializable,
+    Markovian,
+    Renderable,
+)
 from skdecide.builders.solver import Policies
 
 __all__ = [
@@ -163,7 +169,15 @@ def rollout(
     return_episodes: bool = False,
     goal_logging_level: int = logging.INFO,
     rollout_callback: Optional[RolloutCallback] = None,
-) -> Optional[List[Tuple[List[D.T_observation], List[D.T_event], List[D.T_value]]]]:
+) -> Optional[
+    List[
+        Tuple[
+            List[D.T_agent[D.T_observation]],
+            List[D.T_agent[D.T_concurrency[D.T_event]]],
+            List[D.T_agent[Value[D.T_value]]],
+        ]
+    ]
+]:
     """This method will run one or more episodes in a domain according to the policy of a solver.
 
     # Parameters
@@ -233,7 +247,13 @@ def rollout(
         solver = RandomWalk()
         autocast_all(solver, solver.T_domain, domain)
 
-    episodes: List[Tuple[List[D.T_observation], List[D.T_event], List[D.T_value]]] = []
+    episodes: List[
+        Tuple[
+            List[D.T_agent[D.T_observation]],
+            List[D.T_agent[D.T_concurrency[D.T_event]]],
+            List[D.T_agent[Value[D.T_value]]],
+        ]
+    ] = []
 
     if num_episodes > 1 and from_memory is None and not hasattr(domain, "reset"):
         raise ValueError(
@@ -252,8 +272,12 @@ def rollout(
         # Initialize episode
         solver.reset()
         if from_memory is None:
-            if hasattr(domain, "reset"):
+            if isinstance(domain, Initializable):
                 observation = domain.reset()
+            else:
+                raise ValueError(
+                    "The domain must be initializable if from_memory is None."
+                )
         else:
             if hasattr(domain, "set_memory"):
                 domain.set_memory(from_memory)
@@ -270,9 +294,9 @@ def rollout(
         # Run episode
         step = 1
 
-        observations = []
-        actions = []
-        values = []
+        observations: List[D.T_agent[D.T_observation]] = []
+        actions: List[D.T_agent[D.T_concurrency[D.T_event]]] = []
+        values: List[D.T_agent[Value[D.T_value]]] = []
         # save the initial observation
         observations.append(observation)
 
