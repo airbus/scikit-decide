@@ -701,6 +701,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install needed apt dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libeccodes-dev
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
