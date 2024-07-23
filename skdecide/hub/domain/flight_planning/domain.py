@@ -1007,7 +1007,7 @@ class FlightPlanningDomain(
                 )
                 for i in range(nb_vertical_points)
             ]
-        if climbing_slope is not None:
+        if climbing_slope:
             climbing_ratio = climbing_slope
         else:
             climbing_ratio = (
