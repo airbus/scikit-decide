@@ -512,8 +512,8 @@ class DataSpace(GymSpace[T]):
         # TODO: convert to simple types (get rid of ndarray created by gym dict space...)?
         return [self._data_class(**sample) for sample in sample_n]
     
-from ray.rllib.utils.spaces.repeated import Repeated
-class RepeatedSpace(GymSpace[T]):
+
+class VariableSpace(GymSpace[T]):
     
     """This class wraps a gymnasium Space (gym.spaces.Space) to allow dynamic length of elements."""
 
@@ -521,54 +521,32 @@ class RepeatedSpace(GymSpace[T]):
         self,
         space:gym.Space,
         max_len: int,
-        element_class: type = list,
         **kwargs,
     ):
         self._gym_space = space
         self.max_len = max_len
-        self._element_class = element_class
-
-
-        self._to_list = (
-            (lambda e: e) if element_class is list else (lambda e: e.to_list())
-        )
-        self._from_list = (
-            (lambda e: e)
-            if element_class is list
-            else (lambda e: self._element_class.from_list(e))
-        )
+        self.size = ( self.max_len, self._gym_space._shape[0])
 
     def sample(self):
         length = self.max_len 
-        return self._element_class(np.array(self._gym_space.sample()) for _ in range(length))
+        return list(np.array(self._gym_space.sample()) for _ in range(length))
     
-    def unwrapped(self):
-        ss = ( self.max_len, self._gym_space._shape[0])
-        return gym.spaces.Box(low= -1, high= 10000, shape=ss,)
+    def unwrapped(self): 
+        return gym.spaces.Box(low= -1, high= 10000, shape=self.size,)
         #return Repeated(self._gym_space, self.max_len)
     
     def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
-        return [
-            [
-                next(iter(self._gym_space.to_unwrapped([e])))
-                if isinstance(self._gym_space, GymSpace)
-                else e
-                for e in self._to_list(sample)
-            ]
-            for sample in sample_n
-        ]
+        v = sample_n[0]
+        return [np.pad(np.array(v), 
+                      ((0, self.max_len - len(v)), (0, 0)), 
+                      mode='constant', 
+                      constant_values=0)]
 
     def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
         return [
-            self._from_list(
-                [
-                    next(iter(self._gym_space.from_unwrapped([e])))
-                    if isinstance(self._gym_space, GymSpace)
-                    else e
-                    for e in sample
+            np.array(ligne) for ligne in [
+                row for row in sample_n if not np.all(row == 0)
                 ]
-            )
-            for sample in sample_n
         ]
 
     def __repr__(self):
