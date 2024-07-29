@@ -12,7 +12,7 @@ from unified_planning.shortcuts import (
 from skdecide.hub.domain.up import UPDomain
 from skdecide.utils import rollout
 from ray.rllib.algorithms.dqn import DQN
-from solver import RayRLlib
+from skdecide.hub.solver.ray_rllib import RayRLlib
 import ray
 
 Location = UserType("Location")
