@@ -29,12 +29,11 @@ from skdecide.domains import MultiAgentRLDomain
 from skdecide.hub.domain.gym import AsLegacyGymV21Env
 from skdecide.hub.space.gym import GymSpace
 
-from .custom_models import TFParametricActionsModel, TorchParametricActionsModel
+from skdecide.hub.solver.ray_rllib.custom_models import TFParametricActionsModel, TorchParametricActionsModel
 
 if TYPE_CHECKING:
     # imports useful only in annotations, may change according to releases
     from ray.rllib import RolloutWorker
-
 
 class D(MultiAgentRLDomain):
     pass
@@ -140,6 +139,7 @@ class RayRLlib(Solver, Policies, Restorable):
                 # if stopping exception raise, we choose to stop this train iteration
                 pass
 
+
     def _sample_action(
         self, observation: D.T_agent[D.T_observation]
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
@@ -238,7 +238,7 @@ class RayRLlib(Solver, Policies, Restorable):
                     ],
                     dtype=np.int64,
                 ),
-                "true_obs": next(
+                "true_obs": np.pad(np.array(obs[agent]), ((0, domain._observation_space.max_len - len(obs[agent])), (0, 0)), mode='constant', constant_values=0) if domain._state_encoding == "repeated" else next(
                     iter(wrapped_observation_space[agent].to_unwrapped([obs[agent]]))
                 ),
             }
@@ -540,7 +540,7 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
                         ],
                         dtype=np.int64,
                     ),
-                    "true_obs": next(
+                    "true_obs": np.pad(np.array(v), ((0, self._domain._observation_space.max_len - len(v)), (0, 0)), mode='constant', constant_values=0) if self._domain._state_encoding == "repeated" else next(
                         iter(self._wrapped_observation_space[k].to_unwrapped([v]))
                     ),
                 }
@@ -590,7 +590,7 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
                         ],
                         dtype=np.int64,
                     ),
-                    "true_obs": next(
+                    "true_obs":  np.pad(np.array(v), ((0, self._domain._observation_space.max_len - len(v)), (0, 0)), mode='constant', constant_values=0) if self._domain._state_encoding == "repeated" else next(
                         iter(self._wrapped_observation_space[k].to_unwrapped([v]))
                     ),
                 }
