@@ -25,17 +25,9 @@ from unified_planning.shortcuts import Bool, FluentExp, Int, ObjectExp, Real
 from skdecide.core import EmptySpace, ImplicitSpace, Space, Value
 from skdecide.domains import DeterministicPlanningDomain
 from skdecide.hub.space.gym import ListSpace, SetSpace
-from skdecide.hub.space.gym.gym import BoxSpace, DictSpace, DiscreteSpace, GymSpace
+from gymnasium.spaces import Box
+from skdecide.hub.space.gym.gym import BoxSpace, DictSpace, DiscreteSpace, VariableSpace
 from skdecide.utils import logger
-
-try : 
-    import ray 
-    from ray.rllib.utils.spaces.repeated import Repeated
-    from gymnasium.spaces import Box
-    from skdecide.hub.space.gym.gym import RepeatedSpace
-except:
-    logger.warning("Ray not installed, the Repeated Space is not available")
-
 
 class SkUPState:
     def __init__(self, up_state: UPState):
@@ -219,16 +211,12 @@ class UPDomain(D):
             self._init_action_encoding_()
 
         if self._state_encoding != "native":
-            if self._state_encoding == "repeated":
-                logger.info(f'Using Repeated Sapece of Ray version {ray.__version__}')
-            elif self._state_encoding not in ["dictionary", "vector"]:
+            if self._state_encoding not in ["dictionary", "vector", "repeated"]:
                 raise RuntimeError(
                     "State encoding must be one of 'native', 'dictionary', 'vector' or 'repeated'"
                 )
             self._init_state_encoding_()
 
-    """def reset(self):
-        return self._convert_from_skup_state_(self._simulator.get_initial_state())"""
 
     def _init_state_encoding_(self):
         def fnode_lower_bound(fn):
@@ -437,7 +425,7 @@ class UPDomain(D):
                 ci = skup_state
             while ci is not None:
                 for fn, val in ci._values.items():
-                    if self._static_fluent_values[fn] == val:
+                    if (fn,val) in self.Rep_mapping.keys():
                         state.append(self.Rep_mapping[(fn,val)])
                     else:
                         fluent = np.array([-1 for _ in range(self.max_param+2)])
@@ -664,7 +652,7 @@ class UPDomain(D):
                     ),
                 )
             elif self._state_encoding == "repeated":
-                self._observation_space = RepeatedSpace(Box(
+                self._observation_space = VariableSpace(Box(
                     low=-1,
                     high=10000,
                     shape=(self.max_param+2,),
@@ -676,7 +664,7 @@ class UPDomain(D):
                         )
                         else np.int32
                     )),
-                    max_len=8000)
+                    max_len=200)
             else:
                 return None
         return self._observation_space
