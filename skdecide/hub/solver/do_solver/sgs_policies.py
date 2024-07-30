@@ -8,6 +8,14 @@ from enum import Enum
 from functools import partial
 from typing import Dict, List, Optional, Union
 
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    EnumHyperparameter,
+    IntegerHyperparameter,
+)
+from discrete_optimization.generic_tools.hyperparameters.hyperparametrizable import (
+    Hyperparametrizable,
+)
+
 from skdecide.builders.domain.scheduling.scheduling_domains import (
     D,
     MultiModeRCPSP,
@@ -66,8 +74,15 @@ BasePolicyMethod.SGS_INDEX_FREEDOM.__doc__ = """
 """
 
 
-class PolicyMethodParams:
+class PolicyMethodParams(Hyperparametrizable):
     """Wrapped params for scheduling policy parameters, see BasePolicyMethod for more details"""
+
+    hyperparameters = [
+        EnumHyperparameter(
+            name="base_policy_method",
+            enum=BasePolicyMethod,
+        ),
+    ]
 
     def __init__(
         self,

@@ -569,7 +569,7 @@ jobs:
           pip install ray[rllib]>=2.20
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
-          pip install ${wheelfile}[all] pytest gymnasium[classic-control]
+          pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna
 
       - name: Test with pytest
         run: |
@@ -585,7 +585,8 @@ jobs:
           #  - from others
           # to avoid openmp versions conflicts
           pytest -v -s tests/*/cpp
-          pytest -v -s tests/solvers/python
+          pytest -v -s tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
+          pytest -v -s tests/solvers/python/test_optuna_rayrllib.py
           pytest -v -s tests/scheduling
           pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
@@ -662,7 +663,7 @@ jobs:
           python_version=${{ matrix.python-version }}
           arch=$(uname -m)
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
-          pip install ${wheelfile}[all] pytest gymnasium[classic-control]
+          pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna
 
       - name: Test with pytest
         run: |
@@ -678,7 +679,8 @@ jobs:
           #  - from others
           # to avoid openmp versions conflicts
           pytest -v -s tests/*/cpp
-          pytest -v -s tests/solvers/python
+          pytest -v -s tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
+          pytest -v -s tests/solvers/python/test_optuna_rayrllib.py
           pytest -v -s tests/scheduling
           pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
@@ -752,7 +754,7 @@ jobs:
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
-          pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark
+          pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna
 
       - name: Test with pytest
         run: |
@@ -768,13 +770,18 @@ jobs:
           #  - from others
           # to avoid openmp versions conflicts
           pytest -v -s tests/*/cpp
-          pytest -v -s tests/solvers/python
+          pytest -v -s tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
+          pytest -v -s tests/solvers/python/test_optuna_rayrllib.py
           pytest -v -s tests/scheduling
           pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
       - name: Test python block codes from guide
         run: |
+          # configure minizinc
+          ${{ env.minizinc_config_cmdline }}
+          # extract block codes
           python scripts/md2py.py docs/guide/README.md tests/test_guide.py
+          # test it
           python tests/test_guide.py
 
   upload-release:

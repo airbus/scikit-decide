@@ -11,6 +11,10 @@ from typing import Callable
 import gymnasium as gym
 import numpy as np
 import pylab
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    FloatHyperparameter,
+    IntegerHyperparameter,
+)
 
 from skdecide import D, Domain, RLDomain, Solver
 from skdecide.builders.solver import Policies, Restorable
@@ -25,6 +29,16 @@ class MaxentIRL(Solver, Policies):
     """Maximum Entropy Inverse Reinforcement Learning solver."""
 
     T_domain = D
+
+    hyperparameters = [
+        IntegerHyperparameter(name="n_states"),
+        IntegerHyperparameter(name="n_actions"),
+        IntegerHyperparameter(name="one_feature"),
+        FloatHyperparameter(name="gamma"),
+        FloatHyperparameter(name="q_learning_rate"),
+        FloatHyperparameter(name="theta_learning_rate"),
+        IntegerHyperparameter(name="n_epochs"),
+    ]
 
     def __init__(
         self,

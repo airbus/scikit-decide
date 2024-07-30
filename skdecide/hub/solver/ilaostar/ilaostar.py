@@ -8,6 +8,10 @@ import os
 import sys
 from typing import Callable, Dict, Set, Tuple
 
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    FloatHyperparameter,
+)
+
 from skdecide import Domain, Solver, hub
 from skdecide.builders.domain import (
     Actions,
@@ -59,6 +63,11 @@ try:
         """
 
         T_domain = D
+
+        hyperparameters = [
+            FloatHyperparameter(name="discount"),
+            FloatHyperparameter(name="epsilon"),
+        ]
 
         def __init__(
             self,
