@@ -777,7 +777,11 @@ jobs:
 
       - name: Test python block codes from guide
         run: |
+          # configure minizinc
+          ${{ env.minizinc_config_cmdline }}
+          # extract block codes
           python scripts/md2py.py docs/guide/README.md tests/test_guide.py
+          # test it
           python tests/test_guide.py
 
   upload-release:
