@@ -516,7 +516,7 @@ class VariableSpace(GymSpace[T]):
 
     def __init__(
         self,
-        space:gym.Space,
+        space: gym.Space,
         max_len: int,
         **kwargs,
     ):
@@ -525,24 +525,32 @@ class VariableSpace(GymSpace[T]):
         self.size = ( self.max_len, self._gym_space._shape[0])
 
     def sample(self):
-        length = self.max_len 
+        length = self.max_len
         return list(np.array(self._gym_space.sample()) for _ in range(length))
     
     def unwrapped(self): 
-        return gym.spaces.Box(low= self._gym_space.low.min(), high= self._gym_space.high.max(), shape=self.size,)
+        return gym.spaces.Box(
+            low= self._gym_space.low.min(),
+            high= self._gym_space.high.max(),
+            shape=self.size,
+        )
     
     def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
-        return [np.pad(np.array(v), 
-                      ((0, self.max_len - len(v)), (0, 0)), 
-                      mode='constant', 
-                      constant_values=0) for v in sample_n]
+        return [
+            np.pad(
+                np.array(v),
+                ((0, self.max_len - len(v)), (0, 0)),
+                mode='constant',
+                constant_values=0
+            )
+            for v in sample_n
+        ]
 
     def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
         return [
-            np.array(ligne) for ligne in [
-                row for row in sample_n if not np.all(row == 0)
-                ]
+            np.array(ligne)
+            for ligne in [row for row in sample_n if not np.all(row == 0)]
         ]
 
     def __repr__(self):
-        return f"VariableSpace({self._gym_space}, max_len={self.max_len})"
+        return f"RepeatedSpace({self._gym_space}, max_len={self.max_len})"
