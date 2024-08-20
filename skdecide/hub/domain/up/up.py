@@ -25,9 +25,9 @@ from unified_planning.shortcuts import Bool, FluentExp, Int, ObjectExp, Real
 from skdecide.core import EmptySpace, ImplicitSpace, Space, Value
 from skdecide.domains import DeterministicPlanningDomain
 from skdecide.hub.space.gym import ListSpace, SetSpace
-from skdecide.hub.space.gym.gym import BoxSpace, DictSpace, DiscreteSpace, GymSpace
+from gymnasium.spaces import Box
+from skdecide.hub.space.gym.gym import BoxSpace, DictSpace, DiscreteSpace, VariableSpace
 from skdecide.utils import logger
-
 
 class SkUPState:
     def __init__(self, up_state: UPState):
@@ -167,6 +167,8 @@ class UPDomain(D):
         fluent_domains: Dict[FNode, Tuple[Union[int, float], Union[int, float]]] = None,
         state_encoding: str = "native",
         action_encoding: str = "native",
+        max_len : int = 2000,
+        max_actions : int = 20,
         **simulator_params,
     ):
         """Initialize UPDomain.
@@ -204,16 +206,21 @@ class UPDomain(D):
         self._states_np2up = None
         self._actions_up2np = None
         self._actions_np2up = None
-        if self._state_encoding != "native":
-            if self._state_encoding not in ["dictionary", "vector"]:
-                raise RuntimeError(
-                    "State encoding must be one of 'native', 'dictionary' or 'vector'"
-                )
-            self._init_state_encoding_()
+        self.max_len = max_len # used only in the repeated state encoding
+        self.max_actions = max_actions
+
         if self._action_encoding != "native":
             if self._action_encoding != "int":
                 raise RuntimeError("Action encoding must be either 'native' or 'int'")
             self._init_action_encoding_()
+
+        if self._state_encoding != "native":
+            if self._state_encoding not in ["dictionary", "vector", "repeated"]:
+                raise RuntimeError(
+                    "State encoding must be one of 'native', 'dictionary', 'vector' or 'repeated'"
+                )
+            self._init_state_encoding_()
+
 
     def _init_state_encoding_(self):
         def fnode_lower_bound(fn):
@@ -240,12 +247,54 @@ class UPDomain(D):
         self._fnodes_vars_ordering = []
         self._states_up2np = {}
         self._states_np2up = {}
+
+        if self._state_encoding == 'repeated':
+            self.objects = []
+            self.max_param = 0
+            for i, a in enumerate(self._actions_np2up):
+                if len(a.up_parameters) > self.max_param :
+                    self.max_param = len(a.up_parameters)
+                for p in a.up_parameters:
+                    if p not in self.objects:
+                        self.objects.append(p)
+
+            self.n2id = {
+                i.name : self._problem.fluents.index(i)+1 for i in  self._problem.fluents
+            }
+            self.id2n = {
+                self._problem.fluents.index(i)+1:i.name for i in  self._problem.fluents
+            }
+
+            self.Rep_mapping = {}
+            self.inv_mapping={}
+            self.bools = []
+            self.bool_val={}
+            self.non_bool_val={}
+            
         init_state = self._simulator.get_initial_state()
         static_fluents = self._problem.get_static_fluents()
         self._static_fluent_values = {}
         ci = init_state
         while ci is not None:
             for fn, fv in ci._values.items():
+                if self._state_encoding == 'repeated':
+                    if fn.fluent().type.is_bool_type():
+                        if self.n2id[fn.fluent().name] not in self.bools:
+                            self.bools.append(self.n2id[fn.fluent().name])
+                        if int(fv.constant_value()) not in self.bool_val.keys():
+                            self.bool_val[int(fv.constant_value())] = fv
+                    else:
+                        self.bool_val[int(fv.constant_value())] = fv
+                    fluent = np.array([-1 for _ in range(self.max_param+2)])
+                    fluent[0] = self.n2id[fn.fluent().name]
+                    fluent[-1] = int(fv.constant_value())
+                    c = 1
+                    for j in fn._content.args:
+                        fluent[c] = self.objects.index(j)
+                        c+=1
+                    
+                    self.Rep_mapping[(fn,fv)] = (fluent[:-1],fluent[-1])
+                    self.inv_mapping[tuple(fluent[:-1])] = fn
                 if (
                     fn.fluent() not in static_fluents
                     and fn.fluent().name != "total-cost"
@@ -295,11 +344,14 @@ class UPDomain(D):
                     elif fn.fluent().type.is_time_type():
                         raise RuntimeError("Time types not handled by UPDomain")
                 elif fn.fluent().name != "total-cost":
-                    self._static_fluent_values[fn] = fv
+                    if self._state_encoding != 'repeated':
+                        self._static_fluent_values[fn] = fv
             ci = ci._father
 
     def _convert_to_skup_state_(self, state):
-        if self._state_encoding == "native":
+        if state is None:
+            return None
+        elif self._state_encoding == "native":
             return state
         elif self._state_encoding == "dictionary":
             kstate = frozenset(state.items())
@@ -327,6 +379,26 @@ class UPDomain(D):
                 self._states_up2np[skup_state] = state
                 self._states_np2up[kstate] = skup_state
                 return skup_state
+        elif self._state_encoding == "repeated":
+            values = {}
+            for fluent in state:
+                if tuple(fluent[:-1]) in self.inv_mapping.keys():
+                    k=self.inv_mapping[tuple(fluent[:-1])] 
+                    if fluent[0] in self.bools:
+                        values[k] = self.bool_val[fluent[-1]]
+                    else :
+                        values[k] = Int(int(fluent[-1]))
+                else :
+                    print('else')
+                    for k in self.Rep_mapping.keys():
+                        if self.Rep_mapping[k][0].all() == fluent[:-1].all():
+                            if fluent[0] in self.bools:
+                                values[k[0]] = self.bool_val[fluent[-1]]
+                            else:
+                                values[k[0]] = Int(int(fluent[-1]))
+
+            values.update(self._static_fluent_values)
+            return SkUPState(UPState(values))
         else:
             return None
 
@@ -366,6 +438,28 @@ class UPDomain(D):
                 state = np.array(state, dtype=np.float32 if any_real else np.int32)
                 self._states_np2up[tuple(state.flatten())] = skup_state
                 self._states_up2np[skup_state] = state
+                return state
+        elif self._state_encoding == "repeated":
+            state = []
+            try :
+                ci = skup_state.up_state
+            except:
+                ci = skup_state
+            while ci is not None:
+                for fn, val in ci._values.items():
+                    if (fn,val) in self.Rep_mapping.keys():
+                        state.append(np.append(self.Rep_mapping[(fn,val)][0],self.Rep_mapping[(fn,val)][1]))
+                    else:
+                        fluent = np.array([-1 for _ in range(self.max_param+2)])
+                        fluent[0] = self.n2id[fn.fluent().name]
+                        fluent[-1] = int(val.constant_value())
+                        c = 1
+                        for j in fn._content.args:
+                            fluent[c] = self.objects.index(j)
+                            c+=1
+                        state.append(fluent) 
+                        self.Rep_mapping[(fn,val)] = (fluent[:-1],fluent[-1])
+                        self.inv_mapping[tuple(fluent[:-1])] = fn
                 return state
         else:
             return None
@@ -407,6 +501,11 @@ class UPDomain(D):
         next_state = SkUPState(
             self._simulator.apply(state.up_state, act.up_action, act.up_parameters)
         )
+        if (self._state_encoding == 'repeated') and (next_state.up_state is not None):
+            for fn,fv in state.up_state._values.items():
+                if fn not in next_state.up_state._values.keys():
+                    next_state.up_state._values[fn]=fv
+
         if self._total_cost is not None:
             cost = (
                 next_state.up_state.get_value(self._total_cost).constant_value() - cost
@@ -478,7 +577,10 @@ class UPDomain(D):
                     self._init_action_encoding_()
                 self._action_space = ListSpace(self._actions_np2up)
             elif self._action_encoding == "int":
-                self._action_space = DiscreteSpace(len(self._actions_np2up))
+                if self._state_encoding != "repeated":
+                    self._action_space = DiscreteSpace(len(self._actions_np2up))
+                else:
+                    self._action_space = DiscreteSpace(self.max_actions)
             else:
                 return None
         return self._action_space
@@ -508,7 +610,7 @@ class UPDomain(D):
                 SetSpace([self._actions_up2np[a] for a in applicable_actions])
                 if len(applicable_actions) > 0
                 else EmptySpace()
-            )
+                )
         else:
             return None
 
@@ -573,6 +675,30 @@ class UPDomain(D):
                         else np.int32
                     ),
                 )
+            elif self._state_encoding == "repeated":
+                self._observation_space = VariableSpace(Box(
+                    low= -1 if np.array(
+                        [
+                            self._fnodes_variables_map[fn][0]
+                            for fn in self._fnodes_vars_ordering
+                        ]
+                    ).min() > -1 else np.array(
+                        [
+                            self._fnodes_variables_map[fn][0]
+                            for fn in self._fnodes_vars_ordering
+                        ]
+                    ).min(),
+                    high=1000000,
+                    shape=(self.max_param+2,),
+                    dtype=(
+                        np.float32
+                        if any(
+                            fn.fluent().type.is_real_type()
+                            for fn in self._fnodes_vars_ordering
+                        )
+                        else np.int32
+                    )),
+                    max_len=self.max_len)
             else:
                 return None
         return self._observation_space
