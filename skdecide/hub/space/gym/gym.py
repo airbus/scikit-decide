@@ -509,3 +509,40 @@ class DataSpace(GymSpace[T]):
     def from_unwrapped(self, sample_n: Iterable[Dict]) -> Iterable[T]:
         # TODO: convert to simple types (get rid of ndarray created by gym dict space...)?
         return [self._data_class(**sample) for sample in sample_n]
+
+class VariableSpace(GymSpace[T]):
+    
+    """This class wraps a gymnasium Space (gym.spaces.Space) to allow dynamic length of elements."""
+
+    def __init__(
+        self,
+        space:gym.Space,
+        max_len: int,
+        **kwargs,
+    ):
+        self._gym_space = space
+        self.max_len = max_len
+        self.size = ( self.max_len, self._gym_space._shape[0])
+
+    def sample(self):
+        length = self.max_len 
+        return list(np.array(self._gym_space.sample()) for _ in range(length))
+    
+    def unwrapped(self): 
+        return gym.spaces.Box(low= self._gym_space.low.min(), high= self._gym_space.high.max(), shape=self.size,)
+    
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return [np.pad(np.array(v), 
+                      ((0, self.max_len - len(v)), (0, 0)), 
+                      mode='constant', 
+                      constant_values=0) for v in sample_n]
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return [
+            np.array(ligne) for ligne in [
+                row for row in sample_n if not np.all(row == 0)
+                ]
+        ]
+
+    def __repr__(self):
+        return f"VariableSpace({self._gym_space}, max_len={self.max_len})"
