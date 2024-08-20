@@ -1,19 +1,20 @@
+import ray
 import unified_planning
+from ray.rllib.algorithms.dqn import DQN
+from skdecide.hub.solver.ray_rllib import RayRLlib
 from unified_planning.shortcuts import (
-    Or,
     GE,
     BoolType,
     Int,
     IntType,
+    Or,
     SimulatedEffect,
     UserType,
 )
 
 from skdecide.hub.domain.up import UPDomain
 from skdecide.utils import rollout
-from ray.rllib.algorithms.dqn import DQN
-from solver import RayRLlib
-import ray
+
 
 Location = UserType("Location")
 robot_at = unified_planning.model.Fluent("robot_at", BoolType(), l=Location)
@@ -46,9 +47,7 @@ problem.add_fluent(battery_charge, default_initial_value=False)
 problem.add_action(move)
 
 NLOC = 10
-locations = [
-    unified_planning.model.Object("l%s" % i, Location) for i in range(NLOC)
-]
+locations = [unified_planning.model.Object("l%s" % i, Location) for i in range(NLOC)]
 problem.add_objects(locations)
 
 problem.set_initial_value(robot_at(locations[0]), True)
@@ -75,24 +74,22 @@ rollout(
     None,
     num_episodes=1,
     max_steps=100,
-    #max_framerate=30,
     outcome_formatter=None,
 )
 
-print('Initialise Solver ... \n')
+print("Initialise Solver ... \n")
 solver = RayRLlib(
     domain_factory=domain_factory,
     algo_class=DQN,
-    train_iterations=1,)
+    train_iterations=1,
+)
 
 solver.solve()
-print("done")
 
 rollout(
     domain_factory(),
     solver,
     num_episodes=1,
     max_steps=100,
-    #max_framerate=30,
     outcome_formatter=None,
 )
