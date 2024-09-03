@@ -1,11 +1,15 @@
 import logging
 from typing import Union
 
+import pytest
+
 from skdecide import D, Domain, EnvironmentOutcome, Solver, Value
 from skdecide.builders.solver import Policies
 from skdecide.hub.domain.maze import Maze
 from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.utils import (
+    ReplayOutOfActionMethod,
+    ReplaySolver,
     RolloutCallback,
     get_registered_domains,
     get_registered_solvers,
@@ -71,6 +75,84 @@ class MyCallback(RolloutCallback):
     ) -> bool:
         logger.warning("episode step")
         return step >= self.max_steps
+
+
+def test_replay_solver_rollout():
+    domain = Maze()
+    # rollout with random walk
+    episodes = rollout(
+        domain=domain,
+        render=False,
+        verbose=False,
+        action_formatter=None,
+        outcome_formatter=None,
+        return_episodes=True,
+        num_episodes=1,
+        max_steps=10,
+    )
+    # take the first episode
+    observations, actions, values = episodes[0]
+    # wrap the corresponding actions in a replay solver
+    replay_solver = ReplaySolver(actions)
+    # replay the rollout
+    replayed_episodes = rollout(
+        domain=domain,
+        solver=replay_solver,
+        return_episodes=True,
+        render=False,
+        verbose=False,
+        action_formatter=None,
+        outcome_formatter=None,
+        num_episodes=1,
+        max_steps=10,
+    )
+    # same outputs (for deterministic domain)
+    assert episodes == replayed_episodes
+
+    # check out-of-action behaviour
+    replay_solver = ReplaySolver(
+        actions, out_of_action_method=ReplayOutOfActionMethod.LOOP
+    )
+    replayed_actions = []
+
+
+@pytest.mark.parametrize("out_of_action_method", list(ReplayOutOfActionMethod))
+def test_replay_solver_out_of_action(out_of_action_method):
+    domain = Maze()
+    # rollout with random walk
+    episodes = rollout(
+        domain=domain,
+        render=False,
+        verbose=False,
+        action_formatter=None,
+        outcome_formatter=None,
+        return_episodes=True,
+        num_episodes=1,
+        max_steps=10,
+    )
+    # take the first episode
+    observations, actions, values = episodes[0]
+    # wrap the corresponding actions in a replay solver
+    replay_solver = ReplaySolver(actions, out_of_action_method=out_of_action_method)
+    # ask for more actions
+    n_more_actions = 2
+    if out_of_action_method == ReplayOutOfActionMethod.ERROR:
+        with pytest.raises(RuntimeError):
+            [
+                replay_solver.sample_action(None)
+                for _ in range(len(actions) + n_more_actions)
+            ]
+    else:
+        replayed_actions = [
+            replay_solver.sample_action(None)
+            for _ in range(len(actions) + n_more_actions)
+        ]
+        if out_of_action_method == ReplayOutOfActionMethod.LOOP:
+            assert replayed_actions == actions + actions[:n_more_actions]
+        elif out_of_action_method == ReplayOutOfActionMethod.LOOP:
+            assert replayed_actions == actions + [
+                actions[-1] for _ in range(n_more_actions)
+            ]
 
 
 def test_rollout_return_episodes():
