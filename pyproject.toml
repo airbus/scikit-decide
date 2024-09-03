@@ -50,7 +50,7 @@ format-jinja = """
 files = ["skdecide/__init__.py"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 pynng = ">=0.6.2"
 pathos = ">=0.2.7"
 scipy = { version = ">=1.9.2", optional = true }
