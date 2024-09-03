@@ -452,7 +452,13 @@ class RayRLlib(Solver, Policies, Restorable):
                     callbacks_class=callbacks_class, config=self._algo.evaluation_config
                 )
             if self._algo.workers:
-                local_worker: RolloutWorker = self._algo.workers.local_worker()
+                if Version(ray.__version__) < Version("2.34.0"):
+                    # starting from 2.34, algo.workers becomes algo.env_runner_group
+                    local_worker: RolloutWorker = self._algo.workers.local_worker()
+                else:
+                    local_worker: RolloutWorker = (
+                        self._algo.env_runner_group.local_worker()
+                    )
                 if local_worker:
                     _set_callbackclass_in_config(
                         callbacks_class=callbacks_class, config=local_worker.config
