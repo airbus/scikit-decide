@@ -11,6 +11,10 @@ from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 from discrete_optimization.generic_tools.callbacks.callback import Callback
 from discrete_optimization.generic_tools.do_problem import Problem
 from discrete_optimization.generic_tools.do_solver import SolverDO
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    EnumHyperparameter,
+    SubBrickKwargsHyperparameter,
+)
 from discrete_optimization.generic_tools.result_storage.result_storage import (
     ResultStorage,
 )
@@ -179,23 +183,38 @@ class DOSolver(Solver, DeterministicPolicies):
 
     T_domain = D
 
+    hyperparameters = [
+        EnumHyperparameter(name="method", enum=SolvingMethod),
+        SubBrickKwargsHyperparameter(
+            name="policy_method_params_kwargs", subbrick_cls=PolicyMethodParams
+        ),
+    ]
+
     def __init__(
         self,
         domain_factory: Callable[[], Domain],
-        policy_method_params: PolicyMethodParams,
+        policy_method_params: Optional[PolicyMethodParams] = None,
         method: Optional[SolvingMethod] = None,
         do_solver_type: Optional[Type[SolverDO]] = None,
         dict_params: Optional[Dict[Any, Any]] = None,
         callback: Callable[[DOSolver], bool] = lambda solver: False,
+        policy_method_params_kwargs: Optional[Dict[str, Any]] = None,
     ):
         Solver.__init__(self, domain_factory=domain_factory)
         self.callback = callback
         self.method = method
         self.do_solver_type = do_solver_type
-        self.policy_method_params = policy_method_params
         self.dict_params = dict_params
         if self.dict_params is None:
             self.dict_params = {}
+        if policy_method_params is None:
+            if policy_method_params_kwargs is None:
+                raise ValueError(
+                    "policy_method_params and policy_method_params_kwargs cannot be both None."
+                )
+            else:
+                policy_method_params = PolicyMethodParams(**policy_method_params_kwargs)
+        self.policy_method_params = policy_method_params
 
     def get_available_methods(self, domain: SchedulingDomain):
         do_domain = build_do_domain(domain)

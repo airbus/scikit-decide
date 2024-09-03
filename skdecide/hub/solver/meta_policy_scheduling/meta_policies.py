@@ -7,6 +7,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    IntegerHyperparameter,
+)
+
 from skdecide import rollout
 from skdecide.builders.domain.scheduling.scheduling_domains import D, SchedulingDomain
 from skdecide.builders.solver import DeterministicPolicies
@@ -22,6 +26,10 @@ class MetaPolicy(DeterministicPolicies):
     """
 
     T_domain = D
+
+    hyperparameters = [
+        IntegerHyperparameter(name="nb_rollout_estimation"),
+    ]
 
     def __init__(
         self,

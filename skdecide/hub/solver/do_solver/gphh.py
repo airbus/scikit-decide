@@ -7,12 +7,21 @@ from __future__ import annotations
 import operator
 import random
 from enum import Enum
-from typing import Callable, Dict, List, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 import numpy as np
 from deap import algorithms, creator, gp, tools
 from deap.base import Fitness, Toolbox
 from deap.gp import PrimitiveSet, PrimitiveTree, genHalfAndHalf
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    EnumHyperparameter,
+    FloatHyperparameter,
+    IntegerHyperparameter,
+    SubBrickKwargsHyperparameter,
+)
+from discrete_optimization.generic_tools.hyperparameters.hyperparametrizable import (
+    Hyperparametrizable,
+)
 from discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
 from discrete_optimization.rcpsp.solver.cpm import CPM
 from scipy import stats
@@ -260,7 +269,22 @@ class PermutationDistance(Enum):
     KTD_HAMMING = 2
 
 
-class ParametersGPHH:
+class ParametersGPHH(Hyperparametrizable):
+
+    hyperparameters = [
+        FloatHyperparameter(name="tournament_ratio"),
+        IntegerHyperparameter(name="pop_size", low=1, high=100),
+        IntegerHyperparameter(name="min_tree_depth", low=1, high=4),
+        IntegerHyperparameter(name="max_tree_depth", low=1, high=20),
+        FloatHyperparameter(name="crossover_rate", low=0.0, high=1.0),
+        FloatHyperparameter(name="mutation_rate", low=0.0, high=1.0),
+        EnumHyperparameter(name="evaluation", enum=EvaluationGPHH),
+        EnumHyperparameter(
+            name="permutation_distance",
+            enum=PermutationDistance,
+        ),
+    ] + PolicyMethodParams.hyperparameters
+
     set_feature: Set[FeatureEnum] = None
     set_primitves: PrimitiveSet = None
     tournament_ratio: float = None
@@ -434,6 +458,12 @@ class ParametersGPHH:
 class GPHH(Solver, DeterministicPolicies):
     T_domain = D
 
+    hyperparameters = [
+        SubBrickKwargsHyperparameter(
+            name="params_gphh_kwargs", subbrick_cls=ParametersGPHH
+        )
+    ]
+
     training_domains: List[T_domain]
     verbose: bool
     weight: int
@@ -453,17 +483,41 @@ class GPHH(Solver, DeterministicPolicies):
         domain_model: SchedulingDomain,
         weight: int,
         # set_feature: Set[FeatureEnum]=None,
-        params_gphh: ParametersGPHH = ParametersGPHH.default(),
+        params_gphh: Optional[ParametersGPHH] = None,
         reference_permutations=None,
         # reference_makespans=None,
         training_domains_names=None,
         verbose: bool = False,
+        params_gphh_kwargs: Optional[Dict[str, Any]] = None,
     ):
+        """Genetic Programming based Hyper-Heuristics
+
+        # Parameters
+        domain_factory
+        training_domains
+        domain_model
+        weight
+        params_gphh
+        reference_permutations
+        training_domains_names
+        verbose
+        params_gphh_kwargs: can be used as kwargs to create params_gphh if not specified.
+            Useful when using optuna to tune GPHH's hyperparameters. Normal users should
+            rather use directly params_gphh.
+
+        """
         Solver.__init__(self, domain_factory=domain_factory)
         self.training_domains = training_domains
         self.domain_model = domain_model
-        self.params_gphh = params_gphh
-        # self.set_feature = set_feature
+        # default params_gphh
+        if params_gphh is None:
+            self.params_gphh = ParametersGPHH.default()
+        else:
+            self.params_gphh = params_gphh
+        # update params_gphh (for optuna tuning)
+        if params_gphh_kwargs is not None:
+            for k, v in params_gphh_kwargs.items():
+                setattr(self.params_gphh, k, v)
         self.set_feature = self.params_gphh.set_feature
         print("self.set_feature: ", self.set_feature)
         print("Evaluation: ", self.params_gphh.evaluation)

@@ -8,6 +8,10 @@ from heapq import heappop, heappush
 from itertools import count
 from typing import Callable, Dict, List, Optional
 
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    FloatHyperparameter,
+)
+
 from skdecide import Domain, Solver, Value
 from skdecide.builders.domain import (
     Actions,
@@ -41,6 +45,16 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
     """Lazy A* solver."""
 
     T_domain = D
+
+    hyperparameters = [
+        FloatHyperparameter(
+            name="weight",
+            low=0.0,
+            high=1.0,
+            suggest_high=True,
+            suggest_low=True,
+        )
+    ]
 
     def __init__(
         self,

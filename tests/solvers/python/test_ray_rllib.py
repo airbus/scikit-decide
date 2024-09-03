@@ -155,7 +155,9 @@ def test_ray_rllib_solver():
     config_factory = lambda: PPO.get_default_config().resources(
         num_cpus_per_worker=0.5
     )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
-    solver_kwargs = dict(algo_class=PPO, train_iterations=1)
+    solver_kwargs = dict(
+        algo_class=PPO, train_iterations=1, gamma=0.95, train_batch_size_log2=8
+    )
     solver_factory = lambda: RayRLlib(
         domain_factory=domain_factory, config=config_factory(), **solver_kwargs
     )
@@ -164,6 +166,10 @@ def test_ray_rllib_solver():
     solver = solver_factory()
     solver.solve()
     assert hasattr(solver, "_algo")
+
+    assert solver._algo.config.num_cpus_per_worker == 0.5
+    assert solver._algo.config.gamma == 0.95
+    assert solver._algo.config.train_batch_size == 256
 
     # solve further
     solver.solve()

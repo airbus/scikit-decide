@@ -7,6 +7,11 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, List, Optional, Set, Tuple, Type
 
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    SubBrickHyperparameter,
+    SubBrickKwargsHyperparameter,
+)
+
 from skdecide import Domain, Solver
 from skdecide.builders.domain import MultiAgent, Sequential, SingleAgent
 from skdecide.builders.solver import DeterministicPolicies, FromAnyState, Utilities
@@ -26,6 +31,19 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
     estimates of each agent as if it involved alone in the environment."""
 
     T_domain = D
+
+    hyperparameters = [
+        SubBrickHyperparameter(name="multiagent_solver_class", choices=[]),
+        SubBrickKwargsHyperparameter(
+            name="multiagent_solver_kwargs",
+            subbrick_hyperparameter="multiagent_solver_class",
+        ),
+        SubBrickHyperparameter(name="singleagent_solver_class", choices=[]),
+        SubBrickKwargsHyperparameter(
+            name="singleagent_solver_kwargs",
+            subbrick_hyperparameter="singleagent_solver_class",
+        ),
+    ]
 
     def __init__(
         self,

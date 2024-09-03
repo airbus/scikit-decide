@@ -10,6 +10,9 @@ from typing import Callable
 
 import networkx as nx
 import numpy as np
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    EnumHyperparameter,
+)
 
 from skdecide import Domain
 from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
@@ -42,6 +45,13 @@ GreedyChoice.TOTALLY_RANDOM.__doc__ = "Sample random next task to schedule next"
 
 class PilePolicy(Solver, DeterministicPolicies):
     T_domain = D
+
+    hyperparameters = [
+        EnumHyperparameter(
+            name="greedy_method",
+            enum=GreedyChoice,
+        ),
+    ]
 
     def __init__(
         self,

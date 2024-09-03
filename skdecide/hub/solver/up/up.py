@@ -6,7 +6,11 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional
 
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    CategoricalHyperparameter,
+)
 from unified_planning.engines import Engine
+from unified_planning.environment import get_environment
 from unified_planning.exceptions import UPValueError
 from unified_planning.shortcuts import FluentExp, SequentialSimulator
 
@@ -28,6 +32,23 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
     """
 
     T_domain = D
+
+    hyperparameters = [
+        CategoricalHyperparameter(
+            name="name",
+            choices=[
+                engine
+                for engine in get_environment().factory.preference_list
+                if (
+                    "[" not in engine
+                    and "validator" not in engine
+                    and "remover" not in engine
+                    and "grounder" not in engine
+                    and "simulator" not in engine
+                )
+            ],
+        ),
+    ]
 
     def __init__(
         self,
@@ -57,11 +78,11 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
     def _solve(self) -> None:
         self._domain = self._domain_factory()
         problem = self._domain._problem
-        om_params = (
-            self._operation_mode_params
-            if len(self._operation_mode_params) > 0
-            else {"problem_kind": problem.kind}
-        )
+        # copy the params
+        om_params = dict(self._operation_mode_params)
+        if "problem_kind" not in om_params:
+            # add problem kind
+            om_params["problem_kind"] = problem.kind
         with self._operation_mode(**om_params) as planner:
             result = planner.solve(problem, **self._engine_params)
             self._plan = [SkUPAction(a) for a in result.plan.actions]

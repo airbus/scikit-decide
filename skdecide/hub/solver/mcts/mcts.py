@@ -11,6 +11,13 @@ from enum import Enum
 from math import sqrt
 from typing import Callable, Dict, List, Optional, Tuple
 
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    CategoricalHyperparameter,
+    EnumHyperparameter,
+    FloatHyperparameter,
+    IntegerHyperparameter,
+)
+
 from skdecide import Domain, Solver, hub
 from skdecide.builders.domain import (
     Actions,
@@ -91,6 +98,39 @@ try:
 
         class BackPropagator(Enum):
             GRAPH = mcts_options.BackPropagator.Graph
+
+        hyperparameters = [
+            IntegerHyperparameter(name="rollout_budget"),
+            IntegerHyperparameter(name="max_depth"),
+            IntegerHyperparameter(name="residual_moving_average_window"),
+            FloatHyperparameter(name="epsilon"),
+            FloatHyperparameter(name="discount"),
+            FloatHyperparameter(name="ucb_constant"),
+            FloatHyperparameter(name="state_expansion_rate"),
+            FloatHyperparameter(name="action_expansion_rate"),
+            EnumHyperparameter(
+                name="transition_mode",
+                enum=TransitionMode,
+            ),
+            EnumHyperparameter(name="tree_policy", enum=TreePolicy),
+            EnumHyperparameter(name="expander", enum=Expander),
+            EnumHyperparameter(
+                name="action_selector_optimization",
+                enum=ActionSelector,
+            ),
+            EnumHyperparameter(
+                name="action_selector_execution",
+                enum=ActionSelector,
+            ),
+            EnumHyperparameter(name="rollout_policy", enum=RolloutPolicy),
+            EnumHyperparameter(
+                name="back_propagator",
+                enum=BackPropagator,
+            ),
+            CategoricalHyperparameter(
+                name="continuous_planning", choices=[True, False]
+            ),
+        ]
 
         def __init__(
             self,
@@ -438,6 +478,13 @@ try:
         """MCTS solver to use with the multi-agent hierarchical `MAHD` solver
         as the multi-agent compound solver"""
 
+        hyperparameters = [
+            hp for hp in MCTS.hyperparameters if hp.name != "rollout_policy"
+        ] + [
+            IntegerHyperparameter(name="heuristic_confidence"),
+            FloatHyperparameter(name="action_choice_noise"),
+        ]
+
         def __init__(
             self,
             domain_factory: Callable[[], MCTS.T_domain],
@@ -639,6 +686,21 @@ try:
         with some specific options including the famous UCB1 action selector to perform tree exploration
         """
 
+        hyperparameters = [
+            hp
+            for hp in MCTS.hyperparameters
+            if hp.name
+            not in {
+                "state_expansion_rate",
+                "action_expansion_rate",
+                "tree_policy",
+                "expander",
+                "action_selector_optimization",
+                "action_selector_execution",
+                "back_propagator",
+            }
+        ]
+
         def __init__(
             self,
             domain_factory: Callable[[], MCTS.T_domain],
@@ -649,7 +711,7 @@ try:
             epsilon: float = 0.0,  # not a stopping criterion by default
             discount: float = 1.0,
             ucb_constant: float = 1.0 / sqrt(2.0),
-            online_node_garbage: float = False,
+            online_node_garbage: bool = False,
             custom_policy: Callable[
                 [MCTS.T_domain, D.T_agent[D.T_observation]],
                 D.T_agent[D.T_concurrency[D.T_event]],
@@ -751,6 +813,21 @@ try:
     class HUCT(HMCTS):
         """UCT solver to use with the multi-agent hierarchical `MAHD` solver
         as the multi-agent compound solver"""
+
+        hyperparameters = [
+            hp
+            for hp in HMCTS.hyperparameters
+            if hp.name
+            not in {
+                "state_expansion_rate",
+                "action_expansion_rate",
+                "tree_policy",
+                "expander",
+                "action_selector_optimization",
+                "action_selector_execution",
+                "back_propagator",
+            }
+        ]
 
         def __init__(
             self,
