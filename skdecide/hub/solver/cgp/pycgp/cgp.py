@@ -176,14 +176,16 @@ class CGP:
                         # mutate connection
                         self.genome[index] = rnd.randint(
                             0,
-                            min(
-                                self.max_graph_length + self.num_inputs - 1,
-                                (
-                                    self.num_inputs
-                                    + (int(index / (self.max_arity + 1)) - 1)
-                                    * self.num_rows
+                            int(
+                                min(
+                                    self.max_graph_length + self.num_inputs - 1,
+                                    (
+                                        self.num_inputs
+                                        + (int(index / (self.max_arity + 1)) - 1)
+                                        * self.num_rows
+                                    )
+                                    * self.recurrency_distance,
                                 )
-                                * self.recurrency_distance,
                             ),
                         )
                         # self.genome[index] = rnd.randint(0, self.num_inputs + (int(index / (self.max_arity + 1)) - 1) * self.num_rows)
