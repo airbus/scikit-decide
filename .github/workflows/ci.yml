@@ -68,15 +68,15 @@ jobs:
     steps:
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.9
       - name: Generate Matrix
         id: generate-matrix
         shell: python3 {0}
         run: |
           from os import environ
 
-          python_version_build = ["3.8", "3.9", "3.10", "3.11"]
-          python_version_test = ["3.8", "3.11"]
+          python_version_build = ["3.9", "3.10", "3.11"]
+          python_version_test = ["3.9", "3.11"]
           test = ["macos-12", "macos-latest", "ubuntu-latest", "windows-latest"]
           build_doc = "true"
 
@@ -87,7 +87,6 @@ jobs:
               to_bool = lambda s: True if s == "true" else False
               python_filter = {
                   '3.11': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.11]') }}"),
-                  '3.8': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.8]') }}"),
                   '3.9': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.9]') }}"),
                   '3.10': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.10]') }}"),
               }
@@ -134,7 +133,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
       - name: install pre-commit
         run: python -m pip install pre-commit
       - name: get cached pre-commit hooks
