@@ -7,6 +7,11 @@ from __future__ import annotations
 
 from typing import Callable, Dict, List, Optional
 
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    FloatHyperparameter,
+    IntegerHyperparameter,
+)
+
 from skdecide import Domain, Solver, Value
 from skdecide.builders.domain import (
     Actions,
@@ -39,6 +44,18 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
     """Learning Real-Time A* solver."""
 
     T_domain = D
+
+    hyperparameters = [
+        FloatHyperparameter(
+            name="weight",
+            low=0.0,
+            high=1.0,
+            suggest_high=True,
+            suggest_low=True,
+        ),
+        IntegerHyperparameter(name="max_iter"),
+        IntegerHyperparameter(name="max_depth"),
+    ]
 
     def _get_next_action(
         self, observation: D.T_agent[D.T_observation]
