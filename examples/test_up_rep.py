@@ -1,7 +1,6 @@
 import ray
 import unified_planning
 from ray.rllib.algorithms.dqn import DQN
-from skdecide.hub.solver.ray_rllib import RayRLlib
 from unified_planning.shortcuts import (
     GE,
     BoolType,
@@ -13,6 +12,7 @@ from unified_planning.shortcuts import (
 )
 
 from skdecide.hub.domain.up import UPDomain
+from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.utils import rollout
 
 
@@ -34,9 +34,11 @@ move.add_precondition(GE(battery_charge(), 10))
 move.add_effect(robot_at(l_from), False)
 move.add_effect(robot_at(l_to), True)
 
+
 def fun(_, state, actual_params):
     value = state.get_value(battery_charge()).constant_value()
     return [Int(value - 10)]
+
 
 move.set_simulated_effect(SimulatedEffect([battery_charge()], fun))
 
