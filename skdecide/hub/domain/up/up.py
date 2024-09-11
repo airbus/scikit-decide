@@ -29,6 +29,7 @@ from skdecide.hub.space.gym import ListSpace, SetSpace
 from skdecide.hub.space.gym.gym import BoxSpace, DictSpace, DiscreteSpace, VariableSpace
 from skdecide.utils import logger
 
+
 class SkUPState:
     def __init__(self, up_state: UPState):
         self._up_state = up_state
@@ -221,7 +222,6 @@ class UPDomain(D):
                 )
             self._init_state_encoding_()
 
-
     def _init_state_encoding_(self):
         def fnode_lower_bound(fn):
             if fn.fluent().type.lower_bound is not None:
@@ -259,16 +259,16 @@ class UPDomain(D):
                         self.objects.append(p)
 
             self.n2id = {
-                i.name : self._problem.fluents.index(i)+1 
-                for i in  self._problem.fluents
+                i.name: self._problem.fluents.index(i) + 1 
+                for i in self._problem.fluents
             }
             self.id2n = {
-                self._problem.fluents.index(i)+1:i.name 
-                for i in  self._problem.fluents
+                self._problem.fluents.index(i) + 1: i.name 
+                for i in self._problem.fluents
             }
 
             self.Rep_mapping = {}
-            self.inv_mapping= {}
+            self.inv_mapping = {}
             self.bools = []
             self.bool_val = {}
             self.non_bool_val = {}
@@ -385,10 +385,10 @@ class UPDomain(D):
             values = {}
             for fluent in state:
                 if tuple(fluent[:-1]) in self.inv_mapping.keys():
-                    k = self.inv_mapping[tuple(fluent[:-1])] 
+                    k = self.inv_mapping[tuple(fluent[:-1])]
                     if fluent[0] in self.bools:
                         values[k] = self.bool_val[fluent[-1]]
-                    else :
+                    else:
                         values[k] = Int(int(fluent[-1]))
                 else:
                     for k in self.Rep_mapping.keys():
@@ -451,8 +451,8 @@ class UPDomain(D):
                     if (fn, val) in self.Rep_mapping.keys():
                         state.append(
                             np.append(
-                                self.Rep_mapping[(fn,val)][0],
-                                self.Rep_mapping[(fn,val)][1]
+                                self.Rep_mapping[(fn, val)][0],
+                                self.Rep_mapping[(fn, val)][1],
                             )
                         )
                     else:
@@ -684,14 +684,14 @@ class UPDomain(D):
             elif self._state_encoding == "repeated":
                 self._observation_space = VariableSpace(
                     Box(
-                        low= -1 
+                        low=-1 
                         if np.array(
                             [
                                 self._fnodes_variables_map[fn][0]
                                 for fn in self._fnodes_vars_ordering
                             ]
-                        ).min() 
-                        > -1 
+                        ).min()
+                        > -1
                         else np.array(
                             [
                                 self._fnodes_variables_map[fn][0]
@@ -699,7 +699,7 @@ class UPDomain(D):
                             ]
                         ).min(),
                         high=1000000,
-                        shape=(self.max_param+2,),
+                        shape=(self.max_param + 2,),
                         dtype=(
                             np.float32
                             if any(
@@ -707,8 +707,10 @@ class UPDomain(D):
                                 for fn in self._fnodes_vars_ordering
                             )
                             else np.int32
-                        )),
-                        max_len=self.max_len)
+                        )
+                    ),
+                    max_len=self.max_len
+                )
             else:
                 return None
         return self._observation_space
