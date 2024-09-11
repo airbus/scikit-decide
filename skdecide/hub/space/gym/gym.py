@@ -529,7 +529,7 @@ class VariableSpace(GymSpace[T]):
         length = self.max_len
         return list(np.array(self._gym_space.sample()) for _ in range(length))
 
-    def unwrapped(self): 
+    def unwrapped(self):
         return gym.spaces.Box(
             low=self._gym_space.low.min(),
             high=self._gym_space.high.max(),
