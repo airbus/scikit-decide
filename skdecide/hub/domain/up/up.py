@@ -259,11 +259,11 @@ class UPDomain(D):
                         self.objects.append(p)
 
             self.n2id = {
-                i.name: self._problem.fluents.index(i) + 1 
+                i.name: self._problem.fluents.index(i) + 1
                 for i in self._problem.fluents
             }
             self.id2n = {
-                self._problem.fluents.index(i) + 1: i.name 
+                self._problem.fluents.index(i) + 1: i.name
                 for i in self._problem.fluents
             }
 
@@ -272,7 +272,7 @@ class UPDomain(D):
             self.bools = []
             self.bool_val = {}
             self.non_bool_val = {}
-            
+
         init_state = self._simulator.get_initial_state()
         static_fluents = self._problem.get_static_fluents()
         self._static_fluent_values = {}
@@ -684,7 +684,7 @@ class UPDomain(D):
             elif self._state_encoding == "repeated":
                 self._observation_space = VariableSpace(
                     Box(
-                        low=-1 
+                        low=-1
                         if np.array(
                             [
                                 self._fnodes_variables_map[fn][0]
@@ -707,9 +707,9 @@ class UPDomain(D):
                                 for fn in self._fnodes_vars_ordering
                             )
                             else np.int32
-                        )
+                        ),
                     ),
-                    max_len=self.max_len
+                    max_len=self.max_len,
                 )
             else:
                 return None
