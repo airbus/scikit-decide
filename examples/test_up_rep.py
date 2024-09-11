@@ -15,7 +15,6 @@ from skdecide.hub.domain.up import UPDomain
 from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.utils import rollout
 
-
 Location = UserType("Location")
 robot_at = unified_planning.model.Fluent("robot_at", BoolType(), l=Location)
 connected = unified_planning.model.Fluent(
