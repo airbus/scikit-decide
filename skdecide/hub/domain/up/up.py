@@ -294,7 +294,7 @@ class UPDomain(D):
                     for j in fn._content.args:
                         fluent[c] = self.objects.index(j)
                         c += 1
-                    
+
                     self.Rep_mapping[(fn, fv)] = (fluent[:-1], fluent[-1])
                     self.inv_mapping[tuple(fluent[:-1])] = fn
                 if (
