@@ -854,13 +854,13 @@ profile = ["gprof2dot (>=2022.7.29)"]
 
 [[package]]
 name = "discrete-optimization"
-version = "0.3.0"
+version = "0.3.2"
 description = "Discrete optimization library"
 optional = true
 python-versions = ">=3.8"
 files = [
-    {file = "discrete_optimization-0.3.0-py3-none-any.whl", hash = "sha256:414f341f9ff7e03d5429a91bad6b9e8c489ce2a43a978507558ceed7748998d2"},
-    {file = "discrete_optimization-0.3.0.tar.gz", hash = "sha256:cd1d3908cd1bbc6edf71288aa43fc4271fee01434fae9db18b7a27b54e7fe1e4"},
+    {file = "discrete_optimization-0.3.2-py3-none-any.whl", hash = "sha256:f9c525b07ebfe7fad09dc300f0cd01ee01cfeb60b6d83f62b283ea5bead1af60"},
+    {file = "discrete_optimization-0.3.2.tar.gz", hash = "sha256:55008f49d1c89a7209280597fb5613f9c14ab33c625a91740392f28056feba14"},
 ]
 
 [package.dependencies]
@@ -885,6 +885,7 @@ tqdm = ">=4.62.3"
 typing-extensions = ">=4.4"
 
 [package.extras]
+quantum = ["qiskit (>=1.0.2)", "qiskit-aer (>=0.14.1)", "qiskit-algorithms (>=0.3.0)", "qiskit-ibm-runtime (>=0.23.0)", "qiskit-optimization (>=0.6.1)"]
 test = ["optuna", "pytest", "pytest-cov", "scikit-learn (>=1.0)"]
 
 [[package]]
@@ -4475,4 +4476,4 @@ solvers = ["discrete-optimization", "gymnasium", "joblib", "numpy", "ray", "stab
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "5a2099198e73e89c1abc9db6ff1f3ad6ef7dff34df66de5eb75d2308ee6423da"
+content-hash = "db9bc34b0d4e849c81cf1dda5d1728dd3e07310832f3fbf0c623a138c15f4408"
