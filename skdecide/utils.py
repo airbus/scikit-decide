@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 import time
+from enum import Enum
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
 
 from skdecide import (
@@ -31,7 +32,7 @@ from skdecide.builders.domain import (
     Markovian,
     Renderable,
 )
-from skdecide.builders.solver import Policies
+from skdecide.builders.solver import DeterministicPolicies, Policies
 
 __all__ = [
     "get_registered_domains",
@@ -152,6 +153,82 @@ def match_solvers(
         if solver_type.check_domain(domain):
             matches.append(solver_type)
     return matches
+
+
+class ReplayOutOfActionMethod(Enum):
+    LOOP = "loop"
+    LAST = "last"
+    ERROR = "error"
+
+
+class ReplaySolver(DeterministicPolicies):
+    """Wrapper around a list of actions mimicking a computed policy.
+
+    The goal is to be able to replay a rollout from a previous episode.
+
+    # Attributes
+    actions: list of actions to wrap
+    out_of_action_method: method to use when we run out of actions
+      - LOOP: we loop on actions, beginning back with the first action,
+      - LAST: we keep returning the last action,
+      - ERROR: we raise a RuntimeError.
+
+    # Example
+    ```python
+    # rollout with actual solver
+    episodes = rollout(
+        domain,
+        solver,
+        return_episodes=True
+    )
+    # take the first episode
+    observations, actions, values = episodes[0]
+    # wrap the corresponding actions in a replay solver
+    replay_solver = ReplaySolver(actions)
+    # replay the rollout
+    replayed_episodes = rollout(
+        domain=domain,
+        solver=replay_solver,
+        return_episodes=True
+    )
+    # same outputs (for deterministic domain)
+    assert episodes == replayed_episodes
+    ```
+
+    """
+
+    def __init__(
+        self,
+        actions: List[D.T_agent[D.T_concurrency[D.T_event]]],
+        out_of_action_method: ReplayOutOfActionMethod = ReplayOutOfActionMethod.LAST,
+    ):
+        self.actions = actions
+        self.out_of_action_method = out_of_action_method
+        self._i_action = 0
+
+    @autocastable
+    def reset(self) -> None:
+        self._i_action = 0
+
+    def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
+        return True
+
+    def _get_next_action(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_concurrency[D.T_event]]:
+        if self._i_action >= len(self.actions):
+            if self.out_of_action_method == ReplayOutOfActionMethod.LOOP:
+                self._i_action = 0
+            elif self.out_of_action_method == ReplayOutOfActionMethod.LAST:
+                self._i_action = len(self.actions) - 1
+            else:
+                raise RuntimeError(
+                    "You require more actions than available in the registered plan!"
+                )
+
+        action = self.actions[self._i_action]
+        self._i_action += 1
+        return action
 
 
 def rollout(
