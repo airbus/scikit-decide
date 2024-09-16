@@ -375,12 +375,6 @@ jobs:
           # build wheel
           python -m cibuildwheel --output-dir wheelhouse
 
-          # set the proper platform tag
-          #  - with poetry build + cross-compilation for arm64, the tag could been still x64_64 (https://cibuildwheel.readthedocs.io/en/stable/faq/#how-to-cross-compile)
-          #  - we downgrade the displayed macosx version to ensure compatibility with lesser macosx than the ones used on this runner
-          pip install "wheel>=0.40"
-          wheel tags --platform-tag macosx_${MACOSX_DEPLOYMENT_TARGET_WO_DOT}_${ARCH} --remove wheelhouse/*.whl
-
       - name: Update build cache from wheels
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
         run: 7z x wheelhouse/*.whl -y
