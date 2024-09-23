@@ -68,15 +68,15 @@ jobs:
     steps:
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.9
       - name: Generate Matrix
         id: generate-matrix
         shell: python3 {0}
         run: |
           from os import environ
 
-          python_version_build = ["3.8", "3.9", "3.10", "3.11"]
-          python_version_test = ["3.8", "3.11"]
+          python_version_build = ["3.9", "3.10", "3.11", "3.12"]
+          python_version_test = ["3.9", "3.12"]
           test = ["macos-12", "macos-latest", "ubuntu-latest", "windows-latest"]
           build_doc = "true"
 
@@ -87,7 +87,7 @@ jobs:
               to_bool = lambda s: True if s == "true" else False
               python_filter = {
                   '3.11': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.11]') }}"),
-                  '3.8': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.8]') }}"),
+                  '3.12': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.12]') }}"),
                   '3.9': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.9]') }}"),
                   '3.10': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.10]') }}"),
               }
@@ -134,7 +134,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
       - name: install pre-commit
         run: python -m pip install pre-commit
       - name: get cached pre-commit hooks
@@ -375,12 +375,6 @@ jobs:
           # build wheel
           python -m cibuildwheel --output-dir wheelhouse
 
-          # set the proper platform tag
-          #  - with poetry build + cross-compilation for arm64, the tag could been still x64_64 (https://cibuildwheel.readthedocs.io/en/stable/faq/#how-to-cross-compile)
-          #  - we downgrade the displayed macosx version to ensure compatibility with lesser macosx than the ones used on this runner
-          pip install "wheel>=0.40"
-          wheel tags --platform-tag macosx_${MACOSX_DEPLOYMENT_TARGET_WO_DOT}_${ARCH} --remove wheelhouse/*.whl
-
       - name: Update build cache from wheels
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
         run: 7z x wheelhouse/*.whl -y
@@ -516,7 +510,7 @@ jobs:
     env:
       minizinc_config_cmdline: export PATH=$PATH:~/AppData/Local/Programs/MiniZinc
       minizinc_cache_path: ~/AppData/Local/Programs/MiniZinc
-      minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-bundled-setup-win64.exe
+      minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.8.5/MiniZincIDE-2.8.5-bundled-setup-win64.exe
       minizinc_downloaded_filepath: minizinc_setup.exe
       minizinc_install_cmdline: cmd //c "minizinc_setup.exe /verysilent /currentuser /norestart /suppressmsgboxes /sp"
 
@@ -569,7 +563,11 @@ jobs:
           pip install ray[rllib]>=2.20
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
-          pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna
+          if [ "$python_version" = "3.12" ]; then
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17"
+          else
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna
+          fi
 
       - name: Test with pytest
         run: |
@@ -601,7 +599,7 @@ jobs:
     env:
       minizinc_config_cmdline: export PATH=$PATH:$(pwd)/bin/MiniZincIDE.app/Contents/Resources
       minizinc_cache_path: $(pwd)/bin/MiniZincIDE.app
-      minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-bundled.dmg
+      minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.8.5/MiniZincIDE-2.8.5-bundled.dmg
       minizinc_downloaded_filepath: bin/minizinc.dmg
       minizinc_install_cmdline: sudo hdiutil attach bin/minizinc.dmg; sudo cp -R /Volumes/MiniZinc*/MiniZincIDE.app bin/.
 
@@ -663,7 +661,11 @@ jobs:
           python_version=${{ matrix.python-version }}
           arch=$(uname -m)
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
-          pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna
+          if [ "$python_version" = "3.12" ]; then
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17"
+          else
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna
+          fi
 
       - name: Test with pytest
         run: |
@@ -695,10 +697,10 @@ jobs:
     env:
       minizinc_config_cmdline: export PATH=$PATH:$(pwd)/bin/squashfs-root/usr/bin; export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/bin/squashfs-root/usr/lib
       minizinc_cache_path: $(pwd)/bin/squashfs-root
-      minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-x86_64.AppImage
+      minizinc_url: https://github.com/MiniZinc/MiniZincIDE/releases/download/2.8.5/MiniZincIDE-2.8.5-x86_64.AppImage
       minizinc_downloaded_filepath: bin/minizinc.AppImage
       minizinc_install_cmdline: cd bin; sudo chmod +x minizinc.AppImage; sudo ./minizinc.AppImage --appimage-extract; cd ..
-
+      minizinc_prerequisites_cmdline: sudo apt update && sudo apt install libegl1 -y
 
     steps:
       - uses: actions/checkout@v4
@@ -722,6 +724,10 @@ jobs:
 
       - name: Create bin/
         run: mkdir -p bin
+
+      - name: Minizinc prerequisites
+        run: |
+          ${{ env.minizinc_prerequisites_cmdline }}
 
       - name: get MininZinc path to cache
         id: get-mzn-cache-path
@@ -754,7 +760,11 @@ jobs:
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
-          pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna
+          if [ "$python_version" = "3.12" ]; then
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" "cffi>=1.17" docopt commonmark optuna
+          else
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna
+          fi
 
       - name: Test with pytest
         run: |
