@@ -433,8 +433,8 @@ class TransitionOutcome(
             )
         if self.termination is None:
             self.termination = (
-                {k: False for k in self.observation}
-                if isinstance(self.observation, dict)
+                {k: False for k in self.state}
+                if isinstance(self.state, dict)
                 else False
             )
 
