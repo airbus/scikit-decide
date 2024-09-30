@@ -12,8 +12,9 @@ import logging
 import os
 import sys
 import time
+from collections.abc import Callable, Iterable
 from enum import Enum
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
+from typing import Any, Optional, Union
 
 from skdecide import (
     D,
@@ -88,7 +89,7 @@ def get_data_home(data_home: Optional[str] = None) -> str:
     return data_home
 
 
-def _get_registered_entries(entry_type: str) -> List[str]:
+def _get_registered_entries(entry_type: str) -> list[str]:
     if (
         sys.version_info.minor < 10 and sys.version_info.major == 3
     ):  # different behaviour for 3.8 and 3.9
@@ -121,28 +122,28 @@ def _load_registered_entry(entry_type: str, entry_name: str) -> Optional[Any]:
             logger.warning(rf"/!\ {entry_name} could not be loaded ({e}).")
 
 
-def get_registered_domains() -> List[str]:
+def get_registered_domains() -> list[str]:
     return _get_registered_entries("skdecide.domains")
 
 
-def get_registered_solvers() -> List[str]:
+def get_registered_solvers() -> list[str]:
     return _get_registered_entries("skdecide.solvers")
 
 
-def load_registered_domain(name: str) -> Type[Domain]:
+def load_registered_domain(name: str) -> type[Domain]:
     return _load_registered_entry("skdecide.domains", name)
 
 
-def load_registered_solver(name: str) -> Type[Solver]:
+def load_registered_solver(name: str) -> type[Solver]:
     return _load_registered_entry("skdecide.solvers", name)
 
 
 # TODO: implement ranking heuristic
 def match_solvers(
     domain: Domain,
-    candidates: Optional[Iterable[Type[Solver]]] = None,
+    candidates: Optional[Iterable[type[Solver]]] = None,
     ranked: bool = False,
-) -> Union[List[Type[Solver]], List[Tuple[Type[Solver], int]]]:
+) -> Union[list[type[Solver]], list[tuple[type[Solver], int]]]:
     if candidates is None:
         candidates = [load_registered_solver(s) for s in get_registered_solvers()]
         candidates = [
@@ -199,7 +200,7 @@ class ReplaySolver(DeterministicPolicies):
 
     def __init__(
         self,
-        actions: List[D.T_agent[D.T_concurrency[D.T_event]]],
+        actions: list[D.T_agent[D.T_concurrency[D.T_event]]],
         out_of_action_method: ReplayOutOfActionMethod = ReplayOutOfActionMethod.LAST,
     ):
         self.actions = actions
@@ -247,11 +248,11 @@ def rollout(
     goal_logging_level: int = logging.INFO,
     rollout_callback: Optional[RolloutCallback] = None,
 ) -> Optional[
-    List[
-        Tuple[
-            List[D.T_agent[D.T_observation]],
-            List[D.T_agent[D.T_concurrency[D.T_event]]],
-            List[D.T_agent[Value[D.T_value]]],
+    list[
+        tuple[
+            list[D.T_agent[D.T_observation]],
+            list[D.T_agent[D.T_concurrency[D.T_event]]],
+            list[D.T_agent[Value[D.T_value]]],
         ]
     ]
 ]:
@@ -324,11 +325,11 @@ def rollout(
         solver = RandomWalk()
         autocast_all(solver, solver.T_domain, domain)
 
-    episodes: List[
-        Tuple[
-            List[D.T_agent[D.T_observation]],
-            List[D.T_agent[D.T_concurrency[D.T_event]]],
-            List[D.T_agent[Value[D.T_value]]],
+    episodes: list[
+        tuple[
+            list[D.T_agent[D.T_observation]],
+            list[D.T_agent[D.T_concurrency[D.T_event]]],
+            list[D.T_agent[Value[D.T_value]]],
         ]
     ] = []
 
@@ -371,9 +372,9 @@ def rollout(
         # Run episode
         step = 1
 
-        observations: List[D.T_agent[D.T_observation]] = []
-        actions: List[D.T_agent[D.T_concurrency[D.T_event]]] = []
-        values: List[D.T_agent[Value[D.T_value]]] = []
+        observations: list[D.T_agent[D.T_observation]] = []
+        actions: list[D.T_agent[D.T_concurrency[D.T_event]]] = []
+        values: list[D.T_agent[Value[D.T_value]]] = []
         # save the initial observation
         observations.append(observation)
 

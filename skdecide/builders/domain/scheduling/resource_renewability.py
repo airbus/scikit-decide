@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import State
 
 __all__ = ["MixedRenewable", "RenewableOnly"]
@@ -14,13 +12,13 @@ __all__ = ["MixedRenewable", "RenewableOnly"]
 class MixedRenewable:
     """A domain must inherit this class if the resource available are non-renewable and renewable."""
 
-    def get_resource_renewability(self) -> Dict[str, bool]:
+    def get_resource_renewability(self) -> dict[str, bool]:
         """
         Return a dictionary where the key is a resource name (string)
         and the value whether this resource is renewable (True) or not (False)."""
         return self._get_resource_renewability()
 
-    def _get_resource_renewability(self) -> Dict[str, bool]:
+    def _get_resource_renewability(self) -> dict[str, bool]:
         """
         Return a dictionary where the key is a resource name (string)
         and the value whether this resource is renewable (True) or not (False)."""
@@ -68,7 +66,7 @@ class MixedRenewable:
 class RenewableOnly(MixedRenewable):
     """A domain must inherit this class if the resource available are ALL renewable."""
 
-    def _get_resource_renewability(self) -> Dict[str, bool]:
+    def _get_resource_renewability(self) -> dict[str, bool]:
         """Return a dictionary where the key is a resource name (string)
         and the value whether this resource is renewable (True) or not (False)."""
         names = (

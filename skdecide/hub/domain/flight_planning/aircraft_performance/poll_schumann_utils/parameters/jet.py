@@ -47,7 +47,7 @@ def clip_mach_number(
             Maximum permitted operational Mach number for aircraft type.
 
     # Returns
-        Tuple[np.ndarray, np.ndarray]: Adjusted true airspeed and Mach number.
+        tuple[np.ndarray, np.ndarray]: Adjusted true airspeed and Mach number.
     """
 
     mach_num = units.tas_to_mach_number(true_airspeed, air_temperature)

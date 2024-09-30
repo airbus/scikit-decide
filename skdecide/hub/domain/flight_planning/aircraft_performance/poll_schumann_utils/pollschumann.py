@@ -2,7 +2,7 @@
 import math
 
 # typing
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import numpy as np
 
@@ -52,14 +52,14 @@ class FuelFlow:
 
     def __call__(
         self,
-        values_current: Dict[str, float],
+        values_current: dict[str, float],
         delta_time: float,
         vs: Optional[float] = 0.0,
     ) -> float:
         """Compute fuel flow based on Poll-Schumann model.
 
         # Parameters
-            values_current (Dict[str, float]):
+            values_current (dict[str, float]):
                 Dictionary with current values of altitude [:math:`ft`], speed [:math:`kts`], temperature [:math:`K`], and mass [:math:`Kg`].
             delta_time (float):
                 Time step in seconds [:math:`s`].

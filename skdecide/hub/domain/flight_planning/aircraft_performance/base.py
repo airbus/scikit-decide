@@ -2,7 +2,7 @@
 # typing
 import math
 from inspect import signature
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import openap
@@ -33,7 +33,7 @@ class AircraftPerformanceModel:
 
     def compute_fuel_consumption(
         self,
-        values_current: Dict[str, float],
+        values_current: dict[str, float],
         delta_time: float,
         vs: Optional[float] = 0.0,
     ) -> float:
@@ -54,7 +54,7 @@ class OpenAP(AircraftPerformanceModel):
 
     def compute_fuel_consumption(
         self,
-        values_current: Dict[str, float],
+        values_current: dict[str, float],
         delta_time: float,
         vs: Optional[float] = 0.0,
     ) -> float:
@@ -86,7 +86,7 @@ class PollSchumannModel(AircraftPerformanceModel):
 
     def compute_fuel_consumption(
         self,
-        values_current: Dict[str, float],
+        values_current: dict[str, float],
         delta_time: float,
         vs: Optional[float] = 0.0,
     ) -> float:

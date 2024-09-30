@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timedelta
 from math import asin, atan2, cos, degrees, radians, sin, sqrt
 from tempfile import NamedTemporaryFile
-from typing import Callable, Collection, Iterable, Tuple, Union
+from typing import Callable, Collection, Iterable, Union, tuple
 
 import cdsapi
 import cfgrib
@@ -283,13 +283,13 @@ class WindInterpolator:
 
 
 def flying(
-    from_: pd.DataFrame, to_: Tuple[float, float], ds: xr.Dataset, fflow: Callable
+    from_: pd.DataFrame, to_: tuple[float, float], ds: xr.Dataset, fflow: Callable
 ) -> pd.DataFrame:
     """Compute the trajectory of a flying object from a given point to a given point
 
     # Parameters
         from_ (pd.DataFrame): the trajectory of the object so far
-        to_ (Tuple[float, float]): the destination of the object
+        to_ (tuple[float, float]): the destination of the object
         ds (xr.Dataset): dataset containing the wind field
         fflow (Callable): fuel flow function
 

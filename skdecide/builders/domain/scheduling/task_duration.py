@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Optional
 
 from skdecide.core import DiscreteDistribution, Distribution
 
@@ -80,7 +80,7 @@ class UncertainMultivariateTaskDuration(SimulatedTaskDuration):
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         """Return the multivariate Distribution of the duration of the given task in the given mode.
         Multivariate seetings need to be provided."""
@@ -93,7 +93,7 @@ class UncertainMultivariateTaskDuration(SimulatedTaskDuration):
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         """Return the multivariate Distribution of the duration of the given task in the given mode.
         Multivariate seetings need to be provided."""
@@ -115,7 +115,7 @@ class UncertainUnivariateTaskDuration(UncertainMultivariateTaskDuration):
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:  # TODO, problem here i think
         """Return the univariate Distribution of the duration of the given task in the given mode."""
         raise NotImplementedError
@@ -137,7 +137,7 @@ class UncertainBoundedTaskDuration(UncertainUnivariateTaskDuration):
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ) -> DiscreteDistribution:
         """Return the Distribution of the duration of the given task in the given mode.
         The distribution returns values beween the defined lower and upper bounds."""
@@ -184,7 +184,7 @@ class UniformBoundedTaskDuration(UncertainBoundedTaskDuration):
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ) -> DiscreteDistribution:
         """Return the Distribution of the duration of the given task in the given mode.
         The distribution is uniform between the defined lower and upper bounds."""
@@ -222,7 +222,7 @@ class EnumerableTaskDuration(UncertainBoundedTaskDuration):
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ) -> DiscreteDistribution:
         """Return the Distribution of the duration of the given task in the given mode.
         as an Enumerable."""
@@ -273,7 +273,7 @@ class DeterministicTaskDuration(EnumerableTaskDuration):
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ):
         """Return the Distribution of the duration of the given task in the given mode.
         Because the duration is deterministic, the distribution always returns the same duration."""

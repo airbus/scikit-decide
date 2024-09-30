@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Callable, Dict, Set, Tuple
+from collections.abc import Callable
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     FloatHyperparameter,
@@ -229,12 +229,12 @@ try:
             """
             return self._solver.get_nb_explored_states()
 
-        def get_explored_states(self) -> Set[D.T_agent[D.T_observation]]:
+        def get_explored_states(self) -> set[D.T_agent[D.T_observation]]:
             """Get the set of states present in the search graph (i.e. the graph's
                 state nodes minus the nodes' encapsulation and their children)
 
             # Returns
-            Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
+            set[D.T_agent[D.T_observation]]: Set of states present in the search graph
             """
             return self._solver.get_explored_states()
 
@@ -269,9 +269,9 @@ try:
 
         def get_policy(
             self,
-        ) -> Dict[
+        ) -> dict[
             D.T_agent[D.T_observation],
-            Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the Q-value has been updated at least once (which is optimal for
@@ -281,7 +281,7 @@ try:
                 Only defined over the states reachable from the root solving state
 
             # Returns
-            Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
+            dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
                 Mapping from states to pairs of action and best Q-value
             """
             return self._solver.get_policy()

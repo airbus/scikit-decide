@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Callable, Dict, List, Set, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from skdecide import Domain, Solver, hub
 from skdecide.builders.domain import (
@@ -212,12 +213,12 @@ try:
             """
             return self._solver.get_nb_explored_states()
 
-        def get_explored_states(self) -> Set[D.T_agent[D.T_observation]]:
+        def get_explored_states(self) -> set[D.T_agent[D.T_observation]]:
             """Get the set of states present in the search graph (i.e. the graph's
                 state nodes minus the nodes' encapsulation and their neighbors)
 
             # Returns
-            Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
+            set[D.T_agent[D.T_observation]]: Set of states present in the search graph
             """
             return self._solver.get_explored_states()
 
@@ -252,8 +253,8 @@ try:
 
         def get_plan(
             self, observation: D.T_agent[D.T_observation]
-        ) -> List[
-            Tuple[
+        ) -> list[
+            tuple[
                 D.T_agent[D.T_observation],
                 D.T_agent[D.T_concurrency[D.T_event]],
                 D.T_value,
@@ -271,7 +272,7 @@ try:
                 to a goal state is requested
 
             # Returns
-            List[ Tuple[ D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]], D.T_value, ] ]:
+            list[ tuple[ D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]], D.T_value, ] ]:
                 Sequence of tuples of state, action and transition cost (computed as the
                 difference of g-scores between this state and the next one) visited
                 along the execution of the plan
@@ -280,9 +281,9 @@ try:
 
         def get_policy(
             self,
-        ) -> Dict[
+        ) -> dict[
             D.T_agent[D.T_observation],
-            Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the (partial) solution policy defined for the states for which
                 a solution plan that goes through them has been previously computed at
@@ -292,7 +293,7 @@ try:
                 Only defined over the states reachable from the root solving state
 
             # Returns
-            Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
+            dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
                 Mapping from states to pairs of action and minimum cost-to-go
             """
             return self._solver.get_policy()

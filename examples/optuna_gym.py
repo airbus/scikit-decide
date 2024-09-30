@@ -17,7 +17,7 @@ Results can be viewed on optuna-dashboard with:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Tuple, Type, Union
+from typing import Any, Union
 
 import gymnasium as gym
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
@@ -95,18 +95,18 @@ def heuristic(domain, state):
 
 def bee1_features(
     domain: Union[GymDomainForWidthSolvers, GymDomain], state: "State"
-) -> Tuple[int, Any]:
+) -> tuple[int, Any]:
     return domain.bee1_features(state)
 
 
 def bee2_features(
     domain: Union[GymDomainForWidthSolvers, GymDomain], state: "State"
-) -> Tuple[int, Any]:
+) -> tuple[int, Any]:
     return domain.bee2_features(state)
 
 
 # Fixed kwargs per solver: either hyperparameters we do not want to search, or other parameters like time limits
-kwargs_fixed_by_solver: Dict[Type[Solver], Dict[str, Any]] = {
+kwargs_fixed_by_solver: dict[type[Solver], dict[str, Any]] = {
     Astar: dict(
         parallel=False,
         verbose=False,
@@ -123,7 +123,7 @@ kwargs_fixed_by_solver: Dict[Type[Solver], Dict[str, Any]] = {
 
 
 # Add new hyperparameters to some solvers
-additional_hyperparameters_by_solver: Dict[Type[Solver], List[Hyperparameter]] = {
+additional_hyperparameters_by_solver: dict[type[Solver], list[Hyperparameter]] = {
     StableBaseline: [
         # defined only if $algo_class \in [PPO]$
         FloatHyperparameter(
@@ -148,8 +148,8 @@ additional_hyperparameters_by_solver: Dict[Type[Solver], List[Hyperparameter]] =
 
 
 # Restrict some hyperparameters choices, for some solvers (making use of `kwargs_by_name` of `suggest_with_optuna`)
-suggest_optuna_kwargs_by_name_by_solver: Dict[
-    Type[Solver], Dict[str, Dict[str, Any]]
+suggest_optuna_kwargs_by_name_by_solver: dict[
+    type[Solver], dict[str, dict[str, Any]]
 ] = {
     StableBaseline: {
         # restrict the choices of algo classes

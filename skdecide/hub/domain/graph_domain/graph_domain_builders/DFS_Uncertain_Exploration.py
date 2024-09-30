@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from heapq import heappop, heappush
 from itertools import count
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 from skdecide import D, GoalMDPDomain
 from skdecide.hub.domain.graph_domain.graph_domain_builders.GraphExploration import (
@@ -57,11 +57,11 @@ class DFSExploration(GraphExploration):
         nb_states = 1
         nb_edges = 0
         result = {initial_state}
-        next_state_map: Dict[
-            D.T_state, Dict[D.T_event, Dict[D.T_state, Tuple[float, float]]]
+        next_state_map: dict[
+            D.T_state, dict[D.T_event, dict[D.T_state, tuple[float, float]]]
         ] = {}
-        state_terminal: Dict[D.T_state, bool] = dict()
-        state_goal: Dict[D.T_state, bool] = dict()
+        state_terminal: dict[D.T_state, bool] = dict()
+        state_goal: dict[D.T_state, bool] = dict()
         state_terminal[initial_state] = self.domain.is_terminal(initial_state)
         state_goal[initial_state] = self.domain.is_goal(initial_state)
         while len(stack) > 0:

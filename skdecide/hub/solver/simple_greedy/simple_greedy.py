@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
 from skdecide import DeterministicPolicySolver, Domain, EnumerableSpace, Memory
 from skdecide.builders.domain import EnumerableTransitions, FullyObservable, SingleAgent
 

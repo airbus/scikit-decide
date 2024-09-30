@@ -4,17 +4,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import Dict, List, Optional
-
-# __all__ = ['Task', 'Status']
-#
-#
-# class Status(Enum):
-#     unreleased = 0
-#     released = 1
-#     ongoing = 2
-#     complete = 3
+from typing import Optional
 
 
 class Task:
@@ -24,8 +14,8 @@ class Task:
     end: int
     sampled_duration: int
     mode: int
-    paused: List[int]
-    resumed: List[int]
+    paused: list[int]
+    resumed: list[int]
 
     def __init__(self, id: int, start: int, sampled_duration: int):
         self.id = id

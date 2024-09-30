@@ -4,20 +4,20 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from copy import copy, deepcopy
 from enum import Enum
-from typing import Dict, Iterable, Optional, Set, Tuple, Union
+from typing import Optional, Union
 
 from skdecide.builders.domain.scheduling.task import Task
 
 
-def rebuild_tasks_complete_details_dict(state: State) -> Dict[int, Task]:
+def rebuild_tasks_complete_details_dict(state: State) -> dict[int, Task]:
     tasks_complete_details = {p.value.id: p.value for p in state.tasks_complete_details}
     return tasks_complete_details
 
 
-def rebuild_all_tasks_dict(state: State) -> Dict[int, Task]:
+def rebuild_all_tasks_dict(state: State) -> dict[int, Task]:
     tasks_details = {
         task_id: Task(id=task_id, start=None, sampled_duration=None)
         for task_id in state.task_ids
@@ -27,12 +27,12 @@ def rebuild_all_tasks_dict(state: State) -> Dict[int, Task]:
     return tasks_details
 
 
-def rebuild_tasks_modes_dict(state: State) -> Dict[int, int]:
+def rebuild_tasks_modes_dict(state: State) -> dict[int, int]:
     tasks_modes = {p.value[0]: p.value[1] for p in state.tasks_complete_mode}
     return tasks_modes
 
 
-def rebuild_schedule_dict(state: State) -> Dict[int, Dict[str, int]]:
+def rebuild_schedule_dict(state: State) -> dict[int, dict[str, int]]:
     schedule = {
         p.value.id: {"start_time": p.value.start, "end_time": p.value.end}
         for p in state.tasks_complete_details
@@ -52,7 +52,7 @@ class SinglyLinkedList(Collection):
     def __init__(self, head=None):
         self.head = head
 
-    def push_front(self, value: Union[int, float, Task, Tuple[int, int]]):
+    def push_front(self, value: Union[int, float, Task, tuple[int, int]]):
         self.head = Node(value, self.head)
 
     def __iter__(self):
@@ -129,26 +129,26 @@ class State:
 
     # TODO : code efficient hash/eq functions. will probably be mandatory in some planning algo.
     t: int
-    tasks_unsatisfiable: Set[int]
-    tasks_ongoing: Set[int]
-    tasks_complete: Set[int]
-    tasks_paused: Set[int]
-    tasks_progress: Dict[int, float]
-    tasks_mode: Dict[int, int]
-    resource_to_task: Dict[str, int]
-    resource_availability: Dict[str, int]
-    resource_used: Dict[str, int]
-    resource_used_for_task: Dict[int, Dict[str, int]]
-    tasks_details: Dict[
+    tasks_unsatisfiable: set[int]
+    tasks_ongoing: set[int]
+    tasks_complete: set[int]
+    tasks_paused: set[int]
+    tasks_progress: dict[int, float]
+    tasks_mode: dict[int, int]
+    resource_to_task: dict[str, int]
+    resource_availability: dict[str, int]
+    resource_used: dict[str, int]
+    resource_used_for_task: dict[int, dict[str, int]]
+    tasks_details: dict[
         int, Task
     ]  # Use to store task stats, resource used etc... for post-processing purposes
     tasks_complete_details: SinglyLinkedList
     tasks_complete_progress: SinglyLinkedList
     tasks_complete_mode: SinglyLinkedList
-    _current_conditions: Set
+    _current_conditions: set
 
     # TODO : put the attributes in the __init__ ?!
-    def __init__(self, task_ids: Iterable[int], tasks_available: Set[int] = None):
+    def __init__(self, task_ids: Iterable[int], tasks_available: set[int] = None):
         """Initialize a scheduling state.
 
         # Parameters
@@ -199,7 +199,7 @@ class State:
         return s
 
     @property
-    def tasks_full_details(self) -> Dict[int, Task]:
+    def tasks_full_details(self) -> dict[int, Task]:
         return rebuild_all_tasks_dict(self)
 
     @property
@@ -272,7 +272,7 @@ class SchedulingAction:
         action: SchedulingActionEnum,
         mode: Union[int, None],
         time_progress: bool,
-        resource_unit_names: Optional[Set[str]] = None,
+        resource_unit_names: Optional[set[str]] = None,
     ):
         self.task = task
         self.action = action

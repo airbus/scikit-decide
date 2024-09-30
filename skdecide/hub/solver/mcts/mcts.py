@@ -7,9 +7,10 @@ from __future__ import annotations
 import os
 import random as rd
 import sys
+from collections.abc import Callable
 from enum import Enum
 from math import sqrt
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
@@ -152,7 +153,7 @@ try:
             heuristic: Optional[
                 Callable[
                     [T_domain, D.T_agent[D.T_observation]],
-                    Tuple[D.T_agent[Value[D.T_value]], int],
+                    tuple[D.T_agent[Value[D.T_value]], int],
                 ]
             ] = None,
             state_expansion_rate: float = 0.1,
@@ -192,7 +193,7 @@ try:
             custom_policy (Callable[ [T_domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]], ], optional):
                 Custom policy function to use in the rollout policy from non-expanded state nodes when the rollout policy is
                 `MCTS.RolloutPolicy.CUSTOM`. Defaults to None (no custom policy in use).
-            heuristic (Callable[ [T_domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int], ], optional):
+            heuristic (Callable[ [T_domain, D.T_agent[D.T_observation]], tuple[D.T_agent[Value[D.T_value]], int], ], optional):
                 Optional Heuristic function to initialize non-expanded state nodes (returns a pair of value estimate and
                 fake number of visit counts). Defaults to None (no heuristic in use).
             state_expansion_rate (float, optional): Value $rs$ used when the expander is `MCTS.Expander.PARTIAL`
@@ -441,9 +442,9 @@ try:
 
         def get_policy(
             self,
-        ) -> Dict[
+        ) -> dict[
             D.T_agent[D.T_observation],
-            Tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the best value according to the execution action selector has been updated
@@ -454,13 +455,13 @@ try:
                 when node garbage was set to True in the MCTS instance's constructor
 
             # Returns
-            Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], float], ]:
+            dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], float], ]:
                 Mapping from states to pairs of action and best value according to the
                 execution action selector
             """
             return self._solver.get_policy()
 
-        def get_action_prefix(self) -> List[D.T_agent[D.T_observation]]:
+        def get_action_prefix(self) -> list[D.T_agent[D.T_observation]]:
             """Get the list of actions returned by the solver so far after each
                 call to the `MCTS.get_next_action` method (mostly internal use in order
                 to rebuild the sequence of visited states until reaching the current
@@ -469,7 +470,7 @@ try:
                 state of the domain)
 
             # Returns
-            List[D.T_agent[D.T_observation]]: List of actions executed by the solver
+            list[D.T_agent[D.T_observation]]: List of actions executed by the solver
                 so far after each call to the `MCTS.get_next_action` method
             """
             return self._solver.get_action_prefix()
@@ -498,7 +499,7 @@ try:
             online_node_garbage: bool = False,
             heuristic: Callable[
                 [MCTS.T_domain, D.T_state],
-                Tuple[
+                tuple[
                     D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]
                 ],
             ] = None,
@@ -539,7 +540,7 @@ try:
                 (for optimization or execution) is `MCTS.ActionSelector.UCB1`. Defaults to 1.0/sqrt(2.0).
             online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
                 no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
-            heuristic (Callable[ [MCTS.T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]] ], ], optional):
+            heuristic (Callable[ [MCTS.T_domain, D.T_state], tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]] ], ], optional):
                 Multi-agent compound heuristic as returned by the `MAHD` algorithm from independent
                 agent heuristic contributions. Defaults to None (no heuristic in use).
             heuristic_confidence (int, optional): Fake state node visits set on non-expanded state nodes for which the
@@ -637,7 +638,7 @@ try:
 
         def _value_heuristic(
             self, domain: MCTS.T_domain, observation: D.T_agent[D.T_observation]
-        ) -> Tuple[D.T_agent[Value[D.T_value]], int]:
+        ) -> tuple[D.T_agent[Value[D.T_value]], int]:
             """Reconstitutes the MCTS heuristic used to initialize the value of non-expanded
                 state nodes from the multi-agent compound heuristic computed by the
                 `MAHD` algorithm
@@ -648,7 +649,7 @@ try:
                 the heuristic must be computed
 
             # Returns
-            Tuple[D.T_agent[Value[D.T_value]], int]: MCTS heuristic value at the given state
+            tuple[D.T_agent[Value[D.T_value]], int]: MCTS heuristic value at the given state
             """
             if observation not in self._heuristic_records:
                 self._heuristic_records[observation] = self._compound_heuristic(
@@ -718,7 +719,7 @@ try:
             ] = None,
             heuristic: Callable[
                 [MCTS.T_domain, D.T_agent[D.T_observation]],
-                Tuple[D.T_agent[Value[D.T_value]], int],
+                tuple[D.T_agent[Value[D.T_value]], int],
             ] = None,
             transition_mode: MCTS.TransitionMode = MCTS.TransitionMode.DISTRIBUTION,
             rollout_policy: MCTS.RolloutPolicy = MCTS.RolloutPolicy.RANDOM,
@@ -750,7 +751,7 @@ try:
             custom_policy (Callable[ [MCTS.T_domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]], ], optional):
                 Custom policy function to use in the rollout policy from non-expanded state nodes when the rollout policy is
                 `MCTS.RolloutPolicy.CUSTOM`. Defaults to None (no custom policy in use).
-            heuristic (Callable[ [MCTS.T_domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int], ], optional):
+            heuristic (Callable[ [MCTS.T_domain, D.T_agent[D.T_observation]], tuple[D.T_agent[Value[D.T_value]], int], ], optional):
                 Optional Heuristic function to initialize non-expanded state nodes (returns a pair of value estimate and
                 fake number of visit counts). Defaults to None (no heuristic in use).
             transition_mode (MCTS.TransitionMode, optional): Transition mode enum (one of `MCTS.TransitionMode.STEP`,
@@ -842,7 +843,7 @@ try:
             online_node_garbage: float = False,
             heuristic: Callable[
                 [MCTS.T_domain, D.T_state],
-                Tuple[
+                tuple[
                     D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]
                 ],
             ] = None,
@@ -874,7 +875,7 @@ try:
                 (for optimization or execution) is `MCTS.ActionSelector.UCB1`. Defaults to 1.0/sqrt(2.0).
             online_node_garbage (bool, optional): Boolean indicating whether the search graph which is
                 no more reachable from the root solving state should be deleted (True) or not (False). Defaults to False.
-            heuristic (Callable[ [MCTS.T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]] ], ], optional):
+            heuristic (Callable[ [MCTS.T_domain, D.T_state], tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]] ], ], optional):
                 Multi-agent compound heuristic as returned by the `MAHD` algorithm from independent
                 agent heuristic contributions. Defaults to None (no heuristic in use).
             heuristic_confidence (int, optional): Fake state node visits set on non-expanded state nodes for which the

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Set, Union
+from typing import Union
 
 from skdecide.core import SINGLE_AGENT_ID, StrDict
 
@@ -19,7 +19,7 @@ class MultiAgent:
 
     T_agent = StrDict
 
-    def get_agents(self) -> Set[str]:
+    def get_agents(self) -> set[str]:
         """Return the set of available agents ids."""
         return set(self.get_observation_space())
 
@@ -29,7 +29,7 @@ class SingleAgent(MultiAgent):
 
     T_agent = Union
 
-    def get_agents(self) -> Set[str]:
+    def get_agents(self) -> set[str]:
         """Return a singleton for single agent domains.
 
         We must be here consistent with `skdecide.core.autocast()` which transforms a single agent domain

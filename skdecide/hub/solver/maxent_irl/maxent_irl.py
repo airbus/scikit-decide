@@ -5,8 +5,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable
-from typing import Callable
+from collections.abc import Callable, Iterable
 
 import gymnasium as gym
 import numpy as np

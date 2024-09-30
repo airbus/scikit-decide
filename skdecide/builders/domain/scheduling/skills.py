@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Set
+from typing import Any
 
 __all__ = ["WithResourceSkills", "WithoutResourceSkills"]
 
@@ -13,7 +13,7 @@ class WithResourceSkills:
     """A domain must inherit this class if its resources (either resource types or resource units)
     have different set of skills."""
 
-    def get_skills_names(self) -> Set[str]:
+    def get_skills_names(self) -> set[str]:
         """Return a list of all skill names as a list of str. Skill names are defined in the 2 dictionaries returned
         by the get_all_resources_skills and get_all_tasks_skills functions."""
         all_names = set()
@@ -29,35 +29,35 @@ class WithResourceSkills:
                     all_names.add(key2)
         return all_names
 
-    def get_all_resources_skills(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_resources_skills(self) -> dict[str, dict[str, Any]]:
         """Return a nested dictionary where the first key is the name of a resource type or resource unit
         and the second key is the name of a skill. The value defines the details of the skill.
          E.g. {unit: {skill: (detail of skill)}}"""
         return self._get_all_resources_skills()
 
-    def _get_all_resources_skills(self) -> Dict[str, Dict[str, Any]]:
+    def _get_all_resources_skills(self) -> dict[str, dict[str, Any]]:
         """Return a nested dictionary where the first key is the name of a resource type or resource unit
         and the second key is the name of a skill. The value defines the details of the skill.
          E.g. {unit: {skill: (detail of skill)}}"""
         raise NotImplementedError
 
-    def get_skills_of_resource(self, resource: str) -> Dict[str, Any]:
+    def get_skills_of_resource(self, resource: str) -> dict[str, Any]:
         """Return the skills of a given resource"""
         return self.get_all_resources_skills()[resource]
 
-    def get_all_tasks_skills(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
+    def get_all_tasks_skills(self) -> dict[int, dict[int, dict[str, Any]]]:
         """Return a nested dictionary where the first key is the name of a task
         and the second key is the name of a skill. The value defines the details of the skill.
          E.g. {task: {skill: (detail of skill)}}"""
         return self._get_all_tasks_skills()
 
-    def _get_all_tasks_skills(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
+    def _get_all_tasks_skills(self) -> dict[int, dict[int, dict[str, Any]]]:
         """Return a nested dictionary where the first key is the name of a task
         and the second key is the name of a skill. The value defines the details of the skill.
          E.g. {task: {skill: (detail of skill)}}"""
         raise NotImplementedError
 
-    def get_skills_of_task(self, task: int, mode: int) -> Dict[str, Any]:
+    def get_skills_of_task(self, task: int, mode: int) -> dict[str, Any]:
         """Return the skill requirements for a given task"""
         return {
             s: self.get_all_tasks_skills()[task][mode][s]
@@ -65,7 +65,7 @@ class WithResourceSkills:
             if self.get_all_tasks_skills()[task][mode][s] > 0
         }
 
-    def find_one_ressource_to_do_one_task(self, task: int, mode: int) -> List[str]:
+    def find_one_ressource_to_do_one_task(self, task: int, mode: int) -> list[str]:
         """
         For the common case when it is possible to do the task by one resource unit.
         For general case, it might just return no possible ressource unit.
@@ -85,7 +85,7 @@ class WithResourceSkills:
         return resources
 
     def check_if_skills_are_fulfilled(
-        self, task: int, mode: int, resource_used: Dict[str, int]
+        self, task: int, mode: int, resource_used: dict[str, int]
     ):
         skill_of_task = self.get_skills_of_task(task, mode)
         if len(skill_of_task) == 0:
@@ -104,27 +104,27 @@ class WithResourceSkills:
 class WithoutResourceSkills(WithResourceSkills):
     """A domain must inherit this class if no resources skills have to be considered."""
 
-    def _get_all_resources_skills(self) -> Dict[str, Dict[str, Any]]:
+    def _get_all_resources_skills(self) -> dict[str, dict[str, Any]]:
         """Return a nested dictionary where the first key is the name of a resource type or resource unit
         and the second key is the name of a skill. The value defines the details of the skill.
          E.g. {unit: {skill: (detail of skill)}}"""
         return {}
 
-    def get_skills_of_resource(self, resource: str) -> Dict[str, Any]:
+    def get_skills_of_resource(self, resource: str) -> dict[str, Any]:
         """Return the skills of a given resource"""
         return {}
 
-    def _get_all_tasks_skills(self) -> Dict[int, Dict[str, Any]]:
+    def _get_all_tasks_skills(self) -> dict[int, dict[str, Any]]:
         """Return a nested dictionary where the first key is the name of a task
         and the second key is the name of a skill. The value defines the details of the skill.
          E.g. {task: {skill: (detail of skill)}}"""
         return {}
 
-    def get_skills_of_task(self, task: int, mode: int) -> Dict[str, Any]:
+    def get_skills_of_task(self, task: int, mode: int) -> dict[str, Any]:
         """Return the skill requirements for a given task"""
         return {}
 
     def check_if_skills_are_fulfilled(
-        self, task: int, mode: int, resource_used: Dict[str, int]
+        self, task: int, mode: int, resource_used: dict[str, int]
     ):
         return True

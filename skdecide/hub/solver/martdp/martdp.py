@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Callable, Dict, Optional, Tuple
+from collections.abc import Callable
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
@@ -83,7 +83,7 @@ try:
             domain_factory: Callable[[], T_domain],
             heuristic: Callable[
                 [T_domain, D.T_state],
-                Tuple[
+                tuple[
                     D.T_agent[Value[D.T_value]],
                     D.T_agent[D.T_concurrency[D.T_event]],
                 ],
@@ -110,7 +110,7 @@ try:
 
             # Parameters
             domain_factory (Callable[[], T_domain], optional): The lambda function to create a domain instance.
-            heuristic (Callable[ [T_domain, D.T_state], Tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]], ], ], optional):
+            heuristic (Callable[ [T_domain, D.T_state], tuple[ D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]], ], ], optional):
                 Lambda function taking as arguments the domain and a state, and returning a pair of
                 dictionary from agents to the individual heuristic estimates from the state to the goal,
                 and of dictionary from agents to best guess individual actions.
@@ -326,9 +326,9 @@ try:
 
         def get_policy(
             self,
-        ) -> Dict[
+        ) -> dict[
             D.T_agent[D.T_observation],
-            Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_agent[Value[D.T_value]]],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_agent[Value[D.T_value]]],
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the Q-value has been updated at least once (which is optimal if the
@@ -339,7 +339,7 @@ try:
                 when node garbage was set to True in the MA-RTDP instance's constructor
 
             # Returns
-            Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_agent[Value[D.T_value]]], ]:
+            dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_agent[Value[D.T_value]]], ]:
                 Mapping from joint states to pairs of joint action and best Q-value
             """
             return self._solver.get_policy()

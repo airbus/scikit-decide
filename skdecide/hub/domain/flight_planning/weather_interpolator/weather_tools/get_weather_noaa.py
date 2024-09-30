@@ -5,7 +5,7 @@ import logging
 import os
 import urllib.request as request
 from functools import reduce
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 
@@ -31,7 +31,7 @@ def get_absolute_path(filename, relative_path):
     return os.path.abspath(os.path.join(os.path.dirname(filename), relative_path))
 
 
-def create_merged_matrix(list_files: List[str], params: Optional[List[str]]):
+def create_merged_matrix(list_files: list[str], params: Optional[list[str]]):
     if params is None:
         params = ["u", "v", "t", "r"]
 

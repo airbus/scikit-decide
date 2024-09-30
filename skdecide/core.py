@@ -8,20 +8,10 @@ import functools
 import inspect
 import random
 import re
+from collections import deque
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import asdict, astuple, dataclass, replace
-from typing import (
-    Callable,
-    Deque,
-    Dict,
-    Generic,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Generic, Optional, TypeVar, Union
 
 __all__ = [
     "T",
@@ -68,14 +58,14 @@ class D:
 
 # Tree (utility class)
 class Tree:
-    def __init__(self, type_: object, sub: List[Tree] = []):
+    def __init__(self, type_: object, sub: list[Tree] = []):
         self.type = type_
         self.sub = sub
 
 
 # Castable (utility class)
 class Castable:
-    def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
+    def _cast(self, src_sub: list[Tree], dst_sub: list[Tree]):
         raise NotImplementedError
 
 
@@ -218,7 +208,7 @@ class ImplicitDistribution(Distribution[T]):
     def sample(self) -> T:
         return self._sample_function()
 
-    def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
+    def _cast(self, src_sub: list[Tree], dst_sub: list[Tree]):
         def cast_sample_function():
             result = self._sample_function()
             return cast(result, src_sub[0], dst_sub[0])
@@ -229,7 +219,7 @@ class ImplicitDistribution(Distribution[T]):
 class DiscreteDistribution(Distribution[T]):
     """A discrete probability distribution."""
 
-    def __init__(self, values: List[Tuple[T, float]]) -> None:
+    def __init__(self, values: list[tuple[T, float]]) -> None:
         """Initialize DiscreteDistribution.
 
         !!! tip
@@ -253,7 +243,7 @@ class DiscreteDistribution(Distribution[T]):
     def sample(self) -> T:
         return random.choices(self._population, self._weights)[0]
 
-    def get_values(self) -> List[Tuple[T, float]]:
+    def get_values(self) -> list[tuple[T, float]]:
         """Get the list of (element, probability) pairs.
 
         # Returns
@@ -261,7 +251,7 @@ class DiscreteDistribution(Distribution[T]):
         """
         return self._values
 
-    def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
+    def _cast(self, src_sub: list[Tree], dst_sub: list[Tree]):
         return DiscreteDistribution(
             [(cast(e, src_sub[0], dst_sub[0]), p) for e, p in self._values]
         )
@@ -281,7 +271,7 @@ class SingleValueDistribution(DiscreteDistribution[T]):
     def sample(self) -> T:
         return self._value
 
-    def get_values(self) -> List[Tuple[T, float]]:
+    def get_values(self) -> list[tuple[T, float]]:
         return [(self._value, 1.0)]
 
     def get_value(self) -> T:
@@ -292,7 +282,7 @@ class SingleValueDistribution(DiscreteDistribution[T]):
         """
         return self._value
 
-    def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
+    def _cast(self, src_sub: list[Tree], dst_sub: list[Tree]):
         return SingleValueDistribution(cast(self._value, src_sub[0], dst_sub[0]))
 
 
@@ -396,7 +386,7 @@ class EnvironmentOutcome(
                 else None
             )
 
-    def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
+    def _cast(self, src_sub: list[Tree], dst_sub: list[Tree]):
         return EnvironmentOutcome(
             cast(self.observation, src_sub[0], dst_sub[0]),
             cast(self.value, src_sub[1], dst_sub[1]),
@@ -443,7 +433,7 @@ class TransitionOutcome(
                 {k: None for k in self.state} if isinstance(self.state, dict) else None
             )
 
-    def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
+    def _cast(self, src_sub: list[Tree], dst_sub: list[Tree]):
         return TransitionOutcome(
             cast(self.state, src_sub[0], dst_sub[0]),
             cast(self.value, src_sub[1], dst_sub[1]),
@@ -453,12 +443,12 @@ class TransitionOutcome(
 
 
 # Memory
-class Memory(Deque[T]):
+class Memory(deque[T]):
     pass
 
 
 # StrDict
-class StrDict(Generic[T], Dict[str, T]):
+class StrDict(Generic[T], dict[str, T]):
     """A dictionary with String keys (e.g. agent names)."""
 
     pass
@@ -554,7 +544,7 @@ class ImplicitConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
     def _is_constraint_dependent_on_next_state_(self) -> bool:
         return self._depends_on_next_state
 
-    def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
+    def _cast(self, src_sub: list[Tree], dst_sub: list[Tree]):
         def cast_check_function(memory, action, next_state):
             cast_memory = cast(memory, dst_sub[0], src_sub[0])
             cast_action = cast(action, dst_sub[1], src_sub[1])
@@ -661,7 +651,7 @@ class BoundConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
         """
         return self._bound
 
-    def _cast(self, src_sub: List[Tree], dst_sub: List[Tree]):
+    def _cast(self, src_sub: list[Tree], dst_sub: list[Tree]):
         def cast_evaluate_function(memory, action, next_state):
             cast_memory = cast(memory, dst_sub[0], src_sub[0])
             cast_action = cast(action, dst_sub[1], src_sub[1])
@@ -694,17 +684,17 @@ cast_dict = {
     (StrDict, StrDict): lambda obj, src, dst: {
         k: cast(v, src[0], dst[0]) for k, v in obj.items()
     },
-    # (Set, Union): lambda obj, src, dst: cast(next(iter(obj)), src[0], dst[0]),
-    # (Union, Set): lambda obj, src, dst: {cast(obj, src[0], dst[0])},
-    # (Set, Set): lambda obj, src, dst: {cast(x, src[0], dst[0]) for x in obj},
-    (List, Union): lambda obj, src, dst: cast(obj[0], src[0], dst[0]),
-    (Union, List): lambda obj, src, dst: [cast(obj, src[0], dst[0])],
-    (List, List): lambda obj, src, dst: [cast(x, src[0], dst[0]) for x in obj],
+    # (set, Union): lambda obj, src, dst: cast(next(iter(obj)), src[0], dst[0]),
+    # (Union, set): lambda obj, src, dst: {cast(obj, src[0], dst[0])},
+    # (set, set): lambda obj, src, dst: {cast(x, src[0], dst[0]) for x in obj},
+    (list, Union): lambda obj, src, dst: cast(obj[0], src[0], dst[0]),
+    (Union, list): lambda obj, src, dst: [cast(obj, src[0], dst[0])],
+    (list, list): lambda obj, src, dst: [cast(x, src[0], dst[0]) for x in obj],
     (Union, Union): lambda obj, src, dst: cast(obj, src[0], dst[0]),
     (Optional, Optional): lambda obj, src, dst: cast(obj, src[0], dst[0])
     if obj is not None
     else None,
-}  # (src_type, dst_type): (obj: src_type, src_sub_hintrees: List[Tree], dst_sub_hintrees: List[Tree]) -> dst_type
+}  # (src_type, dst_type): (obj: src_type, src_sub_hintrees: list[Tree], dst_sub_hintrees: list[Tree]) -> dst_type
 
 default_cast = (
     lambda obj, src, dst: obj._cast(src, dst) if isinstance(obj, Castable) else obj
@@ -731,7 +721,7 @@ def parse_hint(obj: object, hint: str, hint_obj: str) -> Tree:
     return Tree(type_, sub)
 
 
-def get_args_dict(func: Callable, args: Tuple, kwargs: Dict) -> Dict:
+def get_args_dict(func: Callable, args: tuple, kwargs: dict) -> dict:
     while hasattr(
         func, "__wrapped__"
     ):  # get to the core function even if it was decorated

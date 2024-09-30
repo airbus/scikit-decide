@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     IntegerHyperparameter,
@@ -33,7 +33,7 @@ class MetaPolicy(DeterministicPolicies):
 
     def __init__(
         self,
-        policies: Dict[Any, DeterministicPolicies],
+        policies: dict[Any, DeterministicPolicies],
         domain: SchedulingDomain,
         nb_rollout_estimation=1,
         verbose=True,
