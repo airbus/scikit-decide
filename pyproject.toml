@@ -83,6 +83,7 @@ domains = [
     "unified-planning",
     "cartopy",
     "pygrib",
+    "scipy"
 ]
 solvers = [
     "gymnasium",
@@ -96,6 +97,7 @@ solvers = [
     "up-fast-downward",
     "up-enhsp",
     "up-pyperplan",
+    "scipy"
 ]
 all = [
     "gymnasium",
@@ -114,6 +116,7 @@ all = [
     "up-pyperplan",
     "cartopy",
     "pygrib",
+    "scipy"
 ]
 
 [tool.poetry.plugins."skdecide.domains"]
