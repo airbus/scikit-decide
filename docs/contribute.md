@@ -67,9 +67,9 @@ Here are the steps to follow:
     cd scikit-decide
     ```
 
-- Set proper python version (e.g. 3.8.11) for the scikit-decide project.
+- Set proper python version (e.g. 3.12.2) for the scikit-decide project.
     ```shell
-    pyenv local 3.8.11
+    pyenv local 3.12.2
     ```
 
 - Update pip installer (the one that `pyenv` makes you use).
@@ -92,7 +92,7 @@ Here are the steps to follow:
 
       - Specify to poetry the python version to use so that it creates the appropriate virtual environment.
           ```shell
-          poetry env use 3.8.11
+          poetry env use 3.12.2
           ```
 
       - Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
@@ -114,7 +114,7 @@ as it can also be installed by conda via the conda-forge channel.
 
 - Create and activate a conda environment with the proper python version for the scikit-decide project.
     ```shell
-    conda create -n test_dev_skdecide python=3.8.11
+    conda create -n test_dev_skdecide python=3.12.2
     conda activate test_dev_skdecide
     ```
 - Update pip installer
