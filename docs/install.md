@@ -73,26 +73,26 @@ export DO_SKIP_MZN_CHECK=1
 Please note however that the library is never tested without minizinc (or minizinc versions < 2.6).
 
 
-### Python 3.8+ environment
+### Python 3.9+ environment
 
-The use of a virtual environment for scikit-decide is recommended, and you will need to ensure that the environment use a Python version greater than 3.8.
+The use of a virtual environment for scikit-decide is recommended, and you will need to ensure that the environment use a Python version greater than 3.9.
 This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows)
 and [venv](https://docs.python.org/fr/3/library/venv.html) module.
 
-The following examples show how to create a virtual environment with Python version 3.8.13 with the mentioned methods.
+The following examples show how to create a virtual environment with Python version 3.9.18 with the mentioned methods.
 
 #### With conda (all platforms)
 
 ```shell
-conda create -n skdecide python=3.8.13
+conda create -n skdecide python=3.9.18
 conda activate skdecide
 ```
 
 #### With pyenv + venv (Linux/MacOS)
 
 ```shell
-pyenv install 3.8.13
-pyenv shell 3.8.13
+pyenv install 3.9.18
+pyenv shell 3.9.18
 python -m venv skdecide-venv
 source skdecide-venv/bin/activate
 ```
@@ -100,8 +100,8 @@ source skdecide-venv/bin/activate
 #### With pyenv-win + venv (Windows)
 
 ```shell
-pyenv install 3.8.13
-pyenv shell 3.8.13
+pyenv install 3.9.18
+pyenv shell 3.9.18
 python -m venv skdecide-venv
 skdecide-venv\Scripts\activate
 ```
