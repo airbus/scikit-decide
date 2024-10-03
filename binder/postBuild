@@ -9,7 +9,7 @@ ls
 # install minizinc
 mkdir minizinc_install
 cd minizinc_install
-curl -o minizinc.AppImage -L https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.3/MiniZincIDE-2.6.3-x86_64.AppImage
+curl -o minizinc.AppImage -L https://github.com/MiniZinc/MiniZincIDE/releases/download/2.8.5/MiniZincIDE-2.8.5-x86_64.AppImage
 chmod +x minizinc.AppImage
 ./minizinc.AppImage --appimage-extract
 cd ..
