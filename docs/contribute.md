@@ -24,9 +24,10 @@ This guide is organized as follows:
 
 ## Setting up your development environment
 
-### Prerequisite: minizinc
+### Prerequisite: minizinc  (optional)
 
-You need first to install [minizinc](https://www.minizinc.org/) (version greater than 2.6) and update the `PATH` environment variable
+If you plan to use wrapped [discrete-optimization](https://github.com/airbus/discrete-optimization) solvers based on [minizinc](https://www.minizinc.org/),
+you need first to install minizinc binary (version greater than 2.8) and update the `PATH` environment variable
 so that it can be found by Python. See [minizinc documentation](https://www.minizinc.org/doc-latest/en/installation.html) for more details.
 
 ### Installing from source in developer mode
