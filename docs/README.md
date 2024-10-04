@@ -20,7 +20,7 @@ footer: MIT Licensed | Copyright © 2019-present Airbus
 
 **Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.**
 
-This framework was initiated at [Airbus](https://www.airbus.com) AI Research.
+This framework was initiated at [Airbus](https://www.airbus.com) AI Research and received notably contributions through the [ANITI](https://aniti.univ-toulouse.fr/en/) and [TUPLES](https://tuples.ai/) projects.
 
 ::: tip
 Please refer to the **Guide** and **Reference** sections at the top to learn how to use scikit-decide.
