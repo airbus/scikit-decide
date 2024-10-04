@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import partial
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     EnumHyperparameter,
@@ -115,13 +115,13 @@ class PolicyRCPSP(DeterministicPolicies):
         self,
         domain: SchedulingDomain,
         policy_method_params: PolicyMethodParams,
-        permutation_task: List[int],
-        modes_dictionnary: Dict[int, int],
+        permutation_task: list[int],
+        modes_dictionnary: dict[int, int],
         schedule: Optional[
-            Dict[int, Dict[str, int]]
+            dict[int, dict[str, int]]
         ] = None,  # {id: {"start_time":, "end_time"}}
-        resource_allocation: Optional[Dict[int, List[str]]] = None,
-        resource_allocation_priority: Optional[Dict[int, List[str]]] = None,
+        resource_allocation: Optional[dict[int, list[str]]] = None,
+        resource_allocation_priority: Optional[dict[int, list[str]]] = None,
     ):
         self.domain = domain
         self.policy_method_params = policy_method_params

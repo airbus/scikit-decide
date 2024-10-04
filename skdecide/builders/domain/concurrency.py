@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import List, Union
+from typing import Union
 
 __all__ = ["Parallel", "Sequential"]
 
@@ -12,7 +12,7 @@ __all__ = ["Parallel", "Sequential"]
 class Parallel:
     """A domain must inherit this class if multiple events/actions can happen in parallel."""
 
-    T_concurrency = List  # note: Set cannot handle non-hashable events (and Iterable would not provide enough guidance)
+    T_concurrency = list  # note: set cannot handle non-hashable events (and Iterable would not provide enough guidance)
 
 
 class Sequential(Parallel):

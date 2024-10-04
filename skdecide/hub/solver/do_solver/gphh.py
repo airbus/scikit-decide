@@ -6,8 +6,9 @@ from __future__ import annotations
 
 import operator
 import random
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Optional
 
 import numpy as np
 from deap import algorithms, creator, gp, tools
@@ -285,7 +286,7 @@ class ParametersGPHH(Hyperparametrizable):
         ),
     ] + PolicyMethodParams.hyperparameters
 
-    set_feature: Set[FeatureEnum] = None
+    set_feature: set[FeatureEnum] = None
     set_primitves: PrimitiveSet = None
     tournament_ratio: float = None
     pop_size: int = None
@@ -426,7 +427,7 @@ class ParametersGPHH(Hyperparametrizable):
         )
 
     @staticmethod
-    def default_for_set_features(set_feature: Set[FeatureEnum]):
+    def default_for_set_features(set_feature: set[FeatureEnum]):
         pset = PrimitiveSet("main", len(set_feature))
         pset.addPrimitive(operator.add, 2)
         pset.addPrimitive(operator.sub, 2)
@@ -464,7 +465,7 @@ class GPHH(Solver, DeterministicPolicies):
         )
     ]
 
-    training_domains: List[T_domain]
+    training_domains: list[T_domain]
     verbose: bool
     weight: int
     pset: PrimitiveSet
@@ -473,22 +474,22 @@ class GPHH(Solver, DeterministicPolicies):
     params_gphh: ParametersGPHH
     # policy: GPHHPolicy
     evaluation_method: EvaluationGPHH
-    reference_permutations: Dict
+    reference_permutations: dict
     permutation_distance: PermutationDistance
 
     def __init__(
         self,
         domain_factory: Callable[[], SchedulingDomain],
-        training_domains: List[T_domain],
+        training_domains: list[T_domain],
         domain_model: SchedulingDomain,
         weight: int,
-        # set_feature: Set[FeatureEnum]=None,
+        # set_feature: set[FeatureEnum]=None,
         params_gphh: Optional[ParametersGPHH] = None,
         reference_permutations=None,
         # reference_makespans=None,
         training_domains_names=None,
         verbose: bool = False,
-        params_gphh_kwargs: Optional[Dict[str, Any]] = None,
+        params_gphh_kwargs: Optional[dict[str, Any]] = None,
     ):
         """Genetic Programming based Hyper-Heuristics
 
@@ -835,7 +836,7 @@ class GPHHPolicy(DeterministicPolicies):
         domain: SchedulingDomain,
         domain_model: SchedulingDomain,
         func_heuristic,
-        features: List[FeatureEnum] = None,
+        features: list[FeatureEnum] = None,
         params_gphh=None,
         recompute_cpm=True,
         cpm_data=None,
@@ -990,7 +991,7 @@ class PooledGPHHPolicy(DeterministicPolicies):
         func_heuristics,
         pool_aggregation_method: PoolAggregationMethod = PoolAggregationMethod.MEAN,
         remove_extremes_values: int = 0,
-        features: List[FeatureEnum] = None,
+        features: list[FeatureEnum] = None,
         params_gphh=None,
     ):
         self.domain = domain

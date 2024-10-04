@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Hashable, List, Tuple
+from collections.abc import Hashable
+from typing import Any
 
 import networkx as nx
 
@@ -12,8 +13,8 @@ import networkx as nx
 class Graph:
     def __init__(
         self,
-        nodes: List[Tuple[Hashable, Dict[str, Any]]],
-        edges: List[Tuple[Hashable, Hashable, Dict[str, Any]]],
+        nodes: list[tuple[Hashable, dict[str, Any]]],
+        edges: list[tuple[Hashable, Hashable, dict[str, Any]]],
         undirected=True,
     ):
         self.nodes = nodes

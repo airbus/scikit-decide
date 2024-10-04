@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import functools
-from typing import List
 
 from skdecide.core import Constraint, D, autocastable
 
@@ -18,7 +17,7 @@ class Constrained:
     @autocastable
     def get_constraints(
         self,
-    ) -> List[
+    ) -> list[
         Constraint[
             D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state
         ]
@@ -37,7 +36,7 @@ class Constrained:
     @functools.lru_cache()
     def _get_constraints(
         self,
-    ) -> List[
+    ) -> list[
         Constraint[
             D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state
         ]
@@ -55,7 +54,7 @@ class Constrained:
 
     def _get_constraints_(
         self,
-    ) -> List[
+    ) -> list[
         Constraint[
             D.T_memory[D.T_state], D.T_agent[D.T_concurrency[D.T_event]], D.T_state
         ]

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Union
 
 __all__ = ["MultiMode", "SingleMode"]
 
@@ -36,7 +36,7 @@ class ModeConsumption:
 class VaryingModeConsumption(ModeConsumption):
     """Defines the most generic type of mode."""
 
-    def __init__(self, mode_dict: Dict[str, List[int]]):
+    def __init__(self, mode_dict: dict[str, list[int]]):
         self.mode_details = mode_dict
 
     def _get_resource_need_at_time(self, resource_name: str, time: int):
@@ -60,7 +60,7 @@ class ConstantModeConsumption(VaryingModeConsumption):
     """Defines a mode where the resource consumption is constant throughout
     the duration of the task."""
 
-    def __init__(self, mode_dict: Dict[str, int]):
+    def __init__(self, mode_dict: dict[str, int]):
         self.mode_details = {}
         for key in mode_dict.keys():
             # TODO i challenge this to be usefull?
@@ -83,14 +83,14 @@ class ConstantModeConsumption(VaryingModeConsumption):
 class MultiMode:
     """A domain must inherit this class if tasks can be done in 1 or more modes."""
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         """Return a set or dict of int = id of tasks"""
         raise NotImplementedError
 
-    def get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return self._get_tasks_ids()
 
-    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         """Return a nested dictionary where the first key is a task id and the second key is a mode id.
          The value is a Mode object defining the resource consumption.
         If the domain is an instance of VariableResourceConsumption, VaryingModeConsumption objects should be used.
@@ -115,7 +115,7 @@ class MultiMode:
         """
         raise NotImplementedError
 
-    def get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         return self._get_tasks_modes()
 
     def _get_ressource_names_for_task_mode(self, task: int, mode: int):
@@ -146,7 +146,7 @@ class MultiMode:
 class SingleMode(MultiMode):
     """A domain must inherit this class if ALL tasks only have 1 possible execution mode."""
 
-    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         """Return a nested dictionary where the first key is a task id and the second key is a mode id.
         The value is a Mode object defining the resource consumption."""
         modes = {}
@@ -156,7 +156,7 @@ class SingleMode(MultiMode):
             modes[key][1] = tmp_dict[key]
         return modes
 
-    def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
+    def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
         """Return a dictionary where the key is a task id and the value is a ModeConsumption object defining
         the resource consumption.
         If the domain is an instance of VariableResourceConsumption, VaryingModeConsumption objects should be used.
@@ -182,5 +182,5 @@ class SingleMode(MultiMode):
 
         raise NotImplementedError
 
-    def get_tasks_mode(self) -> Dict[int, ModeConsumption]:
+    def get_tasks_mode(self) -> dict[int, ModeConsumption]:
         return self._get_tasks_mode()

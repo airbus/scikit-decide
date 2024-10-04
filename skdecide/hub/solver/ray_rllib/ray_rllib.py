@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Set, Type, Union
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import gymnasium as gym
 import numpy as np
@@ -102,15 +103,15 @@ class RayRLlib(Solver, Policies, Restorable):
     def __init__(
         self,
         domain_factory: Callable[[], Domain],
-        algo_class: Type[Algorithm],
+        algo_class: type[Algorithm],
         train_iterations: int,
         config: Optional[AlgorithmConfig] = None,
-        policy_configs: Optional[Dict[str, Dict]] = None,
+        policy_configs: Optional[dict[str, dict]] = None,
         policy_mapping_fn: Optional[
             Callable[[str, Optional["EpisodeV2"], Optional["RolloutWorker"]], str]
         ] = None,
-        action_embed_sizes: Optional[Dict[str, int]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
+        action_embed_sizes: Optional[dict[str, int]] = None,
+        config_kwargs: Optional[dict[str, Any]] = None,
         callback: Callable[[RayRLlib], bool] = lambda solver: False,
         **kwargs,
     ) -> None:
@@ -188,7 +189,7 @@ class RayRLlib(Solver, Policies, Restorable):
         if kwargs:
             self._config.update_from_dict(kwargs)
 
-    def get_policy(self) -> Dict[str, Policy]:
+    def get_policy(self) -> dict[str, Policy]:
         """Return the computed policy."""
         return {
             policy_id: self._algo.get_policy(policy_id=policy_id)
@@ -433,7 +434,7 @@ class RayRLlib(Solver, Policies, Restorable):
         # use it in algo config & evaluation_config, worker config, and for algo.callbacks, worker.callbacks
         self._set_callbackclass(callbacks_class=callbacks_class)
 
-    def _set_callbackclass(self, callbacks_class: Type[DefaultCallbacks]):
+    def _set_callbackclass(self, callbacks_class: type[DefaultCallbacks]):
         _set_callbackclass_in_config(
             callbacks_class=callbacks_class, config=self._config
         )
@@ -473,7 +474,7 @@ class RayRLlib(Solver, Policies, Restorable):
 
 
 def _set_callbackclass_in_config(
-    callbacks_class: Type[DefaultCallbacks], config: AlgorithmConfig
+    callbacks_class: type[DefaultCallbacks], config: AlgorithmConfig
 ) -> None:
     is_frozen = config._is_frozen
     if is_frozen:
@@ -511,7 +512,7 @@ class AsRLlibMultiAgentEnv(MultiAgentEnvCompatibility):
         self._domain = domain
         super().__init__(old_env=old_env, render_mode=render_mode)
 
-    def get_agent_ids(self) -> Set[str]:
+    def get_agent_ids(self) -> set[str]:
         return self._domain.get_agents()
 
 
@@ -720,7 +721,7 @@ class SolveEarlyStop(Exception):
 
 def generate_rllibcallback_class(
     callback: _CallbackWrapper, solver: RayRLlib, classname=None
-) -> Type[BaseRLlibCallback]:
+) -> type[BaseRLlibCallback]:
     if classname is None:
         classname = f"MyCallbackClass{id(solver)}"
     return type(

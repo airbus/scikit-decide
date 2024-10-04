@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 from skdecide.builders.domain.scheduling.graph_toolbox import Graph
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import State
 
@@ -15,32 +13,32 @@ __all__ = ["WithPrecedence", "WithoutPrecedence"]
 class WithPrecedence:
     """A domain must inherit this class if there exist some predecence constraints between tasks."""
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         """Return the successors of the tasks. Successors are given as a list for a task given as a key."""
         raise NotImplementedError
 
-    def get_successors(self) -> Dict[int, List[int]]:
+    def get_successors(self) -> dict[int, list[int]]:
         """Return the successors of the tasks. Successors are given as a list for a task given as a key."""
         return self._get_successors()
 
-    def _get_successors_task(self, task_id: int) -> List[int]:
+    def _get_successors_task(self, task_id: int) -> list[int]:
         return self.get_successors()[task_id]
 
-    def get_successors_task(self, task_id: int) -> List[int]:
+    def get_successors_task(self, task_id: int) -> list[int]:
         return self._get_successors_task(task_id=task_id)
 
-    def _get_predecessors(self) -> Dict[int, List[int]]:
+    def _get_predecessors(self) -> dict[int, list[int]]:
         """Return the predecessors of the task. Successors are given as a list for a task given as a key."""
         return self.graph.predecessors_map()
 
-    def get_predecessors(self) -> Dict[int, List[int]]:
+    def get_predecessors(self) -> dict[int, list[int]]:
         """Return the predecessors of the task. Successors are given as a list for a task given as a key."""
         return self._get_predecessors()
 
-    def _get_predecessors_task(self, task_id: int) -> List[int]:
+    def _get_predecessors_task(self, task_id: int) -> list[int]:
         return self.get_predecessors()[task_id]
 
-    def get_predecessors_task(self, task_id: int) -> List[int]:
+    def get_predecessors_task(self, task_id: int) -> list[int]:
         return self._get_predecessors_task(task_id=task_id)
 
     def compute_graph(self):
@@ -89,7 +87,7 @@ class WithPrecedence:
 class WithoutPrecedence(WithPrecedence):
     """A domain must inherit this class if there are no predecence constraints between tasks."""
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         """Return the successors of the tasks. Successors are given as a list for a task given as a key."""
         ids = self.get_tasks_ids()
         succ = {}
@@ -97,7 +95,7 @@ class WithoutPrecedence(WithPrecedence):
             succ[id] = []
         return succ
 
-    def _get_predecessors(self) -> Dict[int, List[int]]:
+    def _get_predecessors(self) -> dict[int, list[int]]:
         """Return the successors of the tasks. Successors are given as a list for a task given as a key."""
         ids = self.get_tasks_ids()
         prec = {}

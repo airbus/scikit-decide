@@ -4,9 +4,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import Any, Optional, Union
 
 from discrete_optimization.generic_tools.callbacks.callback import Callback
 from discrete_optimization.generic_tools.do_problem import Problem
@@ -63,9 +64,9 @@ SolvingMethod.LNS_CP.__doc__ = (
 
 def build_solver(
     solving_method: Optional[SolvingMethod],
-    solver_type: Optional[Type[SolverDO]],
+    solver_type: Optional[type[SolverDO]],
     do_domain: Problem,
-) -> Tuple[Type[SolverDO], Dict[str, Any]]:
+) -> tuple[type[SolverDO], dict[str, Any]]:
     """Build the discrete-optimization solver for a given solving method
 
     # Parameters
@@ -195,10 +196,10 @@ class DOSolver(Solver, DeterministicPolicies):
         domain_factory: Callable[[], Domain],
         policy_method_params: Optional[PolicyMethodParams] = None,
         method: Optional[SolvingMethod] = None,
-        do_solver_type: Optional[Type[SolverDO]] = None,
-        dict_params: Optional[Dict[Any, Any]] = None,
+        do_solver_type: Optional[type[SolverDO]] = None,
+        dict_params: Optional[dict[Any, Any]] = None,
         callback: Callable[[DOSolver], bool] = lambda solver: False,
-        policy_method_params_kwargs: Optional[Dict[str, Any]] = None,
+        policy_method_params_kwargs: Optional[dict[str, Any]] = None,
     ):
         Solver.__init__(self, domain_factory=domain_factory)
         self.callback = callback

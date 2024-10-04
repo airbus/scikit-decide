@@ -8,7 +8,8 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from collections.abc import Callable
+from typing import Any, Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     Hyperparameter,
@@ -40,13 +41,13 @@ else:
 
 def generic_optuna_experiment_monoproblem(
     domain_factory: Callable[[], Domain],
-    solver_classes: List[Type[Solver]],
-    kwargs_fixed_by_solver: Optional[Dict[Type[Solver], Dict[str, Any]]] = None,
+    solver_classes: list[type[Solver]],
+    kwargs_fixed_by_solver: Optional[dict[type[Solver], dict[str, Any]]] = None,
     suggest_optuna_kwargs_by_name_by_solver: Optional[
-        Dict[Type[Solver], Dict[str, Dict[str, Any]]]
+        dict[type[Solver], dict[str, dict[str, Any]]]
     ] = None,
     additional_hyperparameters_by_solver: Optional[
-        Dict[Type[Solver], List[Hyperparameter]]
+        dict[type[Solver], list[Hyperparameter]]
     ] = None,
     n_trials: int = 150,
     allow_retry_same_trial: bool = False,
@@ -65,11 +66,11 @@ def generic_optuna_experiment_monoproblem(
         Callable[
             [
                 Solver,
-                List[
-                    Tuple[
-                        List[D.T_agent[D.T_observation]],
-                        List[D.T_agent[D.T_concurrency[D.T_event]]],
-                        List[D.T_agent[Value[D.T_value]]],
+                list[
+                    tuple[
+                        list[D.T_agent[D.T_observation]],
+                        list[D.T_agent[D.T_concurrency[D.T_event]]],
+                        list[D.T_agent[Value[D.T_value]]],
                     ]
                 ],
             ],
@@ -78,7 +79,7 @@ def generic_optuna_experiment_monoproblem(
     ] = None,
     optuna_tuning_direction: str = "maximize",
     alternative_domain_factory: Optional[
-        Dict[Type[Solver], Callable[[], Domain]]
+        dict[type[Solver], Callable[[], Domain]]
     ] = None,
 ) -> optuna.Study:
     """Create and run an optuna study to tune solvers hyperparameters for a given domain factory.
@@ -179,11 +180,11 @@ def generic_optuna_experiment_monoproblem(
 
         def objective(
             solver: Solver,
-            episodes: List[
-                Tuple[
-                    List[D.T_agent[D.T_observation]],
-                    List[D.T_agent[D.T_concurrency[D.T_event]]],
-                    List[D.T_agent[Value[D.T_value]]],
+            episodes: list[
+                tuple[
+                    list[D.T_agent[D.T_observation]],
+                    list[D.T_agent[D.T_concurrency[D.T_event]]],
+                    list[D.T_agent[Value[D.T_value]]],
                 ]
             ],
         ) -> float:
@@ -201,7 +202,7 @@ def generic_optuna_experiment_monoproblem(
 
     # we need to map the classes to a unique string, to be seen as a categorical hyperparameter by optuna
     # by default, we use the class name, but if there are identical names, f"{cls.__module__}.{cls.__name__}" could be used.
-    solvers_by_name: Dict[str, Type[Solver]] = {
+    solvers_by_name: dict[str, type[Solver]] = {
         cls.__name__: cls for cls in solver_classes
     }
 

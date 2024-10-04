@@ -5,7 +5,8 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Callable, List, Optional, Set, Tuple, Type
+from collections.abc import Callable
+from typing import Any, Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     SubBrickHyperparameter,
@@ -47,10 +48,10 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
 
     def __init__(
         self,
-        multiagent_solver_class: Type[Solver],
-        singleagent_solver_class: Type[Solver],
+        multiagent_solver_class: type[Solver],
+        singleagent_solver_class: type[Solver],
         multiagent_domain_factory: Callable[[], Domain],
-        singleagent_domain_class: Optional[Type[Domain]] = None,
+        singleagent_domain_class: Optional[type[Domain]] = None,
         singleagent_domain_factory: Optional[Callable[[Domain, Any], Domain]] = None,
         multiagent_solver_kwargs=None,
         singleagent_solver_kwargs=None,
@@ -185,7 +186,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
 
     def _multiagent_heuristic(
         self, observation: D.T_agent[D.T_observation]
-    ) -> Tuple[D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]]:
+    ) -> tuple[D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]]:
         """Computes the multi-agent relaxed heuristics to be used by the higher-level
             multi-agent solver as a pair of 2 dictionaries: one from single agents to
             their individual heuristic estimates, and one from single agents to their
@@ -201,7 +202,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
             then sampled for this agent
 
         # Returns
-        Tuple[D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]]:
+        tuple[D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]]:
             Pair of 2 dictionaries: one from single agents to their individual
             heuristic estimates, and one from single agents to their
             heuristic best actions in the given joint state
@@ -330,7 +331,7 @@ class MahdCallback:
 
 
 class CallbackList:
-    def __init__(self, callbacks: List[Callable[[...], bool]]):
+    def __init__(self, callbacks: list[Callable[[...], bool]]):
         self.callbacks = callbacks
 
     def __call__(self, *args, **kwargs):

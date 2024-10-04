@@ -23,9 +23,10 @@ NB: to be able to launch this example, you need to install scikit-decide with al
     to the proper certificate (https://stackoverflow.com/a/31060428).
 
 """
+from collections.abc import Callable
 from dataclasses import dataclass
 from math import sqrt
-from typing import Callable, Optional
+from typing import Optional
 
 import gymnasium as gym
 import numpy as np

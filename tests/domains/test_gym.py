@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Callable
+from collections.abc import Callable
 
 import gymnasium as gym
 import numpy as np

@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     FloatHyperparameter,
@@ -103,15 +104,15 @@ class LRTAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         self._weight = weight
         self.max_iter = max_iter
         self.max_depth = max_depth
-        self._plan: List[D.T_event] = []
+        self._plan: list[D.T_event] = []
         self.values = {}
 
         self._verbose = verbose
 
         self.heuristic_changed = False
-        self._policy: Dict[D.T_observation, Optional[D.T_event]] = {}
+        self._policy: dict[D.T_observation, Optional[D.T_event]] = {}
 
-    def get_policy(self) -> Dict[D.T_observation, Optional[D.T_event]]:
+    def get_policy(self) -> dict[D.T_observation, Optional[D.T_event]]:
         """Return the computed policy."""
         return self._policy
 

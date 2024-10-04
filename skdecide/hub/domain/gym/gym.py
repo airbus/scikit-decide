@@ -9,10 +9,11 @@ import bisect
 import random
 import struct
 from collections import OrderedDict
+from collections.abc import Callable
 from copy import deepcopy
 from itertools import product
 from math import pi, tan
-from typing import Any, Callable, List, Optional
+from typing import Any, Optional
 
 import gymnasium as gym
 import numpy as np
@@ -507,7 +508,7 @@ class GymWidthDomain:
             )
         )
 
-    def binary_features(self, memory: D.T_memory[D.T_state]) -> List[bool]:
+    def binary_features(self, memory: D.T_memory[D.T_state]) -> list[bool]:
         """Transform state in a bit vector and call f on each true value of this vector
 
         # Parameters
@@ -518,7 +519,7 @@ class GymWidthDomain:
         memory = memory._state if isinstance(memory, GymDomainStateProxy) else memory
         return self._binary_features(self._gym_env.observation_space, memory)
 
-    def _binary_features(self, space: gym.spaces.Space, element: Any) -> List[bool]:
+    def _binary_features(self, space: gym.spaces.Space, element: Any) -> list[bool]:
         if isinstance(space, gym.spaces.box.Box):
             features = []
             # compute the size of the bit vector encoding the largest float
@@ -629,7 +630,7 @@ class GymWidthDomain:
         vS = np.array(self._get_variables(self._gym_env.observation_space, state))
         return [f.evaluate(vS) for f in self._elliptical_features]
 
-    def _get_variables(self, space: gym.spaces.Space, element: Any) -> List:
+    def _get_variables(self, space: gym.spaces.Space, element: Any) -> list:
         if isinstance(space, gym.spaces.box.Box):
             var = []
             for cell in np.nditer(element):

@@ -1,6 +1,4 @@
 # data
-# typing
-from typing import Dict
 
 import numpy as np
 
@@ -60,7 +58,7 @@ def max_available_thrust_coefficient(
     air_temperature: float,
     mach_number: float,
     c_t_eta_b: float,
-    aircraft_parameters: Dict[str, float],
+    aircraft_parameters: dict[str, float],
     *,
     buffer: float = 0.05,
 ) -> float:

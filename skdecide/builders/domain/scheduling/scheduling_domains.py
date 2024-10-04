@@ -5,9 +5,10 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Iterable
 from enum import Enum
 from itertools import product
-from typing import Dict, Iterable, List, Optional, Set, Tuple
+from typing import Optional
 
 from skdecide import (
     DiscreteDistribution,
@@ -767,7 +768,7 @@ class SchedulingDomain(
 
     def check_if_action_can_be_started(
         self, state: State, action: SchedulingAction
-    ) -> Tuple[bool, Dict[str, int]]:
+    ) -> tuple[bool, dict[str, int]]:
         """Check if a start or resume action can be applied. It returns a boolean and a dictionary of resources to use."""
         started_task = action.task
         if action.action == SchedulingActionEnum.START:
@@ -795,7 +796,7 @@ class SchedulingDomain(
         return b, resource_to_use
 
     def get_resource_used(
-        self, task: int, mode: int, resource_unit_names: Set[str], time_since_start: int
+        self, task: int, mode: int, resource_unit_names: set[str], time_since_start: int
     ):
         r_used = {}
         mode_details = self.get_tasks_modes()
@@ -1107,11 +1108,11 @@ class SchedulingDomain(
         )
         # TODO, is there a cleaner way ? We can check completion of the sink task
 
-    def get_objectives(self) -> List[SchedulingObjectiveEnum]:
+    def get_objectives(self) -> list[SchedulingObjectiveEnum]:
         """Return the objectives to consider as a list. The items should be of SchedulingObjectiveEnum type."""
         return self._get_objectives()
 
-    def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         """Return the objectives to consider as a list. The items should be of SchedulingObjectiveEnum type."""
         raise NotImplementedError
 
@@ -1234,8 +1235,8 @@ class SchedulingActionSpace(
         for choice in choices:
             if choice == SchedulingActionEnum.START:
                 # task, mode, list of Ressources
-                task_possible_to_start: Dict[
-                    int, Dict[int, List[str]]
+                task_possible_to_start: dict[
+                    int, dict[int, list[str]]
                 ] = self.domain.get_possible_starting_tasks(self.state)
                 list_action += [
                     SchedulingAction(
@@ -1314,8 +1315,8 @@ class SchedulingActionSpaceWithResourceUnit(
         for choice in choices:
             if choice == SchedulingActionEnum.START:
                 # task, mode, list of Ressources
-                task_possible_to_start: Dict[
-                    int, Dict[int, List[str]]
+                task_possible_to_start: dict[
+                    int, dict[int, list[str]]
                 ] = self.domain.get_possible_starting_tasks(self.state)
                 for possible_to_start in task_possible_to_start:
                     for mode in task_possible_to_start[possible_to_start]:
@@ -1407,12 +1408,12 @@ class SchedulingActionSpaceWithResourceUnitSamplable(SamplableSpace[SchedulingAc
         random_choice = random.choice(choices)
         if random_choice in {SchedulingActionEnum.START, SchedulingActionEnum.RESUME}:
             if random_choice == SchedulingActionEnum.START:
-                task_possible_to_start: Dict[
-                    int, Dict[int, List[str]]
+                task_possible_to_start: dict[
+                    int, dict[int, list[str]]
                 ] = self.domain.get_possible_starting_tasks(self.state)
             else:
-                task_possible_to_start: Dict[
-                    int, Dict[int, List[str]]
+                task_possible_to_start: dict[
+                    int, dict[int, list[str]]
                 ] = self.domain.get_possible_resume_tasks(self.state)
             task_modes = [
                 (t, m)

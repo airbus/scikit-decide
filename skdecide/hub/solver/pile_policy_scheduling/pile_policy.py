@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from enum import Enum
-from typing import Callable
 
 import networkx as nx
 import numpy as np

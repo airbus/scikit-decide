@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional, Type, Union
+from collections.abc import Callable
+from typing import Any, Optional, Union
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
@@ -85,9 +86,9 @@ class StableBaseline(Solver, Policies, Restorable):
     def __init__(
         self,
         domain_factory: Callable[[], Domain],
-        algo_class: Type[BaseAlgorithm],
-        baselines_policy: Union[str, Type[BasePolicy]],
-        learn_config: Optional[Dict[str, Any]] = None,
+        algo_class: type[BaseAlgorithm],
+        baselines_policy: Union[str, type[BasePolicy]],
+        learn_config: Optional[dict[str, Any]] = None,
         callback: Callable[[StableBaseline], bool] = lambda solver: False,
         **kwargs: Any,
     ) -> None:

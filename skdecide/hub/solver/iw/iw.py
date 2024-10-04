@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Callable, List, Set, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from skdecide import Domain, Solver, hub
 from skdecide.builders.domain import (
@@ -215,12 +216,12 @@ try:
             """
             return self._solver.get_nb_explored_states()
 
-        def get_explored_states(self) -> Set[D.T_agent[D.T_observation]]:
+        def get_explored_states(self) -> set[D.T_agent[D.T_observation]]:
             """Get the set of states present in the search graph (i.e. the graph's
                 state nodes minus the nodes' encapsulation and their neighbors)
 
             # Returns
-            Set[D.T_agent[D.T_observation]]: Set of states present in the search graph
+            set[D.T_agent[D.T_observation]]: set of states present in the search graph
             """
             return self._solver.get_explored_states()
 
@@ -264,13 +265,13 @@ try:
             """
             return self._solver.get_top_tip_state()
 
-        def get_intermediate_scores(self) -> List[Tuple[int, int, float]]:
+        def get_intermediate_scores(self) -> list[tuple[int, int, float]]:
             """Get the history of tuples of time point (in milliseconds), current
                 width, and root state's f-score, recorded each time a goal state is
                 encountered during the search
 
             # Returns
-            List[Tuple[int, int, float]]: List of tuples of time point (in milliseconds),
+            list[tuple[int, int, float]]: list of tuples of time point (in milliseconds),
                 current width, and root state's f-score
             """
             return self._solver.get_intermediate_scores()

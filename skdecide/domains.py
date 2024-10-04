@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, NewType, Optional
+from typing import NewType
 
 from skdecide.builders.domain.agent import MultiAgent, SingleAgent
 from skdecide.builders.domain.concurrency import Parallel, Sequential

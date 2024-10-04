@@ -1,7 +1,7 @@
 import logging
 import random
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Optional, Union
 
 import pytest
 from discrete_optimization.generic_tools.cp_tools import CPSolverName
@@ -66,7 +66,7 @@ def random_seed():
 
 
 class ToyRCPSPDomain(SingleModeRCPSP):
-    def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
     def __init__(self):
@@ -75,13 +75,13 @@ class ToyRCPSPDomain(SingleModeRCPSP):
     def _get_max_horizon(self) -> int:
         return 50
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return set([1, 2, 3, 4, 5])
 
-    def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
+    def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
         return {
             1: ConstantModeConsumption({"r1": 0, "r2": 0}),
             2: ConstantModeConsumption({"r1": 1, "r2": 1}),
@@ -90,7 +90,7 @@ class ToyRCPSPDomain(SingleModeRCPSP):
             5: ConstantModeConsumption({"r1": 0, "r2": 0}),
         }
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return ["r1", "r2"]
 
     def _get_task_duration(
@@ -105,10 +105,10 @@ class ToyRCPSPDomain(SingleModeRCPSP):
 
 
 class ToyMRCPSPDomain_WithCost(MultiModeRCPSPWithCost):
-    def _get_resource_renewability(self) -> Dict[str, bool]:
+    def _get_resource_renewability(self) -> dict[str, bool]:
         return {"r1": True, "r2": True}
 
-    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         return {
             1: {1: ConstantModeConsumption({"r1": 0, "r2": 0})},
             2: {
@@ -126,7 +126,7 @@ class ToyMRCPSPDomain_WithCost(MultiModeRCPSPWithCost):
             5: {1: ConstantModeConsumption({"r1": 0, "r2": 0})},
         }
 
-    def _get_mode_costs(self) -> Dict[int, Dict[int, float]]:
+    def _get_mode_costs(self) -> dict[int, dict[int, float]]:
         return {
             1: {1: 0.0},
             2: {1: 1.0, 2: 2.0},
@@ -135,10 +135,10 @@ class ToyMRCPSPDomain_WithCost(MultiModeRCPSPWithCost):
             5: {1: 0.0},
         }
 
-    def _get_resource_cost_per_time_unit(self) -> Dict[str, float]:
+    def _get_resource_cost_per_time_unit(self) -> dict[str, float]:
         return {"r1": 1, "r2": 2}
 
-    def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.COST]
 
     def __init__(self):
@@ -147,13 +147,13 @@ class ToyMRCPSPDomain_WithCost(MultiModeRCPSPWithCost):
     def _get_max_horizon(self) -> int:
         return 50
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return set([1, 2, 3, 4, 5])
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return ["r1", "r2"]
 
     def _get_task_duration(
@@ -171,7 +171,7 @@ class ToyMS_RCPSPDomain(MultiModeMultiSkillRCPSP):
     def __init__(self):
         self.initialize_domain()
 
-    def _get_resource_units_names(self) -> List[str]:
+    def _get_resource_units_names(self) -> list[str]:
         return ["employee-1", "employee-2", "employee-3"]
 
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
@@ -187,16 +187,16 @@ class ToyMS_RCPSPDomain(MultiModeMultiSkillRCPSP):
     def _get_max_horizon(self) -> int:
         return 50
 
-    def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return {1, 2, 3, 4, 5}
 
-    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         return {
             1: {1: ConstantModeConsumption({"r1": 0, "r2": 0})},
             2: {
@@ -220,13 +220,13 @@ class ToyMS_RCPSPDomain(MultiModeMultiSkillRCPSP):
         all_durations = {1: 0, 2: 5, 3: 6, 4: 4, 5: 0}
         return all_durations[task]
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return ["r1", "r2"]
 
-    def _get_resource_type_for_unit(self) -> Dict[str, str]:
+    def _get_resource_type_for_unit(self) -> dict[str, str]:
         return None
 
-    def _get_resource_renewability(self) -> Dict[str, bool]:
+    def _get_resource_renewability(self) -> dict[str, bool]:
         return {
             "r1": True,
             "r2": True,
@@ -235,7 +235,7 @@ class ToyMS_RCPSPDomain(MultiModeMultiSkillRCPSP):
             "employee-3": True,
         }
 
-    def _get_all_resources_skills(self) -> Dict[str, Dict[str, Any]]:
+    def _get_all_resources_skills(self) -> dict[str, dict[str, Any]]:
         return {
             "employee-1": {"S1": 1},
             "employee-2": {"S2": 1},
@@ -244,7 +244,7 @@ class ToyMS_RCPSPDomain(MultiModeMultiSkillRCPSP):
             "r2": {},
         }
 
-    def _get_all_tasks_skills(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
+    def _get_all_tasks_skills(self) -> dict[int, dict[int, dict[str, Any]]]:
         return {
             1: {1: {}},
             2: {1: {"S1": 1}, 2: {"S2": 1}},
@@ -260,7 +260,7 @@ class ToySRCPSPDomain(SingleModeRCPSP_Stochastic_Durations):
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         all_distributions = {}
         all_distributions[1] = DiscreteDistribution([(0, 1.0)])
@@ -271,7 +271,7 @@ class ToySRCPSPDomain(SingleModeRCPSP_Stochastic_Durations):
 
         return all_distributions[task]
 
-    def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
     def __init__(self):
@@ -280,13 +280,13 @@ class ToySRCPSPDomain(SingleModeRCPSP_Stochastic_Durations):
     def _get_max_horizon(self) -> int:
         return 20
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return set([1, 2, 3, 4, 5])
 
-    def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
+    def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
         return {
             1: ConstantModeConsumption({"r1": 0, "r2": 0}),
             2: ConstantModeConsumption({"r1": 1, "r2": 1}),
@@ -295,7 +295,7 @@ class ToySRCPSPDomain(SingleModeRCPSP_Stochastic_Durations):
             5: ConstantModeConsumption({"r1": 0, "r2": 0}),
         }
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return ["r1", "r2"]
 
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
@@ -313,7 +313,7 @@ class ToyCondSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations_WithConditionalTa
     def _get_all_condition_items(self) -> Enum:
         return ConditionElementsExample
 
-    def _get_task_on_completion_added_conditions(self) -> Dict[int, List[Distribution]]:
+    def _get_task_on_completion_added_conditions(self) -> dict[int, list[Distribution]]:
         completion_conditions_dict = {}
 
         completion_conditions_dict[2] = [
@@ -335,7 +335,7 @@ class ToyCondSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations_WithConditionalTa
 
         return completion_conditions_dict
 
-    def _get_task_existence_conditions(self) -> Dict[int, List[int]]:
+    def _get_task_existence_conditions(self) -> dict[int, list[int]]:
         existence_conditions_dict = {
             5: [self.get_all_condition_items().PROBLEM_OPERATION_2],
             6: [self.get_all_condition_items().PROBLEM_OPERATION_3],
@@ -347,7 +347,7 @@ class ToyCondSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations_WithConditionalTa
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         all_distributions = {}
         all_distributions[1] = DiscreteDistribution([(0, 1.0)])
@@ -360,7 +360,7 @@ class ToyCondSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations_WithConditionalTa
 
         return all_distributions[task]
 
-    def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
     def __init__(self):
@@ -369,13 +369,13 @@ class ToyCondSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations_WithConditionalTa
     def _get_max_horizon(self) -> int:
         return 50
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [7], 4: [7], 5: [7], 6: [7], 7: []}
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return set([1, 2, 3, 4, 5, 6, 7])
 
-    def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
+    def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
         return {
             1: ConstantModeConsumption({"r1": 0, "r2": 0}),
             2: ConstantModeConsumption({"r1": 1, "r2": 1}),
@@ -386,7 +386,7 @@ class ToyCondSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations_WithConditionalTa
             7: ConstantModeConsumption({"r1": 0, "r2": 0}),
         }
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return ["r1", "r2"]
 
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
@@ -400,7 +400,7 @@ class ToySimulatedCondSRCPSPDomain(
     def _get_all_condition_items(self) -> Enum:
         return ConditionElementsExample
 
-    def _get_task_on_completion_added_conditions(self) -> Dict[int, List[Distribution]]:
+    def _get_task_on_completion_added_conditions(self) -> dict[int, list[Distribution]]:
         completion_conditions_dict = {}
 
         completion_conditions_dict[2] = [
@@ -422,14 +422,14 @@ class ToySimulatedCondSRCPSPDomain(
 
         return completion_conditions_dict
 
-    def _get_task_existence_conditions(self) -> Dict[int, List[int]]:
+    def _get_task_existence_conditions(self) -> dict[int, list[int]]:
         existence_conditions_dict = {
             5: [self.get_all_condition_items().PROBLEM_OPERATION_2],
             6: [self.get_all_condition_items().PROBLEM_OPERATION_3],
         }
         return existence_conditions_dict
 
-    def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
     def __init__(self):
@@ -438,13 +438,13 @@ class ToySimulatedCondSRCPSPDomain(
     def _get_max_horizon(self) -> int:
         return 50
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [7], 4: [7], 5: [7], 6: [7], 7: []}
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return {1, 2, 3, 4, 5, 6, 7}
 
-    def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
+    def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
         return {
             1: ConstantModeConsumption({"r1": 0, "r2": 0}),
             2: ConstantModeConsumption({"r1": 1, "r2": 1}),
@@ -455,7 +455,7 @@ class ToySimulatedCondSRCPSPDomain(
             7: ConstantModeConsumption({"r1": 0, "r2": 0}),
         }
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return ["r1", "r2"]
 
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
@@ -495,14 +495,14 @@ def test_rollout(domain, random_seed):
     check_rollout_consistency(domain, states)
 
 
-def check_rollout_consistency(domain, states: List[State]):
+def check_rollout_consistency(domain, states: list[State]):
     check_precedence(domain, states)
     check_task_duration(domain, states)
     check_resource_constraints(domain, states)
     check_skills(domain, states)
 
 
-def check_precedence(domain, states: List[State]):
+def check_precedence(domain, states: list[State]):
     # Check precedence
     tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
     for id in domain.get_tasks_ids():
@@ -519,7 +519,7 @@ def check_precedence(domain, states: List[State]):
                     )
 
 
-def check_task_duration(domain, states: List[State]):
+def check_task_duration(domain, states: list[State]):
     # Check task durations on deterministic domains
     if isinstance(domain, DeterministicTaskDuration):
         tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
@@ -546,7 +546,7 @@ def check_task_duration(domain, states: List[State]):
                 ), "duration different than expected for task " + str(id)
 
 
-def check_resource_constraints(domain, states: List[State]):
+def check_resource_constraints(domain, states: list[State]):
     # Check resource constraints on deterministic non-preemtive domains
     if (
         isinstance(domain, DeterministicResourceAvailabilityChanges)
@@ -578,7 +578,7 @@ def check_resource_constraints(domain, states: List[State]):
                 )
 
 
-def check_skills(domain, states: List[State]):
+def check_skills(domain, states: list[State]):
     if isinstance(domain, ToyMS_RCPSPDomain):
         ressource_units = domain.get_resource_units_names()
         tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
