@@ -2,7 +2,7 @@
 
 import random
 from collections import deque
-from typing import Any, Optional, tuple
+from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
