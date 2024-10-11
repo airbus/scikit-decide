@@ -77,7 +77,7 @@ jobs:
 
           python_version_build = ["3.9", "3.10", "3.11", "3.12"]
           python_version_test = ["3.9", "3.12"]
-          test = ["macos-12", "macos-latest", "ubuntu-latest", "windows-latest"]
+          test = ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
           build_doc = "true"
 
           oses = ["macos", "ubuntu", "windows"]
@@ -96,7 +96,7 @@ jobs:
                   python_version_test = [v for v in python_version_test if python_filter[v]]
               os_filter = {
                   'macos-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-latest]') }}"),
-                  'macos-12': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-12]') }}"),
+                  'macos-13': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-13]') }}"),
                   'ubuntu-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: ubuntu-latest]') }}"),
                   'windows-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: windows-latest]') }}"),
               }
@@ -230,13 +230,20 @@ jobs:
     strategy:
       matrix:
         python-version: ${{ fromJSON(needs.setup.outputs.python_version_build_per_os).macos }}
-        os: [ "macos-latest", "macos-12" ]
+        os: [ "macos-latest", "macos-13" ]
         arch: [ "arm64", "x86_64" ]
         exclude:
-          - os: macos-12
+          - os: macos-13
             arch: arm64
           - os: macos-latest
             arch: x86_64
+        include:
+          - arch: x86_64
+            miniforge_url: "https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-x86_64.sh"
+            miniforge_sha: "c6ac073b80cedb313561bc11c2e61b0bd102b74df0363ed6c1e90303b322092a"
+          - arch: arm64
+            miniforge_url: "https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-arm64.sh"
+            miniforge_sha: "dd832d8a65a861b5592b2cf1d55f26031f7c1491b30321754443931e7b1e6832"
       fail-fast: false
     defaults:
       run:
@@ -305,13 +312,12 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
           echo "CMAKE_C_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
 
-      - name: Install conda for macos arm64
-        if: ${{ matrix.arch == 'arm64' }}
+      - name: Install conda
         run: |
           set -ex
-          # macos arm64 runners do not have conda installed. Thus we much install conda manually
-          EXPECTED_SHA="dd832d8a65a861b5592b2cf1d55f26031f7c1491b30321754443931e7b1e6832"
-          MINIFORGE_URL="https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-arm64.sh"
+          # macos runners do not have conda installed. Thus we much install conda manually
+          EXPECTED_SHA="${{ matrix.miniforge_sha }}"
+          MINIFORGE_URL="${{ matrix.miniforge_url }}"
           curl -L --retry 10 $MINIFORGE_URL -o miniforge.sh
 
           # Check SHA
@@ -326,12 +332,6 @@ jobs:
           bash ./miniforge.sh -b -p $MINIFORGE_PATH
           echo "$MINIFORGE_PATH/bin" >> $GITHUB_PATH
           echo "CONDA_HOME=$MINIFORGE_PATH" >> $GITHUB_ENV
-
-      - name: Set conda environment for non-macos arm64 environments
-        if: ${{ matrix.arch != 'arm64' }}
-        run: |
-          # Non-macos arm64 envrionments already have conda installed
-          echo "CONDA_HOME=/usr/local/miniconda" >> $GITHUB_ENV
 
       - name: Build wheel
         env:
