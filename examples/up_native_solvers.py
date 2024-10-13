@@ -150,3 +150,28 @@ if UPSolver.check_domain(domain):
             max_framerate=30,
             outcome_formatter=None,
         )
+
+# Example 3: Solving the same numeric example with the variable state encoding of UPDomain
+
+domain_factory = lambda: UPDomain(
+    problem,
+    state_encoding="variable",
+    action_encoding="int",
+)
+
+print("Initialise Solver ... \n")
+solver = RayRLlib(
+    domain_factory=domain_factory,
+    algo_class=DQN,
+    train_iterations=1,
+)
+
+solver.solve()
+
+rollout(
+    domain_factory(),
+    solver,
+    num_episodes=1,
+    max_steps=100,
+    outcome_formatter=None,
+)
