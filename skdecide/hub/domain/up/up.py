@@ -6,7 +6,6 @@ from typing import Optional, Union
 
 import numpy as np
 import unified_planning as up
-from gymnasium.spaces import Box
 from numpy.typing import ArrayLike
 from unified_planning.engines.compilers.grounder import GrounderHelper
 from unified_planning.engines.sequential_simulator import (
@@ -685,7 +684,7 @@ class UPDomain(D):
                 )
             elif self._state_encoding == "variable":
                 self._observation_space = VariableSpace(
-                    Box(
+                    BoxSpace(
                         low=-1
                         if np.array(
                             [
