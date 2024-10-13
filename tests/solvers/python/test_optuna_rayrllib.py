@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, List, Type
+from typing import Any
 
 import ray
 
@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(mess
 
 
 class FakeRayRLlib(RayRLlib):
-    generated_configs: List[Dict[str, Any]]
+    generated_configs: list[dict[str, Any]]
 
     def _solve(self) -> None:
         FakeRayRLlib.generated_configs.append(self._config.to_dict())

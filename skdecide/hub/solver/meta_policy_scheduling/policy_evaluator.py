@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -42,7 +42,7 @@ def my_custom_rollout(
 
 def rollout_based_policy_estimation(
     domain: GoalMDPDomain, policy: DeterministicPolicies, nb_rollout: int = 1
-) -> Tuple[Dict[Any, Any], Dict[Any, Any], Dict[Any, Set[Any]], Dict[Any, Set[Any]]]:
+) -> tuple[dict[Any, Any], dict[Any, Any], dict[Any, set[Any]], dict[Any, set[Any]]]:
     policy_dict = {}
     nb_visit_dict = {}
     summed_value = {}
@@ -75,7 +75,7 @@ def rollout_based_policy_estimation(
 
 def rollout_based_policy_estimation_fast_scheduling(
     domain: SchedulingDomain, policy: DeterministicPolicies, nb_rollout: int = 1
-) -> Tuple[Dict[Any, Any], Dict[Any, Any], Dict[Any, Set[Any]], Dict[Any, Set[Any]]]:
+) -> tuple[dict[Any, Any], dict[Any, Any], dict[Any, set[Any]], dict[Any, set[Any]]]:
     policy_dict = {}
     nb_visit_dict = {}
     summed_value = {}
@@ -97,7 +97,7 @@ def rollout_based_policy_estimation_fast_scheduling(
 
 def construct_dict_policy(
     domain: GoalMDPDomain, policy: DeterministicPolicies
-) -> Tuple[Dict[Any, Any], Dict[Any, Set[Any]], Dict[Any, List[Tuple[Any, float]]]]:
+) -> tuple[dict[Any, Any], dict[Any, set[Any]], dict[Any, list[tuple[Any, float]]]]:
     stack = [domain.get_initial_state()]
     # We store predecessors to make it easier to retrieve the expected costs
     # later on
@@ -125,9 +125,9 @@ def construct_dict_policy(
 
 def expected_costs_for_policy(
     domain: GoalMDPDomain,
-    policy_dict: Dict[D.T_state, D.T_event],
-    preds: Dict[D.T_state, Set[D.T_state]],
-    succs: Dict[D.T_state, List[Tuple[D.T_state, float]]],
+    policy_dict: dict[D.T_state, D.T_event],
+    preds: dict[D.T_state, set[D.T_state]],
+    succs: dict[D.T_state, list[tuple[D.T_state, float]]],
 ):
     # Compute value function for states that are explored by the policy.
     opt_val = dict()

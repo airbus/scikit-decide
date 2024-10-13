@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any, Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
@@ -54,7 +55,7 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
         self,
         domain_factory: Callable[[], Domain],
         operation_mode: Engine,
-        engine_params: Optional[Dict[str, Any]] = None,
+        engine_params: Optional[dict[str, Any]] = None,
         **operation_mode_params,
     ) -> None:
         """Initialize UPSolver.
@@ -117,10 +118,10 @@ class UPSolver(Solver, DeterministicPolicies, Utilities):
     def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
         return self._values[observation]
 
-    def get_policy(self) -> Dict[D.T_agent[D.T_observation], SkUPAction]:
+    def get_policy(self) -> dict[D.T_agent[D.T_observation], SkUPAction]:
         """Return the computed policy."""
         return self._policy
 
-    def get_plan(self) -> List[SkUPAction]:
+    def get_plan(self) -> list[SkUPAction]:
         """Return the computed plan."""
         return self._plan

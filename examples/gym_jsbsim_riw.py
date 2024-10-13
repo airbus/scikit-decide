@@ -5,7 +5,8 @@
 import bisect
 import json
 import math
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import folium
 import gym_jsbsim

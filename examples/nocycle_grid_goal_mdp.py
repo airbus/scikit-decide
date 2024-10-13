@@ -4,9 +4,10 @@
 
 import getopt
 import sys
+from collections.abc import Iterable
 from enum import IntEnum
 from math import sqrt
-from typing import Iterable, NamedTuple, Optional
+from typing import NamedTuple, Optional
 
 from skdecide import (
     DiscreteDistribution,

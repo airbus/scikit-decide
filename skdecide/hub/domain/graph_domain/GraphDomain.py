@@ -5,7 +5,8 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from collections.abc import Iterable
+from typing import Optional
 
 import networkx as nx
 
@@ -40,7 +41,7 @@ class ActionSpace(EnumerableSpace, SamplableSpace):
     def contains(self, x: T) -> bool:
         pass
 
-    def __init__(self, l: List[object]):
+    def __init__(self, l: list[object]):
         self.l = l
 
     def get_elements(self) -> Iterable[object]:
@@ -64,11 +65,11 @@ class GraphDomainUncertain(
 
     def __init__(
         self,
-        next_state_map: Dict[
-            D.T_state, Dict[D.T_event, Dict[D.T_state, Tuple[float, float]]]
+        next_state_map: dict[
+            D.T_state, dict[D.T_event, dict[D.T_state, tuple[float, float]]]
         ],
-        state_terminal: Dict[D.T_state, bool],
-        state_goal: Dict[D.T_state, bool],
+        state_terminal: dict[D.T_state, bool],
+        state_goal: dict[D.T_state, bool],
     ):
         """
         # Parameters
@@ -152,9 +153,9 @@ class GraphDomain(DeterministicPlanningDomain):
 
     def __init__(
         self,
-        next_state_map: Dict[D.T_state, Dict[D.T_event, D.T_state]],
-        next_state_attributes: Dict[D.T_state, Dict[D.T_event, Dict[str, float]]],
-        targets: Optional[Set[D.T_state]] = None,
+        next_state_map: dict[D.T_state, dict[D.T_event, D.T_state]],
+        next_state_attributes: dict[D.T_state, dict[D.T_event, dict[str, float]]],
+        targets: Optional[set[D.T_state]] = None,
         attribute_weight="weight",
     ):
         """

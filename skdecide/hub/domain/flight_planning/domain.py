@@ -6,11 +6,10 @@ from enum import Enum
 from math import asin, atan2, cos, radians, sin, sqrt
 
 # typing
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import Any, Optional, Union
 
 # plotting
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 # aircraft performance model
@@ -184,7 +183,7 @@ class State:
     """
 
     trajectory: pd.DataFrame
-    pos: Tuple[int, int, int]
+    pos: tuple[int, int, int]
 
     def __init__(self, trajectory, pos):
         """Initialisation of a state
@@ -363,7 +362,7 @@ class FlightPlanningDomain(
 
     T_state = State  # Type of states
     T_observation = State  # Type of observations
-    T_event = Tuple[H_Action, V_Action]  # Type of events
+    T_event = tuple[H_Action, V_Action]  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
     T_predicate = bool  # Type of transition predicates (terminal states)
     T_info = None  # Type of additional information in environment outcome
@@ -386,8 +385,8 @@ class FlightPlanningDomain(
         take_off_weight: Optional[int] = None,
         fuel_loaded: Optional[float] = None,
         fuel_loop: bool = False,
-        fuel_loop_solver_cls: Optional[Type[Solver]] = None,
-        fuel_loop_solver_kwargs: Optional[Dict[str, Any]] = None,
+        fuel_loop_solver_cls: Optional[type[Solver]] = None,
+        fuel_loop_solver_kwargs: Optional[dict[str, Any]] = None,
         fuel_loop_tol: float = 1e-3,
         climbing_slope: Optional[float] = None,
         descending_slope: Optional[float] = None,
@@ -432,7 +431,7 @@ class FlightPlanningDomain(
                 Boolean to create a fuel loop to optimize the fuel loaded for the flight. Defaults to False
             fuel_loop_solver_cls (type[Solver], optional):
                 Solver class used in the fuel loop. Defaults to LazyAstar.
-            fuel_loop_solver_kwargs (Dict[str, Any], optional):
+            fuel_loop_solver_kwargs (dict[str, Any], optional):
                 Kwargs to initialize the solver used in the fuel loop.
             climbing_slope (float, optional):
                 Climbing slope of the aircraft, has to be between 10.0 and 25.0. Defaults to None.
@@ -1292,13 +1291,13 @@ class FlightPlanningDomain(
         return self.network
 
     def flying(
-        self, from_: pd.DataFrame, to_: Tuple[float, float, int]
+        self, from_: pd.DataFrame, to_: tuple[float, float, int]
     ) -> pd.DataFrame:
         """Compute the trajectory of a flying object from a given point to a given point
 
         # Parameters
             from_ (pd.DataFrame): the trajectory of the object so far
-            to_ (Tuple[float, float]): the destination of the object
+            to_ (tuple[float, float]): the destination of the object
 
         # Returns
             pd.DataFrame: the final trajectory of the object
@@ -1575,8 +1574,8 @@ def fuel_optimisation(
     actype: str,
     constraints: dict,
     weather_date: WeatherDate,
-    solver_cls: Type[Solver],
-    solver_kwargs: Dict[str, Any],
+    solver_cls: type[Solver],
+    solver_kwargs: dict[str, Any],
     max_steps: int = 100,
     fuel_tol: float = 1e-3,
 ) -> float:
@@ -1605,7 +1604,7 @@ def fuel_optimisation(
         solver_cls (type[Solver]):
             Solver class used in the fuel loop.
 
-        solver_kwargs (Dict[str, Any]):
+        solver_kwargs (dict[str, Any]):
             Kwargs to initialize the solver used in the fuel loop.
 
         max_steps (int):

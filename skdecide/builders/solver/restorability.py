@@ -4,10 +4,6 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
-from skdecide.core import D, autocastable
-
 __all__ = ["Restorable"]
 
 

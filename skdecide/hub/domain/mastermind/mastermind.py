@@ -5,7 +5,7 @@
 # Original code by Patrik Haslum
 from __future__ import annotations
 
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
 
 from skdecide import DiscreteDistribution, Distribution, GoalPOMDPDomain, Space, Value
 from skdecide.builders.domain import (
@@ -15,7 +15,7 @@ from skdecide.builders.domain import (
 )
 from skdecide.hub.space.gym import ListSpace, MultiDiscreteSpace
 
-Row = Tuple[int]  # a row of code pegs (solution or guess)
+Row = tuple[int]  # a row of code pegs (solution or guess)
 
 
 class Score(NamedTuple):

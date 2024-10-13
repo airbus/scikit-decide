@@ -5,7 +5,8 @@
 """This module contains base classes for quickly building solvers."""
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Type
+from collections.abc import Callable
+from typing import Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparametrizable import (
     Hyperparametrizable,
@@ -66,7 +67,7 @@ class Solver(Hyperparametrizable, FromInitialState):
         self._original_domain_factory = domain_factory
 
     @classmethod
-    def get_domain_requirements(cls) -> List[type]:
+    def get_domain_requirements(cls) -> list[type]:
         """Get domain requirements for this solver class to be applicable.
 
         Domain requirements are classes from the #skdecide.builders.domain package that the domain needs to inherit from.
@@ -181,7 +182,7 @@ class Solver(Hyperparametrizable, FromInitialState):
         """
         self._cleanup()
 
-    def autocast(self, domain_cls: Optional[Type[Domain]] = None) -> None:
+    def autocast(self, domain_cls: Optional[type[Domain]] = None) -> None:
         """Autocast itself to the level corresponding to the given domain class.
 
         # Parameters

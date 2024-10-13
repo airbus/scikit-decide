@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 __all__ = [
     "TimeLag",
     "MinimumOnlyTimeLag",
@@ -42,7 +40,7 @@ class MaximumOnlyTimeLag(TimeLag):
 class WithTimeLag:
     """A domain must inherit this class if there are minimum and maximum time lags between some of its tasks."""
 
-    def get_time_lags(self) -> Dict[int, Dict[int, TimeLag]]:
+    def get_time_lags(self) -> dict[int, dict[int, TimeLag]]:
         """
         Return nested dictionaries where the first key is the id of a task (int)
         and the second key is the id of another task (int).
@@ -65,7 +63,7 @@ class WithTimeLag:
         """
         return self._get_time_lags()
 
-    def _get_time_lags(self) -> Dict[int, Dict[int, TimeLag]]:
+    def _get_time_lags(self) -> dict[int, dict[int, TimeLag]]:
         """
         Return nested dictionaries where the first key is the id of a task (int)
         and the second key is the id of another task (int).
@@ -91,7 +89,7 @@ class WithTimeLag:
 class WithoutTimeLag(WithTimeLag):
     """A domain must inherit this class if there is no required time lag between its tasks."""
 
-    def _get_time_lags(self) -> Dict[int, Dict[int, TimeLag]]:
+    def _get_time_lags(self) -> dict[int, dict[int, TimeLag]]:
         """
         Return nested dictionaries where the first key is the id of a task (int)
         and the second key is the id of another task (int).

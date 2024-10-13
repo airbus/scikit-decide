@@ -5,7 +5,8 @@
 from __future__ import annotations  # allow using CGPWrapper in annotations
 
 import os
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from joblib import Parallel, delayed

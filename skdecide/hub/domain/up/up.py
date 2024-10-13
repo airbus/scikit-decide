@@ -2,7 +2,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import unified_planning as up
@@ -87,7 +87,7 @@ class SkUPAction:
         self,
         up_action: Union[InstantaneousAction, ActionInstance],
         ungrounded_action: InstantaneousAction = None,
-        orig_params: Tuple[FNode, ...] = None,
+        orig_params: tuple[FNode, ...] = None,
     ):
         if not isinstance(up_action, (InstantaneousAction, ActionInstance)):
             raise RuntimeError(
@@ -112,7 +112,7 @@ class SkUPAction:
     @property
     def up_parameters(
         self,
-    ) -> Union[List[up.model.parameter.Parameter], Tuple[up.model.FNode, ...]]:
+    ) -> Union[list[up.model.parameter.Parameter], tuple[up.model.FNode, ...]]:
         return (
             self._orig_params
             if self._orig_params is not None
@@ -148,7 +148,7 @@ class SkUPAction:
 
 
 class D(DeterministicPlanningDomain):
-    T_state = Union[SkUPState, Dict, ArrayLike]  # Type of states
+    T_state = Union[SkUPState, dict, ArrayLike]  # Type of states
     T_observation = T_state  # Type of observations
     T_event = SkUPAction  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
@@ -165,7 +165,7 @@ class UPDomain(D):
     def __init__(
         self,
         problem: Problem,
-        fluent_domains: Dict[FNode, Tuple[Union[int, float], Union[int, float]]] = None,
+        fluent_domains: dict[FNode, tuple[Union[int, float], Union[int, float]]] = None,
         state_encoding: str = "native",
         action_encoding: str = "native",
         max_len: int = 2000,

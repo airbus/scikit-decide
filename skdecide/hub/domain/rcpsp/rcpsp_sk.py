@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Optional, Union
 
 from skdecide import DiscreteDistribution, Distribution
 from skdecide.builders.domain.scheduling.modes import (
@@ -36,7 +36,7 @@ class MRCPSP(D):
     tasks_mode: dictionary giving details of resource consumption and duration for each tasks/modes :
       format is the following : {task_id: {mode_1: {"duration": 2, "res_1": 1}, mode_2: {"duration": 3, "res_2": 2}}}
     successors: dictionary of precedence constraint:
-      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+      format is the following {task_id: list[task_id]}, where the values are the list of successor task of a given task_id
     max_horizon: the max horizon for scheduling
     resource_availability: for each resource, gives its (constant) capacity
     resource_renewable: for each resource, indicates if it's renewable or not
@@ -44,13 +44,13 @@ class MRCPSP(D):
 
     def __init__(
         self,
-        resource_names: Optional[List[str]] = None,
-        task_ids: Optional[List[int]] = None,
-        tasks_mode: Optional[Dict[int, Dict[int, Dict[str, int]]]] = None,
-        successors: Optional[Dict[int, List[int]]] = None,
+        resource_names: Optional[list[str]] = None,
+        task_ids: Optional[list[int]] = None,
+        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        successors: Optional[dict[int, list[int]]] = None,
         max_horizon: Optional[int] = None,
-        resource_availability: Optional[Dict[str, int]] = None,
-        resource_renewable: Optional[Dict[str, bool]] = None,
+        resource_availability: Optional[dict[str, int]] = None,
+        resource_renewable: Optional[dict[str, bool]] = None,
     ):
         self.resource_names = resource_names
         self.task_ids = task_ids
@@ -75,19 +75,19 @@ class MRCPSP(D):
         self.resource_renewable = resource_renewable
         self.initialize_domain()
 
-    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         return self.task_mode_dict
 
-    def _get_resource_renewability(self) -> Dict[str, bool]:
+    def _get_resource_renewability(self) -> dict[str, bool]:
         return self.resource_renewable
 
     def _get_max_horizon(self) -> int:
         return self.max_horizon
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return self.task_ids
 
     def _get_task_duration(
@@ -98,10 +98,10 @@ class MRCPSP(D):
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
         return self.resource_availability[resource]
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return self.resource_names
 
-    def _get_objectives(self) -> List[int]:
+    def _get_objectives(self) -> list[int]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
 
@@ -118,7 +118,7 @@ class MRCPSPCalendar(D):
     tasks_mode: dictionary giving details of resource consumption and duration for each tasks/modes :
       format is the following : {task_id: {mode_1: {"duration": 2, "res_1": 1}, mode_2: {"duration": 3, "res_2": 2}}}
     successors: dictionary of precedence constraint:
-      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+      format is the following {task_id: list[task_id]}, where the values are the list of successor task of a given task_id
     max_horizon: the max horizon for scheduling
     resource_availability: for each resource, gives its capacity through time as a list of integer
     resource_renewable: for each resource, indicates if it's renewable or not
@@ -129,13 +129,13 @@ class MRCPSPCalendar(D):
 
     def __init__(
         self,
-        resource_names: Optional[List[str]] = None,
-        task_ids: Optional[List[int]] = None,
-        tasks_mode: Optional[Dict[int, Dict[int, Dict[str, int]]]] = None,
-        successors: Optional[Dict[int, List[int]]] = None,
+        resource_names: Optional[list[str]] = None,
+        task_ids: Optional[list[int]] = None,
+        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        successors: Optional[dict[int, list[int]]] = None,
         max_horizon: Optional[int] = None,
-        resource_availability: Optional[Dict[str, List[int]]] = None,
-        resource_renewable: Optional[Dict[str, bool]] = None,
+        resource_availability: Optional[dict[str, list[int]]] = None,
+        resource_renewable: Optional[dict[str, bool]] = None,
     ):
         self.resource_names = resource_names
         self.task_ids = task_ids
@@ -164,19 +164,19 @@ class MRCPSPCalendar(D):
         self.resource_renewable = resource_renewable
         self.initialize_domain()
 
-    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         return self.task_mode_dict
 
-    def _get_resource_renewability(self) -> Dict[str, bool]:
+    def _get_resource_renewability(self) -> dict[str, bool]:
         return self.resource_renewable
 
     def _get_max_horizon(self) -> int:
         return self.max_horizon
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return self.task_ids
 
     def _get_task_duration(
@@ -187,10 +187,10 @@ class MRCPSPCalendar(D):
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
         return self.original_resource_availability[resource]
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return self.resource_names
 
-    def _get_objectives(self) -> List[int]:
+    def _get_objectives(self) -> list[int]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
 
@@ -203,7 +203,7 @@ class RCPSP(MRCPSP, SingleMode):
     tasks_mode: dictionary giving details of resource consumption and duration for each tasks :
       format is the following : {task_id: {1: {"duration": 2, "res_1": 1}}, only 1 mode in this template
     successors: dictionary of precedence constraint:
-      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+      format is the following {task_id: list[task_id]}, where the values are the list of successor task of a given task_id
     max_horizon: the max horizon for scheduling
     resource_availability: for each resource, gives its constant capacity
     resource_renewable: for each resource, indicates if it's renewable or not
@@ -211,13 +211,13 @@ class RCPSP(MRCPSP, SingleMode):
 
     def __init__(
         self,
-        resource_names: Optional[List[str]] = None,
-        task_ids: Optional[List[int]] = None,
-        tasks_mode: Optional[Dict[int, Dict[int, Dict[str, int]]]] = None,
-        successors: Optional[Dict[int, List[int]]] = None,
+        resource_names: Optional[list[str]] = None,
+        task_ids: Optional[list[int]] = None,
+        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        successors: Optional[dict[int, list[int]]] = None,
         max_horizon: Optional[int] = None,
-        resource_availability: Optional[Dict[str, int]] = None,
-        resource_renewable: Optional[Dict[str, bool]] = None,
+        resource_availability: Optional[dict[str, int]] = None,
+        resource_renewable: Optional[dict[str, bool]] = None,
     ):
         MRCPSP.__init__(
             self,
@@ -233,7 +233,7 @@ class RCPSP(MRCPSP, SingleMode):
             t: self.task_mode_dict[t][1] for t in self.task_mode_dict
         }
 
-    def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
+    def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
         return self.tasks_modes_rcpsp
 
 
@@ -246,7 +246,7 @@ class RCPSPCalendar(MRCPSPCalendar, SingleMode):
     tasks_mode: dictionary giving details of resource consumption and duration for each tasks :
       format is the following : {task_id: {1: {"duration": 2, "res_1": 1}}, only 1 mode in this template
     successors: dictionary of precedence constraint:
-      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+      format is the following {task_id: list[task_id]}, where the values are the list of successor task of a given task_id
     max_horizon: the max horizon for scheduling
     resource_availability: for each resource, gives its capacity through time
     resource_renewable: for each resource, indicates if it's renewable or not
@@ -254,13 +254,13 @@ class RCPSPCalendar(MRCPSPCalendar, SingleMode):
 
     def __init__(
         self,
-        resource_names: Optional[List[str]] = None,
-        task_ids: Optional[List[int]] = None,
-        tasks_mode: Optional[Dict[int, Dict[int, Dict[str, int]]]] = None,
-        successors: Optional[Dict[int, List[int]]] = None,
+        resource_names: Optional[list[str]] = None,
+        task_ids: Optional[list[int]] = None,
+        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        successors: Optional[dict[int, list[int]]] = None,
         max_horizon: Optional[int] = None,
-        resource_availability: Optional[Dict[str, List[int]]] = None,
-        resource_renewable: Optional[Dict[str, bool]] = None,
+        resource_availability: Optional[dict[str, list[int]]] = None,
+        resource_renewable: Optional[dict[str, bool]] = None,
     ):
         MRCPSPCalendar.__init__(
             self,
@@ -276,7 +276,7 @@ class RCPSPCalendar(MRCPSPCalendar, SingleMode):
             t: self.task_mode_dict[t][1] for t in self.task_mode_dict
         }
 
-    def _get_tasks_mode(self) -> Dict[int, ModeConsumption]:
+    def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
         return self.tasks_modes_rcpsp
 
 
@@ -290,7 +290,7 @@ class Stochastic_RCPSP(MultiModeRCPSP_Stochastic_Durations):
       format is the following : {task_id: {1: {"res_1": 1}, 2: {"res_1": 2}}
     duration_distribution: dictionary giving distribution of task duration function of mode.
     successors: dictionary of precedence constraint:
-      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+      format is the following {task_id: list[task_id]}, where the values are the list of successor task of a given task_id
     max_horizon: the max horizon for scheduling
     resource_availability: for each resource, gives its constant capacity
     resource_renewable: for each resource, indicates if it's renewable or not
@@ -299,16 +299,16 @@ class Stochastic_RCPSP(MultiModeRCPSP_Stochastic_Durations):
     def _get_max_horizon(self) -> int:
         return self.max_horizon
 
-    def _get_objectives(self) -> List[SchedulingObjectiveEnum]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return self.task_ids
 
-    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         return self.task_mode_dict
 
     def _get_task_duration_distribution(
@@ -316,28 +316,28 @@ class Stochastic_RCPSP(MultiModeRCPSP_Stochastic_Durations):
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         return self.duration_distribution[task][mode]
 
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
         return self.resource_availability[resource]
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return self.resource_names
 
     def __init__(
         self,
-        resource_names: Optional[List[str]] = None,
-        task_ids: Optional[List[int]] = None,
-        tasks_mode: Optional[Dict[int, Dict[int, ModeConsumption]]] = None,
+        resource_names: Optional[list[str]] = None,
+        task_ids: Optional[list[int]] = None,
+        tasks_mode: Optional[dict[int, dict[int, ModeConsumption]]] = None,
         duration_distribution: Optional[
-            Dict[int, Dict[int, DiscreteDistribution]]
+            dict[int, dict[int, DiscreteDistribution]]
         ] = None,
-        successors: Optional[Dict[int, List[int]]] = None,
+        successors: Optional[dict[int, list[int]]] = None,
         max_horizon: Optional[int] = None,
-        resource_availability: Optional[Dict[str, int]] = None,
-        resource_renewable: Optional[Dict[str, bool]] = None,
+        resource_availability: Optional[dict[str, int]] = None,
+        resource_renewable: Optional[dict[str, bool]] = None,
     ):
         self.resource_names = resource_names
         self.task_ids = task_ids
@@ -352,7 +352,7 @@ class Stochastic_RCPSP(MultiModeRCPSP_Stochastic_Durations):
         self.initialize_domain()
 
 
-def build_stochastic_from_deterministic(rcpsp: MRCPSP, task_to_noise: Set[int] = None):
+def build_stochastic_from_deterministic(rcpsp: MRCPSP, task_to_noise: set[int] = None):
     if task_to_noise is None:
         task_to_noise = set(rcpsp.get_tasks_ids())
     duration_distribution = {}
@@ -438,7 +438,7 @@ class SMRCPSPCalendar(D):
       format is the following : {task_id: {1: {"res_1": 1}, 2: {"res_1": 2}}
     duration_distribution: dictionary giving distribution of task duration function of mode.
     successors: dictionary of precedence constraint:
-      format is the following {task_id: List[task_id]}, where the values are the list of successor task of a given task_id
+      format is the following {task_id: list[task_id]}, where the values are the list of successor task of a given task_id
     max_horizon: the max horizon for scheduling
     resource_availability: for each resource, gives its variable capacity
     resource_renewable: for each resource, indicates if it's renewable or not
@@ -449,7 +449,7 @@ class SMRCPSPCalendar(D):
         task: int,
         mode: Optional[int] = 1,
         progress_from: Optional[float] = 0.0,
-        multivariate_settings: Optional[Dict[str, int]] = None,
+        multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         return self.duration_distribution[task][mode]
 
@@ -458,16 +458,16 @@ class SMRCPSPCalendar(D):
 
     def __init__(
         self,
-        resource_names: Optional[List[str]] = None,
-        task_ids: Optional[List[int]] = None,
-        tasks_mode: Optional[Dict[int, Dict[int, Dict[str, int]]]] = None,
-        successors: Optional[Dict[int, List[int]]] = None,
+        resource_names: Optional[list[str]] = None,
+        task_ids: Optional[list[int]] = None,
+        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        successors: Optional[dict[int, list[int]]] = None,
         duration_distribution: Optional[
-            Dict[int, Dict[int, DiscreteDistribution]]
+            dict[int, dict[int, DiscreteDistribution]]
         ] = None,
         max_horizon: Optional[int] = None,
-        resource_availability: Optional[Dict[str, List[int]]] = None,
-        resource_renewable: Optional[Dict[str, bool]] = None,
+        resource_availability: Optional[dict[str, list[int]]] = None,
+        resource_renewable: Optional[dict[str, bool]] = None,
     ):
         self.resource_names = resource_names
         self.task_ids = task_ids
@@ -493,19 +493,19 @@ class SMRCPSPCalendar(D):
         self.duration_distribution = duration_distribution
         self.initialize_domain()
 
-    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         return self.task_mode_dict
 
-    def _get_resource_renewability(self) -> Dict[str, bool]:
+    def _get_resource_renewability(self) -> dict[str, bool]:
         return self.resource_renewable
 
     def _get_max_horizon(self) -> int:
         return self.max_horizon
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return self.task_ids
 
     def _get_task_duration(
@@ -517,10 +517,10 @@ class SMRCPSPCalendar(D):
         # return self.resource_availability[resource]
         return self.original_resource_availability[resource]
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return self.resource_names
 
-    def _get_objectives(self) -> List[int]:
+    def _get_objectives(self) -> list[int]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
 
@@ -541,16 +541,16 @@ class MSRCPSP(D):
 
     def __init__(
         self,
-        skills_names: Optional[List[str]] = None,
-        resource_unit_names: Optional[List[str]] = None,
-        resource_type_names: Optional[List[str]] = None,
-        resource_skills: Optional[Dict[str, Dict[str, Any]]] = None,
-        task_ids: Optional[List[int]] = None,
-        tasks_mode: Optional[Dict[int, Dict[int, Dict[str, int]]]] = None,
-        successors: Optional[Dict[int, List[int]]] = None,
+        skills_names: Optional[list[str]] = None,
+        resource_unit_names: Optional[list[str]] = None,
+        resource_type_names: Optional[list[str]] = None,
+        resource_skills: Optional[dict[str, dict[str, Any]]] = None,
+        task_ids: Optional[list[int]] = None,
+        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        successors: Optional[dict[int, list[int]]] = None,
         max_horizon: Optional[int] = None,
-        resource_availability: Optional[Dict[str, int]] = None,
-        resource_renewable: Optional[Dict[str, bool]] = None,
+        resource_availability: Optional[dict[str, int]] = None,
+        resource_renewable: Optional[dict[str, bool]] = None,
     ):
         self.skills_set = set(skills_names)
         self.resource_unit_names = resource_unit_names
@@ -585,14 +585,14 @@ class MSRCPSP(D):
         self.resource_renewable = resource_renewable
         self.initialize_domain()
 
-    def _get_resource_units_names(self) -> List[str]:
+    def _get_resource_units_names(self) -> list[str]:
         """Return the names (string) of all resource units as a list."""
         return self.resource_unit_names
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return self.resource_type_names
 
-    def _get_resource_type_for_unit(self) -> Dict[str, str]:
+    def _get_resource_type_for_unit(self) -> dict[str, str]:
         """Return a dictionary where the key is a resource unit name and the value a resource type name.
         An empty dictionary can be used if there are no resource unit matching a resource type."""
         return None
@@ -600,13 +600,13 @@ class MSRCPSP(D):
     def get_max_horizon(self) -> int:
         return self.max_horizon
 
-    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         return self.task_mode_dict
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return self.task_ids
 
     def _get_task_duration(
@@ -617,16 +617,16 @@ class MSRCPSP(D):
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
         return self.resource_availability[resource]
 
-    def _get_resource_renewability(self) -> Dict[str, bool]:
+    def _get_resource_renewability(self) -> dict[str, bool]:
         return self.resource_renewable
 
-    def _get_all_resources_skills(self) -> Dict[str, Dict[str, Any]]:
+    def _get_all_resources_skills(self) -> dict[str, dict[str, Any]]:
         return self.resource_skills
 
-    def _get_all_tasks_skills(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
+    def _get_all_tasks_skills(self) -> dict[int, dict[int, dict[str, Any]]]:
         return self.task_skills_dict
 
-    def _get_objectives(self) -> List[int]:
+    def _get_objectives(self) -> list[int]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
 
@@ -648,16 +648,16 @@ class MSRCPSPCalendar(D):
 
     def __init__(
         self,
-        skills_names: Optional[List[str]] = None,
-        resource_unit_names: Optional[List[str]] = None,
-        resource_type_names: Optional[List[str]] = None,
-        resource_skills: Optional[Dict[str, Dict[str, Any]]] = None,
-        task_ids: Optional[List[int]] = None,
-        tasks_mode: Optional[Dict[int, Dict[int, Dict[str, int]]]] = None,
-        successors: Optional[Dict[int, List[int]]] = None,
+        skills_names: Optional[list[str]] = None,
+        resource_unit_names: Optional[list[str]] = None,
+        resource_type_names: Optional[list[str]] = None,
+        resource_skills: Optional[dict[str, dict[str, Any]]] = None,
+        task_ids: Optional[list[int]] = None,
+        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        successors: Optional[dict[int, list[int]]] = None,
         max_horizon: Optional[int] = None,
-        resource_availability: Optional[Dict[str, List[int]]] = None,
-        resource_renewable: Optional[Dict[str, bool]] = None,
+        resource_availability: Optional[dict[str, list[int]]] = None,
+        resource_renewable: Optional[dict[str, bool]] = None,
     ):
         self.skills_set = set(skills_names)
         self.resource_unit_names = resource_unit_names
@@ -692,14 +692,14 @@ class MSRCPSPCalendar(D):
         self.resource_renewable = resource_renewable
         self.initialize_domain()
 
-    def _get_resource_units_names(self) -> List[str]:
+    def _get_resource_units_names(self) -> list[str]:
         """Return the names (string) of all resource units as a list."""
         return self.resource_unit_names
 
-    def _get_resource_types_names(self) -> List[str]:
+    def _get_resource_types_names(self) -> list[str]:
         return self.resource_type_names
 
-    def _get_resource_type_for_unit(self) -> Dict[str, str]:
+    def _get_resource_type_for_unit(self) -> dict[str, str]:
         """Return a dictionary where the key is a resource unit name and the value a resource type name.
         An empty dictionary can be used if there are no resource unit matching a resource type."""
         return None
@@ -707,13 +707,13 @@ class MSRCPSPCalendar(D):
     def get_max_horizon(self) -> int:
         return self.max_horizon
 
-    def _get_tasks_modes(self) -> Dict[int, Dict[int, ModeConsumption]]:
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         return self.task_mode_dict
 
-    def _get_successors(self) -> Dict[int, List[int]]:
+    def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[Set[int], Dict[int, Any], List[int]]:
+    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
         return self.task_ids
 
     def _get_task_duration(
@@ -724,14 +724,14 @@ class MSRCPSPCalendar(D):
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
         return self.resource_availability[resource]
 
-    def _get_resource_renewability(self) -> Dict[str, bool]:
+    def _get_resource_renewability(self) -> dict[str, bool]:
         return self.resource_renewable
 
-    def _get_all_resources_skills(self) -> Dict[str, Dict[str, Any]]:
+    def _get_all_resources_skills(self) -> dict[str, dict[str, Any]]:
         return self.resource_skills
 
-    def _get_all_tasks_skills(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
+    def _get_all_tasks_skills(self) -> dict[int, dict[int, dict[str, Any]]]:
         return self.task_skills_dict
 
-    def _get_objectives(self) -> List[int]:
+    def _get_objectives(self) -> list[int]:
         return [SchedulingObjectiveEnum.MAKESPAN]

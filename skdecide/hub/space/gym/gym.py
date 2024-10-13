@@ -5,9 +5,10 @@
 from __future__ import annotations
 
 import itertools
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from enum import EnumMeta
-from typing import Any, Dict, Generic, Iterable, List, Sequence, Tuple, Union
+from typing import Any, Generic, Union
 
 import gymnasium as gym
 import gymnasium.spaces as gym_spaces
@@ -188,7 +189,7 @@ class TupleSpace(GymSpace[T]):
     """
 
     def __init__(
-        self, spaces: Tuple[Union[GymSpace[T], gym.Space]], element_class=tuple
+        self, spaces: tuple[Union[GymSpace[T], gym.Space]], element_class=tuple
     ):
         super().__init__(
             gym_space=gym_spaces.Tuple(
@@ -243,7 +244,7 @@ class DictSpace(GymSpace[T]):
 
     def __init__(
         self,
-        spaces: Dict[Any, Union[GymSpace[T], gym.Space]] = None,
+        spaces: dict[Any, Union[GymSpace[T], gym.Space]] = None,
         element_class=dict,
         **spaces_kwargs,
     ):
@@ -453,7 +454,7 @@ class DataSpace(GymSpace[T]):
     def __init__(
         self,
         data_class: type,
-        spaces: Union[Dict[str, gym.Space], List[Tuple[str, gym.Space]]],
+        spaces: Union[dict[str, gym.Space], list[tuple[str, gym.Space]]],
     ) -> None:
         """Initialize DataSpace.
 
@@ -503,10 +504,10 @@ class DataSpace(GymSpace[T]):
         """
         return super().unwrapped()
 
-    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable[Dict]:
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable[dict]:
         return [asdict(sample) for sample in sample_n]
 
-    def from_unwrapped(self, sample_n: Iterable[Dict]) -> Iterable[T]:
+    def from_unwrapped(self, sample_n: Iterable[dict]) -> Iterable[T]:
         # TODO: convert to simple types (get rid of ndarray created by gym dict space...)?
         return [self._data_class(**sample) for sample in sample_n]
 

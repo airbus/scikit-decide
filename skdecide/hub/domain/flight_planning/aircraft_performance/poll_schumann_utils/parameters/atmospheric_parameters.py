@@ -1,9 +1,6 @@
 # math and data
 import math
 
-# typing
-from typing import Dict
-
 import numpy as np
 
 from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.parameters import (
@@ -180,14 +177,14 @@ def zero_lift_drag_coefficient(c_f: float, psi_0: float) -> float:
 
 
 def oswald_efficiency_factor(
-    c_drag_0: float, aircraft_parameters: Dict[str, float]
+    c_drag_0: float, aircraft_parameters: dict[str, float]
 ) -> float:
     """Calculate the Oswald efficiency factor.
 
     # Parameters
         c_drag_0 (float):
             Zero-lift drag coefficient, [:math:`-`]
-        aircraft_parameters (Dict[str, float]):
+        aircraft_parameters (dict[str, float]):
             Aircraft parameters.
 
     # Returns
@@ -218,7 +215,7 @@ def _non_vortex_lift_dependent_drag_factor(c_drag_0: float, cos_sweep: float) ->
 
 
 def wave_drag_coefficient(
-    mach_num: float, c_lift: float, aircraft_parameters: Dict[str, float]
+    mach_num: float, c_lift: float, aircraft_parameters: dict[str, float]
 ) -> float:
     """Calculate the wave drag coefficient.
 
@@ -227,7 +224,7 @@ def wave_drag_coefficient(
             Mach number, [:math:`-`]
         c_lift (float):
             Lift coefficient, [:math:`-`]
-        aircraft_parameters (Dict[str, float]):
+        aircraft_parameters (dict[str, float]):
             Aircraft parameters.
 
     # Returns
@@ -344,7 +341,7 @@ def overall_propulsion_efficiency(
     mach_num: float,
     c_t: float,
     c_t_eta_b: float,
-    aircraft_parameters: Dict[str, float],
+    aircraft_parameters: dict[str, float],
     eta_over_eta_b_min: float,
 ) -> float:
     """Calculate overall propulsion efficiency.
@@ -356,7 +353,7 @@ def overall_propulsion_efficiency(
             Thrust coefficient, [:math:`-`]
         c_t_eta_b (float):
             Thrust coefficient at maximum efficiency, [:math:`-`]
-        aircraft_parameters (Dict[str, float]):
+        aircraft_parameters (dict[str, float]):
             Aircraft parameters.
         eta_over_eta_b_min (float):
             Minimum engine efficiency, [:math:`-`]

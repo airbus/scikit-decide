@@ -26,6 +26,8 @@
 
 Scikit-decide is an AI framework for Reinforcement Learning, Automated Planning and Scheduling.
 
+This framework was initiated at [Airbus](https://www.airbus.com) AI Research and notably received contributions through the [ANITI](https://aniti.univ-toulouse.fr/en/) and [TUPLES](https://tuples.ai/) projects, and also from [ANU](https://www.anu.edu.au/).
+
 ## Installation
 
 Quick version:

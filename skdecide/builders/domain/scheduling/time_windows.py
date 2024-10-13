@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 __all__ = [
     "TimeWindow",
     "ClassicTimeWindow",
@@ -123,7 +121,7 @@ class EmptyTimeWindow(TimeWindow):
 class WithTimeWindow:
     """A domain must inherit this class if some tasks have time windows defined."""
 
-    def get_time_window(self) -> Dict[int, TimeWindow]:
+    def get_time_window(self) -> dict[int, TimeWindow]:
         """
         Return a dictionary where the key is the id of a task (int)
         and the value is a TimeWindow object.
@@ -141,7 +139,7 @@ class WithTimeWindow:
         """
         return self._get_time_window()
 
-    def _get_time_window(self) -> Dict[int, TimeWindow]:
+    def _get_time_window(self) -> dict[int, TimeWindow]:
         """
         Return a dictionary where the key is the id of a task (int)
         and the value is a TimeWindow object.
@@ -164,7 +162,7 @@ class WithTimeWindow:
 class WithoutTimeWindow(WithTimeWindow):
     """A domain must inherit this class if none of the tasks have restrictions on start times or end times."""
 
-    def _get_time_window(self) -> Dict[int, TimeWindow]:
+    def _get_time_window(self) -> dict[int, TimeWindow]:
         """
         Return a dictionary where the key is the id of a task (int)
         and the value is a dictionary of EmptyTimeWindow object.

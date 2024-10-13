@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Dict, List, Type
+from typing import Any
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
@@ -85,7 +85,7 @@ def state_features(domain: Maze, state: State):
 
 
 # Fixed kwargs per solver: either hyperparameters we do not want to search, or other parameters like time limits
-kwargs_fixed_by_solver: Dict[Type[Solver], Dict[str, Any]] = {
+kwargs_fixed_by_solver: dict[type[Solver], dict[str, Any]] = {
     Astar: dict(
         parallel=False,
         verbose=False,
@@ -120,7 +120,7 @@ kwargs_fixed_by_solver: Dict[Type[Solver], Dict[str, Any]] = {
 
 
 # Add new hyperparameters to some solvers
-additional_hyperparameters_by_solver: Dict[Type[Solver], List[Hyperparameter]] = {
+additional_hyperparameters_by_solver: dict[type[Solver], list[Hyperparameter]] = {
     # ex 1: ent_coef for StableBaselines for PPO algo only
     StableBaseline: [
         # defined only if $algo_class \in [PPO]$
@@ -156,8 +156,8 @@ additional_hyperparameters_by_solver: Dict[Type[Solver], List[Hyperparameter]] =
 
 
 # Restrict some hyperparameters choices, for some solvers (making use of `kwargs_by_name` of `suggest_with_optuna`)
-suggest_optuna_kwargs_by_name_by_solver: Dict[
-    Type[Solver], Dict[str, Dict[str, Any]]
+suggest_optuna_kwargs_by_name_by_solver: dict[
+    type[Solver], dict[str, dict[str, Any]]
 ] = {
     StableBaseline: {
         # restrict the choices of algo classes

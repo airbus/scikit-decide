@@ -2,7 +2,7 @@
 
 import random
 from collections import deque
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -89,8 +89,8 @@ class Maze:
 
     def get_image_data(
         self,
-        current_position: Optional[Tuple[int, int]] = None,
-        goal: Optional[Tuple[int, int]] = None,
+        current_position: Optional[tuple[int, int]] = None,
+        goal: Optional[tuple[int, int]] = None,
     ) -> np.array:
         """Return a numpy array to be displayed with `matplotlib.pyplot.imshow()`.
 
@@ -110,11 +110,11 @@ class Maze:
 
     def render(
         self,
-        current_position: Optional[Tuple[int, int]] = None,
-        goal: Optional[Tuple[int, int]] = None,
+        current_position: Optional[tuple[int, int]] = None,
+        goal: Optional[tuple[int, int]] = None,
         ax: Optional[Any] = None,
         image: Optional[Any] = None,
-    ) -> Tuple[Any, Any]:
+    ) -> tuple[Any, Any]:
         """Render the maze in a matplotlib figure.
 
         Args:

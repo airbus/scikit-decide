@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any, Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
@@ -335,9 +336,9 @@ try:
 
         def get_policy(
             self,
-        ) -> Dict[
+        ) -> dict[
             D.T_agent[D.T_observation],
-            Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the Q-value has been updated at least once (which is optimal if the
@@ -348,12 +349,12 @@ try:
                 when node garbage was set to True in the RIW instance's constructor
 
             # Returns
-            Dict[ D.T_agent[D.T_observation], Tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
+            dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
                 Mapping from states to pairs of action and best Q-value
             """
             return self._solver.get_policy()
 
-        def get_action_prefix(self) -> List[D.T_agent[D.T_observation]]:
+        def get_action_prefix(self) -> list[D.T_agent[D.T_observation]]:
             """Get the list of actions returned by the solver so far after each
                 call to the RIW.get_next_action method (mostly internal use in order
                 to rebuild the sequence of visited states until reaching the current
@@ -362,7 +363,7 @@ try:
                 transition function with steps that hide the current state of the environment)
 
             # Returns
-            List[D.T_agent[D.T_observation]]: List of actions executed by the solver
+            list[D.T_agent[D.T_observation]]: List of actions executed by the solver
                 so far after each call to the `RIW.get_next_action` method
             """
             return self._solver.get_action_prefix()

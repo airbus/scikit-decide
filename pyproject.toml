@@ -25,8 +25,6 @@ classifiers = [
     "Programming Language :: C++",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Topic :: Software Development",
     "Topic :: Scientific/Engineering",
 ]
@@ -60,7 +58,7 @@ matplotlib = { version = ">=3.3.4", optional = true }
 joblib = { version = ">=1.0.1", optional = true }
 stable-baselines3 = { version = ">=2.0.0", optional = true }
 ray = { extras = ["rllib"], version = ">=2.9.0", optional = true }
-discrete-optimization = { version = ">=0.3.2", optional = true }
+discrete-optimization = { version = ">=0.4.0" }
 openap = { version = ">=1.5", python = ">=3.9", optional = true }
 pygeodesy = { version = ">=23.6.12", optional = true }
 unified-planning = { version = ">=1.1.0", python = ">=3.10", optional = true }
@@ -79,12 +77,12 @@ domains = [
     "gymnasium",
     "numpy",
     "matplotlib",
-    "discrete-optimization",
     "openap",
     "pygeodesy",
     "unified-planning",
     "cartopy",
     "pygrib",
+    "scipy"
 ]
 solvers = [
     "gymnasium",
@@ -92,12 +90,12 @@ solvers = [
     "joblib",
     "ray",
     "stable-baselines3",
-    "discrete-optimization",
     "unified-planning",
     "up-tamer",
     "up-fast-downward",
     "up-enhsp",
     "up-pyperplan",
+    "scipy"
 ]
 all = [
     "gymnasium",
@@ -106,7 +104,6 @@ all = [
     "joblib",
     "ray",
     "stable-baselines3",
-    "discrete-optimization",
     "openap",
     "pygeodesy",
     "unified-planning",
@@ -116,6 +113,7 @@ all = [
     "up-pyperplan",
     "cartopy",
     "pygrib",
+    "scipy"
 ]
 
 [tool.poetry.plugins."skdecide.domains"]

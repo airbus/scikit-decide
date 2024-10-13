@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Union
+from typing import Optional
 
 __all__ = ["CustomTaskProgress", "DeterministicTaskProgress"]
 
