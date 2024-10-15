@@ -1,4 +1,7 @@
-from discrete_optimization.rcpsp.rcpsp_solvers import CP_MRCPSP_MZN, CP_RCPSP_MZN
+from discrete_optimization.rcpsp.solvers_map import (
+    CpMultimodeRcpspSolver,
+    CpRcpspSolver,
+)
 
 from examples.scheduling.rcpsp_datasets import get_complete_path
 from examples.scheduling.rcpsp_multiskill_datasets import get_data_available_ms
@@ -33,11 +36,11 @@ def random_walk():
     print("end times: ")
     for task_id in states[-1].tasks_details.keys():
         print("end task", task_id, ": ", states[-1].tasks_details[task_id].end)
-    from discrete_optimization.rcpsp.rcpsp_utils import (
+    import matplotlib.pyplot as plt
+    from discrete_optimization.rcpsp.utils import (
         plot_resource_individual_gantt,
         plot_ressource_view,
         plot_task_gantt,
-        plt,
     )
 
     from skdecide.hub.solver.do_solver.sk_to_do_binding import (
@@ -63,7 +66,7 @@ def do_singlemode():
             delta_index_freedom=0,
             delta_time_freedom=0,
         ),
-        do_solver_type=CP_RCPSP_MZN,
+        do_solver_type=CpRcpspSolver,
     )
     solver.solve()
     states, actions, values = rollout(
@@ -92,7 +95,7 @@ def do_multimode():
             delta_index_freedom=0,
             delta_time_freedom=0,
         ),
-        do_solver_type=CP_MRCPSP_MZN,
+        do_solver_type=CpMultimodeRcpspSolver,
     )
     solver.solve()
     states, actions, values = rollout(

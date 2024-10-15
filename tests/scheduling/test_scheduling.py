@@ -4,12 +4,12 @@ from enum import Enum
 from typing import Any, Optional, Union
 
 import pytest
-from discrete_optimization.generic_tools.cp_tools import CPSolverName
-from discrete_optimization.rcpsp.rcpsp_solvers import (
-    GA_RCPSP_Solver,
-    LargeNeighborhoodSearchScheduling,
-    LS_RCPSP_Solver,
-    PileSolverRCPSP,
+from discrete_optimization.generic_tools.cp_tools import CpSolverName
+from discrete_optimization.rcpsp.solvers_map import (
+    GaRcpspSolver,
+    LnsCpMznGenericRcpspSolver,
+    LsGenericRcpspSolver,
+    PileRcpspSolver,
 )
 
 from skdecide import DiscreteDistribution, Distribution, rollout
@@ -667,10 +667,10 @@ def test_do(domain, do_solver):
 @pytest.mark.parametrize(
     "do_solver_type",
     [
-        PileSolverRCPSP,
-        GA_RCPSP_Solver,
-        LargeNeighborhoodSearchScheduling,
-        LS_RCPSP_Solver,
+        PileRcpspSolver,
+        GaRcpspSolver,
+        LnsCpMznGenericRcpspSolver,
+        LsGenericRcpspSolver,
     ],
 )
 def test_do_solver_type(domain, do_solver_type):
@@ -861,7 +861,7 @@ def test_optimality(domain, do_solver):
 @pytest.mark.parametrize(
     "do_solver",
     [
-        (SolvingMethod.CP, CPSolverName.GECODE),
+        (SolvingMethod.CP, CpSolverName.GECODE),
     ],
 )
 def test_gecode_optimality(domain, do_solver):
@@ -1095,7 +1095,7 @@ def test_do_with_cb(caplog):
         ),
         method=SolvingMethod.LNS_CP,
         callback=MyCallback(),
-        # dict_params={"cp_solver_name": CPSolverName.GECODE}
+        # dict_params={"cp_solver_name": CpSolverName.GECODE}
     )
     solver.solve()
 
