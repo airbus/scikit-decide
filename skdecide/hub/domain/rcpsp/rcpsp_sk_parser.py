@@ -13,12 +13,12 @@ from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP
 
 def load_domain(file_path):
     """"""
-    from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel
-    from discrete_optimization.rcpsp.rcpsp_parser import parse_file
+    from discrete_optimization.rcpsp.parser import parse_file
+    from discrete_optimization.rcpsp.problem import RcpspProblem
 
     from skdecide.hub.domain.rcpsp.rcpsp_sk import MRCPSP, RCPSP
 
-    rcpsp_model: RCPSPModel = parse_file(file_path)
+    rcpsp_model: RcpspProblem = parse_file(file_path)
     if not rcpsp_model.is_rcpsp_multimode():
         my_domain = RCPSP(
             resource_names=rcpsp_model.resources_list,
@@ -50,9 +50,7 @@ def load_domain(file_path):
 
 
 def load_multiskill_domain(file_path):
-    from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_parser import (
-        parse_file,
-    )
+    from discrete_optimization.rcpsp_multiskill.parser import parse_file
 
     model_msrcpsp, new_tame_to_original_task_id = parse_file(
         file_path, max_horizon=2000
