@@ -23,8 +23,8 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
 from discrete_optimization.generic_tools.hyperparameters.hyperparametrizable import (
     Hyperparametrizable,
 )
-from discrete_optimization.rcpsp.rcpsp_model import RCPSPSolution
-from discrete_optimization.rcpsp.solver.cpm import CPM
+from discrete_optimization.rcpsp.problem import RcpspSolution
+from discrete_optimization.rcpsp.solvers.cpm import CpmRcpspSolver
 from scipy import stats
 from scipy.spatial import distance
 
@@ -172,7 +172,7 @@ def feature_precedence_done(
 
 
 def compute_cpm(do_domain):
-    cpm_solver = CPM(do_domain)
+    cpm_solver = CpmRcpspSolver(do_domain)
     path = cpm_solver.run_classic_cpm()
     cpm = cpm_solver.map_node
     cpm_esd = cpm[path[-1]]._ESD  # to normalize...
@@ -727,7 +727,7 @@ class GPHH(Solver, DeterministicPolicies):
                 if normalized_values[i] not in {1, len(normalized_values)}
             ]
 
-            solution = RCPSPSolution(
+            solution = RcpspSolution(
                 problem=do_model,
                 rcpsp_permutation=normalized_values_for_do,
                 rcpsp_modes=modes,
@@ -941,7 +941,7 @@ class GPHHPolicy(DeterministicPolicies):
                 for j in scheduled_tasks_start_times
                 if j not in tasks_complete_dict
             }
-            solution = RCPSPSolution(
+            solution = RcpspSolution(
                 problem=do_model,
                 rcpsp_permutation=normalized_values_for_do,
                 rcpsp_modes=modes,
@@ -1111,7 +1111,7 @@ class PooledGPHHPolicy(DeterministicPolicies):
 
         if run_sgs:
 
-            solution = RCPSPSolution(
+            solution = RcpspSolution(
                 problem=do_model,
                 rcpsp_permutation=normalized_values_for_do,
                 rcpsp_modes=modes,
@@ -1218,7 +1218,7 @@ class FixedPermutationPolicy(DeterministicPolicies):
 
         if run_sgs:
 
-            solution = RCPSPSolution(
+            solution = RcpspSolution(
                 problem=do_model,
                 rcpsp_permutation=normalized_values_for_do,
                 rcpsp_modes=modes,

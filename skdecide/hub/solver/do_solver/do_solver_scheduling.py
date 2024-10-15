@@ -19,11 +19,11 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
 from discrete_optimization.generic_tools.result_storage.result_storage import (
     ResultStorage,
 )
-from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, RCPSPSolution
-from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
-    MS_RCPSPModel,
-    MS_RCPSPSolution,
-    MS_RCPSPSolution_Variant,
+from discrete_optimization.rcpsp.problem import RcpspProblem, RcpspSolution
+from discrete_optimization.rcpsp_multiskill.problem import (
+    MultiskillRcpspProblem,
+    MultiskillRcpspSolution,
+    VariantMultiskillRcpspSolution,
 )
 
 from skdecide import Domain
@@ -78,22 +78,21 @@ def build_solver(
     A class of do-solver, associated with some default parameters to be passed to its constructor and solve function
     (and potentially init_model function)
     """
-    if isinstance(do_domain, RCPSPModel):
-        from discrete_optimization.rcpsp.rcpsp_solvers import (
+    if isinstance(do_domain, RcpspProblem):
+        from discrete_optimization.rcpsp.solvers_map import look_for_solver, solvers_map
+
+        do_domain_cls = RcpspProblem
+    elif isinstance(do_domain, MultiskillRcpspProblem):
+        from discrete_optimization.rcpsp_multiskill.solvers_map import (
             look_for_solver,
             solvers_map,
         )
 
-        do_domain_cls = RCPSPModel
-    elif isinstance(do_domain, MS_RCPSPModel):
-        from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
-            look_for_solver,
-            solvers_map,
-        )
-
-        do_domain_cls = MS_RCPSPModel
+        do_domain_cls = MultiskillRcpspProblem
     else:
-        raise ValueError("do_domain should be either a RCPSPModel or a MS_RCPSPModel.")
+        raise ValueError(
+            "do_domain should be either a RcpspProblem or a MultiskillRcpspProblem."
+        )
     available = look_for_solver(do_domain)
     if solver_type is not None:
         if solver_type in solvers_map:
@@ -114,7 +113,9 @@ def build_solver(
 
 
 def from_solution_to_policy(
-    solution: Union[RCPSPSolution, MS_RCPSPSolution, MS_RCPSPSolution_Variant],
+    solution: Union[
+        RcpspSolution, MultiskillRcpspSolution, VariantMultiskillRcpspSolution
+    ],
     domain: SchedulingDomain,
     policy_method_params: PolicyMethodParams,
 ) -> PolicyRCPSP:
@@ -125,7 +126,7 @@ def from_solution_to_policy(
     schedule = None
     resource_allocation = None
     resource_allocation_priority = None
-    if isinstance(solution, RCPSPSolution):
+    if isinstance(solution, RcpspSolution):
         permutation_task = sorted(
             solution.rcpsp_schedule,
             key=lambda x: (solution.rcpsp_schedule[x]["start_time"], x),
@@ -137,7 +138,7 @@ def from_solution_to_policy(
         modes_dictionnary[solution.problem.n_jobs_non_dummy + 2] = 1
         for i in range(len(solution.rcpsp_modes)):
             modes_dictionnary[i + 2] = solution.rcpsp_modes[i]
-    elif isinstance(solution, MS_RCPSPSolution):
+    elif isinstance(solution, MultiskillRcpspSolution):
         permutation_task = sorted(
             solution.schedule, key=lambda x: (solution.schedule[x]["start_time"], x)
         )
@@ -149,7 +150,7 @@ def from_solution_to_policy(
             ]  # warning here...
             for task in solution.employee_usage
         }
-        if isinstance(solution, MS_RCPSPSolution_Variant):
+        if isinstance(solution, VariantMultiskillRcpspSolution):
             resource_allocation_priority = solution.priority_worker_per_task
             modes_dictionnary = {}
             # set modes for start and end (dummy) jobs
@@ -219,15 +220,15 @@ class DOSolver(Solver, DeterministicPolicies):
 
     def get_available_methods(self, domain: SchedulingDomain):
         do_domain = build_do_domain(domain)
-        if isinstance(do_domain, (MS_RCPSPModel)):
-            from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
+        if isinstance(do_domain, (MultiskillRcpspProblem)):
+            from discrete_optimization.rcpsp_multiskill.solvers_map import (
                 look_for_solver,
                 solvers_map,
             )
 
             available = look_for_solver(do_domain)
-        elif isinstance(do_domain, RCPSPModel):
-            from discrete_optimization.rcpsp.rcpsp_solvers import (
+        elif isinstance(do_domain, RcpspProblem):
+            from discrete_optimization.rcpsp.solvers_maps import (
                 look_for_solver,
                 solvers_map,
             )
@@ -263,7 +264,7 @@ class DOSolver(Solver, DeterministicPolicies):
             self.solver.init_model(**copy_dict_params)
 
         result_storage = self.solver.solve(callbacks=callbacks, **copy_dict_params)
-        best_solution: RCPSPSolution = result_storage.get_best_solution()
+        best_solution: RcpspSolution = result_storage.get_best_solution()
 
         assert best_solution is not None
 

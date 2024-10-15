@@ -6,12 +6,12 @@ from __future__ import annotations
 
 from typing import Union
 
-from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, RCPSPSolution
-from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
+from discrete_optimization.rcpsp.problem import RcpspProblem, RcpspSolution
+from discrete_optimization.rcpsp_multiskill.problem import (
     Employee,
-    MS_RCPSPModel,
-    MS_RCPSPModel_Variant,
+    MultiskillRcpspProblem,
     SkillDetail,
+    VariantMultiskillRcpspProblem,
 )
 
 from skdecide.builders.domain.scheduling.scheduling_domains import (
@@ -37,8 +37,8 @@ from skdecide.hub.domain.rcpsp.rcpsp_sk import (
 
 def from_last_state_to_solution(
     state: State, domain: SchedulingDomain
-) -> RCPSPSolution:
-    """Transform a scheduling state into a RCPSPSolution
+) -> RcpspSolution:
+    """Transform a scheduling state into a RcpspSolution
     This function reads the schedule from the state object and transform it back to a discrete-optimization solution
     object.
     """
@@ -48,7 +48,7 @@ def from_last_state_to_solution(
         p.value.id: {"start_time": p.value.start, "end_time": p.value.end}
         for p in state.tasks_complete_details
     }
-    return RCPSPSolution(
+    return RcpspSolution(
         problem=build_do_domain(domain),
         rcpsp_permutation=None,
         rcpsp_modes=modes,
@@ -67,7 +67,7 @@ def build_do_domain(
         MultiModeMultiSkillRCPSPCalendar,
         SingleModeRCPSP_Stochastic_Durations,
     ]
-) -> Union[RCPSPModel, MS_RCPSPModel]:
+) -> Union[RcpspProblem, MultiskillRcpspProblem]:
     """Transform the scheduling domain (from scikit-decide) into a discrete-optimization problem.
 
     This only works for scheduling template given in the type docstring.
@@ -88,7 +88,7 @@ def build_do_domain(
                 mode_details_do[task][mode][
                     "duration"
                 ] = scheduling_domain.get_task_duration(task=task, mode=mode)
-        return RCPSPModel(
+        return RcpspProblem(
             resources={
                 r: scheduling_domain.get_original_quantity_resource(r)
                 for r in scheduling_domain.get_resource_types_names()
@@ -119,7 +119,7 @@ def build_do_domain(
                 mode_details_do[task][mode][
                     "duration"
                 ] = scheduling_domain.sample_task_duration(task=task, mode=mode)
-        return RCPSPModel(
+        return RcpspProblem(
             resources={
                 r: scheduling_domain.get_original_quantity_resource(r)
                 for r in scheduling_domain.get_resource_types_names()
@@ -150,7 +150,7 @@ def build_do_domain(
                 mode_details_do[task][mode][
                     "duration"
                 ] = scheduling_domain.get_task_duration(task=task, mode=mode)
-        return RCPSPModel(
+        return RcpspProblem(
             resources={
                 r: scheduling_domain.get_original_quantity_resource(r)
                 for r in scheduling_domain.get_resource_types_names()
@@ -182,7 +182,7 @@ def build_do_domain(
                     "duration"
                 ] = scheduling_domain.get_task_duration(task=task, mode=mode)
         horizon = scheduling_domain.get_max_horizon()
-        return RCPSPModel(
+        return RcpspProblem(
             resources={
                 r: [
                     scheduling_domain.get_quantity_resource(r, time=t)
@@ -241,7 +241,7 @@ def build_do_domain(
                 ],
             )
 
-        return MS_RCPSPModel_Variant(
+        return VariantMultiskillRcpspProblem(
             skills_set=scheduling_domain.get_skills_names(),
             resources_set=set(scheduling_domain.get_resource_types_names()),
             non_renewable_resources=set(
@@ -279,12 +279,12 @@ def build_do_domain(
 
 
 def build_sk_domain(
-    rcpsp_do_domain: Union[MS_RCPSPModel, RCPSPModel],
+    rcpsp_do_domain: Union[MultiskillRcpspProblem, RcpspProblem],
     varying_ressource: bool = False,
 ) -> Union[RCPSP, MSRCPSP, MRCPSP, MSRCPSPCalendar]:
     """Build a scheduling domain (scikit-decide) from a discrete-optimization problem"""
     if (
-        isinstance(rcpsp_do_domain, RCPSPModel)
+        isinstance(rcpsp_do_domain, RcpspProblem)
         and rcpsp_do_domain.is_varying_resource()
     ):
         if varying_ressource:
@@ -321,7 +321,7 @@ def build_sk_domain(
         return my_domain
 
     if (
-        isinstance(rcpsp_do_domain, RCPSPModel)
+        isinstance(rcpsp_do_domain, RcpspProblem)
         and not rcpsp_do_domain.is_rcpsp_multimode()
     ):
         my_domain = RCPSP(
@@ -339,7 +339,8 @@ def build_sk_domain(
         return my_domain
 
     elif (
-        isinstance(rcpsp_do_domain, RCPSPModel) and rcpsp_do_domain.is_rcpsp_multimode()
+        isinstance(rcpsp_do_domain, RcpspProblem)
+        and rcpsp_do_domain.is_rcpsp_multimode()
     ):
         my_domain = MRCPSP(
             resource_names=rcpsp_do_domain.resources_list,
@@ -355,7 +356,7 @@ def build_sk_domain(
         )
         return my_domain
 
-    elif isinstance(rcpsp_do_domain, MS_RCPSPModel):
+    elif isinstance(rcpsp_do_domain, MultiskillRcpspProblem):
         if not varying_ressource:
             resource_type_names = list(rcpsp_do_domain.resources_list)
             resource_skills = {r: {} for r in resource_type_names}
