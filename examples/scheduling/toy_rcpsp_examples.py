@@ -475,11 +475,11 @@ def run_astar():
     )
 
     do_sol = from_last_state_to_solution(states[-1], domain)
-    from discrete_optimization.rcpsp.rcpsp_utils import (
+    import matplotlib.pyplot as plt
+    from discrete_optimization.rcpsp.utils import (
         plot_resource_individual_gantt,
         plot_ressource_view,
         plot_task_gantt,
-        plt,
     )
 
     plot_task_gantt(do_sol.problem, do_sol)
@@ -528,11 +528,11 @@ def run_do():
     )
 
     do_sol = from_last_state_to_solution(states[-1], domain)
-    from discrete_optimization.rcpsp.rcpsp_utils import (
+    import matplotlib.pyplot as plt
+    from discrete_optimization.rcpsp.utils import (
         plot_resource_individual_gantt,
         plot_ressource_view,
         plot_task_gantt,
-        plt,
     )
 
     plot_task_gantt(do_sol.problem, do_sol)
