@@ -3055,6 +3055,33 @@ windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
 name = "pygrib"
+version = "2.1.5"
+description = "Python module for reading/writing GRIB files"
+optional = true
+python-versions = "*"
+files = [
+    {file = "pygrib-2.1.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ca012717dedb9e07fbefb975eb6b7157e08ad87f505781f41b54883408c3b6ee"},
+    {file = "pygrib-2.1.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a569b58e380a11387d8c3c3114cfa43de816b262372cf4bb5a1d2d7220306179"},
+    {file = "pygrib-2.1.5-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:baae08ab5684088c1a4b81f2a09a61a21090ccc78cfac697d99ad564da7ab1d6"},
+    {file = "pygrib-2.1.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d2b92ea5fc4e1b621af2b38cc1d8eef4f0dde1eda92fb8f6813b58d1cda113c4"},
+    {file = "pygrib-2.1.5-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:5a6e5a394c4826d025f94843e04af4c2cee7fbb7b7a3069c2eacada2352557d6"},
+    {file = "pygrib-2.1.5-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3377bf1c93bb4fa57200f66d229e8195650ab79e10cb28f3aa58982408e6b697"},
+    {file = "pygrib-2.1.5-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:4d03551759dcd142e98ac7557ca6997673bdd37d2a7e955f41d3477f9b6311c3"},
+    {file = "pygrib-2.1.5-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d317dbcd6a6d4acb5447c224684b5748ea252edc002f95b6b6c4eb746d9d032b"},
+    {file = "pygrib-2.1.5-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:4ffbbcbeac58c15d55c67d5682432207b06c380d401151dd25754a3862d2814b"},
+    {file = "pygrib-2.1.5-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8efd255933ae6ea951839e8f303f8374ddd920473f50fc6152018584e4cf064d"},
+    {file = "pygrib-2.1.5-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:4ec4322816dc47646dd8cf3edbf6bad54ef385b47e15f4e34db099350a6ee021"},
+    {file = "pygrib-2.1.5-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:559d79deea0aae7f622e81d14f68937c5b3c7461e58e002c126f928194de382f"},
+    {file = "pygrib-2.1.5.tar.gz", hash = "sha256:e4c311e407aa3a1b76c060e7f0282415e8fca82d10e82424d6a6894a40109276"},
+]
+
+[package.dependencies]
+numpy = "*"
+pyproj = "*"
+setuptools = "*"
+
+[[package]]
+name = "pygrib"
 version = "2.1.6"
 description = "Python module for reading/writing GRIB files"
 optional = true
@@ -4444,4 +4471,4 @@ solvers = ["gymnasium", "joblib", "numpy", "ray", "scipy", "stable-baselines3", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "85d8ca18c22f63623ca8337d13f02b553c0c4d1f5296516261f9ac77993dbb5d"
+content-hash = "84895913f6a228524f78d9af6c3d27f395028655dfd4a58d7e7cff3f97cede21"
