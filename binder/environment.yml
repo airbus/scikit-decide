@@ -24,3 +24,4 @@ dependencies:
     - PyOpenGL
     - xarray
     - gymnasium[classic-control]==0.28.1
+    - rddlrepository
