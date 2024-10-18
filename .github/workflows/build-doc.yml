@@ -9,9 +9,14 @@ on:
         default: "doc"
         type: string
       doc-path:
-        description: "Path where to extract the built doc"
+        description: "Path where to find the built doc"
         required: false
         default: "docs/.vuepress/dist"
+        type: string
+      doc-version:
+        description: "version of the library for which we are building the doc. If empty, then it is main branch doc."
+        required: FALSE
+        default: ""
         type: string
       notebooks-repo-url:
         description: |
@@ -97,6 +102,18 @@ jobs:
           python_version=${{ env.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
           pip install ${wheelfile}[all]
+      - name: set env.DOCS_VERSION_PATH aka subpath where the doc will be deployed
+        # DOCS_VERSION_PATH is used by yarn docs:build to preprend links to javascript with proper subpath
+        # See docs/.vuepress/config.js
+        id: set-doc-version-path
+        run: |
+          doc_version=${{ inputs.doc-version }}
+          if [ -z "${doc_version}" ]; then
+            doc_version_path="/"
+          else
+            doc_version_path="/version/${doc_version}/"
+          fi
+          echo "DOCS_VERSION_PATH=${doc_version_path}" >> $GITHUB_ENV
       - name: generate documentation
         run: |
           yarn global add vuepress && yarn install
