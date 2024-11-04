@@ -1433,6 +1433,38 @@ files = [
 protobuf = ["grpcio-tools (>=1.67.0)"]
 
 [[package]]
+name = "gurobipy"
+version = "11.0.3"
+description = "Python interface to Gurobi"
+optional = true
+python-versions = "*"
+files = [
+    {file = "gurobipy-11.0.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:ec3a8da22c8e818095bbe86ed0b71f9f3712272afb994edc04dc3c82654c7542"},
+    {file = "gurobipy-11.0.3-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:623ea11104b50b574d7c73ae19e87131431cd4d33adcaf0d408a7e44cb73ed43"},
+    {file = "gurobipy-11.0.3-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:2074a21e9e78b62a84e3b123a8d44566562667b3d0e6ae5543ccb45207d44de6"},
+    {file = "gurobipy-11.0.3-cp310-cp310-win_amd64.whl", hash = "sha256:ec84cd537a9d1b392ffd09cb03e617c6cc69322f5e195c0c87328cf592482123"},
+    {file = "gurobipy-11.0.3-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:138b4be8fb42d494b8484bd4cfa99ea1e511e8860cdb1171349f4fce06d9aa01"},
+    {file = "gurobipy-11.0.3-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:84c58e164c90fc1de8bc0aac8ad25a82b4a9d3079b5064735822cecf552b1b26"},
+    {file = "gurobipy-11.0.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:d8eed5ca4831d1f10b08cd701f75483b27810734750d414a5b3cb6e4ba4c17f3"},
+    {file = "gurobipy-11.0.3-cp311-cp311-win_amd64.whl", hash = "sha256:9e57508f7d7a8ef154767894c693273d94bed771fa300677ae74892fde7dfc57"},
+    {file = "gurobipy-11.0.3-cp312-cp312-macosx_10_9_universal2.whl", hash = "sha256:05700979469511aedfcb4d0136c161077d085393b6a449c98e9ff7818747279c"},
+    {file = "gurobipy-11.0.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:b752a8a4d898a3cc59b0670aa449dee8e2159d4f420f30033baf96f14a36516d"},
+    {file = "gurobipy-11.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:d08a69a9884b2c7ab843c9967b44770c17c73ac5726db7a8794ae85d7c1fc446"},
+    {file = "gurobipy-11.0.3-cp312-cp312-win_amd64.whl", hash = "sha256:74fa0d9bace48bc0f25426b5cd70addb02a13b5ea1645494cad073a32c9ec2c4"},
+    {file = "gurobipy-11.0.3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:d300c206bcbabf2079019e2a69e370134cd393d49f4ea62cdece3a008e485d1d"},
+    {file = "gurobipy-11.0.3-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:94930bd120a0f8e85d26cf5a178a5ca7a319a206d9d6a92739df321e6c9fcfbd"},
+    {file = "gurobipy-11.0.3-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:1824a579ead6bf95a28043a12535a2ae3a142e45b0c77b337ef9e9c9fb53f68b"},
+    {file = "gurobipy-11.0.3-cp38-cp38-win_amd64.whl", hash = "sha256:fd56eb62f2babd467b36dababb5f715341c3f19e6fb6b0b08edf6ccbd4cf50d3"},
+    {file = "gurobipy-11.0.3-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:af65aac3c342cf8d8f496183f9fa2f78b88ce90d8dface1324d2f32171eca4c1"},
+    {file = "gurobipy-11.0.3-cp39-cp39-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:4b72a3e03170c6299b5f5baf6b8f0b0e753625d13e6c481fc4d245ccb20a02ff"},
+    {file = "gurobipy-11.0.3-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:181e7c1b207ec1fae469735e00efbe9a57d6c398434624c1ca1cf68293ef2188"},
+    {file = "gurobipy-11.0.3-cp39-cp39-win_amd64.whl", hash = "sha256:1f33e7329b4e544d90357a93bc12d9b15bdd7d0b8944cd6ecc50901e9452767e"},
+]
+
+[package.extras]
+matrixapi = ["numpy", "scipy"]
+
+[[package]]
 name = "gymnasium"
 version = "0.28.1"
 description = "A standard API for reinforcement learning and a diverse set of reference environments (formerly Gym)."
@@ -1703,14 +1735,14 @@ importlib-metadata = {version = ">=4.6", markers = "python_version < \"3.10\""}
 jaxlib = ">=0.4.27,<=0.4.30"
 ml-dtypes = ">=0.2.0"
 numpy = [
-    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
     {version = ">=1.23.2", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
     {version = ">=1.22", markers = "python_version < \"3.11\""},
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
 ]
 opt-einsum = "*"
 scipy = [
-    {version = ">=1.11.1", markers = "python_version >= \"3.12\""},
     {version = ">=1.9", markers = "python_version < \"3.12\""},
+    {version = ">=1.11.1", markers = "python_version >= \"3.12\""},
 ]
 
 [package.extras]
@@ -1773,8 +1805,8 @@ files = [
 ml-dtypes = ">=0.2.0"
 numpy = ">=1.22"
 scipy = [
-    {version = ">=1.11.1", markers = "python_version >= \"3.12\""},
     {version = ">=1.9", markers = "python_version < \"3.12\""},
+    {version = ">=1.11.1", markers = "python_version >= \"3.12\""},
 ]
 
 [[package]]
@@ -2424,10 +2456,10 @@ files = [
 
 [package.dependencies]
 numpy = [
-    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
     {version = ">=1.23.3", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
     {version = ">=1.21.2", markers = "python_version >= \"3.10\" and python_version < \"3.11\""},
     {version = ">1.20", markers = "python_version < \"3.10\""},
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
 ]
 
 [package.extras]
@@ -3163,9 +3195,9 @@ files = [
 
 [package.dependencies]
 numpy = [
-    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
     {version = ">=1.23.2", markers = "python_version == \"3.11\""},
     {version = ">=1.22.4", markers = "python_version < \"3.11\""},
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
 ]
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
@@ -3895,6 +3927,41 @@ pygame = "*"
 termcolor = "*"
 
 [[package]]
+name = "pyrddlgym"
+version = "2.1"
+description = "pyRDDLGym: RDDL automatic generation tool for OpenAI Gym"
+optional = true
+python-versions = "<3.12,>=3.8"
+files = [
+    {file = "pyRDDLGym-2.1-py3-none-any.whl", hash = "sha256:2ca40e98e2d4fae26bd644b8974b419f6faa0596831d2e8ddc4c8c76760ed91b"},
+    {file = "pyrddlgym-2.1.tar.gz", hash = "sha256:f9d1ce287a8de9b4bc082de7788907cb826b6ca81f25784f6bac7564dc145a52"},
+]
+
+[package.dependencies]
+gymnasium = "*"
+matplotlib = ">=3.5.0"
+numpy = ">=1.22,<2"
+pillow = ">=9.2.0"
+ply = "*"
+pygame = "*"
+termcolor = "*"
+
+[[package]]
+name = "pyrddlgym-gurobi"
+version = "0.2"
+description = "pyRDDLGym-gurobi: Gurobi compilation of RDDL description files, and optimization tools."
+optional = true
+python-versions = ">=3.8"
+files = [
+    {file = "pyRDDLGym_gurobi-0.2-py3-none-any.whl", hash = "sha256:b81b164d35cb1e9309da3a9a5ed6feba8f949620b95e171787b790c809a1d4b5"},
+    {file = "pyrddlgym_gurobi-0.2.tar.gz", hash = "sha256:72c847f352739a313caaa4f7002a3ff06999dd86d3c34a7b8383de9876de8e9d"},
+]
+
+[package.dependencies]
+gurobipy = ">=10.0.0"
+pyRDDLGym = ">=2.0"
+
+[[package]]
 name = "pyrddlgym-jax"
 version = "0.3"
 description = "pyRDDLGym-jax: JAX compilation of RDDL description files, and a differentiable planner in JAX."
@@ -3924,6 +3991,20 @@ python-versions = ">=3.8"
 files = [
     {file = "pyRDDLGym-rl-0.1.tar.gz", hash = "sha256:2f1c9b420bc0f2418e0c44fcf587950471366f6c5fce9587295d5f5dd1cc1c33"},
     {file = "pyRDDLGym_rl-0.1-py3-none-any.whl", hash = "sha256:1baa8a5bfb72e7a582aeb40803ca9792bc55d2d5fe1e3ee087d6ea1053b719de"},
+]
+
+[package.dependencies]
+pyRDDLGym = ">=2.0"
+
+[[package]]
+name = "pyrddlgym-rl"
+version = "0.2"
+description = "pyRDDLGym-rl: Wrappers for reinforcement learning algorithms (i.e. stable baselines 3) to work with pyRDDLGym."
+optional = true
+python-versions = ">=3.8"
+files = [
+    {file = "pyRDDLGym_rl-0.2-py3-none-any.whl", hash = "sha256:6e68b204f69e50d067541a45461bb42901f1785526784825a04f84d718a4bcbb"},
+    {file = "pyrddlgym_rl-0.2.tar.gz", hash = "sha256:e54c6b0cdc41c4cb8234bb59fdc28ee7d88bd66f33db75dc9248c67190a21a93"},
 ]
 
 [package.dependencies]
@@ -5489,11 +5570,11 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 type = ["pytest-mypy"]
 
 [extras]
-all = ["cartopy", "gymnasium", "joblib", "matplotlib", "numpy", "openap", "pyRDDLGym", "pyRDDLGym-jax", "pyRDDLGym-rl", "pygeodesy", "pygrib", "pygrib", "ray", "rddlrepository", "scipy", "stable-baselines3", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
-domains = ["cartopy", "gymnasium", "matplotlib", "numpy", "openap", "pyRDDLGym", "pyRDDLGym-rl", "pygeodesy", "pygrib", "pygrib", "rddlrepository", "scipy", "unified-planning"]
-solvers = ["gymnasium", "joblib", "numpy", "pyRDDLGym-jax", "ray", "scipy", "stable-baselines3", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
+all = ["cartopy", "gymnasium", "joblib", "matplotlib", "numpy", "openap", "pyRDDLGym", "pyRDDLGym", "pyRDDLGym-gurobi", "pyRDDLGym-jax", "pyRDDLGym-rl", "pyRDDLGym-rl", "pygeodesy", "pygrib", "pygrib", "ray", "rddlrepository", "scipy", "stable-baselines3", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
+domains = ["cartopy", "gymnasium", "matplotlib", "numpy", "openap", "pyRDDLGym", "pyRDDLGym", "pyRDDLGym-rl", "pyRDDLGym-rl", "pygeodesy", "pygrib", "pygrib", "rddlrepository", "scipy", "unified-planning"]
+solvers = ["gymnasium", "joblib", "numpy", "pyRDDLGym-gurobi", "pyRDDLGym-jax", "ray", "scipy", "stable-baselines3", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "55a5472c7d8ca6d30cd149a54055e1a2322d87320c3f970fde56898801645455"
+content-hash = "353bf8a69a6c318e17e71f400e98ea6d4392883291de54e4c4570cea0a9288f2"

@@ -2,15 +2,10 @@ import os
 import shutil
 from urllib.request import urlcleanup, urlretrieve
 
-import pytest
 from pyRDDLGym_jax.core.simulator import JaxRDDLSimulator
 
 from skdecide.hub.domain.rddl import RDDLDomain
-from skdecide.hub.solver.rddl.rddl import (
-    RDDLGurobiSolver,
-    RDDLJaxSolver,
-    pyrddlgym_gurobi_available,
-)
+from skdecide.hub.solver.rddl.rddl import RDDLGurobiSolver, RDDLJaxSolver
 from skdecide.utils import load_registered_solver, rollout
 
 
@@ -44,10 +39,6 @@ def test_pyrddlgymdomain_jax():
         rollout(domain_factory(), solver, max_steps=100, render=False, verbose=False)
 
 
-@pytest.mark.skipif(
-    not pyrddlgym_gurobi_available,
-    reason="You need to install pyRDDL_gurobi for this solver",
-)
 def test_pyrddlgymdomain_gurobi():
     # domain factory (with proper backend and vectorized flag)
     domain_factory = lambda: RDDLDomain(

@@ -564,9 +564,9 @@ jobs:
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
           if [ "$python_version" = "3.12" ]; then
-            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" "git+https://github.com/pyrddlgym-project/pyRDDLGym-gurobi"
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17"
           else
-            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna "git+https://github.com/pyrddlgym-project/pyRDDLGym-gurobi"
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna
           fi
 
       - name: Test with pytest

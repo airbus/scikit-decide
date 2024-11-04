@@ -71,9 +71,16 @@ pygrib = [
     { version = "<=2.1.5", platform = "linux", optional = true },
     { version = ">=2.1.5", platform = "darwin", optional = true },
 ]
-pyRDDLGym = { version = ">=2.0, <2.1", optional = true }
-pyRDDLGym-rl = { version = ">=0.1", optional = true }
+pyRDDLGym = [
+    { version = ">=2.1", python = "<3.12", optional = true },
+    { version = "==2.0, <2.1", python = ">=3.12", optional = true },
+]
+pyRDDLGym-rl = [
+    { version = ">=0.2", python = "<3.12", optional = true },
+    { version = ">=0.1, <0.2", python = ">=3.12", optional = true },
+]
 pyRDDLGym-jax = { version = ">=0.3", optional = true }
+pyRDDLGym-gurobi = { version = ">=0.2", optional = true }
 rddlrepository = {version = ">=2.0", optional = true }
 
 [tool.poetry.extras]
@@ -103,7 +110,8 @@ solvers = [
     "up-enhsp",
     "up-pyperplan",
     "scipy",
-    "pyRDDLGym-jax"
+    "pyRDDLGym-jax",
+    "pyRDDLGym-gurobi"
 ]
 all = [
     "gymnasium",
@@ -125,7 +133,8 @@ all = [
     "pyRDDLGym",
     "pyRDDLGym-rl",
     "rddlrepository",
-    "pyRDDLGym-jax"
+    "pyRDDLGym-jax",
+    "pyRDDLGym-gurobi"
 ]
 
 [tool.poetry.plugins."skdecide.domains"]
