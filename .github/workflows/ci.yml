@@ -662,9 +662,9 @@ jobs:
           arch=$(uname -m)
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
           if [ "$python_version" = "3.12" ]; then
-            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17"
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" "git+https://github.com/pyrddlgym-project/pyRDDLGym-gurobi"
           else
-            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna "git+https://github.com/pyrddlgym-project/pyRDDLGym-gurobi"
           fi
 
       - name: Test with pytest
@@ -681,10 +681,11 @@ jobs:
           #  - from others
           # to avoid openmp versions conflicts
           pytest -v -s tests/*/cpp
-          pytest -v -s tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
+          pytest -v -s tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py --ignore tests/solvers/python/test_pyrddlgym_solvers.py
           pytest -v -s tests/solvers/python/test_optuna_rayrllib.py
           pytest -v -s tests/scheduling
-          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
+          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling --ignore tests/domains/python/test_pyrddlgym_domains.py --ignore tests/solvers/python/test_pyrddlgym_solvers.py
+          pytest -v -s tests/domains/python/test_pyrddlgym_domains.py tests/solvers/python/test_pyrddlgym_solvers.py
 
   test-ubuntu:
     needs: [build-ubuntu, setup]
@@ -761,9 +762,9 @@ jobs:
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
           if [ "$python_version" = "3.12" ]; then
-            pip install ${wheelfile}[all] pytest "pygame>=2.5" "cffi>=1.17" docopt commonmark optuna
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" "cffi>=1.17" docopt commonmark optuna "git+https://github.com/pyrddlgym-project/pyRDDLGym-gurobi"
           else
-            pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna "git+https://github.com/pyrddlgym-project/pyRDDLGym-gurobi"
           fi
 
       - name: Test with pytest
