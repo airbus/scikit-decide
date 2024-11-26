@@ -9,6 +9,7 @@ from skdecide.domains import Domain
 from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.gnn import GraphPPO
+from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
 from skdecide.hub.space.gym import GymSpace, ListSpace
 from skdecide.utils import rollout
 
@@ -39,6 +40,9 @@ class GraphJspDomain(GymDomain, D):
         outcome = super()._state_step(action=action)
         outcome.state = self._np_state2graph_state(outcome.state)
         return outcome
+
+    def action_masks(self):
+        return self._gym_env.valid_action_mask()
 
     def _get_applicable_actions_from(
         self, memory: D.T_memory[D.T_state]
@@ -120,21 +124,37 @@ jsp_env = DisjunctiveGraphJspEnv(
     action_mode="task",
 )
 
-
 # random rollout
 domain = GraphJspDomain(gym_env=jsp_env)
 rollout(domain=domain, max_steps=jsp_env.total_tasks_without_dummies, num_episodes=1)
 
-# solve with sb3-PPO-GNN
+# solve with sb3-GraphPPO
 domain_factory = lambda: GraphJspDomain(gym_env=jsp_env)
 with StableBaseline(
     domain_factory=domain_factory,
     algo_class=GraphPPO,
     baselines_policy="GraphInputPolicy",
     learn_config={"total_timesteps": 100},
-    # batch_size=1,
-    # normalize_advantage=False
 ) as solver:
 
     solver.solve()
     rollout(domain=domain_factory(), solver=solver, max_steps=100, num_episodes=1)
+
+# solver with sb3-MaskableGraphPPO
+domain_factory = lambda: GraphJspDomain(gym_env=jsp_env)
+with StableBaseline(
+    domain_factory=domain_factory,
+    algo_class=MaskableGraphPPO,
+    baselines_policy="GraphInputPolicy",
+    learn_config={"total_timesteps": 100},
+    use_action_masking=True,
+) as solver:
+
+    solver.solve()
+    rollout(
+        domain=domain_factory(),
+        solver=solver,
+        max_steps=100,
+        num_episodes=1,
+        use_action_masking=True,
+    )

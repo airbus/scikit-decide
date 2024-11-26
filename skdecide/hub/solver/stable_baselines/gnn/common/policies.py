@@ -2,10 +2,13 @@ import warnings
 from typing import Any, Optional, Tuple, Union
 
 import gymnasium as gym
+import numpy as np
 import torch as th
 import torch_geometric as thg
+from sb3_contrib.common.maskable.distributions import MaskableDistribution
+from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from stable_baselines3.common.distributions import Distribution
-from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.type_aliases import Schedule
 
@@ -15,47 +18,7 @@ from .utils import graph_obs_to_thg_data
 PyTorchGraphObs = Union[thg.data.Data, list[thg.data.Data]]
 
 
-class GNNActorCriticPolicy(ActorCriticPolicy):
-    def __init__(
-        self,
-        observation_space: gym.spaces.Graph,
-        action_space: gym.spaces.Space,
-        lr_schedule: Schedule,
-        net_arch: Optional[list[Union[int, dict[str, list[int]]]]] = None,
-        activation_fn: type[th.nn.Module] = th.nn.Tanh,
-        ortho_init: bool = True,
-        use_sde: bool = False,
-        log_std_init: float = 0.0,
-        full_std: bool = True,
-        use_expln: bool = False,
-        squash_output: bool = False,
-        features_extractor_class: type[BaseFeaturesExtractor] = GraphFeaturesExtractor,
-        features_extractor_kwargs: Optional[dict[str, Any]] = None,
-        share_features_extractor: bool = True,
-        normalize_images: bool = True,
-        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[dict[str, Any]] = None,
-    ):
-        super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            lr_schedule=lr_schedule,
-            net_arch=net_arch,
-            activation_fn=activation_fn,
-            ortho_init=ortho_init,
-            use_sde=use_sde,
-            log_std_init=log_std_init,
-            full_std=full_std,
-            use_expln=use_expln,
-            squash_output=squash_output,
-            features_extractor_class=features_extractor_class,
-            features_extractor_kwargs=features_extractor_kwargs,
-            share_features_extractor=share_features_extractor,
-            normalize_images=normalize_images,
-            optimizer_class=optimizer_class,
-            optimizer_kwargs=optimizer_kwargs,
-        )
-
+class _BaseGNNActorCriticPolicy(BasePolicy):
     def extract_features(
         self,
         obs: thg.data.Data,
@@ -110,3 +73,89 @@ class GNNActorCriticPolicy(ActorCriticPolicy):
         features = self.vf_features_extractor(obs)
         latent_vf = self.mlp_extractor.forward_critic(features)
         return self.value_net(latent_vf)
+
+
+class GNNActorCriticPolicy(_BaseGNNActorCriticPolicy, ActorCriticPolicy):
+    def __init__(
+        self,
+        observation_space: gym.spaces.Graph,
+        action_space: gym.spaces.Space,
+        lr_schedule: Schedule,
+        net_arch: Optional[list[Union[int, dict[str, list[int]]]]] = None,
+        activation_fn: type[th.nn.Module] = th.nn.Tanh,
+        ortho_init: bool = True,
+        use_sde: bool = False,
+        log_std_init: float = 0.0,
+        full_std: bool = True,
+        use_expln: bool = False,
+        squash_output: bool = False,
+        features_extractor_class: type[BaseFeaturesExtractor] = GraphFeaturesExtractor,
+        features_extractor_kwargs: Optional[dict[str, Any]] = None,
+        share_features_extractor: bool = True,
+        normalize_images: bool = True,
+        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            lr_schedule=lr_schedule,
+            net_arch=net_arch,
+            activation_fn=activation_fn,
+            ortho_init=ortho_init,
+            use_sde=use_sde,
+            log_std_init=log_std_init,
+            full_std=full_std,
+            use_expln=use_expln,
+            squash_output=squash_output,
+            features_extractor_class=features_extractor_class,
+            features_extractor_kwargs=features_extractor_kwargs,
+            share_features_extractor=share_features_extractor,
+            normalize_images=normalize_images,
+            optimizer_class=optimizer_class,
+            optimizer_kwargs=optimizer_kwargs,
+        )
+
+
+class MaskableGNNActorCriticPolicy(
+    _BaseGNNActorCriticPolicy, MaskableActorCriticPolicy
+):
+    def __init__(
+        self,
+        observation_space: gym.spaces.Space,
+        action_space: gym.spaces.Space,
+        lr_schedule: Schedule,
+        net_arch: Optional[Union[list[int], dict[str, list[int]]]] = None,
+        activation_fn: type[th.nn.Module] = th.nn.Tanh,
+        ortho_init: bool = True,
+        features_extractor_class: type[BaseFeaturesExtractor] = GraphFeaturesExtractor,
+        features_extractor_kwargs: Optional[dict[str, Any]] = None,
+        share_features_extractor: bool = True,
+        normalize_images: bool = True,
+        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            lr_schedule=lr_schedule,
+            net_arch=net_arch,
+            activation_fn=activation_fn,
+            ortho_init=ortho_init,
+            features_extractor_class=features_extractor_class,
+            features_extractor_kwargs=features_extractor_kwargs,
+            share_features_extractor=share_features_extractor,
+            normalize_images=normalize_images,
+            optimizer_class=optimizer_class,
+            optimizer_kwargs=optimizer_kwargs,
+        )
+
+    def get_distribution(
+        self, obs: thg.data.Data, action_masks: Optional[np.ndarray] = None
+    ) -> MaskableDistribution:
+        features = self.pi_features_extractor(obs)
+        latent_pi = self.mlp_extractor.forward_actor(features)
+        distribution = self._get_action_dist_from_latent(latent_pi)
+        if action_masks is not None:
+            distribution.apply_masking(action_masks)
+        return distribution

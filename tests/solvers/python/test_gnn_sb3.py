@@ -2,6 +2,7 @@ import sys
 from typing import Any, Optional
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 import torch as th
 import torch_geometric as thg
@@ -20,6 +21,7 @@ from skdecide.hub.solver.stable_baselines.gnn import GraphPPO
 from skdecide.hub.solver.stable_baselines.gnn.common.torch_layers import (
     GraphFeaturesExtractor,
 )
+from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
 from skdecide.hub.space.gym import GymSpace, ListSpace
 from skdecide.utils import rollout
 
@@ -61,6 +63,9 @@ if graph_jsp_env_available:
             outcome = super()._state_step(action=action)
             outcome.state = self._np_state2graph_state(outcome.state)
             return outcome
+
+        def action_masks(self) -> npt.NDArray[bool]:
+            return np.array(self._gym_env.valid_action_mask())
 
         def _get_applicable_actions_from(
             self, memory: D.T_memory[D.T_state]
@@ -279,6 +284,18 @@ class GraphMaze(D):
         maze_memory = self._graph2mazestate(memory)
         self.maze_domain._render_from(memory=maze_memory, **kwargs)
 
+    def action_masks(self) -> npt.NDArray[bool]:
+        mazestate_memory = self._graph2mazestate(self._memory)
+        return np.array(
+            [
+                self._graph2mazestate(
+                    self._get_next_state(action=action, memory=self._memory)
+                )
+                != mazestate_memory
+                for action in self._get_action_space().get_elements()
+            ]
+        )
+
 
 discrete_features = param_fixture("discrete_features", [False, True])
 
@@ -414,4 +431,24 @@ def test_ppo_user_reduction_layer(domain_factory):
             max_steps=100,
             num_episodes=1,
             render=False,
+        )
+
+
+def test_maskable_ppo(domain_factory):
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=MaskableGraphPPO,
+        baselines_policy="GraphInputPolicy",
+        learn_config={"total_timesteps": 100},
+        use_action_masking=True,
+    ) as solver:
+
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=100,
+            num_episodes=1,
+            render=False,
+            use_action_masking=True,
         )

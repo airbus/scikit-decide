@@ -5,6 +5,10 @@ import numpy as np
 import torch as th
 import torch_geometric as thg
 from gymnasium import spaces
+from sb3_contrib.common.maskable.buffers import (
+    MaskableRolloutBuffer,
+    MaskableRolloutBufferSamples,
+)
 from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.preprocessing import get_action_dim
 from stable_baselines3.common.type_aliases import (
@@ -19,6 +23,7 @@ from .utils import copy_graph_instance, graph_obs_to_thg_data
 
 class GraphRolloutBuffer(RolloutBuffer):
     observations: Union[list[spaces.GraphInstance], list[list[spaces.GraphInstance]]]
+    tensor_names = ["actions", "values", "log_probs", "advantages", "returns"]
 
     def __init__(
         self,
@@ -96,9 +101,8 @@ class GraphRolloutBuffer(RolloutBuffer):
             for vec_obs in self.observations:
                 self.raw_observations.extend(vec_obs)
             self.observations = self.raw_observations
-            _tensor_names = ["actions", "values", "log_probs", "advantages", "returns"]
 
-            for tensor in _tensor_names:
+            for tensor in self.tensor_names:
                 self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
             self.generator_ready = True
 
@@ -129,4 +133,36 @@ class GraphRolloutBuffer(RolloutBuffer):
         )
         return RolloutBufferSamples(
             selected_observations, *tuple(map(self.to_torch, data))
+        )
+
+
+class MaskableGraphRolloutBuffer(GraphRolloutBuffer, MaskableRolloutBuffer):
+
+    tensor_names = [
+        "actions",
+        "values",
+        "log_probs",
+        "advantages",
+        "returns",
+        "action_masks",
+    ]
+
+    def add(self, *args, action_masks: Optional[np.ndarray] = None, **kwargs) -> None:
+        """
+        :param action_masks: Masks applied to constrain the choice of possible actions.
+        """
+        if action_masks is not None:
+            self.action_masks[self.pos] = action_masks.reshape(
+                (self.n_envs, self.mask_dims)
+            )
+
+        super().add(*args, **kwargs)
+
+    def _get_samples(
+        self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> MaskableRolloutBufferSamples:
+        samples_wo_action_masks = super()._get_samples(batch_inds=batch_inds, env=env)
+        return MaskableRolloutBufferSamples(
+            *samples_wo_action_masks,
+            action_masks=self.action_masks[batch_inds].reshape(-1, self.mask_dims),
         )

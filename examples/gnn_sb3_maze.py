@@ -1,6 +1,7 @@
 from typing import Any, Optional
 
 import numpy as np
+import numpy.typing as npt
 from gymnasium.spaces import Box, Discrete, Graph, GraphInstance
 
 from skdecide.builders.domain import Renderable, UnrestrictedActions
@@ -10,6 +11,7 @@ from skdecide.hub.domain.maze import Maze
 from skdecide.hub.domain.maze.maze import DEFAULT_MAZE, Action, State
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.gnn import GraphPPO
+from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
 from skdecide.hub.space.gym import GymSpace, ListSpace
 from skdecide.utils import rollout
 
@@ -157,6 +159,18 @@ class GraphMaze(D):
         maze_memory = self._graph2mazestate(memory)
         self.maze_domain._render_from(memory=maze_memory, **kwargs)
 
+    def action_masks(self) -> npt.NDArray[bool]:
+        mazestate_memory = self._graph2mazestate(self._memory)
+        return np.array(
+            [
+                self._graph2mazestate(
+                    self._get_next_state(action=action, memory=self._memory)
+                )
+                != mazestate_memory
+                for action in self._get_action_space().get_elements()
+            ]
+        )
+
 
 MAZE = """
 +-+-+-+-+o+-+-+--+-+-+
@@ -196,9 +210,26 @@ with StableBaseline(
     algo_class=GraphPPO,
     baselines_policy="GraphInputPolicy",
     learn_config={"total_timesteps": 100},
-    # batch_size=1,
-    # normalize_advantage=False
 ) as solver:
 
     solver.solve()
     rollout(domain=domain_factory(), solver=solver, max_steps=max_steps, num_episodes=1)
+
+# solver with sb3-MaskableGraphPPO
+domain_factory = lambda: GraphMaze(maze_str=MAZE)
+with StableBaseline(
+    domain_factory=domain_factory,
+    algo_class=MaskableGraphPPO,
+    baselines_policy="GraphInputPolicy",
+    learn_config={"total_timesteps": 100},
+    use_action_masking=True,
+) as solver:
+
+    solver.solve()
+    rollout(
+        domain=domain_factory(),
+        solver=solver,
+        max_steps=100,
+        num_episodes=1,
+        use_action_masking=True,
+    )
