@@ -57,7 +57,7 @@ class MetaPolicy(DeterministicPolicies):
         self.current_states = {method: None for method in self.policies}
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         results = {}
         actions_map = {}

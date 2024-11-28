@@ -7,6 +7,7 @@ from __future__ import annotations
 import random
 from collections.abc import Callable
 from enum import Enum
+from typing import Any
 
 import networkx as nx
 import numpy as np
@@ -100,7 +101,7 @@ class PilePolicy(Solver, DeterministicPolicies):
             }
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         s: State = observation
         predecessors = {

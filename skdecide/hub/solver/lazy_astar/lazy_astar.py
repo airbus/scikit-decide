@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from heapq import heappop, heappush
 from itertools import count
-from typing import Optional
+from typing import Any, Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     FloatHyperparameter,
@@ -219,7 +219,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         # return estim_total, path  # TODO: find a way to expose these things through public API?
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         return self._policy[observation]
 

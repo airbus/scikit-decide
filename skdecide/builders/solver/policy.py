@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from skdecide.core import D, Distribution, SingleValueDistribution, autocastable
 
 __all__ = ["Policies", "UncertainPolicies", "DeterministicPolicies"]
@@ -14,7 +16,7 @@ class Policies:
 
     @autocastable
     def sample_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         """Sample an action for the given observation (from the solver's current policy).
 
@@ -24,10 +26,10 @@ class Policies:
         # Returns
         The sampled action.
         """
-        return self._sample_action(observation)
+        return self._sample_action(observation, **kwargs)
 
     def _sample_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         """Sample an action for the given observation (from the solver's current policy).
 
@@ -68,13 +70,13 @@ class UncertainPolicies(Policies):
     explicitly) as part of the solving process."""
 
     def _sample_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        return self._get_next_action_distribution(observation).sample()
+        return self._get_next_action_distribution(observation, **kwargs).sample()
 
     @autocastable
     def get_next_action_distribution(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> Distribution[D.T_agent[D.T_concurrency[D.T_event]]]:
         """Get the probabilistic distribution of next action for the given observation (from the solver's current
         policy).
@@ -85,10 +87,10 @@ class UncertainPolicies(Policies):
         # Returns
         The probabilistic distribution of next action.
         """
-        return self._get_next_action_distribution(observation)
+        return self._get_next_action_distribution(observation, **kwargs)
 
     def _get_next_action_distribution(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> Distribution[D.T_agent[D.T_concurrency[D.T_event]]]:
         """Get the probabilistic distribution of next action for the given observation (from the solver's current
         policy).
@@ -106,13 +108,13 @@ class DeterministicPolicies(UncertainPolicies):
     """A solver must inherit this class if it computes a deterministic policy as part of the solving process."""
 
     def _get_next_action_distribution(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> Distribution[D.T_agent[D.T_concurrency[D.T_event]]]:
-        return SingleValueDistribution(self._get_next_action(observation))
+        return SingleValueDistribution(self._get_next_action(observation, **kwargs))
 
     @autocastable
     def get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         """Get the next deterministic action (from the solver's current policy).
 
@@ -122,10 +124,10 @@ class DeterministicPolicies(UncertainPolicies):
         # Returns
         The next deterministic action.
         """
-        return self._get_next_action(observation)
+        return self._get_next_action(observation, **kwargs)
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         """Get the next deterministic action (from the solver's current policy).
 

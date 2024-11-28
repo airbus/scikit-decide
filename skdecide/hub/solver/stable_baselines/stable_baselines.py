@@ -166,7 +166,7 @@ class StableBaseline(Solver, Policies, Restorable):
         self._algo.learn(**learn_config)
 
     def _sample_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         action, _ = self._algo.predict(self._unwrap_obs(observation))
         return self._wrap_action(action)

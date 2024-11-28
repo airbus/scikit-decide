@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from skdecide import DeterministicPolicySolver, Domain, EnumerableSpace, Memory
 from skdecide.builders.domain import EnumerableTransitions, FullyObservable, SingleAgent
 
@@ -25,7 +27,7 @@ class SimpleGreedy(DeterministicPolicySolver):
         )  # no further solving code required here since everything is computed online
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         # This solver selects the first action with the highest expected immediate reward (greedy)
         domain = self._domain

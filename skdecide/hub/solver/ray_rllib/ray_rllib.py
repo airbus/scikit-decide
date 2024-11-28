@@ -223,7 +223,7 @@ class RayRLlib(Solver, Policies, Restorable):
                 pass
 
     def _sample_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         action = {
             k: self._algo.compute_single_action(

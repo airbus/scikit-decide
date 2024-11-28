@@ -16,6 +16,8 @@ from collections.abc import Callable, Iterable
 from enum import Enum
 from typing import Any, Optional, Union
 
+import numpy as np
+
 from skdecide import (
     D,
     Domain,
@@ -215,7 +217,7 @@ class ReplaySolver(DeterministicPolicies):
         return True
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         if self._i_action >= len(self.actions):
             if self.out_of_action_method == ReplayOutOfActionMethod.LOOP:
@@ -247,6 +249,10 @@ def rollout(
     return_episodes: bool = False,
     goal_logging_level: int = logging.INFO,
     rollout_callback: Optional[RolloutCallback] = None,
+    use_action_masking: bool = False,
+    kwargs_sample_action_fn: Optional[
+        Callable[[D.T_agent[D.T_observation]], dict[str, Any]]
+    ] = None,
 ) -> Optional[
     list[
         tuple[
@@ -273,6 +279,15 @@ def rollout(
     return_episodes: if True, return the list of episodes, each episode as a tuple of observations, actions, and values.
         else return nothing.
     goal_logging_level: logging level at which we want to display if goal has been reached or not
+    use_action_masking: if True and `kwargs_sample_action_fn` not defined,
+        feed `solver.sample_action()` with `action_masks` as explained in `kwargs_sample_action_fn` description.
+    kwargs_sample_action_fn: callable mapping `observation` to kwargs to feed `solver.sample_action()`
+        If not defined and if:
+        - use_action_masking=False, default to no kwargs
+        - use_action_masking=True, defines kwargs["action_masks"] as a numpy.array of booleans by using:
+          - `domain.action_masks()` if existing,
+          - else `domain.is_applicable_action()` provided that `domain.get_action_space()` is a `skdecide.core.EnumerableSpace`.
+
     """
     previous_log_level = logger.level
     if verbose:
@@ -283,6 +298,24 @@ def rollout(
 
     if rollout_callback is None:
         rollout_callback = RolloutCallback()
+
+    if kwargs_sample_action_fn is None:
+        if use_action_masking:
+            if hasattr(domain, "action_masks"):
+                kwargs_sample_action_fn = lambda observation: {
+                    "action_masks": domain.action_masks()
+                }
+            else:
+                kwargs_sample_action_fn = lambda observation: {
+                    "action_masks": np.array(
+                        [
+                            domain.is_applicable_action(action)
+                            for action in domain.get_action_space().get_elements()
+                        ]
+                    )
+                }
+        else:
+            kwargs_sample_action_fn = lambda observation: {}
 
     if solver is None:
         # Create solver-like random walker that works for any domain
@@ -309,7 +342,7 @@ def rollout(
 
             @autocastable
             def sample_action(
-                self, observation: D.T_agent[D.T_observation]
+                self, observation: D.T_agent[D.T_observation], **kwargs: Any
             ) -> D.T_agent[D.T_concurrency[D.T_event]]:
                 return {
                     agent: [space.sample()]
@@ -382,7 +415,9 @@ def rollout(
             old_time = time.perf_counter()
             if render and has_render:
                 domain.render()
-            action = solver.sample_action(observation)
+            action = solver.sample_action(
+                observation, **kwargs_sample_action_fn(observation)
+            )
             if action_formatter is not None:
                 logger.debug("Action: {}".format(action_formatter(action)))
             outcome = domain.step(action)

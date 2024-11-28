@@ -289,7 +289,7 @@ class DOSolver(Solver, DeterministicPolicies):
         )
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         return self.policy_object.get_next_action(observation=observation)
 

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import partial
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     EnumHyperparameter,
@@ -154,7 +154,7 @@ class PolicyRCPSP(DeterministicPolicies):
         self.func = func
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         return self.func(state=observation)
 

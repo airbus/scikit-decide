@@ -10,7 +10,7 @@ import sys
 from collections.abc import Callable
 from enum import Enum
 from math import sqrt
-from typing import Optional
+from typing import Any, Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
@@ -349,7 +349,7 @@ try:
             return self._solver.is_solution_defined_for(observation)
 
         def _get_next_action(
-            self, observation: D.T_agent[D.T_observation]
+            self, observation: D.T_agent[D.T_observation], **kwargs: Any
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             """Get the best action to execute in a given state according to the execution action selector.
                 The search subgraph which is no more reachable after executing the returned action is
