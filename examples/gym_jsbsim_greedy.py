@@ -139,7 +139,7 @@ class GreedyPlanner(Solver, DeterministicPolicies, Utilities, FromAnyState):
         return False  # for to recompute the best action at each step greedily
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         if not self._is_solution_defined_for(observation):
             self._solve_from(observation)
