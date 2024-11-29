@@ -45,7 +45,7 @@ class RDDLJaxSolver(Solver, Policies, FromInitialState):
             planner, **(self.train_args if self.train_args is not None else {})
         )
 
-    def _sample_action(self, observation: D.T_observation) -> D.T_event:
+    def _sample_action(self, observation: D.T_observation, **kwargs: Any) -> D.T_event:
         return self.controller.sample_action(observation)
 
     def _is_policy_defined_for(self, observation: D.T_observation) -> bool:
@@ -86,7 +86,7 @@ class RDDLGurobiSolver(Solver, Policies, FromInitialState):
             model_params=self.model_params,
         )
 
-    def _sample_action(self, observation: D.T_observation) -> D.T_event:
+    def _sample_action(self, observation: D.T_observation, **kwargs: Any) -> D.T_event:
         return self.controller.sample_action(observation)
 
     def _is_policy_defined_for(self, observation: D.T_observation) -> bool:
