@@ -24,7 +24,7 @@ class GraphDummyVecEnv(DummyVecEnv):
         if isinstance(obs_space, gym.spaces.Graph):
             self.buf_obs[None] = [None for _ in range(self.num_envs)]
         elif isinstance(obs_space, gym.spaces.Dict):
-            for k, space in obs_space.spaces:
+            for k, space in obs_space.spaces.items():
                 if isinstance(space, gym.spaces.Graph):
                     self.buf_obs[k] = [None for _ in range(self.num_envs)]
 
@@ -65,7 +65,14 @@ def wrap_graph_env(
         if verbose >= 1:
             print("Wrapping the env in a DummyVecEnv.")
         # patch: add dummy shape and dtype to graph obs space to avoid issues
-        env.observation_space._shape = (0,)
-        env.observation_space.dtype = np.float_
+        observation_space = env.observation_space
+        if isinstance(observation_space, gym.spaces.Graph):
+            observation_space._shape = (0,)
+            observation_space.dtype = np.float_
+        elif isinstance(observation_space, gym.spaces.Dict):
+            for subspace in observation_space.spaces.values():
+                if isinstance(subspace, gym.spaces.Graph):
+                    subspace._shape = (0,)
+                    subspace.dtype = np.float_
         env = GraphDummyVecEnv([lambda: env])  # type: ignore[list-item, return-value]
     return env

@@ -22,7 +22,7 @@ from skdecide.hub.solver.stable_baselines.gnn.common.torch_layers import (
     GraphFeaturesExtractor,
 )
 from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
-from skdecide.hub.space.gym import GymSpace, ListSpace
+from skdecide.hub.space.gym import DictSpace, GymSpace, ListSpace
 from skdecide.utils import rollout
 
 if not sys.platform.startswith("win"):
@@ -124,6 +124,30 @@ if graph_jsp_env_available:
 
         def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
             return self._gym_env.render(**kwargs)
+
+    class DD(D):
+        T_state = dict[str, Any]
+
+    class MultiInputGraphJspDomain(GraphJspDomain, DD):
+        def _get_observation_space_(self) -> Space[D.T_observation]:
+            return DictSpace(
+                spaces=dict(
+                    graph=super()._get_observation_space_(),
+                    static=Box(low=0.0, high=1.0),
+                )
+            )
+
+        def _state_step(
+            self, action: DD.T_event
+        ) -> TransitionOutcome[
+            DD.T_state, Value[DD.T_value], DD.T_predicate, DD.T_info
+        ]:
+            transition = super()._state_step(action)
+            transition.state = dict(graph=transition.state, static=np.array([0.5]))
+            return transition
+
+        def _state_reset(self) -> DD.T_state:
+            return dict(graph=super()._state_reset(), static=np.array([0.5]))
 
     jsp = np.array(
         [
@@ -322,6 +346,23 @@ def jsp_domain_factory():
     )
 
 
+@fixture
+def jsp_dict_domain_factory():
+    if sys.platform.startswith("win"):
+        pytest.skip("jsp-graph-env not importable on windows")
+    if not graph_jsp_env_available:
+        pytest.skip("jsp-graph-env not available")
+    return lambda: MultiInputGraphJspDomain(
+        gym_env=DisjunctiveGraphJspEnv(
+            jps_instance=jsp,
+            perform_left_shift_if_possible=True,
+            normalize_observation_space=False,
+            flat_observation_space=False,
+            action_mode="task",
+        )
+    )
+
+
 domain_factory = fixture_union(
     "domain_factory", [maze_domain_factory, jsp_domain_factory]
 )
@@ -439,6 +480,46 @@ def test_maskable_ppo(domain_factory):
         domain_factory=domain_factory,
         algo_class=MaskableGraphPPO,
         baselines_policy="GraphInputPolicy",
+        learn_config={"total_timesteps": 100},
+        use_action_masking=True,
+    ) as solver:
+
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=100,
+            num_episodes=1,
+            render=False,
+            use_action_masking=True,
+        )
+
+
+def test_dict_ppo(jsp_dict_domain_factory):
+    domain_factory = jsp_dict_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=GraphPPO,
+        baselines_policy="MultiInputPolicy",
+        learn_config={"total_timesteps": 100},
+    ) as solver:
+
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=100,
+            num_episodes=1,
+            render=False,
+        )
+
+
+def test_dict_maskable_ppo(jsp_dict_domain_factory):
+    domain_factory = jsp_dict_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=MaskableGraphPPO,
+        baselines_policy="MultiInputPolicy",
         learn_config={"total_timesteps": 100},
         use_action_masking=True,
     ) as solver:

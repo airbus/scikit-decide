@@ -1,10 +1,11 @@
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import gymnasium as gym
 import numpy as np
 import torch as th
 import torch_geometric as thg
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+from stable_baselines3.common.preprocessing import get_flattened_obs_dim, is_image_space
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, NatureCNN
 from torch import nn
 from torch_geometric.nn import global_max_pool
 
@@ -113,3 +114,59 @@ class _DefaultReductionLayer(nn.Module):
         h = global_max_pool(x, batch)
         h = self.linear_layer(h).relu()
         return h
+
+
+class CombinedFeaturesExtractor(BaseFeaturesExtractor):
+    """Combined features extractor for Dict observation spaces, subspaces potentially including Graph spaces.
+
+    Builds a features extractor for each key of the space. Input from each space
+    is fed through a separate submodule (CNN or MLP, depending on input shape),
+    the output features are concatenated.
+
+    Args:
+        observation_space:
+        cnn_kwargs: to be passed to NatureCNN extractor.
+             `cnn_kwargs["normalized_image"] is used to check if the space is an image space
+             (see `stable_baselines3.common.torch_layers.NatureCNN`)
+        graph_kwargs: to be passed to GraphFeaturesExtractor extractor
+
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.spaces.Dict,
+        cnn_kwargs: Optional[dict[str, Any]] = None,
+        graph_kwargs: Optional[dict[str, Any]] = None,
+    ) -> None:
+        if cnn_kwargs is None:
+            cnn_kwargs = {}
+        if graph_kwargs is None:
+            graph_kwargs = {}
+        normalized_image = cnn_kwargs.get("normalized_image", False)
+
+        extractors: dict[str, nn.Module] = {}
+        total_concat_size = 0
+        for key, subspace in observation_space.spaces.items():
+            if isinstance(subspace, gym.spaces.Graph):
+                extractors[key] = GraphFeaturesExtractor(subspace, **graph_kwargs)
+                total_concat_size += extractors[key].features_dim
+            elif is_image_space(subspace, normalized_image=normalized_image):
+                extractors[key] = NatureCNN(subspace, **cnn_kwargs)
+                total_concat_size += extractors[key].features_dim
+            else:
+                # The observation key is a vector, flatten it if needed
+                extractors[key] = nn.Flatten()
+                total_concat_size += get_flattened_obs_dim(subspace)
+
+        # call __init__ before assigning attributes (but after computing total_concat_size)
+        super().__init__(observation_space, features_dim=total_concat_size)
+        self.extractors = nn.ModuleDict(extractors)
+
+    def forward(
+        self, observations: dict[str, Union[th.Tensor, thg.data.Data]]
+    ) -> th.Tensor:
+        encoded_tensor_list = []
+
+        for key, extractor in self.extractors.items():
+            encoded_tensor_list.append(extractor(observations[key]))
+        return th.cat(encoded_tensor_list, dim=1)

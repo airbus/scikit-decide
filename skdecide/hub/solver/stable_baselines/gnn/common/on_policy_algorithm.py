@@ -13,11 +13,10 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.type_aliases import GymEnv
-from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.vec_env import VecEnv
 
-from .buffers import GraphRolloutBuffer
-from .utils import graph_obs_to_thg_data
+from .buffers import DictGraphRolloutBuffer, GraphRolloutBuffer
+from .utils import obs_as_tensor
 from .vec_env.dummy_vec_env import wrap_graph_env
 
 
@@ -41,7 +40,11 @@ class GraphOnPolicyAlgorithm(OnPolicyAlgorithm):
 
         # Use proper default rollout buffer class
         if rollout_buffer_class is None:
-            rollout_buffer_class = GraphRolloutBuffer
+            if isinstance(env.observation_space, spaces.Graph):
+                rollout_buffer_class = GraphRolloutBuffer
+            elif isinstance(env.observation_space, spaces.Dict):
+                rollout_buffer_class = DictGraphRolloutBuffer
+
         # Use proper VecEnv wrapper for env with Graph spaces
         env = wrap_graph_env(env)
         if env.num_envs > 1:
@@ -120,12 +123,7 @@ class GraphOnPolicyAlgorithm(OnPolicyAlgorithm):
 
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
-                if isinstance(self._last_obs[0], spaces.GraphInstance):
-                    obs_tensor = graph_obs_to_thg_data(
-                        self._last_obs[0], device=self.device
-                    )
-                else:
-                    obs_tensor = obs_as_tensor(self._last_obs, self.device)
+                obs_tensor = obs_as_tensor(self._last_obs, self.device)
 
                 if use_masking and self.support_action_masking:
                     action_masks = get_action_masks(env)
@@ -210,10 +208,7 @@ class GraphOnPolicyAlgorithm(OnPolicyAlgorithm):
 
         with th.no_grad():
             # Compute value for the last timestep
-            if isinstance(new_obs[0], spaces.GraphInstance):
-                obs_tensor = graph_obs_to_thg_data(new_obs[0], device=self.device)
-            else:
-                obs_tensor = obs_as_tensor(new_obs, self.device)
+            obs_tensor = obs_as_tensor(new_obs, self.device)
             values = self.policy.predict_values(obs_tensor)  # type: ignore[arg-type]
 
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
