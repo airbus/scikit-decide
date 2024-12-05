@@ -582,11 +582,11 @@ jobs:
           #  - deep-learning solvers (solvers/python)
           #  - from others
           # to avoid openmp versions conflicts
-          pytest -v -s tests/*/cpp
-          pytest -v -s tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
-          pytest -v -s tests/solvers/python/test_optuna_rayrllib.py
-          pytest -v -s tests/scheduling
-          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
+          pytest -v tests/*/cpp
+          pytest -v tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
+          pytest -v tests/solvers/python/test_optuna_rayrllib.py
+          pytest -v tests/scheduling
+          pytest -v --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
   test-macos:
     needs: [build-macos, setup]
@@ -680,12 +680,12 @@ jobs:
           #  - deep-learning solvers (solvers/python)
           #  - from others
           # to avoid openmp versions conflicts
-          pytest -v -s tests/*/cpp
-          pytest -v -s tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py --ignore tests/solvers/python/test_pyrddlgym_solvers.py
-          pytest -v -s tests/solvers/python/test_optuna_rayrllib.py
-          pytest -v -s tests/scheduling
-          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling --ignore tests/domains/python/test_pyrddlgym_domains.py --ignore tests/solvers/python/test_pyrddlgym_solvers.py
-          pytest -v -s tests/domains/python/test_pyrddlgym_domains.py tests/solvers/python/test_pyrddlgym_solvers.py
+          pytest -v tests/*/cpp
+          pytest -v tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py --ignore tests/solvers/python/test_pyrddlgym_solvers.py
+          pytest -v tests/solvers/python/test_optuna_rayrllib.py
+          pytest -v tests/scheduling
+          pytest -v --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling --ignore tests/domains/python/test_pyrddlgym_domains.py --ignore tests/solvers/python/test_pyrddlgym_solvers.py
+          pytest -v tests/domains/python/test_pyrddlgym_domains.py tests/solvers/python/test_pyrddlgym_solvers.py
 
   test-ubuntu:
     needs: [build-ubuntu, setup]
@@ -780,11 +780,11 @@ jobs:
           #  - deep-learning solvers (solvers/python)
           #  - from others
           # to avoid openmp versions conflicts
-          pytest -v -s tests/*/cpp
-          pytest -v -s tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
-          pytest -v -s tests/solvers/python/test_optuna_rayrllib.py
-          pytest -v -s tests/scheduling
-          pytest -v -s --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
+          pytest -v tests/*/cpp
+          pytest -v tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
+          pytest -v tests/solvers/python/test_optuna_rayrllib.py
+          pytest -v tests/scheduling
+          pytest -v --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
 
       - name: Test python block codes from guide
         run: |
