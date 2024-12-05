@@ -667,7 +667,7 @@ class GPHH(Solver, DeterministicPolicies):
         )
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         action = self.policy.sample_action(observation)
         # print('action_1: ', action.action)
@@ -853,7 +853,7 @@ class GPHHPolicy(DeterministicPolicies):
         pass
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         run_sgs = True
         cheat_mode = False
@@ -1006,7 +1006,7 @@ class PooledGPHHPolicy(DeterministicPolicies):
         pass
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
 
         run_sgs = True
@@ -1160,7 +1160,7 @@ class FixedPermutationPolicy(DeterministicPolicies):
         pass
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         run_sgs = True
         cheat_mode = False

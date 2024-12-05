@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Callable
+from typing import Any
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     IntegerHyperparameter,
@@ -96,7 +97,7 @@ class POMCP(Solver, DeterministicPolicies):
         # No further solving code required here since everything is computed online
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], **kwargs: Any
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         # Get the next action from the solver's current policy:
         # this corresponds to the top-level Search procedure in the POMCP paper

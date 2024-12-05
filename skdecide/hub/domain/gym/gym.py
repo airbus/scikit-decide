@@ -1175,6 +1175,10 @@ class AsLegacyGymV21Env(LegacyEnv):
                 domain.get_action_space()
             )  # assumes all actions are always applicable
 
+    @property
+    def domain(self) -> Domain:
+        return self._domain
+
     def step(self, action):
         """Run one timestep of the environment's dynamics. When end of episode is reached, you are responsible for
         calling `reset()` to reset this environment's state.
@@ -1280,6 +1284,8 @@ class AsLegacyGymV21Env(LegacyEnv):
 class AsGymnasiumEnv(EnvCompatibility):
     """This class wraps a scikit-decide domain as a gymnasium environment."""
 
+    env: AsLegacyGymV21Env
+
     def __init__(
         self,
         domain: Domain,
@@ -1288,3 +1294,7 @@ class AsGymnasiumEnv(EnvCompatibility):
     ) -> None:
         legacy_env = AsLegacyGymV21Env(domain=domain, unwrap_spaces=unwrap_spaces)
         super().__init__(old_env=legacy_env, render_mode=render_mode)
+
+    @property
+    def domain(self) -> Domain:
+        return self.env.domain
