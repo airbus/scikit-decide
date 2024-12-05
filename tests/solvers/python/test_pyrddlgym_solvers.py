@@ -2,6 +2,7 @@ import os
 import shutil
 from urllib.request import urlcleanup, urlretrieve
 
+import pyRDDLGym_jax.examples.configs
 from pyRDDLGym_jax.core.simulator import JaxRDDLSimulator
 
 from skdecide.hub.domain.rddl import RDDLDomain
@@ -12,13 +13,8 @@ from skdecide.utils import load_registered_solver, rollout
 def test_pyrddlgymdomain_jax():
     # get solver config
     config_name = "Cartpole_Continuous_gym_drp.cfg"
-    if not os.path.exists(config_name):
-        url = f"https://raw.githubusercontent.com/pyrddlgym-project/pyRDDLGym-jax/main/pyRDDLGym_jax/examples/configs/{config_name}"
-        try:
-            local_file_path, headers = urlretrieve(url)
-            shutil.move(local_file_path, config_name)
-        finally:
-            urlcleanup()
+    config_dir = pyRDDLGym_jax.examples.configs.__path__[0]
+    config_path = f"{config_dir}/{config_name}"
 
     # domain factory (with proper backend and vectorized flag)
     domain_factory = lambda: RDDLDomain(
@@ -30,7 +26,7 @@ def test_pyrddlgymdomain_jax():
         vectorized=True,
     )
     solver_factory = lambda: RDDLJaxSolver(
-        domain_factory=domain_factory, config=config_name
+        domain_factory=domain_factory, config=config_path
     )
 
     # solve
