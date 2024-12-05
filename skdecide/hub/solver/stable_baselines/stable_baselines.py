@@ -17,7 +17,6 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import BaseCallback, ConvertCallback
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.type_aliases import MaybeCallback
-from stable_baselines3.common.vec_env import DummyVecEnv
 
 from skdecide import Domain, Solver
 from skdecide.builders.domain import (
@@ -146,9 +145,7 @@ class StableBaseline(Solver, Policies, Restorable):
             self, "_algo"
         ):  # reuse algo if possible (enables further learning)
             domain = self._domain_factory()
-            env = DummyVecEnv(
-                [lambda: AsGymnasiumEnv(domain)]
-            )  # the algorithms require a vectorized environment to run
+            env = AsGymnasiumEnv(domain)  # we let the algo wrap it in a vectorized env
             self._algo = self._algo_class(
                 self._baselines_policy, env, **self._algo_kwargs
             )
@@ -182,8 +179,7 @@ class StableBaseline(Solver, Policies, Restorable):
 
     def _load(self, path: str):
         domain = self._domain_factory()
-        env = DummyVecEnv([lambda: AsGymnasiumEnv(domain)])
-        self._algo = self._algo_class.load(path, env=env)
+        self._algo = self._algo_class.load(path, env=AsGymnasiumEnv(domain))
         self._init_algo(domain)
 
     def _init_algo(self, domain: D):
