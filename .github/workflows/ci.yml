@@ -564,9 +564,9 @@ jobs:
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
           if [ "$python_version" = "3.12" ]; then
-            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17"
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" graph-jsp-env pytest-cases
           else
-            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna graph-jsp-env pytest-cases
           fi
 
       - name: Test with pytest
@@ -575,6 +575,8 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
+          # Set encoding to avoid issue with windows + graph-jsp-env (cf https://github.com/Alexander-Nasuta/graph-jsp-env/issues/3)
+          export PYTHONIOENCODING=UTF-8
           # run pytest
           # we split tests using
           #  - c++ scikit-decide library
@@ -662,9 +664,9 @@ jobs:
           arch=$(uname -m)
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
           if [ "$python_version" = "3.12" ]; then
-            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17"
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" graph-jsp-env pytest-cases
           else
-            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna graph-jsp-env pytest-cases
           fi
 
       - name: Test with pytest
@@ -762,9 +764,9 @@ jobs:
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
           if [ "$python_version" = "3.12" ]; then
-            pip install ${wheelfile}[all] pytest "pygame>=2.5" "cffi>=1.17" docopt commonmark optuna
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" "cffi>=1.17" docopt commonmark optuna graph-jsp-env pytest-cases
           else
-            pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna graph-jsp-env pytest-cases
           fi
 
       - name: Test with pytest

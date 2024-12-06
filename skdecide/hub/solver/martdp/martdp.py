@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 import sys
 from collections.abc import Callable
+from typing import Any
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
@@ -204,7 +205,7 @@ try:
             return self._solver.is_solution_defined_for(observation)
 
         def _get_next_action(
-            self, observation: D.T_agent[D.T_observation]
+            self, observation: D.T_agent[D.T_observation], **kwargs: Any
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             """Get the best computed joint action in terms of best Q-value in a given joint state.
                 The search subgraph which is no more reachable after executing the returned action is
