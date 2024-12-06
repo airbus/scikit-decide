@@ -575,6 +575,8 @@ jobs:
           ${{ env.minizinc_config_cmdline }}
           # test minizinc
           python -c "import minizinc; print(minizinc.default_driver.minizinc_version); minizinc.Solver.lookup('gecode')"
+          # Set encoding to avoid issue with windows + graph-jsp-env (cf https://github.com/Alexander-Nasuta/graph-jsp-env/issues/3)
+          export PYTHONIOENCODING=UTF-8
           # run pytest
           # we split tests using
           #  - c++ scikit-decide library

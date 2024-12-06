@@ -6,6 +6,7 @@ import numpy.typing as npt
 import pytest
 import torch as th
 import torch_geometric as thg
+from graph_jsp_env.disjunctive_graph_jsp_env import DisjunctiveGraphJspEnv
 from gymnasium.spaces import Box, Discrete, Graph, GraphInstance
 from pytest_cases import fixture, fixture_union, param_fixture
 from torch_geometric.nn import global_add_pool
@@ -25,144 +26,134 @@ from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
 from skdecide.hub.space.gym import DictSpace, GymSpace, ListSpace
 from skdecide.utils import rollout
 
-if not sys.platform.startswith("win"):
-    try:
-        from graph_jsp_env.disjunctive_graph_jsp_env import DisjunctiveGraphJspEnv
-    except ImportError:
-        graph_jsp_env_available = False
-    else:
-        graph_jsp_env_available = True
-else:
-    # import not working on windows because of the banner
-    graph_jsp_env_available = False
+# JSP graph env
 
 
-if graph_jsp_env_available:
-    # JSP graph env
+class D(Domain):
+    T_state = GraphInstance  # Type of states
+    T_observation = T_state  # Type of observations
+    T_event = int  # Type of events
+    T_value = float  # Type of transition values (rewards or costs)
+    T_info = None  # Type of additional information in environment outcome
 
-    class D(Domain):
-        T_state = GraphInstance  # Type of states
-        T_observation = T_state  # Type of observations
-        T_event = int  # Type of events
-        T_value = float  # Type of transition values (rewards or costs)
-        T_info = None  # Type of additional information in environment outcome
 
-    class GraphJspDomain(GymDomain, D):
-        _gym_env: DisjunctiveGraphJspEnv
+class GraphJspDomain(GymDomain, D):
+    _gym_env: DisjunctiveGraphJspEnv
 
-        def __init__(self, gym_env):
-            GymDomain.__init__(self, gym_env=gym_env)
-            if self._gym_env.normalize_observation_space:
-                self.n_nodes_features = gym_env.n_machines + 1
-            else:
-                self.n_nodes_features = 2
+    def __init__(self, gym_env):
+        GymDomain.__init__(self, gym_env=gym_env)
+        if self._gym_env.normalize_observation_space:
+            self.n_nodes_features = gym_env.n_machines + 1
+        else:
+            self.n_nodes_features = 2
 
-        def _state_step(
-            self, action: D.T_event
-        ) -> TransitionOutcome[D.T_state, Value[D.T_value], D.T_predicate, D.T_info]:
-            outcome = super()._state_step(action=action)
-            outcome.state = self._np_state2graph_state(outcome.state)
-            return outcome
+    def _state_step(
+        self, action: D.T_event
+    ) -> TransitionOutcome[D.T_state, Value[D.T_value], D.T_predicate, D.T_info]:
+        outcome = super()._state_step(action=action)
+        outcome.state = self._np_state2graph_state(outcome.state)
+        return outcome
 
-        def action_masks(self) -> npt.NDArray[bool]:
-            return np.array(self._gym_env.valid_action_mask())
+    def action_masks(self) -> npt.NDArray[bool]:
+        return np.array(self._gym_env.valid_action_mask())
 
-        def _get_applicable_actions_from(
-            self, memory: D.T_memory[D.T_state]
-        ) -> D.T_agent[Space[D.T_event]]:
-            return ListSpace(np.nonzero(self._gym_env.valid_action_mask())[0])
+    def _get_applicable_actions_from(
+        self, memory: D.T_memory[D.T_state]
+    ) -> D.T_agent[Space[D.T_event]]:
+        return ListSpace(np.nonzero(self._gym_env.valid_action_mask())[0])
 
-        def _is_applicable_action_from(
-            self, action: D.T_agent[D.T_event], memory: D.T_memory[D.T_state]
-        ) -> bool:
-            return self._gym_env.valid_action_mask()[action]
+    def _is_applicable_action_from(
+        self, action: D.T_agent[D.T_event], memory: D.T_memory[D.T_state]
+    ) -> bool:
+        return self._gym_env.valid_action_mask()[action]
 
-        def _state_reset(self) -> D.T_state:
-            return self._np_state2graph_state(super()._state_reset())
+    def _state_reset(self) -> D.T_state:
+        return self._np_state2graph_state(super()._state_reset())
 
-        def _get_observation_space_(self) -> Space[D.T_observation]:
-            if self._gym_env.normalize_observation_space:
-                original_graph_space = Graph(
-                    node_space=Box(
-                        low=0.0,
-                        high=1.0,
-                        shape=(self.n_nodes_features,),
-                        dtype=np.float_,
-                    ),
-                    edge_space=Box(low=0, high=1.0, dtype=np.float_),
-                )
-
-            else:
-                original_graph_space = Graph(
-                    node_space=Box(
-                        low=np.array([0, 0]),
-                        high=np.array(
-                            [
-                                self._gym_env.n_machines,
-                                self._gym_env.longest_processing_time,
-                            ]
-                        ),
-                        dtype=np.int_,
-                    ),
-                    edge_space=Box(
-                        low=0, high=self._gym_env.longest_processing_time, dtype=np.int_
-                    ),
-                )
-            return GymSpace(original_graph_space)
-
-        def _np_state2graph_state(self, np_state: np.array) -> GraphInstance:
-            if not self._gym_env.normalize_observation_space:
-                np_state = np_state.astype(np.int_)
-
-            nodes = np_state[:, -self.n_nodes_features :]
-            adj = np_state[:, : -self.n_nodes_features]
-            edge_starts_ends = adj.nonzero()
-            edge_links = np.transpose(edge_starts_ends)
-            edges = adj[edge_starts_ends][:, None]
-
-            return GraphInstance(nodes=nodes, edges=edges, edge_links=edge_links)
-
-        def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-            return self._gym_env.render(**kwargs)
-
-    class DD(D):
-        T_state = dict[str, Any]
-
-    class MultiInputGraphJspDomain(GraphJspDomain, DD):
-        def _get_observation_space_(self) -> Space[D.T_observation]:
-            return DictSpace(
-                spaces=dict(
-                    graph=super()._get_observation_space_(),
-                    static=Box(low=0.0, high=1.0),
-                )
+    def _get_observation_space_(self) -> Space[D.T_observation]:
+        if self._gym_env.normalize_observation_space:
+            original_graph_space = Graph(
+                node_space=Box(
+                    low=0.0,
+                    high=1.0,
+                    shape=(self.n_nodes_features,),
+                    dtype=np.float_,
+                ),
+                edge_space=Box(low=0, high=1.0, dtype=np.float_),
             )
 
-        def _state_step(
-            self, action: DD.T_event
-        ) -> TransitionOutcome[
-            DD.T_state, Value[DD.T_value], DD.T_predicate, DD.T_info
-        ]:
-            transition = super()._state_step(action)
-            transition.state = dict(graph=transition.state, static=np.array([0.5]))
-            return transition
+        else:
+            original_graph_space = Graph(
+                node_space=Box(
+                    low=np.array([0, 0]),
+                    high=np.array(
+                        [
+                            self._gym_env.n_machines,
+                            self._gym_env.longest_processing_time,
+                        ]
+                    ),
+                    dtype=np.int_,
+                ),
+                edge_space=Box(
+                    low=0, high=self._gym_env.longest_processing_time, dtype=np.int_
+                ),
+            )
+        return GymSpace(original_graph_space)
 
-        def _state_reset(self) -> DD.T_state:
-            return dict(graph=super()._state_reset(), static=np.array([0.5]))
+    def _np_state2graph_state(self, np_state: np.array) -> GraphInstance:
+        if not self._gym_env.normalize_observation_space:
+            np_state = np_state.astype(np.int_)
 
-    jsp = np.array(
+        nodes = np_state[:, -self.n_nodes_features :]
+        adj = np_state[:, : -self.n_nodes_features]
+        edge_starts_ends = adj.nonzero()
+        edge_links = np.transpose(edge_starts_ends)
+        edges = adj[edge_starts_ends][:, None]
+
+        return GraphInstance(nodes=nodes, edges=edges, edge_links=edge_links)
+
+    def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
+        return self._gym_env.render(**kwargs)
+
+
+class DD(D):
+    T_state = dict[str, Any]
+
+
+class MultiInputGraphJspDomain(GraphJspDomain, DD):
+    def _get_observation_space_(self) -> Space[D.T_observation]:
+        return DictSpace(
+            spaces=dict(
+                graph=super()._get_observation_space_(),
+                static=Box(low=0.0, high=1.0),
+            )
+        )
+
+    def _state_step(
+        self, action: DD.T_event
+    ) -> TransitionOutcome[DD.T_state, Value[DD.T_value], DD.T_predicate, DD.T_info]:
+        transition = super()._state_step(action)
+        transition.state = dict(graph=transition.state, static=np.array([0.5]))
+        return transition
+
+    def _state_reset(self) -> DD.T_state:
+        return dict(graph=super()._state_reset(), static=np.array([0.5]))
+
+
+jsp = np.array(
+    [
         [
-            [
-                [0, 1, 2],  # machines for job 0
-                [0, 2, 1],  # machines for job 1
-                [0, 1, 2],  # machines for job 2
-            ],
-            [
-                [3, 2, 2],  # task durations of job 0
-                [2, 1, 4],  # task durations of job 1
-                [0, 4, 3],  # task durations of job 2
-            ],
-        ]
-    )
+            [0, 1, 2],  # machines for job 0
+            [0, 2, 1],  # machines for job 1
+            [0, 1, 2],  # machines for job 2
+        ],
+        [
+            [3, 2, 2],  # task durations of job 0
+            [2, 1, 4],  # task durations of job 1
+            [0, 4, 3],  # task durations of job 2
+        ],
+    ]
+)
 
 
 class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
@@ -331,10 +322,6 @@ def maze_domain_factory(discrete_features):
 
 @fixture
 def jsp_domain_factory():
-    if sys.platform.startswith("win"):
-        pytest.skip("jsp-graph-env not importable on windows")
-    if not graph_jsp_env_available:
-        pytest.skip("jsp-graph-env not available")
     return lambda: GraphJspDomain(
         gym_env=DisjunctiveGraphJspEnv(
             jps_instance=jsp,
@@ -348,10 +335,6 @@ def jsp_domain_factory():
 
 @fixture
 def jsp_dict_domain_factory():
-    if sys.platform.startswith("win"):
-        pytest.skip("jsp-graph-env not importable on windows")
-    if not graph_jsp_env_available:
-        pytest.skip("jsp-graph-env not available")
     return lambda: MultiInputGraphJspDomain(
         gym_env=DisjunctiveGraphJspEnv(
             jps_instance=jsp,
