@@ -159,7 +159,7 @@ try:
             return self._solver.is_solution_defined_for(observation)
 
         def _get_next_action(
-            self, observation: D.T_agent[D.T_observation]
+            self, observation: D.T_agent[D.T_observation], **kwargs: Any
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             """Get the best computed action in terms of minimum cost-to-go in a given state.
                 The solver is run from `observation` if no solution is defined (i.e. has been
