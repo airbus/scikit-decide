@@ -324,7 +324,7 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
                             0,
                             1,
                             shape=(len(self._wrapped_action_space[k].get_elements()),),
-                            dtype=np.int64,
+                            dtype=np.int8,
                         ),
                     }
                 )
@@ -539,7 +539,7 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
                                             self._wrapped_action_space[k].get_elements()
                                         ),
                                     ),
-                                    dtype=np.int64,
+                                    dtype=np.int8,
                                 ),
                             }
                         )
@@ -569,7 +569,7 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
                                             self._wrapped_action_space[k].get_elements()
                                         ),
                                     ),
-                                    dtype=np.int64,
+                                    dtype=np.int8,
                                 ),
                             }
                         )

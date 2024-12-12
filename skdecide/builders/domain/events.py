@@ -384,7 +384,7 @@ class Events:
                     1 if applicable_actions.contains(a) else 0
                     for a in action_space.get_elements()
                 ],
-                dtype=np.int64,
+                dtype=np.int8,
             )
         else:
             # multi agent
@@ -394,7 +394,7 @@ class Events:
                         1 if agent_applicable_actions.contains(a) else 0
                         for a in action_space[agent].get_elements()
                     ],
-                    dtype=np.int64,
+                    dtype=np.int8,
                 )
                 for agent, agent_applicable_actions in applicable_actions.items()
             }

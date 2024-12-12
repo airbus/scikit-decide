@@ -672,7 +672,7 @@ class BoundConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
 # The following alias is needed in core module so that autocast works:
 #  - `autocast` does not like "." after strings other than "D",
 #  - `autocast` needs types in annotations to be evaluable in `skdecide.core` namespace.
-Mask = npt.NDArray[np.int64]
+Mask = npt.NDArray[np.int8]
 """Alias for single agent action mask."""
 
 
