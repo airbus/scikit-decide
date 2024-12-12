@@ -7,6 +7,9 @@ import sys
 import gymnasium as gym
 import pytest
 
+from skdecide.builders.domain import UnrestrictedActions
+from skdecide.builders.solver import ApplicableActions
+
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
 def test_up_bridge_domain_random():
@@ -208,6 +211,12 @@ def test_up_bridge_domain_rl():
         train_iterations=1,
     ) as solver:
         solver.solve()
+        # check that rollout will automatically use action masking
+        assert (
+            not isinstance(domain, UnrestrictedActions)
+            and isinstance(solver, ApplicableActions)
+            and solver.using_applicable_actions()
+        )
         rollout(
             domain_factory(),
             solver,
