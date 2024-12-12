@@ -7,6 +7,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
+import gymnasium as gym
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
     FloatHyperparameter,
@@ -17,7 +18,6 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import BaseCallback, ConvertCallback
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.type_aliases import MaybeCallback
-from stable_baselines3.common.vec_env import DummyVecEnv
 
 from skdecide import Domain, Solver
 from skdecide.builders.domain import (
@@ -132,6 +132,9 @@ class StableBaseline(Solver, Policies, Restorable):
             ent_coef_log = kwargs.pop("ent_coef_log")
             kwargs["ent_coef"] = 10**ent_coef_log
 
+    def _as_gymnasium_env(self, domain: Domain) -> gym.Env:
+        return as_gymnasium_env(domain)
+
     @classmethod
     def _check_domain_additional(cls, domain: Domain) -> bool:
         return isinstance(domain.get_action_space(), GymSpace) and isinstance(
@@ -146,9 +149,7 @@ class StableBaseline(Solver, Policies, Restorable):
             self, "_algo"
         ):  # reuse algo if possible (enables further learning)
             domain = self._domain_factory()
-            env = DummyVecEnv(
-                [lambda: AsGymnasiumEnv(domain)]
-            )  # the algorithms require a vectorized environment to run
+            env = self._as_gymnasium_env(domain)
             self._algo = self._algo_class(
                 self._baselines_policy, env, **self._algo_kwargs
             )
@@ -182,8 +183,7 @@ class StableBaseline(Solver, Policies, Restorable):
 
     def _load(self, path: str):
         domain = self._domain_factory()
-        env = DummyVecEnv([lambda: AsGymnasiumEnv(domain)])
-        self._algo = self._algo_class.load(path, env=env)
+        self._algo = self._algo_class.load(path, env=self._as_gymnasium_env(domain))
         self._init_algo(domain)
 
     def _init_algo(self, domain: D):
@@ -209,3 +209,12 @@ class Sb3Callback(BaseCallback):
 
     def _on_step(self) -> bool:
         return not self.callback(self.solver)
+
+
+def as_gymnasium_env(domain: Domain) -> gym.Env:
+    """Wraps the domain into a gymnasium env.
+
+    To be fed to sb3 algorithms.
+
+    """
+    return AsGymnasiumEnv(domain=domain)
