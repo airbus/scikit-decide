@@ -5,6 +5,11 @@ import numpy as np
 import torch as th
 import torch_geometric as thg
 from gymnasium import spaces
+from sb3_contrib.common.maskable.buffers import (
+    MaskableDictRolloutBuffer,
+    MaskableRolloutBuffer,
+    MaskableRolloutBufferSamples,
+)
 from stable_baselines3.common.buffers import DictRolloutBuffer, RolloutBuffer
 from stable_baselines3.common.preprocessing import get_action_dim
 from stable_baselines3.common.type_aliases import RolloutBufferSamples
@@ -244,6 +249,50 @@ class DictGraphRolloutBuffer(GraphRolloutBuffer, DictRolloutBuffer):
             else self.to_torch(obs[batch_inds])
             for k, obs in self.observations.items()
         }
+
+
+class _BaseMaskableRolloutBuffer:
+
+    tensor_names = [
+        "actions",
+        "values",
+        "log_probs",
+        "advantages",
+        "returns",
+        "action_masks",
+    ]
+
+    def add(self, *args, action_masks: Optional[np.ndarray] = None, **kwargs) -> None:
+        """
+        :param action_masks: Masks applied to constrain the choice of possible actions.
+        """
+        if action_masks is not None:
+            self.action_masks[self.pos] = action_masks.reshape(
+                (self.n_envs, self.mask_dims)
+            )
+
+        super().add(*args, **kwargs)
+
+    def _get_samples(
+        self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> MaskableRolloutBufferSamples:
+        samples_wo_action_masks = super()._get_samples(batch_inds=batch_inds, env=env)
+        return MaskableRolloutBufferSamples(
+            *samples_wo_action_masks,
+            action_masks=self.action_masks[batch_inds].reshape(-1, self.mask_dims),
+        )
+
+
+class MaskableGraphRolloutBuffer(
+    _BaseMaskableRolloutBuffer, GraphRolloutBuffer, MaskableRolloutBuffer
+):
+    ...
+
+
+class MaskableDictGraphRolloutBuffer(
+    _BaseMaskableRolloutBuffer, DictGraphRolloutBuffer, MaskableDictRolloutBuffer
+):
+    ...
 
 
 T = TypeVar("T")
