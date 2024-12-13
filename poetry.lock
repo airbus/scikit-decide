@@ -5024,6 +5024,20 @@ files = [
 ]
 
 [[package]]
+name = "sb3-contrib"
+version = "2.3.0"
+description = "Contrib package of Stable Baselines3, experimental code."
+optional = true
+python-versions = ">=3.8"
+files = [
+    {file = "sb3_contrib-2.3.0-py3-none-any.whl", hash = "sha256:79dadda884f2242bbab11fdb06ccf00eeead2937f7ed09ba577f803f2e52c8e1"},
+    {file = "sb3_contrib-2.3.0.tar.gz", hash = "sha256:9755ef9efa08e43afb9c4e79564ed594eb8bc497256920403a7e269a72216221"},
+]
+
+[package.dependencies]
+stable-baselines3 = ">=2.3.0,<3.0"
+
+[[package]]
 name = "scikit-image"
 version = "0.24.0"
 description = "Image processing in Python"
@@ -6159,11 +6173,11 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 type = ["pytest-mypy"]
 
 [extras]
-all = ["cartopy", "gymnasium", "joblib", "matplotlib", "numpy", "openap", "pyRDDLGym", "pyRDDLGym", "pyRDDLGym-gurobi", "pyRDDLGym-jax", "pyRDDLGym-rl", "pyRDDLGym-rl", "pygeodesy", "pygrib", "pygrib", "ray", "rddlrepository", "scipy", "stable-baselines3", "torch-geometric", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
+all = ["cartopy", "gymnasium", "joblib", "matplotlib", "numpy", "openap", "pyRDDLGym", "pyRDDLGym", "pyRDDLGym-gurobi", "pyRDDLGym-jax", "pyRDDLGym-rl", "pyRDDLGym-rl", "pygeodesy", "pygrib", "pygrib", "ray", "rddlrepository", "sb3_contrib", "scipy", "stable-baselines3", "torch-geometric", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
 domains = ["cartopy", "gymnasium", "matplotlib", "numpy", "openap", "pyRDDLGym", "pyRDDLGym", "pyRDDLGym-rl", "pyRDDLGym-rl", "pygeodesy", "pygrib", "pygrib", "rddlrepository", "scipy", "unified-planning"]
-solvers = ["gymnasium", "joblib", "numpy", "pyRDDLGym-gurobi", "pyRDDLGym-jax", "ray", "scipy", "stable-baselines3", "torch-geometric", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
+solvers = ["gymnasium", "joblib", "numpy", "pyRDDLGym-gurobi", "pyRDDLGym-jax", "ray", "sb3_contrib", "scipy", "stable-baselines3", "torch-geometric", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "2b17ad02ae15987e4983858da614b1d71e27e1ef9ff9ed1e4b95d32e1ed02813"
+content-hash = "c04dc99a6ada248e1fb56a0285536bce688415553f183d03237ad440d3559dcf"
