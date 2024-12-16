@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Iterable
+from collections.abc import Sequence
 from typing import Optional
 
 import networkx as nx
@@ -44,7 +44,7 @@ class ActionSpace(EnumerableSpace, SamplableSpace):
     def __init__(self, l: list[object]):
         self.l = l
 
-    def get_elements(self) -> Iterable[object]:
+    def get_elements(self) -> Sequence[object]:
         return self.l
 
 
