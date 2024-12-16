@@ -13,6 +13,9 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import asdict, astuple, dataclass, replace
 from typing import Generic, Optional, TypeVar, Union
 
+import numpy as np
+import numpy.typing as npt
+
 __all__ = [
     "T",
     "D",
@@ -664,6 +667,13 @@ class BoundConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):
             self._bound,
             self._depends_on_next_state,
         )
+
+
+# The following alias is needed in core module so that autocast works:
+#  - `autocast` does not like "." after strings other than "D",
+#  - `autocast` needs types in annotations to be evaluable in `skdecide.core` namespace.
+Mask = npt.NDArray[np.int8]
+"""Alias for single agent action mask."""
 
 
 SINGLE_AGENT_ID = "agent"
