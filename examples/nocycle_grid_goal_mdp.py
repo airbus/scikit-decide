@@ -4,7 +4,7 @@
 
 import getopt
 import sys
-from collections.abc import Iterable
+from collections.abc import Sequence
 from enum import IntEnum
 from math import sqrt
 from typing import NamedTuple, Optional
@@ -45,7 +45,7 @@ class ActionSpace(EnumerableSpace):
         self.num_cols = num_cols
         self.num_rows = num_rows
 
-    def get_elements(self) -> Iterable[int]:
+    def get_elements(self) -> Sequence[int]:
         if self.state is None:
             return [a for a in MyActions]
         else:
