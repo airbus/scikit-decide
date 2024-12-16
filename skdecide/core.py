@@ -117,7 +117,7 @@ class ImplicitSpace(Space[T]):
 class EnumerableSpace(Space[T]):
     """A space which elements can be enumerated."""
 
-    def get_elements(self) -> Iterable[T]:
+    def get_elements(self) -> Sequence[T]:
         """Get the elements of this space.
 
         # Returns
@@ -132,7 +132,7 @@ class EnumerableSpace(Space[T]):
 class EmptySpace(EnumerableSpace[T]):
     """An (enumerable) empty space."""
 
-    def get_elements(self) -> Iterable[T]:
+    def get_elements(self) -> Sequence[T]:
         return ()
 
 
