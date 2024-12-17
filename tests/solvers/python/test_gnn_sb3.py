@@ -1,7 +1,6 @@
 from typing import Any, Optional
 
 import numpy as np
-import numpy.typing as npt
 import torch as th
 import torch_geometric as thg
 from graph_jsp_env.disjunctive_graph_jsp_env import DisjunctiveGraphJspEnv
@@ -10,7 +9,7 @@ from pytest_cases import fixture, fixture_union, param_fixture
 from torch_geometric.nn import global_add_pool
 
 from skdecide.builders.domain import Renderable, UnrestrictedActions
-from skdecide.core import Space, TransitionOutcome, Value
+from skdecide.core import Mask, Space, TransitionOutcome, Value
 from skdecide.domains import DeterministicPlanningDomain
 from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.domain.maze import Maze
@@ -20,7 +19,8 @@ from skdecide.hub.solver.stable_baselines.gnn import GraphPPO
 from skdecide.hub.solver.stable_baselines.gnn.common.torch_layers import (
     GraphFeaturesExtractor,
 )
-from skdecide.hub.space.gym import DictSpace, GymSpace, ListSpace
+from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
+from skdecide.hub.space.gym import DictSpace, DiscreteSpace, GymSpace, ListSpace
 from skdecide.utils import rollout
 
 # JSP graph env
@@ -56,13 +56,12 @@ class GraphJspDomain(D):
     ) -> D.T_agent[Space[D.T_event]]:
         return ListSpace(np.nonzero(self._gym_env.valid_action_mask())[0])
 
-    def _is_applicable_action_from(
-        self, action: D.T_agent[D.T_event], memory: D.T_memory[D.T_state]
-    ) -> bool:
-        return self._gym_env.valid_action_mask()[action]
-
     def _state_reset(self) -> D.T_state:
         return self._np_state2graph_state(super()._state_reset())
+
+    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
+        # overriden to get an enumerable space
+        return DiscreteSpace(n=self._gym_env.action_space.n)
 
     def _get_observation_space_(self) -> Space[D.T_observation]:
         if self._gym_env.normalize_observation_space:
@@ -293,6 +292,25 @@ class GraphMaze(D):
         maze_memory = self._graph2mazestate(memory)
         self.maze_domain._render_from(memory=maze_memory, **kwargs)
 
+    def _get_action_mask(
+        self, memory: Optional[D.T_memory[D.T_state]] = None
+    ) -> D.T_agent[Mask]:
+        # overriden since by default it is only 1's (inheriting from UnrestrictedAction)
+        # we could also override only _get_applicable_action() but it will be more computationally efficient to
+        # implement directly get_action_mask()
+        if memory is None:
+            memory = self._memory
+        mazestate_memory = self._graph2mazestate(memory)
+        return np.array(
+            [
+                self._graph2mazestate(
+                    self._get_next_state(action=action, memory=memory)
+                )
+                != mazestate_memory
+                for action in self._get_action_space().get_elements()
+            ]
+        )
+
 
 discrete_features = param_fixture("discrete_features", [False, True])
 
@@ -440,6 +458,26 @@ def test_ppo_user_reduction_layer(domain_factory):
         )
 
 
+def test_maskable_ppo(domain_factory):
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=MaskableGraphPPO,
+        baselines_policy="GraphInputPolicy",
+        learn_config={"total_timesteps": 100},
+        use_action_masking=True,
+    ) as solver:
+
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=100,
+            num_episodes=1,
+            render=False,
+            use_applicable_actions=True,
+        )
+
+
 def test_dict_ppo(jsp_dict_domain_factory):
     domain_factory = jsp_dict_domain_factory
     with StableBaseline(
@@ -456,4 +494,25 @@ def test_dict_ppo(jsp_dict_domain_factory):
             max_steps=100,
             num_episodes=1,
             render=False,
+        )
+
+
+def test_dict_maskable_ppo(jsp_dict_domain_factory):
+    domain_factory = jsp_dict_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=MaskableGraphPPO,
+        baselines_policy="MultiInputPolicy",
+        learn_config={"total_timesteps": 100},
+        use_action_masking=True,
+    ) as solver:
+
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=100,
+            num_episodes=1,
+            render=False,
+            use_applicable_actions=True,
         )
