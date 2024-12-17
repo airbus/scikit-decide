@@ -84,13 +84,13 @@ class DiscreteSpace(GymSpace[T], EnumerableSpace[T]):
         super().__init__(gym_space=gym_spaces.Discrete(n))
         self._element_class = element_class
 
-    def get_elements(self) -> Iterable[T]:
+    def get_elements(self) -> Sequence[T]:
         """Get the elements of this space.
 
         # Returns
         The elements of this space.
         """
-        return np.array(list(range(self._gym_space.n)), dtype=np.int64)
+        return range(self._gym_space.n)
 
     def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
         return (
@@ -118,16 +118,13 @@ class MultiDiscreteSpace(GymSpace[T], EnumerableSpace[T]):
         super().__init__(gym_space=gym_spaces.MultiDiscrete(nvec))
         self._element_class = element_class
 
-    def get_elements(self) -> Iterable[T]:
+    def get_elements(self) -> Sequence[T]:
         """Get the elements of this space.
 
         # Returns
         The elements of this space.
         """
-        return np.array(
-            list(itertools.product(*[list(range(n)) for n in self._gym_space.nvec])),
-            dtype=np.int64,
-        )
+        return tuple(itertools.product(*(range(n) for n in self._gym_space.nvec)))
 
     def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
         return (
@@ -155,16 +152,13 @@ class MultiBinarySpace(GymSpace[T], EnumerableSpace[T]):
         super().__init__(gym_space=gym_spaces.MultiBinary(n))
         self._element_class = element_class
 
-    def get_elements(self) -> Iterable[T]:
+    def get_elements(self) -> Sequence[T]:
         """Get the elements of this space.
 
         # Returns
         The elements of this space.
         """
-        return np.array(
-            list(itertools.product(*[(1, 0) for _ in range(self._gym_space.n)])),
-            dtype=np.int8,
-        )
+        return tuple(itertools.product(*((1, 0) for _ in range(self._gym_space.n))))
 
     def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
         return (
@@ -311,14 +305,14 @@ class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
         enum_class: The enumeration class for creating the Gym Discrete space (gym.spaces.Discrete) to wrap.
         """
         self._enum_class = enum_class
-        self._list_enum = list(enum_class)
+        self._list_enum = tuple(enum_class)
         gym_space = gym_spaces.Discrete(len(enum_class))
         super().__init__(gym_space)
 
     def contains(self, x: T) -> bool:
         return isinstance(x, self._enum_class)
 
-    def get_elements(self) -> Iterable[T]:
+    def get_elements(self) -> Sequence[T]:
         return self._list_enum
 
     def sample(self) -> T:
@@ -367,7 +361,7 @@ class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
     def contains(self, x: T) -> bool:
         return x in self._elements
 
-    def get_elements(self) -> Iterable[T]:
+    def get_elements(self) -> Sequence[T]:
         return self._elements
 
     def sample(self) -> T:
@@ -417,7 +411,7 @@ class SetSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
     def contains(self, x: T) -> bool:
         return x in self._elements
 
-    def get_elements(self) -> Iterable[T]:
+    def get_elements(self) -> Sequence[T]:
         return self._elements
 
     def sample(self) -> T:
