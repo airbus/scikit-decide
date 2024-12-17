@@ -16,6 +16,7 @@ from skdecide.hub.domain.maze import Maze
 from skdecide.hub.domain.maze.maze import DEFAULT_MAZE, Action, State
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.gnn import GraphPPO
+from skdecide.hub.solver.stable_baselines.gnn.a2c import GraphA2C
 from skdecide.hub.solver.stable_baselines.gnn.common.torch_layers import (
     GraphFeaturesExtractor,
 )
@@ -515,4 +516,42 @@ def test_dict_maskable_ppo(jsp_dict_domain_factory):
             num_episodes=1,
             render=False,
             use_applicable_actions=True,
+        )
+
+
+def test_dict_a2c(jsp_dict_domain_factory):
+    domain_factory = jsp_dict_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=GraphA2C,
+        baselines_policy="MultiInputPolicy",
+        learn_config={"total_timesteps": 100},
+    ) as solver:
+
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=100,
+            num_episodes=1,
+            render=False,
+        )
+
+
+def test_a2c(jsp_domain_factory):
+    domain_factory = jsp_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=GraphA2C,
+        baselines_policy="GraphInputPolicy",
+        learn_config={"total_timesteps": 100},
+    ) as solver:
+
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=100,
+            num_episodes=1,
+            render=False,
         )
