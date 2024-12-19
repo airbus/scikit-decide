@@ -31,6 +31,7 @@ def ac_model(model):
         ("PS", 220_000, 10_000, 280, 60, -5.0, 273, 11.0, None),
     ],
 )
+@pytest.mark.skip("Test results to be checked with openap >= 2.1")
 def test_perf_model(
     ac_model,
     model,
