@@ -1,9 +1,8 @@
 # math
 import numpy as np
 
-from skdecide.hub.domain.flight_planning.aircraft_performance.poll_schumann_utils.parameters import (
-    constants,
-)
+gamma = 1.4
+p_surface = 101325.0
 
 
 def turbine_entry_temperature_at_max_take_off(first_flight: float) -> float:
@@ -48,9 +47,9 @@ def impact_pressure_max_operating_limits(max_mach_num: float) -> float:
         the speed at sea level in the ISA that has the same impact pressure.
     """
     v_cas_mo_over_c_msl = max_calibrated_airspeed_over_speed_of_sound(max_mach_num)
-    return constants.p_surface * (
-        (1.0 + 0.5 * (constants.gamma - 1.0) * v_cas_mo_over_c_msl**2)
-        ** (constants.gamma / (constants.gamma - 1.0))
+    return p_surface * (
+        (1.0 + 0.5 * (gamma - 1.0) * v_cas_mo_over_c_msl**2)
+        ** (gamma / (gamma - 1.0))
         - 1.0
     )
 
@@ -82,7 +81,7 @@ def crossover_pressure_altitude(max_mach_num: float, p_i_max: float) -> float:
     """
     return p_i_max / (
         0.5
-        * constants.gamma
+        * gamma
         * max_mach_num**2
         * (1.0 + (max_mach_num**2 / 4.0) + (max_mach_num**4 / 40.0))
     )

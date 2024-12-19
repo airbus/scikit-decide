@@ -261,6 +261,8 @@ class GenericEnsembleInterpolator(GenericInterpolator):
         :param field: field of weather data to interpolate (could be 'temperature' or 'humidity'
         :return: array of interpolated values
         """
+        X[1] = std_atm.alt2press(X[1], alt_units="ft", press_units="hpa")
+
         # with self._auto_lock:
         return self.interpol_dict[field](X)
 
@@ -546,6 +548,8 @@ class GenericWindInterpolator(GenericEnsembleInterpolator, WeatherInterpolator):
         :return: wind vector.
         """
         # with self._auto_lock:
+        X[1] = std_atm.alt2press(X[1], alt_units="ft", press_units="hpa")
+
         arg = self.interpol_dict["argument-wind"](X)
         return self.interpol_dict["norm-wind"](X) * np.array(
             [[np.cos(arg), np.sin(arg)]]
