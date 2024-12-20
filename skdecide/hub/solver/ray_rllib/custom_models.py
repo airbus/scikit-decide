@@ -1,4 +1,5 @@
 from gymnasium.spaces import flatten_space
+from ray.rllib import SampleBatch
 from ray.rllib.models.tf.fcnet import FullyConnectedNetwork as TFFullyConnectedNetwork
 from ray.rllib.models.tf.tf_modelv2 import TFModelV2
 from ray.rllib.models.torch.fcnet import (
@@ -8,6 +9,15 @@ from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.framework import try_import_tf, try_import_torch
 from ray.rllib.utils.spaces.space_utils import flatten_to_single_ndarray, unbatch
 from ray.rllib.utils.torch_utils import FLOAT_MAX, FLOAT_MIN
+
+from skdecide.hub.solver.ray_rllib.gnn.models.torch.complex_input_net import (
+    GraphComplexInputNetwork,
+)
+from skdecide.hub.solver.ray_rllib.gnn.models.torch.gnn import GnnBasedModel
+from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
+    is_graph_dict_multiinput_space,
+    is_graph_dict_space,
+)
 
 tf1, tf, tfv = try_import_tf()
 torch, nn = try_import_torch()
@@ -98,8 +108,20 @@ class TorchParametricActionsModel(TorchModelV2, nn.Module):
         self.action_ids_shifted = torch.arange(1, num_outputs + 1, dtype=torch.int64)
         self.true_obs_space = model_config["custom_model_config"]["true_obs_space"]
 
-        self.pred_action_embed_model = TorchFullyConnectedNetwork(
-            flatten_space(self.true_obs_space),
+        if is_graph_dict_space(self.true_obs_space):
+            pred_action_embed_model_cls = GnnBasedModel
+            self.obs_with_graph = True
+            embed_model_obs_space = self.true_obs_space
+        elif is_graph_dict_multiinput_space(self.true_obs_space):
+            pred_action_embed_model_cls = GraphComplexInputNetwork
+            self.obs_with_graph = True
+            embed_model_obs_space = self.true_obs_space
+        else:
+            pred_action_embed_model_cls = TorchFullyConnectedNetwork
+            self.obs_with_graph = False
+            embed_model_obs_space = flatten_space(self.true_obs_space)
+        self.pred_action_embed_model = pred_action_embed_model_cls(
+            embed_model_obs_space,
             action_space,
             model_config["custom_model_config"]["action_embed_size"],
             model_config,
@@ -115,16 +137,21 @@ class TorchParametricActionsModel(TorchModelV2, nn.Module):
         # Extract the available actions mask tensor from the observation.
         valid_avail_actions_mask = input_dict["obs"]["valid_avail_actions_mask"]
 
-        # Unbatch true observations before flattening them
-        unbatched_true_obs = unbatch(input_dict["obs"]["true_obs"])
+        if self.obs_with_graph:
+            # use directly the obs (already converted at proper format by custom `convert_to_torch_tensor`)
+            embed_model_obs = input_dict["obs"]["true_obs"]
+        else:
+            # Unbatch true observations before flattening them
+            embed_model_obs = torch.stack(
+                [
+                    flatten_to_single_ndarray(o)
+                    for o in unbatch(input_dict["obs"]["true_obs"])
+                ]
+            )
 
         # Compute the predicted action embedding
         pred_action_embed, _ = self.pred_action_embed_model(
-            {
-                "obs": torch.stack(
-                    [flatten_to_single_ndarray(o) for o in unbatched_true_obs]
-                )
-            }
+            SampleBatch({SampleBatch.OBS: embed_model_obs})
         )
 
         # Expand the model output to [BATCH, 1, EMBED_SIZE]. Note that the

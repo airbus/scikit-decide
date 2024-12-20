@@ -14,7 +14,6 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
     FloatHyperparameter,
     IntegerHyperparameter,
-    SubBrickKwargsHyperparameter,
 )
 from packaging.version import Version
 from ray.rllib.algorithms import DQN, PPO, SAC
@@ -37,6 +36,12 @@ from skdecide.hub.domain.gym import AsLegacyGymV21Env
 from skdecide.hub.space.gym import GymSpace
 
 from .custom_models import TFParametricActionsModel, TorchParametricActionsModel
+from .gnn.models.torch.complex_input_net import GraphComplexInputNetwork
+from .gnn.models.torch.gnn import GnnBasedModel
+from .gnn.utils.spaces.space_utils import (
+    convert_graph_space_to_dict_space,
+    convert_graph_to_dict,
+)
 
 if TYPE_CHECKING:
     # imports useful only in annotations, may change according to releases
@@ -99,6 +104,9 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         ),
     ]
 
+    MASKABLE_ALGOS = ["APPO", "BC", "DQN", "Rainbow", "IMPALA", "MARWIL", "PPO"]
+    """The only algos being able to handle action masking in ray[rllib]==2.9.0."""
+
     def __init__(
         self,
         domain_factory: Callable[[], Domain],
@@ -110,8 +118,8 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
             Callable[[str, Optional["EpisodeV2"], Optional["RolloutWorker"]], str]
         ] = None,
         action_embed_sizes: Optional[dict[str, int]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
         callback: Callable[[RayRLlib], bool] = lambda solver: False,
+        graph_feature_extractors_kwargs: Optional[dict[str, Any]] = None,
         **kwargs,
     ) -> None:
         """Initialize Ray RLlib.
@@ -125,13 +133,13 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         policy_configs: The mapping from policy id (str) to additional config (dict) (leave default for single policy).
         policy_mapping_fn: The function mapping agent ids to policy ids (leave default for single policy).
         action_embed_sizes: The mapping from policy id (str) to action embedding size (only used with domains filtering allowed actions per state, default to 2)
-        config_kwargs: keyword arguments for the `AlgorithmConfigKwargs` class used to update programmatically the algorithm config.
-            Will be used by hyerparameters tuners like optuna. Should probably not be used directly by the user,
-            who could rather directly specify the correct `config`.
         callback: function called at each solver iteration.
             If returning true, the solve process stops and exit the current train iteration.
             However, if train_iterations > 1, another train loop will be entered after that.
             (One can code its callback in such a way that further training loop are stopped directly after that.)
+        graph_feature_extractors_kwargs: in case of graph observations, these are the kwargs to the GraphFreaturesExtractor model
+            used to extract features. (See skdecide.hub.solver.ray_rllib.gnn.models.torch.gnn.GraphFeaturesExtractor)
+        **kwargs: used to update the algo config with kwargs automatically filled by optuna.
 
         """
         Solver.__init__(self, domain_factory=domain_factory)
@@ -156,6 +164,10 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
             raise RuntimeError(
                 "Action embed size keys must be the same as policy config keys"
             )
+        if graph_feature_extractors_kwargs is None:
+            self._graph_feature_extractors_kwargs = {}
+        else:
+            self._graph_feature_extractors_kwargs = graph_feature_extractors_kwargs
 
         ray.init(ignore_reinit_error=True)
         self._algo_callbacks: Optional[DefaultCallbacks] = None
@@ -168,16 +180,23 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         self._wrapped_observation_space = domain.get_observation_space()
 
         # action masking?
-        domain = self._domain_factory()
         self._action_masking = (
             (not isinstance(domain, UnrestrictedActions))
             and all(
                 isinstance(agent_action_space, EnumerableSpace)
                 for agent_action_space in self._wrapped_action_space.values()
             )
-            and self._algo_class.__name__
-            # Only the following algos handle action masking in ray[rllib]==2.9.0
-            in ["APPO", "BC", "DQN", "Rainbow", "IMPALA", "MARWIL", "PPO"]
+            and (
+                self._algo_class.__name__ in RayRLlib.MASKABLE_ALGOS
+                or self._algo_class.__name__
+                in [f"Graph{algo_name}" for algo_name in RayRLlib.MASKABLE_ALGOS]
+            )
+        )
+
+        # graph obs?
+        self._is_graph_obs = _is_graph_space(self._wrapped_observation_space)
+        self._is_graph_multiinput_obs = _is_graph_multiinput_space(
+            (self._wrapped_observation_space)
         )
 
         # Handle kwargs (potentially generated by optuna)
@@ -268,7 +287,13 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         self.set_callback()  # ensure putting back actual callback
 
     def _init_algo(self) -> None:
+        # custom model?
         if self._action_masking:
+            if self._is_graph_obs or self._is_graph_multiinput_obs:
+                # let the observation pass as is
+                self._config.experimental(
+                    _disable_preprocessor_api=True,
+                )
             if self._config.get("framework") not in ["tf", "tf2", "torch"]:
                 raise RuntimeError(
                     "Action masking (invalid action filtering) for RLlib requires TensorFlow or PyTorch to be installed"
@@ -290,6 +315,37 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
                 self._config.training(
                     model={"vf_share_layers": True},
                 )
+        elif self._is_graph_obs:
+            if self._config.get("framework") not in ["torch"]:
+                raise RuntimeError(
+                    "Graph observation with RLlib requires PyTorch framework."
+                )
+            ModelCatalog.register_custom_model(
+                "skdecide_rllib_graph_model",
+                GnnBasedModel
+                if self._config.get("framework") == "torch"
+                else NotProvided,
+            )
+            # let the observation pass as is
+            self._config.experimental(
+                _disable_preprocessor_api=True,
+            )
+        elif self._is_graph_multiinput_obs:
+            if self._config.get("framework") not in ["torch"]:
+                raise RuntimeError(
+                    "Graph observation with RLlib requires PyTorch framework."
+                )
+            ModelCatalog.register_custom_model(
+                "skdecide_rllib_graph_multiinput_model",
+                GraphComplexInputNetwork
+                if self._config.get("framework") == "torch"
+                else NotProvided,
+            )
+            # let the observation pass as is
+            self._config.experimental(
+                _disable_preprocessor_api=True,
+            )
+
         self._wrap_action = lambda action: _wrap_action(
             action=action, wrapped_action_space=self._wrapped_action_space
         )
@@ -312,23 +368,31 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         # Overwrite multi-agent config
         pol_obs_spaces = (
             {
-                self._policy_mapping_fn(k, None, None): v.unwrapped()
-                for k, v in self._wrapped_observation_space.items()
+                self._policy_mapping_fn(agent, None, None): _unwrap_agent_obs_space(
+                    wrapped_observation_space=self._wrapped_observation_space,
+                    agent=agent,
+                )
+                for agent in self._wrapped_observation_space
             }
             if not self._action_masking
             else {
-                self._policy_mapping_fn(k, None, None): gym.spaces.Dict(
+                self._policy_mapping_fn(agent, None, None): gym.spaces.Dict(
                     {
-                        "true_obs": v.unwrapped(),
+                        "true_obs": _unwrap_agent_obs_space(
+                            wrapped_observation_space=self._wrapped_observation_space,
+                            agent=agent,
+                        ),
                         "valid_avail_actions_mask": gym.spaces.Box(
                             0,
                             1,
-                            shape=(len(self._wrapped_action_space[k].get_elements()),),
+                            shape=(
+                                len(self._wrapped_action_space[agent].get_elements()),
+                            ),
                             dtype=np.int8,
                         ),
                     }
                 )
-                for k, v in self._wrapped_observation_space.items()
+                for agent in self._wrapped_observation_space
             }
         )
         pol_act_spaces = {
@@ -336,13 +400,14 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
             for k, v in self._wrapped_action_space.items()
         }
 
-        policies = (
-            {
-                k: (None, pol_obs_spaces[k], pol_act_spaces[k], v or {})
-                for k, v in self._policy_configs.items()
-            }
-            if not self._action_masking
-            else {
+        if self._action_masking:
+            if self._is_graph_obs or self._is_graph_multiinput_obs:
+                extra_custom_model_config_kwargs = {
+                    "features_extractor": self._graph_feature_extractors_kwargs
+                }
+            else:
+                extra_custom_model_config_kwargs = {}
+            policies = {
                 self._policy_mapping_fn(k, None, None): (
                     None,
                     pol_obs_spaces[k],
@@ -357,6 +422,7 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
                                         "true_obs"
                                     ],
                                     "action_embed_size": action_embed_size,
+                                    **extra_custom_model_config_kwargs,
                                 },
                             },
                         },
@@ -364,7 +430,52 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
                 )
                 for k, action_embed_size in self._action_embed_sizes.items()
             }
-        )
+        elif self._is_graph_obs:
+            policies = {
+                self._policy_mapping_fn(k, None, None): (
+                    None,
+                    pol_obs_spaces[k],
+                    pol_act_spaces[k],
+                    {
+                        **(v or {}),
+                        **{
+                            "model": {
+                                "custom_model": "skdecide_rllib_graph_model",
+                                "custom_model_config": {
+                                    "features_extractor": self._graph_feature_extractors_kwargs,  # kwargs for GraphFeaturesExtractor
+                                },
+                            },
+                        },
+                    },
+                )
+                for k, v in self._policy_configs.items()
+            }
+        elif self._is_graph_multiinput_obs:
+            policies = {
+                self._policy_mapping_fn(k, None, None): (
+                    None,
+                    pol_obs_spaces[k],
+                    pol_act_spaces[k],
+                    {
+                        **(v or {}),
+                        **{
+                            "model": {
+                                "custom_model": "skdecide_rllib_graph_multiinput_model",
+                                "custom_model_config": {
+                                    "features_extractor": self._graph_feature_extractors_kwargs,
+                                    # kwargs for GraphFeaturesExtractor
+                                },
+                            },
+                        },
+                    },
+                )
+                for k, v in self._policy_configs.items()
+            }
+        else:
+            policies = {
+                k: (None, pol_obs_spaces[k], pol_act_spaces[k], v or {})
+                for k, v in self._policy_configs.items()
+            }
         self._config.multi_agent(
             policies=policies,
             policy_mapping_fn=self._policy_mapping_fn,
@@ -503,80 +614,58 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
         self,
         domain: D,
         action_masking: bool,
-        unwrap_spaces: bool = True,
     ) -> None:
         """Initialize AsLegacyRLlibMultiAgentEnv.
 
         # Parameters
         domain: The scikit-decide domain to wrap as a RLlib multi-agent environment.
         action_masking: Boolean specifying whether action masking is used
-        unwrap_spaces: Boolean specifying whether the action & observation spaces should be unwrapped.
         """
         self._domain = domain
         self._action_masking = action_masking
-        self._unwrap_spaces = unwrap_spaces
-        self._wrapped_observation_space = domain.get_observation_space()
         self._wrapped_action_space = domain.get_action_space()
-        if unwrap_spaces:
-            if not self._action_masking:
-                self.observation_space = gym.spaces.Dict(
-                    {
-                        k: agent_observation_space.unwrapped()
-                        for k, agent_observation_space in self._wrapped_observation_space.items()
-                    }
-                )
-            else:
-                self.observation_space = gym.spaces.Dict(
-                    {
-                        k: gym.spaces.Dict(
-                            {
-                                "true_obs": agent_observation_space.unwrapped(),
-                                "valid_avail_actions_mask": gym.spaces.Box(
-                                    0,
-                                    1,
-                                    shape=(
-                                        len(
-                                            self._wrapped_action_space[k].get_elements()
-                                        ),
-                                    ),
-                                    dtype=np.int8,
-                                ),
-                            }
-                        )
-                        for k, agent_observation_space in self._wrapped_observation_space.items()
-                    }
-                )
-            self.action_space = gym.spaces.Dict(
+        self._wrapped_observation_space = domain.get_observation_space()
+
+        if not self._action_masking:
+            self.observation_space = gym.spaces.Dict(
                 {
-                    k: agent_action_space.unwrapped()
-                    for k, agent_action_space in self._wrapped_action_space.items()
+                    agent: _unwrap_agent_obs_space(
+                        wrapped_observation_space=self._wrapped_observation_space,
+                        agent=agent,
+                    )
+                    for agent in self._wrapped_observation_space
                 }
             )
         else:
-            if not self._action_masking:
-                self.observation_space = self._wrapped_observation_space
-            else:
-                self.observation_space = gym.spaces.Dict(
-                    {
-                        k: gym.spaces.Dict(
-                            {
-                                "true_obs": agent_observation_space,
-                                "valid_avail_actions_mask": gym.spaces.Box(
-                                    0,
-                                    1,
-                                    shape=(
-                                        len(
-                                            self._wrapped_action_space[k].get_elements()
-                                        ),
+            self.observation_space = gym.spaces.Dict(
+                {
+                    agent: gym.spaces.Dict(
+                        {
+                            "true_obs": _unwrap_agent_obs_space(
+                                wrapped_observation_space=self._wrapped_observation_space,
+                                agent=agent,
+                            ),
+                            "valid_avail_actions_mask": gym.spaces.Box(
+                                0,
+                                1,
+                                shape=(
+                                    len(
+                                        self._wrapped_action_space[agent].get_elements()
                                     ),
-                                    dtype=np.int8,
                                 ),
-                            }
-                        )
-                        for k, agent_observation_space in self._wrapped_observation_space.items()
-                    }
-                )
-            self.action_space = self._wrapped_action_space
+                                dtype=np.int8,
+                            ),
+                        }
+                    )
+                    for agent in self._wrapped_observation_space
+                }
+            )
+        self.action_space = gym.spaces.Dict(
+            {
+                k: agent_action_space.unwrapped()
+                for k, agent_action_space in self._wrapped_action_space.items()
+            }
+        )
 
     def _wrap_action(self, action_dict: dict[str, Any]) -> dict[str, D.T_event]:
         return _wrap_action(
@@ -676,14 +765,63 @@ def generate_rllibcallback_class(
     )
 
 
+def _unwrap_agent_obs_space(
+    wrapped_observation_space: dict[str, GymSpace[D.T_observation]],
+    agent: str,
+) -> gym.Space:
+    unwrapped_agent_obs_space = wrapped_observation_space[agent].unwrapped()
+    if isinstance(unwrapped_agent_obs_space, gym.spaces.Graph):
+        return convert_graph_space_to_dict_space(unwrapped_agent_obs_space)
+    elif _is_graph_multiinput_unwrapped_agent_space(unwrapped_agent_obs_space):
+        return gym.spaces.Dict(
+            {
+                k: convert_graph_space_to_dict_space(subspace)
+                if isinstance(subspace, gym.spaces.Graph)
+                else subspace
+                for k, subspace in unwrapped_agent_obs_space.spaces.items()
+            }
+        )
+    else:
+        return unwrapped_agent_obs_space
+
+
 def _unwrap_agent_obs(
     obs: dict[str, D.T_observation],
     agent: str,
-    wrapped_observation_space: dict[str, GymSpace],
+    wrapped_observation_space: dict[str, GymSpace[D.T_observation]],
+    transform_graph: bool = True,
 ) -> Any:
-    # Trick to get obs[agent]'s unwrapped value
-    # (no unwrapping method for single elements in enumerable spaces)
-    return next(iter(wrapped_observation_space[agent].to_unwrapped([obs[agent]])))
+    unwrapped_agent_obs_space = wrapped_observation_space[agent].unwrapped()
+    if isinstance(unwrapped_agent_obs_space, gym.spaces.Graph) and transform_graph:
+        # get original unwrapped graph instance
+        unwrapped_agent_obs: gym.spaces.GraphInstance = _unwrap_agent_obs(
+            obs=obs,
+            agent=agent,
+            wrapped_observation_space=wrapped_observation_space,
+            transform_graph=False,
+        )
+        # transform graph instance into a dict
+        return convert_graph_to_dict(unwrapped_agent_obs)
+    elif (
+        _is_graph_multiinput_unwrapped_agent_space((unwrapped_agent_obs_space))
+        and transform_graph
+    ):
+        unwrapped_agent_obs: dict[str, Any] = _unwrap_agent_obs(
+            obs=obs,
+            agent=agent,
+            wrapped_observation_space=wrapped_observation_space,
+            transform_graph=False,
+        )
+        return {
+            k: convert_graph_to_dict(v)
+            if isinstance(v, gym.spaces.GraphInstance)
+            else v
+            for k, v in unwrapped_agent_obs.items()
+        }
+    else:
+        # Trick to get obs[agent]'s unwrapped value
+        # (no unwrapping method for single elements in enumerable spaces)
+        return next(iter(wrapped_observation_space[agent].to_unwrapped([obs[agent]])))
 
 
 def _unwrap_agent_obs_with_action_masking(
@@ -711,3 +849,23 @@ def _wrap_action(
         )
         for agent, unwrapped_action in action.items()
     }
+
+
+def _is_graph_space(space: dict[str, GymSpace[Any]]) -> bool:
+    return all(
+        isinstance(agent_observation_space.unwrapped(), gym.spaces.Graph)
+        for agent_observation_space in space.values()
+    )
+
+
+def _is_graph_multiinput_space(space: dict[str, GymSpace[Any]]) -> bool:
+    return all(
+        _is_graph_multiinput_unwrapped_agent_space(agent_observation_space.unwrapped())
+        for agent_observation_space in space.values()
+    )
+
+
+def _is_graph_multiinput_unwrapped_agent_space(space: gym.spaces.Space) -> bool:
+    return isinstance(space, gym.spaces.Dict) and any(
+        isinstance(subspace, gym.spaces.Graph) for subspace in space.spaces.values()
+    )
