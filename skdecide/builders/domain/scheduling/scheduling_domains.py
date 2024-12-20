@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Iterable
+from collections.abc import Sequence
 from enum import Enum
 from itertools import product
 from typing import Optional
@@ -1219,7 +1219,7 @@ class SchedulingActionSpace(
         self.state = state
         self.elements = self._get_elements()
 
-    def _get_elements(self) -> Iterable[T]:
+    def _get_elements(self) -> Sequence[T]:
         choices = [
             SchedulingActionEnum.START,
             SchedulingActionEnum.PAUSE,
@@ -1282,7 +1282,7 @@ class SchedulingActionSpace(
                 )
         return list_action
 
-    def get_elements(self) -> Iterable[T]:
+    def get_elements(self) -> Sequence[T]:
         return self.elements
 
     def sample(self) -> T:
@@ -1299,7 +1299,7 @@ class SchedulingActionSpaceWithResourceUnit(
         self.state = state
         self.elements = self._get_elements()
 
-    def _get_elements(self) -> Iterable[T]:
+    def _get_elements(self) -> Sequence[T]:
         choices = [
             SchedulingActionEnum.START,
             SchedulingActionEnum.PAUSE,
@@ -1382,7 +1382,7 @@ class SchedulingActionSpaceWithResourceUnit(
                 )
         return list_action
 
-    def get_elements(self) -> Iterable[T]:
+    def get_elements(self) -> Sequence[T]:
         return self.elements
 
     def sample(self) -> T:
