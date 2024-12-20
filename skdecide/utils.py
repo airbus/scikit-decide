@@ -27,13 +27,13 @@ from skdecide import (
     autocastable,
 )
 from skdecide.builders.domain import (
-    FullyObservable,
     Goals,
     Initializable,
     Markovian,
     Renderable,
+    UnrestrictedActions,
 )
-from skdecide.builders.solver import DeterministicPolicies, Policies
+from skdecide.builders.solver import ApplicableActions, DeterministicPolicies, Policies
 
 __all__ = [
     "get_registered_domains",
@@ -43,6 +43,7 @@ __all__ = [
     "match_solvers",
     "rollout",
 ]
+
 
 SKDECIDE_DEFAULT_DATAHOME = "~/skdecide_data"
 SKDECIDE_DEFAULT_DATAHOME_ENVVARNAME = "SKDECIDE_DATA"
@@ -247,6 +248,7 @@ def rollout(
     return_episodes: bool = False,
     goal_logging_level: int = logging.INFO,
     rollout_callback: Optional[RolloutCallback] = None,
+    use_applicable_actions: Optional[bool] = None,
 ) -> Optional[
     list[
         tuple[
@@ -273,6 +275,12 @@ def rollout(
     return_episodes: if True, return the list of episodes, each episode as a tuple of observations, actions, and values.
         else return nothing.
     goal_logging_level: logging level at which we want to display if goal has been reached or not
+    use_applicable_actions: if True, we call `solver.retrieve_applicable_actions()` before sampling actions.
+        If not set, it will be considered True if and only if
+        - `domain` does not inherit from `UnrestrictedActions`,
+        - `solver` inherits from `ApplicableActions`,
+        - and `solver.using_applicable_actions()` is True.
+
     """
     previous_log_level = logger.level
     if verbose:
@@ -324,6 +332,14 @@ def rollout(
 
         solver = RandomWalk()
         autocast_all(solver, solver.T_domain, domain)
+
+    # solver needs to know about applicable actions?
+    if use_applicable_actions is None:
+        use_applicable_actions = (
+            not isinstance(domain, UnrestrictedActions)
+            and isinstance(solver, ApplicableActions)
+            and solver.using_applicable_actions()
+        )
 
     episodes: list[
         tuple[
@@ -382,6 +398,9 @@ def rollout(
             old_time = time.perf_counter()
             if render and has_render:
                 domain.render()
+            if use_applicable_actions:
+                # tell the solver about the current applicable actions (e.g for action masking)
+                solver.retrieve_applicable_actions(domain=domain)
             action = solver.sample_action(observation)
             if action_formatter is not None:
                 logger.debug("Action: {}".format(action_formatter(action)))

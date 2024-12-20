@@ -7,7 +7,9 @@ from __future__ import annotations
 import functools
 from typing import Optional, Union
 
-from skdecide.core import D, EmptySpace, Space, autocastable
+import numpy as np
+
+from skdecide.core import D, EmptySpace, EnumerableSpace, Mask, Space, autocastable
 
 __all__ = ["Events", "Actions", "UnrestrictedActions"]
 
@@ -325,6 +327,77 @@ class Events:
             return applicable_actions.contains(action)
         else:  # StrDict
             return all(applicable_actions[k].contains(v) for k, v in action.items())
+
+    @autocastable
+    def get_action_mask(
+        self, memory: Optional[D.T_memory[D.T_state]] = None
+    ) -> D.T_agent[Mask]:
+        """Get action mask for the given memory or internal one if omitted.
+
+        An action mask is another (more specific) format for applicable actions, that has a meaning only if the action
+        space can be iterated over in some way. It is represented by a flat array of 0's and 1's ordered as the actions
+        when enumerated: 1 for an applicable action, and 0 for a not applicable action.
+
+        More precisely, this implementation makes the assumption that each agent action space is an `EnumerableSpace`,
+        and calls internally `self.get_applicable_action()`.
+
+        The action mask is used for instance by RL solvers to shut down logits associated to non-applicable actions in
+        the output of their internal neural network.
+
+        # Parameters
+        memory: The memory to consider. If None, works on the internal memory of the domain.
+
+        # Returns
+        a numpy array (or dict agent-> numpy array for multi-agent domains) with 0-1 indicating applicability of
+        the action (1 meaning applicable and 0 not applicable)
+        """
+        return self._get_action_mask(memory=memory)
+
+    def _get_action_mask(
+        self, memory: Optional[D.T_memory[D.T_state]] = None
+    ) -> D.T_agent[Mask]:
+        """Get action mask for the given memory or internal one if omitted.
+
+        An action mask is another (more specific) format for applicable actions, that has a meaning only if the action
+        space can be iterated over in some way. It is represented by a flat array of 0's and 1's ordered as the actions
+        when enumerated: 1 for an applicable action, and 0 for a not applicable action.
+
+        More precisely, this implementation makes the assumption that each agent action space is an `EnumerableSpace`,
+        and calls internally `self.get_applicable_action()`.
+
+        The action mask is used for instance by RL solvers to shut down logits associated to non-applicable actions in
+        the output of their internal neural network.
+
+        # Parameters
+        memory: The memory to consider. If None, works on the internal memory of the domain.
+
+        # Returns
+        a numpy array (or dict agent-> numpy array for multi-agent domains) with 0-1 indicating applicability of
+        the action (1 meaning applicable and 0 not applicable)
+        """
+        applicable_actions = self._get_applicable_actions(memory=memory)
+        action_space = self._get_action_space()
+        if self.T_agent == Union:
+            # single agent
+            return np.array(
+                [
+                    1 if applicable_actions.contains(a) else 0
+                    for a in action_space.get_elements()
+                ],
+                dtype=np.int8,
+            )
+        else:
+            # multi agent
+            return {
+                agent: np.array(
+                    [
+                        1 if agent_applicable_actions.contains(a) else 0
+                        for a in action_space[agent].get_elements()
+                    ],
+                    dtype=np.int8,
+                )
+                for agent, agent_applicable_actions in applicable_actions.items()
+            }
 
 
 class Actions(Events):
