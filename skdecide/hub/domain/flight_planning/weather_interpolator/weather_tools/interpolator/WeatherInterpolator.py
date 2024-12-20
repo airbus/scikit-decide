@@ -6,6 +6,7 @@ import numpy as np
 
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.common_utils as Toolbox
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.intergrid as intergrid
+import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.std_atm as std_atm
 
 
 class WeatherInterpolator(ABC):
@@ -52,45 +53,70 @@ class WeatherForecastInterpolator(WeatherInterpolator):
     Class used to store weather data, interpolate and plot weather forecast from .npz files
     """
 
-    def __init__(self, file_npz, time_cut_index=None, order_interp=1):
+    def __init__(
+        self,
+        file_npz,
+        lat_min: float,
+        lat_max: float,
+        lon_min: float,
+        lon_max: float,
+        time_cut_index=None,
+        order_interp=1,
+    ):
         """
         Stores the weather data and build the interpolators on grid.
         """
         # Files Loading
         self.time_cut_index = time_cut_index
         if isinstance(file_npz, (str, np.lib.npyio.NpzFile)):
-            self.datas = np.load(file_npz) if isinstance(file_npz, str) else file_npz
+            datas = np.load(file_npz) if isinstance(file_npz, str) else file_npz
 
-            self.lat_dict = {
-                var: self.datas[var].item()["lats"] for var in self.datas.keys()
-            }
-            self.long_dict = {
-                var: self.datas[var].item()["longs"] for var in self.datas.keys()
-            }
-            self.alt_dict = {
-                var: self.datas[var].item()["levels"] for var in self.datas.keys()
-            }
+            # input values are the same for all keys, we pick U
+            lat_dict = datas["U"].item()["lats"]
+            long_dict = datas["U"].item()["longs"]
+            alt_dict = datas["U"].item()["levels"]
+            time_dict = datas["U"].item()["times"]
+
+            # Data filtering
+            index_lat = np.where((lat_dict >= lat_min) & (lat_dict <= lat_max))[0]
+            index_long = np.where((long_dict >= lon_min) & (long_dict <= lon_max))[0]
+            index_level = np.where(alt_dict >= 150)[0]
+
+            lat_dict_filtered = lat_dict[index_lat]
+            long_dict_filtered = long_dict[index_long]
+            alt_dict_filtered = alt_dict[index_level]
+
+            self.lat_dict = {var: lat_dict_filtered for var in datas.keys()}
+            self.long_dict = {var: long_dict_filtered for var in datas.keys()}
+            self.alt_dict = {var: alt_dict_filtered for var in datas.keys()}
             self.time_dict = {
-                var: self.datas[var].item()["times"]
+                var: time_dict
                 if self.time_cut_index is None
-                else self.datas[var].item()["times"][
-                    : min(self.time_cut_index, len(self.datas[var].item()["times"]))
-                ]
-                for var in self.datas.keys()
+                else time_dict[: min(self.time_cut_index, len(time_dict))]
+                for var in datas.keys()
             }
+
             # Data Extraction
-            # self.u_wind = self.datas["U"].item()["values"]
-            # self.v_wind = self.datas["V"].item()["values"]
-            self.humidity = self.datas["R"].item()["values"]
-            self.temperature = self.datas["T"].item()["values"]
+            self.u_wind = datas["U"].item()["values"][:, :, index_lat, :][
+                :, :, :, index_long
+            ][:, index_level, :, :]
+            self.v_wind = datas["V"].item()["values"][:, :, index_lat, :][
+                :, :, :, index_long
+            ][:, index_level, :, :]
+            self.humidity = datas["R"].item()["values"][:, :, index_lat, :][
+                :, :, :, index_long
+            ][:, index_level, :, :]
+            self.temperature = datas["T"].item()["values"][:, :, index_lat, :][
+                :, :, :, index_long
+            ][:, index_level, :, :]
 
             if self.time_cut_index is not None:
                 index_cut = min(
                     self.time_cut_index,
                     len(self.time_dict[list(self.time_dict.keys())[0]]),
                 )
-                # self.u_wind = self.u_wind[:index_cut, :, :, :]
-                # self.v_wind = self.v_wind[:index_cut, :, :, :]
+                self.u_wind = self.u_wind[:index_cut, :, :, :]
+                self.v_wind = self.v_wind[:index_cut, :, :, :]
                 self.humidity = self.humidity[:index_cut, :, :, :]
                 self.temperature = self.temperature[:index_cut, :, :, :]
         elif isinstance(
@@ -109,76 +135,75 @@ class WeatherForecastInterpolator(WeatherInterpolator):
                 var: self.datas[var]["times"] for var in self.datas.keys()
             }
             # Data Extraction
-            # self.u_wind = self.datas["U"]["values"]
-            # self.v_wind = self.datas["V"]["values"]
+            self.u_wind = self.datas["U"]["values"]
+            self.v_wind = self.datas["V"]["values"]
             self.humidity = self.datas["R"]["values"]
             self.temperature = self.datas["T"]["values"]
 
         for feat in self.lat_dict:
             if self.lat_dict[feat][-1] < self.lat_dict[feat][0]:
                 self.lat_dict[feat] = self.lat_dict[feat][::-1]
-                # if feat == "U":
-                #     self.u_wind = self.u_wind[:, :, ::-1, :]
-                # elif feat == "V":
-                #     self.v_wind = self.v_wind[:, :, ::-1, :]
+                if feat == "U":
+                    self.u_wind = self.u_wind[:, :, ::-1, :]
+                elif feat == "V":
+                    self.v_wind = self.v_wind[:, :, ::-1, :]
                 if feat == "R":
                     self.humidity = self.humidity[:, :, ::-1, :]
                 elif feat == "T":
                     self.temperature = self.temperature[:, :, ::-1, :]
 
-        # self.norm_wind = np.sqrt(np.square(self.u_wind) + np.square(self.v_wind))
-        # self.angle_wind = np.arctan2(self.v_wind, self.u_wind)
+        self.norm_wind = np.sqrt(np.square(self.u_wind) + np.square(self.v_wind))
+        self.angle_wind = np.arctan2(self.v_wind, self.u_wind)
 
         self.interpol_dict = {}
-        # self.interpol_dict["wind"] = {
-        #     "norm": intergrid.Intergrid(
-        #         self.norm_wind,
-        #         lo=[
-        #             min(self.time_dict["U"]),
-        #             min(self.alt_dict["U"]),
-        #             min(self.lat_dict["U"]),
-        #             min(self.long_dict["U"]),
-        #         ],
-        #         hi=[
-        #             max(self.time_dict["U"]),
-        #             max(self.alt_dict["U"]),
-        #             max(self.lat_dict["U"]),
-        #             max(self.long_dict["U"]),
-        #         ],
-        #         maps=[
-        #             self.time_dict["U"],
-        #             self.alt_dict["U"],
-        #             self.lat_dict["U"],
-        #             self.long_dict["U"],
-        #         ],
-        #         verbose=False,
-        #         order=order_interp,
-        #     ),
-
-        #     "argument": intergrid.Intergrid(
-        #         self.angle_wind,
-        #         lo=[
-        #             min(self.time_dict["U"]),
-        #             min(self.alt_dict["U"]),
-        #             min(self.lat_dict["U"]),
-        #             min(self.long_dict["U"]),
-        #         ],
-        #         hi=[
-        #             max(self.time_dict["U"]),
-        #             max(self.alt_dict["U"]),
-        #             max(self.lat_dict["U"]),
-        #             max(self.long_dict["U"]),
-        #         ],
-        #         maps=[
-        #             self.time_dict["U"],
-        #             self.alt_dict["U"],
-        #             self.lat_dict["U"],
-        #             self.long_dict["U"],
-        #         ],
-        #         verbose=False,
-        #         order=order_interp,
-        #     ),
-        # }
+        self.interpol_dict["wind"] = {
+            "norm": intergrid.Intergrid(
+                self.norm_wind,
+                lo=[
+                    min(self.time_dict["U"]),
+                    min(self.alt_dict["U"]),
+                    min(self.lat_dict["U"]),
+                    min(self.long_dict["U"]),
+                ],
+                hi=[
+                    max(self.time_dict["U"]),
+                    max(self.alt_dict["U"]),
+                    max(self.lat_dict["U"]),
+                    max(self.long_dict["U"]),
+                ],
+                maps=[
+                    self.time_dict["U"],
+                    self.alt_dict["U"],
+                    self.lat_dict["U"],
+                    self.long_dict["U"],
+                ],
+                verbose=False,
+                order=order_interp,
+            ),
+            "argument": intergrid.Intergrid(
+                self.angle_wind,
+                lo=[
+                    min(self.time_dict["U"]),
+                    min(self.alt_dict["U"]),
+                    min(self.lat_dict["U"]),
+                    min(self.long_dict["U"]),
+                ],
+                hi=[
+                    max(self.time_dict["U"]),
+                    max(self.alt_dict["U"]),
+                    max(self.lat_dict["U"]),
+                    max(self.long_dict["U"]),
+                ],
+                maps=[
+                    self.time_dict["U"],
+                    self.alt_dict["U"],
+                    self.lat_dict["U"],
+                    self.long_dict["U"],
+                ],
+                verbose=False,
+                order=order_interp,
+            ),
+        }
         self.interpol_dict["humidity"] = intergrid.Intergrid(
             self.humidity,
             lo=[
@@ -236,13 +261,16 @@ class WeatherForecastInterpolator(WeatherInterpolator):
         :param t: time in second
         :return: [wind strength, direction, wind wector]
         """
-        pass
-        # if longi < 0:
-        #     longi += 360.0
-        # norm = self.interpol_dict["wind"]["norm"]([t, alt, lat, longi])
-        # arg = self.interpol_dict["wind"]["argument"]([t, alt, lat, longi])
-        # result = norm * np.array([np.cos(arg), np.sin(arg)])
-        # return [norm, arg, result]
+
+        # convert altitude to Pa
+        alt = std_atm.alt2press(alt, alt_units="ft", press_units="hpa")
+
+        if longi < 0:
+            longi += 360.0
+        norm = self.interpol_dict["wind"]["norm"]([t, alt, lat, longi])
+        arg = self.interpol_dict["wind"]["argument"]([t, alt, lat, longi])
+        result = norm * np.array([np.cos(arg), np.sin(arg)])
+        return [norm, arg, result]
 
     def interpol_wind(self, X):
         """
@@ -251,11 +279,14 @@ class WeatherForecastInterpolator(WeatherInterpolator):
         :param X: array of points [time (in s), alt (in ft), lat, long]
         :return: wind vector.
         """
-        pass
-        # arg = self.interpol_dict["wind"]["argument"](X)
-        # return self.interpol_dict["wind"]["norm"](X) * np.array(
-        #     [[np.cos(arg), np.sin(arg)]]
-        # )
+
+        # convert altitude to Pa
+        X[1] = std_atm.alt2press(X[1], alt_units="ft", press_units="hpa")
+
+        arg = self.interpol_dict["wind"]["argument"](X)
+        return self.interpol_dict["wind"]["norm"](X) * np.array(
+            [[np.cos(arg), np.sin(arg)]]
+        )
 
     def interpol_field(self, X, field="temperature"):
         """
@@ -265,6 +296,8 @@ class WeatherForecastInterpolator(WeatherInterpolator):
         :param field: field of weather data to interpolate (could be 'temperature' or 'humidity'
         :return: array of interpolated values
         """
+        # convert altitude to Pa
+        X[1] = std_atm.alt2press(X[1], alt_units="ft", press_units="hpa")
         return self.interpol_dict[field](X)
 
     def transform_long(self, long):
@@ -331,7 +364,6 @@ class WeatherForecastInterpolator(WeatherInterpolator):
         Ut = np.resize(res[0, 0, :], (n_lat, n_long, n_time))
         Vt = np.resize(res[0, 1, :], (n_lat, n_long, n_time))
         Nt = np.sqrt(np.square(Ut) + np.square(Vt))
-        # Nt = self.interpol_field(values, field="norw-wind")
 
         i = 0
         CS = ax.contourf(x, y, Nt[:, :, i], 20, alpha=0.5, zorder=2)
@@ -443,9 +475,7 @@ class WeatherForecastInterpolator(WeatherInterpolator):
         Nt_noised = np.sqrt(np.square(Ut_noised) + np.square(Vt_noised))
         Ut = np.resize(res[0, 0, :], (n_lat, n_long, n_time))
         Vt = np.resize(res[0, 1, :], (n_lat, n_long, n_time))
-        Nt = np.sqrt(np.square(Ut - Ut_noised) + np.square(Vt - Vt_noised))
         i = 0
-        # CS = ax.contourf(x, y, Nt[:, :, i], 20, alpha=0.5, zorder=2)
         if plot_wind:
             if x.shape[0] > 100:
                 q = ax.quiver(
@@ -520,8 +550,6 @@ class WeatherForecastInterpolator(WeatherInterpolator):
             extent=[-180.0, 180.0, -90.0, 90.0],
             alpha=0.5,
         )
-        # plt.gca().invert_yaxis()
-        # ax.colorbar()
 
     def plot_matrix_wind_noised(self, index_alt=10, index_time=0, ax=None):
         """
@@ -636,4 +664,3 @@ class WeatherForecastInterpolator(WeatherInterpolator):
 
     def render(self, ax, **kwargs):
         pass
-        # self.plot_matrix_wind(index_alt=0, index_time=0, ax=ax)

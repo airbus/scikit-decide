@@ -36,14 +36,15 @@ class Timer(object):
 def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
     network = domain.network
 
-    fig = plt.figure(figsize=(15, 10))
+    fig = plt.figure(figsize=(10, 7))
 
     # define the grid layout
-    gs = gridspec.GridSpec(2, 2, width_ratios=[1, 2])
+    gs = gridspec.GridSpec(3, 2, width_ratios=[2, 4])
 
     # add subplots for the line plots
     ax1 = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[1, 0])
+    ax3 = fig.add_subplot(gs[2, 0])
 
     # values
     pos = [
@@ -68,36 +69,49 @@ def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
     ax2.set_ylabel("Mass (Kg)")
     ax2.set_title("Mass profile")
 
+    # create twin axis for ax3
+    ax3_twin = ax3.twinx()
+    # plot CAS / mach profile with altitude on y axis
+    ax3.plot(dist / nm, trajectory.cas, label="CAS", color="blue")
+    ax3_twin.plot(dist / nm, trajectory.mach, label="Mach", color="red")
+    ax3.set_xlabel("ESAD (nm)")
+    ax3.set_ylabel("CAS (kt)")
+    ax3_twin.set_ylabel("Mach")
+    ax3.set_title("CAS / Mach profile")
+    # add legend
+    ax3.legend(loc="upper left")
+    ax3_twin.legend(loc="upper right")
+
     # plot the trajectory
     latmin, latmax = min(trajectory.lat), max(trajectory.lat)
     lonmin, lonmax = min(trajectory.lon), max(trajectory.lon)
 
-    ax3 = fig.add_subplot(
+    ax4 = fig.add_subplot(
         gs[:, 1], projection=ccrs.PlateCarree(central_longitude=trajectory.lon.mean())
     )
 
-    ax3.set_extent([lonmin - 4, lonmax + 4, latmin - 2, latmax + 2])
-    ax3.add_feature(OCEAN, facecolor="#d1e0e0", zorder=-1, lw=0)
-    ax3.add_feature(LAND, facecolor="#f5f5f5", lw=0)
-    ax3.add_feature(BORDERS, lw=0.5, color="gray")
-    ax3.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
-    ax3.coastlines(resolution="50m", lw=0.5, color="gray")
+    ax4.set_extent([lonmin - 4, lonmax + 4, latmin - 2, latmax + 2])
+    ax4.add_feature(OCEAN, facecolor="#d1e0e0", zorder=-1, lw=0)
+    ax4.add_feature(LAND, facecolor="#f5f5f5", lw=0)
+    ax4.add_feature(BORDERS, lw=0.5, color="gray")
+    ax4.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
+    ax4.coastlines(resolution="50m", lw=0.5, color="gray")
 
     # add great circle
-    ax3.scatter(
+    ax4.scatter(
         trajectory.lon.iloc[0],
         trajectory.lat.iloc[0],
         c="darkgreen",
         transform=ccrs.Geodetic(),
     )
-    ax3.scatter(
+    ax4.scatter(
         trajectory.lon.iloc[-1],
         trajectory.lat.iloc[-1],
         c="red",
         transform=ccrs.Geodetic(),
     )
 
-    ax3.plot(
+    ax4.plot(
         [trajectory.lon.iloc[0], trajectory.lon.iloc[-1]],
         [trajectory.lat.iloc[0], trajectory.lat.iloc[-1]],
         label="Great Circle",
@@ -107,7 +121,7 @@ def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
     )
 
     # add trajectory
-    ax3.plot(
+    ax4.plot(
         trajectory.lon,
         trajectory.lat,
         color="green",
@@ -116,30 +130,15 @@ def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
         marker=".",
         label="skdecide",
     )
+    ax4.legend()
+    total_fuel = np.round(trajectory["fuel"].sum(), 2)
+    total_time = trajectory["ts"].values[-1] - trajectory["ts"].values[0]
 
-    # add network
-    ax3.scatter(
-        [
-            network[x][x1][x2].lon
-            for x in range(len(network))
-            for x1 in range(len(network[x]))
-            for x2 in range(len(network[x][x1]))
-        ],
-        [
-            network[x][x1][x2].lat
-            for x in range(len(network))
-            for x1 in range(len(network[x]))
-            for x2 in range(len(network[x][x1]))
-        ],
-        transform=ccrs.Geodetic(),
-        s=0.1,
-    )
-
-    ax3.legend()
+    total_time = time.strftime("%H:%M:%S", time.gmtime(total_time))
 
     # add title to figure
     fig.suptitle(
-        f'Leg: {domain.origin} -> {domain.destination} \n A/C perf. model: {domain.perf_model_name}; Fuel: {np.round(trajectory["fuel"].sum(), 2)} Kg',
+        f"Leg: {domain.origin} -> {domain.destination} \n A/C perf. model: {domain.aircraft_state.performance_model_type.name}; Fuel: {total_fuel} Kg; Time: {total_time}",
         fontsize=16,
     )
 
@@ -163,9 +162,6 @@ def plot_trajectory(lat1, lon1, lat2, lon2, trajectory: pd.DataFrame) -> Figure:
     fig.canvas.footer_visible = False
     fig.canvas.resizable = False
     fig.set_dpi(1)
-
-    # lon1, lat1 = trajectory.iloc[0]["lon"], trajectory.iloc[0]["lat"]
-    # lon2, lat2 = trajectory.iloc[-1]["lon"], trajectory.iloc[-1]["lat"]
 
     latmin, latmax = min(lat1, lat2), max(lat1, lat2)
     lonmin, lonmax = min(lon1, lon2), max(lon1, lon2)
@@ -307,81 +303,55 @@ def plot_altitude(trajectory: pd.DataFrame) -> Figure:
 
 def plot_network(domain, dir=None):
     network = domain.network
-    origin_coord = domain.lat1, domain.lon1, domain.alt1
-    target_coord = domain.lat2, domain.lon2, domain.alt2
 
-    # fig, ax = plt.subplots(1, subplot_kw={"projection": ccrs.PlateCarree()})
-    fig = plt.figure(figsize=(15, 10))
+    fig = plt.figure(figsize=(10, 7))
 
     # define the grid layout
-    gs = gridspec.GridSpec(1, 2, width_ratios=[1, 1])
-    ax1 = fig.add_subplot(gs[0], projection=ccrs.PlateCarree())
-    ax2 = fig.add_subplot(gs[1])
+    gs = gridspec.GridSpec(1, 2)
 
-    ax1.set_extent(
-        [
-            min(origin_coord[1], target_coord[1]) - 4,
-            max(origin_coord[1], target_coord[1]) + 4,
-            min(origin_coord[0], target_coord[0]) - 2,
-            max(origin_coord[0], target_coord[0]) + 2,
-        ]
-    )
-    ax1.add_feature(OCEAN, facecolor="#d1e0e0", zorder=-1, lw=0)
-    ax1.add_feature(LAND, facecolor="#f5f5f5", lw=0)
-    ax1.add_feature(BORDERS, lw=0.5, color="gray")
-    ax1.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
-    ax1.coastlines(resolution="50m", lw=0.5, color="gray")
+    # add subplots for the line plots
+    ax1 = fig.add_subplot(gs[0])
 
-    lon_values = [
-        network[x][x1][x2].lon
-        for x in range(len(network))
-        for x1 in range(len(network[x]))
-        for x2 in range(len(network[x][x1]))
-    ]
-    lat_values = [
-        network[x][x1][x2].lat
-        for x in range(len(network))
-        for x1 in range(len(network[x]))
-        for x2 in range(len(network[x][x1]))
-    ]
-    height_values = [
-        network[x][x1][x2].height / ft
-        for x in range(len(network))
-        for x1 in range(len(network[x]))
-        for x2 in range(len(network[x][x1]))
-    ]
-    distance_to_origin = [
-        LatLon(lat_values[i], lon_values[i], height_values[i]).distanceTo(
-            LatLon(origin_coord[0], origin_coord[1], origin_coord[2])
+    # plot the altitude
+    for node in network.nodes:
+        ax1.scatter(
+            network.nodes[node]["ts"],
+            network.nodes[node]["height"] / ft,
+            color="k",
+            s=0.5,
         )
-        / nm
-        for i in range(len(lon_values))
-    ]
 
-    ax1.scatter(
-        lon_values,
-        lat_values,
-        # transform=ccrs.Geodetic(),
-        s=0.2,
-    )
+    ax1.set_xlabel("Time (s)")
+    ax1.set_ylabel("Zp (ft)")
+    ax1.set_title("Altitude profile")
 
-    ax2.scatter(
-        distance_to_origin,
-        height_values,
-        s=0.2,
-    )
+    # plot the trajectory
+    latmin, latmax = min(domain.lat1, domain.lat2), max(domain.lat1, domain.lat2)
+    lonmin, lonmax = min(domain.lon1, domain.lon2), max(domain.lon1, domain.lon2)
 
-    # scatter airports
-    ax1.scatter(
-        origin_coord[1],
-        origin_coord[0],
-        c="darkgreen",
-        transform=ccrs.Geodetic(),
-        alpha=0.3,
-    )
-    ax1.scatter(
-        target_coord[1], target_coord[0], c="red", transform=ccrs.Geodetic(), alpha=0.3
-    )
+    ax3 = fig.add_subplot(gs[1], projection=ccrs.PlateCarree())
+
+    ax3.set_extent([lonmin - 3, lonmax + 3, latmin - 2, latmax + 2])
+
+    ax3.add_feature(BORDERS, lw=0.5, color="gray")
+    ax3.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
+    ax3.coastlines(resolution="50m", lw=0.5, color="gray")
+
+    for node in network.nodes:
+        ax3.scatter(
+            network.nodes[node]["lon"],
+            network.nodes[node]["lat"],
+            transform=ccrs.Geodetic(),
+            color="blue",
+            s=1,
+        )
+
+    # plot airports
+    lat_start, lon_start = domain.lat1, domain.lon1
+    lat_end, lon_end = domain.lat2, domain.lon2
+
+    ax3.scatter(lon_start, lat_start, transform=ccrs.Geodetic(), color="red", s=3)
+    ax3.scatter(lon_end, lat_end, transform=ccrs.Geodetic(), color="red", s=3)
 
     plt.tight_layout()
     plt.show()
