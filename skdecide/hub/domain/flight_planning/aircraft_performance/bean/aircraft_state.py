@@ -18,7 +18,7 @@ from skdecide.hub.domain.flight_planning.aircraft_performance.performance.rating
 )
 
 
-# @dataclass
+@dataclass
 class AircraftState(FourDimensionsState):
     """
     Class representing an aircraft state and variables.
@@ -100,19 +100,12 @@ class AircraftState(FourDimensionsState):
 
         self.time_step = None
 
-        # aircraft memory
-        self.gw_kg_memory: List[float] = [gw_kg]
-        self.zp_ft_memory: List[float] = [zp_ft]
-        self.mach_memory: List[float] = [mach]
-
         if self.performance_model_type.name == PerformanceModelEnum.OPENAP.name:
             self._init_openap_settings()
         elif (
             self.performance_model_type.name == PerformanceModelEnum.POLL_SCHUMANN.name
         ):
             self._init_pollschumann_settings()
-        elif self.performance_model_type.name == PerformanceModelEnum.BADA.name:
-            self._init_bada_settings()
         else:
             raise ValueError("Error in aircraft state settings init.")
 
@@ -124,8 +117,6 @@ class AircraftState(FourDimensionsState):
         self.MTOW = ac_params["mtow"]
         self.MFC = ac_params["limits"]["MFC"]
         self.MMO = ac_params["cruise"]["mach"]
-        # self.alt_max = ac_params["cruise"]["height"] / 0.3048
-        # self.alt_toc = ac_params["cruise"]["height"]
 
     def _init_pollschumann_settings(self):
         from skdecide.hub.domain.flight_planning.aircraft_performance.utils.poll_schumann_utils.engine_loader import (
@@ -135,40 +126,8 @@ class AircraftState(FourDimensionsState):
         ac_params = load_aircraft_engine_params(self.model_type)
 
         self.MTOW = ac_params["amass_mtow"]
-        # self.alt_max = ac_params["fl_max"] * 100
         self.MMO = ac_params["max_mach_num"]
         self.MFC = ac_params["amass_mtow"] - ac_params["amass_mzfw"]
-        # self.alt_toc = ac_params["cruise"]["height"]
-
-    def _init_bada_settings(self):
-        from skdecide.hub.domain.flight_planning.aircraft_performance.utils.bada_utils.database import (
-            Database,
-        )
-
-        ac_params = Database(
-            model_directory_path=self.model_type, acName=self.model_type.split("/")[-1]
-        )
-
-        self.MTOW = ac_params.MTOW
-        self.MFC = ac_params.MTOW - ac_params.MZFW
-        self.MMO = ac_params.MMO
-
-        # TODO: change this
-        # from skdecide.hub.domain.flight_planning.aircraft_performance.utils.poll_schumann_utils.engine_loader import load_aircraft_engine_params
-        # ac_params = load_aircraft_engine_params(self.model_type.split("/")[-1].split("-")[0])
-
-        # self.alt_max = ac_params["fl_max"] * 100
-
-    def reset_settings(self):
-        self.gw_kg = self.gw_kg_memory[0]
-        self.zp_ft = self.zp_ft_memory[0]
-        self.mach = self.mach_memory[0]
-
-        self.gw_kg_memory = [self.gw_kg]
-        self.zp_ft_memory = [self.zp_ft]
-        self.mach_memory = [self.mach]
-
-        self.phase = PhaseEnum.CLIMB
 
     def update_settings(
         self,
@@ -176,10 +135,6 @@ class AircraftState(FourDimensionsState):
         zp_ft: Optional[float] = None,
         mach: Optional[float] = None,
     ):
-        # update memory
-        self.gw_kg_memory.append(gw_kg)
-        self.zp_ft_memory.append(zp_ft)
-        self.mach_memory.append(mach)
 
         if gw_kg is not None:
             self.gw_kg = gw_kg

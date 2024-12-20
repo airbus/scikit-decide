@@ -36,8 +36,6 @@ def computeTimeStamps(dates, times, steps):
             )
             for step in steps:
                 forecast_datetime = date_object + datetime.timedelta(hours=int(step))
-                # forecast_datetime = forecast_datetime.replace(tzinfo=pytz.utc)
-                # forecast_datetime.timestamp()
                 timestamps.add(forecast_datetime.timestamp())
     return list(timestamps)
 
@@ -67,7 +65,6 @@ def computeTimeStamp(date, time, step):
         tzinfo=pytz.utc,
     )
     forecast_datetime = date_object + datetime.timedelta(hours=int(step))
-    # forecast_datetime.replace(tzinfo=pytz.utc)
     return datetime.datetime.timestamp(forecast_datetime)
 
 

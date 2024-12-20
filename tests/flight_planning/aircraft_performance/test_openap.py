@@ -54,7 +54,6 @@ def test_thrust():
     for zp_ft, gw_kg, mach, disa in list_test:
         # initial state of the aircraft
         acState = AircraftState(
-            # model_type="BADA/A320-271N", # only for BADA
             model_type="A320",  # only for OPENAP and POLL_SCHUMANN
             performance_model_type=PerformanceModelEnum.OPENAP,  # PerformanceModelEnum.OPENAP, PerformanceModelEnum.BADA
             gw_kg=gw_kg,
@@ -139,7 +138,6 @@ def test_fuelflow():
     for zp_ft, gw_kg, mach, disa in list_test:
         # initial state of the aircraft
         acState = AircraftState(
-            # model_type="BADA/A320-271N", # only for BADA
             model_type="A320",  # only for OPENAP and POLL_SCHUMANN
             performance_model_type=PerformanceModelEnum.OPENAP,  # PerformanceModelEnum.OPENAP, PerformanceModelEnum.BADA
             gw_kg=gw_kg,

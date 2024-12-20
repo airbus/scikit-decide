@@ -26,7 +26,6 @@ def test_aircraft_state():
     )
 
     acState_openap = AircraftState(
-        # model_type="BADA/A320-271N", # only for BADA
         model_type="A320",  # only for OPENAP and POLL_SCHUMANN
         performance_model_type=PerformanceModelEnum.OPENAP,  # PerformanceModelEnum.OPENAP, PerformanceModelEnum.BADA
         gw_kg=80_000,
@@ -56,7 +55,7 @@ def test_aircraft_state():
     acState_poll_schumann = AircraftState(
         # model_type="BADA/A320-271N", # only for BADA
         model_type="A320",  # only for OPENAP and POLL_SCHUMANN
-        performance_model_type=PerformanceModelEnum.POLL_SCHUMANN,  # PerformanceModelEnum.OPENAP, PerformanceModelEnum.BADA
+        performance_model_type=PerformanceModelEnum.POLL_SCHUMANN,  # PerformanceModelEnum.OPENAP
         gw_kg=80_000,
         zp_ft=10_000,
         mach_cruise=0.78,
@@ -101,9 +100,8 @@ def test_flight_planning():
     )
 
     acState_poll_schumann = AircraftState(
-        # model_type="BADA/A320-271N", # only for BADA
         model_type="A320",  # only for OPENAP and POLL_SCHUMANN
-        performance_model_type=PerformanceModelEnum.POLL_SCHUMANN,  # PerformanceModelEnum.OPENAP, PerformanceModelEnum.BADA
+        performance_model_type=PerformanceModelEnum.POLL_SCHUMANN,  # PerformanceModelEnum.OPENAP
         gw_kg=80_000,
         zp_ft=10_000,
         mach_cruise=0.78,

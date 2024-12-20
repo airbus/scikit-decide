@@ -145,13 +145,6 @@ class GenericEnsembleInterpolator(GenericInterpolator):
             else:
                 fields = [f for f in fields if f in list(self.datas.keys())]
 
-            ### ??? ###
-            # if fields is None:
-            #     fields = self.datas.keys()
-            # else:
-            #     fields = [f for f in fields if f in list(self.datas.keys())]
-
-            # self.datas.allow_pickle = True
             items = {var: self.datas[var] for var in fields}
             self.lat_dict = {var: items[var]["lats"] for var in fields}
             self.long_dict = {
@@ -170,14 +163,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 for v in self.time_dict:
                     self.time_dict[v] += time_shift_s
             self.values = {var: items[var]["values"] for var in fields}
-            # for var in self.lat_dict:
-            #     print(self.lat_dict[var].shape, "lats")
-            #     print(self.long_dict[var].shape, "long")
-            #     print(self.levels_dict[var].shape, "levels")
-            #     print(self.time_dict[var].shape, "time")
-            #     print(self.values[var].shape, "values")
 
-        # one_field = list(self.values.keys())[0]
         for feat in self.lat_dict:
             if self.lat_dict[feat][-1] < self.lat_dict[feat][0]:
                 self.lat_dict[feat] = self.lat_dict[feat][::-1]
@@ -188,8 +174,6 @@ class GenericEnsembleInterpolator(GenericInterpolator):
         self.interpol_dict = {}
 
         for var in self.values:
-            # print(f'Building interpolator for {var}')
-            # print(f'Levels dict: {self.levels_dict[var]}')
             self.levels_dict[var] = [111, 121]
             if (len(self.levels_dict[var]) == 0) or (len(self.levels_dict[var]) == 1):
                 self.levels_dict[var] = np.array([30_000])
@@ -414,8 +398,7 @@ class GenericEnsembleInterpolator(GenericInterpolator):
             alpha=0.9,
             zorder=2,
         )
-        # cs = ax.imshow(Ut[:, :, i],
-        #               extent=[down_long, up_long, down_lat, up_lat])
+
         plt.title("time " + str(times[i]))
         plt.draw()
         if save:
@@ -426,8 +409,6 @@ class GenericEnsembleInterpolator(GenericInterpolator):
         for i in range(1, n_time):
             for coll in cs.collections:
                 plt.gca().collections.remove(coll)
-            ##cs.clear()
-            # cs.set_data(Ut[:, :, i])
             cs = ax.contour(
                 x,
                 y,
@@ -521,7 +502,6 @@ class GenericWindInterpolator(GenericEnsembleInterpolator, WeatherInterpolator):
         return long
 
     def interpol_wind_classic(self, lat, longi, alt=35000.0, t=0.0, index_forecast=0):
-        # with self._auto_lock:
         p = std_atm.alt2press(alt, alt_units="ft", press_units="hpa")
 
         if len(self.axes["U"][1]) == 5:
@@ -547,7 +527,6 @@ class GenericWindInterpolator(GenericEnsembleInterpolator, WeatherInterpolator):
         :param X: array of points [time (in s), alt (in ft), lat, long]
         :return: wind vector.
         """
-        # with self._auto_lock:
         X[1] = std_atm.alt2press(X[1], alt_units="ft", press_units="hpa")
 
         arg = self.interpol_dict["argument-wind"](X)
@@ -611,7 +590,6 @@ class GenericWindInterpolator(GenericEnsembleInterpolator, WeatherInterpolator):
         Ut = np.resize(res[0, 0, :], (n_lat, n_long, n_time))
         Vt = np.resize(res[0, 1, :], (n_lat, n_long, n_time))
         Nt = np.sqrt(np.square(Ut) + np.square(Vt))
-        # Nt = np.reshape(self.interpol_field(values, field='norm-wind'), (n_lat, n_long, n_time))
 
         i = 0
         CS = ax.contourf(x, y, Nt[:, :, i], 100, alpha=0.5, zorder=2)

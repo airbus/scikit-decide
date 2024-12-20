@@ -418,30 +418,30 @@ class FlightPlanningDomain(
                 ICAO code of the airport, or a tuple (lat,lon,alt), of the origin of the flight plan. Altitude should be in ft
             destination (Union[str, tuple]):
                 ICAO code of the airport, or a tuple (lat,lon,alt), of the destination of the flight plan. Altitude should be in ft
-            ac_path_name (str):
-                Aircraft path or name. In the case of BADA: BADA/ac; in the case of OpenAP or Poll-Schumann: ac
-            perf_model_name (PerformanceModelEnum):
-                Aircraft performance model used in the flight plan.
+            aircraft_state (AircraftState)
+                Initial aircraft state.
+            cruise_height_min (float)
+                Minimum cruise height in ft
+            cruise_height_max (float)
+                Maximum cruise height in ft
             weather_date (WeatherDate, optional):
                 Date for the weather, needed for days management.
                 If None, no wind will be applied.
-            wind_interpolator (GenericWindInterpolator, optional):
-                Wind interpolator for the flight plan. If None, create one from the specified weather_date.
-                The data is either already present locally or be downloaded from https://www.ncei.noaa.gov
             objective (str, optional):
                 Cost function of the flight plan. It can be either fuel, distance or time. Defaults to "fuel".
             heuristic_name (str, optional):
                 Heuristic of the flight plan, it will guide the aircraft through the graph. It can be either fuel, distance or time. Defaults to "fuel".
+            wind_interpolator (GenericWindInterpolator, optional):
+                Wind interpolator for the flight plan. If None, create one from the specified weather_date.
+                The data is either already present locally or be downloaded from https://www.ncei.noaa.gov
             constraints (_type_, optional):
                 Constraints dictionnary (keyValues : ['time', 'fuel'] ) to be defined in for the flight plan. Defaults to None.
-            nb_points_forward (int, optional):
+            nb_forward_points (int, optional):
                 Number of forward nodes in the graph. Defaults to 41.
-            nb_points_lateral (int, optional):
+            nb_lateral_points (int, optional):
                 Number of lateral nodes in the graph. Defaults to 11.
-            nb_points_vertical (int, optional):
+            nb_vertical_points (int, optional):
                 Number of vertical nodes in the graph. Defaults to None.
-            take_off_weight (int, optional):
-                Take off weight of the aircraft. Defaults to None.
             fuel_loaded (float, optional):
                 Fuel loaded in the airscraft for the flight plan. Defaults to None.
             fuel_loop (bool, optional):
@@ -450,10 +450,6 @@ class FlightPlanningDomain(
                 Solver class used in the fuel loop. Defaults to LazyAstar.
             fuel_loop_solver_kwargs (Dict[str, Any], optional):
                 Kwargs to initialize the solver used in the fuel loop.
-            climbing_slope (float, optional):
-                Climbing slope of the aircraft, has to be between 10.0 and 25.0. Defaults to None.
-            descending_slope (float, optional):
-                Descending slope of the aircraft, has to be between 10.0 and 25.0. Defaults to None.
             graph_width (str, optional):
                 Airways graph width, in ["small", "medium", "large", "xlarge"]. Defaults to None
             res_img_dir (str, optional):
@@ -483,8 +479,6 @@ class FlightPlanningDomain(
             aircraft_state=self.aircraft_state,
             aerodynamics_settings=self.aerodynamics_settings,
         )
-
-        self.take_off_weight = aircraft_state.gw_kg
 
         # Initialisation of the origin and the destination
         self.origin, self.destination = origin, destination
@@ -574,6 +568,8 @@ class FlightPlanningDomain(
                 origin=origin,
                 destination=destination,
                 aircraft_state=self.aircraft_state,
+                cruise_height_min=cruise_height_min,
+                cruise_height_max=cruise_height_max,
                 constraints=constraints,
                 weather_date=weather_date,
                 solver_cls=fuel_loop_solver_cls,
@@ -600,7 +596,7 @@ class FlightPlanningDomain(
                         "ts": self.start_time,
                         "lat": self.lat1,
                         "lon": self.lon1,
-                        "mass": self.aircraft_state.gw_kg_memory[0]
+                        "mass": self.aircraft_state.gw_kg
                         - 0.8 * (self.aircraft_state.MFC - self.fuel_loaded),
                         "cas": self.aircraft_state.cas_climb_kts,
                         "mach": cas2mach(
@@ -617,20 +613,6 @@ class FlightPlanningDomain(
         )
 
         self.res_img_dir = res_img_dir
-        isa_atmosphere_settings = IsaAtmosphereSettings(d_isa=0)
-
-        weather_state = self.atmosphere_service.retrieve_weather_state(
-            atmosphere_settings=isa_atmosphere_settings,
-            four_dimensions_state=self.aircraft_state,
-        )
-
-        self.aircraft_state.weather_state = weather_state
-
-        # TODO: depends on PHASE
-        self.aircraft_state.tsp = self.propulsion_service.compute_max_rating(
-            propulsion_settings=self.propulsion_settings,
-            aircraft_state=self.aircraft_state,
-        )
 
     # Class functions
     def _get_next_state(self, memory: D.T_state, action: D.T_event) -> D.T_state:
@@ -1166,7 +1148,6 @@ class FlightPlanningDomain(
             start=-alpha, stop=alpha, num=n_branches - 1, endpoint=True, dtype=float
         )
         angles = np.insert(angles, 0, 0)
-        # print(angles)
 
         ########################################################################################################
         ######################### FLIGHT PHASES SETUP ##########################################################
@@ -1800,14 +1781,6 @@ class FlightPlanningDomain(
 
         else:
             self.aircraft_state.mach = min(current_speed, self.aircraft_state.MMO)
-        # if self.aircraft_state.zp_ft < self.alt_crossover:
-        #     self.aircraft_state.mach = cas2mach(cas_mach * kts, h=pos["alt"] * ft)
-
-        # self.aircraft_state.mach = min(
-        #         self.aircraft_state.mach_cruise,
-        #         self.aircraft_state.MMO,
-        #         cas2mach(cas_mach * kts, h=pos["alt"] * ft)
-        #     )
 
         lat_to, lon_to, alt_to = to_[0], to_[1], to_[2]
         dist_ = distance(
@@ -1824,11 +1797,7 @@ class FlightPlanningDomain(
         dist = dist_
         loop = 0
 
-        # print(f"Current a/c state: {self.aircraft_state.gw_kg}")
-
         while dist > epsilon:
-            # angle
-            # print((alt_to - self.aircraft_state.zp_ft) * ft / dist)
             if dist == 0:
                 angle = 0
             else:
@@ -1841,7 +1810,6 @@ class FlightPlanningDomain(
                 self.aircraft_state.phase = PhaseEnum.CRUISE
                 self.aircraft_state.rating_level = RatingEnum.CR
             else:
-                # phase = descent
                 self.aircraft_state.phase = PhaseEnum.DESCENT
                 self.aircraft_state.rating_level = RatingEnum.CR
 
@@ -1990,7 +1958,6 @@ class FlightPlanningDomain(
             )
 
             loop += 1
-        # print(f"End a/c state: {self.aircraft_state.mach}, {current_speed_type}, {current_speed}")
 
         return pd.DataFrame(data)
 
@@ -2038,13 +2005,6 @@ class FlightPlanningDomain(
             action = solver.sample_action(observation)
             outcome = self.step(action)
             observation = outcome.observation
-
-            # print("step ", i_step)
-            # print("policy = ", action[0], action[1])
-            # print("New node id = ", observation.id)
-            # print("Alt = ", observation.alt)
-            # print("Cas/Mach = ", observation.trajectory.iloc[-1]["mach"])
-            # print(observation)
 
             # final state reached?
             if self.is_terminal(observation):
@@ -2135,6 +2095,8 @@ def fuel_optimisation(
     origin: Union[str, tuple],
     destination: Union[str, tuple],
     aircraft_state: AircraftState,
+    cruise_height_min: float,
+    cruise_height_max: float,
     constraints: dict,
     weather_date: WeatherDate,
     solver_cls: Type[Solver],
@@ -2152,17 +2114,17 @@ def fuel_optimisation(
         destination (Union[str, tuple]):
             ICAO code of the arrival airport of th flight plan e.g LFBO for Toulouse-Blagnac airport, or a tuple (lat,lon)
 
-        actype (str):
-            Aircarft type describe in openap datas (https://github.com/junzis/openap/tree/master/openap/data/aircraft)
+        aircraft_state (AircraftState)
+            Initial aircraft state.
+
+        cruise_height_min (float)
+            Minimum cruise height in ft
+
+        cruise_height_max (float)
+            Maximum cruise height in ft
 
         constraints (dict):
             Constraints that will be defined for the flight plan
-
-        wind_interpolator (GenericWindInterpolator):
-            Define the wind interpolator to use wind informations for the flight plan
-
-        fuel_loaded (float):
-            Fuel loaded in the plane for the flight
 
         solver_cls (type[Solver]):
             Solver class used in the fuel loop.
@@ -2189,6 +2151,8 @@ def fuel_optimisation(
             origin=origin,
             destination=destination,
             aircraft_state=aircraft_state,
+            cruise_height_min=cruise_height_min,
+            cruise_height_max=cruise_height_max,
             objective="distance",
             heuristic_name="distance",
             constraints=constraints,

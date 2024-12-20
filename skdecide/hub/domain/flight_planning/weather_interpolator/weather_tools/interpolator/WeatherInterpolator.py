@@ -110,29 +110,6 @@ class WeatherForecastInterpolator(WeatherInterpolator):
                 :, :, :, index_long
             ][:, index_level, :, :]
 
-            # self.lat_dict = {
-            #     var: self.datas[var].item()["lats"] for var in self.datas.keys()
-            # }
-            # self.long_dict = {
-            #     var: self.datas[var].item()["longs"] for var in self.datas.keys()
-            # }
-            # self.alt_dict = {
-            #     var: self.datas[var].item()["levels"] for var in self.datas.keys()
-            # }
-            # self.time_dict = {
-            #     var: self.datas[var].item()["times"]
-            #     if self.time_cut_index is None
-            #     else self.datas[var].item()["times"][
-            #         : min(self.time_cut_index, len(self.datas[var].item()["times"]))
-            #     ]
-            #     for var in self.datas.keys()
-            # }
-            # # Data Extraction
-            # self.u_wind = self.datas["U"].item()["values"]
-            # self.v_wind = self.datas["V"].item()["values"]
-            # self.humidity = self.datas["R"].item()["values"]
-            # self.temperature = self.datas["T"].item()["values"]
-
             if self.time_cut_index is not None:
                 index_cut = min(
                     self.time_cut_index,
@@ -387,7 +364,6 @@ class WeatherForecastInterpolator(WeatherInterpolator):
         Ut = np.resize(res[0, 0, :], (n_lat, n_long, n_time))
         Vt = np.resize(res[0, 1, :], (n_lat, n_long, n_time))
         Nt = np.sqrt(np.square(Ut) + np.square(Vt))
-        # Nt = self.interpol_field(values, field="norw-wind")
 
         i = 0
         CS = ax.contourf(x, y, Nt[:, :, i], 20, alpha=0.5, zorder=2)
@@ -499,9 +475,7 @@ class WeatherForecastInterpolator(WeatherInterpolator):
         Nt_noised = np.sqrt(np.square(Ut_noised) + np.square(Vt_noised))
         Ut = np.resize(res[0, 0, :], (n_lat, n_long, n_time))
         Vt = np.resize(res[0, 1, :], (n_lat, n_long, n_time))
-        Nt = np.sqrt(np.square(Ut - Ut_noised) + np.square(Vt - Vt_noised))
         i = 0
-        # CS = ax.contourf(x, y, Nt[:, :, i], 20, alpha=0.5, zorder=2)
         if plot_wind:
             if x.shape[0] > 100:
                 q = ax.quiver(
@@ -576,8 +550,6 @@ class WeatherForecastInterpolator(WeatherInterpolator):
             extent=[-180.0, 180.0, -90.0, 90.0],
             alpha=0.5,
         )
-        # plt.gca().invert_yaxis()
-        # ax.colorbar()
 
     def plot_matrix_wind_noised(self, index_alt=10, index_time=0, ax=None):
         """
@@ -692,4 +664,3 @@ class WeatherForecastInterpolator(WeatherInterpolator):
 
     def render(self, ax, **kwargs):
         pass
-        # self.plot_matrix_wind(index_alt=0, index_time=0, ax=ax)

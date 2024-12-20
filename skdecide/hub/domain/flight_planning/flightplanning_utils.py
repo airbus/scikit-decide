@@ -163,9 +163,6 @@ def plot_trajectory(lat1, lon1, lat2, lon2, trajectory: pd.DataFrame) -> Figure:
     fig.canvas.resizable = False
     fig.set_dpi(1)
 
-    # lon1, lat1 = trajectory.iloc[0]["lon"], trajectory.iloc[0]["lat"]
-    # lon2, lat2 = trajectory.iloc[-1]["lon"], trajectory.iloc[-1]["lat"]
-
     latmin, latmax = min(lat1, lat2), max(lat1, lat2)
     lonmin, lonmax = min(lon1, lon2), max(lon1, lon2)
 
@@ -355,17 +352,6 @@ def plot_network(domain, dir=None):
 
     ax3.scatter(lon_start, lat_start, transform=ccrs.Geodetic(), color="red", s=3)
     ax3.scatter(lon_end, lat_end, transform=ccrs.Geodetic(), color="red", s=3)
-
-    # # plot the edges
-    # for edge in network.edges:
-    #     # print(f"{edge[0]} -> {edge[1]}")
-    #     ax3.plot(
-    #         [network.nodes[edge[0]]["lon"], network.nodes[edge[1]]["lon"]],
-    #         [network.nodes[edge[0]]["lat"], network.nodes[edge[1]]["lat"]],
-    #         transform=ccrs.Geodetic(),
-    #         color='black',
-    #         lw=0.5
-    #     )
 
     plt.tight_layout()
     plt.show()
