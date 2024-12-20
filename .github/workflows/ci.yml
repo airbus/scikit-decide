@@ -564,7 +564,7 @@ jobs:
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
           if [ "$python_version" = "3.12" ]; then
-            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" graph-jsp-env pytest-cases
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" graph-jsp-env pytest-cases "matplotlib<3.10"
           else
             pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna graph-jsp-env pytest-cases
           fi
@@ -664,7 +664,7 @@ jobs:
           arch=$(uname -m)
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
           if [ "$python_version" = "3.12" ]; then
-            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" graph-jsp-env pytest-cases
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" graph-jsp-env pytest-cases "matplotlib<3.10"
           else
             pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna graph-jsp-env pytest-cases
           fi
@@ -764,7 +764,7 @@ jobs:
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
           if [ "$python_version" = "3.12" ]; then
-            pip install ${wheelfile}[all] pytest "pygame>=2.5" "cffi>=1.17" docopt commonmark optuna graph-jsp-env pytest-cases
+            pip install ${wheelfile}[all] pytest "pygame>=2.5" "cffi>=1.17" docopt commonmark optuna graph-jsp-env pytest-cases "matplotlib<3.10"
           else
             pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna graph-jsp-env pytest-cases
           fi
