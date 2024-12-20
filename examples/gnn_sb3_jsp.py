@@ -5,17 +5,17 @@ from graph_jsp_env.disjunctive_graph_jsp_env import DisjunctiveGraphJspEnv
 from gymnasium.spaces import Box, Graph, GraphInstance
 
 from skdecide.core import Space, TransitionOutcome, Value
-from skdecide.domains import Domain
 from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.gnn import GraphPPO
-from skdecide.hub.space.gym import GymSpace, ListSpace
+from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
+from skdecide.hub.space.gym import DiscreteSpace, GymSpace, ListSpace
 from skdecide.utils import rollout
 
 # JSP graph env
 
 
-class D(Domain):
+class D(GymDomain):
     T_state = GraphInstance  # Type of states
     T_observation = T_state  # Type of observations
     T_event = int  # Type of events
@@ -23,7 +23,7 @@ class D(Domain):
     T_info = None  # Type of additional information in environment outcome
 
 
-class GraphJspDomain(GymDomain, D):
+class GraphJspDomain(D):
     _gym_env: DisjunctiveGraphJspEnv
 
     def __init__(self, gym_env):
@@ -45,13 +45,12 @@ class GraphJspDomain(GymDomain, D):
     ) -> D.T_agent[Space[D.T_event]]:
         return ListSpace(np.nonzero(self._gym_env.valid_action_mask())[0])
 
-    def _is_applicable_action_from(
-        self, action: D.T_agent[D.T_event], memory: D.T_memory[D.T_state]
-    ) -> bool:
-        return self._gym_env.valid_action_mask()[action]
-
     def _state_reset(self) -> D.T_state:
         return self._np_state2graph_state(super()._state_reset())
+
+    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
+        # overriden to get an enumerable space
+        return DiscreteSpace(n=self._gym_env.action_space.n)
 
     def _get_observation_space_(self) -> Space[D.T_observation]:
         if self._gym_env.normalize_observation_space:
@@ -135,3 +134,22 @@ with StableBaseline(
 
     solver.solve()
     rollout(domain=domain_factory(), solver=solver, max_steps=100, num_episodes=1)
+
+# solver with sb3-MaskableGraphPPO
+domain_factory = lambda: GraphJspDomain(gym_env=jsp_env)
+with StableBaseline(
+    domain_factory=domain_factory,
+    algo_class=MaskableGraphPPO,
+    baselines_policy="GraphInputPolicy",
+    learn_config={"total_timesteps": 100},
+    use_action_masking=True,
+) as solver:
+
+    solver.solve()
+    rollout(
+        domain=domain_factory(),
+        solver=solver,
+        max_steps=100,
+        num_episodes=1,
+        use_applicable_actions=True,
+    )
