@@ -688,7 +688,8 @@ if __name__ == "__main__":
                             else:
                                 not_implemented.add(member_name)
                         elif member["type"] == "variable":
-                            types_dict[member_name] = member["ref"]
+                            if "ref" in member:
+                                types_dict[member_name] = member["ref"]
                     tmp_methods[level_name] = list(not_implemented)
                     tmp_types[level_name] = types_dict
             elif module["ref"] == f"skdecide.{element}s":
