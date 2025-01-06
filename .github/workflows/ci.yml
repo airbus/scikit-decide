@@ -189,7 +189,7 @@ jobs:
         run: |
           mkdir -p $BOOST_DIR
           curl --silent --location --output - \
-            https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION/source/boost_${BOOST_VERSION//./_}.tar.bz2 |\
+            https://archives.boost.io/release/$BOOST_VERSION/source/boost_${BOOST_VERSION//./_}.tar.bz2 |\
             tar jxf - -C $BOOST_DIR --strip-components=1 boost_${BOOST_VERSION//./_}/boost
         shell: bash
 
@@ -281,7 +281,7 @@ jobs:
         run: |
           mkdir -p $BOOST_DIR
           curl --silent --location --output - \
-            https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION/source/boost_${BOOST_VERSION//./_}.tar.bz2 |\
+            https://archives.boost.io/release/$BOOST_VERSION/source/boost_${BOOST_VERSION//./_}.tar.bz2 |\
             tar jxf - -C $BOOST_DIR --strip-components=1 boost_${BOOST_VERSION//./_}/boost
         shell: bash
 
@@ -429,7 +429,7 @@ jobs:
         run: |
           mkdir -p $BOOST_DIR
           curl --silent --location --output - \
-            https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION/source/boost_${BOOST_VERSION//./_}.tar.bz2 |\
+            https://archives.boost.io/release/$BOOST_VERSION/source/boost_${BOOST_VERSION//./_}.tar.bz2 |\
             tar jxf - -C $BOOST_DIR --strip-components=1 boost_${BOOST_VERSION//./_}/boost
         shell: bash
 
