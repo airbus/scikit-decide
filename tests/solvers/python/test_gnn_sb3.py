@@ -20,6 +20,7 @@ from skdecide.hub.solver.stable_baselines.gnn.a2c import GraphA2C
 from skdecide.hub.solver.stable_baselines.gnn.common.torch_layers import (
     GraphFeaturesExtractor,
 )
+from skdecide.hub.solver.stable_baselines.gnn.dqn.dqn import GraphDQN
 from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
 from skdecide.hub.space.gym import DictSpace, DiscreteSpace, GymSpace, ListSpace
 from skdecide.utils import rollout
@@ -375,6 +376,43 @@ def test_ppo(domain_factory):
         )
 
 
+def test_dqn(domain_factory):
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=GraphDQN,
+        baselines_policy="GraphInputPolicy",
+        learn_config={"total_timesteps": 100},
+    ) as solver:
+
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=100,
+            num_episodes=1,
+            render=False,
+        )
+
+
+def test_a2c(jsp_domain_factory):
+    domain_factory = jsp_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=GraphA2C,
+        baselines_policy="GraphInputPolicy",
+        learn_config={"total_timesteps": 100},
+    ) as solver:
+
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=100,
+            num_episodes=1,
+            render=False,
+        )
+
+
 def test_ppo_user_gnn(domain_factory):
     domain = domain_factory()
     node_features_dim = int(
@@ -527,7 +565,6 @@ def test_dict_a2c(jsp_dict_domain_factory):
         baselines_policy="MultiInputPolicy",
         learn_config={"total_timesteps": 100},
     ) as solver:
-
         solver.solve()
         rollout(
             domain=domain_factory(),
@@ -538,12 +575,12 @@ def test_dict_a2c(jsp_dict_domain_factory):
         )
 
 
-def test_a2c(jsp_domain_factory):
-    domain_factory = jsp_domain_factory
+def test_dict_dqn(jsp_dict_domain_factory):
+    domain_factory = jsp_dict_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
-        algo_class=GraphA2C,
-        baselines_policy="GraphInputPolicy",
+        algo_class=GraphDQN,
+        baselines_policy="MultiInputPolicy",
         learn_config={"total_timesteps": 100},
     ) as solver:
 

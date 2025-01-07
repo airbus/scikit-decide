@@ -19,37 +19,21 @@ from .torch_layers import CombinedFeaturesExtractor, GraphFeaturesExtractor
 from .utils import ObsType, TorchObsType, is_vectorized_observation, obs_as_tensor
 
 
-class _BaseGNNActorCriticPolicy(BasePolicy):
+class BaseGNNPolicy(BasePolicy):
     def extract_features(
-        self,
-        obs: thg.data.Data,
-        features_extractor: Optional[BaseFeaturesExtractor] = None,
-    ) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
+        self, obs: thg.data.Data, features_extractor: BaseFeaturesExtractor
+    ) -> th.Tensor:
         """
         Preprocess the observation if needed and extract features.
 
         :param obs: Observation
-        :param features_extractor: The features extractor to use. If None, then ``self.features_extractor`` is used.
-        :return: The extracted features. If features extractor is not shared, returns a tuple with the
-            features for the actor and the features for the critic.
+        :param features_extractor: The features extractor to use.
+        :return: The extracted features
         """
         preprocessed_obs = preprocess_obs(
             obs, self.observation_space, normalize_images=self.normalize_images
         )
-        if self.share_features_extractor:
-            if features_extractor is None:
-                features_extractor = self.features_extractor
-            return features_extractor(preprocessed_obs)
-        else:
-            if features_extractor is not None:
-                warnings.warn(
-                    "Provided features_extractor will be ignored because the features extractor is not shared.",
-                    UserWarning,
-                )
-
-            pi_features = self.pi_features_extractor(preprocessed_obs)
-            vf_features = self.vf_features_extractor(preprocessed_obs)
-            return pi_features, vf_features
+        return features_extractor(preprocessed_obs)
 
     def obs_to_tensor(self, observation: ObsType) -> tuple[TorchObsType, bool]:
         vectorized_env = False
@@ -105,6 +89,39 @@ class _BaseGNNActorCriticPolicy(BasePolicy):
             )
         return vectorized_env
 
+
+class BaseGNNActorCriticPolicy(BaseGNNPolicy):
+    def extract_features(
+        self,
+        obs: thg.data.Data,
+        features_extractor: Optional[BaseFeaturesExtractor] = None,
+    ) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
+        """
+        Preprocess the observation if needed and extract features.
+
+        :param obs: Observation
+        :param features_extractor: The features extractor to use. If None, then ``self.features_extractor`` is used.
+        :return: The extracted features. If features extractor is not shared, returns a tuple with the
+            features for the actor and the features for the critic.
+        """
+        preprocessed_obs = preprocess_obs(
+            obs, self.observation_space, normalize_images=self.normalize_images
+        )
+        if self.share_features_extractor:
+            if features_extractor is None:
+                features_extractor = self.features_extractor
+            return features_extractor(preprocessed_obs)
+        else:
+            if features_extractor is not None:
+                warnings.warn(
+                    "Provided features_extractor will be ignored because the features extractor is not shared.",
+                    UserWarning,
+                )
+
+            pi_features = self.pi_features_extractor(preprocessed_obs)
+            vf_features = self.vf_features_extractor(preprocessed_obs)
+            return pi_features, vf_features
+
     def get_distribution(self, obs: thg.data.Data) -> Distribution:
         preprocessed_obs = preprocess_obs(
             obs, self.observation_space, normalize_images=self.normalize_images
@@ -122,7 +139,7 @@ class _BaseGNNActorCriticPolicy(BasePolicy):
         return self.value_net(latent_vf)
 
 
-class GNNActorCriticPolicy(_BaseGNNActorCriticPolicy, ActorCriticPolicy):
+class GNNActorCriticPolicy(BaseGNNActorCriticPolicy, ActorCriticPolicy):
     def __init__(
         self,
         observation_space: gym.spaces.Graph,
@@ -208,9 +225,7 @@ class MultiInputGNNActorCriticPolicy(GNNActorCriticPolicy):
         )
 
 
-class MaskableGNNActorCriticPolicy(
-    _BaseGNNActorCriticPolicy, MaskableActorCriticPolicy
-):
+class MaskableGNNActorCriticPolicy(BaseGNNActorCriticPolicy, MaskableActorCriticPolicy):
     def __init__(
         self,
         observation_space: gym.spaces.Space,
