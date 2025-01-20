@@ -77,7 +77,7 @@ class GraphFeaturesExtractor(nn.Module):
                 reduction_layer_kwargs = {}
             self.reduction_layer = reduction_layer_class(**reduction_layer_kwargs)
 
-    def forward(self, observations) -> th.Tensor:
+    def forward(self, observations: thg.data.Data) -> th.Tensor:
         x, edge_index, edge_attr, batch = (
             observations.x,
             observations.edge_index,
