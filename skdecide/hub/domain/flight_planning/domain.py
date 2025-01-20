@@ -1834,8 +1834,9 @@ class FlightPlanningDomain(
                     [pos["ts"], (pos["alt"] + alt_to) / 2, pos["lat"], pos["lon"]],
                     field="temperature",
                 )
-
                 dISA = temp - temperature((pos["alt"] + alt_to) / 2, disa=0)
+            else:
+                dISA = 0.0
 
             isa_atmosphere_settings = IsaAtmosphereSettings(d_isa=dISA)
 
