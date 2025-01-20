@@ -113,15 +113,12 @@ def test_flight_planning():
         gamma_air_deg=0,
     )
 
-    weather_date = WeatherDate(day=1, month=12, year=2024)
-
     domain_factory = lambda: FlightPlanningDomain(
         origin="LFBO",
         destination="LFPG",
         aircraft_state=acState_poll_schumann,
         objective="fuel",
         heuristic_name="lazy_fuel",
-        weather_date=weather_date,
         cruise_height_min=32_000,
         cruise_height_max=38_000,
         graph_width="medium",
