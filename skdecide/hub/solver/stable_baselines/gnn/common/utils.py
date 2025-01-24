@@ -6,7 +6,7 @@ import stable_baselines3.common.utils
 import torch as th
 import torch_geometric as thg
 
-from skdecide.hub.solver.utils.gnn.torch_utils import graph_obs_to_thg_data
+from skdecide.hub.solver.utils.gnn.torch_utils import graph_instance_to_thg_data
 
 SubObsType = Union[np.ndarray, gym.spaces.GraphInstance, list[gym.spaces.GraphInstance]]
 ObsType = Union[SubObsType, dict[str, SubObsType]]
@@ -45,14 +45,14 @@ def obs_as_tensor(
 
     """
     if isinstance(obs, gym.spaces.GraphInstance):
-        return graph_obs_to_thg_data(obs, device=device)
+        return graph_instance_to_thg_data(obs, device=device)
     elif isinstance(obs, list) and isinstance(obs[0], gym.spaces.GraphInstance):
         if len(obs) > 1:
             raise NotImplementedError(
                 "Not implemented for real vectorized environment "
                 "(ie. with more than 1 wrapped environment)"
             )
-        return graph_obs_to_thg_data(obs[0], device=device)
+        return graph_instance_to_thg_data(obs[0], device=device)
     elif isinstance(obs, np.ndarray):
         return th.as_tensor(obs, device=device)
     elif isinstance(obs, dict):
