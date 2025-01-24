@@ -358,7 +358,8 @@ def test_observation_space(domain_factory):
     assert domain.reset() in domain.get_observation_space()
 
 
-def test_ppo(domain_factory):
+def test_ppo(jsp_domain_factory):
+    domain_factory = jsp_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=GraphPPO,

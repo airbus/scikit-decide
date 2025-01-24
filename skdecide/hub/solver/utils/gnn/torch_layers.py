@@ -112,3 +112,50 @@ class _DefaultReductionLayer(nn.Module):
         h = global_max_pool(x, batch)
         h = self.linear_layer(h).relu()
         return h
+
+
+class Graph2GraphLayer(nn.Module):
+    """Action prediction net from graph observations to graph actions."""
+
+    def __init__(
+        self,
+        observation_space: gym.spaces.Graph,
+        action_space: gym.spaces.Graph,
+        gnn_class: Optional[type[nn.Module]] = None,
+        gnn_kwargs: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__()
+
+        if gnn_class is None:
+            observation_node_features_dim = int(
+                np.prod(observation_space.node_space.shape)
+            )
+            action_node_features_dim = int(np.prod(action_space.node_space.shape))
+            self.gnn = thg.nn.models.GCN(
+                in_channels=observation_node_features_dim,
+                hidden_channels=128,
+                num_layers=4,
+                dropout=0.2,
+                out_channels=action_node_features_dim,
+            )
+        else:
+            if gnn_kwargs is None:
+                gnn_kwargs = {}
+            self.gnn = gnn_class(**gnn_kwargs)
+
+    def forward(self, observations: thg.data.Data) -> thg.data.Data:
+        x, edge_index, edge_attr, batch = (
+            observations.x,
+            observations.edge_index,
+            observations.edge_attr,
+            observations.batch,
+        )
+        # construct edge weights, for GNNs needing it, as the first edge feature
+        edge_weight = edge_attr[:, 0]
+        h = self.gnn(
+            x=x, edge_index=edge_index, edge_weight=edge_weight, edge_attr=edge_attr
+        )
+
+        return thg.data.Data(
+            x=h, edge_index=edge_index, edge_attr=edge_attr, batch=batch
+        )

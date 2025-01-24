@@ -1,25 +1,25 @@
-from typing import Optional
+from typing import Optional, Union
 
 import gymnasium as gym
 import torch as th
 import torch_geometric as thg
 
 
-def graph_obs_to_thg_data(
-    obs: gym.spaces.GraphInstance,
+def graph_instance_to_thg_data(
+    graph: gym.spaces.GraphInstance,
     device: Optional[th.device] = None,
     pin_memory: bool = False,
 ) -> thg.data.Data:
     # Node features
-    flatten_node_features = obs.nodes.reshape((len(obs.nodes), -1))
+    flatten_node_features = graph.nodes.reshape((len(graph.nodes), -1))
     x = th.tensor(flatten_node_features).float()
     # Edge features
-    if obs.edges is None:
+    if graph.edges is None:
         edge_attr = None
     else:
-        flatten_edge_features = obs.edges.reshape((len(obs.edges), -1))
+        flatten_edge_features = graph.edges.reshape((len(graph.edges), -1))
         edge_attr = th.tensor(flatten_edge_features).float()
-    edge_index = th.tensor(obs.edge_links, dtype=th.long).t().contiguous().view(2, -1)
+    edge_index = th.tensor(graph.edge_links, dtype=th.long).t().contiguous().view(2, -1)
     # thg.Data
     data = thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
     # Pin the tensor's memory (for faster transfer to GPU later).
@@ -27,3 +27,22 @@ def graph_obs_to_thg_data(
         data.pin_memory()
 
     return data if device is None else data.to(device)
+
+
+def thg_data_to_graph_instance(
+    data: thg.data.Data, space: gym.spaces.Graph, vectorized=True
+) -> Union[gym.spaces.GraphInstance, list[gym.spaces.GraphInstance]]:
+    nodes = data.x.cpu().numpy().reshape((-1, *space.node_space.shape))
+    edges = data.edge_attr.cpu().numpy().reshape((-1, *space.edge_space.shape))
+    edge_links = data.edge_index.cpu().numpy().transpose()
+    batch = data.batch
+    if batch is None:
+        graph = gym.spaces.GraphInstance(
+            nodes=nodes, edges=edges, edge_links=edge_links
+        )
+        if vectorized:
+            return [graph]
+        else:
+            return graph
+    else:
+        raise NotImplementedError()
