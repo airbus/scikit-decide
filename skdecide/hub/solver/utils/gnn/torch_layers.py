@@ -7,6 +7,8 @@ import torch_geometric as thg
 from torch import nn
 from torch_geometric.nn import global_max_pool
 
+from skdecide.hub.solver.utils.gnn.torch_utils import extract_module_parameters_values
+
 
 class GraphFeaturesExtractor(nn.Module):
     """Graph feature extractor for Graph observation spaces.
@@ -42,6 +44,7 @@ class GraphFeaturesExtractor(nn.Module):
         gnn_kwargs: Optional[dict[str, Any]] = None,
         reduction_layer_class: Optional[type[nn.Module]] = None,
         reduction_layer_kwargs: Optional[dict[str, Any]] = None,
+        debug: bool = False,
     ):
         super().__init__()
         self.features_dim = features_dim
@@ -76,6 +79,10 @@ class GraphFeaturesExtractor(nn.Module):
             if reduction_layer_kwargs is None:
                 reduction_layer_kwargs = {}
             self.reduction_layer = reduction_layer_class(**reduction_layer_kwargs)
+
+        if debug:
+            # store initial weights
+            self.initial_parameters = extract_module_parameters_values(self)
 
     def forward(self, observations: thg.data.Data) -> th.Tensor:
         x, edge_index, edge_attr, batch = (
@@ -112,3 +119,69 @@ class _DefaultReductionLayer(nn.Module):
         h = global_max_pool(x, batch)
         h = self.linear_layer(h).relu()
         return h
+
+
+class Graph2NodeLayer(nn.Module):
+    """Action prediction net from graph observations to node actions.
+
+    Wraps a gnn mapping the observation graph to a graph with 1-dimensional node embedding,
+    representing the action logits.
+
+    By default, we use a 4-layers GCN as gnn.
+
+    Args:
+        observation_space:
+        gnn_class: GNN network class (for instance chosen from `torch_geometric.nn.models` used to embed the graph observations)
+            If specified, but not gnn_kwargs, we assume that it accepts the same args as `torch_geometric.nn.models.basic_gnn.BasicGNN`,
+            and set them to 4 layers, 128 hidden channels, 1 out channel, and the in channels corresponding to observation_space.
+        gnn_kwargs: used by `gnn_class.__init__()`. Without effect if `gnn_class` is None.
+            Should use as input channels the observation space dimension and 1 as output channels.
+
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.spaces.Graph,
+        gnn_class: Optional[type[nn.Module]] = None,
+        gnn_kwargs: Optional[dict[str, Any]] = None,
+        debug: bool = False,
+    ):
+        super().__init__()
+
+        if gnn_kwargs is None or gnn_class is None:
+            observation_node_features_dim = int(
+                np.prod(observation_space.node_space.shape)
+            )
+            gnn_kwargs = dict(
+                in_channels=observation_node_features_dim,
+                hidden_channels=128,
+                num_layers=4,
+                dropout=0.2,
+                out_channels=1,
+            )
+
+        if gnn_class is None:
+            gnn_class = thg.nn.models.GCN
+
+        self.gnn = gnn_class(**gnn_kwargs)
+
+        if debug:
+            # store initial weights
+            self.initial_parameters = extract_module_parameters_values(self)
+
+    def forward(self, observations: thg.data.Data) -> thg.data.Data:
+        x, edge_index, edge_attr, batch = (
+            observations.x,
+            observations.edge_index,
+            observations.edge_attr,
+            observations.batch,
+        )
+        # construct edge weights, for GNNs needing it, as the first edge feature
+        edge_weight = edge_attr[:, 0]
+        h = self.gnn(
+            x=x, edge_index=edge_index, edge_weight=edge_weight, edge_attr=edge_attr
+        )
+
+        return thg.data.Data(
+            x=h, edge_index=edge_index, edge_attr=edge_attr, batch=batch
+        )

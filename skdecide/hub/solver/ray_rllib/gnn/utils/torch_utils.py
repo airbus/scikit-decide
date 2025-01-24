@@ -15,7 +15,7 @@ from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
     is_graph_dict_multiinput,
     is_masked_obs,
 )
-from skdecide.hub.solver.utils.gnn.torch_utils import graph_obs_to_thg_data
+from skdecide.hub.solver.utils.gnn.torch_utils import graph_instance_to_thg_data
 
 
 def convert_to_torch_tensor(
@@ -43,11 +43,11 @@ def convert_to_torch_tensor(
         nested elements that are None because torch has no representation for that.
     """
     if isinstance(x, gym.spaces.GraphInstance):
-        return graph_obs_to_thg_data(x, device=device, pin_memory=pin_memory)
+        return graph_instance_to_thg_data(x, device=device, pin_memory=pin_memory)
     elif isinstance(x, list) and isinstance(x[0], gym.spaces.GraphInstance):
         return thg.data.Batch.from_data_list(
             [
-                graph_obs_to_thg_data(graph, device=device, pin_memory=pin_memory)
+                graph_instance_to_thg_data(graph, device=device, pin_memory=pin_memory)
                 for graph in x
             ]
         )

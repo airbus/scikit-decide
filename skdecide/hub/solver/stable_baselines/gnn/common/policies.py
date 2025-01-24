@@ -1,18 +1,26 @@
 import copy
+import inspect
 import warnings
-from typing import Any, Dict, Optional, Tuple, Union
+from functools import partial
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gymnasium as gym
 import numpy as np
 import torch as th
 import torch_geometric as thg
+from gymnasium import spaces
 from sb3_contrib.common.maskable.distributions import MaskableDistribution
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
-from stable_baselines3.common.distributions import Distribution
+from stable_baselines3.common.distributions import CategoricalDistribution, Distribution
 from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from stable_baselines3.common.preprocessing import is_image_space, maybe_transpose
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.type_aliases import Schedule
+from torch import nn
+from torch.nn.functional import pad
+
+from skdecide.hub.solver.utils.gnn.torch_layers import Graph2NodeLayer
+from skdecide.hub.solver.utils.gnn.torch_utils import extract_module_parameters_values
 
 from .preprocessing import preprocess_obs
 from .torch_layers import CombinedFeaturesExtractor, GraphFeaturesExtractor
@@ -159,7 +167,18 @@ class GNNActorCriticPolicy(BaseGNNActorCriticPolicy, ActorCriticPolicy):
         normalize_images: bool = True,
         optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[dict[str, Any]] = None,
+        debug: bool = False,
     ):
+        self.debug = debug
+        if debug:
+            if (
+                "debug"
+                in inspect.signature(features_extractor_class.__init__).parameters
+            ):
+                if features_extractor_kwargs is None:
+                    features_extractor_kwargs = {}
+                features_extractor_kwargs["debug"] = True
+
         super().__init__(
             observation_space=observation_space,
             action_space=action_space,
@@ -179,6 +198,10 @@ class GNNActorCriticPolicy(BaseGNNActorCriticPolicy, ActorCriticPolicy):
             optimizer_class=optimizer_class,
             optimizer_kwargs=optimizer_kwargs,
         )
+
+        if debug:
+            # store initial weights
+            self.initial_parameters = extract_module_parameters_values(self)
 
 
 class MultiInputGNNActorCriticPolicy(GNNActorCriticPolicy):
@@ -302,3 +325,196 @@ class MaskableMultiInputGNNActorCriticPolicy(MaskableGNNActorCriticPolicy):
             optimizer_class=optimizer_class,
             optimizer_kwargs=optimizer_kwargs,
         )
+
+
+class GNN2NodeActorCriticPolicy(GNNActorCriticPolicy):
+    """Policy mapping graph to graph, without feature reduction.
+
+    Intended to be used with environment having both observations and actions being graphs.
+
+    """
+
+    observation_space: spaces.Graph
+    action_space: spaces.Graph
+
+    def __init__(
+        self,
+        observation_space: spaces.Graph,
+        action_space: spaces.Graph,
+        lr_schedule: Schedule,
+        net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
+        activation_fn: Type[nn.Module] = nn.Tanh,
+        ortho_init: bool = True,
+        log_std_init: float = 0.0,
+        features_extractor_class: Type[BaseFeaturesExtractor] = GraphFeaturesExtractor,
+        features_extractor_kwargs: Optional[Dict[str, Any]] = None,
+        action_gnn_class: Optional[type[nn.Module]] = None,
+        action_gnn_kwargs: Optional[dict[str, Any]] = None,
+        normalize_images: bool = True,
+        optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[Dict[str, Any]] = None,
+        debug: bool = False,
+        **kwargs,
+    ):
+        # Check action space
+        if not isinstance(action_space, spaces.Discrete):
+            raise ValueError(
+                "action_space must be a discrete space, an action being represented by the node index."
+            )
+
+        # Default parameters
+        if net_arch is None:
+            net_arch = dict(pi=[], vf=[64, 64])
+        elif isinstance(net_arch, dict):
+            net_arch["pi"] = []
+        elif isinstance(net_arch, list):
+            net_arch = dict(pi=[], vf=net_arch)
+        else:
+            raise ValueError("net_arch should be None, dict or list")
+
+        if optimizer_kwargs is None:
+            optimizer_kwargs = {}
+            # Small values to avoid NaN in Adam optimizer
+            if optimizer_class == th.optim.Adam:
+                optimizer_kwargs["eps"] = 1e-5
+
+        self.debug = debug
+        if debug:
+            if (
+                "debug"
+                in inspect.signature(features_extractor_class.__init__).parameters
+            ):
+                if features_extractor_kwargs is None:
+                    features_extractor_kwargs = {}
+                features_extractor_kwargs["debug"] = True
+
+        BasePolicy.__init__(
+            self,
+            observation_space,
+            action_space,
+            features_extractor_class,
+            features_extractor_kwargs,
+            optimizer_class=optimizer_class,
+            optimizer_kwargs=optimizer_kwargs,
+            squash_output=False,
+            normalize_images=normalize_images,
+        )
+
+        self.net_arch = net_arch
+        self.activation_fn = activation_fn
+        self.ortho_init = ortho_init
+
+        self.share_features_extractor = True
+        self.features_extractor = self.make_features_extractor()
+        self.features_dim = self.features_extractor.features_dim
+        self.pi_features_extractor = self.features_extractor
+        self.vf_features_extractor = self.features_extractor
+        self.log_std_init = log_std_init
+        self.use_sde = False
+        self.dist_kwargs = None
+
+        if action_gnn_kwargs is None:
+            self.action_gnn_kwargs = {}
+        else:
+            self.action_gnn_kwargs = action_gnn_kwargs
+        self.action_gnn_class = action_gnn_class
+
+        self._build(lr_schedule)
+
+    def get_distribution(self, obs: thg.data.Data) -> Distribution:
+        """
+        Get the current policy distribution given the observations.
+
+        :param obs:
+        :return: the action distribution.
+        """
+        action_logits_graph: thg.data.Data = self.action_net(obs)
+        x, batch = action_logits_graph.x, action_logits_graph.batch
+        if batch is None:
+            action_dim = x.shape[0]
+            action_logits = x.flatten()
+        else:
+            x_split = thg.utils.unbatch(x.flatten(), batch)
+            action_dim = max(len(xx) for xx in x_split)
+            # we pad with -inf the logits (to avoid sampling node index higher than actual node number)
+            # for stability issues (in particular in backprop), we approximate -inf with min float
+            action_logits = th.stack(
+                tuple(
+                    pad(xx, (0, action_dim - len(xx)), value=th.finfo().min)
+                    for xx in x_split
+                )
+            )
+
+        return CategoricalDistribution(action_dim=action_dim).proba_distribution(
+            action_logits=action_logits
+        )
+
+    def forward(
+        self, obs: thg.data.Data, deterministic: bool = False
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+        # values
+        features = self.extract_features(obs)
+        latent_vf = self.mlp_extractor.forward_critic(features)
+        values = self.value_net(latent_vf)
+
+        # action distribution => actions, logprob
+        distribution = self.get_distribution(obs)
+        actions = distribution.get_actions(deterministic=deterministic)
+        log_prob = distribution.log_prob(actions)
+        actions = actions.reshape((-1, *self.action_space.shape))  # type: ignore[misc]
+
+        return actions, values, log_prob
+
+    def evaluate_actions(
+        self, obs: thg.data.Data, actions: th.Tensor
+    ) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
+        # values
+        features = self.extract_features(obs)
+        latent_vf = self.mlp_extractor.forward_critic(features)
+        values = self.value_net(latent_vf)
+
+        # action distribution => actions, entropy
+        distribution = self.get_distribution(obs)
+        log_prob = distribution.log_prob(actions)
+        entropy = distribution.entropy()
+
+        return values, log_prob, entropy
+
+    def _build(self, lr_schedule: Schedule) -> None:
+        self._build_mlp_extractor()
+
+        # action net
+        self.action_net = Graph2NodeLayer(
+            observation_space=self.observation_space,
+            gnn_class=self.action_gnn_class,
+            gnn_kwargs=self.action_gnn_kwargs,
+            debug=self.debug,
+        )
+
+        # value net
+        self.value_net = nn.Linear(self.mlp_extractor.latent_dim_vf, 1)
+        # Init weights: use orthogonal initialization
+        # with small initial weight for the output
+        if self.ortho_init:
+            # TODO: check for features_extractor
+            # Values from stable-baselines.
+            # features_extractor/mlp values are
+            # originally from openai/baselines (default gains/init_scales).
+            module_gains = {
+                self.features_extractor: np.sqrt(2),
+                self.mlp_extractor: np.sqrt(2),
+                self.action_net: np.sqrt(2),
+                self.value_net: 1,
+            }
+            if not self.share_features_extractor:
+                # Note(antonin): this is to keep SB3 results
+                # consistent, see GH#1148
+                del module_gains[self.features_extractor]
+                module_gains[self.pi_features_extractor] = np.sqrt(2)
+                module_gains[self.vf_features_extractor] = np.sqrt(2)
+
+            for module, gain in module_gains.items():
+                module.apply(partial(self.init_weights, gain=gain))
+
+        # Setup optimizer with initial learning rate
+        self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)  # type: ignore[call-arg]

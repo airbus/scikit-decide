@@ -48,9 +48,10 @@ class GraphFeaturesExtractor(BaseFeaturesExtractor):
         gnn_kwargs: Optional[dict[str, Any]] = None,
         reduction_layer_class: Optional[type[nn.Module]] = None,
         reduction_layer_kwargs: Optional[dict[str, Any]] = None,
+        debug: bool = False,
     ):
         super().__init__(observation_space=observation_space, features_dim=features_dim)
-        self._extractor = torch_layers.GraphFeaturesExtractor(
+        self.extractor = torch_layers.GraphFeaturesExtractor(
             observation_space=observation_space,
             features_dim=features_dim,
             gnn_out_dim=gnn_out_dim,
@@ -58,10 +59,11 @@ class GraphFeaturesExtractor(BaseFeaturesExtractor):
             gnn_kwargs=gnn_kwargs,
             reduction_layer_class=reduction_layer_class,
             reduction_layer_kwargs=reduction_layer_kwargs,
+            debug=debug,
         )
 
     def forward(self, observations: thg.data.Data) -> th.Tensor:
-        return self._extractor.forward(observations=observations)
+        return self.extractor.forward(observations=observations)
 
 
 class CombinedFeaturesExtractor(BaseFeaturesExtractor):
