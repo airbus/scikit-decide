@@ -709,7 +709,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install needed apt dependencies
-        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+        uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libeccodes-dev
 
