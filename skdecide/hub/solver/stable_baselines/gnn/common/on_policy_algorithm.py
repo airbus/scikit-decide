@@ -1,7 +1,9 @@
 from typing import Optional, Union
 
+import gymnasium as gym
 import numpy as np
 import torch as th
+import torch_geometric as thg
 from gymnasium import spaces
 from sb3_contrib.common.maskable.buffers import (
     MaskableDictRolloutBuffer,
@@ -15,13 +17,19 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.type_aliases import GymEnv
 from stable_baselines3.common.vec_env import VecEnv
 
-from .buffers import DictGraphRolloutBuffer, GraphRolloutBuffer
+from skdecide.hub.solver.utils.gnn.torch_utils import thg_data_to_graph_instance
+
+from .buffers import (
+    DictGraphRolloutBuffer,
+    Graph2GraphRolloutBuffer,
+    GraphRolloutBuffer,
+)
 from .utils import obs_as_tensor
 from .vec_env.dummy_vec_env import wrap_graph_env
 
 
-class GraphOnPolicyAlgorithm(OnPolicyAlgorithm):
-    """Base class for On-Policy algorithms (ex: A2C/PPO) with graph observations."""
+class BaseGraphOnPolicyAlgorithm(OnPolicyAlgorithm):
+    """Base class for On-Policy algorithms (ex: A2C/PPO) graph observations without __init__()."""
 
     support_action_masking = False
     """Whether this algorithm supports action masking.
@@ -29,36 +37,6 @@ class GraphOnPolicyAlgorithm(OnPolicyAlgorithm):
     Useful to share the code between algorithms.
 
     """
-
-    def __init__(
-        self,
-        policy: Union[str, type[ActorCriticPolicy]],
-        env: GymEnv,
-        rollout_buffer_class: Optional[type[RolloutBuffer]] = None,
-        **kwargs,
-    ):
-
-        # Use proper default rollout buffer class
-        if rollout_buffer_class is None:
-            if isinstance(env.observation_space, spaces.Graph):
-                rollout_buffer_class = GraphRolloutBuffer
-            elif isinstance(env.observation_space, spaces.Dict):
-                rollout_buffer_class = DictGraphRolloutBuffer
-
-        # Use proper VecEnv wrapper for env with Graph spaces
-        env = wrap_graph_env(env)
-        if env.num_envs > 1:
-            raise NotImplementedError(
-                "GraphOnPolicyAlgorithm not implemented for real vectorized environment "
-                "(ie. with more than 1 wrapped environment)"
-            )
-
-        super().__init__(
-            policy=policy,
-            env=env,
-            rollout_buffer_class=rollout_buffer_class,
-            **kwargs,
-        )
 
     def collect_rollouts(
         self,
@@ -134,7 +112,8 @@ class GraphOnPolicyAlgorithm(OnPolicyAlgorithm):
                     )
                 else:
                     actions, values, log_probs = self.policy(obs_tensor)
-            actions = actions.cpu().numpy()
+
+            actions = self.actions_from_torch(actions)
 
             # Rescale and perform action
             clipped_actions = actions
@@ -218,3 +197,75 @@ class GraphOnPolicyAlgorithm(OnPolicyAlgorithm):
         callback.on_rollout_end()
 
         return True
+
+    def actions_from_torch(self, actions: th.Tensor) -> np.ndarray:
+        return actions.cpu().numpy()
+
+
+class GraphOnPolicyAlgorithm(BaseGraphOnPolicyAlgorithm):
+    """Base class for On-Policy algorithms (ex: A2C/PPO) with graph observations."""
+
+    def __init__(
+        self,
+        policy: Union[str, type[ActorCriticPolicy]],
+        env: GymEnv,
+        rollout_buffer_class: Optional[type[RolloutBuffer]] = None,
+        **kwargs,
+    ):
+        # Use proper default rollout buffer class
+        if rollout_buffer_class is None:
+            if isinstance(env.observation_space, spaces.Graph):
+                rollout_buffer_class = GraphRolloutBuffer
+            elif isinstance(env.observation_space, spaces.Dict):
+                rollout_buffer_class = DictGraphRolloutBuffer
+
+        # Use proper VecEnv wrapper for env with Graph spaces
+        env = wrap_graph_env(env)
+        if env.num_envs > 1:
+            raise NotImplementedError(
+                "GraphOnPolicyAlgorithm not implemented for real vectorized environment "
+                "(ie. with more than 1 wrapped environment)"
+            )
+
+        super().__init__(
+            policy=policy,
+            env=env,
+            rollout_buffer_class=rollout_buffer_class,
+            **kwargs,
+        )
+
+
+class Graph2GraphOnPolicyAlgorithm(BaseGraphOnPolicyAlgorithm):
+    """Base class for on policy algorithm with both observations and actions being graphs."""
+
+    def update_init_args(
+        self,
+        env: GymEnv,
+        rollout_buffer_class: Optional[type[RolloutBuffer]] = None,
+    ) -> tuple[type[RolloutBuffer], GymEnv, Optional[tuple[type[spaces.Space], ...]]]:
+        # Use proper default rollout buffer class
+        if rollout_buffer_class is None:
+            if isinstance(env.observation_space, spaces.Graph) and isinstance(
+                env.action_space, spaces.Graph
+            ):
+                rollout_buffer_class = Graph2GraphRolloutBuffer
+            else:
+                raise ValueError(
+                    f"{self.__class__.__name__} is intended to be used with both observations and actions being graphs."
+                )
+
+        # Use proper VecEnv wrapper for env with Graph spaces
+        env = wrap_graph_env(env)
+        if env.num_envs > 1:
+            raise NotImplementedError(
+                "Graph2GraphOnPolicyAlgorithm not implemented for real vectorized environment "
+                "(ie. with more than 1 wrapped environment)"
+            )
+        supported_action_spaces = (gym.spaces.Graph,)
+
+        return rollout_buffer_class, env, supported_action_spaces
+
+    def actions_from_torch(
+        self, actions: thg.data.Data
+    ) -> list[gym.spaces.GraphInstance]:
+        return thg_data_to_graph_instance(actions, space=self.action_space)

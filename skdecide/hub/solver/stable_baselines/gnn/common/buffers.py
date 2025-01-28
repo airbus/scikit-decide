@@ -17,7 +17,6 @@ from stable_baselines3.common.buffers import (
     ReplayBuffer,
     RolloutBuffer,
 )
-from stable_baselines3.common.preprocessing import get_action_dim
 from stable_baselines3.common.type_aliases import (
     ReplayBufferSamples,
     RolloutBufferSamples,
@@ -25,39 +24,8 @@ from stable_baselines3.common.type_aliases import (
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.vec_env import VecNormalize
 
-from .utils import copy_graph_instance, graph_obs_to_thg_data
-
-
-def get_obs_shape(
-    observation_space: spaces.Space,
-) -> Union[tuple[int, ...], dict[str, tuple[int, ...]]]:
-    """
-    Get the shape of the observation (useful for the buffers).
-
-    :param observation_space:
-    :return:
-    """
-    if isinstance(observation_space, spaces.Box):
-        return observation_space.shape
-    elif isinstance(observation_space, spaces.Discrete):
-        # Observation is an int
-        return (1,)
-    elif isinstance(observation_space, spaces.MultiDiscrete):
-        # Number of discrete features
-        return (int(len(observation_space.nvec)),)
-    elif isinstance(observation_space, spaces.MultiBinary):
-        # Number of binary features
-        return observation_space.shape
-    elif isinstance(observation_space, spaces.Graph):
-        # Will not be used
-        return observation_space.node_space.shape + observation_space.edge_space.shape
-    elif isinstance(observation_space, spaces.Dict):
-        return {key: get_obs_shape(subspace) for (key, subspace) in observation_space.spaces.items()}  # type: ignore[misc]
-
-    else:
-        raise NotImplementedError(
-            f"{observation_space} observation space is not supported"
-        )
+from .preprocessing import get_action_dim, get_obs_shape
+from .utils import copy_graph_instance, graph_instance_to_thg_data
 
 
 class GraphBaseBuffer(BaseBuffer):
@@ -84,7 +52,7 @@ class GraphBaseBuffer(BaseBuffer):
     ) -> thg.data.Data:
         return thg.data.Batch.from_data_list(
             [
-                graph_obs_to_thg_data(graph_list[idx], device=self.device)
+                graph_instance_to_thg_data(graph_list[idx], device=self.device)
                 for idx in batch_inds
             ]
         )
@@ -100,7 +68,7 @@ class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
     """
 
     observations: Union[list[spaces.GraphInstance], list[list[spaces.GraphInstance]]]
-    tensor_names = ["actions", "values", "log_probs", "advantages", "returns"]
+    tensor_names = ["values", "log_probs", "advantages", "returns"]
 
     def reset(self) -> None:
         assert isinstance(
@@ -123,11 +91,7 @@ class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
             log_prob = log_prob.reshape(-1, 1)
 
         self._add_obs(obs)
-
-        # Same reshape, for actions
-        action = action.reshape((self.n_envs, self.action_dim))
-
-        self.actions[self.pos] = np.array(action).copy()
+        self._add_action(action)
         self.rewards[self.pos] = np.array(reward).copy()
         self.episode_starts[self.pos] = np.array(episode_start).copy()
         self.values[self.pos] = value.clone().cpu().numpy().flatten()
@@ -136,11 +100,18 @@ class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
         if self.pos == self.buffer_size:
             self.full = True
 
+    def _add_action(self, action: np.ndarray) -> None:
+        action = action.reshape((self.n_envs, self.action_dim))
+        self.actions[self.pos] = np.array(action).copy()
+
     def _add_obs(self, obs: list[spaces.GraphInstance]) -> None:
         self.observations.append([copy_graph_instance(g) for g in obs])
 
     def _swap_and_flatten_obs(self) -> None:
         self.observations = _swap_and_flatten_nested_list(self.observations)
+
+    def _swap_and_flatten_action(self) -> None:
+        self.actions = self.swap_and_flatten(self.actions)
 
     def get(
         self, batch_size: Optional[int] = None
@@ -150,6 +121,7 @@ class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
         # Prepare the data
         if not self.generator_ready:
             self._swap_and_flatten_obs()
+            self._swap_and_flatten_action()
             for tensor in self.tensor_names:
                 self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
             self.generator_ready = True
@@ -167,17 +139,44 @@ class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
         self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
     ) -> RolloutBufferSamples:
         observations = self._get_observations_samples(batch_inds)
+        actions = self._get_actions_samples(batch_inds)
         data = (
-            self.actions[batch_inds],
             self.values[batch_inds].flatten(),
             self.log_probs[batch_inds].flatten(),
             self.advantages[batch_inds].flatten(),
             self.returns[batch_inds].flatten(),
         )
-        return RolloutBufferSamples(observations, *tuple(map(self.to_torch, data)))
+        return RolloutBufferSamples(
+            observations, actions, *tuple(map(self.to_torch, data))
+        )
 
     def _get_observations_samples(self, batch_inds: np.ndarray) -> thg.data.Data:
         return self._graphlist_to_torch(self.observations, batch_inds=batch_inds)
+
+    def _get_actions_samples(self, batch_inds: np.ndarray) -> th.Tensor:
+        return self.to_torch(self.actions[batch_inds])
+
+
+class Graph2GraphRolloutBuffer(GraphRolloutBuffer):
+    """Rollout buffer when both observations and actions are graphs."""
+
+    actions: Union[list[spaces.GraphInstance], list[list[spaces.GraphInstance]]]
+
+    def reset(self) -> None:
+        assert isinstance(
+            self.action_space, spaces.Graph
+        ), "Graph2GraphRolloutBuffer must be used with Graph action space only"
+        super().reset()
+        self.actions = list()
+
+    def _add_action(self, action: list[spaces.GraphInstance]) -> None:
+        self.actions.append([copy_graph_instance(g) for g in action])
+
+    def _swap_and_flatten_action(self) -> None:
+        self.actions = _swap_and_flatten_nested_list(self.actions)
+
+    def _get_actions_samples(self, batch_inds: np.ndarray) -> thg.data.Data:
+        return self._graphlist_to_torch(self.actions, batch_inds=batch_inds)
 
 
 class DictGraphRolloutBuffer(GraphRolloutBuffer, DictRolloutBuffer):
@@ -257,7 +256,6 @@ class DictGraphRolloutBuffer(GraphRolloutBuffer, DictRolloutBuffer):
 class _BaseMaskableRolloutBuffer:
 
     tensor_names = [
-        "actions",
         "values",
         "log_probs",
         "advantages",

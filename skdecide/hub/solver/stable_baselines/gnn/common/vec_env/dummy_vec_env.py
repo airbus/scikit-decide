@@ -17,6 +17,9 @@ VecEnvObs = Union[EnvSubObs, dict[str, EnvSubObs], tuple[EnvSubObs, ...]]
 
 
 class GraphDummyVecEnv(DummyVecEnv):
+
+    actions: Union[np.ndarray, list[gym.spaces.GraphInstance]]
+
     def __init__(self, env_fns: List[Callable[[], gym.Env]]):
         super().__init__(env_fns)
         # replace buffers for graph spaces by lists

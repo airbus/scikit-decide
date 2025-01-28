@@ -8,11 +8,11 @@ from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.typing import ModelConfigDict
 from torch import nn
 
-from skdecide.hub.solver.ray_rllib.gnn.torch_layers import GraphFeaturesExtractor
 from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
     convert_dict_space_to_graph_space,
     is_graph_dict_space,
 )
+from skdecide.hub.solver.utils.gnn.torch_layers import GraphFeaturesExtractor
 
 
 class GnnBasedModel(TorchModelV2, nn.Module):
