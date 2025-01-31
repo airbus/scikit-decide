@@ -1,13 +1,13 @@
 from typing import Any, Optional, Union
 
 import gymnasium as gym
-import numpy as np
 import torch as th
 import torch_geometric as thg
 from stable_baselines3.common.preprocessing import get_flattened_obs_dim, is_image_space
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, NatureCNN
 from torch import nn
-from torch_geometric.nn import global_max_pool
+
+from skdecide.hub.solver.utils.gnn import torch_layers
 
 
 class GraphFeaturesExtractor(BaseFeaturesExtractor):
@@ -19,6 +19,10 @@ class GraphFeaturesExtractor(BaseFeaturesExtractor):
     By default, we use:
     - gnn: a 2-layers GCN
     - reduction layer: global_max_pool + linear layer + relu
+
+    This merely wraps `skdecide.hub.solver.utils.gnn.torch_layers.GraphFeaturesExtractor` to
+    makes it a `stable_baselines3.common.torch_layers.BaseFeaturesExtractor`. See the former documentation
+    for more precisions about its arguments.
 
     Args:
         observation_space:
@@ -45,75 +49,19 @@ class GraphFeaturesExtractor(BaseFeaturesExtractor):
         reduction_layer_class: Optional[type[nn.Module]] = None,
         reduction_layer_kwargs: Optional[dict[str, Any]] = None,
     ):
-
-        super().__init__(observation_space, features_dim=features_dim)
-
-        if gnn_out_dim is None:
-            if gnn_class is None:
-                gnn_out_dim = 2 * features_dim
-            else:
-                raise ValueError(
-                    "`gnn_out_dim` cannot be None if `gnn` is not None, "
-                    "and should match `gnn` output."
-                )
-
-        if gnn_class is None:
-            node_features_dim = int(np.prod(observation_space.node_space.shape))
-            self.gnn = thg.nn.models.GCN(
-                in_channels=node_features_dim,
-                hidden_channels=gnn_out_dim,
-                num_layers=2,
-                dropout=0.2,
-            )
-        else:
-            if gnn_kwargs is None:
-                gnn_kwargs = {}
-            self.gnn = gnn_class(**gnn_kwargs)
-
-        if reduction_layer_class is None:
-            self.reduction_layer = _DefaultReductionLayer(
-                gnn_out_dim=gnn_out_dim, features_dim=features_dim
-            )
-        else:
-            if reduction_layer_kwargs is None:
-                reduction_layer_kwargs = {}
-            self.reduction_layer = reduction_layer_class(**reduction_layer_kwargs)
+        super().__init__(observation_space=observation_space, features_dim=features_dim)
+        self._extractor = torch_layers.GraphFeaturesExtractor(
+            observation_space=observation_space,
+            features_dim=features_dim,
+            gnn_out_dim=gnn_out_dim,
+            gnn_class=gnn_class,
+            gnn_kwargs=gnn_kwargs,
+            reduction_layer_class=reduction_layer_class,
+            reduction_layer_kwargs=reduction_layer_kwargs,
+        )
 
     def forward(self, observations: thg.data.Data) -> th.Tensor:
-        x, edge_index, edge_attr, batch = (
-            observations.x,
-            observations.edge_index,
-            observations.edge_attr,
-            observations.batch,
-        )
-        # construct edge weights, for GNNs needing it, as the first edge feature
-        edge_weight = edge_attr[:, 0]
-        h = self.gnn(
-            x=x, edge_index=edge_index, edge_weight=edge_weight, edge_attr=edge_attr
-        )
-        embedded_observations = thg.data.Data(
-            x=h, edge_index=edge_index, edge_attr=edge_attr, batch=batch
-        )
-        h = self.reduction_layer(embedded_observations=embedded_observations)
-        return h
-
-
-class _DefaultReductionLayer(nn.Module):
-    def __init__(self, gnn_out_dim: int, features_dim: int):
-        super().__init__()
-        self.gnn_out_dim = gnn_out_dim
-        self.features_dim = features_dim
-        self.linear_layer = nn.Linear(gnn_out_dim, features_dim)
-
-    def forward(self, embedded_observations: thg.data.Data) -> th.Tensor:
-        x, edge_index, batch = (
-            embedded_observations.x,
-            embedded_observations.edge_index,
-            embedded_observations.batch,
-        )
-        h = global_max_pool(x, batch)
-        h = self.linear_layer(h).relu()
-        return h
+        return self._extractor.forward(observations=observations)
 
 
 class CombinedFeaturesExtractor(BaseFeaturesExtractor):

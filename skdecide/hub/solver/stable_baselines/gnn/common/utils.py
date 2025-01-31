@@ -6,6 +6,8 @@ import stable_baselines3.common.utils
 import torch as th
 import torch_geometric as thg
 
+from skdecide.hub.solver.utils.gnn.torch_utils import graph_obs_to_thg_data
+
 SubObsType = Union[np.ndarray, gym.spaces.GraphInstance, list[gym.spaces.GraphInstance]]
 ObsType = Union[SubObsType, dict[str, SubObsType]]
 TorchSubObsType = Union[th.Tensor, thg.data.Data]
@@ -25,22 +27,6 @@ def copy_np_array_or_list_of_graph_instances(
         return [copy_graph_instance(g) for g in obs]
     else:
         return np.copy(obs)
-
-
-def graph_obs_to_thg_data(
-    obs: gym.spaces.GraphInstance, device: th.device
-) -> thg.data.Data:
-    # Node features
-    flatten_node_features = obs.nodes.reshape((len(obs.nodes), -1))
-    x = th.tensor(flatten_node_features).float()
-    # Edge features
-    if obs.edges is None:
-        edge_attr = None
-    else:
-        flatten_edge_features = obs.edges.reshape((len(obs.edges), -1))
-        edge_attr = th.tensor(flatten_edge_features).float()
-    edge_index = th.tensor(obs.edge_links, dtype=th.long).t().contiguous().view(2, -1)
-    return thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr).to(device)
 
 
 def obs_as_tensor(
