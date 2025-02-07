@@ -25,39 +25,8 @@ from stable_baselines3.common.type_aliases import (
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.vec_env import VecNormalize
 
-from .utils import copy_graph_instance, graph_obs_to_thg_data
-
-
-def get_obs_shape(
-    observation_space: spaces.Space,
-) -> Union[tuple[int, ...], dict[str, tuple[int, ...]]]:
-    """
-    Get the shape of the observation (useful for the buffers).
-
-    :param observation_space:
-    :return:
-    """
-    if isinstance(observation_space, spaces.Box):
-        return observation_space.shape
-    elif isinstance(observation_space, spaces.Discrete):
-        # Observation is an int
-        return (1,)
-    elif isinstance(observation_space, spaces.MultiDiscrete):
-        # Number of discrete features
-        return (int(len(observation_space.nvec)),)
-    elif isinstance(observation_space, spaces.MultiBinary):
-        # Number of binary features
-        return observation_space.shape
-    elif isinstance(observation_space, spaces.Graph):
-        # Will not be used
-        return observation_space.node_space.shape + observation_space.edge_space.shape
-    elif isinstance(observation_space, spaces.Dict):
-        return {key: get_obs_shape(subspace) for (key, subspace) in observation_space.spaces.items()}  # type: ignore[misc]
-
-    else:
-        raise NotImplementedError(
-            f"{observation_space} observation space is not supported"
-        )
+from .preprocessing import get_obs_shape
+from .utils import copy_graph_instance, graph_instance_to_thg_data
 
 
 class GraphBaseBuffer(BaseBuffer):
@@ -84,7 +53,7 @@ class GraphBaseBuffer(BaseBuffer):
     ) -> thg.data.Data:
         return thg.data.Batch.from_data_list(
             [
-                graph_obs_to_thg_data(graph_list[idx], device=self.device)
+                graph_instance_to_thg_data(graph_list[idx], device=self.device)
                 for idx in batch_inds
             ]
         )
