@@ -19,7 +19,10 @@ from skdecide.core import Space, TransitionOutcome, Value
 from skdecide.domains import Domain
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.gnn.ppo.ppo import Graph2NodePPO
-from skdecide.hub.space.gym import GymSpace, ListSpace
+from skdecide.hub.solver.stable_baselines.gnn.ppo_mask.ppo_mask import (
+    MaskableGraph2NodePPO,
+)
+from skdecide.hub.space.gym import DiscreteSpace, GymSpace, ListSpace
 from skdecide.utils import rollout
 
 
@@ -101,7 +104,7 @@ class GraphJspDomain(D):
         return GymSpace(original_graph_space)
 
     def _get_action_space_(self) -> Space[D.T_observation]:
-        return GymSpace(self._gym_env.action_space)
+        return DiscreteSpace(n=self._gym_env.action_space.n)
 
     def _np_state2graph_state(self, np_state: np.array) -> GraphInstance:
         if not self._gym_env.normalize_observation_space:
@@ -189,3 +192,40 @@ def test_gnn_graph2node_jsp_sb3():
             -1, -1
         ]
         assert last_prob == 0.0
+
+
+def test_maskable_gnn_graph2node_jsp_sb3():
+
+    domain_factory = lambda: GraphJspDomain(
+        gym_env=DisjunctiveGraphJspEnv(
+            jps_instance=jsp,
+            perform_left_shift_if_possible=True,
+            normalize_observation_space=False,
+            flat_observation_space=False,
+            action_mode="task",
+        )
+    )
+
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=MaskableGraph2NodePPO,
+        baselines_policy="GraphInputPolicy",
+        learn_config={
+            "total_timesteps": 200,
+        },
+        n_steps=100,
+        use_action_masking=True,
+    ) as solver:
+        solver.solve()
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=30,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+
+    # with masking only 9 steps necessary since only 9 tasks to perform
+    observations, actions, values = episodes[0]
+    assert len(actions) == 9

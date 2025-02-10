@@ -17,8 +17,11 @@ from skdecide.core import Space, TransitionOutcome, Value
 from skdecide.domains import Domain
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.gnn.ppo.ppo import Graph2NodePPO
+from skdecide.hub.solver.stable_baselines.gnn.ppo_mask.ppo_mask import (
+    MaskableGraph2NodePPO,
+)
 from skdecide.hub.solver.utils.gnn.torch_utils import extract_module_parameters_values
-from skdecide.hub.space.gym import GymSpace, ListSpace
+from skdecide.hub.space.gym import DiscreteSpace, GymSpace, ListSpace
 from skdecide.utils import rollout
 
 
@@ -99,8 +102,8 @@ class GraphJspDomain(D):
             )
         return GymSpace(original_graph_space)
 
-    def _get_action_space_(self) -> Space[D.T_observation]:
-        return GymSpace(self._gym_env.action_space)
+    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
+        return DiscreteSpace(n=self._gym_env.action_space.n)
 
     def _np_state2graph_state(self, np_state: np.array) -> GraphInstance:
         if not self._gym_env.normalize_observation_space:
@@ -145,14 +148,35 @@ domain_factory = lambda: GraphJspDomain(
 )
 
 
+# Uncomment the block below to use PPO without action masking
+# with StableBaseline(
+#     domain_factory=domain_factory,
+#     algo_class=Graph2NodePPO,
+#     baselines_policy="GraphInputPolicy",
+#     policy_kwargs=dict(debug=True),
+#     learn_config={
+#         "total_timesteps": 10_000,
+#     },
+# ) as solver:
+#     solver.solve()
+#     rollout(
+#         domain=domain_factory(),
+#         solver=solver,
+#         max_steps=30,
+#         num_episodes=1,
+#         render=True,
+#     )
+
+
 with StableBaseline(
     domain_factory=domain_factory,
-    algo_class=Graph2NodePPO,
+    algo_class=MaskableGraph2NodePPO,
     baselines_policy="GraphInputPolicy",
     policy_kwargs=dict(debug=True),
     learn_config={
         "total_timesteps": 10_000,
     },
+    use_action_masking=True,
 ) as solver:
     solver.solve()
     rollout(
