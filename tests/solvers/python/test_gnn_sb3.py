@@ -13,6 +13,9 @@ from skdecide.hub.solver.stable_baselines.gnn.common.torch_layers import (
 from skdecide.hub.solver.stable_baselines.gnn.dqn.dqn import GraphDQN
 from skdecide.hub.solver.stable_baselines.gnn.ppo.ppo import Graph2NodePPO
 from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
+from skdecide.hub.solver.stable_baselines.gnn.ppo_mask.ppo_mask import (
+    MaskableGraph2NodePPO,
+)
 from skdecide.utils import rollout
 
 
@@ -41,7 +44,7 @@ def test_ppo(unmasked_graph_domain_factory):
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -60,7 +63,7 @@ def test_dqn(unmasked_graph_domain_factory):
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -79,7 +82,7 @@ def test_a2c(unmasked_jsp_domain_factory):
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -116,7 +119,7 @@ def test_ppo_user_gnn(caplog, unmasked_jsp_domain_factory, my_gnn_class, my_gnn_
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -157,7 +160,7 @@ def test_ppo_user_reduction_layer(
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -175,14 +178,20 @@ def test_maskable_ppo(graph_domain_factory):
     ) as solver:
 
         solver.solve()
-        rollout(
+        episodes = rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
             use_applicable_actions=True,
+            return_episodes=True,
         )
+
+    if "Jsp" in domain_factory().__class__.__name__:
+        # with masking only 9 steps necessary since only 9 tasks to perform
+        observations, actions, values = episodes[0]
+        assert len(actions) == 9
 
 
 def test_dict_ppo(unmasked_jsp_dict_domain_factory):
@@ -198,7 +207,7 @@ def test_dict_ppo(unmasked_jsp_dict_domain_factory):
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -215,14 +224,18 @@ def test_dict_maskable_ppo(jsp_dict_domain_factory):
     ) as solver:
 
         solver.solve()
-        rollout(
+        episodes = rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
             use_applicable_actions=True,
+            return_episodes=True,
         )
+    # with masking only 9 steps necessary since only 9 tasks to perform
+    observations, actions, values = episodes[0]
+    assert len(actions) == 9
 
 
 def test_dict_a2c(unmasked_jsp_dict_domain_factory):
@@ -237,7 +250,7 @@ def test_dict_a2c(unmasked_jsp_dict_domain_factory):
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -256,7 +269,7 @@ def test_dict_dqn(unmasked_jsp_dict_domain_factory):
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -311,3 +324,32 @@ def test_graph2node_ppo(unmasked_jsp_domain_factory, variable_n_nodes):
                 -1, -1
             ]
             assert last_prob == 0.0
+
+
+def test_maskable_graph2node_ppo(jsp_graph2node_domain_factory):
+
+    domain_factory = jsp_graph2node_domain_factory
+
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=MaskableGraph2NodePPO,
+        baselines_policy="GraphInputPolicy",
+        learn_config={
+            "total_timesteps": 200,
+        },
+        n_steps=100,
+        use_action_masking=True,
+    ) as solver:
+        solver.solve()
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=30,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+
+    # with masking only 9 steps necessary since only 9 tasks to perform
+    observations, actions, values = episodes[0]
+    assert len(actions) == 9

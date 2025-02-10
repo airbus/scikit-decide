@@ -240,13 +240,12 @@ class GraphJspDomain(D):
 
     _gym_env: DisjunctiveGraphJspEnv
 
-    def __init__(self, gym_env, deterministic=False):
+    def __init__(self, gym_env):
         self._gym_env = gym_env
         if self._gym_env.normalize_observation_space:
             self.n_nodes_features = gym_env.n_machines + 1
         else:
             self.n_nodes_features = 2
-        self.deterministic = deterministic
 
     def _state_reset(self) -> D.T_state:
         return self._np_state2graph_state(self._gym_env.reset()[0])

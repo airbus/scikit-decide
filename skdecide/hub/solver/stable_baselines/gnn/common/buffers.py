@@ -24,6 +24,7 @@ from stable_baselines3.common.type_aliases import (
 )
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.vec_env import VecNormalize
+from torch.nn.utils.rnn import pad_sequence
 
 from .preprocessing import get_obs_shape
 from .utils import copy_graph_instance, graph_instance_to_thg_data
@@ -80,7 +81,7 @@ class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
 
     def add(
         self,
-        obs: spaces.GraphInstance,
+        obs: list[spaces.GraphInstance],
         action: np.ndarray,
         reward: np.ndarray,
         episode_start: np.ndarray,
@@ -111,6 +112,11 @@ class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
     def _swap_and_flatten_obs(self) -> None:
         self.observations = _swap_and_flatten_nested_list(self.observations)
 
+    def _swap_and_flatten_action_masks(self) -> None:
+        """Method to override in buffers meant to be used with action masks."""
+        # by default, no action masks
+        ...
+
     def get(
         self, batch_size: Optional[int] = None
     ) -> Generator[RolloutBufferSamples, None, None]:
@@ -119,6 +125,7 @@ class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
         # Prepare the data
         if not self.generator_ready:
             self._swap_and_flatten_obs()
+            self._swap_and_flatten_action_masks()
             for tensor in self.tensor_names:
                 self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
             self.generator_ready = True
@@ -224,34 +231,61 @@ class DictGraphRolloutBuffer(GraphRolloutBuffer, DictRolloutBuffer):
 
 
 class _BaseMaskableRolloutBuffer:
-
-    tensor_names = [
-        "actions",
-        "values",
-        "log_probs",
-        "advantages",
-        "returns",
-        "action_masks",
-    ]
-
     def add(self, *args, action_masks: Optional[np.ndarray] = None, **kwargs) -> None:
         """
         :param action_masks: Masks applied to constrain the choice of possible actions.
         """
+
+        self._add_action_masks(action_masks=action_masks)
+        super().add(*args, **kwargs)
+
+    def _add_action_masks(self, action_masks: Optional[np.ndarray] = None):
         if action_masks is not None:
             self.action_masks[self.pos] = action_masks.reshape(
                 (self.n_envs, self.mask_dims)
             )
 
-        super().add(*args, **kwargs)
+    def _swap_and_flatten_action_masks(self) -> None:
+        self.action_masks = self.swap_and_flatten(self.action_masks)
 
     def _get_samples(
         self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
     ) -> MaskableRolloutBufferSamples:
         samples_wo_action_masks = super()._get_samples(batch_inds=batch_inds, env=env)
+        action_masks = self._get_action_masks_samples(batch_inds=batch_inds)
         return MaskableRolloutBufferSamples(
             *samples_wo_action_masks,
-            action_masks=self.action_masks[batch_inds].reshape(-1, self.mask_dims),
+            action_masks=action_masks,
+        )
+
+    def _get_action_masks_samples(self, batch_inds: np.ndarray) -> np.ndarray:
+        return self.to_torch(self.action_masks[batch_inds].reshape(-1, self.mask_dims))
+
+
+class _BaseMaskableGraph2NodeRolloutBuffer(_BaseMaskableRolloutBuffer):
+
+    action_masks: list[np.ndarray]
+
+    def reset(self):
+        super().reset()
+        self.action_masks = list()
+
+    def _add_action_masks(self, action_masks: Optional[list[np.ndarray]] = None):
+        if action_masks is not None:
+            self.action_masks.append(action_masks.reshape(self.n_envs, -1))
+        else:
+            self.action_masks.append([])
+
+    def _swap_and_flatten_action_masks(self) -> None:
+        if self.n_envs > 1:
+            raise NotImplementedError()
+        else:
+            self.action_masks = [a.flatten() for a in self.action_masks]
+
+    def _get_action_masks_samples(self, batch_inds: np.ndarray) -> th.Tensor:
+        return pad_sequence(
+            [self.to_torch(self.action_masks[idx]) for idx in batch_inds],
+            batch_first=True,
         )
 
 
@@ -263,6 +297,12 @@ class MaskableGraphRolloutBuffer(
 
 class MaskableDictGraphRolloutBuffer(
     _BaseMaskableRolloutBuffer, DictGraphRolloutBuffer, MaskableDictRolloutBuffer
+):
+    ...
+
+
+class MaskableGraph2NodeRolloutBuffer(
+    _BaseMaskableGraph2NodeRolloutBuffer, GraphRolloutBuffer, MaskableRolloutBuffer
 ):
     ...
 

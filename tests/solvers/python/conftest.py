@@ -240,13 +240,15 @@ class GraphJspDomain(D):
 
     _gym_env: DisjunctiveGraphJspEnv
 
-    def __init__(self, gym_env, variable_n_nodes=True):
+    def __init__(self, gym_env, variable_n_nodes=False, graph_node_action=False):
+        self.graph_node_action = graph_node_action
         self.variable_n_nodes = variable_n_nodes
         self._gym_env = gym_env
         if self._gym_env.normalize_observation_space:
             self.n_nodes_features = gym_env.n_machines + 1
         else:
             self.n_nodes_features = 2
+        self._kept_nodes = list(range(self._gym_env.action_space.n))
 
     def _state_reset(self) -> D.T_state:
         return self._np_state2graph_state(self._gym_env.reset()[0])
@@ -254,7 +256,13 @@ class GraphJspDomain(D):
     def _state_step(
         self, action: D.T_event
     ) -> TransitionOutcome[D.T_state, Value[D.T_value], D.T_predicate, D.T_info]:
-        env_state, reward, terminated, truncated, info = self._gym_env.step(action)
+        if self.graph_node_action and self.variable_n_nodes:
+            gym_env_action = self._kept_nodes[action]
+        else:
+            gym_env_action = action
+        env_state, reward, terminated, truncated, info = self._gym_env.step(
+            gym_env_action
+        )
         state = self._np_state2graph_state(env_state)
         if truncated:
             info["TimeLimit.truncated"] = True
@@ -265,7 +273,26 @@ class GraphJspDomain(D):
     def _get_applicable_actions_from(
         self, memory: D.T_memory[D.T_state]
     ) -> D.T_agent[Space[D.T_event]]:
-        return ListSpace(np.nonzero(self._gym_env.valid_action_mask())[0])
+        action_mask = np.array(self._gym_env.valid_action_mask())
+        if self.graph_node_action:
+            action_mask = action_mask[self._kept_nodes]
+        return ListSpace(np.nonzero(action_mask)[0])
+
+    def _get_action_mask(
+        self, memory: Optional[D.T_memory[D.T_state]] = None
+    ) -> D.T_agent[Mask]:
+        """Compute action mask.
+
+        If actions are obs graph nodes and nodes number may vary, this
+        needs to be overriden as default implementation assume that the action space is constant.
+
+        """
+        if self.graph_node_action:
+            action_mask = np.array(self._gym_env.valid_action_mask())
+            action_mask = action_mask[self._kept_nodes]
+            return np.asarray(action_mask, dtype=np.int8)
+        else:
+            return super()._get_action_mask(memory)
 
     def _get_observation_space_(self) -> Space[D.T_observation]:
         if self._gym_env.normalize_observation_space:
@@ -329,8 +356,9 @@ class GraphJspDomain(D):
         )
         nodes_to_keep = nodes_to_keep.union(
             set(
-                list(self._gym_env.G.out_edges(i_node))[0][1]
+                e[1]
                 for i_node in nodes_to_keep
+                for e in self._gym_env.G.out_edges(i_node)
             )
         )
         # remove dummy nodes and reindex from first non-dummy node
@@ -354,6 +382,9 @@ class GraphJspDomain(D):
         if len(edge_links) > 0:
             edge_links = np.vectorize(lambda x: i_node2i_node_subset[x])(edge_links)
         nodes = nodes[list(nodes_to_keep)]
+
+        # store kept node
+        self._kept_nodes = list(nodes_to_keep)
 
         return nodes, edges, edge_links
 
@@ -442,6 +473,21 @@ def jsp_domain_factory(variable_n_nodes):
             action_mode="task",
         ),
         variable_n_nodes=variable_n_nodes,
+    )
+
+
+@fixture
+def jsp_graph2node_domain_factory(variable_n_nodes):
+    return lambda: GraphJspDomain(
+        gym_env=DisjunctiveGraphJspEnv(
+            jps_instance=jsp,
+            perform_left_shift_if_possible=True,
+            normalize_observation_space=False,
+            flat_observation_space=False,
+            action_mode="task",
+        ),
+        variable_n_nodes=variable_n_nodes,
+        graph_node_action=True,
     )
 
 
