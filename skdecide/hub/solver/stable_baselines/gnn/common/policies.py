@@ -9,7 +9,10 @@ import numpy as np
 import torch as th
 import torch_geometric as thg
 from gymnasium import spaces
-from sb3_contrib.common.maskable.distributions import MaskableDistribution
+from sb3_contrib.common.maskable.distributions import (
+    MaskableCategoricalDistribution,
+    MaskableDistribution,
+)
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from stable_baselines3.common.distributions import CategoricalDistribution, Distribution
 from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
@@ -147,200 +150,14 @@ class BaseGNNActorCriticPolicy(BaseGNNPolicy):
         return self.value_net(latent_vf)
 
 
-class GNNActorCriticPolicy(BaseGNNActorCriticPolicy, ActorCriticPolicy):
-    def __init__(
-        self,
-        observation_space: gym.spaces.Graph,
-        action_space: gym.spaces.Space,
-        lr_schedule: Schedule,
-        net_arch: Optional[list[Union[int, dict[str, list[int]]]]] = None,
-        activation_fn: type[th.nn.Module] = th.nn.Tanh,
-        ortho_init: bool = True,
-        use_sde: bool = False,
-        log_std_init: float = 0.0,
-        full_std: bool = True,
-        use_expln: bool = False,
-        squash_output: bool = False,
-        features_extractor_class: type[BaseFeaturesExtractor] = GraphFeaturesExtractor,
-        features_extractor_kwargs: Optional[dict[str, Any]] = None,
-        share_features_extractor: bool = True,
-        normalize_images: bool = True,
-        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[dict[str, Any]] = None,
-        debug: bool = False,
-    ):
-        self.debug = debug
-        if debug:
-            if (
-                "debug"
-                in inspect.signature(features_extractor_class.__init__).parameters
-            ):
-                if features_extractor_kwargs is None:
-                    features_extractor_kwargs = {}
-                features_extractor_kwargs["debug"] = True
-
-        super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            lr_schedule=lr_schedule,
-            net_arch=net_arch,
-            activation_fn=activation_fn,
-            ortho_init=ortho_init,
-            use_sde=use_sde,
-            log_std_init=log_std_init,
-            full_std=full_std,
-            use_expln=use_expln,
-            squash_output=squash_output,
-            features_extractor_class=features_extractor_class,
-            features_extractor_kwargs=features_extractor_kwargs,
-            share_features_extractor=share_features_extractor,
-            normalize_images=normalize_images,
-            optimizer_class=optimizer_class,
-            optimizer_kwargs=optimizer_kwargs,
-        )
-
-        if debug:
-            # store initial weights
-            self.initial_parameters = extract_module_parameters_values(self)
-
-
-class MultiInputGNNActorCriticPolicy(GNNActorCriticPolicy):
-    def __init__(
-        self,
-        observation_space: gym.spaces.Graph,
-        action_space: gym.spaces.Space,
-        lr_schedule: Schedule,
-        net_arch: Optional[list[Union[int, dict[str, list[int]]]]] = None,
-        activation_fn: type[th.nn.Module] = th.nn.Tanh,
-        ortho_init: bool = True,
-        use_sde: bool = False,
-        log_std_init: float = 0.0,
-        full_std: bool = True,
-        use_expln: bool = False,
-        squash_output: bool = False,
-        features_extractor_class: type[
-            BaseFeaturesExtractor
-        ] = CombinedFeaturesExtractor,
-        features_extractor_kwargs: Optional[dict[str, Any]] = None,
-        share_features_extractor: bool = True,
-        normalize_images: bool = True,
-        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[dict[str, Any]] = None,
-    ):
-        super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            lr_schedule=lr_schedule,
-            net_arch=net_arch,
-            activation_fn=activation_fn,
-            ortho_init=ortho_init,
-            use_sde=use_sde,
-            log_std_init=log_std_init,
-            full_std=full_std,
-            use_expln=use_expln,
-            squash_output=squash_output,
-            features_extractor_class=features_extractor_class,
-            features_extractor_kwargs=features_extractor_kwargs,
-            share_features_extractor=share_features_extractor,
-            normalize_images=normalize_images,
-            optimizer_class=optimizer_class,
-            optimizer_kwargs=optimizer_kwargs,
-        )
-
-
-class MaskableGNNActorCriticPolicy(BaseGNNActorCriticPolicy, MaskableActorCriticPolicy):
-    def __init__(
-        self,
-        observation_space: gym.spaces.Space,
-        action_space: gym.spaces.Space,
-        lr_schedule: Schedule,
-        net_arch: Optional[Union[list[int], dict[str, list[int]]]] = None,
-        activation_fn: type[th.nn.Module] = th.nn.Tanh,
-        ortho_init: bool = True,
-        features_extractor_class: type[BaseFeaturesExtractor] = GraphFeaturesExtractor,
-        features_extractor_kwargs: Optional[dict[str, Any]] = None,
-        share_features_extractor: bool = True,
-        normalize_images: bool = True,
-        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[dict[str, Any]] = None,
-    ):
-        super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            lr_schedule=lr_schedule,
-            net_arch=net_arch,
-            activation_fn=activation_fn,
-            ortho_init=ortho_init,
-            features_extractor_class=features_extractor_class,
-            features_extractor_kwargs=features_extractor_kwargs,
-            share_features_extractor=share_features_extractor,
-            normalize_images=normalize_images,
-            optimizer_class=optimizer_class,
-            optimizer_kwargs=optimizer_kwargs,
-        )
-
-    def get_distribution(
-        self, obs: thg.data.Data, action_masks: Optional[np.ndarray] = None
-    ) -> MaskableDistribution:
-        preprocessed_obs = preprocess_obs(
-            obs, self.observation_space, normalize_images=self.normalize_images
-        )
-        features = self.pi_features_extractor(preprocessed_obs)
-        latent_pi = self.mlp_extractor.forward_actor(features)
-        distribution = self._get_action_dist_from_latent(latent_pi)
-        if action_masks is not None:
-            distribution.apply_masking(action_masks)
-        return distribution
-
-
-class MaskableMultiInputGNNActorCriticPolicy(MaskableGNNActorCriticPolicy):
-    def __init__(
-        self,
-        observation_space: gym.spaces.Space,
-        action_space: gym.spaces.Space,
-        lr_schedule: Schedule,
-        net_arch: Optional[Union[list[int], dict[str, list[int]]]] = None,
-        activation_fn: type[th.nn.Module] = th.nn.Tanh,
-        ortho_init: bool = True,
-        features_extractor_class: type[
-            BaseFeaturesExtractor
-        ] = CombinedFeaturesExtractor,
-        features_extractor_kwargs: Optional[dict[str, Any]] = None,
-        share_features_extractor: bool = True,
-        normalize_images: bool = True,
-        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[dict[str, Any]] = None,
-    ):
-        super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            lr_schedule=lr_schedule,
-            net_arch=net_arch,
-            activation_fn=activation_fn,
-            ortho_init=ortho_init,
-            features_extractor_class=features_extractor_class,
-            features_extractor_kwargs=features_extractor_kwargs,
-            share_features_extractor=share_features_extractor,
-            normalize_images=normalize_images,
-            optimizer_class=optimizer_class,
-            optimizer_kwargs=optimizer_kwargs,
-        )
-
-
-class GNN2NodeActorCriticPolicy(GNNActorCriticPolicy):
-    """Policy mapping graph to graph, without feature reduction.
-
-    Intended to be used with environment having both observations and actions being graphs.
-
-    """
-
+class BaseGNN2NodeActorCriticPolicy(BaseGNNActorCriticPolicy):
     observation_space: spaces.Graph
-    action_space: spaces.Graph
+    action_space: spaces.Discrete
 
     def __init__(
         self,
         observation_space: spaces.Graph,
-        action_space: spaces.Graph,
+        action_space: spaces.Space,
         lr_schedule: Schedule,
         net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
         activation_fn: Type[nn.Module] = nn.Tanh,
@@ -517,4 +334,313 @@ class GNN2NodeActorCriticPolicy(GNNActorCriticPolicy):
                 module.apply(partial(self.init_weights, gain=gain))
 
         # Setup optimizer with initial learning rate
-        self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)  # type: ignore[call-arg]
+        self.optimizer = self.optimizer_class(
+            self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs
+        )  # type: ignore[call-arg]
+
+
+class GNNActorCriticPolicy(BaseGNNActorCriticPolicy, ActorCriticPolicy):
+    """Policy predicting from an observation graph.
+
+    Features are extracted from the graph thanks to a GNN
+    followed by a reduction layer to a fixed number of features
+    (see `GraphFeaturesExtractor` for further details).
+
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.spaces.Graph,
+        action_space: gym.spaces.Space,
+        lr_schedule: Schedule,
+        net_arch: Optional[list[Union[int, dict[str, list[int]]]]] = None,
+        activation_fn: type[th.nn.Module] = th.nn.Tanh,
+        ortho_init: bool = True,
+        use_sde: bool = False,
+        log_std_init: float = 0.0,
+        full_std: bool = True,
+        use_expln: bool = False,
+        squash_output: bool = False,
+        features_extractor_class: type[BaseFeaturesExtractor] = GraphFeaturesExtractor,
+        features_extractor_kwargs: Optional[dict[str, Any]] = None,
+        share_features_extractor: bool = True,
+        normalize_images: bool = True,
+        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[dict[str, Any]] = None,
+        debug: bool = False,
+    ):
+        self.debug = debug
+        if debug:
+            if (
+                "debug"
+                in inspect.signature(features_extractor_class.__init__).parameters
+            ):
+                if features_extractor_kwargs is None:
+                    features_extractor_kwargs = {}
+                features_extractor_kwargs["debug"] = True
+
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            lr_schedule=lr_schedule,
+            net_arch=net_arch,
+            activation_fn=activation_fn,
+            ortho_init=ortho_init,
+            use_sde=use_sde,
+            log_std_init=log_std_init,
+            full_std=full_std,
+            use_expln=use_expln,
+            squash_output=squash_output,
+            features_extractor_class=features_extractor_class,
+            features_extractor_kwargs=features_extractor_kwargs,
+            share_features_extractor=share_features_extractor,
+            normalize_images=normalize_images,
+            optimizer_class=optimizer_class,
+            optimizer_kwargs=optimizer_kwargs,
+        )
+
+        if debug:
+            # store initial weights
+            self.initial_parameters = extract_module_parameters_values(self)
+
+
+class MultiInputGNNActorCriticPolicy(GNNActorCriticPolicy):
+    """Policy predicting from a dict containing potentially graphs.
+
+    Features are extracted from graphs as in `GNNActorCriticPolicy` thanks to a GNN
+    followed by a reduction layer to a fixed number of features
+    (see `GraphFeaturesExtractor` for further details).
+
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.spaces.Dict,
+        action_space: gym.spaces.Space,
+        lr_schedule: Schedule,
+        net_arch: Optional[list[Union[int, dict[str, list[int]]]]] = None,
+        activation_fn: type[th.nn.Module] = th.nn.Tanh,
+        ortho_init: bool = True,
+        use_sde: bool = False,
+        log_std_init: float = 0.0,
+        full_std: bool = True,
+        use_expln: bool = False,
+        squash_output: bool = False,
+        features_extractor_class: type[
+            BaseFeaturesExtractor
+        ] = CombinedFeaturesExtractor,
+        features_extractor_kwargs: Optional[dict[str, Any]] = None,
+        share_features_extractor: bool = True,
+        normalize_images: bool = True,
+        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            lr_schedule=lr_schedule,
+            net_arch=net_arch,
+            activation_fn=activation_fn,
+            ortho_init=ortho_init,
+            use_sde=use_sde,
+            log_std_init=log_std_init,
+            full_std=full_std,
+            use_expln=use_expln,
+            squash_output=squash_output,
+            features_extractor_class=features_extractor_class,
+            features_extractor_kwargs=features_extractor_kwargs,
+            share_features_extractor=share_features_extractor,
+            normalize_images=normalize_images,
+            optimizer_class=optimizer_class,
+            optimizer_kwargs=optimizer_kwargs,
+        )
+
+
+class MaskableGNNActorCriticPolicy(BaseGNNActorCriticPolicy, MaskableActorCriticPolicy):
+    """Policy predicting from an observation graph + an action mask.
+
+    Features are extracted from the graph thanks to a GNN
+    followed by a reduction layer to a fixed number of features
+    (see `GraphFeaturesExtractor` for further details).
+
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.spaces.Space,
+        action_space: gym.spaces.Space,
+        lr_schedule: Schedule,
+        net_arch: Optional[Union[list[int], dict[str, list[int]]]] = None,
+        activation_fn: type[th.nn.Module] = th.nn.Tanh,
+        ortho_init: bool = True,
+        features_extractor_class: type[BaseFeaturesExtractor] = GraphFeaturesExtractor,
+        features_extractor_kwargs: Optional[dict[str, Any]] = None,
+        share_features_extractor: bool = True,
+        normalize_images: bool = True,
+        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            lr_schedule=lr_schedule,
+            net_arch=net_arch,
+            activation_fn=activation_fn,
+            ortho_init=ortho_init,
+            features_extractor_class=features_extractor_class,
+            features_extractor_kwargs=features_extractor_kwargs,
+            share_features_extractor=share_features_extractor,
+            normalize_images=normalize_images,
+            optimizer_class=optimizer_class,
+            optimizer_kwargs=optimizer_kwargs,
+        )
+
+    def get_distribution(
+        self, obs: thg.data.Data, action_masks: Optional[np.ndarray] = None
+    ) -> MaskableDistribution:
+        preprocessed_obs = preprocess_obs(
+            obs, self.observation_space, normalize_images=self.normalize_images
+        )
+        features = self.pi_features_extractor(preprocessed_obs)
+        latent_pi = self.mlp_extractor.forward_actor(features)
+        distribution = self._get_action_dist_from_latent(latent_pi)
+        if action_masks is not None:
+            distribution.apply_masking(action_masks)
+        return distribution
+
+
+class MaskableMultiInputGNNActorCriticPolicy(MaskableGNNActorCriticPolicy):
+    """Policy predicting from a dict containing potentially graphs + an action mask.
+
+    Features are extracted from graphs as in `GNNActorCriticPolicy` thanks to a GNN
+    followed by a reduction layer to a fixed number of features
+    (see `GraphFeaturesExtractor` for further details).
+
+    """
+
+    def __init__(
+        self,
+        observation_space: gym.spaces.Space,
+        action_space: gym.spaces.Space,
+        lr_schedule: Schedule,
+        net_arch: Optional[Union[list[int], dict[str, list[int]]]] = None,
+        activation_fn: type[th.nn.Module] = th.nn.Tanh,
+        ortho_init: bool = True,
+        features_extractor_class: type[
+            BaseFeaturesExtractor
+        ] = CombinedFeaturesExtractor,
+        features_extractor_kwargs: Optional[dict[str, Any]] = None,
+        share_features_extractor: bool = True,
+        normalize_images: bool = True,
+        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            lr_schedule=lr_schedule,
+            net_arch=net_arch,
+            activation_fn=activation_fn,
+            ortho_init=ortho_init,
+            features_extractor_class=features_extractor_class,
+            features_extractor_kwargs=features_extractor_kwargs,
+            share_features_extractor=share_features_extractor,
+            normalize_images=normalize_images,
+            optimizer_class=optimizer_class,
+            optimizer_kwargs=optimizer_kwargs,
+        )
+
+
+class GNN2NodeActorCriticPolicy(BaseGNN2NodeActorCriticPolicy, GNNActorCriticPolicy):
+    """Policy mapping a graph to one of its node.
+
+    The action is predicted by a GNN without additional reduction layer.
+    The value is modelled as in `GNNActorCriticPolicy` by a GNN followed by a reduction layer.
+
+    Intended to be used with environment where an observation is a graph and an action
+    is the choice of a node in this graph.
+
+    """
+
+    ...
+
+
+class MaskableGNN2NodeActorCriticPolicy(
+    BaseGNN2NodeActorCriticPolicy, MaskableGNNActorCriticPolicy
+):
+    """Policy mapping a graph to one of its node and using action masking.
+
+    The action is predicted by a GNN without additional reduction layer.
+    The value is modelled as in `GNNActorCriticPolicy` by a GNN followed by a reduction layer.
+
+    Intended to be used with environment where an observation is a graph and an action
+    is the choice of a node in this graph.
+
+    NB: here the action space is actually variable (as number of nodes can vary from an observation to another)
+    and thus the action mask length is also variable (and should match the number of nodes of the observation graph).
+
+    """
+
+    def get_distribution(
+        self, obs: thg.data.Data, action_masks: Optional[np.ndarray] = None
+    ) -> MaskableDistribution:
+        action_logits_graph: thg.data.Data = self.action_net(obs)
+        x, batch = action_logits_graph.x, action_logits_graph.batch
+        if batch is None:
+            action_dim = x.shape[0]
+            action_logits = x.flatten()
+        else:
+            x_split = thg.utils.unbatch(x.flatten(), batch)
+            action_dim = max(len(xx) for xx in x_split)
+            # we pad with -inf the logits (to avoid sampling node index higher than actual node number)
+            # for stability issues (in particular in backprop), we approximate -inf with min float
+            action_logits = th.stack(
+                tuple(
+                    pad(xx, (0, action_dim - len(xx)), value=th.finfo().min)
+                    for xx in x_split
+                )
+            )
+
+        distribution = MaskableCategoricalDistribution(
+            action_dim=action_dim
+        ).proba_distribution(action_logits=action_logits)
+        if action_masks is not None:
+            distribution.apply_masking(action_masks)
+        return distribution
+
+    def forward(
+        self,
+        obs: thg.data.Data,
+        deterministic: bool = False,
+        action_masks: Optional[np.ndarray] = None,
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+        # values
+        features = self.extract_features(obs)
+        latent_vf = self.mlp_extractor.forward_critic(features)
+        values = self.value_net(latent_vf)
+
+        # action distribution => actions, logprob
+        distribution = self.get_distribution(obs, action_masks=action_masks)
+        actions = distribution.get_actions(deterministic=deterministic)
+        log_prob = distribution.log_prob(actions)
+        actions = actions.reshape((-1, *self.action_space.shape))  # type: ignore[misc]
+
+        return actions, values, log_prob
+
+    def evaluate_actions(
+        self,
+        obs: thg.data.Data,
+        actions: th.Tensor,
+        action_masks: Optional[th.Tensor] = None,
+    ) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
+        # values
+        features = self.extract_features(obs)
+        latent_vf = self.mlp_extractor.forward_critic(features)
+        values = self.value_net(latent_vf)
+
+        # action distribution => actions, entropy
+        distribution = self.get_distribution(obs, action_masks=action_masks)
+        log_prob = distribution.log_prob(actions)
+        entropy = distribution.entropy()
+
+        return values, log_prob, entropy
