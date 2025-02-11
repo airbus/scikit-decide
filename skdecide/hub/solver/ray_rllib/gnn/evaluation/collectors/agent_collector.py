@@ -16,6 +16,7 @@ from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
     is_graph_dict,
     is_graph_dict_multiinput,
     is_masked_obs,
+    pad_axis,
     pad_graph,
 )
 
@@ -31,13 +32,33 @@ def agent_collector_graph_cache_in_np(
             buffers_entry_indices_struct = tree.unflatten_as(
                 buffers_entry_struct, range(len(buffers_entry))
             )
-            pad_buffers(buffers_entry, buffers_entry_indices_struct)
+            pad_graph_buffers(buffers_entry, buffers_entry_indices_struct)
         else:
             buffers_entry = self.buffers[key]
         cache_dict[key] = [_to_float_np_array(d) for d in buffers_entry]
 
 
-def pad_buffers(
+def agent_collector_graph2node_cache_in_np(
+    self: AgentCollector, cache_dict: dict[str, list[np.ndarray]], key: str
+) -> None:
+    """Update of AgentCollector._cache_in_np to handle buffers containing graphs/actions logits of different shapes."""
+    if key not in cache_dict:
+        if key == SampleBatch.ACTION_DIST_INPUTS:
+            assert len(self.buffers[key]) == 1  # singleton list
+            max_nodes = max(len(logits) for logits in self.buffers[key][0])
+            minus_infty_approx = np.finfo(self.buffers[key][0][0].dtype).min
+            buffers_entry = [
+                [
+                    pad_axis(logits, max_dim=max_nodes, value=minus_infty_approx)
+                    for logits in self.buffers[key][0]
+                ]
+            ]
+            cache_dict[key] = [_to_float_np_array(d) for d in buffers_entry]
+        else:
+            agent_collector_graph_cache_in_np(self, cache_dict=cache_dict, key=key)
+
+
+def pad_graph_buffers(
     buffers_entry: list[list[np.ndarray]], buffers_entry_indices_struct: Any
 ) -> None:
     if is_graph_dict(buffers_entry_indices_struct):
@@ -78,18 +99,21 @@ def pad_buffers(
 
     elif is_graph_dict_multiinput(buffers_entry_indices_struct):
         for buffers_entry_indices_substruct in buffers_entry_indices_struct.values():
-            pad_buffers(
+            pad_graph_buffers(
                 buffers_entry=buffers_entry,
                 buffers_entry_indices_struct=buffers_entry_indices_substruct,
             )
 
     elif is_masked_obs(buffers_entry_indices_struct):
-        pad_buffers(
+        pad_graph_buffers(
             buffers_entry=buffers_entry,
             buffers_entry_indices_struct=buffers_entry_indices_struct[TRUE_OBS],
         )
 
 
-def monkey_patch_agent_collector() -> None:
+def monkey_patch_agent_collector(graph2node: bool = False) -> None:
     """Monkey patch rllib so that buffers pad graph arrays if necessary."""
-    AgentCollector._cache_in_np = agent_collector_graph_cache_in_np
+    if graph2node:
+        AgentCollector._cache_in_np = agent_collector_graph2node_cache_in_np
+    else:
+        AgentCollector._cache_in_np = agent_collector_graph_cache_in_np

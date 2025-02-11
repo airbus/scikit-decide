@@ -38,9 +38,9 @@ from skdecide.hub.domain.gym import AsLegacyGymV21Env
 from skdecide.hub.space.gym import GymSpace
 
 from .custom_models import TFParametricActionsModel, TorchParametricActionsModel
-from .gnn.evaluation.rollout_worker import GraphRolloutWorker
+from .gnn.evaluation.rollout_worker import Graph2NodeRolloutWorker, GraphRolloutWorker
 from .gnn.models.torch.complex_input_net import GraphComplexInputNetwork
-from .gnn.models.torch.gnn import GnnBasedModel
+from .gnn.models.torch.gnn import GnnBasedGraph2NodeModel, GnnBasedModel
 from .gnn.utils.spaces.space_utils import (
     ACTION_MASK,
     TRUE_OBS,
@@ -123,6 +123,8 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         action_embed_sizes: Optional[dict[str, int]] = None,
         callback: Callable[[RayRLlib], bool] = lambda solver: False,
         graph_feature_extractors_kwargs: Optional[dict[str, Any]] = None,
+        graph_node_action: bool = False,
+        graph_node_action_net_kwargs: Optional[dict[str, Any]] = None,
         **kwargs,
     ) -> None:
         """Initialize Ray RLlib.
@@ -140,9 +142,43 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
             If returning true, the solve process stops and exit the current train iteration.
             However, if train_iterations > 1, another train loop will be entered after that.
             (One can code its callback in such a way that further training loop are stopped directly after that.)
-        graph_feature_extractors_kwargs: in case of graph observations, these are the kwargs to the GraphFreaturesExtractor model
-            used to extract features. (See skdecide.hub.solver.ray_rllib.gnn.models.torch.gnn.GraphFeaturesExtractor)
+        graph_feature_extractors_kwargs: in case of graph observations, these are the kwargs to the `GraphFeaturesExtractor` model
+            used to extract features. See `skdecide.hub.solver.utils.gnn.torch_layers.GraphFeaturesExtractor`.
+        graph_node_action: specify if actions are actually nodes of the observation graph. In that case, the actual action space
+            size is derived at runtime from the observation graph.
+        graph_node_action_net_kwargs: if graph_node_action, these are the kwargs to the `Graph2NodeLayer` model used to
+            predict actions from the observation. See `skdecide.hub.solver.utils.gnn.torch_layers.Graph2NodeLayer`.
         **kwargs: used to update the algo config with kwargs automatically filled by optuna.
+
+        #### Masking
+
+        If the domain has not the `UnrestrictedActions` mixin, and if the algo used allows action masking
+        (e.g. APPO, BC, DQN, Rainbow, IMPALA, MARWIL, PPO), the observations are automatically wrapped to also present
+        the action mask to the algorithm, which will used via a custom model (defined in `skdecide.hub.solver.ray_rllib.custom_models`).
+        During training, a gymnasium environment is created wrapping a domain instantiated from `domain_factory` and
+        used during training rollouts to get the observation with the appropriate action mask.
+        At inference, we use the method `self.get_action_mask()` which provides the proper action mask provided that
+        `self.retrieve_applicable_actions(domain)` has been called before hand with the domain instance used for the inference.
+        This is automatically done by `skdecide.utils.rollout()`.
+
+        #### Graph observations
+
+        If the observation space wrapped gymnasium space for each agent is a `gymnasium.spaces.Graph` or a `gymnasium.spaces.Dict`
+        whose subspaces contain a `gymnasium.spaces.Graph`, the solver will use custom models adapted to graphs for its policy, using GNNs.
+
+        - If `graph_node_action` is False (default), a GNN will be used to extract (a fixed number of) features from graphs,
+          and then classical MLPs will be use for predicting action and value.
+          See `skdecide.hub.solver.utils.gnn.torch_layers.GraphFeaturesExtractor` for more details
+          and use `graph_feature_extractors_kwargs` to customize it.
+        - If `graph_node_action` is True, this means that an agent action is defined by the choice of node in the observation graph.
+          The agent action space should wrap a `gymnasium.spaces.Discrete` even though the actual number of actions will be
+          derived at runtime from the number of nodes in the observation graph. The agent observation wrapped gymnasium space
+          can only be a `gymnasium.spaces.Graph` in that case.
+          The value is still predicted as above via a GNN features extractor + classical MLP, customized with same parameters.
+          The action logits will be directly predicted via another GNN so that the number of logits correspond to the number
+          of nodes.
+          See `skdecide.hub.solver.utils.gnn.torch_layers.Graph2NodeLayer` for more details
+          and use `graph_node_action_net_kwargs` to customize it.
 
         """
         Solver.__init__(self, domain_factory=domain_factory)
@@ -171,6 +207,10 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
             self._graph_feature_extractors_kwargs = {}
         else:
             self._graph_feature_extractors_kwargs = graph_feature_extractors_kwargs
+        if graph_node_action_net_kwargs is None:
+            self._graph2node_action_net_kwargs = {}
+        else:
+            self._graph2node_action_net_kwargs = graph_node_action_net_kwargs
 
         ray.init(ignore_reinit_error=True)
         self._algo_callbacks: Optional[DefaultCallbacks] = None
@@ -201,6 +241,9 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         self._is_graph_multiinput_obs = _is_graph_multiinput_space(
             (self._wrapped_observation_space)
         )
+
+        # graph -> node (ie an action is a node of observation graph)
+        self._graph2node = self._is_graph_obs and graph_node_action
 
         # Handle kwargs (potentially generated by optuna)
         if "train_batch_size_log2" in kwargs:
@@ -292,14 +335,25 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
     def _init_algo(self) -> None:
         # monkey patch rllib for graph handling
         if self._is_graph_obs or self._is_graph_multiinput_obs:
-            if not isinstance(
-                self._config.env_runner_cls, (RolloutWorker, GraphRolloutWorker)
-            ):
-                logger.warning(
-                    "The EnvRunner class to use for environment rollouts (data collection) will be overriden "
-                    "by GraphRolloutWorker so that buffers manage properly graphs concatenation."
-                )
-            self._config.env_runners(env_runner_cls=GraphRolloutWorker)
+            if self._graph2node:
+                if not isinstance(
+                    self._config.env_runner_cls,
+                    (RolloutWorker, Graph2NodeRolloutWorker),
+                ):
+                    logger.warning(
+                        "The EnvRunner class to use for environment rollouts (data collection) will be overriden "
+                        "by Graph2NodeRolloutWorker so that buffers manage properly graphs concatenation."
+                    )
+                self._config.env_runners(env_runner_cls=Graph2NodeRolloutWorker)
+            else:
+                if not isinstance(
+                    self._config.env_runner_cls, (RolloutWorker, GraphRolloutWorker)
+                ):
+                    logger.warning(
+                        "The EnvRunner class to use for environment rollouts (data collection) will be overriden "
+                        "by GraphRolloutWorker so that buffers manage properly graphs concatenation."
+                    )
+                self._config.env_runners(env_runner_cls=GraphRolloutWorker)
 
         # custom model?
         if self._action_masking:
@@ -334,12 +388,20 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
                 raise RuntimeError(
                     "Graph observation with RLlib requires PyTorch framework."
                 )
-            ModelCatalog.register_custom_model(
-                "skdecide_rllib_graph_model",
-                GnnBasedModel
-                if self._config.get("framework") == "torch"
-                else NotProvided,
-            )
+            if self._graph2node:
+                ModelCatalog.register_custom_model(
+                    "skdecide_rllib_graph_model",
+                    GnnBasedGraph2NodeModel
+                    if self._config.get("framework") == "torch"
+                    else NotProvided,
+                )
+            else:
+                ModelCatalog.register_custom_model(
+                    "skdecide_rllib_graph_model",
+                    GnnBasedModel
+                    if self._config.get("framework") == "torch"
+                    else NotProvided,
+                )
             # let the observation pass as is
             self._config.experimental(
                 _disable_preprocessor_api=True,
