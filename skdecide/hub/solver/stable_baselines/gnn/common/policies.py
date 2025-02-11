@@ -23,7 +23,10 @@ from torch import nn
 from torch.nn.functional import pad
 
 from skdecide.hub.solver.utils.gnn.torch_layers import Graph2NodeLayer
-from skdecide.hub.solver.utils.gnn.torch_utils import extract_module_parameters_values
+from skdecide.hub.solver.utils.gnn.torch_utils import (
+    extract_module_parameters_values,
+    unbatch_node_logits,
+)
 
 from .preprocessing import preprocess_obs
 from .torch_layers import CombinedFeaturesExtractor, GraphFeaturesExtractor
@@ -246,21 +249,8 @@ class BaseGNN2NodeActorCriticPolicy(BaseGNNActorCriticPolicy):
         :return: the action distribution.
         """
         action_logits_graph: thg.data.Data = self.action_net(obs)
-        x, batch = action_logits_graph.x, action_logits_graph.batch
-        if batch is None:
-            action_dim = x.shape[0]
-            action_logits = x.flatten()
-        else:
-            x_split = thg.utils.unbatch(x.flatten(), batch)
-            action_dim = max(len(xx) for xx in x_split)
-            # we pad with -inf the logits (to avoid sampling node index higher than actual node number)
-            # for stability issues (in particular in backprop), we approximate -inf with min float
-            action_logits = th.stack(
-                tuple(
-                    pad(xx, (0, action_dim - len(xx)), value=th.finfo().min)
-                    for xx in x_split
-                )
-            )
+        action_logits = unbatch_node_logits(action_logits_graph)
+        action_dim = action_logits.shape[-1]
 
         return CategoricalDistribution(action_dim=action_dim).proba_distribution(
             action_logits=action_logits

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 
 import gymnasium as gym
 import numpy as np
@@ -46,7 +46,9 @@ def _add_dummy_shape_to_repeated_space(space: Repeated) -> None:
         raise NotImplementedError()
 
 
-def _pad_axis(x: np.ndarray, max_dim: int, value: int = 0, axis: int = 0) -> np.ndarray:
+def pad_axis(
+    x: np.ndarray, max_dim: int, value: Union[int, float] = 0, axis: int = 0
+) -> np.ndarray:
     actual_dim = x.shape[axis]
     pad_width = np.zeros((len(x.shape), 2), dtype=int)
     pad_width[axis, 1] = max_dim - actual_dim
@@ -93,10 +95,10 @@ def pad_graph(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     actual_n_nodes = len(nodes)
     # pad to max number of nodes + edges and encode actual number of edges and nodes in edge_links
-    nodes = _pad_axis(nodes, max_n_nodes)
-    edges = _pad_axis(edges, max_n_edges)
+    nodes = pad_axis(nodes, max_n_nodes)
+    edges = pad_axis(edges, max_n_edges)
     # pad edge_links to max number of edges + 1 last "edge" encoding actual nodes number
-    edge_links = _pad_axis(
+    edge_links = pad_axis(
         edge_links, max_n_edges, value=-1
     )  # negative values => fake edges
     edge_links = np.vstack(
@@ -131,15 +133,15 @@ def pad_batched_graph_dict(
 
     edge_links = np.concatenate(
         (
-            _pad_axis(edge_links, max_n_edges, value=-1, axis=1),
+            pad_axis(edge_links, max_n_edges, value=-1, axis=1),
             encoding_n_nodes_edge_links,
         ),
         axis=1,
     )
 
     # nodes and edges: pad with 0 second axis (first axis = batch)
-    nodes = _pad_axis(nodes, max_n_nodes, axis=1)
-    edges = _pad_axis(edges, max_n_edges, axis=1)
+    nodes = pad_axis(nodes, max_n_nodes, axis=1)
+    edges = pad_axis(edges, max_n_edges, axis=1)
 
     return dict(
         nodes=nodes,
