@@ -15,6 +15,8 @@ from skdecide.hub.solver.ray_rllib.gnn.models.torch.complex_input_net import (
 )
 from skdecide.hub.solver.ray_rllib.gnn.models.torch.gnn import GnnBasedModel
 from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
+    ACTION_MASK,
+    TRUE_OBS,
     is_graph_dict_multiinput_space,
     is_graph_dict_space,
 )
@@ -56,10 +58,10 @@ class TFParametricActionsModel(TFModelV2):
 
     def forward(self, input_dict, state, seq_lens):
         # Extract the available actions mask tensor from the observation.
-        valid_avail_actions_mask = input_dict["obs"]["valid_avail_actions_mask"]
+        valid_avail_actions_mask = input_dict["obs"][ACTION_MASK]
 
         # Unbatch true observations before flattening them
-        unbatched_true_obs = unbatch(input_dict["obs"]["true_obs"])
+        unbatched_true_obs = unbatch(input_dict["obs"][TRUE_OBS])
 
         # Compute the predicted action embedding
         pred_action_embed, _ = self.pred_action_embed_model(
@@ -135,17 +137,17 @@ class TorchParametricActionsModel(TorchModelV2, nn.Module):
 
     def forward(self, input_dict, state, seq_lens):
         # Extract the available actions mask tensor from the observation.
-        valid_avail_actions_mask = input_dict["obs"]["valid_avail_actions_mask"]
+        valid_avail_actions_mask = input_dict["obs"][ACTION_MASK]
 
         if self.obs_with_graph:
             # use directly the obs (already converted at proper format by custom `convert_to_torch_tensor`)
-            embed_model_obs = input_dict["obs"]["true_obs"]
+            embed_model_obs = input_dict["obs"][TRUE_OBS]
         else:
             # Unbatch true observations before flattening them
             embed_model_obs = torch.stack(
                 [
                     flatten_to_single_ndarray(o)
-                    for o in unbatch(input_dict["obs"]["true_obs"])
+                    for o in unbatch(input_dict["obs"][TRUE_OBS])
                 ]
             )
 

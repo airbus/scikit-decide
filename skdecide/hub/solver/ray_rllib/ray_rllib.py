@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Optional, Union
 
@@ -16,6 +17,7 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     IntegerHyperparameter,
 )
 from packaging.version import Version
+from ray.rllib import RolloutWorker
 from ray.rllib.algorithms import DQN, PPO, SAC
 from ray.rllib.algorithms.algorithm import Algorithm, AlgorithmConfig
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
@@ -36,16 +38,17 @@ from skdecide.hub.domain.gym import AsLegacyGymV21Env
 from skdecide.hub.space.gym import GymSpace
 
 from .custom_models import TFParametricActionsModel, TorchParametricActionsModel
+from .gnn.evaluation.rollout_worker import GraphRolloutWorker
 from .gnn.models.torch.complex_input_net import GraphComplexInputNetwork
 from .gnn.models.torch.gnn import GnnBasedModel
 from .gnn.utils.spaces.space_utils import (
+    ACTION_MASK,
+    TRUE_OBS,
     convert_graph_space_to_dict_space,
     convert_graph_to_dict,
 )
 
-if TYPE_CHECKING:
-    # imports useful only in annotations, may change according to releases
-    from ray.rllib import RolloutWorker
+logger = logging.getLogger(__name__)
 
 
 class D(MultiAgentRLDomain):
@@ -287,6 +290,17 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         self.set_callback()  # ensure putting back actual callback
 
     def _init_algo(self) -> None:
+        # monkey patch rllib for graph handling
+        if self._is_graph_obs or self._is_graph_multiinput_obs:
+            if not isinstance(
+                self._config.env_runner_cls, (RolloutWorker, GraphRolloutWorker)
+            ):
+                logger.warning(
+                    "The EnvRunner class to use for environment rollouts (data collection) will be overriden "
+                    "by GraphRolloutWorker so that buffers manage properly graphs concatenation."
+                )
+            self._config.env_runners(env_runner_cls=GraphRolloutWorker)
+
         # custom model?
         if self._action_masking:
             if self._is_graph_obs or self._is_graph_multiinput_obs:
@@ -378,11 +392,11 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
             else {
                 self._policy_mapping_fn(agent, None, None): gym.spaces.Dict(
                     {
-                        "true_obs": _unwrap_agent_obs_space(
+                        TRUE_OBS: _unwrap_agent_obs_space(
                             wrapped_observation_space=self._wrapped_observation_space,
                             agent=agent,
                         ),
-                        "valid_avail_actions_mask": gym.spaces.Box(
+                        ACTION_MASK: gym.spaces.Box(
                             0,
                             1,
                             shape=(
@@ -419,7 +433,7 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
                                 "custom_model": "skdecide_rllib_custom_model",
                                 "custom_model_config": {
                                     "true_obs_space": pol_obs_spaces[k].spaces[
-                                        "true_obs"
+                                        TRUE_OBS
                                     ],
                                     "action_embed_size": action_embed_size,
                                     **extra_custom_model_config_kwargs,
@@ -641,11 +655,11 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
                 {
                     agent: gym.spaces.Dict(
                         {
-                            "true_obs": _unwrap_agent_obs_space(
+                            TRUE_OBS: _unwrap_agent_obs_space(
                                 wrapped_observation_space=self._wrapped_observation_space,
                                 agent=agent,
                             ),
-                            "valid_avail_actions_mask": gym.spaces.Box(
+                            ACTION_MASK: gym.spaces.Box(
                                 0,
                                 1,
                                 shape=(
@@ -831,10 +845,10 @@ def _unwrap_agent_obs_with_action_masking(
     action_mask: dict[str, Mask],
 ) -> dict[str, Union[Any, Mask]]:
     return {
-        "true_obs": _unwrap_agent_obs(
+        TRUE_OBS: _unwrap_agent_obs(
             obs=obs, agent=agent, wrapped_observation_space=wrapped_observation_space
         ),
-        "valid_avail_actions_mask": action_mask[agent],
+        ACTION_MASK: action_mask[agent],
     }
 
 

@@ -262,7 +262,7 @@ def test_dict_dqn(unmasked_jsp_dict_domain_factory):
         )
 
 
-def test_graph2node_ppo(unmasked_jsp_domain_factory):
+def test_graph2node_ppo(unmasked_jsp_domain_factory, variable_n_nodes):
 
     domain_factory = unmasked_jsp_domain_factory
 
@@ -284,27 +284,30 @@ def test_graph2node_ppo(unmasked_jsp_domain_factory):
             render=False,
         )
 
-        # check batch handling by policy
-        domain = domain_factory()
-        obs = domain.reset()
-        policy = solver._algo.policy
-        obs_thg_data, _ = policy.obs_to_tensor(obs)
-        # set training=False to be deterministic
-        policy.train(False)
-        # batch with same obs => same logits
-        obs_batch = thg.data.Batch.from_data_list([obs_thg_data, obs_thg_data])
-        batched_logits = policy.get_distribution(obs_batch).distribution.logits
-        assert th.allclose(batched_logits[0], batched_logits[1])
-        # batch with an obs with less node => last logit ~= -inf
-        x = obs_thg_data.x[:-1, :]
-        edge_index, edge_attr = thg.utils.subgraph(
-            subset=list(range(len(obs_thg_data.x) - 1)),
-            edge_index=obs_thg_data.edge_index,
-            edge_attr=obs_thg_data.edge_attr,
-        )
-        obs_thg_data2 = thg.data.Data(x=x, edge_attr=edge_attr, edge_index=edge_index)
-        obs_batch = thg.data.Batch.from_data_list([obs_thg_data, obs_thg_data2])
-        last_prob = th.exp(policy.get_distribution(obs_batch).distribution.logits)[
-            -1, -1
-        ]
-        assert last_prob == 0.0
+        # check batch handling by policy  (only once)
+        if not variable_n_nodes:
+            domain = domain_factory()
+            obs = domain.reset()
+            policy = solver._algo.policy
+            obs_thg_data, _ = policy.obs_to_tensor(obs)
+            # set training=False to be deterministic
+            policy.train(False)
+            # batch with same obs => same logits
+            obs_batch = thg.data.Batch.from_data_list([obs_thg_data, obs_thg_data])
+            batched_logits = policy.get_distribution(obs_batch).distribution.logits
+            assert th.allclose(batched_logits[0], batched_logits[1])
+            # batch with an obs with less node => last logit ~= -inf
+            x = obs_thg_data.x[:-1, :]
+            edge_index, edge_attr = thg.utils.subgraph(
+                subset=list(range(len(obs_thg_data.x) - 1)),
+                edge_index=obs_thg_data.edge_index,
+                edge_attr=obs_thg_data.edge_attr,
+            )
+            obs_thg_data2 = thg.data.Data(
+                x=x, edge_attr=edge_attr, edge_index=edge_index
+            )
+            obs_batch = thg.data.Batch.from_data_list([obs_thg_data, obs_thg_data2])
+            last_prob = th.exp(policy.get_distribution(obs_batch).distribution.logits)[
+                -1, -1
+            ]
+            assert last_prob == 0.0
