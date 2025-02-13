@@ -10,6 +10,8 @@ from ray.rllib.utils.torch_utils import (
 from ray.rllib.utils.typing import TensorStructType
 
 from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
+    NODES,
+    convert_dict_to_graph,
     extract_graph_dict_from_batched_graph_dict,
     is_graph_dict,
     is_graph_dict_multiinput,
@@ -71,45 +73,19 @@ def convert_to_torch_tensor(
         )
 
 
-def graph_dict_to_thg_data(
-    graph_dict: dict[str, np.ndarray],
-    device: Optional[str] = None,
-    pin_memory: bool = False,
-):
-    # Node features
-    flatten_node_features = graph_dict["nodes"].reshape((len(graph_dict["nodes"]), -1))
-    x = th.tensor(flatten_node_features).float()
-    # Edge features
-    if graph_dict["edges"] is None:
-        edge_attr = None
-    else:
-        flatten_edge_features = graph_dict["edges"].reshape(
-            (len(graph_dict["edges"]), -1)
-        )
-        edge_attr = th.tensor(flatten_edge_features).float()
-    edge_index = (
-        th.tensor(graph_dict["edge_links"], dtype=th.long).t().contiguous().view(2, -1)
-    )
-    # thg.Data
-    data = thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
-    # Pin the tensor's memory (for faster transfer to GPU later).
-    if pin_memory and th.cuda.is_available():
-        data.pin_memory()
-
-    return data if device is None else data.to(device)
-
-
 def batched_graph_dict_to_thg_data(
     batched_graph_dict: dict[str, np.ndarray],
     device: Optional[str] = None,
     pin_memory: bool = False,
 ):
-    batch_size = batched_graph_dict["nodes"].shape[0]
+    batch_size = batched_graph_dict[NODES].shape[0]
     return thg.data.Batch.from_data_list(
         [
-            graph_dict_to_thg_data(
-                graph_dict=extract_graph_dict_from_batched_graph_dict(
-                    batched_graph_dict=batched_graph_dict, index=index
+            graph_instance_to_thg_data(
+                graph=convert_dict_to_graph(
+                    extract_graph_dict_from_batched_graph_dict(
+                        batched_graph_dict=batched_graph_dict, index=index
+                    )
                 ),
                 device=device,
                 pin_memory=pin_memory,

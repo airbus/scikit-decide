@@ -240,13 +240,13 @@ class GraphJspDomain(D):
 
     _gym_env: DisjunctiveGraphJspEnv
 
-    def __init__(self, gym_env, deterministic=False):
+    def __init__(self, gym_env, variable_n_nodes=True):
+        self.variable_n_nodes = variable_n_nodes
         self._gym_env = gym_env
         if self._gym_env.normalize_observation_space:
             self.n_nodes_features = gym_env.n_machines + 1
         else:
             self.n_nodes_features = 2
-        self.deterministic = deterministic
 
     def _state_reset(self) -> D.T_state:
         return self._np_state2graph_state(self._gym_env.reset()[0])
@@ -309,8 +309,53 @@ class GraphJspDomain(D):
         edge_starts_ends = adj.nonzero()
         edge_links = np.transpose(edge_starts_ends)
         edges = adj[edge_starts_ends][:, None]
+        if self.variable_n_nodes:
+            nodes, edges, edge_links = self._remove_later_nodes(
+                nodes, edges, edge_links
+            )
 
         return GraphInstance(nodes=nodes, edges=edges, edge_links=edge_links)
+
+    def _remove_later_nodes(self, nodes, edges, edge_links):
+        """Remove the nodes not scheduled and in the neigborhood of them.
+
+        Not really useful for true learning. Used here to test our solvers on obs whose number of nodes vary.
+
+        """
+        nodes_to_keep = set(
+            i_node
+            for i_node in range(len(self._gym_env.G.nodes) - 1)
+            if self._gym_env.G.nodes[i_node]["scheduled"]
+        )
+        nodes_to_keep = nodes_to_keep.union(
+            set(
+                list(self._gym_env.G.out_edges(i_node))[0][1]
+                for i_node in nodes_to_keep
+            )
+        )
+        # remove dummy nodes and reindex from first non-dummy node
+        nodes_to_keep = set(
+            i_node - 1
+            for i_node in nodes_to_keep
+            if i_node > 0 and i_node < (len(self._gym_env.G.nodes) - 1)
+        )
+
+        i_edges_to_keep = [
+            i_edge
+            for i_edge in range(len(edge_links))
+            if edge_links[i_edge][0] in nodes_to_keep
+            and edge_links[i_edge][1] in nodes_to_keep
+        ]
+        edge_links = edge_links[i_edges_to_keep]
+        edges = edges[i_edges_to_keep]
+        i_node2i_node_subset = {
+            i_node: i_node_subset for i_node_subset, i_node in enumerate(nodes_to_keep)
+        }
+        if len(edge_links) > 0:
+            edge_links = np.vectorize(lambda x: i_node2i_node_subset[x])(edge_links)
+        nodes = nodes[list(nodes_to_keep)]
+
+        return nodes, edges, edge_links
 
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
         return self._gym_env.render(**kwargs)
@@ -333,13 +378,14 @@ class D(GraphJspDomain):
 class MultiInputGraphJspDomain(D):
     """Multi-input version of GraphJspDomain.
 
-    This domain adds only a constant features to test algos with multiinputs, some being graphs.
+    This domain adds only constant features to test algos with multiinputs, some being graphs.
 
     """
 
     def _get_observation_space_(self) -> Space[D.T_observation]:
         return DictSpace(
             spaces=dict(
+                alpha=Discrete(3),
                 graph=super()._get_observation_space_(),
                 static=Box(low=0.0, high=1.0, dtype=float),
             )
@@ -349,11 +395,11 @@ class MultiInputGraphJspDomain(D):
         self, action: D.T_event
     ) -> TransitionOutcome[D.T_state, Value[D.T_value], D.T_predicate, D.T_info]:
         transition = super()._state_step(action)
-        transition.state = dict(graph=transition.state, static=np.array([0.5]))
+        transition.state = dict(alpha=0, graph=transition.state, static=np.array([0.5]))
         return transition
 
     def _state_reset(self) -> D.T_state:
-        return dict(graph=super()._state_reset(), static=np.array([0.5]))
+        return dict(alpha=0, graph=super()._state_reset(), static=np.array([0.5]))
 
 
 class UnmaskedMultiInputGraphJspDomain(UnrestrictedActions, MultiInputGraphJspDomain):
@@ -382,9 +428,11 @@ jsp = np.array(
     ]
 )
 
+variable_n_nodes = param_fixture("variable_n_nodes", [False, True])
+
 
 @fixture
-def jsp_domain_factory():
+def jsp_domain_factory(variable_n_nodes):
     return lambda: GraphJspDomain(
         gym_env=DisjunctiveGraphJspEnv(
             jps_instance=jsp,
@@ -392,12 +440,13 @@ def jsp_domain_factory():
             normalize_observation_space=False,
             flat_observation_space=False,
             action_mode="task",
-        )
+        ),
+        variable_n_nodes=variable_n_nodes,
     )
 
 
 @fixture
-def unmasked_jsp_domain_factory():
+def unmasked_jsp_domain_factory(variable_n_nodes):
     return lambda: UnmaskedGraphJspDomain(
         gym_env=DisjunctiveGraphJspEnv(
             jps_instance=jsp,
@@ -405,12 +454,13 @@ def unmasked_jsp_domain_factory():
             normalize_observation_space=False,
             flat_observation_space=False,
             action_mode="task",
-        )
+        ),
+        variable_n_nodes=variable_n_nodes,
     )
 
 
 @fixture
-def jsp_dict_domain_factory():
+def jsp_dict_domain_factory(variable_n_nodes):
     return lambda: MultiInputGraphJspDomain(
         gym_env=DisjunctiveGraphJspEnv(
             jps_instance=jsp,
@@ -418,12 +468,13 @@ def jsp_dict_domain_factory():
             normalize_observation_space=False,
             flat_observation_space=False,
             action_mode="task",
-        )
+        ),
+        variable_n_nodes=variable_n_nodes,
     )
 
 
 @fixture
-def unmasked_jsp_dict_domain_factory():
+def unmasked_jsp_dict_domain_factory(variable_n_nodes):
     return lambda: UnmaskedMultiInputGraphJspDomain(
         gym_env=DisjunctiveGraphJspEnv(
             jps_instance=jsp,
@@ -431,7 +482,8 @@ def unmasked_jsp_dict_domain_factory():
             normalize_observation_space=False,
             flat_observation_space=False,
             action_mode="task",
-        )
+        ),
+        variable_n_nodes=variable_n_nodes,
     )
 
 
