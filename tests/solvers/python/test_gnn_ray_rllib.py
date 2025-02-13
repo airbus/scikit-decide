@@ -34,8 +34,8 @@ def graphppo_config():
     )
 
 
-def test_ppo(unmasked_graph_maze_domain_factory, graphppo_config, ray_init):
-    domain_factory = unmasked_graph_maze_domain_factory
+def test_ppo(unmasked_graph_domain_factory, graphppo_config, ray_init):
+    domain_factory = unmasked_graph_domain_factory
     solver_kwargs = dict(
         algo_class=GraphPPO, train_iterations=1  # , gamma=0.95, train_batch_size_log2=8
     )
@@ -54,17 +54,14 @@ def test_ppo(unmasked_graph_maze_domain_factory, graphppo_config, ray_init):
 
 
 def test_ppo_user_gnn(
-    unmasked_graph_maze_domain_factory,
-    discrete_features,
+    unmasked_jsp_domain_factory,
     my_gnn_class,
     my_gnn_kwargs,
     graphppo_config,
     ray_init,
     caplog,
 ):
-    if discrete_features:
-        pytest.skip("Test only for one domain.")
-    domain_factory = unmasked_graph_maze_domain_factory
+    domain_factory = unmasked_jsp_domain_factory
     domain = domain_factory()
     node_features_dim = int(
         np.prod(domain.get_observation_space().unwrapped().node_space.shape)
@@ -102,17 +99,14 @@ def test_ppo_user_gnn(
 
 
 def test_ppo_user_reduction_layer(
-    unmasked_graph_maze_domain_factory,
-    discrete_features,
+    unmasked_jsp_domain_factory,
     my_reduction_layer_class,
     my_reduction_layer_kwargs,
     graphppo_config,
     ray_init,
     caplog,
 ):
-    if discrete_features:
-        pytest.skip("Test only for one domain.")
-    domain_factory = unmasked_graph_maze_domain_factory
+    domain_factory = unmasked_jsp_domain_factory
     gnn_out_dim = 128
     features_dim = 64
     reduction_layer_class = my_reduction_layer_class
@@ -146,9 +140,6 @@ def test_ppo_user_reduction_layer(
     assert reduction_layer_class(**reduction_layer_kwargs).warning() in caplog.text
 
 
-@pytest.mark.skip(
-    "The ray.rllib wrapper does not yet manage graphs with changing structure"
-)
 def test_dict_ppo(unmasked_jsp_dict_domain_factory, graphppo_config, ray_init):
     domain_factory = unmasked_jsp_dict_domain_factory
     solver_kwargs = dict(
@@ -168,11 +159,9 @@ def test_dict_ppo(unmasked_jsp_dict_domain_factory, graphppo_config, ray_init):
         )
 
 
-def test_ppo_masked(graph_maze_domain_factory, graphppo_config, ray_init):
-    domain_factory = graph_maze_domain_factory
-    solver_kwargs = dict(
-        algo_class=GraphPPO, train_iterations=1  # , gamma=0.95, train_batch_size_log2=8
-    )
+def test_ppo_masked(graph_domain_factory, graphppo_config, ray_init):
+    domain_factory = graph_domain_factory
+    solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
     with RayRLlib(
         domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
     ) as solver:
@@ -187,11 +176,8 @@ def test_ppo_masked(graph_maze_domain_factory, graphppo_config, ray_init):
         )
 
 
-@pytest.mark.skip(
-    "The ray.rllib wrapper does not yet manage graphs with changing structure"
-)
-def test_dict_ppo_masked(unmasked_jsp_dict_domain_factory, graphppo_config, ray_init):
-    domain_factory = unmasked_jsp_dict_domain_factory
+def test_dict_ppo_masked(jsp_dict_domain_factory, graphppo_config, ray_init):
+    domain_factory = jsp_dict_domain_factory
     solver_kwargs = dict(
         algo_class=GraphPPO, train_iterations=1  # , gamma=0.95, train_batch_size_log2=8
     )
@@ -210,17 +196,14 @@ def test_dict_ppo_masked(unmasked_jsp_dict_domain_factory, graphppo_config, ray_
 
 
 def test_ppo_masked_user_gnn(
-    graph_maze_domain_factory,
-    discrete_features,
+    jsp_domain_factory,
     my_gnn_class,
     my_gnn_kwargs,
     graphppo_config,
     ray_init,
     caplog,
 ):
-    if discrete_features:
-        pytest.skip("Test only for one domain.")
-    domain_factory = graph_maze_domain_factory
+    domain_factory = jsp_domain_factory
     node_features_dim = int(
         np.prod(domain_factory().get_observation_space().unwrapped().node_space.shape)
     )
@@ -249,9 +232,6 @@ def test_ppo_masked_user_gnn(
     assert gnn_class(**gnn_kwargs).warning() in caplog.text
 
 
-@pytest.mark.skip(
-    "The ray.rllib wrapper does not yet manage graphs with changing structure"
-)
 def test_dict_ppo_masked_user_gnn(
     jsp_dict_domain_factory,
     my_gnn_class,

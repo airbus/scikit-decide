@@ -19,7 +19,9 @@ def graph_instance_to_thg_data(
     if graph.edges is None:
         edge_attr = None
     else:
-        flatten_edge_features = graph.edges.reshape((len(graph.edges), -1))
+        flatten_edge_features = graph.edges.reshape(
+            (len(graph.edges), int(np.prod(graph.edges.shape[1:])))
+        )
         edge_attr = th.tensor(flatten_edge_features).float()
     edge_index = th.tensor(graph.edge_links, dtype=th.long).t().contiguous().view(2, -1)
     # thg.Data
