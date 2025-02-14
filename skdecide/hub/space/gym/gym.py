@@ -13,6 +13,7 @@ from typing import Any, Generic, Union
 import gymnasium as gym
 import gymnasium.spaces as gym_spaces
 import numpy as np
+from gymnasium.spaces.space import T_cov
 
 from skdecide import EnumerableSpace, SamplableSpace, SerializableSpace, T
 
@@ -355,7 +356,11 @@ class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
         elements: The list of elements for creating the Gym Discrete space (gym.spaces.Discrete) to wrap.
         """
         self._elements = list(elements)
-        gym_space = gym_spaces.Discrete(len(self._elements))
+        if len(self._elements) > 0:
+            gym_space = gym_spaces.Discrete(len(self._elements))
+        else:
+            gym_space = Empty()
+
         super().__init__(gym_space)
 
     def contains(self, x: T) -> bool:
@@ -550,3 +555,15 @@ class VariableSpace(GymSpace[T]):
 
     def __repr__(self):
         return f"RepeatedSpace({self._gym_space}, max_len={self.max_len})"
+
+
+class Empty(gym.spaces.Space):
+    @property
+    def is_np_flattenable(self) -> bool:
+        return False
+
+    def sample(self, mask: Any | None = None) -> T_cov:
+        raise RuntimeError("Cannot sample an empty space.")
+
+    def contains(self, x: Any) -> bool:
+        return False
