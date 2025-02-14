@@ -1,19 +1,9 @@
-from typing import Any, Optional
+import logging
 
 import numpy as np
 import torch as th
 import torch_geometric as thg
-from graph_jsp_env.disjunctive_graph_jsp_env import DisjunctiveGraphJspEnv
-from gymnasium.spaces import Box, Discrete, Graph, GraphInstance
-from pytest_cases import fixture, fixture_union, param_fixture
-from torch_geometric.nn import global_add_pool
 
-from skdecide.builders.domain import Renderable, UnrestrictedActions
-from skdecide.core import Mask, Space, TransitionOutcome, Value
-from skdecide.domains import DeterministicPlanningDomain
-from skdecide.hub.domain.gym import GymDomain
-from skdecide.hub.domain.maze import Maze
-from skdecide.hub.domain.maze.maze import DEFAULT_MAZE, Action, State
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.gnn import GraphPPO
 from skdecide.hub.solver.stable_baselines.gnn.a2c import GraphA2C
@@ -21,344 +11,25 @@ from skdecide.hub.solver.stable_baselines.gnn.common.torch_layers import (
     GraphFeaturesExtractor,
 )
 from skdecide.hub.solver.stable_baselines.gnn.dqn.dqn import GraphDQN
+from skdecide.hub.solver.stable_baselines.gnn.ppo.ppo import Graph2NodePPO
 from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
-from skdecide.hub.space.gym import DictSpace, DiscreteSpace, GymSpace, ListSpace
 from skdecide.utils import rollout
 
-# JSP graph env
 
-
-class D(GymDomain):
-    T_state = GraphInstance  # Type of states
-    T_observation = T_state  # Type of observations
-    T_event = int  # Type of events
-    T_value = float  # Type of transition values (rewards or costs)
-    T_info = None  # Type of additional information in environment outcome
-
-
-class GraphJspDomain(D):
-    _gym_env: DisjunctiveGraphJspEnv
-
-    def __init__(self, gym_env):
-        GymDomain.__init__(self, gym_env=gym_env)
-        if self._gym_env.normalize_observation_space:
-            self.n_nodes_features = gym_env.n_machines + 1
-        else:
-            self.n_nodes_features = 2
-
-    def _state_step(
-        self, action: D.T_event
-    ) -> TransitionOutcome[D.T_state, Value[D.T_value], D.T_predicate, D.T_info]:
-        outcome = super()._state_step(action=action)
-        outcome.state = self._np_state2graph_state(outcome.state)
-        return outcome
-
-    def _get_applicable_actions_from(
-        self, memory: D.T_memory[D.T_state]
-    ) -> D.T_agent[Space[D.T_event]]:
-        return ListSpace(np.nonzero(self._gym_env.valid_action_mask())[0])
-
-    def _state_reset(self) -> D.T_state:
-        return self._np_state2graph_state(super()._state_reset())
-
-    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
-        # overriden to get an enumerable space
-        return DiscreteSpace(n=self._gym_env.action_space.n)
-
-    def _get_observation_space_(self) -> Space[D.T_observation]:
-        if self._gym_env.normalize_observation_space:
-            original_graph_space = Graph(
-                node_space=Box(
-                    low=0.0,
-                    high=1.0,
-                    shape=(self.n_nodes_features,),
-                    dtype=np.float_,
-                ),
-                edge_space=Box(low=0, high=1.0, dtype=np.float_),
-            )
-
-        else:
-            original_graph_space = Graph(
-                node_space=Box(
-                    low=np.array([0, 0]),
-                    high=np.array(
-                        [
-                            self._gym_env.n_machines,
-                            self._gym_env.longest_processing_time,
-                        ]
-                    ),
-                    dtype=np.int_,
-                ),
-                edge_space=Box(
-                    low=0, high=self._gym_env.longest_processing_time, dtype=np.int_
-                ),
-            )
-        return GymSpace(original_graph_space)
-
-    def _np_state2graph_state(self, np_state: np.array) -> GraphInstance:
-        if not self._gym_env.normalize_observation_space:
-            np_state = np_state.astype(np.int_)
-
-        nodes = np_state[:, -self.n_nodes_features :]
-        adj = np_state[:, : -self.n_nodes_features]
-        edge_starts_ends = adj.nonzero()
-        edge_links = np.transpose(edge_starts_ends)
-        edges = adj[edge_starts_ends][:, None]
-
-        return GraphInstance(nodes=nodes, edges=edges, edge_links=edge_links)
-
-    def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        return self._gym_env.render(**kwargs)
-
-
-class D(GraphJspDomain):
-    T_state = dict[str, Any]
-
-
-class MultiInputGraphJspDomain(D):
-    def _get_observation_space_(self) -> Space[D.T_observation]:
-        return DictSpace(
-            spaces=dict(
-                graph=super()._get_observation_space_(),
-                static=Box(low=0.0, high=1.0),
-            )
-        )
-
-    def _state_step(
-        self, action: D.T_event
-    ) -> TransitionOutcome[D.T_state, Value[D.T_value], D.T_predicate, D.T_info]:
-        transition = super()._state_step(action)
-        transition.state = dict(graph=transition.state, static=np.array([0.5]))
-        return transition
-
-    def _state_reset(self) -> D.T_state:
-        return dict(graph=super()._state_reset(), static=np.array([0.5]))
-
-
-jsp = np.array(
-    [
-        [
-            [0, 1, 2],  # machines for job 0
-            [0, 2, 1],  # machines for job 1
-            [0, 1, 2],  # machines for job 2
-        ],
-        [
-            [3, 2, 2],  # task durations of job 0
-            [2, 1, 4],  # task durations of job 1
-            [0, 4, 3],  # task durations of job 2
-        ],
-    ]
-)
-
-
-class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
-    T_state = GraphInstance  # Type of states
-    T_observation = T_state  # Type of observations
-    T_event = Action  # Type of events
-    T_value = float  # Type of transition values (rewards or costs)
-    T_predicate = bool  # Type of logical checks
-    T_info = (
-        None  # Type of additional information given as part of an environment outcome
-    )
-
-
-class GraphMaze(D):
-    def __init__(self, maze_str: str = DEFAULT_MAZE, discrete_features: bool = False):
-        self.discrete_features = discrete_features
-        self.maze_domain = Maze(maze_str=maze_str)
-        np_wall = np.array(self.maze_domain._maze)
-        np_y = np.array(
-            [
-                [(i) for j in range(self.maze_domain._num_cols)]
-                for i in range(self.maze_domain._num_rows)
-            ]
-        )
-        np_x = np.array(
-            [
-                [(j) for j in range(self.maze_domain._num_cols)]
-                for i in range(self.maze_domain._num_rows)
-            ]
-        )
-        walls = np_wall.ravel()
-        coords = [i for i in zip(np_y.ravel(), np_x.ravel())]
-        np_node_id = np.reshape(range(len(walls)), np_wall.shape)
-        edge_links = []
-        edges = []
-        for i in range(self.maze_domain._num_rows):
-            for j in range(self.maze_domain._num_cols):
-                current_coord = (i, j)
-                if i > 0:
-                    next_coord = (i - 1, j)
-                    edge_links.append(
-                        (np_node_id[current_coord], np_node_id[next_coord])
-                    )
-                    edges.append(np_wall[current_coord] * np_wall[next_coord])
-                if i < self.maze_domain._num_rows - 1:
-                    next_coord = (i + 1, j)
-                    edge_links.append(
-                        (np_node_id[current_coord], np_node_id[next_coord])
-                    )
-                    edges.append(np_wall[current_coord] * np_wall[next_coord])
-                if j > 0:
-                    next_coord = (i, j - 1)
-                    edge_links.append(
-                        (np_node_id[current_coord], np_node_id[next_coord])
-                    )
-                    edges.append(np_wall[current_coord] * np_wall[next_coord])
-                if j < self.maze_domain._num_cols - 1:
-                    next_coord = (i, j + 1)
-                    edge_links.append(
-                        (np_node_id[current_coord], np_node_id[next_coord])
-                    )
-                    edges.append(np_wall[current_coord] * np_wall[next_coord])
-        self.edges = np.array(edges)
-        self.edge_links = np.array(edge_links)
-        self.walls = walls
-        self.node_ids = np_node_id
-        self.coords = coords
-
-    def _mazestate2graph(self, state: State) -> GraphInstance:
-        x, y = state
-        agent_presence = np.zeros(self.walls.shape, dtype=self.walls.dtype)
-        agent_presence[self.node_ids[y, x]] = 1
-        nodes = np.stack([self.walls, agent_presence], axis=-1)
-        if self.discrete_features:
-            return GraphInstance(
-                nodes=nodes, edges=self.edges, edge_links=self.edge_links
-            )
-        else:
-            return GraphInstance(
-                nodes=nodes, edges=self.edges[:, None], edge_links=self.edge_links
-            )
-
-    def _graph2mazestate(self, graph: GraphInstance) -> State:
-        y, x = self.coords[graph.nodes[:, 1].nonzero()[0][0]]
-        return State(x=x, y=y)
-
-    def _is_terminal(self, state: D.T_state) -> D.T_predicate:
-        return self.maze_domain._is_terminal(self._graph2mazestate(state))
-
-    def _get_next_state(self, memory: D.T_state, action: D.T_event) -> D.T_state:
-        maze_memory = self._graph2mazestate(memory)
-        maze_next_state = self.maze_domain._get_next_state(
-            memory=maze_memory, action=action
-        )
-        return self._mazestate2graph(maze_next_state)
-
-    def _get_transition_value(
-        self,
-        memory: D.T_state,
-        action: D.T_event,
-        next_state: Optional[D.T_state] = None,
-    ) -> Value[D.T_value]:
-        maze_memory = self._graph2mazestate(memory)
-        if next_state is None:
-            maze_next_state = None
-        else:
-            maze_next_state = self._graph2mazestate(next_state)
-        return self.maze_domain._get_transition_value(
-            memory=maze_memory, action=action, next_state=maze_next_state
-        )
-
-    def _get_action_space_(self) -> Space[D.T_event]:
-        return self.maze_domain._get_action_space_()
-
-    def _get_goals_(self) -> Space[D.T_observation]:
-        return ListSpace([self._mazestate2graph(self.maze_domain._goal)])
-
-    def _is_goal(
-        self, observation: D.T_agent[D.T_observation]
-    ) -> D.T_agent[D.T_predicate]:
-        return self.maze_domain._is_goal(self._graph2mazestate(observation))
-
-    def _get_initial_state_(self) -> D.T_state:
-        return self._mazestate2graph(self.maze_domain._get_initial_state_())
-
-    def _get_observation_space_(self) -> Space[D.T_observation]:
-        if self.discrete_features:
-            return GymSpace(
-                Graph(
-                    node_space=Box(low=0, high=1, shape=(2,), dtype=self.walls.dtype),
-                    edge_space=Discrete(2),
-                )
-            )
-        else:
-            return GymSpace(
-                Graph(
-                    node_space=Box(low=0, high=1, shape=(2,), dtype=self.walls.dtype),
-                    edge_space=Box(low=0, high=1, shape=(1,), dtype=self.edges.dtype),
-                )
-            )
-
-    def _render_from(self, memory: D.T_state, **kwargs: Any) -> Any:
-        maze_memory = self._graph2mazestate(memory)
-        self.maze_domain._render_from(memory=maze_memory, **kwargs)
-
-    def _get_action_mask(
-        self, memory: Optional[D.T_memory[D.T_state]] = None
-    ) -> D.T_agent[Mask]:
-        # overriden since by default it is only 1's (inheriting from UnrestrictedAction)
-        # we could also override only _get_applicable_action() but it will be more computationally efficient to
-        # implement directly get_action_mask()
-        if memory is None:
-            memory = self._memory
-        mazestate_memory = self._graph2mazestate(memory)
-        return np.array(
-            [
-                self._graph2mazestate(
-                    self._get_next_state(action=action, memory=memory)
-                )
-                != mazestate_memory
-                for action in self._get_action_space().get_elements()
-            ]
-        )
-
-
-discrete_features = param_fixture("discrete_features", [False, True])
-
-
-@fixture
-def maze_domain_factory(discrete_features):
-    return lambda: GraphMaze(discrete_features=discrete_features)
-
-
-@fixture
-def jsp_domain_factory():
-    return lambda: GraphJspDomain(
-        gym_env=DisjunctiveGraphJspEnv(
-            jps_instance=jsp,
-            perform_left_shift_if_possible=True,
-            normalize_observation_space=False,
-            flat_observation_space=False,
-            action_mode="task",
-        )
-    )
-
-
-@fixture
-def jsp_dict_domain_factory():
-    return lambda: MultiInputGraphJspDomain(
-        gym_env=DisjunctiveGraphJspEnv(
-            jps_instance=jsp,
-            perform_left_shift_if_possible=True,
-            normalize_observation_space=False,
-            flat_observation_space=False,
-            action_mode="task",
-        )
-    )
-
-
-domain_factory = fixture_union(
-    "domain_factory", [maze_domain_factory, jsp_domain_factory]
-)
-
-
-def test_observation_space(domain_factory):
-    domain = domain_factory()
+def test_observation_space(graph_domain_factory):
+    domain = graph_domain_factory()
     assert domain.reset() in domain.get_observation_space()
+    rollout(domain=domain, num_episodes=1, max_steps=3, render=False, verbose=False)
 
 
-def test_ppo(domain_factory):
+def test_dict_observation_space(jsp_dict_domain_factory):
+    domain = jsp_dict_domain_factory()
+    assert domain.reset() in domain.get_observation_space()
+    rollout(domain=domain, num_episodes=1, max_steps=3, render=False, verbose=False)
+
+
+def test_ppo(unmasked_graph_domain_factory):
+    domain_factory = unmasked_graph_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=GraphPPO,
@@ -376,7 +47,8 @@ def test_ppo(domain_factory):
         )
 
 
-def test_dqn(domain_factory):
+def test_dqn(unmasked_graph_domain_factory):
+    domain_factory = unmasked_graph_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=GraphDQN,
@@ -394,8 +66,8 @@ def test_dqn(domain_factory):
         )
 
 
-def test_a2c(jsp_domain_factory):
-    domain_factory = jsp_domain_factory
+def test_a2c(unmasked_jsp_domain_factory):
+    domain_factory = unmasked_jsp_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=GraphA2C,
@@ -413,10 +85,16 @@ def test_a2c(jsp_domain_factory):
         )
 
 
-def test_ppo_user_gnn(domain_factory):
+def test_ppo_user_gnn(caplog, unmasked_jsp_domain_factory, my_gnn_class, my_gnn_kwargs):
+    domain_factory = unmasked_jsp_domain_factory
     domain = domain_factory()
     node_features_dim = int(
         np.prod(domain.get_observation_space().unwrapped().node_space.shape)
+    )
+    gnn_out_dim = 64
+    gnn_class = my_gnn_class
+    gnn_kwargs = my_gnn_kwargs(
+        node_features_dim=node_features_dim, gnn_out_dim=gnn_out_dim
     )
     with StableBaseline(
         domain_factory=domain_factory,
@@ -426,20 +104,15 @@ def test_ppo_user_gnn(domain_factory):
         policy_kwargs=dict(
             features_extractor_class=GraphFeaturesExtractor,
             features_extractor_kwargs=dict(
-                gnn_class=thg.nn.models.GAT,
-                gnn_kwargs=dict(
-                    in_channels=node_features_dim,
-                    hidden_channels=64,
-                    num_layers=2,
-                    dropout=0.2,
-                ),
-                gnn_out_dim=64,
+                gnn_class=gnn_class,
+                gnn_kwargs=gnn_kwargs,
+                gnn_out_dim=gnn_out_dim,
                 features_dim=64,
             ),
         ),
     ) as solver:
-
-        solver.solve()
+        with caplog.at_level(logging.WARNING):
+            solver.solve()
         rollout(
             domain=domain_factory(),
             solver=solver,
@@ -447,27 +120,23 @@ def test_ppo_user_gnn(domain_factory):
             num_episodes=1,
             render=False,
         )
+    assert gnn_class(**gnn_kwargs).warning() in caplog.text
 
 
-class MyReductionLayer(th.nn.Module):
-    def __init__(self, gnn_out_dim: int, features_dim: int):
-        super().__init__()
-        self.gnn_out_dim = gnn_out_dim
-        self.features_dim = features_dim
-        self.linear_layer = th.nn.Linear(gnn_out_dim, features_dim)
-
-    def forward(self, embedded_observations: thg.data.Data) -> th.Tensor:
-        x, edge_index, batch = (
-            embedded_observations.x,
-            embedded_observations.edge_index,
-            embedded_observations.batch,
-        )
-        h = global_add_pool(x, batch)
-        h = self.linear_layer(h).relu()
-        return h
-
-
-def test_ppo_user_reduction_layer(domain_factory):
+def test_ppo_user_reduction_layer(
+    caplog,
+    unmasked_jsp_domain_factory,
+    my_reduction_layer_class,
+    my_reduction_layer_kwargs,
+):
+    domain_factory = unmasked_jsp_domain_factory
+    gnn_out_dim = 128
+    features_dim = 64
+    reduction_layer_class = my_reduction_layer_class
+    reduction_layer_kwargs = my_reduction_layer_kwargs(
+        gnn_out_dim=gnn_out_dim,
+        features_dim=features_dim,
+    )
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=GraphPPO,
@@ -476,18 +145,15 @@ def test_ppo_user_reduction_layer(domain_factory):
         policy_kwargs=dict(
             features_extractor_class=GraphFeaturesExtractor,
             features_extractor_kwargs=dict(
-                gnn_out_dim=128,
-                features_dim=64,
-                reduction_layer_class=MyReductionLayer,
-                reduction_layer_kwargs=dict(
-                    gnn_out_dim=128,
-                    features_dim=64,
-                ),
+                gnn_out_dim=gnn_out_dim,
+                features_dim=features_dim,
+                reduction_layer_class=reduction_layer_class,
+                reduction_layer_kwargs=reduction_layer_kwargs,
             ),
         ),
     ) as solver:
-
-        solver.solve()
+        with caplog.at_level(logging.WARNING):
+            solver.solve()
         rollout(
             domain=domain_factory(),
             solver=solver,
@@ -495,9 +161,11 @@ def test_ppo_user_reduction_layer(domain_factory):
             num_episodes=1,
             render=False,
         )
+    assert reduction_layer_class(**reduction_layer_kwargs).warning() in caplog.text
 
 
-def test_maskable_ppo(domain_factory):
+def test_maskable_ppo(graph_domain_factory):
+    domain_factory = graph_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=MaskableGraphPPO,
@@ -517,8 +185,8 @@ def test_maskable_ppo(domain_factory):
         )
 
 
-def test_dict_ppo(jsp_dict_domain_factory):
-    domain_factory = jsp_dict_domain_factory
+def test_dict_ppo(unmasked_jsp_dict_domain_factory):
+    domain_factory = unmasked_jsp_dict_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=GraphPPO,
@@ -557,8 +225,8 @@ def test_dict_maskable_ppo(jsp_dict_domain_factory):
         )
 
 
-def test_dict_a2c(jsp_dict_domain_factory):
-    domain_factory = jsp_dict_domain_factory
+def test_dict_a2c(unmasked_jsp_dict_domain_factory):
+    domain_factory = unmasked_jsp_dict_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=GraphA2C,
@@ -575,8 +243,8 @@ def test_dict_a2c(jsp_dict_domain_factory):
         )
 
 
-def test_dict_dqn(jsp_dict_domain_factory):
-    domain_factory = jsp_dict_domain_factory
+def test_dict_dqn(unmasked_jsp_dict_domain_factory):
+    domain_factory = unmasked_jsp_dict_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=GraphDQN,
@@ -592,3 +260,51 @@ def test_dict_dqn(jsp_dict_domain_factory):
             num_episodes=1,
             render=False,
         )
+
+
+def test_graph2node_ppo(unmasked_jsp_domain_factory):
+
+    domain_factory = unmasked_jsp_domain_factory
+
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=Graph2NodePPO,
+        baselines_policy="GraphInputPolicy",
+        learn_config={
+            "total_timesteps": 200,
+        },
+        n_steps=100,
+    ) as solver:
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=30,
+            num_episodes=1,
+            render=False,
+        )
+
+        # check batch handling by policy
+        domain = domain_factory()
+        obs = domain.reset()
+        policy = solver._algo.policy
+        obs_thg_data, _ = policy.obs_to_tensor(obs)
+        # set training=False to be deterministic
+        policy.train(False)
+        # batch with same obs => same logits
+        obs_batch = thg.data.Batch.from_data_list([obs_thg_data, obs_thg_data])
+        batched_logits = policy.get_distribution(obs_batch).distribution.logits
+        assert th.allclose(batched_logits[0], batched_logits[1])
+        # batch with an obs with less node => last logit ~= -inf
+        x = obs_thg_data.x[:-1, :]
+        edge_index, edge_attr = thg.utils.subgraph(
+            subset=list(range(len(obs_thg_data.x) - 1)),
+            edge_index=obs_thg_data.edge_index,
+            edge_attr=obs_thg_data.edge_attr,
+        )
+        obs_thg_data2 = thg.data.Data(x=x, edge_attr=edge_attr, edge_index=edge_index)
+        obs_batch = thg.data.Batch.from_data_list([obs_thg_data, obs_thg_data2])
+        last_prob = th.exp(policy.get_distribution(obs_batch).distribution.logits)[
+            -1, -1
+        ]
+        assert last_prob == 0.0
