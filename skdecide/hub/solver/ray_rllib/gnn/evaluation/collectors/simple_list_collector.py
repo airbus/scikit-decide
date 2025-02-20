@@ -6,13 +6,16 @@ from ray.rllib.evaluation.collectors.simple_list_collector import _PolicyCollect
 from ray.rllib.policy.sample_batch import concat_samples
 from ray.rllib.utils.typing import SampleBatchType
 
+from skdecide.hub.solver.ray_rllib.action_masking.utils.spaces.space_utils import (
+    ACTION_MASK,
+    TRUE_OBS,
+    is_masked_obs,
+)
 from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
     EDGES,
     NODES,
-    TRUE_OBS,
     is_graph_dict,
     is_graph_dict_multiinput,
-    is_masked_obs,
     pad_axis,
     pad_batched_graph_dict,
 )
@@ -121,6 +124,8 @@ def pad_sample_batches_obs(samples: list[SampleBatch], keys: tuple[str, ...]) ->
     elif is_masked_obs(first_subobs):
         # pad "true_obs" part
         pad_sample_batches_obs(samples=samples, keys=keys + (TRUE_OBS,))
+        # pad action mask
+        pad_sample_batches_action_mask(samples=samples, keys=keys + (ACTION_MASK,))
     elif is_graph_dict_multiinput(first_subobs):
         # pad each subobs (that are graphs)
         for subkey in first_subobs:
@@ -128,3 +133,17 @@ def pad_sample_batches_obs(samples: list[SampleBatch], keys: tuple[str, ...]) ->
     else:
         # not a graph => nothing to pad
         ...
+
+
+def pad_sample_batches_action_mask(
+    samples: list[SampleBatch], keys: tuple[str, ...]
+) -> None:
+    if len(set(get_item(s, keys).shape[1] for s in samples)) > 1:
+        # different number of nodes => padding
+        max_n_nodes = max(get_item(s, keys).shape[1] for s in samples)
+        for s in samples:
+            set_item(
+                s,
+                keys=keys,
+                value=pad_axis(get_item(s, keys), max_n_nodes, axis=1),
+            )

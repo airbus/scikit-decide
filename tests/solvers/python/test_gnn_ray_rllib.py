@@ -16,8 +16,8 @@ def ray_init():
     # add module test_gnn_ray_rllib and thus GraphMaze to ray runtimeenv
     ray.init(
         ignore_reinit_error=True,
-        runtime_env={"working_dir": os.path.dirname(__file__)},
-        # local_mode=True,  # uncomment this line and comment the one above to debug more easily
+        # runtime_env={"working_dir": os.path.dirname(__file__)},
+        local_mode=True,  # uncomment this line and comment the one above to debug more easily
     )
 
 
@@ -302,3 +302,32 @@ def test_graph2node_ppo(
             num_episodes=1,
             render=False,
         )
+
+
+def test_maskable_graph2node_ppo(
+    jsp_graph2node_domain_factory,
+    graphppo_config,
+    ray_init,
+):
+    domain_factory = jsp_graph2node_domain_factory
+    solver_kwargs = dict(
+        algo_class=GraphPPO,
+        train_iterations=1,
+        graph_node_action=True,
+    )
+    with RayRLlib(
+        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+    ) as solver:
+        assert solver._action_masking and solver._is_graph_obs and solver._graph2node
+        solver.solve()
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=30,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+    # with masking only 9 steps necessary since only 9 tasks to perform
+    observations, actions, values = episodes[0]
+    assert len(actions) == 9

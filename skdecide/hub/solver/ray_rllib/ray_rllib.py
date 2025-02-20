@@ -37,13 +37,18 @@ from skdecide.domains import MultiAgentRLDomain
 from skdecide.hub.domain.gym import AsLegacyGymV21Env
 from skdecide.hub.space.gym import GymSpace
 
-from .custom_models import TFParametricActionsModel, TorchParametricActionsModel
+from .action_masking.models.tf.parametric_actions import TFParametricActionsModel
+from .action_masking.models.torch.masked_actions import TorchMaskedActionsModel
+from .action_masking.models.torch.parametric_actions import TorchParametricActionsModel
+from .action_masking.utils.spaces.space_utils import (
+    ACTION_MASK,
+    TRUE_OBS,
+    create_agent_action_mask_space,
+)
 from .gnn.evaluation.rollout_worker import Graph2NodeRolloutWorker, GraphRolloutWorker
 from .gnn.models.torch.complex_input_net import GraphComplexInputNetwork
 from .gnn.models.torch.gnn import GnnBasedGraph2NodeModel, GnnBasedModel
 from .gnn.utils.spaces.space_utils import (
-    ACTION_MASK,
-    TRUE_OBS,
     convert_graph_space_to_dict_space,
     convert_graph_to_dict,
 )
@@ -154,7 +159,8 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
 
         If the domain has not the `UnrestrictedActions` mixin, and if the algo used allows action masking
         (e.g. APPO, BC, DQN, Rainbow, IMPALA, MARWIL, PPO), the observations are automatically wrapped to also present
-        the action mask to the algorithm, which will used via a custom model (defined in `skdecide.hub.solver.ray_rllib.custom_models`).
+        the action mask to the algorithm, which will used via a custom model
+        (defined in `skdecide.hub.solver.ray_rllib.action_masking.models`).
         During training, a gymnasium environment is created wrapping a domain instantiated from `domain_factory` and
         used during training rollouts to get the observation with the appropriate action mask.
         At inference, we use the method `self.get_action_mask()` which provides the proper action mask provided that
@@ -237,8 +243,8 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         )
 
         # graph obs?
-        self._is_graph_obs = _is_graph_space(self._wrapped_observation_space)
-        self._is_graph_multiinput_obs = _is_graph_multiinput_space(
+        self._is_graph_obs = _is_multiagent_graph_space(self._wrapped_observation_space)
+        self._is_graph_multiinput_obs = _is_multiagent_graph_multiinput_space(
             (self._wrapped_observation_space)
         )
 
@@ -362,18 +368,30 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
                 self._config.experimental(
                     _disable_preprocessor_api=True,
                 )
+                if self._config.get("framework") not in ["torch"]:
+                    raise RuntimeError(
+                        "Graph observation with RLlib requires PyTorch framework."
+                    )
             if self._config.get("framework") not in ["tf", "tf2", "torch"]:
                 raise RuntimeError(
                     "Action masking (invalid action filtering) for RLlib requires TensorFlow or PyTorch to be installed"
                 )
-            ModelCatalog.register_custom_model(
-                "skdecide_rllib_custom_model",
-                TFParametricActionsModel
-                if self._config.get("framework") in ["tf", "tf2"]
-                else TorchParametricActionsModel
-                if self._config.get("framework") == "torch"
-                else NotProvided,
-            )
+            if self._graph2node:
+                ModelCatalog.register_custom_model(
+                    "skdecide_rllib_custom_model",
+                    TorchMaskedActionsModel
+                    if self._config.get("framework") == "torch"
+                    else NotProvided,
+                )
+            else:
+                ModelCatalog.register_custom_model(
+                    "skdecide_rllib_custom_model",
+                    TFParametricActionsModel
+                    if self._config.get("framework") in ["tf", "tf2"]
+                    else TorchParametricActionsModel
+                    if self._config.get("framework") == "torch"
+                    else NotProvided,
+                )
             if self._algo_class.__name__ == "DQN":
                 self._config.training(
                     hiddens=[],
@@ -442,44 +460,29 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
             )
 
         # Overwrite multi-agent config
-        pol_obs_spaces = (
-            {
-                self._policy_mapping_fn(agent, None, None): _unwrap_agent_obs_space(
-                    wrapped_observation_space=self._wrapped_observation_space,
-                    agent=agent,
-                )
-                for agent in self._wrapped_observation_space
-            }
-            if not self._action_masking
-            else {
-                self._policy_mapping_fn(agent, None, None): gym.spaces.Dict(
-                    {
-                        TRUE_OBS: _unwrap_agent_obs_space(
-                            wrapped_observation_space=self._wrapped_observation_space,
-                            agent=agent,
-                        ),
-                        ACTION_MASK: gym.spaces.Box(
-                            0,
-                            1,
-                            shape=(
-                                len(self._wrapped_action_space[agent].get_elements()),
-                            ),
-                            dtype=np.int8,
-                        ),
-                    }
-                )
-                for agent in self._wrapped_observation_space
-            }
-        )
+        pol_obs_spaces = {
+            self._policy_mapping_fn(
+                agent, None, None
+            ): _create_agent_obs_space_for_rllib(
+                wrapped_observation_space=self._wrapped_observation_space,
+                wrapped_action_space=self._wrapped_action_space,
+                agent=agent,
+                action_masking=self._action_masking,
+                graph2node=self._graph2node,
+            )
+            for agent in self._wrapped_observation_space
+        }
+
         pol_act_spaces = {
-            self._policy_mapping_fn(k, None, None): v.unwrapped()
-            for k, v in self._wrapped_action_space.items()
+            self._policy_mapping_fn(k, None, None): agent_action_space.unwrapped()
+            for k, agent_action_space in self._wrapped_action_space.items()
         }
 
         if self._action_masking:
             if self._is_graph_obs or self._is_graph_multiinput_obs:
                 extra_custom_model_config_kwargs = {
-                    "features_extractor": self._graph_feature_extractors_kwargs
+                    "features_extractor": self._graph_feature_extractors_kwargs,
+                    "graph2node": self._graph2node,
                 }
             else:
                 extra_custom_model_config_kwargs = {}
@@ -562,6 +565,7 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
             lambda _, domain_factory=self._domain_factory, rayrllib=self: AsRLlibMultiAgentEnv(
                 domain=domain_factory(),
                 action_masking=rayrllib._action_masking,
+                graph2node=rayrllib._graph2node,
             ),
         )
         if Version(ray.__version__) >= Version("2.20.0"):
@@ -673,10 +677,11 @@ class AsRLlibMultiAgentEnv(MultiAgentEnvCompatibility):
         self,
         domain: D,
         action_masking: bool = False,
+        graph2node: bool = False,
         render_mode: Optional[str] = None,
     ) -> None:
         old_env = AsLegacyRLlibMultiAgentEnv(
-            domain=domain, action_masking=action_masking
+            domain=domain, action_masking=action_masking, graph2node=graph2node
         )
         self._domain = domain
         super().__init__(old_env=old_env, render_mode=render_mode)
@@ -690,6 +695,7 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
         self,
         domain: D,
         action_masking: bool,
+        graph2node: bool = False,
     ) -> None:
         """Initialize AsLegacyRLlibMultiAgentEnv.
 
@@ -697,45 +703,25 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
         domain: The scikit-decide domain to wrap as a RLlib multi-agent environment.
         action_masking: Boolean specifying whether action masking is used
         """
+        self._graph2node = graph2node
         self._domain = domain
         self._action_masking = action_masking
         self._wrapped_action_space = domain.get_action_space()
         self._wrapped_observation_space = domain.get_observation_space()
 
-        if not self._action_masking:
-            self.observation_space = gym.spaces.Dict(
-                {
-                    agent: _unwrap_agent_obs_space(
-                        wrapped_observation_space=self._wrapped_observation_space,
-                        agent=agent,
-                    )
-                    for agent in self._wrapped_observation_space
-                }
-            )
-        else:
-            self.observation_space = gym.spaces.Dict(
-                {
-                    agent: gym.spaces.Dict(
-                        {
-                            TRUE_OBS: _unwrap_agent_obs_space(
-                                wrapped_observation_space=self._wrapped_observation_space,
-                                agent=agent,
-                            ),
-                            ACTION_MASK: gym.spaces.Box(
-                                0,
-                                1,
-                                shape=(
-                                    len(
-                                        self._wrapped_action_space[agent].get_elements()
-                                    ),
-                                ),
-                                dtype=np.int8,
-                            ),
-                        }
-                    )
-                    for agent in self._wrapped_observation_space
-                }
-            )
+        self.observation_space = gym.spaces.Dict(
+            {
+                agent: _create_agent_obs_space_for_rllib(
+                    wrapped_observation_space=self._wrapped_observation_space,
+                    wrapped_action_space=self._wrapped_action_space,
+                    agent=agent,
+                    action_masking=self._action_masking,
+                    graph2node=self._graph2node,
+                )
+                for agent in self._wrapped_observation_space
+            }
+        )
+
         self.action_space = gym.spaces.Dict(
             {
                 k: agent_action_space.unwrapped()
@@ -861,6 +847,31 @@ def _unwrap_agent_obs_space(
         return unwrapped_agent_obs_space
 
 
+def _create_agent_obs_space_for_rllib(
+    wrapped_observation_space: dict[str, GymSpace[D.T_observation]],
+    wrapped_action_space: dict[str, EnumerableSpace[D.T_event]],
+    agent: str,
+    action_masking: bool,
+    graph2node: bool,
+) -> gym.spaces.Space:
+    true_observation_space = _unwrap_agent_obs_space(
+        wrapped_observation_space=wrapped_observation_space,
+        agent=agent,
+    )
+    if action_masking:
+        return gym.spaces.Dict(
+            {
+                TRUE_OBS: true_observation_space,
+                ACTION_MASK: create_agent_action_mask_space(
+                    agent_action_space=wrapped_action_space[agent],
+                    graph2node=graph2node,
+                ),
+            }
+        )
+    else:
+        return true_observation_space
+
+
 def _unwrap_agent_obs(
     obs: dict[str, D.T_observation],
     agent: str,
@@ -927,14 +938,14 @@ def _wrap_action(
     }
 
 
-def _is_graph_space(space: dict[str, GymSpace[Any]]) -> bool:
+def _is_multiagent_graph_space(space: dict[str, GymSpace[Any]]) -> bool:
     return all(
         isinstance(agent_observation_space.unwrapped(), gym.spaces.Graph)
         for agent_observation_space in space.values()
     )
 
 
-def _is_graph_multiinput_space(space: dict[str, GymSpace[Any]]) -> bool:
+def _is_multiagent_graph_multiinput_space(space: dict[str, GymSpace[Any]]) -> bool:
     return all(
         _is_graph_multiinput_unwrapped_agent_space(agent_observation_space.unwrapped())
         for agent_observation_space in space.values()
