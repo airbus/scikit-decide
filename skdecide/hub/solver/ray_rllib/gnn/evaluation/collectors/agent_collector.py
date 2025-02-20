@@ -8,14 +8,17 @@ from ray.rllib.evaluation.collectors.agent_collector import (
     _to_float_np_array,
 )
 
+from skdecide.hub.solver.ray_rllib.action_masking.utils.spaces.space_utils import (
+    ACTION_MASK,
+    TRUE_OBS,
+    is_masked_obs,
+)
 from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
     EDGE_LINKS,
     EDGES,
     NODES,
-    TRUE_OBS,
     is_graph_dict,
     is_graph_dict_multiinput,
-    is_masked_obs,
     pad_axis,
     pad_graph,
 )
@@ -45,11 +48,11 @@ def agent_collector_graph2node_cache_in_np(
     if key not in cache_dict:
         if key == SampleBatch.ACTION_DIST_INPUTS:
             assert len(self.buffers[key]) == 1  # singleton list
-            max_nodes = max(len(logits) for logits in self.buffers[key][0])
+            max_n_nodes = max(len(logits) for logits in self.buffers[key][0])
             minus_infty_approx = np.finfo(self.buffers[key][0][0].dtype).min
             buffers_entry = [
                 [
-                    pad_axis(logits, max_dim=max_nodes, value=minus_infty_approx)
+                    pad_axis(logits, max_dim=max_n_nodes, value=minus_infty_approx)
                     for logits in self.buffers[key][0]
                 ]
             ]
@@ -61,7 +64,16 @@ def agent_collector_graph2node_cache_in_np(
 def pad_graph_buffers(
     buffers_entry: list[list[np.ndarray]], buffers_entry_indices_struct: Any
 ) -> None:
-    if is_graph_dict(buffers_entry_indices_struct):
+    if is_masked_obs(buffers_entry_indices_struct):
+        pad_graph_buffers(
+            buffers_entry=buffers_entry,
+            buffers_entry_indices_struct=buffers_entry_indices_struct[TRUE_OBS],
+        )
+        pad_action_mask_buffers(
+            buffers_entry=buffers_entry,
+            buffers_entry_indices_struct=buffers_entry_indices_struct,
+        )
+    elif is_graph_dict(buffers_entry_indices_struct):
         if all(
             isinstance(a, np.ndarray)
             for idx in buffers_entry_indices_struct.values()
@@ -104,11 +116,16 @@ def pad_graph_buffers(
                 buffers_entry_indices_struct=buffers_entry_indices_substruct,
             )
 
-    elif is_masked_obs(buffers_entry_indices_struct):
-        pad_graph_buffers(
-            buffers_entry=buffers_entry,
-            buffers_entry_indices_struct=buffers_entry_indices_struct[TRUE_OBS],
-        )
+
+def pad_action_mask_buffers(
+    buffers_entry: list[list[np.ndarray]], buffers_entry_indices_struct: Any
+) -> None:
+    action_masks = buffers_entry[buffers_entry_indices_struct[ACTION_MASK]]
+    if len(set(a.shape for a in action_masks)) > 1:
+        max_n_nodes = max(len(action_mask) for action_mask in action_masks)
+        buffers_entry[buffers_entry_indices_struct[ACTION_MASK]] = [
+            pad_axis(action_mask, max_dim=max_n_nodes) for action_mask in action_masks
+        ]
 
 
 def monkey_patch_agent_collector(graph2node: bool = False) -> None:

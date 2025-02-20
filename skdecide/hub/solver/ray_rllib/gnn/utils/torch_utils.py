@@ -9,13 +9,15 @@ from ray.rllib.utils.torch_utils import (
 )
 from ray.rllib.utils.typing import TensorStructType
 
+from skdecide.hub.solver.ray_rllib.action_masking.utils.spaces.space_utils import (
+    is_masked_obs,
+)
 from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
     NODES,
     convert_dict_to_graph,
     extract_graph_dict_from_batched_graph_dict,
     is_graph_dict,
     is_graph_dict_multiinput,
-    is_masked_obs,
 )
 from skdecide.hub.solver.utils.gnn.torch_utils import graph_instance_to_thg_data
 
