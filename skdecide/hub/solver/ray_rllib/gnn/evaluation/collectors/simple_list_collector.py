@@ -53,10 +53,19 @@ def graph2node_policy_collector_build(self: _PolicyCollector) -> SampleBatch:
 
 def monkey_patch_policy_collector(graph2node: bool = False) -> None:
     """Monkey patch rllib so that concat_samples pad graph arrays if necessary."""
+    if not hasattr(_PolicyCollector, "_build_unpatched"):
+        # store true method only if not already done
+        _PolicyCollector._build_unpatched = _PolicyCollector.build
     if graph2node:
         _PolicyCollector.build = graph2node_policy_collector_build
     else:
         _PolicyCollector.build = graph_policy_collector_build
+
+
+def unmonkey_patch_policy_collector() -> None:
+    if hasattr(_PolicyCollector, "_build_unpatched"):
+        _PolicyCollector.build = _PolicyCollector._build_unpatched
+        del _PolicyCollector._build_unpatched
 
 
 def prepare_for_concat_samples_graph2node(samples: list[SampleBatchType]) -> None:
@@ -67,12 +76,13 @@ def prepare_for_concat_samples_graph2node(samples: list[SampleBatchType]) -> Non
         prepare_for_concat_samples_graph(samples)
         # pad also action logits
         key = SampleBatch.ACTION_DIST_INPUTS
-        max_nodes = max(s[key].shape[1] for s in samples)
-        minus_infty_approx = np.finfo(samples[0][key].dtype).min
-        for s in samples:
-            s[key] = pad_axis(
-                s[key], max_dim=max_nodes, axis=1, value=minus_infty_approx
-            )
+        if key in samples[0]:
+            max_nodes = max(s[key].shape[1] for s in samples)
+            minus_infty_approx = np.finfo(samples[0][key].dtype).min
+            for s in samples:
+                s[key] = pad_axis(
+                    s[key], max_dim=max_nodes, axis=1, value=minus_infty_approx
+                )
 
 
 def prepare_for_concat_samples_graph(samples: list[SampleBatchType]) -> None:

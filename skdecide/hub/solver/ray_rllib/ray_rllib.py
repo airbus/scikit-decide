@@ -48,6 +48,10 @@ from .action_masking.utils.spaces.space_utils import (
 from .gnn.evaluation.rollout_worker import Graph2NodeRolloutWorker, GraphRolloutWorker
 from .gnn.models.torch.complex_input_net import GraphComplexInputNetwork
 from .gnn.models.torch.gnn import GnnBasedGraph2NodeModel, GnnBasedModel
+from .gnn.utils.monkey_patch import (
+    monkey_patch_rllib_for_graph,
+    unmonkey_patch_rllib_for_graph,
+)
 from .gnn.utils.spaces.space_utils import (
     convert_graph_space_to_dict_space,
     convert_graph_to_dict,
@@ -313,6 +317,12 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
                 # if stopping exception raise, we choose to stop this train iteration
                 pass
 
+        # un-monkey patch rllib for graphs
+        if self._is_graph_obs or self._is_graph_multiinput_obs:
+            self._algo.env_runner_group.foreach_worker(
+                lambda worker: unmonkey_patch_rllib_for_graph()
+            )
+
     def _sample_action(
         self, observation: D.T_agent[D.T_observation]
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
@@ -344,7 +354,7 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
             if self._graph2node:
                 if not isinstance(
                     self._config.env_runner_cls,
-                    (RolloutWorker, Graph2NodeRolloutWorker),
+                    (type(None), Graph2NodeRolloutWorker),
                 ):
                     logger.warning(
                         "The EnvRunner class to use for environment rollouts (data collection) will be overriden "
@@ -353,7 +363,7 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
                 self._config.env_runners(env_runner_cls=Graph2NodeRolloutWorker)
             else:
                 if not isinstance(
-                    self._config.env_runner_cls, (RolloutWorker, GraphRolloutWorker)
+                    self._config.env_runner_cls, (type(None), GraphRolloutWorker)
                 ):
                     logger.warning(
                         "The EnvRunner class to use for environment rollouts (data collection) will be overriden "

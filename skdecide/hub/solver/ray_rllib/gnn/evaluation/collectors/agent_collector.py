@@ -130,7 +130,16 @@ def pad_action_mask_buffers(
 
 def monkey_patch_agent_collector(graph2node: bool = False) -> None:
     """Monkey patch rllib so that buffers pad graph arrays if necessary."""
+    if not hasattr(AgentCollector, "_cache_in_np_unpatched"):
+        # store true method only if not already done
+        AgentCollector._cache_in_np_unpatched = AgentCollector._cache_in_np
     if graph2node:
         AgentCollector._cache_in_np = agent_collector_graph2node_cache_in_np
     else:
         AgentCollector._cache_in_np = agent_collector_graph_cache_in_np
+
+
+def unmonkey_patch_agent_collector() -> None:
+    if hasattr(AgentCollector, "_cache_in_np_unpatched"):
+        AgentCollector._cache_in_np = AgentCollector._cache_in_np_unpatched
+        del AgentCollector._cache_in_np_unpatched
