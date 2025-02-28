@@ -350,6 +350,16 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
 
     def _init_algo(self) -> None:
         # monkey patch rllib for graph handling
+        # NB: We would rather do
+        # ```python
+        # self._algo.env_runner_group.foreach_worker(
+        #     lambda worker: monkey_patch_rllib_for_graph()
+        # )
+        # ```
+        # as for unpatching at the end of `_solve()`.
+        # But at that point the env_runner_group has not been yet properly initialized with all the workers
+        # only the local worker exists. (It will be updated at the beginning of the training process, from the config.)
+        # So instead we use a custom RolloutWorker class that monkey-patch when initialized.
         if self._is_graph_obs or self._is_graph_multiinput_obs:
             if self._graph2node:
                 if not isinstance(
