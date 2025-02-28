@@ -16,8 +16,8 @@ def ray_init():
     # add module test_gnn_ray_rllib and thus GraphMaze to ray runtimeenv
     ray.init(
         ignore_reinit_error=True,
-        runtime_env={"working_dir": os.path.dirname(__file__)},
-        # local_mode=True,  # uncomment this line and comment the one above to debug more easily
+        # runtime_env={"working_dir": os.path.dirname(__file__)},
+        local_mode=True,  # uncomment this line and comment the one above to debug more easily
     )
 
 
@@ -36,9 +36,7 @@ def graphppo_config():
 
 def test_ppo(unmasked_graph_domain_factory, graphppo_config, ray_init):
     domain_factory = unmasked_graph_domain_factory
-    solver_kwargs = dict(
-        algo_class=GraphPPO, train_iterations=1  # , gamma=0.95, train_batch_size_log2=8
-    )
+    solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
     with RayRLlib(
         domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
     ) as solver:
@@ -47,7 +45,7 @@ def test_ppo(unmasked_graph_domain_factory, graphppo_config, ray_init):
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -90,7 +88,7 @@ def test_ppo_user_gnn(
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -132,7 +130,7 @@ def test_ppo_user_reduction_layer(
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -142,9 +140,7 @@ def test_ppo_user_reduction_layer(
 
 def test_dict_ppo(unmasked_jsp_dict_domain_factory, graphppo_config, ray_init):
     domain_factory = unmasked_jsp_dict_domain_factory
-    solver_kwargs = dict(
-        algo_class=GraphPPO, train_iterations=1  # , gamma=0.95, train_batch_size_log2=8
-    )
+    solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
     with RayRLlib(
         domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
     ) as solver:
@@ -153,7 +149,7 @@ def test_dict_ppo(unmasked_jsp_dict_domain_factory, graphppo_config, ray_init):
         rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
         )
@@ -167,32 +163,39 @@ def test_ppo_masked(graph_domain_factory, graphppo_config, ray_init):
     ) as solver:
         assert solver._action_masking and solver._is_graph_obs
         solver.solve()
-        rollout(
+        episodes = rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
+            return_episodes=True,
         )
+    if "Jsp" in domain_factory().__class__.__name__:
+        # with masking only 9 steps necessary since only 9 tasks to perform
+        observations, actions, values = episodes[0]
+        assert len(actions) == 9
 
 
 def test_dict_ppo_masked(jsp_dict_domain_factory, graphppo_config, ray_init):
     domain_factory = jsp_dict_domain_factory
-    solver_kwargs = dict(
-        algo_class=GraphPPO, train_iterations=1  # , gamma=0.95, train_batch_size_log2=8
-    )
+    solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
     with RayRLlib(
         domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
     ) as solver:
         assert solver._action_masking and solver._is_graph_multiinput_obs
         solver.solve()
-        rollout(
+        episodes = rollout(
             domain=domain_factory(),
             solver=solver,
-            max_steps=100,
+            max_steps=30,
             num_episodes=1,
             render=False,
+            return_episodes=True,
         )
+    # with masking only 9 steps necessary since only 9 tasks to perform
+    observations, actions, values = episodes[0]
+    assert len(actions) == 9
 
 
 def test_ppo_masked_user_gnn(
@@ -272,3 +275,59 @@ def test_dict_ppo_masked_user_gnn(
         with caplog.at_level(logging.WARNING):
             solver.solve()
     assert gnn_class(**gnn_kwargs).warning() in caplog.text
+
+
+def test_graph2node_ppo(
+    unmasked_jsp_domain_factory,
+    graphppo_config,
+    ray_init,
+):
+    domain_factory = unmasked_jsp_domain_factory
+    solver_kwargs = dict(
+        algo_class=GraphPPO,
+        train_iterations=1,
+        graph_node_action=True,
+    )
+    with RayRLlib(
+        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+    ) as solver:
+        assert (
+            not solver._action_masking and solver._is_graph_obs and solver._graph2node
+        )
+        solver.solve()
+        rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=30,
+            num_episodes=1,
+            render=False,
+        )
+
+
+def test_maskable_graph2node_ppo(
+    jsp_graph2node_domain_factory,
+    graphppo_config,
+    ray_init,
+):
+    domain_factory = jsp_graph2node_domain_factory
+    solver_kwargs = dict(
+        algo_class=GraphPPO,
+        train_iterations=1,
+        graph_node_action=True,
+    )
+    with RayRLlib(
+        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+    ) as solver:
+        assert solver._action_masking and solver._is_graph_obs and solver._graph2node
+        solver.solve()
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=30,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+    # with masking only 9 steps necessary since only 9 tasks to perform
+    observations, actions, values = episodes[0]
+    assert len(actions) == 9
