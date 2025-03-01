@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <list>
 #include <queue>
+#include <chrono>
 
 #include "utils/associative_container_deducer.hh"
 #include "utils/execution.hh"

@@ -615,9 +615,6 @@ private:
                        std::unordered_set<StateNode *> &child_subgraph);
   void update_residual_moving_average(const StateNode &node,
                                       const double &node_record_value);
-  std::size_t
-  elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>
-                   &start_time);
 }; // MCTSSolver class
 
 /** UCT as described in the paper " Bandit Based Monte-Carlo Planning" by
