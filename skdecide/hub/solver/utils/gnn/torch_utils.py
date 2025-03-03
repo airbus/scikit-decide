@@ -5,6 +5,7 @@ import numpy as np
 import torch as th
 import torch.nn
 import torch_geometric as thg
+from torch.nn.functional import pad
 
 
 def graph_instance_to_thg_data(
@@ -50,6 +51,23 @@ def thg_data_to_graph_instance(
             return graph
     else:
         raise NotImplementedError()
+
+
+def unbatch_node_logits(data: thg.data.Data) -> th.Tensor:
+    x, batch = data.x, data.batch
+    if batch is None:
+        node_logits = x.flatten()
+    else:
+        x_split = thg.utils.unbatch(x.flatten(), batch)
+        n_nodes = max(len(xx) for xx in x_split)
+        # we pad with -inf the logits (to avoid sampling node index higher than actual node number)
+        # for stability issues (in particular in backprop), we approximate -inf with min float
+        node_logits = th.stack(
+            tuple(
+                pad(xx, (0, n_nodes - len(xx)), value=th.finfo().min) for xx in x_split
+            )
+        )
+    return node_logits
 
 
 def extract_module_parameters_values(m: torch.nn.Module) -> dict[str, np.ndarray]:
