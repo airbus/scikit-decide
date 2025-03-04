@@ -588,7 +588,8 @@ jobs:
           pytest -v tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
           pytest -v tests/solvers/python/test_optuna_rayrllib.py
           pytest -v tests/scheduling
-          pytest -v --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
+          pytest -v tests/domains/python/test_plado_domain.py
+          pytest -v --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling --ignore tests/domains/python/test_plado_domain.py
 
   test-macos:
     needs: [build-macos, setup]
