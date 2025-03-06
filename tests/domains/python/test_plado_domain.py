@@ -10,7 +10,12 @@ from pytest_cases import fixture, fixture_union, param_fixture
 from ray.rllib.algorithms.dqn import DQN
 
 from skdecide import rollout
-from skdecide.hub.domain.plado import ActionEncoding, PladoPddlDomain, StateEncoding
+from skdecide.hub.domain.plado import (
+    ActionEncoding,
+    PladoPddlDomain,
+    PladoPPddlDomain,
+    StateEncoding,
+)
 from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.solver.ray_rllib import RayRLlib
 
@@ -37,9 +42,20 @@ def agricola_domain_problem_paths():
     return domain_path, problem_path
 
 
+@fixture
+def tireworld_domain_problem_paths():
+    domain_path = f"{test_dir}/pddl_domains/tireworld/domain.pddl"
+    problem_path = f"{test_dir}/pddl_domains/tireworld/p01.pddl"
+    return domain_path, problem_path
+
+
 pddl_domain_problem_paths = fixture_union(
     "pddl_domain_problem_paths",
-    (blocksworld_domain_problem_paths, agricola_domain_problem_paths),
+    (
+        blocksworld_domain_problem_paths,
+        agricola_domain_problem_paths,
+        tireworld_domain_problem_paths,
+    ),
 )
 
 state_encoding = param_fixture("state_encoding", list(StateEncoding))
@@ -51,7 +67,11 @@ def plado_domain_factory(pddl_domain_problem_paths, state_encoding, action_encod
     domain_path, problem_path = pddl_domain_problem_paths
     if "agricola" in domain_path and action_encoding == ActionEncoding.GYM:
         pytest.skip("Discrete action encoding not tractable for agricola domain.")
-    return lambda: PladoPddlDomain(
+    if "tireworld" in domain_path:
+        plado_domain_cls = PladoPPddlDomain
+    else:
+        plado_domain_cls = PladoPddlDomain
+    return lambda: plado_domain_cls(
         domain_path=domain_path,
         problem_path=problem_path,
         state_encoding=state_encoding,

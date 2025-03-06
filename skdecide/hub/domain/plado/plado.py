@@ -110,7 +110,7 @@ class SkPladoState:
         )
 
 
-PladoAction = tuple[int, tuple[int]]
+PladoAction = tuple[int, tuple[int, ...]]
 
 
 class D(
@@ -343,7 +343,20 @@ class BasePladoDomain(D):
         )
 
     def _is_terminal(self, state: D.T_state) -> D.T_predicate:
-        return self.check_goal(self._translate_state_to_plado(state))
+        return self.check_goal(
+            self._translate_state_to_plado(state)
+        ) or not self._has_applicable_actions_from(state)
+
+    def _has_applicable_actions_from(self, memory: D.T_state) -> bool:
+        applicable_plado_actions_generator = self.aops_gen(
+            self._translate_state_to_plado(memory)
+        )
+        try:
+            next(applicable_plado_actions_generator)
+        except StopIteration:
+            return False
+        else:
+            return True
 
     def _get_applicable_actions_from(self, memory: D.T_state) -> Space[D.T_event]:
         applicable_plado_actions_generator = self.aops_gen(
