@@ -1,15 +1,18 @@
+from __future__ import annotations
+
 from typing import Any
 
 import numpy as np
 from ray.rllib import SampleBatch
-from ray.rllib.evaluation.collectors.simple_list_collector import _PolicyCollector
-from ray.rllib.policy.sample_batch import concat_samples
 from ray.rllib.utils.typing import SampleBatchType
 
 from skdecide.hub.solver.ray_rllib.action_masking.utils.spaces.space_utils import (
     ACTION_MASK,
     TRUE_OBS,
     is_masked_obs,
+)
+from skdecide.hub.solver.ray_rllib.gnn.policy.sample_batch_original_code import (
+    original_concat_samples,
 )
 from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
     EDGES,
@@ -21,51 +24,18 @@ from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
 )
 
 
-def graph_policy_collector_build(self: _PolicyCollector) -> SampleBatch:
-    # Create batch from our buffers.
-    prepare_for_concat_samples_graph(self.batches)  # pad graph samples if necessary
-    batch = concat_samples(self.batches)
-    # Clear batches for future samples.
-    self.batches = []
-    # Reset agent steps to 0.
-    self.agent_steps = 0
-    # Add num_grad_updates counter to the policy's batch.
-    batch.num_grad_updates = self.policy.num_grad_updates
-
-    return batch
+def concat_samples_graph(samples: list[SampleBatchType]) -> SampleBatchType:
+    # pad graph samples if necessary
+    prepare_for_concat_samples_graph(samples)
+    # concat samples as previously
+    return original_concat_samples(samples)
 
 
-def graph2node_policy_collector_build(self: _PolicyCollector) -> SampleBatch:
-    # Create batch from our buffers.
-    prepare_for_concat_samples_graph2node(
-        self.batches
-    )  # pad graph samples if necessary
-    batch = concat_samples(self.batches)
-    # Clear batches for future samples.
-    self.batches = []
-    # Reset agent steps to 0.
-    self.agent_steps = 0
-    # Add num_grad_updates counter to the policy's batch.
-    batch.num_grad_updates = self.policy.num_grad_updates
-
-    return batch
-
-
-def monkey_patch_policy_collector(graph2node: bool = False) -> None:
-    """Monkey patch rllib so that concat_samples pad graph arrays if necessary."""
-    if not hasattr(_PolicyCollector, "_build_unpatched"):
-        # store true method only if not already done
-        _PolicyCollector._build_unpatched = _PolicyCollector.build
-    if graph2node:
-        _PolicyCollector.build = graph2node_policy_collector_build
-    else:
-        _PolicyCollector.build = graph_policy_collector_build
-
-
-def unmonkey_patch_policy_collector() -> None:
-    if hasattr(_PolicyCollector, "_build_unpatched"):
-        _PolicyCollector.build = _PolicyCollector._build_unpatched
-        del _PolicyCollector._build_unpatched
+def concat_samples_graph2node(samples: list[SampleBatchType]) -> SampleBatchType:
+    # pad graph samples if necessary
+    prepare_for_concat_samples_graph2node(samples)
+    # concat samples as previously
+    return original_concat_samples(samples)
 
 
 def prepare_for_concat_samples_graph2node(samples: list[SampleBatchType]) -> None:
@@ -86,12 +56,15 @@ def prepare_for_concat_samples_graph2node(samples: list[SampleBatchType]) -> Non
 
 
 def prepare_for_concat_samples_graph(samples: list[SampleBatchType]) -> None:
-    if all(isinstance(s, SampleBatch) for s in samples) and all(
-        s.get_interceptor is None for s in samples
+    if (
+        all(isinstance(s, SampleBatch) for s in samples)
+        and all(s.get_interceptor is None for s in samples)
+        and len(samples) > 0
     ):
         for key in (SampleBatch.OBS, SampleBatch.NEXT_OBS):
-            # pad the obs (check inside the function if necessary or not)
-            pad_sample_batches_obs(samples, keys=(key,))
+            if key in samples[0]:
+                # pad the obs (check inside the function if necessary or not)
+                pad_sample_batches_obs(samples, keys=(key,))
 
 
 def get_item(s: dict[str, Any], keys: tuple[str, ...]) -> Any:

@@ -16,8 +16,8 @@ def ray_init():
     # add module test_gnn_ray_rllib and thus GraphMaze to ray runtimeenv
     ray.init(
         ignore_reinit_error=True,
-        # runtime_env={"working_dir": os.path.dirname(__file__)},
-        local_mode=True,  # uncomment this line and comment the one above to debug more easily
+        runtime_env={"working_dir": os.path.dirname(__file__)},
+        # local_mode=True,  # uncomment this line and comment the one above to debug more easily
     )
 
 
