@@ -588,7 +588,9 @@ jobs:
           pytest -v tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
           pytest -v tests/solvers/python/test_optuna_rayrllib.py
           pytest -v tests/scheduling
-          pytest -v --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
+          # launch alone plado tests (error with rllib), but only if not all skipped
+          sh -c 'pytest -v tests/domains/python/test_plado_domain.py ; ret=$?; [ $ret = 5 ] && exit 0 || exit $ret'
+          pytest -v --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling --ignore tests/domains/python/test_plado_domain.py
 
   test-macos:
     needs: [build-macos, setup]
