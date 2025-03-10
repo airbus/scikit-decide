@@ -8,14 +8,21 @@ from __future__ import annotations
 
 import itertools
 import logging
-from collections.abc import Iterable
+from collections.abc import Hashable, Iterable
 from enum import Enum
 from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
 
-from skdecide import DiscreteDistribution, Domain, ImplicitSpace, Space, Value
+from skdecide import (
+    DiscreteDistribution,
+    Domain,
+    ImplicitSpace,
+    Space,
+    TransitionOutcome,
+    Value,
+)
 from skdecide.builders.domain import (
     Actions,
     DeterministicInitialized,
@@ -220,8 +227,8 @@ class BasePladoDomain(D):
         self.cost_functions: set[int] = set(
             [self.total_cost] if self.total_cost is not None else []
         )
-        self.transition_cost: dict[
-            tuple[SkPladoState, PladoAction, SkPladoState], int
+        self._map_transition_value: dict[
+            tuple[Hashable, Hashable, Hashable], D.T_value
         ] = {}
         self._init_state_encoding()
         self._init_action_encoding()
@@ -260,14 +267,16 @@ class BasePladoDomain(D):
         else:
             raise NotImplementedError()
 
-    def _translate_state_to_skplado(self, state: D.T_state) -> SkPladoState:
+    def _transform_state_to_hashable(self, state: D.T_state) -> Hashable:
         if self.state_encoding == StateEncoding.NATIVE:
             return state
+        elif self.state_encoding == StateEncoding.GYM_VECTOR:
+            return tuple(state)
         else:
-            return SkPladoState.from_plado(
-                state=self._translate_state_to_plado(state),
-                cost_functions=self.cost_functions,
-            )
+            raise NotImplementedError()
+
+    def _transform_action_to_hashable(self, action: D.T_event) -> Hashable:
+        return action
 
     def _translate_action_from_plado(self, action: PladoAction) -> D.T_event:
         if self.action_encoding == ActionEncoding.NATIVE:
@@ -343,14 +352,15 @@ class BasePladoDomain(D):
         )
 
     def _is_terminal(self, state: D.T_state) -> D.T_predicate:
-        return self.check_goal(
-            self._translate_state_to_plado(state)
-        ) or not self._has_applicable_actions_from(state)
+        return self._is_terminal_from_plado(self._translate_state_to_plado(state))
 
-    def _has_applicable_actions_from(self, memory: D.T_state) -> bool:
-        applicable_plado_actions_generator = self.aops_gen(
-            self._translate_state_to_plado(memory)
-        )
+    def _is_terminal_from_plado(self, pladostate: PladoState) -> D.T_predicate:
+        return self.check_goal(
+            pladostate
+        ) or not self._has_applicable_actions_from_plado(pladostate)
+
+    def _has_applicable_actions_from_plado(self, pladostate: PladoState) -> bool:
+        applicable_plado_actions_generator = self.aops_gen(pladostate)
         try:
             next(applicable_plado_actions_generator)
         except StopIteration:
@@ -362,36 +372,68 @@ class BasePladoDomain(D):
         applicable_plado_actions_generator = self.aops_gen(
             self._translate_state_to_plado(memory)
         )
-        if self.action_encoding == ActionEncoding.NATIVE:
-            return ListSpace(list(applicable_plado_actions_generator))
-        else:
-            return ListSpace(
-                [
-                    self._translate_action_from_plado(plado_action)
-                    for plado_action in applicable_plado_actions_generator
-                ]
-            )
+        return ListSpace(
+            [
+                self._translate_action_from_plado(plado_action)
+                for plado_action in applicable_plado_actions_generator
+            ]
+        )
 
-    def _get_transition_value(
+    def _state_sample(
         self,
-        memory: D.T_state,
-        action: D.T_event,
-        next_state: Optional[D.T_state] = None,
-    ) -> Value[D.T_value]:
-        return Value(
-            cost=self.transition_cost.get(
-                (
-                    self._translate_state_to_skplado(memory),
-                    action,
-                    self._translate_state_to_skplado(next_state),
-                ),
-                1,
-            )
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> TransitionOutcome[
+        D.T_state,
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
+        """Compute one sample of the transition's dynamics.
+
+        As plado compute together next state distribution and transition value,
+        it is more efficient to override this method rather than using the default one calling separately
+        `_get_next_state_distribution()` and `_get_transition_value()`.
+        Avoids also multiple translation pladostate -> skstate -> pladostate ...
+
+        """
+        successors = self.succ_gen(
+            self._translate_state_to_plado(memory),
+            self._translate_action_to_plado(action),
+        )
+        pladostates_with_proba = [(succ, float(prob)) for succ, prob in successors]
+        pladostate = DiscreteDistribution(pladostates_with_proba).sample()
+        skstate = self._translate_state_from_plado(pladostate)
+        value = Value(cost=self._get_cost_from_state(pladostate))
+        termination = self._is_terminal_from_plado(pladostate)
+
+        return TransitionOutcome(
+            state=skstate, value=value, termination=termination, info=None
         )
 
     def _get_next_state_distribution(
-        self, memory: D.T_state, action: D.T_event
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
     ) -> DiscreteDistribution[D.T_state]:
+        (
+            skstates_with_proba,
+            map_transition_value,
+        ) = self._get_transitions_proba_and_value(memory=memory, action=action)
+        # store values to avoid calling again self.succ_gen in _get_transition_value()
+        # override previously stored values
+        self._map_transition_value = map_transition_value
+
+        return DiscreteDistribution(skstates_with_proba)
+
+    def _get_transitions_proba_and_value(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> tuple[
+        list[tuple[D.T_state, float]],
+        dict[tuple[Hashable, Hashable, Hashable], D.T_value],
+    ]:
         successors = self.succ_gen(
             self._translate_state_to_plado(memory),
             self._translate_action_to_plado(action),
@@ -400,15 +442,44 @@ class BasePladoDomain(D):
             (self._translate_state_from_plado(succ), float(prob))
             for succ, prob in successors
         ]
-        for skstate_with_proba, successor in zip(skstates_with_proba, successors):
-            pladostate, pladoproba = successor
-            skstate, proba = skstate_with_proba
-            c = self._get_cost_from_state(pladostate)
-            if c != 1:
-                self.transition_cost[
-                    (memory, action, self._translate_state_to_skplado(skstate))
-                ] = c
-        return DiscreteDistribution(skstates_with_proba)
+        map_transition_value = {
+            (
+                self._transform_state_to_hashable(memory),
+                self._transform_action_to_hashable(action),
+                self._transform_state_to_hashable(skstate),
+            ): self._get_cost_from_state(pladostate)
+            for (pladostate, _), (skstate, _) in zip(successors, skstates_with_proba)
+        }
+
+        return skstates_with_proba, map_transition_value
+
+    def _get_transition_value(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+        next_state: Optional[D.T_state] = None,
+    ) -> D.T_agent[Value[D.T_value]]:
+        key = (
+            self._transform_state_to_hashable(memory),
+            self._transform_action_to_hashable(action),
+            self._transform_state_to_hashable(next_state),
+        )
+        try:
+            cost = self._map_transition_value[key]
+        except KeyError:
+            # not called just after self._get_next_state_distribution_? or concurrent calls?
+            _, map_transition_value = self._get_transitions_proba_and_value(
+                memory=memory, action=action
+            )
+            try:
+                cost = map_transition_value[key]
+            except KeyError:
+                raise ValueError(
+                    f"The transition (memory={memory}, action={action}, next_state={next_state}) "
+                    "is not an existing transition!"
+                )
+
+        return Value(cost=cost)
 
     def _init_state_encoding_vector(self):
         self._fluents_template = self.task.initial_state.fluents
@@ -514,27 +585,58 @@ class BasePladoDomain(D):
             action: i_action for i_action, action in enumerate(self._map_idx2action)
         }
 
+    def _init_action_encoding_multidiscrete(self):
+        self._max_action_arity = max(a.parameters for a in self.task.actions)
+
 
 class PladoPddlDomain(DeterministicTransitions, BasePladoDomain):
     """Wrapper around Plado Task for (deterministic) PDDL."""
 
-    def _get_next_state(self, memory: D.T_state, action: D.T_event) -> D.T_state:
+    def _state_sample(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> TransitionOutcome[
+        D.T_state,
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
+        """Compute one sample of the transition's dynamics.
+
+        As plado compute together next state distribution and transition value,
+        it is more efficient to override this method rather than implementing separately
+        `_get_next_state()` and `_get_transition_value()`.
+
+        """
         successors = self.succ_gen(
             self._translate_state_to_plado(memory),
             self._translate_action_to_plado(action),
         )
-        successor = successors[0][0]
-        state = self._translate_state_from_plado(successor)
-        c = self._get_cost_from_state(successor)
-        if c != 1:
-            self.transition_cost[
-                (
-                    self._translate_state_to_skplado(memory),
-                    action,
-                    self._translate_state_to_skplado(state),
-                )
-            ] = c
-        return state
+        # deterministic => actual successor is the first in the list
+        pladostate = successors[0][0]
+        skstate = self._translate_state_from_plado(pladostate)
+        value = Value(cost=self._get_cost_from_state(pladostate))
+        termination = self._is_terminal_from_plado(pladostate)
+
+        return TransitionOutcome(
+            state=skstate, value=value, termination=termination, info=None
+        )
+
+    def _get_next_state(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> D.T_state:
+        (
+            skstates_with_proba,
+            map_transition_value,
+        ) = self._get_transitions_proba_and_value(memory=memory, action=action)
+        # store values to avoid calling again self.succ_gen in _get_transition_value()
+        # override previously stored values
+        self._map_transition_value = map_transition_value
+
+        return skstates_with_proba[0][0]
 
 
 class PladoPPddlDomain(BasePladoDomain):

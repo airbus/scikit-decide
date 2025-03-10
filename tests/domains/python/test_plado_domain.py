@@ -4,7 +4,9 @@
 
 
 import os
+import random
 
+import numpy as np
 import pytest
 from pytest_cases import fixture, fixture_union, param_fixture
 from ray.rllib.algorithms.dqn import DQN
@@ -58,6 +60,7 @@ pddl_domain_problem_paths = fixture_union(
     ),
 )
 
+
 state_encoding = param_fixture("state_encoding", list(StateEncoding))
 action_encoding = param_fixture("action_encoding", list(ActionEncoding))
 
@@ -72,6 +75,32 @@ def plado_domain_factory(pddl_domain_problem_paths, state_encoding, action_encod
     else:
         plado_domain_cls = PladoPddlDomain
     return lambda: plado_domain_cls(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=state_encoding,
+        action_encoding=action_encoding,
+    )
+
+
+@fixture
+def plado_ppddl_domain_factory(
+    tireworld_domain_problem_paths, state_encoding, action_encoding
+):
+    domain_path, problem_path = tireworld_domain_problem_paths
+    return lambda: PladoPPddlDomain(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=state_encoding,
+        action_encoding=action_encoding,
+    )
+
+
+@fixture
+def plado_pddl_domain_factory(
+    blocksworld_domain_problem_paths, state_encoding, action_encoding
+):
+    domain_path, problem_path = blocksworld_domain_problem_paths
+    return lambda: PladoPddlDomain(
         domain_path=domain_path,
         problem_path=problem_path,
         state_encoding=state_encoding,
@@ -148,6 +177,75 @@ def test_plado_domain_random(plado_domain_factory):
         num_episodes=1,
         render=False,
     )
+
+
+def test_plado_state_sample_ppddl(plado_ppddl_domain_factory):
+    def reset() -> tuple[
+        PladoPPddlDomain, PladoPPddlDomain.T_state, PladoPPddlDomain.T_event
+    ]:
+        random.seed(42)
+        domain = plado_ppddl_domain_factory()
+        domain.reset()
+        memory = domain._memory
+        action = domain.get_applicable_actions().get_elements()[0]
+        return domain, memory, action
+
+    domain, memory, action = reset()
+    outcome = domain._state_sample(memory, action)
+    state1 = outcome.state
+    value1 = outcome.value
+
+    domain, memory, action = reset()
+    state2 = domain._get_next_state_distribution(memory, action).sample()
+    value2 = domain._get_transition_value(memory, action, state2)
+
+    domain, memory, action = reset()
+    value3 = domain._get_transition_value(memory, action, state2)
+    state3 = domain._get_next_state_distribution(memory, action).sample()
+
+    if isinstance(state1, np.ndarray):
+        assert (state1 == state2).all()
+        assert (state3 == state2).all()
+    else:
+        assert state1 == state2
+        assert state3 == state2
+
+    assert value1 == value2
+    assert value3 == value2
+
+
+def test_plado_state_sample_pddl(plado_pddl_domain_factory):
+    def reset() -> tuple[
+        PladoPddlDomain, PladoPddlDomain.T_state, PladoPddlDomain.T_event
+    ]:
+        domain = plado_pddl_domain_factory()
+        domain.reset()
+        memory = domain._memory
+        action = domain.get_applicable_actions().get_elements()[0]
+        return domain, memory, action
+
+    domain, memory, action = reset()
+    outcome = domain._state_sample(memory, action)
+    state1 = outcome.state
+    value1 = outcome.value
+
+    domain, memory, action = reset()
+    state2 = domain._get_next_state(memory, action)
+    value2 = domain._get_transition_value(memory, action, state2)
+
+    domain, memory, action = reset()
+    value3 = domain._get_transition_value(memory, action, state2)
+    state3 = domain._get_next_state(memory, action)
+
+    if isinstance(state1, np.ndarray):
+        assert (state1 == state2).all()
+        assert (state3 == state2).all()
+    else:
+        assert state1 == state2
+        assert state3 == state2
+
+    assert value1 == value2
+    assert value3 == value2
 
 
 def test_plado_domain_planning(plado_native_domain_factory):
