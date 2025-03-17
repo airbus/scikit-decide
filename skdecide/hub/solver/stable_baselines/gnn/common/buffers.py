@@ -1,5 +1,4 @@
-from collections.abc import Generator
-from typing import Any, Dict, List, Optional, TypeVar, Union
+from typing import Optional, Union
 
 import numpy as np
 import torch as th
@@ -8,24 +7,23 @@ from gymnasium import spaces
 from sb3_contrib.common.maskable.buffers import (
     MaskableDictRolloutBuffer,
     MaskableRolloutBuffer,
-    MaskableRolloutBufferSamples,
 )
 from stable_baselines3.common.buffers import (
     BaseBuffer,
     DictReplayBuffer,
     DictRolloutBuffer,
-    ReplayBuffer,
-    RolloutBuffer,
 )
 from stable_baselines3.common.preprocessing import get_action_dim
-from stable_baselines3.common.type_aliases import (
-    ReplayBufferSamples,
-    RolloutBufferSamples,
-)
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.vec_env import VecNormalize
 from torch.nn.utils.rnn import pad_sequence
 
+from ...common.buffers import (
+    MaskableScikitDecideRolloutBufferMixin,
+    ScikitDecideReplayBuffer,
+    ScikitDecideRolloutBuffer,
+    swap_and_flatten_nested_list,
+)
 from .preprocessing import get_obs_shape
 from .utils import copy_graph_instance, graph_instance_to_thg_data
 
@@ -60,7 +58,7 @@ class GraphBaseBuffer(BaseBuffer):
         )
 
 
-class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
+class GraphRolloutBuffer(ScikitDecideRolloutBuffer, GraphBaseBuffer):
     """Rollout buffer used in on-policy algorithms like A2C/PPO with graph observations.
 
     Handles cases where observation space is:
@@ -70,7 +68,6 @@ class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
     """
 
     observations: Union[list[spaces.GraphInstance], list[list[spaces.GraphInstance]]]
-    tensor_names = ["actions", "values", "log_probs", "advantages", "returns"]
 
     def reset(self) -> None:
         assert isinstance(
@@ -79,78 +76,11 @@ class GraphRolloutBuffer(RolloutBuffer, GraphBaseBuffer):
         super().reset()
         self.observations = list()
 
-    def add(
-        self,
-        obs: list[spaces.GraphInstance],
-        action: np.ndarray,
-        reward: np.ndarray,
-        episode_start: np.ndarray,
-        value: th.Tensor,
-        log_prob: th.Tensor,
-    ) -> None:
-        if len(log_prob.shape) == 0:
-            # Reshape 0-d tensor to avoid error
-            log_prob = log_prob.reshape(-1, 1)
-
-        self._add_obs(obs)
-
-        # Same reshape, for actions
-        action = action.reshape((self.n_envs, self.action_dim))
-
-        self.actions[self.pos] = np.array(action).copy()
-        self.rewards[self.pos] = np.array(reward).copy()
-        self.episode_starts[self.pos] = np.array(episode_start).copy()
-        self.values[self.pos] = value.clone().cpu().numpy().flatten()
-        self.log_probs[self.pos] = log_prob.clone().cpu().numpy()
-        self.pos += 1
-        if self.pos == self.buffer_size:
-            self.full = True
-
     def _add_obs(self, obs: list[spaces.GraphInstance]) -> None:
         self.observations.append([copy_graph_instance(g) for g in obs])
 
     def _swap_and_flatten_obs(self) -> None:
-        self.observations = _swap_and_flatten_nested_list(self.observations)
-
-    def _swap_and_flatten_action_masks(self) -> None:
-        """Method to override in buffers meant to be used with action masks."""
-        # by default, no action masks
-        ...
-
-    def get(
-        self, batch_size: Optional[int] = None
-    ) -> Generator[RolloutBufferSamples, None, None]:
-        assert self.full, ""
-        indices = np.random.permutation(self.buffer_size * self.n_envs)
-        # Prepare the data
-        if not self.generator_ready:
-            self._swap_and_flatten_obs()
-            self._swap_and_flatten_action_masks()
-            for tensor in self.tensor_names:
-                self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
-            self.generator_ready = True
-
-        # Return everything, don't create minibatches
-        if batch_size is None:
-            batch_size = self.buffer_size * self.n_envs
-
-        start_idx = 0
-        while start_idx < self.buffer_size * self.n_envs:
-            yield self._get_samples(indices[start_idx : start_idx + batch_size])
-            start_idx += batch_size
-
-    def _get_samples(
-        self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
-    ) -> RolloutBufferSamples:
-        observations = self._get_observations_samples(batch_inds)
-        data = (
-            self.actions[batch_inds],
-            self.values[batch_inds].flatten(),
-            self.log_probs[batch_inds].flatten(),
-            self.advantages[batch_inds].flatten(),
-            self.returns[batch_inds].flatten(),
-        )
-        return RolloutBufferSamples(observations, *tuple(map(self.to_torch, data)))
+        self.observations = swap_and_flatten_nested_list(self.observations)
 
     def _get_observations_samples(self, batch_inds: np.ndarray) -> thg.data.Data:
         return self._graphlist_to_torch(self.observations, batch_inds=batch_inds)
@@ -215,7 +145,7 @@ class DictGraphRolloutBuffer(GraphRolloutBuffer, DictRolloutBuffer):
     def _swap_and_flatten_obs(self) -> None:
         for key, obs in self.observations.items():
             if self.is_observation_subspace_graph[key]:
-                self.observations[key] = _swap_and_flatten_nested_list(obs)
+                self.observations[key] = swap_and_flatten_nested_list(obs)
             else:
                 self.observations[key] = self.swap_and_flatten(obs)
 
@@ -230,39 +160,7 @@ class DictGraphRolloutBuffer(GraphRolloutBuffer, DictRolloutBuffer):
         }
 
 
-class _BaseMaskableRolloutBuffer:
-    def add(self, *args, action_masks: Optional[np.ndarray] = None, **kwargs) -> None:
-        """
-        :param action_masks: Masks applied to constrain the choice of possible actions.
-        """
-
-        self._add_action_masks(action_masks=action_masks)
-        super().add(*args, **kwargs)
-
-    def _add_action_masks(self, action_masks: Optional[np.ndarray] = None):
-        if action_masks is not None:
-            self.action_masks[self.pos] = action_masks.reshape(
-                (self.n_envs, self.mask_dims)
-            )
-
-    def _swap_and_flatten_action_masks(self) -> None:
-        self.action_masks = self.swap_and_flatten(self.action_masks)
-
-    def _get_samples(
-        self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
-    ) -> MaskableRolloutBufferSamples:
-        samples_wo_action_masks = super()._get_samples(batch_inds=batch_inds, env=env)
-        action_masks = self._get_action_masks_samples(batch_inds=batch_inds)
-        return MaskableRolloutBufferSamples(
-            *samples_wo_action_masks,
-            action_masks=action_masks,
-        )
-
-    def _get_action_masks_samples(self, batch_inds: np.ndarray) -> np.ndarray:
-        return self.to_torch(self.action_masks[batch_inds].reshape(-1, self.mask_dims))
-
-
-class _BaseMaskableGraph2NodeRolloutBuffer(_BaseMaskableRolloutBuffer):
+class MaskableGraph2NodeRolloutBufferMixin(MaskableScikitDecideRolloutBufferMixin):
 
     action_masks: list[np.ndarray]
 
@@ -270,11 +168,10 @@ class _BaseMaskableGraph2NodeRolloutBuffer(_BaseMaskableRolloutBuffer):
         super().reset()
         self.action_masks = list()
 
-    def _add_action_masks(self, action_masks: Optional[list[np.ndarray]] = None):
-        if action_masks is not None:
-            self.action_masks.append(action_masks.reshape(self.n_envs, -1))
-        else:
-            self.action_masks.append([])
+    def _add_action_masks(self, action_masks: Optional[np.ndarray] = None):
+        if action_masks is None:
+            raise NotImplementedError()
+        self.action_masks.append(action_masks.reshape(self.n_envs, -1))
 
     def _swap_and_flatten_action_masks(self) -> None:
         if self.n_envs > 1:
@@ -290,24 +187,26 @@ class _BaseMaskableGraph2NodeRolloutBuffer(_BaseMaskableRolloutBuffer):
 
 
 class MaskableGraphRolloutBuffer(
-    _BaseMaskableRolloutBuffer, GraphRolloutBuffer, MaskableRolloutBuffer
+    MaskableScikitDecideRolloutBufferMixin, GraphRolloutBuffer, MaskableRolloutBuffer
 ):
     ...
 
 
 class MaskableDictGraphRolloutBuffer(
-    _BaseMaskableRolloutBuffer, DictGraphRolloutBuffer, MaskableDictRolloutBuffer
+    MaskableScikitDecideRolloutBufferMixin,
+    DictGraphRolloutBuffer,
+    MaskableDictRolloutBuffer,
 ):
     ...
 
 
 class MaskableGraph2NodeRolloutBuffer(
-    _BaseMaskableGraph2NodeRolloutBuffer, GraphRolloutBuffer, MaskableRolloutBuffer
+    MaskableGraph2NodeRolloutBufferMixin, GraphRolloutBuffer, MaskableRolloutBuffer
 ):
     ...
 
 
-class GraphReplayBuffer(ReplayBuffer, GraphBaseBuffer):
+class GraphReplayBuffer(ScikitDecideReplayBuffer, GraphBaseBuffer):
     observations: list[spaces.GraphInstance]
     next_observations: list[spaces.GraphInstance]
 
@@ -345,35 +244,6 @@ class GraphReplayBuffer(ReplayBuffer, GraphBaseBuffer):
         self.observations = list()
         self.next_observations = list()
 
-    def add(
-        self,
-        obs: list[spaces.GraphInstance],
-        next_obs: list[spaces.GraphInstance],
-        action: np.ndarray,
-        reward: np.ndarray,
-        done: np.ndarray,
-        infos: List[Dict[str, Any]],
-    ) -> None:
-
-        self._add_obs(obs=obs, next_obs=next_obs)
-
-        # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392
-        action = action.reshape((self.n_envs, self.action_dim))
-
-        self.actions[self.pos] = np.array(action)
-        self.rewards[self.pos] = np.array(reward)
-        self.dones[self.pos] = np.array(done)
-
-        if self.handle_timeout_termination:
-            self.timeouts[self.pos] = np.array(
-                [info.get("TimeLimit.truncated", False) for info in infos]
-            )
-
-        self.pos += 1
-        if self.pos == self.buffer_size:
-            self.full = True
-            self.pos = 0
-
     def _add_obs(
         self, obs: list[spaces.GraphInstance], next_obs: list[spaces.GraphInstance]
     ) -> None:
@@ -381,40 +251,27 @@ class GraphReplayBuffer(ReplayBuffer, GraphBaseBuffer):
         self.next_observations.append(next_obs)
 
     def _get_observations_samples(
-        self, observations: list[spaces.GraphInstance], batch_inds: np.ndarray
-    ) -> thg.data.Data:
-        return self._graphlist_to_torch(observations, batch_inds=batch_inds)
-
-    def _get_samples(
-        self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
-    ) -> ReplayBufferSamples:
+        self,
+        batch_inds: np.ndarray,
+        env_indices: np.ndarray,
+        env: Optional[VecNormalize] = None,
+    ) -> tuple[thg.data.Data, thg.data.Data]:
         if env is not None:
             raise NotImplementedError(
                 "observation normalization not yet implemented for graphReplayBuffer."
             )
-        env_indices = 0  # single env
-        return ReplayBufferSamples(
-            observations=self._get_observations_samples(
-                self.observations, batch_inds=batch_inds
-            ),
-            actions=self.to_torch(self.actions[batch_inds, env_indices, :]),
-            next_observations=self._get_observations_samples(
-                self.next_observations, batch_inds=batch_inds
-            ),
-            # Only use dones that are not due to timeouts
-            # deactivated by default (timeouts is initialized as an array of False)
-            dones=self.to_torch(
-                (
-                    self.dones[batch_inds, env_indices]
-                    * (1 - self.timeouts[batch_inds, env_indices])
-                ).reshape(-1, 1)
-            ),
-            rewards=self.to_torch(
-                self._normalize_reward(
-                    self.rewards[batch_inds, env_indices].reshape(-1, 1), env
-                )
-            ),
+        observations = self._extract_observations_samples(
+            self.observations, batch_inds=batch_inds
         )
+        next_observations = self._extract_observations_samples(
+            self.next_observations, batch_inds=batch_inds
+        )
+        return observations, next_observations
+
+    def _extract_observations_samples(
+        self, observations: list[spaces.GraphInstance], batch_inds: np.ndarray
+    ) -> thg.data.Data:
+        return self._graphlist_to_torch(self.observations, batch_inds=batch_inds)
 
 
 class DictGraphReplayBuffer(GraphReplayBuffer, DictReplayBuffer):
@@ -487,7 +344,7 @@ class DictGraphReplayBuffer(GraphReplayBuffer, DictReplayBuffer):
                 self.observations[key][self.pos] = obs_
                 self.next_observations[key][self.pos] = next_obs_
 
-    def _get_observations_samples(
+    def _extract_observations_samples(
         self,
         observations: dict[
             str,
@@ -504,10 +361,3 @@ class DictGraphReplayBuffer(GraphReplayBuffer, DictReplayBuffer):
             else self.to_torch(obs[batch_inds])
             for k, obs in observations.items()
         }
-
-
-T = TypeVar("T")
-
-
-def _swap_and_flatten_nested_list(obs: list[list[T]]) -> list[T]:
-    return [x for subobs in obs for x in subobs]
