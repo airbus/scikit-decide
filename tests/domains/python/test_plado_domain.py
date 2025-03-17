@@ -20,6 +20,10 @@ from skdecide.hub.domain.plado import (
 )
 from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.solver.ray_rllib import RayRLlib
+from skdecide.hub.solver.stable_baselines import StableBaseline
+from skdecide.hub.solver.stable_baselines.autoregressive.ppo.autoregressive_ppo import (
+    AutoregressivePPO,
+)
 
 try:
     import plado
@@ -127,6 +131,28 @@ def plado_gym_naive_domain_factory(blocksworld_domain_problem_paths):
         problem_path=problem_path,
         state_encoding=StateEncoding.GYM_VECTOR,
         action_encoding=ActionEncoding.GYM_DISCRETE,
+    )
+
+
+@fixture
+def plado_gym_autoregressive_domain_factory(blocksworld_domain_problem_paths):
+    domain_path, problem_path = blocksworld_domain_problem_paths
+    return lambda: PladoPddlDomain(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=StateEncoding.GYM_VECTOR,
+        action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
+    )
+
+
+@fixture
+def plado_ppddl_gym_autoregressive_domain_factory(tireworld_domain_problem_paths):
+    domain_path, problem_path = tireworld_domain_problem_paths
+    return lambda: PladoPPddlDomain(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=StateEncoding.GYM_VECTOR,
+        action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
     )
 
 
@@ -292,3 +318,55 @@ def test_plado_domain_blocksworld_rl(plado_gym_naive_domain_factory):
             num_episodes=1,
             render=False,
         )
+
+
+def test_plado_domain_blocksworld_autoregressive_sb3(
+    plado_gym_autoregressive_domain_factory,
+):
+    domain_factory = plado_gym_autoregressive_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=AutoregressivePPO,
+        baselines_policy="MlpPolicy",
+        autoregressive_action=True,
+        learn_config={"total_timesteps": 300},
+        n_steps=100,
+    ) as solver:
+        solver.solve()
+        max_steps = 20
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=max_steps,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+        observations, actions, values = episodes[0]
+        #  assert len(actions) < max_steps - 1  # unsucessful to reach goal
+
+
+def test_plado_domain_ppddl_autoregressive_sb3(
+    plado_ppddl_gym_autoregressive_domain_factory,
+):
+    domain_factory = plado_ppddl_gym_autoregressive_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=AutoregressivePPO,
+        baselines_policy="MlpPolicy",
+        autoregressive_action=True,
+        learn_config={"total_timesteps": 300},
+        n_steps=100,
+    ) as solver:
+        solver.solve()
+        max_steps = 20
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=max_steps,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+        observations, actions, values = episodes[0]
+        #  assert len(actions) < max_steps - 1  # unsucessful to reach goal
