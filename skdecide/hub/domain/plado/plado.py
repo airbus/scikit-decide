@@ -35,7 +35,12 @@ from skdecide.builders.domain import (
     Sequential,
     SingleAgent,
 )
-from skdecide.hub.space.gym import BoxSpace, DiscreteSpace, ListSpace
+from skdecide.hub.space.gym import (
+    BoxSpace,
+    DiscreteSpace,
+    ListSpace,
+    MaskableMultiDiscreteSpace,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +69,7 @@ AtomsType = list[set[tuple[int, ...]]]
 SkFluentsType = tuple[tuple[tuple[tuple[int, ...], Float], ...], ...]
 FluentsType = list[dict[tuple[int, ...], Float]]
 GymVectorType = npt.NDArray[Union[int, float]]
+GymMultidiscreteType = npt.NDArray[int]
 
 
 class SkPladoState:
@@ -134,7 +140,7 @@ class D(
 ):
     T_state = Union[SkPladoState, GymVectorType]  # Type of states
     T_observation = T_state  # Type of observations
-    T_event = Union[PladoAction, int]  # Type of events
+    T_event = Union[PladoAction, int, GymMultidiscreteType]  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
     T_predicate = bool  # Type of test results
     T_info = None  # Type of additional information in environment outcome
@@ -195,7 +201,8 @@ class StateEncoding(Enum):
 
 class ActionEncoding(Enum):
     NATIVE = "native"  # tuple (i_action, (i_param_0, ..., i_param_p)) returned by ApplicableActionsGenerator
-    GYM = "gym"  # indice among all actions possible (tractable only for very small problems)
+    GYM_DISCRETE = "gym-discrete"  # indice among all actions possible (tractable only for very small problems)
+    GYM_MULTIDISCRETE = "gym-multidiscrete"  # np.array([i_action, i_param_0, ..., i_param_p]) very similar to "native", but "gym compatible
 
 
 class BasePladoDomain(D):
@@ -244,8 +251,10 @@ class BasePladoDomain(D):
     def _init_action_encoding(self):
         if self.action_encoding == ActionEncoding.NATIVE:
             ...
-        elif self.action_encoding == ActionEncoding.GYM:
+        elif self.action_encoding == ActionEncoding.GYM_DISCRETE:
             self._init_action_encoding_discrete()
+        elif self.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
+            self._init_action_encoding_multidiscrete()
         else:
             raise NotImplementedError()
 
@@ -276,23 +285,44 @@ class BasePladoDomain(D):
             raise NotImplementedError()
 
     def _transform_action_to_hashable(self, action: D.T_event) -> Hashable:
-        return action
+        if self.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
+            return tuple(action)
+        else:
+            return action
 
     def _translate_action_from_plado(self, action: PladoAction) -> D.T_event:
         if self.action_encoding == ActionEncoding.NATIVE:
             return action
-        elif self.action_encoding == ActionEncoding.GYM:
+        elif self.action_encoding == ActionEncoding.GYM_DISCRETE:
             return self._map_action2idx[action]
+        elif self.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
+            return self._action2multidiscrete(action)
         else:
             raise NotImplementedError()
 
     def _translate_action_to_plado(self, action: D.T_event) -> PladoAction:
         if self.action_encoding == ActionEncoding.NATIVE:
             return action
-        elif self.action_encoding == ActionEncoding.GYM:
+        elif self.action_encoding == ActionEncoding.GYM_DISCRETE:
             return self._map_idx2action[action]
+        elif self.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
+            return self._multidiscrete2action(action)
         else:
             raise NotImplementedError()
+
+    def _action2multidiscrete(self, action: PladoAction) -> GymMultidiscreteType:
+        action_id, params_id = action
+        return np.array(
+            (action_id,)
+            + params_id
+            + (-1,) * (self._max_action_arity - len(params_id)),
+            dtype=int,
+        )
+
+    def _multidiscrete2action(self, action: GymMultidiscreteType) -> PladoAction:
+        action_id = int(action[0])
+        action_arity = self.task.actions[action_id].parameters
+        return action_id, tuple(int(i) for i in action[1 : action_arity + 1])
 
     def _get_cost_from_state(self, state: PladoState) -> int:
         if self.total_cost is None:
@@ -341,8 +371,14 @@ class BasePladoDomain(D):
             return ActionSpace(
                 (a.parameters for a in self.task.actions), len(self.task.objects)
             )
-        elif self.action_encoding == ActionEncoding.GYM:
+        elif self.action_encoding == ActionEncoding.GYM_DISCRETE:
             return DiscreteSpace(n=len(self._map_idx2action))
+        elif self.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
+            n_objects = len(self.task.objects)
+            n_actions = len(self.task.actions)
+            return MaskableMultiDiscreteSpace(
+                nvec=[n_actions] + self._max_action_arity * [n_objects]
+            )
         else:
             raise NotImplementedError()
 

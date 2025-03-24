@@ -68,7 +68,7 @@ action_encoding = param_fixture("action_encoding", list(ActionEncoding))
 @fixture
 def plado_domain_factory(pddl_domain_problem_paths, state_encoding, action_encoding):
     domain_path, problem_path = pddl_domain_problem_paths
-    if "agricola" in domain_path and action_encoding == ActionEncoding.GYM:
+    if "agricola" in domain_path and action_encoding == ActionEncoding.GYM_DISCRETE:
         pytest.skip("Discrete action encoding not tractable for agricola domain.")
     if "tireworld" in domain_path:
         plado_domain_cls = PladoPPddlDomain
@@ -126,7 +126,7 @@ def plado_gym_naive_domain_factory(blocksworld_domain_problem_paths):
         domain_path=domain_path,
         problem_path=problem_path,
         state_encoding=StateEncoding.GYM_VECTOR,
-        action_encoding=ActionEncoding.GYM,
+        action_encoding=ActionEncoding.GYM_DISCRETE,
     )
 
 
@@ -162,10 +162,20 @@ def test_plado_domain_random(plado_domain_factory):
             == obs
         ).all()
 
-    assert (
-        domain._translate_action_from_plado(domain._translate_action_to_plado(action))
-        == action
-    )
+    if domain.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
+        assert (
+            domain._translate_action_from_plado(
+                domain._translate_action_to_plado(action)
+            )
+            == action
+        ).all()
+    else:
+        assert (
+            domain._translate_action_from_plado(
+                domain._translate_action_to_plado(action)
+            )
+            == action
+        )
     assert domain._translate_action_to_plado(
         domain._translate_action_from_plado(domain._translate_action_to_plado(action))
     ) == domain._translate_action_to_plado(action)
