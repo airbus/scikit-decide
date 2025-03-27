@@ -52,7 +52,12 @@ def get_obs_shape(
     """
     if isinstance(observation_space, spaces.Graph):
         # Will not be used
-        return observation_space.node_space.shape + observation_space.edge_space.shape
+        if observation_space.edge_space is None:
+            return observation_space.node_space.shape
+        else:
+            return (
+                observation_space.node_space.shape + observation_space.edge_space.shape
+            )
     elif isinstance(observation_space, spaces.Dict):
         return {key: get_obs_shape(subspace) for (key, subspace) in observation_space.spaces.items()}  # type: ignore[misc]
     else:
