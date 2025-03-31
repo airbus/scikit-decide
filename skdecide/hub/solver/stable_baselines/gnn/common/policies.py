@@ -34,6 +34,8 @@ from .utils import ObsType, TorchObsType, is_vectorized_observation, obs_as_tens
 
 
 class BaseGNNPolicy(BasePolicy):
+    observation_space: spaces.Graph
+
     def extract_features(
         self, obs: thg.data.Data, features_extractor: BaseFeaturesExtractor
     ) -> th.Tensor:

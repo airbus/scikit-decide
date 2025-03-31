@@ -1,32 +1,46 @@
+import copy
 from functools import partial
 from typing import Any, Optional, Union
 
 import numpy as np
 import torch as th
+import torch_geometric as thg
 from gymnasium import spaces
 from sb3_contrib.common.maskable.distributions import MaskableCategoricalDistribution
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from stable_baselines3.common.distributions import Distribution
-from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.torch_layers import (
     BaseFeaturesExtractor,
     FlattenExtractor,
     MlpExtractor,
 )
-from stable_baselines3.common.type_aliases import PyTorchObs, Schedule
+from stable_baselines3.common.type_aliases import Schedule
 from torch import nn
 from torch.nn import functional as F
 
 from skdecide.hub.solver.stable_baselines.autoregressive.common.distributions import (
     MultiMaskableCategoricalDistribution,
 )
+from skdecide.hub.solver.stable_baselines.gnn.common.policies import (
+    BaseGNNActorCriticPolicy,
+)
 from skdecide.hub.solver.utils.autoregressive.torch_utils import (
     batched_extract_action_component_mask,
     extract_action_component_mask,
 )
+from skdecide.hub.solver.utils.gnn.space_utils import (
+    add_onehot_encoded_discrete_feature_to_graph_space,
+)
+from skdecide.hub.solver.utils.gnn.torch_layers import (
+    Graph2NodeLayer,
+    GraphFeaturesExtractor,
+)
+from skdecide.hub.solver.utils.gnn.torch_utils import unbatch_node_logits
 
 ACTION_NET_ARCH_KEY = "pi"
 VALUE_NET_ARCH_KEY = "vf"
+
+ObsType = Union[th.Tensor, thg.data.Data]
 
 
 class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
@@ -39,6 +53,10 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
     - the current applicable actions are given via the argument `action_masks`, from `MaskableActorCriticPolicy` API,
       as a variable-length numpy.array's (for a single sample) or a list of such numpy.array's when evaluating
       several samples at once.
+
+    Notes:
+        The code already take into account `n_graph2node_components` even though will be only useful for
+        `AutoregressiveGraph2NodeActorCriticPolicy`, but allows to share most of the code between the 2 classes.
 
     """
 
@@ -71,6 +89,11 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         if not share_features_extractor:
             raise NotImplementedError()
 
+        # By default no graph2node components (not even sure to have graph obs) and thus no graph->node gnn
+        self.n_graph2node_components = 0
+        self.action_gnn_class: Optional[type[nn.Module]] = None
+        self.action_gnn_kwargs: dict[str, Any] = {}
+
         super().__init__(
             observation_space=observation_space,
             action_space=action_space,
@@ -87,6 +110,10 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         )
 
         self._reset_action_dist()
+
+    @property
+    def _n_graphindependent_components(self) -> int:
+        return len(self.action_space.nvec) - self.n_graph2node_components
 
     def _reset_action_dist(self) -> None:
         """Reset action distribution to ensure all marginal are reset.
@@ -116,7 +143,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         )
         self.mlp_extractor = self.mlp_extractor_value  # alias for predict_values()
 
-        # mlp_extractors for each action components
+        # mlp_extractors for each action components not directly depending on observation graph
         net_arch_action = {
             ACTION_NET_ARCH_KEY: self.net_arch.get(ACTION_NET_ARCH_KEY, [])
         }
@@ -130,18 +157,54 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 activation_fn=self.activation_fn,
                 device=self.device,
             )
-            for previous_action_components_features_dim in previous_action_components_features_dims
+            if i_component < self._n_graphindependent_components
+            else None
+            for i_component, previous_action_components_features_dim in enumerate(
+                previous_action_components_features_dims
+            )
         ]
 
     def _build(self, lr_schedule: Schedule) -> None:
         self._build_mlp_extractor()
 
+        # value net
         self.value_net = nn.Linear(self.mlp_extractor_value.latent_dim_vf, 1)
 
+        # observation space used by Graph2Node GNN's: enriched with
+        #   - previous graph-independent components as global features repeated for each node
+        #   - previous graph_node components as a node feature (onehot) encoding the position of the node among
+        #     the graph node action components
+        if self.n_graph2node_components > 0:
+            enriched_observation_space = self.observation_space
+            # graph-independent action components
+            for new_dim in self.action_space.nvec[
+                : self._n_graphindependent_components
+            ]:
+                enriched_observation_space = (
+                    add_onehot_encoded_discrete_feature_to_graph_space(
+                        enriched_observation_space, new_dim=new_dim
+                    )
+                )
+            # graph node action components position
+            enriched_observation_space = (
+                add_onehot_encoded_discrete_feature_to_graph_space(
+                    enriched_observation_space, new_dim=self.n_graph2node_components
+                )
+            )
+
+        # action nets
         self.action_nets = [
-            nn.Linear(mlp_extractor_action.latent_dim_pi, action_component_dim)
-            for mlp_extractor_action, action_component_dim in zip(
-                self.mlp_extractors_action, self.action_space.nvec
+            nn.Linear(
+                mlp_extractor_action.latent_dim_pi, self.action_space.nvec[i_component]
+            )
+            if i_component < self._n_graphindependent_components
+            else Graph2NodeLayer(
+                observation_space=enriched_observation_space,
+                gnn_class=self.action_gnn_class,
+                gnn_kwargs=self.action_gnn_kwargs,
+            )
+            for i_component, mlp_extractor_action in enumerate(
+                self.mlp_extractors_action,
             )
         ]
 
@@ -154,17 +217,25 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                     for mlp_extractor in self.mlp_extractors_action
                 },
                 self.value_net: 1,
-                **{action_net: 0.01 for action_net in self.action_nets},
+                **{
+                    action_net: np.sqrt(2)
+                    if i_component >= self._n_graphindependent_components
+                    else 0.01
+                    for i_component, action_net in enumerate(self.action_nets)
+                },
             }
             for module, gain in module_gains.items():
-                module.apply(partial(self.init_weights, gain=gain))
+                if module is not None:
+                    module.apply(partial(self.init_weights, gain=gain))
 
         # Setup optimizer with initial learning rate
-        self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)  # type: ignore[call-arg]
+        self.optimizer = self.optimizer_class(
+            self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs
+        )  # type: ignore[call-arg]
 
     def forward(
         self,
-        obs: th.Tensor,
+        obs: ObsType,
         deterministic: bool = False,
         action_masks: Optional[Union[th.Tensor, np.ndarray]] = None,
     ) -> tuple[th.Tensor, th.Tensor, th.Tensor]:
@@ -176,8 +247,11 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         values = self.value_net(latent_vf)
 
         # actions + distribution update
-        actions = self._compute_distribution_and_sample_action_from_features(
-            features=features, deterministic=deterministic, action_masks=action_masks
+        actions = self._compute_distribution_and_sample_action(
+            features=features,
+            observation=obs,
+            deterministic=deterministic,
+            action_masks=action_masks,
         )
 
         # logp computation
@@ -187,7 +261,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
 
     def evaluate_actions(
         self,
-        obs: PyTorchObs,
+        obs: ObsType,
         actions: th.Tensor,
         action_masks: Optional[list[th.Tensor]] = None,
     ) -> tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
@@ -195,30 +269,77 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         assert len(actions.shape) == 2
 
         # features
-        features = self.extract_features(obs)
-        # hyp: features are flat
-        assert len(features.shape) == 2
+        if self._n_graphindependent_components > 0:
+            features = self.extract_features(obs)
+            # hyp: features are flat
+            assert len(features.shape) == 2
+        else:
+            # not needed
+            features = None
+
+        # batch_dim?
+        if features is None:
+            if obs.batch is None:  # obs: thg.data.Data
+                batch_dim = 1
+            else:  # obs: thg.data.Batch
+                assert isinstance(obs, thg.data.Batch)
+                batch_dim = obs.num_graphs
+        else:
+            batch_dim = len(features)
 
         # applicable actions
         # hyp: applicable actions given via action_masks, sample by sample
         applicable_actions = action_masks
         assert (
             applicable_actions is not None
-            and len(applicable_actions) == features.shape[0]
+            and len(applicable_actions) == batch_dim
             and all(
                 len(applicable_actions_by_sample) > 0
                 for applicable_actions_by_sample in applicable_actions
             )
         )
 
-        # features + onehot encoded actions (concatenate once for efficiency)
-        encoded_actions_wo_last_component = _encode_actions_for_features(
-            actions=actions, action_space=self.action_space
+        # features + onehot encoded (graph independent) action components (concatenate once for efficiency)
+        encoded_actions_wo_last_component = (
+            _encode_actions_first_components_for_features(
+                actions=actions,
+                action_space=self.action_space,
+                n_components=self._n_graphindependent_components - 1,
+            )
         )
-        full_features = th.cat((features, encoded_actions_wo_last_component), -1)
-        n_features_by_component = features.shape[-1] + np.cumsum(
-            [0] + list(self.action_space.nvec[:-1])
-        )
+        if features is not None:
+            full_features = th.cat((features, encoded_actions_wo_last_component), -1)
+            n_features_by_component = features.shape[-1] + np.cumsum(
+                [0]
+                + list(
+                    self.action_space.nvec[: self._n_graphindependent_components - 1]
+                )
+            )
+        else:
+            full_features = None
+            n_features_by_component = [0] * len(self.action_space.nvec)
+        if self.n_graph2node_components > 0:
+            # node features
+            # + onehot encoded (graph independent) action components (concatenate once for efficiency)
+            # + onehot encoded position of graph nodes in graph node action components (only zeros for now)
+            enriched_obs = copy.copy(obs)
+            enriched_obs.x = th.cat(
+                (
+                    enriched_obs.x,
+                    encoded_actions_wo_last_component[enriched_obs.batch, :],
+                    th.zeros(
+                        (len(enriched_obs.x), self.n_graph2node_components),
+                        dtype=enriched_obs.x.dtype,
+                    ),
+                ),
+                -1,
+            )
+            n_node_features_before_position_feature = (
+                enriched_obs.x.shape[1] - self.n_graph2node_components
+            )
+        else:
+            enriched_obs = None
+            n_node_features_before_position_feature = 0
 
         # value
         latent_vf = self.mlp_extractor_value.forward_critic(features)
@@ -234,13 +355,11 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             (
                 mlp_extractor_action_component,
                 action_component_net,
-                n_features_component,
             ),
         ) in enumerate(
             zip(
                 self.mlp_extractors_action,
                 self.action_nets,
-                n_features_by_component,
             )
         ):
             # all (batchwise) components for this idx are <0 => no more true components
@@ -273,24 +392,53 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
 
             # compute logits only for relevant samples
             if compute_all_samples:
-                latent_pi = mlp_extractor_action_component.forward_actor(
-                    full_features[:, :n_features_component]
-                )
+                # all samples are relevant
+                if i_action_component < self._n_graphindependent_components:
+                    # graph-independent component: mlp from features
+                    latent_pi = mlp_extractor_action_component.forward_actor(
+                        full_features[:, : n_features_by_component[i_action_component]]
+                    )
+                    action_component_full_logits = action_component_net(latent_pi)
+                else:
+                    # graph->node GNN from observation graph enriched with previous graph-independent components
+                    # + position of previous graph node components
+                    action_component_logits_graph: thg.data.Data = action_component_net(
+                        enriched_obs
+                    )
+                    action_component_full_logits = unbatch_node_logits(
+                        action_component_logits_graph
+                    )
             else:
-                latent_pi = mlp_extractor_action_component.forward_actor(
-                    full_features[indices_samples_with_component, :n_features_component]
-                )
-            action_component_logits = action_component_net(latent_pi)
-            # fill logits with 0 for irrelevant samples
-            if compute_all_samples:
-                action_component_full_logits = action_component_logits
-            else:
+                # only some samples are relevant
+                if i_action_component < self._n_graphindependent_components:
+                    # graph-independent component: mlp from features
+                    latent_pi = mlp_extractor_action_component.forward_actor(
+                        full_features[
+                            indices_samples_with_component,
+                            : n_features_by_component[i_action_component],
+                        ]
+                    )
+                    action_component_logits = action_component_net(latent_pi)
+                else:
+                    # graph->node GNN directly from observation graph enriched with previous components
+                    # extract relevant samples from batch
+                    enriched_obs = thg.data.Batch.from_data_list(
+                        enriched_obs.index_select(indices_samples_with_component)
+                    )
+                    action_component_logits_graph: thg.data.Data = action_component_net(
+                        enriched_obs
+                    )
+                    action_component_logits = unbatch_node_logits(
+                        action_component_logits_graph
+                    )
+                # fill logits with 0 for irrelevant samples  (will be masked afterwards)
                 action_component_full_logits = th.zeros_like(
                     action_component_mask, dtype=action_component_logits.dtype
                 )
                 action_component_full_logits[
                     indices_samples_with_component, :
                 ] = action_component_logits
+
             # param and mask distributions
             self.action_dist.set_proba_distribution_component(
                 i_component=i_action_component,
@@ -300,20 +448,42 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 i_component=i_action_component, component_masks=action_component_mask
             )
 
+            # prepare enriched_obs for next component by adding the encoded position of the current component nodes
+            if (
+                i_action_component >= self._n_graphindependent_components
+            ):  # the component is a graph2node one
+                position = (
+                    # position of component among graph node components:
+                    i_action_component
+                    - self._n_graphindependent_components
+                )
+                actions_component = actions[:, i_action_component]
+                node_shift_by_sample = enriched_obs._slice_dict["x"][
+                    : enriched_obs.num_graphs
+                ]
+                component_nodes = (
+                    (  # shift node ids to match node ids in the batched graph
+                        actions_component + node_shift_by_sample
+                    )[actions_component >= 0]
+                )  # keep only relevant samples (remove -1 components)
+                enriched_obs.x[
+                    component_nodes, n_node_features_before_position_feature + position
+                ] = 1
+
         log_prob = self.action_dist.log_prob(actions)
         entropy = self.action_dist.entropy()
         return values, log_prob, entropy
 
     def get_distribution(
         self,
-        obs: PyTorchObs,
+        obs: ObsType,
         action_masks: Optional[th.Tensor] = None,
     ) -> Distribution:
         raise NotImplementedError()
 
     def _predict(
         self,
-        observation: PyTorchObs,
+        observation: ObsType,
         deterministic: bool = False,
         action_masks: Optional[np.ndarray] = None,
     ) -> th.Tensor:
@@ -321,15 +491,19 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         features = self.extract_features(observation)
 
         # action prediction as in forward()
-        return self._compute_distribution_and_sample_action_from_features(
-            features=features, deterministic=deterministic, action_masks=action_masks
+        return self._compute_distribution_and_sample_action(
+            features=features,
+            observation=observation,
+            deterministic=deterministic,
+            action_masks=action_masks,
         )
 
-    def _compute_distribution_and_sample_action_from_features(
+    def _compute_distribution_and_sample_action(
         self,
         features: th.Tensor,
-        deterministic: bool = False,
-        action_masks: Optional[Union[th.Tensor, np.ndarray]] = None,
+        observation: ObsType,
+        deterministic: bool,
+        action_masks: Optional[Union[th.Tensor, np.ndarray]],
     ):
         """Update distribution parameters and masks and sample an action
 
@@ -345,8 +519,12 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         Returns:
 
         """
-        # hyp: features are flat and only a single sample (1 x features_dim)
+        # hyp: features are flat (1 x features_dim)
         assert len(features.shape) == 2 and features.shape[0] == 1
+
+        if self.n_graph2node_components > 0:
+            # hyp: node features are flat and no batch dim
+            assert observation.batch is None and len(observation.x.shape) == 2
 
         # hyp: applicable actions given via action_masks
         assert action_masks is not None
@@ -359,6 +537,12 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         # (important as we skip the end of the loop if no more components has a meaning)
         self._reset_action_dist()
 
+        # init enriched observation (graph + previous action components)
+        if self.n_graph2node_components > 0:
+            enriched_obs = copy.copy(observation)
+        else:
+            enriched_obs = None
+
         # action components
         action_components = th.as_tensor([], dtype=int)
         for (
@@ -367,12 +551,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 mlp_extractor_action_component,
                 action_component_net,
             ),
-        ) in enumerate(
-            zip(
-                self.mlp_extractors_action,
-                self.action_nets,
-            )
-        ):
+        ) in enumerate(zip(self.mlp_extractors_action, self.action_nets)):
 
             # mask for current action component considered
             action_component_mask = extract_action_component_mask(
@@ -387,8 +566,21 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 # no more components available
                 break
 
-            latent_pi = mlp_extractor_action_component.forward_actor(features)
-            action_component_logits = action_component_net(latent_pi)
+            # compute component logits
+            if i_action_component < self._n_graphindependent_components:
+                # gnn features extraction + MLP
+                latent_pi = mlp_extractor_action_component.forward_actor(features)
+                action_component_logits = action_component_net(latent_pi)
+            else:
+                # graph->node GNN directly from observation graph enriched with previous components
+                action_component_logits_graph: thg.data.Data = action_component_net(
+                    enriched_obs
+                )
+                action_component_logits = unbatch_node_logits(
+                    action_component_logits_graph
+                )
+
+            # Set marginal distribution dim, logits, and mask
             self.action_dist.set_proba_distribution_component(
                 i_component=i_action_component,
                 action_component_logits=action_component_logits,
@@ -396,29 +588,76 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             self.action_dist.apply_masking_component(
                 i_component=i_action_component, component_masks=action_component_mask
             )
+            # Sample the action component
             action_component = self.action_dist.get_actions_component(
                 i_component=i_action_component, deterministic=deterministic
             )
             # Update action components
             action_components = th.cat((action_components, action_component), -1)
-
-            # Update features: include onehot encoded last action_component in features to predict the next component
+            # Update features and graph obs: include onehot encoded last action_component to predict the next component
             if i_action_component + 1 < len(
                 self.action_dist.distributions
             ):  # except for last iteration
-                features = th.cat(
-                    (
-                        features,
-                        preprocess_obs(
-                            action_component,
-                            observation_space=spaces.Discrete(
-                                self.action_space.nvec[i_action_component]
+                if (
+                    i_action_component < self._n_graphindependent_components
+                ):  # graph-independent component
+                    # onehot encoding of the action component
+                    onehot_encoded_action_component = F.one_hot(
+                        action_component.long(),
+                        num_classes=int(self.action_space.nvec[i_action_component]),
+                    ).float()
+                    if self.n_graph2node_components > 0:
+                        # add it to all node features
+                        # (ideally would be added as a global feature
+                        # but not handled by off-the-shelf GNN from pytorch_geometric)
+                        enriched_obs.x = th.cat(
+                            (
+                                enriched_obs.x,
+                                onehot_encoded_action_component.expand(
+                                    len(enriched_obs.x), -1
+                                ),
                             ),
-                        ),
-                    ),
-                    -1,
-                )
+                            -1,
+                        )
+                    if i_action_component < self._n_graphindependent_components - 1:
+                        # not the last graph-independent one => add it to the features
+                        features = th.cat(
+                            (
+                                features,
+                                onehot_encoded_action_component,
+                            ),
+                            -1,
+                        )
+                    else:
+                        # last graph-independent component => init node feature encoding position of each node
+                        # in remaining components
+                        if self.n_graph2node_components > 0:
+                            n_node_features_before_position_feature = (
+                                enriched_obs.x.shape[1]
+                            )
+                            enriched_obs.x = th.cat(
+                                (
+                                    enriched_obs.x,
+                                    th.zeros(
+                                        (
+                                            len(enriched_obs.x),
+                                            self.n_graph2node_components,
+                                        ),
+                                        dtype=enriched_obs.x.dtype,
+                                    ),
+                                ),
+                                -1,
+                            )
+                else:  # graph-node component
+                    # add position among graph node components:
+                    # ie a 1 for corresponding node (row) at corresponding position (column)
+                    position = i_action_component - self._n_graphindependent_components
+                    enriched_obs.x[
+                        action_component,
+                        n_node_features_before_position_feature + position,
+                    ] = 1
 
+        # pad actions with -1 in case of early break of the loop (no more components)
         actions = F.pad(
             action_components,
             pad=(0, len(self.action_dist.distributions) - action_components.shape[-1]),
@@ -430,10 +669,10 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         return actions
 
 
-def _encode_actions_for_features(
-    actions: th.Tensor, action_space: spaces.MultiDiscrete
-):
-    # Tensor concatenation of one hot encodings of each Categorical sub-space (dropping last one)
+def _encode_actions_first_components_for_features(
+    actions: th.Tensor, action_space: spaces.MultiDiscrete, n_components: int
+) -> th.Tensor:
+    # Tensor concatenation of one hot encodings of first categorical sub-spaces
     return th.cat(
         [
             F.one_hot(
@@ -443,7 +682,95 @@ def _encode_actions_for_features(
                 :, 1:
             ]  # remove new category
             # we loop over action components (except last one)
-            for i_component in range(actions.shape[1] - 1)
+            for i_component in range(n_components)
         ],
         dim=-1,
     )
+
+
+class AutoregressiveGNNActorCriticPolicy(
+    BaseGNNActorCriticPolicy, AutoregressiveActorCriticPolicy
+):
+    """Policy with autoregressive action prediction for multidiscrete restricted actions and graph observations.
+
+    With no more hypotheses on actions structure, we simply use a GNN for feature extraction.
+    See `skdecide.hub.solver.utils.gnn.torch_layers.GraphFeaturesExtractor` for more details.
+
+
+    """
+
+    def __init__(
+        self,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        lr_schedule: Schedule,
+        features_extractor_class: type[BaseFeaturesExtractor] = GraphFeaturesExtractor,
+        **kwargs: Any
+    ):
+
+        super().__init__(
+            observation_space,
+            action_space,
+            lr_schedule,
+            features_extractor_class=features_extractor_class,
+            **kwargs,
+        )
+
+
+class AutoregressiveGraph2NodeActorCriticPolicy(AutoregressiveGNNActorCriticPolicy):
+    """Policy with autoregressive action prediction from graph observations, last action components being graph nodes.
+
+    This is typically used for parametric action where:
+    - first component corresponds to the action type
+    - other components are parameters that are themselves nodes of the observation graph
+
+    More precisely we have an argument `n_graph2node_components` which specifies the number of components being nodes
+    of the graph. The components are assumed to start with the independent ones then the graph nodes.
+    By default, we assume that all components are observation graph nodes except for the first one.
+
+    Same hypotheses as for `AutoregressiveActorCriticPolicy` apply:
+    - action space multidiscrete, but with possibility of components at -1 to encode variable length actions.
+      (e.g. parametric actions whose arity depends on the action type)
+    - not all actions are available depending on environment state
+    - the current applicable actions are given via the argument `action_masks`, from `MaskableActorCriticPolicy` API,
+      as a variable-length numpy.array's (for a single sample) or a list of such numpy.array's when evaluating
+      several samples at once.
+
+    """
+
+    def __init__(
+        self,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        lr_schedule: Schedule,
+        action_gnn_class: Optional[type[nn.Module]] = None,
+        action_gnn_kwargs: Optional[dict[str, Any]] = None,
+        n_graph2node_components: int = 1,
+        **kwargs: Any
+    ):
+        """
+
+        Args:
+            observation_space:
+            action_space:
+            lr_schedule:
+            action_gnn_class: GNN class for graph -> node nets.
+                See `skdecide.hub.solver.utils.gnn.torch_layers.Graph2NodeLayer` for default values.
+            action_gnn_kwargs: kwargs for `action_gnn_class`
+            n_graph2node_components: number of action components that are actually nodes of the obs graph.
+                It is assumed that the action components start with the independent ones then the one that are nodes.
+            **kwargs:
+        """
+        self.n_graph2node_components = n_graph2node_components
+        if action_gnn_kwargs is None:
+            self.action_gnn_kwargs = {}
+        else:
+            self.action_gnn_kwargs = action_gnn_kwargs
+        self.action_gnn_class = action_gnn_class
+
+        super().__init__(
+            observation_space,
+            action_space,
+            lr_schedule,
+            **kwargs,
+        )

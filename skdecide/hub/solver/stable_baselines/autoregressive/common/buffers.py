@@ -8,6 +8,7 @@ from skdecide.hub.solver.stable_baselines.common.buffers import (
     MaskableScikitDecideRolloutBufferMixin,
     ScikitDecideRolloutBuffer,
 )
+from skdecide.hub.solver.stable_baselines.gnn.common.buffers import GraphRolloutBuffer
 
 
 class ApplicableActionsRolloutBuffer(
@@ -46,3 +47,15 @@ class ApplicableActionsRolloutBuffer(
 
     def _get_action_masks_samples(self, batch_inds: np.ndarray) -> list[th.Tensor]:
         return [self.to_torch(self.action_masks[idx]) for idx in batch_inds]
+
+
+class ApplicableActionsGraphRolloutBuffer(
+    GraphRolloutBuffer, ApplicableActionsRolloutBuffer
+):
+    """Buffer to store graph obs + applicable actions.
+
+    Both have variable shape thus need a dedicated buffer that will not initialize the buffer with fixed shapes.
+
+    """
+
+    ...
