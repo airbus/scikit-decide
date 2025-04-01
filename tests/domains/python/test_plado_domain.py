@@ -14,14 +14,19 @@ from ray.rllib.algorithms.dqn import DQN
 from skdecide import rollout
 from skdecide.hub.domain.plado import (
     ActionEncoding,
+    ObservationEncoding,
     PladoPddlDomain,
     PladoPPddlDomain,
+    PladoTransformedObservablePddlDomain,
+    PladoTransformedObservablePPddlDomain,
     StateEncoding,
 )
+from skdecide.hub.domain.plado.plado import BasePladoDomain
 from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.autoregressive.ppo.autoregressive_ppo import (
+    AutoregressiveGraphPPO,
     AutoregressivePPO,
 )
 
@@ -67,10 +72,13 @@ pddl_domain_problem_paths = fixture_union(
 
 state_encoding = param_fixture("state_encoding", list(StateEncoding))
 action_encoding = param_fixture("action_encoding", list(ActionEncoding))
+obs_encoding = param_fixture("obs_encoding", list(ObservationEncoding))
 
 
 @fixture
-def plado_domain_factory(pddl_domain_problem_paths, state_encoding, action_encoding):
+def plado_fully_observable_domain_factory(
+    pddl_domain_problem_paths, state_encoding, action_encoding
+):
     domain_path, problem_path = pddl_domain_problem_paths
     if "agricola" in domain_path and action_encoding == ActionEncoding.GYM_DISCRETE:
         pytest.skip("Discrete action encoding not tractable for agricola domain.")
@@ -84,6 +92,31 @@ def plado_domain_factory(pddl_domain_problem_paths, state_encoding, action_encod
         state_encoding=state_encoding,
         action_encoding=action_encoding,
     )
+
+
+@fixture
+def plado_partiallyobservable_domain_factory(
+    pddl_domain_problem_paths, obs_encoding, action_encoding
+):
+    domain_path, problem_path = pddl_domain_problem_paths
+    if "agricola" in domain_path and action_encoding == ActionEncoding.GYM_DISCRETE:
+        pytest.skip("Discrete action encoding not tractable for agricola domain.")
+    if "tireworld" in domain_path:
+        plado_domain_cls = PladoTransformedObservablePPddlDomain
+    else:
+        plado_domain_cls = PladoTransformedObservablePddlDomain
+    return lambda: plado_domain_cls(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        obs_encoding=obs_encoding,
+        action_encoding=action_encoding,
+    )
+
+
+plado_domain_factory = fixture_union(
+    "plado_domain_factory",
+    (plado_fully_observable_domain_factory, plado_partiallyobservable_domain_factory),
+)
 
 
 @fixture
@@ -146,6 +179,19 @@ def plado_gym_autoregressive_domain_factory(blocksworld_domain_problem_paths):
 
 
 @fixture
+def plado_gym_gnn_autoregressive_domain_factory(
+    blocksworld_domain_problem_paths, obs_encoding
+):
+    domain_path, problem_path = blocksworld_domain_problem_paths
+    return lambda: PladoTransformedObservablePddlDomain(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        obs_encoding=obs_encoding,
+        action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
+    )
+
+
+@fixture
 def plado_ppddl_gym_autoregressive_domain_factory(tireworld_domain_problem_paths):
     domain_path, problem_path = tireworld_domain_problem_paths
     return lambda: PladoPPddlDomain(
@@ -171,40 +217,47 @@ def test_plado_domain_random(plado_domain_factory):
     assert outcome.observation in domain.get_observation_space()
 
     # check conversions
-    pladostate = domain.task.initial_state
-    new_pladostate = domain._translate_state_to_plado(
-        domain._translate_state_from_plado(pladostate)
-    )
-    assert new_pladostate.fluents == pladostate.fluents
-    assert new_pladostate.atoms == pladostate.atoms
-    if domain.state_encoding == StateEncoding.NATIVE:
-        assert (
-            domain._translate_state_from_plado(domain._translate_state_to_plado(obs))
-            == obs
+    if isinstance(domain, BasePladoDomain):
+        pladostate = domain.task.initial_state
+        new_pladostate = domain._translate_state_to_plado(
+            domain._translate_state_from_plado(pladostate)
         )
-    elif domain.state_encoding == StateEncoding.GYM_VECTOR:
-        assert (
-            domain._translate_state_from_plado(domain._translate_state_to_plado(obs))
-            == obs
-        ).all()
+        assert new_pladostate.fluents == pladostate.fluents
+        assert new_pladostate.atoms == pladostate.atoms
+        if domain.state_encoding == StateEncoding.NATIVE:
+            assert (
+                domain._translate_state_from_plado(
+                    domain._translate_state_to_plado(obs)
+                )
+                == obs
+            )
+        elif domain.state_encoding == StateEncoding.GYM_VECTOR:
+            assert (
+                domain._translate_state_from_plado(
+                    domain._translate_state_to_plado(obs)
+                )
+                == obs
+            ).all()
 
-    if domain.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
-        assert (
+        if domain.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
+            assert (
+                domain._translate_action_from_plado(
+                    domain._translate_action_to_plado(action)
+                )
+                == action
+            ).all()
+        else:
+            assert (
+                domain._translate_action_from_plado(
+                    domain._translate_action_to_plado(action)
+                )
+                == action
+            )
+        assert domain._translate_action_to_plado(
             domain._translate_action_from_plado(
                 domain._translate_action_to_plado(action)
             )
-            == action
-        ).all()
-    else:
-        assert (
-            domain._translate_action_from_plado(
-                domain._translate_action_to_plado(action)
-            )
-            == action
-        )
-    assert domain._translate_action_to_plado(
-        domain._translate_action_from_plado(domain._translate_action_to_plado(action))
-    ) == domain._translate_action_to_plado(action)
+        ) == domain._translate_action_to_plado(action)
 
     # rollout with random walk
     rollout(
@@ -354,6 +407,58 @@ def test_plado_domain_ppddl_autoregressive_sb3(
         domain_factory=domain_factory,
         algo_class=AutoregressivePPO,
         baselines_policy="MlpPolicy",
+        autoregressive_action=True,
+        learn_config={"total_timesteps": 300},
+        n_steps=100,
+    ) as solver:
+        solver.solve()
+        max_steps = 20
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=max_steps,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+        observations, actions, values = episodes[0]
+        #  assert len(actions) < max_steps - 1  # unsucessful to reach goal
+
+
+def test_plado_domain_blocksworld_autoregressive_gnn_sb3(
+    plado_gym_gnn_autoregressive_domain_factory,
+):
+    domain_factory = plado_gym_gnn_autoregressive_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=AutoregressiveGraphPPO,
+        baselines_policy="GraphInputPolicy",
+        autoregressive_action=True,
+        learn_config={"total_timesteps": 300},
+        n_steps=100,
+    ) as solver:
+        solver.solve()
+        max_steps = 20
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=max_steps,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+        observations, actions, values = episodes[0]
+        #  assert len(actions) < max_steps - 1  # unsucessful to reach goal
+
+
+def test_plado_domain_blocksworld_autoregressive_graph2node_sb3(
+    plado_gym_gnn_autoregressive_domain_factory,
+):
+    domain_factory = plado_gym_gnn_autoregressive_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=AutoregressiveGraphPPO,
+        baselines_policy="Graph2NodePolicy",
         autoregressive_action=True,
         learn_config={"total_timesteps": 300},
         n_steps=100,
