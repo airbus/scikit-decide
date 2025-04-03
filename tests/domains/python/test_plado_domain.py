@@ -6,6 +6,7 @@
 import os
 import random
 
+import gymnasium as gym
 import numpy as np
 import pytest
 from pytest_cases import fixture, fixture_union, param_fixture
@@ -21,6 +22,7 @@ from skdecide.hub.domain.plado import (
     PladoTransformedObservablePPddlDomain,
     StateEncoding,
 )
+from skdecide.hub.domain.plado.llg_encoder import decode_llg
 from skdecide.hub.domain.plado.plado import BasePladoDomain
 from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.solver.ray_rllib import RayRLlib
@@ -34,7 +36,8 @@ try:
     import plado
 except ImportError:
     pytest.skip("plado not available", allow_module_level=True)
-
+else:
+    from plado.semantics.task import State as PladoState
 
 test_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -80,9 +83,14 @@ def plado_fully_observable_domain_factory(
     pddl_domain_problem_paths, state_encoding, action_encoding
 ):
     domain_path, problem_path = pddl_domain_problem_paths
-    if "agricola" in domain_path and action_encoding == ActionEncoding.GYM_DISCRETE:
-        pytest.skip("Discrete action encoding not tractable for agricola domain.")
+    if "agricola" in domain_path:
+        if action_encoding == ActionEncoding.GYM_DISCRETE:
+            pytest.skip("Discrete action encoding not tractable for agricola domain.")
+        if state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            pytest.skip("LLG encoding not implemented yet for domain with fluents.")
     if "tireworld" in domain_path:
+        if state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            pytest.skip("LLG encoding not implemented yet for PPDDL.")
         plado_domain_cls = PladoPPddlDomain
     else:
         plado_domain_cls = PladoPddlDomain
@@ -99,8 +107,9 @@ def plado_partiallyobservable_domain_factory(
     pddl_domain_problem_paths, obs_encoding, action_encoding
 ):
     domain_path, problem_path = pddl_domain_problem_paths
-    if "agricola" in domain_path and action_encoding == ActionEncoding.GYM_DISCRETE:
-        pytest.skip("Discrete action encoding not tractable for agricola domain.")
+    if "agricola" in domain_path:
+        if action_encoding == ActionEncoding.GYM_DISCRETE:
+            pytest.skip("Discrete action encoding not tractable for agricola domain.")
     if "tireworld" in domain_path:
         plado_domain_cls = PladoTransformedObservablePPddlDomain
     else:
@@ -123,6 +132,8 @@ plado_domain_factory = fixture_union(
 def plado_ppddl_domain_factory(
     tireworld_domain_problem_paths, state_encoding, action_encoding
 ):
+    if state_encoding == StateEncoding.GYM_GRAPH_LLG:
+        pytest.skip("LLG encoding not implemented yet for PPDDL.")
     domain_path, problem_path = tireworld_domain_problem_paths
     return lambda: PladoPPddlDomain(
         domain_path=domain_path,
@@ -202,10 +213,25 @@ def plado_ppddl_gym_autoregressive_domain_factory(tireworld_domain_problem_paths
     )
 
 
+def are_graphs_equal(
+    g1: gym.spaces.GraphInstance, g2: gym.spaces.GraphInstance
+) -> bool:
+    return (
+        (g1.edge_links == g2.edge_links).all()
+        and (g1.nodes == g2.nodes).all()
+        and (g1.edges is None and g2.edges is None)
+        or (g1.edges == g2.edges).all()
+    )
+
+
+def are_pladostates_equal(s1: PladoState, s2: PladoState) -> bool:
+    return s1.atoms == s2.atoms and s1.fluents == s2.fluents
+
+
 def test_plado_domain_random(plado_domain_factory):
     domain_factory = plado_domain_factory
-
     domain = domain_factory()
+
     obs = domain.reset()
     assert obs in domain.get_observation_space()
 
@@ -222,8 +248,7 @@ def test_plado_domain_random(plado_domain_factory):
         new_pladostate = domain._translate_state_to_plado(
             domain._translate_state_from_plado(pladostate)
         )
-        assert new_pladostate.fluents == pladostate.fluents
-        assert new_pladostate.atoms == pladostate.atoms
+        assert are_pladostates_equal(new_pladostate, pladostate)
         if domain.state_encoding == StateEncoding.NATIVE:
             assert (
                 domain._translate_state_from_plado(
@@ -238,6 +263,23 @@ def test_plado_domain_random(plado_domain_factory):
                 )
                 == obs
             ).all()
+        elif domain.state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            assert are_graphs_equal(
+                domain._translate_state_from_plado(
+                    domain._translate_state_to_plado(obs)
+                ),
+                obs,
+            )
+            # check decode_llg
+            assert are_pladostates_equal(
+                decode_llg(obs), domain._translate_state_to_plado(obs)
+            )
+            assert are_pladostates_equal(
+                decode_llg(outcome.observation),
+                domain._translate_state_to_plado(outcome.observation),
+            )
+        else:
+            raise NotImplementedError()
 
         if domain.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
             assert (
@@ -329,6 +371,9 @@ def test_plado_state_sample_pddl(plado_pddl_domain_factory):
     if isinstance(state1, np.ndarray):
         assert (state1 == state2).all()
         assert (state3 == state2).all()
+    elif isinstance(state1, gym.spaces.GraphInstance):
+        assert are_graphs_equal(state1, state2)
+        assert are_graphs_equal(state2, state3)
     else:
         assert state1 == state2
         assert state3 == state2
