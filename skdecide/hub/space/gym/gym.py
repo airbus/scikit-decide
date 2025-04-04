@@ -142,6 +142,33 @@ class MultiDiscreteSpace(GymSpace[T], EnumerableSpace[T]):
         )
 
 
+class MaskableMultiDiscreteSpace(MultiDiscreteSpace[T]):
+    """Maskable version of MultiDiscreteSpace.
+
+    Elements can also contain -1 components which means that this component will be ignored.
+    It is used to model variable length multidiscrete space, e.g. for parametric actions whose arity depend
+    on the first component (the action type).
+
+    So the i-th component of an element of the space will be an integer between -1 and nvec[i]-1  (both included).
+
+    When unwrapping, we still return a MultiDiscrete(nvec) space as we still want to mean that the i-th component
+    is a categorical variable with nvec[i] choices (although if not needed, it will use -1 as another choice)
+
+
+    """
+
+    def get_elements(self) -> Sequence[T]:
+        return tuple(itertools.product(*(range(n) for n in self._gym_space.nvec)))
+
+    def contains(self, x: T) -> bool:
+        return gym_spaces.MultiDiscrete(self._gym_space.nvec + 1).contains(
+            np.asarray(x) + 1
+        )
+
+    def sample(self) -> T:
+        return gym_spaces.MultiDiscrete(self._gym_space.nvec + 1).sample() - 1
+
+
 class MultiBinarySpace(GymSpace[T], EnumerableSpace[T]):
     """This class wraps a gymnasium MultiBinary space (gym.spaces.MultiBinary) as a scikit-decide space.
 

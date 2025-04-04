@@ -4,7 +4,9 @@
 
 
 import os
+import random
 
+import numpy as np
 import pytest
 from pytest_cases import fixture, fixture_union, param_fixture
 from ray.rllib.algorithms.dqn import DQN
@@ -18,6 +20,10 @@ from skdecide.hub.domain.plado import (
 )
 from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.solver.ray_rllib import RayRLlib
+from skdecide.hub.solver.stable_baselines import StableBaseline
+from skdecide.hub.solver.stable_baselines.autoregressive.ppo.autoregressive_ppo import (
+    AutoregressivePPO,
+)
 
 try:
     import plado
@@ -58,6 +64,7 @@ pddl_domain_problem_paths = fixture_union(
     ),
 )
 
+
 state_encoding = param_fixture("state_encoding", list(StateEncoding))
 action_encoding = param_fixture("action_encoding", list(ActionEncoding))
 
@@ -65,13 +72,39 @@ action_encoding = param_fixture("action_encoding", list(ActionEncoding))
 @fixture
 def plado_domain_factory(pddl_domain_problem_paths, state_encoding, action_encoding):
     domain_path, problem_path = pddl_domain_problem_paths
-    if "agricola" in domain_path and action_encoding == ActionEncoding.GYM:
+    if "agricola" in domain_path and action_encoding == ActionEncoding.GYM_DISCRETE:
         pytest.skip("Discrete action encoding not tractable for agricola domain.")
     if "tireworld" in domain_path:
         plado_domain_cls = PladoPPddlDomain
     else:
         plado_domain_cls = PladoPddlDomain
     return lambda: plado_domain_cls(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=state_encoding,
+        action_encoding=action_encoding,
+    )
+
+
+@fixture
+def plado_ppddl_domain_factory(
+    tireworld_domain_problem_paths, state_encoding, action_encoding
+):
+    domain_path, problem_path = tireworld_domain_problem_paths
+    return lambda: PladoPPddlDomain(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=state_encoding,
+        action_encoding=action_encoding,
+    )
+
+
+@fixture
+def plado_pddl_domain_factory(
+    blocksworld_domain_problem_paths, state_encoding, action_encoding
+):
+    domain_path, problem_path = blocksworld_domain_problem_paths
+    return lambda: PladoPddlDomain(
         domain_path=domain_path,
         problem_path=problem_path,
         state_encoding=state_encoding,
@@ -97,7 +130,29 @@ def plado_gym_naive_domain_factory(blocksworld_domain_problem_paths):
         domain_path=domain_path,
         problem_path=problem_path,
         state_encoding=StateEncoding.GYM_VECTOR,
-        action_encoding=ActionEncoding.GYM,
+        action_encoding=ActionEncoding.GYM_DISCRETE,
+    )
+
+
+@fixture
+def plado_gym_autoregressive_domain_factory(blocksworld_domain_problem_paths):
+    domain_path, problem_path = blocksworld_domain_problem_paths
+    return lambda: PladoPddlDomain(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=StateEncoding.GYM_VECTOR,
+        action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
+    )
+
+
+@fixture
+def plado_ppddl_gym_autoregressive_domain_factory(tireworld_domain_problem_paths):
+    domain_path, problem_path = tireworld_domain_problem_paths
+    return lambda: PladoPPddlDomain(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=StateEncoding.GYM_VECTOR,
+        action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
     )
 
 
@@ -133,10 +188,20 @@ def test_plado_domain_random(plado_domain_factory):
             == obs
         ).all()
 
-    assert (
-        domain._translate_action_from_plado(domain._translate_action_to_plado(action))
-        == action
-    )
+    if domain.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
+        assert (
+            domain._translate_action_from_plado(
+                domain._translate_action_to_plado(action)
+            )
+            == action
+        ).all()
+    else:
+        assert (
+            domain._translate_action_from_plado(
+                domain._translate_action_to_plado(action)
+            )
+            == action
+        )
     assert domain._translate_action_to_plado(
         domain._translate_action_from_plado(domain._translate_action_to_plado(action))
     ) == domain._translate_action_to_plado(action)
@@ -148,6 +213,75 @@ def test_plado_domain_random(plado_domain_factory):
         num_episodes=1,
         render=False,
     )
+
+
+def test_plado_state_sample_ppddl(plado_ppddl_domain_factory):
+    def reset() -> tuple[
+        PladoPPddlDomain, PladoPPddlDomain.T_state, PladoPPddlDomain.T_event
+    ]:
+        random.seed(42)
+        domain = plado_ppddl_domain_factory()
+        domain.reset()
+        memory = domain._memory
+        action = domain.get_applicable_actions().get_elements()[0]
+        return domain, memory, action
+
+    domain, memory, action = reset()
+    outcome = domain._state_sample(memory, action)
+    state1 = outcome.state
+    value1 = outcome.value
+
+    domain, memory, action = reset()
+    state2 = domain._get_next_state_distribution(memory, action).sample()
+    value2 = domain._get_transition_value(memory, action, state2)
+
+    domain, memory, action = reset()
+    value3 = domain._get_transition_value(memory, action, state2)
+    state3 = domain._get_next_state_distribution(memory, action).sample()
+
+    if isinstance(state1, np.ndarray):
+        assert (state1 == state2).all()
+        assert (state3 == state2).all()
+    else:
+        assert state1 == state2
+        assert state3 == state2
+
+    assert value1 == value2
+    assert value3 == value2
+
+
+def test_plado_state_sample_pddl(plado_pddl_domain_factory):
+    def reset() -> tuple[
+        PladoPddlDomain, PladoPddlDomain.T_state, PladoPddlDomain.T_event
+    ]:
+        domain = plado_pddl_domain_factory()
+        domain.reset()
+        memory = domain._memory
+        action = domain.get_applicable_actions().get_elements()[0]
+        return domain, memory, action
+
+    domain, memory, action = reset()
+    outcome = domain._state_sample(memory, action)
+    state1 = outcome.state
+    value1 = outcome.value
+
+    domain, memory, action = reset()
+    state2 = domain._get_next_state(memory, action)
+    value2 = domain._get_transition_value(memory, action, state2)
+
+    domain, memory, action = reset()
+    value3 = domain._get_transition_value(memory, action, state2)
+    state3 = domain._get_next_state(memory, action)
+
+    if isinstance(state1, np.ndarray):
+        assert (state1 == state2).all()
+        assert (state3 == state2).all()
+    else:
+        assert state1 == state2
+        assert state3 == state2
+
+    assert value1 == value2
+    assert value3 == value2
 
 
 def test_plado_domain_planning(plado_native_domain_factory):
@@ -184,3 +318,55 @@ def test_plado_domain_blocksworld_rl(plado_gym_naive_domain_factory):
             num_episodes=1,
             render=False,
         )
+
+
+def test_plado_domain_blocksworld_autoregressive_sb3(
+    plado_gym_autoregressive_domain_factory,
+):
+    domain_factory = plado_gym_autoregressive_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=AutoregressivePPO,
+        baselines_policy="MlpPolicy",
+        autoregressive_action=True,
+        learn_config={"total_timesteps": 300},
+        n_steps=100,
+    ) as solver:
+        solver.solve()
+        max_steps = 20
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=max_steps,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+        observations, actions, values = episodes[0]
+        #  assert len(actions) < max_steps - 1  # unsucessful to reach goal
+
+
+def test_plado_domain_ppddl_autoregressive_sb3(
+    plado_ppddl_gym_autoregressive_domain_factory,
+):
+    domain_factory = plado_ppddl_gym_autoregressive_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=AutoregressivePPO,
+        baselines_policy="MlpPolicy",
+        autoregressive_action=True,
+        learn_config={"total_timesteps": 300},
+        n_steps=100,
+    ) as solver:
+        solver.solve()
+        max_steps = 20
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=max_steps,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+        observations, actions, values = episodes[0]
+        #  assert len(actions) < max_steps - 1  # unsucessful to reach goal

@@ -5,6 +5,7 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.type_aliases import GymEnv
+from stable_baselines3.common.vec_env import VecEnv
 
 from .buffers import DictGraphReplayBuffer, GraphReplayBuffer
 from .vec_env.dummy_vec_env import wrap_graph_env
@@ -28,9 +29,8 @@ class GraphOffPolicyAlgorithm(OffPolicyAlgorithm):
             elif isinstance(env.observation_space, spaces.Dict):
                 replay_buffer_class = DictGraphReplayBuffer
 
-        # Use proper VecEnv wrapper for env with Graph spaces
-        env = wrap_graph_env(env)
-        if env.num_envs > 1:
+        # Check only using dummy VecEnv
+        if isinstance(env, VecEnv) and env.num_envs > 1:
             raise NotImplementedError(
                 "GraphOnPolicyAlgorithm not implemented for real vectorized environment "
                 "(ie. with more than 1 wrapped environment)"
@@ -42,3 +42,9 @@ class GraphOffPolicyAlgorithm(OffPolicyAlgorithm):
             replay_buffer_class=replay_buffer_class,
             **kwargs,
         )
+
+    @staticmethod
+    def _wrap_env(
+        env: GymEnv, verbose: int = 0, monitor_wrapper: bool = True
+    ) -> VecEnv:
+        return wrap_graph_env(env, verbose=verbose, monitor_wrapper=monitor_wrapper)

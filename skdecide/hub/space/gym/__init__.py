@@ -10,6 +10,7 @@ from .gym import (
     EnumSpace,
     GymSpace,
     ListSpace,
+    MaskableMultiDiscreteSpace,
     MultiBinarySpace,
     MultiDiscreteSpace,
     SetSpace,
