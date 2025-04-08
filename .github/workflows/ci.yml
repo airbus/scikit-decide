@@ -170,6 +170,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.31.6'
+
       - name: Load cached venv
         id: cached-pip-wheels
         uses: actions/cache@v4
@@ -261,6 +266,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.31.6'
 
       - name: Load cached venv
         id: cached-pip-wheels
@@ -409,6 +419,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.31.6'
 
       - name: Load cached venv
         id: cached-pip-wheels
