@@ -37,8 +37,7 @@ class EdgeLabel(Enum):
     NU = "nu"
     GAMMA = "gamma"
     PRE = "pre"
-    ADD = "add"
-    DEL = "del"
+    EFFECT = "effect"
 
 
 map_edgelabel2int = {label: idx for idx, label in enumerate(EdgeLabel)}
@@ -52,6 +51,7 @@ class NodeLabel(Enum):
     STATE = "state"
     GOAL = "goal"
     STATIC = "static"
+    NEGATED = "negated"
 
 
 map_nodelabel2int = {label: idx for idx, label in enumerate(NodeLabel)}
@@ -78,19 +78,20 @@ class LLGEncoder:
     # color used for nodes and edges when plotting
     map_edgelabel2color = {
         EdgeLabel.NU: "grey",
-        EdgeLabel.ADD: "b",
-        EdgeLabel.DEL: "r",
+        EdgeLabel.EFFECT: "b",
         EdgeLabel.PRE: "k",
         EdgeLabel.GAMMA: "g",
     }
-    map_nodelabel2color = {
-        NodeLabel.ACTION: "#ff8000",
-        NodeLabel.GOAL: "#ffed00",
-        NodeLabel.STATE: "#00cc99",
-        NodeLabel.PREDICATE: "#f5baff",
-        NodeLabel.OBJECT: "#8acff0",
-        None: "#b1b0ae",
-    }
+    map_nodelabel2color = defaultdict(
+        lambda: "#b1b0ae",
+        {
+            NodeLabel.ACTION: "#ff8000",
+            NodeLabel.GOAL: "#ffed00",
+            NodeLabel.STATE: "#00cc99",
+            NodeLabel.PREDICATE: "#f5baff",
+            NodeLabel.OBJECT: "#8acff0",
+        },
+    )
 
     edges_dtype = np.int8
 
@@ -234,17 +235,15 @@ class LLGEncoder:
     def _init_graph(self):
         # hyp:
         #   - no numeric fluents except for total-cost
-        #   - goal: no numeric constraints, no negative atoms
+        #   - goal: no numeric constraints
         #   - actions
-        #      - precondition: no numeric constraints, no negative atoms
+        #      - precondition: no numeric constraints
         #      - effect: no probabilistic effect, no conditional effect, no numerical effect
         assert (
             len(self.task.functions) == len(self.cost_functions)
             and len(self.task.goal.condition.constraints) == 0
-            and len(self.task.goal.condition.negated_atoms) == 0
             and all(
                 len(action.precondition.constraints) == 0
-                and len(action.precondition.negated_atoms) == 0
                 for action in self.task.actions
             )
             # no probabilitic effects
@@ -355,13 +354,8 @@ class LLGEncoder:
             for e in action.effect.effects:
                 atomic_effect: Union[AddEffect, DelEffect] = e.outcomes[0][1][0].effect
                 atom = atomic_effect.atom
-                if isinstance(atomic_effect, AddEffect):
-                    edge_label = EdgeLabel.ADD
-                elif isinstance(atomic_effect, DelEffect):
-                    edge_label = EdgeLabel.DEL
-                else:
-                    raise NotImplementedError()
-                self._encode_condition_atom(
+                edge_label = EdgeLabel.EFFECT
+                scheme_pred_node = self._encode_condition_atom(
                     atom=atom,
                     edge_label=edge_label,
                     grounded=False,
@@ -369,6 +363,12 @@ class LLGEncoder:
                     action_node=action_node,
                     subgraph=action,
                 )
+                if isinstance(atomic_effect, AddEffect):
+                    ...
+                elif isinstance(atomic_effect, DelEffect):
+                    self._negated_atom_nodes.append(scheme_pred_node)
+                else:
+                    raise NotImplementedError()
 
         # static facts
         for static_predicate, predicate_atoms in enumerate(self.task.static_facts):
@@ -404,6 +404,7 @@ class LLGEncoder:
             ],
             map_nodelabel2int[NodeLabel.STATIC],
         ] = 1
+        nodes[self._negated_atom_nodes, map_nodelabel2int[NodeLabel.NEGATED]] = 1
         nodes[self._object_nodes, map_nodelabel2int[NodeLabel.OBJECT]] = 1
         nodes[self._action_nodes, map_nodelabel2int[NodeLabel.ACTION]] = 1
         nodes[self._goal_nodes, map_nodelabel2int[NodeLabel.GOAL]] = 1
@@ -513,6 +514,7 @@ class LLGEncoder:
         self._object_nodes = []
         self._state_nodes = []
         self._static_state_nodes = []
+        self._negated_atom_nodes = []
         self._subgraphs_edges: dict[Any, list[int]] = defaultdict(list)
         self._reset_index_function()
         self._ready_for_state_encoding = False
@@ -597,16 +599,26 @@ class LLGEncoder:
     ) -> list[int]:
         scheme_pred_nodes = []
         for atom in condition.atoms:
-            scheme_pred_nodes.append(
-                self._encode_condition_atom(
-                    atom=atom,
-                    edge_label=edge_label,
-                    grounded=grounded,
-                    variable_nodes=variable_nodes,
-                    action_node=action_node,
-                    subgraph=subgraph,
-                )
+            scheme_pred_node = self._encode_condition_atom(
+                atom=atom,
+                edge_label=edge_label,
+                grounded=grounded,
+                variable_nodes=variable_nodes,
+                action_node=action_node,
+                subgraph=subgraph,
             )
+            scheme_pred_nodes.append(scheme_pred_node)
+        for atom in condition.negated_atoms:
+            scheme_pred_node = self._encode_condition_atom(
+                atom=atom,
+                edge_label=edge_label,
+                grounded=grounded,
+                variable_nodes=variable_nodes,
+                action_node=action_node,
+                subgraph=subgraph,
+            )
+            scheme_pred_nodes.append(scheme_pred_node)
+            self._negated_atom_nodes.append(scheme_pred_node)
         return scheme_pred_nodes
 
     def _encode_condition_atom(
@@ -664,8 +676,17 @@ class LLGEncoder:
         }
         node_labels_np = np.full(shape=(len(graph.nodes),), fill_value="", dtype=object)
         node_labels_np[
+            graph.nodes[:, map_nodelabel2int[NodeLabel.NEGATED]].nonzero()[0]
+        ] = "not"
+        node_labels_np[
             graph.nodes[:, map_nodelabel2int[NodeLabel.GOAL]].nonzero()[0]
         ] = "goal"
+        node_labels_np[
+            np.logical_and(
+                graph.nodes[:, map_nodelabel2int[NodeLabel.GOAL]],
+                graph.nodes[:, map_nodelabel2int[NodeLabel.NEGATED]],
+            )
+        ] = "goal not"
         node_labels_np[
             graph.nodes[:, map_nodelabel2int[NodeLabel.STATE]].nonzero()[0]
         ] = "state"
@@ -715,6 +736,11 @@ class LLGEncoder:
         for node in self._state_nodes + self._static_state_nodes:
             node_labels[node] = "state"
             node_color[node] = self.map_nodelabel2color[NodeLabel.STATE]
+        for node in self._negated_atom_nodes:
+            if node in node_labels:
+                node_labels[node] = node_labels[node] + " not"
+            else:
+                node_labels[node] = "not"
         for node, idx in self._map_node2argindex.items():
             node_labels[node] = idx
 
