@@ -92,7 +92,10 @@ class GraphFeaturesExtractor(nn.Module):
             observations.batch,
         )
         # construct edge weights, for GNNs needing it, as the first edge feature
-        edge_weight = edge_attr[:, 0]
+        if edge_attr is not None and len(edge_attr.shape) > 1:
+            edge_weight = edge_attr[:, 0]
+        else:
+            edge_weight = None
         h = self.gnn(
             x=x, edge_index=edge_index, edge_weight=edge_weight, edge_attr=edge_attr
         )
@@ -177,7 +180,10 @@ class Graph2NodeLayer(nn.Module):
             observations.batch,
         )
         # construct edge weights, for GNNs needing it, as the first edge feature
-        edge_weight = edge_attr[:, 0]
+        if edge_attr is not None and len(edge_attr.shape) > 1:
+            edge_weight = edge_attr[:, 0]
+        else:
+            edge_weight = None
         h = self.gnn(
             x=x, edge_index=edge_index, edge_weight=edge_weight, edge_attr=edge_attr
         )

@@ -12,6 +12,7 @@ from collections.abc import Hashable, Iterable
 from enum import Enum
 from typing import Optional, Union
 
+import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
 
@@ -34,10 +35,12 @@ from skdecide.builders.domain import (
     PositiveCosts,
     Sequential,
     SingleAgent,
+    TransformedObservable,
 )
 from skdecide.hub.space.gym import (
     BoxSpace,
     DiscreteSpace,
+    GymSpace,
     ListSpace,
     MaskableMultiDiscreteSpace,
 )
@@ -70,6 +73,8 @@ SkFluentsType = tuple[tuple[tuple[tuple[int, ...], Float], ...], ...]
 FluentsType = list[dict[tuple[int, ...], Float]]
 GymVectorType = npt.NDArray[Union[int, float]]
 GymMultidiscreteType = npt.NDArray[int]
+GraphObjectEdgeFeatureType = npt.NDArray[Union[int, float]]
+GraphObjectNodeFeatureType = npt.NDArray[Union[int, float]]
 
 
 class SkPladoState:
@@ -199,6 +204,18 @@ class StateEncoding(Enum):
     GYM_VECTOR = "gym-vector"  # flat numpy.array (in particular for RL algorithms)
 
 
+class ObservationEncoding(Enum):
+    GYM_GRAPH_OBJECTS = "gym-graph-objects"
+    """Encode state as graph whose nodes are the objects and edges are predicates true in common.
+
+    Corresponds to the "Object Binary Structure" from
+    Horčík, R., & Šír, G. (2024). Expressiveness of Graph Neural Networks in Planning Domains.
+    Proceedings of the International Conference on Automated Planning and Scheduling, 34(1), 281-289.
+    https://ojs.aaai.org/index.php/ICAPS/article/view/31486
+
+    """
+
+
 class ActionEncoding(Enum):
     NATIVE = "native"  # tuple (i_action, (i_param_0, ..., i_param_p)) returned by ApplicableActionsGenerator
     GYM_DISCRETE = "gym-discrete"  # indice among all actions possible (tractable only for very small problems)
@@ -214,11 +231,24 @@ class BasePladoDomain(D):
         problem_path: str,
         state_encoding: StateEncoding = StateEncoding.NATIVE,
         action_encoding: ActionEncoding = ActionEncoding.NATIVE,
+        graph_objects_encode_static_facts: bool = True,
     ):
+        """
+
+        Args:
+            domain_path:
+            problem_path:
+            state_encoding:
+            action_encoding:
+            graph_objects_encode_static_facts: if state_encoding==StateEncoding.GYM_GRAPH_OBJECTS, decide
+                whether the graph encode also static facts.
+
+        """
         self.domain_path: str = domain_path
         self.problem_path: str = problem_path
         self.state_encoding = state_encoding
         self.action_encoding = action_encoding
+        self.graph_objects_encode_static_facts = graph_objects_encode_static_facts
         domain, problem = parse_and_normalize(domain_path, problem_path)
         self.task: Task = Task(domain, problem)
         self.check_goal: GoalChecker = GoalChecker(self.task)
@@ -518,7 +548,7 @@ class BasePladoDomain(D):
         return Value(cost=cost)
 
     def _init_state_encoding_vector(self):
-        self._fluents_template = self.task.initial_state.fluents
+        self._fluents_template: FluentsType = self.task.initial_state.fluents
         self._fluents_vector_size = len(self._fluents2vector(self._fluents_template))
 
         n_objects = len(self.task.objects)
@@ -625,6 +655,442 @@ class BasePladoDomain(D):
         self._max_action_arity = max(a.parameters for a in self.task.actions)
 
 
+class D(
+    Domain,
+    SingleAgent,
+    Sequential,
+    EnumerableTransitions,
+    Actions,
+    Goals,
+    DeterministicInitialized,
+    Markovian,
+    TransformedObservable,
+    PositiveCosts,
+):
+    T_state = SkPladoState  # Type of states
+    T_observation = Union[T_state, gym.spaces.GraphInstance]  # Type of observations
+    T_event = Union[PladoAction, int, GymMultidiscreteType]  # Type of events
+    T_value = float  # Type of transition values (rewards or costs)
+    T_predicate = bool  # Type of test results
+    T_info = None  # Type of additional information in environment outcome
+
+
+class BasePladoTransformedObservableDomain(D):
+    """Base class for scikit-decide domains based on plado library, which are only partially observable.
+
+    Some graph representation of the state are not injective and so lead to a `TransformedObservable` domain.
+
+    # Attributes
+
+    obs_encoding: observation (graph) encoding used
+        - ObservationEncoding.GYM_GRAPH_OBJECTS: graph whose nodes are the objects and edges are
+        predicates true in common.
+        Corresponds to the "Object Binary Structure" from
+        Horčík, R., & Šír, G. (2024). Expressiveness of Graph Neural Networks in Planning Domains.
+        Proceedings of the International Conference on Automated Planning and Scheduling, 34(1), 281-289.
+        https://ojs.aaai.org/index.php/ICAPS/article/view/31486
+
+    """
+
+    plado_domain_class: type[BasePladoDomain]
+
+    def __init__(
+        self,
+        domain_path: str,
+        problem_path: str,
+        obs_encoding: ObservationEncoding = ObservationEncoding.GYM_GRAPH_OBJECTS,
+        action_encoding: ActionEncoding = ActionEncoding.NATIVE,
+        graph_objects_encode_static_facts: bool = True,
+    ):
+        self.obs_encoding = obs_encoding
+        self.graph_objects_encode_static_facts = graph_objects_encode_static_facts
+        self.plado_domain = self.plado_domain_class(
+            domain_path=domain_path,
+            problem_path=problem_path,
+            state_encoding=StateEncoding.NATIVE,
+            action_encoding=action_encoding,
+        )
+        self._init_obs_encoding()
+
+    @property
+    def action_encoding(self) -> ActionEncoding:
+        return self.plado_domain.action_encoding
+
+    @property
+    def domain_path(self) -> str:
+        return self.plado_domain.domain_path
+
+    @property
+    def problem_path(self) -> str:
+        return self.plado_domain.problem_path
+
+    @property
+    def task(self) -> Task:
+        return self.plado_domain.task
+
+    def _init_obs_encoding(self):
+        if self.obs_encoding == ObservationEncoding.GYM_GRAPH_OBJECTS:
+            self._init_obs_encoding_graph_objects()
+        else:
+            raise NotImplementedError()
+
+    def _state_sample(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> TransitionOutcome[
+        D.T_state,
+        D.T_agent[Value[D.T_value]],
+        D.T_agent[D.T_predicate],
+        D.T_agent[D.T_info],
+    ]:
+        return self.plado_domain._state_sample(memory, action)
+
+    def _get_next_state_distribution(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+    ) -> DiscreteDistribution[D.T_state]:
+        return self.plado_domain._get_next_state_distribution(
+            memory=memory, action=action
+        )
+
+    def _get_transition_value(
+        self,
+        memory: D.T_memory[D.T_state],
+        action: D.T_agent[D.T_concurrency[D.T_event]],
+        next_state: Optional[D.T_state] = None,
+    ) -> D.T_agent[Value[D.T_value]]:
+        return self.plado_domain._get_transition_value(
+            memory=memory, action=action, next_state=next_state
+        )
+
+    def _is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
+        return self.plado_domain._is_terminal(state=state)
+
+    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
+        return self.plado_domain._get_action_space_()
+
+    def _get_applicable_actions_from(
+        self, memory: D.T_memory[D.T_state]
+    ) -> D.T_agent[Space[D.T_event]]:
+        return self.plado_domain._get_applicable_actions_from(memory=memory)
+
+    def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
+        return ImplicitSpace(lambda o: self._is_goal(o))
+
+    def _is_goal(
+        self, observation: D.T_agent[D.T_observation]
+    ) -> D.T_agent[D.T_predicate]:
+        """Check whether the observation is a goal
+
+        Warning:
+        Here we implement it based on current state, because the obs is not sufficient to assert it.
+        So the result will be correct only if the observation is actually the current observation.
+
+        """
+        return self.plado_domain.check_goal(
+            self.plado_domain._translate_state_to_plado(self._memory)
+        )
+
+    def _get_initial_state_(self) -> D.T_state:
+        return self.plado_domain._get_initial_state_()
+
+    def _get_observation(
+        self,
+        state: D.T_state,
+        action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None,
+    ) -> D.T_agent[D.T_observation]:
+        if self.obs_encoding == ObservationEncoding.GYM_GRAPH_OBJECTS:
+            return self._state2graphobjects(state)
+        else:
+            raise NotImplementedError()
+
+    def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
+        if self.obs_encoding == ObservationEncoding.GYM_GRAPH_OBJECTS:
+            node_low = np.array(
+                [0]
+                * (
+                    len(self.i_global_fluent_predicates)
+                    + len(self.i_global_static_predicates)
+                )
+                + [-np.inf] * len(self.i_global_fluents)
+                + [0]
+                * (
+                    len(self.i_node_fluent_predicates)
+                    + len(self.i_node_static_predicates)
+                )
+                + [-np.inf] * len(self.i_node_fluents),
+                dtype=self.dtype_node_features,
+            )
+            node_high = np.array(
+                [1]
+                * (
+                    len(self.i_global_fluent_predicates)
+                    + len(self.i_global_static_predicates)
+                )
+                + [np.inf] * len(self.i_global_fluents)
+                + [1]
+                * (
+                    len(self.i_node_fluent_predicates)
+                    + len(self.i_node_static_predicates)
+                )
+                + [np.inf] * len(self.i_node_fluents),
+                dtype=self.dtype_node_features,
+            )
+            edge_low = np.array(
+                [0]
+                * (
+                    len(self.i_edge_fluent_predicates)
+                    + len(self.i_edge_static_predicates)
+                )
+                + [-np.inf] * len(self.i_edge_fluents),
+                dtype=self.dtype_edge_features,
+            )
+            edge_high = np.array(
+                [1]
+                * (
+                    len(self.i_edge_fluent_predicates)
+                    + len(self.i_edge_static_predicates)
+                )
+                + [np.inf] * len(self.i_edge_fluents),
+                dtype=self.dtype_edge_features,
+            )
+            return GymSpace(
+                gym.spaces.Graph(
+                    node_space=gym.spaces.Box(
+                        low=node_low, high=node_high, dtype=self.dtype_node_features
+                    ),
+                    edge_space=gym.spaces.Box(
+                        low=edge_low, high=edge_high, dtype=self.dtype_edge_features
+                    ),
+                )
+            )
+        else:
+            raise NotImplementedError()
+
+    @property
+    def task(self) -> Task:
+        return self.plado_domain.task
+
+    @property
+    def cost_functions(self) -> set[int]:
+        return self.plado_domain.cost_functions
+
+    def _init_obs_encoding_graph_objects(self):
+        # Split predicates and fluents according to global, node and edge features, according to their arity.
+
+        # global features
+        # NB: global features will be encoded as node features, as gymnasium.spaces.Graph does not allow global features
+        # and preset GNN from pytorch_geometric do not take them into account
+        self.i_global_fluent_predicates = [  # predicates changing according to actions
+            i_type
+            for i_type, p in enumerate(
+                self.task.predicates[: self.task.num_fluent_predicates]
+            )
+            if len(p.parameters) == 0
+        ]
+        if self.graph_objects_encode_static_facts:
+            self.i_global_static_predicates = [  # static predicates
+                i_type
+                for i_type, p in enumerate(
+                    self.task.predicates[-self.task.num_static_predicates :]
+                )
+                if len(p.parameters) == 0
+            ]
+        else:
+            self.i_global_static_predicates = []
+        self.i_global_fluents = [  # numeric fluents
+            i_type
+            for i_type, f in enumerate(self.task.functions)
+            if len(f.parameters) == 0 and i_type not in self.cost_functions
+        ]
+        # node features
+        self.i_node_fluent_predicates = [  # predicates changing according to actions
+            i_type
+            for i_type, p in enumerate(
+                self.task.predicates[: self.task.num_fluent_predicates]
+            )
+            if len(p.parameters) == 1
+        ]
+        if self.graph_objects_encode_static_facts:
+            self.i_node_static_predicates = [  # static predicates
+                i_type
+                for i_type, p in enumerate(
+                    self.task.predicates[-self.task.num_static_predicates :]
+                )
+                if len(p.parameters) == 1
+            ]
+        else:
+            self.i_node_static_predicates = []
+        self.i_node_fluents = [  # numeric fluents
+            i_type
+            for i_type, f in enumerate(self.task.functions)
+            if len(f.parameters) == 1
+            and i_type not in self.cost_functions  # remove total-cost fluent
+        ]
+        # edge features
+        self.i_edge_fluent_predicates = [  # predicates changing according to actions
+            i_type
+            for i_type, p in enumerate(
+                self.task.predicates[: self.task.num_fluent_predicates]
+            )
+            if len(p.parameters) > 1
+        ]
+        if self.graph_objects_encode_static_facts:
+            self.i_edge_static_predicates = [  # static predicates
+                i_type
+                for i_type, p in enumerate(
+                    self.task.predicates[-self.task.num_static_predicates :]
+                )
+                if (
+                    len(p.parameters) > 1
+                    and len(self.task.predicates)
+                    - self.task.num_static_predicates
+                    + i_type
+                    != self.task.eq_predicate  # remove equality static predicate
+                )
+            ]
+        else:
+            self.i_edge_static_predicates = []
+        self.i_edge_fluents = [  # numeric fluents
+            i_type
+            for i_type, f in enumerate(self.task.functions)
+            if len(f.parameters) > 1 and i_type not in self.cost_functions
+        ]
+
+        n_global_features = (
+            len(self.i_global_fluent_predicates)
+            + len(self.i_global_static_predicates)
+            + len(self.i_global_fluents)
+        )
+        self.n_node_features = (
+            n_global_features
+            + len(self.i_node_fluent_predicates)
+            + len(self.i_node_static_predicates)
+            + len(self.i_node_fluents)
+        )
+        self.n_edge_features = (
+            len(self.i_edge_fluent_predicates)
+            + len(self.i_edge_static_predicates)
+            + len(self.i_edge_fluents)
+        )
+
+        self.dtype_edge_features = (
+            np.int8 if len(self.i_edge_fluents) == 0 else np.float_
+        )
+        self.dtype_node_features = (
+            np.int8 if len(self.i_node_fluents) == 0 else np.float_
+        )
+
+        self.n_nodes = len(self.task.objects)
+
+    def _state2graphobjects(self, state: SkPladoState) -> gym.spaces.GraphInstance:
+        nodes = np.zeros(
+            (self.n_nodes, self.n_node_features), dtype=self.dtype_node_features
+        )
+        i_col = 0
+        # encode global features (as node features)
+        for i_type in self.i_global_fluent_predicates:
+            if len(state.atoms[i_type]) > 0:  # 0-ary predicate is True
+                nodes[:, i_col] = 1
+            i_col += 1
+        for i_type in self.i_global_static_predicates:
+            if len(self.task.static_facts[i_type]) > 0:  # 0-ary predicate is True
+                nodes[:, i_col] = 1
+            i_col += 1
+        for i_type in self.i_global_fluents:
+            for params, value in state.fluents[i_type]:
+                # fluents list not empty (but params empty)
+                value = float(value)
+                nodes[:, i_col] = value
+            i_col += 1
+        # encode node features
+        for i_type in self.i_node_fluent_predicates:
+            i_rows = [params[0] for params in state.atoms[i_type]]
+            nodes[i_rows, i_col] = 1
+            i_col += 1
+        for i_type in self.i_node_static_predicates:
+            i_rows = [params[0] for params in self.task.static_facts[i_type]]
+            nodes[i_rows, i_col] = 1
+            i_col += 1
+        for i_type in self.i_node_fluents:
+            for params, value in state.fluents[i_type]:
+                value = float(value)
+                i_row = params[0]  # only 1 param
+                nodes[i_row, i_col] = value
+            i_col += 1
+
+        # encode edge_links and edge features
+        map_edge2ind: dict[tuple[int, int], int] = {}
+        edge_links: list[tuple[int, int]] = []
+        edges = []
+        i_col = 0
+
+        for i_type in self.i_edge_fluent_predicates:
+            for params in state.atoms[i_type]:
+                self._update_edge_features_from_edge_predicate(
+                    edges=edges,
+                    edge_links=edge_links,
+                    map_edge2ind=map_edge2ind,
+                    i_col=i_col,
+                    params=params,
+                    value=1,
+                )
+            i_col += 1
+        for i_type in self.i_edge_static_predicates:
+            for params in self.task.static_facts[i_type]:
+                self._update_edge_features_from_edge_predicate(
+                    edges=edges,
+                    edge_links=edge_links,
+                    map_edge2ind=map_edge2ind,
+                    i_col=i_col,
+                    params=params,
+                    value=1,
+                )
+            i_col += 1
+        for i_type in self.i_edge_fluents:
+            for params, value in state.fluents[i_type]:
+                value = float(value)
+                self._update_edge_features_from_edge_predicate(
+                    edges=edges,
+                    edge_links=edge_links,
+                    map_edge2ind=map_edge2ind,
+                    i_col=i_col,
+                    params=params,
+                    value=value,
+                )
+            i_col += 1
+
+        return gym.spaces.GraphInstance(
+            nodes=nodes,
+            edge_links=np.array(edge_links, dtype=np.int_),
+            edges=np.array(edges, dtype=self.dtype_edge_features),
+        )
+
+    def _update_edge_features_from_edge_predicate(
+        self,
+        edges: list[GraphObjectEdgeFeatureType],
+        edge_links: list[tuple[int, int]],
+        map_edge2ind: dict[tuple[int, int], int],
+        i_col: int,
+        params: tuple[int, ...],
+        value: Union[int, float] = 1,
+    ) -> None:
+        # loop on couples made from params (potentially len(params) > 2)
+        # here we get an undirected graph, a predicate between 3 objects
+        # leads to all possible edges between the 3 objects
+        for edge in itertools.permutations(params, 2):
+            try:
+                i_edge = map_edge2ind[edge]
+            except KeyError:
+                i_edge = len(edges)
+                edges.append(np.zeros((self.n_edge_features,)))
+                edge_links.append(edge)
+                map_edge2ind[edge] = i_edge
+            edges[i_edge][i_col] = value
+
+
 class PladoPddlDomain(DeterministicTransitions, BasePladoDomain):
     """Wrapper around Plado Task for (deterministic) PDDL."""
 
@@ -679,3 +1145,17 @@ class PladoPPddlDomain(BasePladoDomain):
     """Wrapper around Plado Task for Probabilistic PDDL."""
 
     ...
+
+
+class PladoTransformedObservablePddlDomain(
+    DeterministicTransitions, BasePladoTransformedObservableDomain
+):
+    """Wrapper around Plado Task for (deterministic) PDDL with observations transformed from state."""
+
+    plado_domain_class = PladoPddlDomain
+
+
+class PladoTransformedObservablePPddlDomain(BasePladoTransformedObservableDomain):
+    """Wrapper around Plado Task for Probabilistic PDDL with observations transformed from state."""
+
+    plado_domain_class = PladoPPddlDomain

@@ -15,9 +15,13 @@ TorchObsType = Union[TorchSubObsType, dict[str, TorchSubObsType]]
 
 
 def copy_graph_instance(g: gym.spaces.GraphInstance) -> gym.spaces.GraphInstance:
-    return gym.spaces.GraphInstance(
-        nodes=np.copy(g.nodes), edges=np.copy(g.edges), edge_links=np.copy(g.edge_links)
-    )
+    nodes = np.copy(g.nodes)
+    edge_links = np.copy(g.edge_links)
+    if g.edges is None:
+        edges = None
+    else:
+        edges = np.copy(g.edges)
+    return gym.spaces.GraphInstance(nodes=nodes, edges=edges, edge_links=edge_links)
 
 
 def copy_np_array_or_list_of_graph_instances(

@@ -72,6 +72,16 @@ class MultiMaskableCategoricalDistribution(Distribution):
     def set_proba_distribution_component(
         self, i_component: int, action_component_logits: th.Tensor
     ) -> None:
+        """Fix parameters of the marginal distribution.
+
+        We allow to modify dynamically the marginal dimension by inferring it from
+        last dimension of `action_component_logits`.
+        This is useful when the dimension of the marginal can change during rollout
+        (e.g. when this predict node id's of a graph whose structure vary)
+
+        """
+        action_component_dim = action_component_logits.shape[-1]
+        self.distributions[i_component].action_dim = action_component_dim
         self.distributions[i_component].proba_distribution(
             action_logits=action_component_logits
         )
