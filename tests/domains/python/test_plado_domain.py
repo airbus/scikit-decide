@@ -86,8 +86,6 @@ def plado_fully_observable_domain_factory(
     if "agricola" in domain_path:
         if action_encoding == ActionEncoding.GYM_DISCRETE:
             pytest.skip("Discrete action encoding not tractable for agricola domain.")
-        if state_encoding == StateEncoding.GYM_GRAPH_LLG:
-            pytest.skip("LLG encoding not implemented yet for domain with fluents.")
     if "tireworld" in domain_path:
         if state_encoding == StateEncoding.GYM_GRAPH_LLG:
             pytest.skip("LLG encoding not implemented yet for PPDDL.")
@@ -225,7 +223,14 @@ def are_graphs_equal(
 
 
 def are_pladostates_equal(s1: PladoState, s2: PladoState) -> bool:
-    return s1.atoms == s2.atoms and s1.fluents == s2.fluents
+    return (
+        s1.atoms == s2.atoms
+        and s1.fluents == s2.fluents
+        #     (
+        #     [f for i, f in enumerate(s1.fluents) if i not in cost_functions]
+        #     == [f for i, f in enumerate(s2.fluents) if i not in cost_functions]
+        # )
+    )
 
 
 def test_plado_domain_random(plado_domain_factory):
@@ -272,10 +277,11 @@ def test_plado_domain_random(plado_domain_factory):
             )
             # check decode_llg
             assert are_pladostates_equal(
-                decode_llg(obs), domain._translate_state_to_plado(obs)
+                decode_llg(obs, domain.cost_functions),
+                domain._translate_state_to_plado(obs),
             )
             assert are_pladostates_equal(
-                decode_llg(outcome.observation),
+                decode_llg(outcome.observation, domain.cost_functions),
                 domain._translate_state_to_plado(outcome.observation),
             )
         else:
