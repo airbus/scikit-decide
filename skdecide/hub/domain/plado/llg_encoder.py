@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from collections import defaultdict
 from collections.abc import Iterable
@@ -23,10 +25,24 @@ except ImportError:
     Float = Fraction
 else:
     plado_available = True
+    from plado.datalog.numeric import (
+        Addition,
+        BinaryOperation,
+        Constant,
+        Division,
+        Fluent,
+        Multiplication,
+        NumericConstraint,
+        NumericExpression,
+        Subtraction,
+    )
     from plado.semantics.task import (
+        Action,
         AddEffect,
         Atom,
         DelEffect,
+        Float,
+        NumericEffect,
         SimpleCondition,
         State,
         Task,
@@ -45,17 +61,28 @@ map_int2edgelabel = list(EdgeLabel)
 
 
 class NodeLabel(Enum):
-    PREDICATE = "predicate"
-    OBJECT = "object"
-    ACTION = "action"
-    STATE = "state"
-    GOAL = "goal"
-    STATIC = "static"
-    NEGATED = "negated"
+    PREDICATE = "predicate"  # predicate type node
+    FLUENT = "fluent"  # fluent type node
+    OBJECT = "object"  # object node
+    ACTION = "action"  # action type node
+    STATE = "state"  # current state atom/fluent
+    GOAL = "goal"  # goal atom/constraint on fluent to reach
+    STATIC = "static"  # not updated by an action
+    NUMERIC = "numeric"  # contains a numeric value
+    NEGATED = "negated"  # negation of an atom
+    LESS = "less"  # comparator encoding for < and <=
+    EQUAL = "equal"  # comparator encoding for <=, == et >=
+    GREATER = "greater"  # comparator encoding for > and >=
+    PLUS = "+"
+    MINUS = "-"
+    DIVIDE = "/"
+    MULTIPLY = "*"
+    ASSIGN = "assign"  # operator assigning arg 1 (numeric value) to arg 0 (numeric predicate)
 
 
 map_nodelabel2int = {label: idx for idx, label in enumerate(NodeLabel)}
 map_int2nodelabel = list(NodeLabel)
+value_index = len(NodeLabel)  # index of node value in node features
 
 
 class IndexFunctionType(Enum):
@@ -89,6 +116,7 @@ class LLGEncoder:
             NodeLabel.GOAL: "#ffed00",
             NodeLabel.STATE: "#00cc99",
             NodeLabel.PREDICATE: "#f5baff",
+            NodeLabel.FLUENT: "#f5baff",
             NodeLabel.OBJECT: "#8acff0",
         },
     )
@@ -157,10 +185,18 @@ class LLGEncoder:
             state_node_neighbours.sort()  # to be sure to have atom predicate + args in right order
             atom_args = []
             predicate = None
-            for node in state_node_neighbours:  # predicate then arg0, arg1, ...
-                if predicate is None:
-                    # atom predicate
-                    predicate = self._map_predicate_node2id[node]
+            function_id = None
+            value = Float(graph.nodes[state_node, value_index])
+            for (
+                node
+            ) in state_node_neighbours:  # predicate/function then arg0, arg1, ...
+                if predicate is None and function_id is None:
+                    try:
+                        # atom predicate
+                        predicate = self._map_predicate_node2id[node]
+                    except KeyError:
+                        # fluent function
+                        function_id = self._map_function_node2id[node]
                 else:
                     # atom arg
                     object_node = [
@@ -169,16 +205,30 @@ class LLGEncoder:
                         if e[0] == node and e[1] != state_node
                     ][0]
                     atom_args.append(self._map_object_node2id[object_node])
-            state.atoms[predicate].add(tuple(atom_args))
+            if predicate is not None:
+                state.atoms[predicate].add(tuple(atom_args))
+            else:
+                state.fluents[function_id][tuple(atom_args)] = value
+        # add total-cost = 0.
+        for function_id in self.cost_functions:
+            state.fluents[function_id][tuple()] = Float(0)
         return state
 
     @property
     def graph_space(self) -> gym.spaces.Graph:
+        if self.has_fluents():
+            value_low = -np.inf
+            value_high = np.inf
+        else:
+            value_low = 0
+            value_high = 0
         node_low = np.array(
-            [0] * len(NodeLabel) + self._index_lows, dtype=self.nodes_dtype
+            [0] * len(NodeLabel) + [value_low] + self._index_lows,
+            dtype=self.nodes_dtype,
         )
         node_high = np.array(
-            [1] * len(NodeLabel) + self._index_highs, dtype=self.nodes_dtype
+            [1] * len(NodeLabel) + [value_high] + self._index_highs,
+            dtype=self.nodes_dtype,
         )
         edge_low = np.zeros((len(EdgeLabel),), dtype=self.edges_dtype)
         edge_high = np.ones((len(EdgeLabel),), dtype=self.edges_dtype)
@@ -232,22 +282,13 @@ class LLGEncoder:
             ax=ax,
         )
 
-    def _init_graph(self):
+    def _check_hypotheses(self):
         # hyp:
-        #   - no numeric fluents except for total-cost
-        #   - goal: no numeric constraints
         #   - actions
-        #      - precondition: no numeric constraints
-        #      - effect: no probabilistic effect, no conditional effect, no numerical effect
+        #      - effect: no probabilistic effect, no conditional effect
         assert (
-            len(self.task.functions) == len(self.cost_functions)
-            and len(self.task.goal.condition.constraints) == 0
-            and all(
-                len(action.precondition.constraints) == 0
-                for action in self.task.actions
-            )
-            # no probabilitic effects
-            and all(
+            # no probabilistic effects
+            all(
                 [
                     all([e.num_effects == 1 for e in action.effect.effects])
                     for action in self.task.actions
@@ -287,21 +328,10 @@ class LLGEncoder:
                     for action in self.task.actions
                 ]
             )
-            # no numerical effect
-            and all(
-                [
-                    all(
-                        [
-                            isinstance(
-                                e.outcomes[0][1][0].effect, (DelEffect, AddEffect)
-                            )
-                            for e in action.effect.effects
-                        ]
-                    )
-                    for action in self.task.actions
-                ]
-            )
         )
+
+    def _init_graph(self):
+        self._check_hypotheses()
 
         self._reset_graph()
 
@@ -321,6 +351,15 @@ class LLGEncoder:
             for node_obj in self._object_nodes:
                 self._add_edge(node_obj, node_pred, EdgeLabel.NU, subgraph=predicate)
 
+        # fluents
+        self._function_nodes = self._get_new_node_ids(len(self.task.functions))
+        self._map_function_node2id = {
+            node: i for i, node in enumerate(self._function_nodes)
+        }
+        for node_fluent, fluent in zip(self._function_nodes, self.task.functions):
+            for node_obj in self._object_nodes:
+                self._add_edge(node_obj, node_fluent, EdgeLabel.NU, subgraph=fluent)
+
         # goals
         self._goal_nodes = self._encode_condition(
             condition=self.task.goal.condition,
@@ -330,45 +369,8 @@ class LLGEncoder:
         )
 
         # actions
-        self._action_nodes = []
         for action in self.task.actions:
-            # action node
-            action_node = self._get_new_node_id()
-            self._action_nodes.append(action_node)
-            # action arg nodes
-            action_arg_nodes = self._get_new_node_ids(action.parameters)
-            for action_arg_node in action_arg_nodes:
-                self._add_edge(
-                    action_node, action_arg_node, EdgeLabel.NU, subgraph=action
-                )
-            # precondition
-            self._encode_condition(
-                condition=action.precondition,
-                edge_label=EdgeLabel.PRE,
-                grounded=False,
-                variable_nodes=action_arg_nodes,
-                action_node=action_node,
-                subgraph=action,
-            )
-            # add and del effects
-            for e in action.effect.effects:
-                atomic_effect: Union[AddEffect, DelEffect] = e.outcomes[0][1][0].effect
-                atom = atomic_effect.atom
-                edge_label = EdgeLabel.EFFECT
-                scheme_pred_node = self._encode_condition_atom(
-                    atom=atom,
-                    edge_label=edge_label,
-                    grounded=False,
-                    variable_nodes=action_arg_nodes,
-                    action_node=action_node,
-                    subgraph=action,
-                )
-                if isinstance(atomic_effect, AddEffect):
-                    ...
-                elif isinstance(atomic_effect, DelEffect):
-                    self._negated_atom_nodes.append(scheme_pred_node)
-                else:
-                    raise NotImplementedError()
+            self._encode_action(action)
 
         # static facts
         for static_predicate, predicate_atoms in enumerate(self.task.static_facts):
@@ -379,7 +381,7 @@ class LLGEncoder:
             )
             for atom_args in predicate_atoms:
                 self._static_state_nodes.append(
-                    self._encode_condition_atom(
+                    self._encode_atom(
                         atom=Atom(
                             predicate=predicate, args=atom_args, variables=tuple()
                         ),
@@ -398,6 +400,15 @@ class LLGEncoder:
     def _compute_gym_graph(self) -> gym.spaces.GraphInstance:
         nodes = np.zeros((self._get_n_nodes(), self.nodes_dim), dtype=self.nodes_dtype)
         nodes[self._predicate_nodes, map_nodelabel2int[NodeLabel.PREDICATE]] = 1
+        nodes[self._function_nodes, map_nodelabel2int[NodeLabel.FLUENT]] = 1
+        for node, comparators in self._map_node2comparator.items():
+            for comparator in comparators:
+                nodes[node, map_nodelabel2int[comparator]] = 1
+        for node, value in self._map_node2value.items():
+            nodes[node, value_index] = value
+            nodes[node, map_nodelabel2int[NodeLabel.NUMERIC]] = 1
+        for node, operator in self._map_node2operator.items():
+            nodes[node, map_nodelabel2int[operator]] = 1
         nodes[
             self._predicate_nodes[
                 self.task.num_fluent_predicates + self.task.num_derived_predicates :
@@ -430,6 +441,12 @@ class LLGEncoder:
             np.array(self._state_nodes) - self._state_node_start,
             map_nodelabel2int[NodeLabel.STATE],
         ] = 1
+        for node, value in self._map_node2value.items():
+            if node >= self._state_node_start:
+                nodes_state[node - self._state_node_start, value_index] = value
+                nodes_state[
+                    node - self._state_node_start, map_nodelabel2int[NodeLabel.NUMERIC]
+                ] = 1
         for node, index in self._map_node2argindex.items():
             if node >= self._state_node_start:
                 nodes_state[
@@ -508,11 +525,15 @@ class LLGEncoder:
         self._edge_links = []
         self._edge_labels = []
         self._map_node2argindex = {}
+        self._map_node2operator: dict[int, NodeLabel] = {}
+        self._map_node2comparator: dict[int, list[NodeLabel]] = {}
         self._goal_nodes = []
         self._action_nodes = []
         self._predicate_nodes = []
+        self._function_nodes = []
         self._object_nodes = []
         self._state_nodes = []
+        self._map_node2value: dict[int, float] = {}
         self._static_state_nodes = []
         self._negated_atom_nodes = []
         self._subgraphs_edges: dict[Any, list[int]] = defaultdict(list)
@@ -544,15 +565,20 @@ class LLGEncoder:
             for n, idx in self._map_node2argindex.items()
             if n < self._state_node_start
         }
+        self._map_node2value = {
+            n: idx
+            for n, idx in self._map_node2value.items()
+            if n < self._state_node_start
+        }
 
     def _encode_state(self, state: State) -> None:
         # forget previous state encoding
         self._reset_state()
-        # encode
+        # encode atoms
         for predicate, predicate_atoms in enumerate(state.atoms):
             for atom_args in predicate_atoms:
                 self._state_nodes.append(
-                    self._encode_condition_atom(
+                    self._encode_atom(
                         atom=Atom(
                             predicate=predicate, args=atom_args, variables=tuple()
                         ),
@@ -561,29 +587,52 @@ class LLGEncoder:
                         variable_nodes=self._object_nodes,
                     )
                 )
+        # encode fluents
+        for function_id, function_fluents in enumerate(state.fluents):
+            if function_id in self.cost_functions:
+                # skip total-cost
+                continue
+            for fluent_args, value in function_fluents.items():
+                state_node = self._encode_fluent(
+                    fluent=Fluent(
+                        function_id=function_id, args=fluent_args, variables=tuple()
+                    ),
+                    edge_label=EdgeLabel.GAMMA,
+                    grounded=True,
+                    variable_nodes=self._object_nodes,
+                )
+                self._state_nodes.append(state_node)
+                self._map_node2value[state_node] = float(value)
 
     def _reset_index_function(self):
         # Index Function dim
         if self.index_function_type == IndexFunctionType.ONEHOT:
-            # max arity of predicates
+            # max arity of predicates (min 2 because of binary operators in numeric expressions)
             self.index_function_dim = max(
-                len(p.parameters) for p in self.task.predicates
+                2, max(len(p.parameters) for p in self.task.predicates)
             )
             self._index_lows = [0] * self.index_function_dim
             self._index_highs = [1] * self.index_function_dim
 
         else:
-            self.index_function_dim = self.index_function_default_dim
+            self.index_function_dim = max(2, self.index_function_default_dim)
             self._index_lows = [-1.0] * self.index_function_dim
             self._index_highs = [1.0] * self.index_function_dim
 
     @property
     def nodes_dim(self) -> int:
-        return len(NodeLabel) + self.index_function_dim
+        # flags (ie node labels) + value + index function
+        return len(NodeLabel) + 1 + self.index_function_dim
+
+    def has_fluents(self) -> bool:
+        return len(self.task.functions) > 0
 
     @property
     def nodes_dtype(self) -> npt.DTypeLike:
-        if self.index_function_type == IndexFunctionType.ONEHOT:
+        if (
+            self.index_function_type == IndexFunctionType.ONEHOT
+            and not self.has_fluents()
+        ):
             return np.int_
         else:
             return np.float_
@@ -599,7 +648,7 @@ class LLGEncoder:
     ) -> list[int]:
         scheme_pred_nodes = []
         for atom in condition.atoms:
-            scheme_pred_node = self._encode_condition_atom(
+            scheme_pred_node = self._encode_atom(
                 atom=atom,
                 edge_label=edge_label,
                 grounded=grounded,
@@ -609,7 +658,7 @@ class LLGEncoder:
             )
             scheme_pred_nodes.append(scheme_pred_node)
         for atom in condition.negated_atoms:
-            scheme_pred_node = self._encode_condition_atom(
+            scheme_pred_node = self._encode_atom(
                 atom=atom,
                 edge_label=edge_label,
                 grounded=grounded,
@@ -619,9 +668,208 @@ class LLGEncoder:
             )
             scheme_pred_nodes.append(scheme_pred_node)
             self._negated_atom_nodes.append(scheme_pred_node)
+        for constraint in condition.constraints:
+            scheme_pred_node = self._encode_constraint(
+                constraint=constraint,
+                edge_label=edge_label,
+                grounded=grounded,
+                variable_nodes=variable_nodes,
+                action_node=action_node,
+                subgraph=subgraph,
+            )
+            scheme_pred_nodes.append(scheme_pred_node)
+
         return scheme_pred_nodes
 
-    def _encode_condition_atom(
+    def _encode_action(self, action: Action) -> None:
+        subgraph = action
+        # action node
+        action_node = self._get_new_node_id()
+        self._action_nodes.append(action_node)
+        # action arg nodes
+        action_arg_nodes = self._get_new_node_ids(action.parameters)
+        for action_arg_node in action_arg_nodes:
+            self._add_edge(action_node, action_arg_node, EdgeLabel.NU, subgraph=action)
+        variable_nodes = action_arg_nodes
+        # precondition
+        self._encode_condition(
+            condition=action.precondition,
+            edge_label=EdgeLabel.PRE,
+            grounded=False,
+            variable_nodes=variable_nodes,
+            action_node=action_node,
+            subgraph=subgraph,
+        )
+        # add and del effects
+        for e in action.effect.effects:
+            atomic_effect = e.outcomes[0][1][0].effect
+            edge_label = EdgeLabel.EFFECT
+            if isinstance(atomic_effect, (AddEffect, DelEffect)):
+                atom = atomic_effect.atom
+                scheme_pred_node = self._encode_atom(
+                    atom=atom,
+                    edge_label=edge_label,
+                    grounded=False,
+                    variable_nodes=variable_nodes,
+                    action_node=action_node,
+                    subgraph=subgraph,
+                )
+                if isinstance(atomic_effect, DelEffect):
+                    self._negated_atom_nodes.append(scheme_pred_node)
+            elif isinstance(atomic_effect, NumericEffect):
+                fluent = atomic_effect.fluent
+                scheme_fluent_node = self._encode_fluent(
+                    fluent=fluent,
+                    edge_label=edge_label,
+                    grounded=False,
+                    variable_nodes=variable_nodes,
+                    action_node=action_node,
+                    subgraph=subgraph,
+                )
+                expr_node = self._encode_numeric_expression(
+                    expr=atomic_effect.expr,
+                    edge_label=edge_label,
+                    variable_nodes=variable_nodes,
+                    grounded=False,
+                    action_node=action_node,
+                    subgraph=subgraph,
+                )
+                assign_node = self._encode_binary_operation(
+                    operator_label=NodeLabel.ASSIGN,
+                    lhs_node=scheme_fluent_node,
+                    rhs_node=expr_node,
+                    edge_label=edge_label,
+                    subgraph=subgraph,
+                )
+            else:
+                raise NotImplementedError()
+
+    def _encode_binary_operation(
+        self,
+        operator_label: NodeLabel,
+        lhs_node: int,
+        rhs_node: int,
+        edge_label: EdgeLabel,
+        subgraph: Any,
+    ) -> int:
+        operator_node = self._get_new_node_id()
+        self._map_node2operator[operator_node] = operator_label
+        self._add_edge(operator_node, lhs_node, label=edge_label, subgraph=subgraph)
+        self._add_edge(operator_node, rhs_node, label=edge_label, subgraph=subgraph)
+        self._map_node2argindex[lhs_node] = 0
+        self._map_node2argindex[rhs_node] = 1
+        return operator_node
+
+    def _encode_constraint(
+        self,
+        constraint: NumericConstraint,
+        edge_label: EdgeLabel,
+        variable_nodes: list[int],
+        grounded: bool,
+        action_node: Optional[int] = None,
+        subgraph: Optional[Any] = None,
+    ) -> int:
+        if subgraph is None:
+            fluents = _extract_fluents_from_numeric_expression(constraint.expr)
+            if len(fluents) > 0:
+                fluent = fluents[0]
+                fluent_id = fluent.function_id
+                subgraph = self.task.functions[fluent_id]
+        comparator_labels = _convert_comparator2nodelabels(constraint.comparator)
+        expr_node = self._encode_numeric_expression(
+            expr=constraint.expr,
+            edge_label=edge_label,
+            variable_nodes=variable_nodes,
+            grounded=grounded,
+            action_node=action_node,
+            subgraph=subgraph,
+        )
+        self._map_node2comparator[expr_node] = comparator_labels
+        return expr_node
+
+    def _encode_numeric_expression(
+        self,
+        expr: NumericExpression,
+        edge_label: EdgeLabel,
+        variable_nodes: list[int],
+        grounded: bool,
+        action_node: Optional[int] = None,
+        subgraph: Optional[Any] = None,
+    ) -> int:
+        if isinstance(expr, BinaryOperation):
+            lhs_node = self._encode_numeric_expression(
+                expr=expr.lhs,
+                edge_label=edge_label,
+                variable_nodes=variable_nodes,
+                grounded=grounded,
+                action_node=action_node,
+                subgraph=subgraph,
+            )
+            rhs_node = self._encode_numeric_expression(
+                expr=expr.rhs,
+                edge_label=edge_label,
+                variable_nodes=variable_nodes,
+                grounded=grounded,
+                action_node=action_node,
+                subgraph=subgraph,
+            )
+            if isinstance(expr, Addition):
+                operator_label = NodeLabel.PLUS
+            elif isinstance(expr, Subtraction):
+                operator_label = NodeLabel.MINUS
+            elif isinstance(expr, Division):
+                operator_label = NodeLabel.DIVIDE
+            elif isinstance(expr, Multiplication):
+                operator_label = NodeLabel.MULTIPLY
+            else:
+                raise NotImplementedError()
+            expr_node = self._encode_binary_operation(
+                operator_label=operator_label,
+                lhs_node=lhs_node,
+                rhs_node=rhs_node,
+                edge_label=edge_label,
+                subgraph=subgraph,
+            )
+        elif isinstance(expr, Fluent):
+            expr_node = self._encode_fluent(
+                fluent=expr,
+                edge_label=edge_label,
+                variable_nodes=variable_nodes,
+                grounded=grounded,
+                action_node=action_node,
+                subgraph=subgraph,
+            )
+        elif isinstance(expr, Constant):
+            expr_node = self._get_new_node_id()
+            self._map_node2value[expr_node] = float(expr.value)
+        else:
+            raise NotImplementedError()
+        return expr_node
+
+    def _encode_fluent(
+        self,
+        fluent: Fluent,
+        edge_label: EdgeLabel,
+        variable_nodes: list[int],
+        grounded: bool,
+        action_node: Optional[int] = None,
+        subgraph: Optional[Any] = None,
+    ) -> int:
+        fluent_id = fluent.function_id
+        if subgraph is None:
+            subgraph = self.task.functions[fluent_id]
+        function_node = self._function_nodes[fluent_id]
+        return self._encode_atom_or_fluent(
+            atom_or_fluent=fluent,
+            predicate_or_function_node=function_node,
+            edge_label=edge_label,
+            variable_nodes=variable_nodes,
+            grounded=grounded,
+            action_node=action_node,
+            subgraph=subgraph,
+        )
+
+    def _encode_atom(
         self,
         atom: Atom,
         edge_label: EdgeLabel,
@@ -632,17 +880,38 @@ class LLGEncoder:
     ) -> int:
         if subgraph is None:
             subgraph = self.task.predicates[atom.predicate]
+        predicate_node = self._predicate_nodes[atom.predicate]
+        return self._encode_atom_or_fluent(
+            atom_or_fluent=atom,
+            predicate_or_function_node=predicate_node,
+            edge_label=edge_label,
+            variable_nodes=variable_nodes,
+            grounded=grounded,
+            action_node=action_node,
+            subgraph=subgraph,
+        )
+
+    def _encode_atom_or_fluent(
+        self,
+        atom_or_fluent: Union[Atom, Fluent],
+        predicate_or_function_node: int,
+        edge_label: EdgeLabel,
+        variable_nodes: list[int],
+        grounded: bool,
+        action_node: Optional[int] = None,
+        subgraph: Optional[Any] = None,
+    ) -> int:
         scheme_pred_node = self._get_new_node_id()
         self._add_edge(
-            self._predicate_nodes[atom.predicate],
+            predicate_or_function_node,
             scheme_pred_node,
             edge_label,
             subgraph=subgraph,
         )
         if grounded:
-            list_atom_pos_arg = list(enumerate(atom.args))
+            list_atom_pos_arg = list(enumerate(atom_or_fluent.args))
         else:
-            list_atom_pos_arg = [(pos, arg) for arg, pos in atom.variables]
+            list_atom_pos_arg = [(pos, arg) for arg, pos in atom_or_fluent.variables]
         if action_node is not None and len(list_atom_pos_arg) == 0:  # 0-ary predicate
             self._add_edge(scheme_pred_node, action_node, edge_label, subgraph=subgraph)
         for pos, arg in list_atom_pos_arg:
@@ -678,129 +947,138 @@ class LLGEncoder:
         node_labels_np[
             graph.nodes[:, map_nodelabel2int[NodeLabel.NEGATED]].nonzero()[0]
         ] = "not"
-        node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.GOAL]].nonzero()[0]
-        ] = "goal"
-        node_labels_np[
-            np.logical_and(
-                graph.nodes[:, map_nodelabel2int[NodeLabel.GOAL]],
-                graph.nodes[:, map_nodelabel2int[NodeLabel.NEGATED]],
-            )
-        ] = "goal not"
-        node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.STATE]].nonzero()[0]
-        ] = "state"
         try:
             argindex_nodes_features = graph.nodes[:, -self.index_function_dim :]
             argindex_rows = np.sum(argindex_nodes_features, -1).nonzero()[0]
-            node_labels_np[argindex_rows] = self.index_function_inverse(
-                argindex_nodes_features[argindex_rows]
-            )
+            for node in argindex_rows:
+                node_labels_np[node] = str(
+                    self.index_function_inverse(argindex_nodes_features[node])
+                )
         except NotImplementedError:
             for node, idx in self._map_node2argindex.items():
-                node_labels_np[node] = idx
+                node_labels_np[node] = str(idx)
+
+        node_labels_np[
+            graph.nodes[:, map_nodelabel2int[NodeLabel.LESS]].nonzero()[0]
+        ] += "<"
+        node_labels_np[
+            graph.nodes[:, map_nodelabel2int[NodeLabel.GREATER]].nonzero()[0]
+        ] += ">"
+        node_labels_np[
+            graph.nodes[:, map_nodelabel2int[NodeLabel.EQUAL]].nonzero()[0]
+        ] += "="
+        ind = (
+            graph.nodes[:, map_nodelabel2int[NodeLabel.NUMERIC]].astype(bool)
+        ).nonzero()[0]
+        node_labels_np[ind] = [
+            node_labels_np[i] + ", " + str(graph.nodes[i, value_index]) for i in ind
+        ]
+        node_labels_np[
+            graph.nodes[:, map_nodelabel2int[NodeLabel.PLUS]].nonzero()[0]
+        ] += ", +"
+        node_labels_np[
+            graph.nodes[:, map_nodelabel2int[NodeLabel.MINUS]].nonzero()[0]
+        ] += ", -"
+        node_labels_np[
+            graph.nodes[:, map_nodelabel2int[NodeLabel.MULTIPLY]].nonzero()[0]
+        ] += ", *"
+        node_labels_np[
+            graph.nodes[:, map_nodelabel2int[NodeLabel.DIVIDE]].nonzero()[0]
+        ] += ", /"
+        node_labels_np[
+            graph.nodes[:, map_nodelabel2int[NodeLabel.ASSIGN]].nonzero()[0]
+        ] += ":="
         for i, node in enumerate(self._action_nodes):
             node_labels_np[node] = self.task.actions[i].name
-            node_color[node] = self.map_nodelabel2color[NodeLabel.ACTION]
         for i, node in enumerate(self._predicate_nodes):
             node_labels_np[node] = self.task.predicates[i].name
-            node_color[node] = self.map_nodelabel2color[NodeLabel.PREDICATE]
+        for i, node in enumerate(self._function_nodes):
+            node_labels_np[node] = self.task.functions[i].name
         for i, node in enumerate(self._object_nodes):
             node_labels_np[node] = self.task.objects[i]
-            node_color[node] = self.map_nodelabel2color[NodeLabel.OBJECT]
+
         node_labels: dict[int, str] = dict(enumerate(node_labels_np))
 
         return node_labels, node_color, edge_color
 
-    def _prepare_for_plot_intern_encoding(
-        self,
-    ) -> tuple[dict[int, str], dict[int, str], dict[tuple[int, int], str],]:
-        edge_color = {
-            e: self.map_edgelabel2color[lab]
-            for e, lab in zip(self._edge_links, self._edge_labels)
-        }
-        node_labels = {}
-        node_color = defaultdict(lambda: self.map_nodelabel2color[None])
-        for i, node in enumerate(self._action_nodes):
-            node_labels[node] = self.task.actions[i].name
-            node_color[node] = self.map_nodelabel2color[NodeLabel.ACTION]
-        for i, node in enumerate(self._predicate_nodes):
-            node_labels[node] = self.task.predicates[i].name
-            node_color[node] = self.map_nodelabel2color[NodeLabel.PREDICATE]
-        for i, node in enumerate(self._object_nodes):
-            node_labels[node] = self.task.objects[i]
-            node_color[node] = self.map_nodelabel2color[NodeLabel.OBJECT]
-        for node in self._goal_nodes:
-            node_labels[node] = "goal"
-            node_color[node] = self.map_nodelabel2color[NodeLabel.GOAL]
-        for node in self._state_nodes + self._static_state_nodes:
-            node_labels[node] = "state"
-            node_color[node] = self.map_nodelabel2color[NodeLabel.STATE]
-        for node in self._negated_atom_nodes:
-            if node in node_labels:
-                node_labels[node] = node_labels[node] + " not"
-            else:
-                node_labels[node] = "not"
-        for node, idx in self._map_node2argindex.items():
-            node_labels[node] = idx
 
-        return node_labels, node_color, edge_color
-
-    def plot_intern_encoding(
-        self, subgraph: Optional[Any] = None, ax: Optional[Any] = None
-    ):
-        node_labels, node_color, edge_color = self._prepare_for_plot_intern_encoding()
-        G = nx.Graph()
-        if subgraph is None:
-            edge_links = self._edge_links
-        else:
-            edge_links = [
-                e
-                for i, e in enumerate(self._edge_links)
-                if i in self._subgraphs_edges[subgraph]
-            ]
-        G.add_edges_from(edge_links)
-        nx.draw_networkx(
-            G,
-            labels={i: lab for i, lab in node_labels.items() if i in G.nodes},
-            edge_color=[edge_color[e] for e in G.edges],
-            node_color=[node_color[n] for n in G.nodes],
-            ax=ax,
-        )
-
-
-def decode_llg(graph: gym.spaces.GraphInstance) -> State:
+def decode_llg(
+    graph: gym.spaces.GraphInstance, cost_functions: Optional[set[int]] = None
+) -> State:
     """Decode a llg graph into a plado state without information about the plado.Task.
 
     This may be less efficient than LLGEncoder.decode() but is self-sufficient.
 
     """
+    if cost_functions is None:
+        cost_functions = set()
     object_nodes = graph.nodes[:, map_nodelabel2int[NodeLabel.OBJECT]].nonzero()[0]
     map_object_node2id = {node: i for i, node in enumerate(object_nodes)}
     predicate_nodes = (
         graph.nodes[:, map_nodelabel2int[NodeLabel.PREDICATE]]  # predicate
         * (1 - graph.nodes[:, map_nodelabel2int[NodeLabel.STATIC]])  # not static
     ).nonzero()[0]
+    function_nodes = (graph.nodes[:, map_nodelabel2int[NodeLabel.FLUENT]]).nonzero()[0]
     map_predicate_node2id = {node: i for i, node in enumerate(predicate_nodes)}
+    map_function_node2id = {node: i for i, node in enumerate(function_nodes)}
     state_nodes = graph.nodes[:, map_nodelabel2int[NodeLabel.STATE]].nonzero()[0]
-    state = State(num_predicates=len(predicate_nodes), num_functions=0)
+    state = State(
+        num_predicates=len(predicate_nodes), num_functions=len(function_nodes)
+    )
     for state_node in state_nodes:
         state_node_neighbours = [e[1] for e in graph.edge_links if e[0] == state_node]
         state_node_neighbours.sort()
         atom_args = []
         predicate = None
+        function_id = None
+        value = Float(graph.nodes[state_node, value_index])
         for node in state_node_neighbours:
             try:
                 # atom predicate
                 predicate = map_predicate_node2id[node]
             except KeyError:
-                # atom arg
-                object_node = [
-                    e[1]
-                    for e in graph.edge_links
-                    if e[0] == node and e[1] != state_node
-                ][0]
-                atom_args.append(map_object_node2id[object_node])
+                try:
+                    # fluent function
+                    function_id = map_function_node2id[node]
+                except KeyError:
+                    # atom arg
+                    object_node = [
+                        e[1]
+                        for e in graph.edge_links
+                        if e[0] == node and e[1] != state_node
+                    ][0]
+                    atom_args.append(map_object_node2id[object_node])
         if predicate is not None:  # can be None if static
             state.atoms[predicate].add(tuple(atom_args))
+        if function_id is not None:
+            state.fluents[function_id][tuple(atom_args)] = value
+    # add total-cost = 0.
+    for function_id in cost_functions:
+        state.fluents[function_id][tuple()] = Float(0)
     return state
+
+
+def _extract_fluents_from_numeric_expression(expr: NumericExpression) -> list[Fluent]:
+    if isinstance(expr, BinaryOperation):
+        return _extract_fluents_from_numeric_expression(
+            expr.lhs
+        ) + _extract_fluents_from_numeric_expression(expr.rhs)
+    elif isinstance(expr, Fluent):
+        return [expr]
+    else:
+        return []
+
+
+def _convert_comparator2nodelabels(comparator: int) -> list[NodeLabel]:
+    comparator_labels: list[NodeLabel] = []
+    if comparator in (NumericConstraint.LESS, NumericConstraint.LESS_EQUAL):
+        comparator_labels.append(NodeLabel.LESS)
+    if comparator in (NumericConstraint.GREATER, NumericConstraint.GREATER_EQUAL):
+        comparator_labels.append(NodeLabel.GREATER)
+    if comparator in (
+        NumericConstraint.LESS_EQUAL,
+        NumericConstraint.EQUAL,
+        NumericConstraint.GREATER_EQUAL,
+    ):
+        comparator_labels.append(NodeLabel.EQUAL)
+    return comparator_labels
