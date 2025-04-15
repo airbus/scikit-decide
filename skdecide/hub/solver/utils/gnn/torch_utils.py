@@ -52,8 +52,15 @@ def thg_data_to_graph_instance(
         raise NotImplementedError()
 
 
-def unbatch_node_logits(data: thg.data.Data) -> th.Tensor:
+def unbatch_node_logits(
+    data: thg.data.Data, nodes_to_keep: Optional[th.Tensor] = None
+) -> th.Tensor:
     x, batch = data.x, data.batch
+    if nodes_to_keep is not None:
+        # use only some nodes according to nodes_to_keep
+        x = x[nodes_to_keep]
+        if batch is not None:
+            batch = batch[nodes_to_keep]
     if batch is None:
         node_logits = x.flatten()
     else:

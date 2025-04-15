@@ -36,14 +36,14 @@ class GraphWalkEnv(gym.Env[int, int]):
     """Custom env.
 
     actions:
-    - (0, -1) => rester sur place
-    - (1, x) => aller au noeud x (impossible si pas de edge directe)
+    - (0, -1) => do not move
+    - (1, x) => move to node x (impossible if no direct edge)
 
     obs = state:
-        - native encoding: noeud d'1 graphe
-        - graph encoding: graphe avec node feature 1 sur le current node et 0 sinon
+        - native encoding: node id
+        - graph encoding: graph with node feature 1 on current node else 0
 
-    graphe codé en dur:
+    hard-coded graph:
 
     0 -> 1 -> 2 --> 4
       \         /
@@ -157,6 +157,129 @@ class GraphWalkEnv(gym.Env[int, int]):
             )
 
 
+class HeteroGraphWalkEnv(gym.Env[int, int]):
+    """Custom env with "hetero" graph.
+
+    Some nodes are position and other represent the distance between positions.
+
+    actions:
+    - (0, -1) => do not move
+    - (1, x) => move to node x (impossible if no couple edges to go there)
+
+    obs = state:
+    graph with 2 type of nodes separated by feature POSITION (1: yes, 0:no) and DISTANCE
+    (only if POSITION =0, corresponds to distance between the neighbours of this node)
+
+    graphe codé en dur:
+
+    0 -> 1 -> 2 --> 4
+      \         /
+       -> 3 ---
+
+
+
+    """
+
+    N_STATES = 5
+    POSITION = 0
+    DISTANCE = 1
+    CURRENT = 2
+    node_features_dim = 3
+
+    action_space = gym.spaces.MultiDiscrete((2, N_STATES))
+
+    state = 0
+
+    edges_end_nodes_with_distance = [
+        [(1, 1), (3, 5)],
+        [(2, 1)],
+        [(4, 1)],
+        [(4, 5)],
+        [],
+    ]  # start node 0 -> 1,3 with dist 1 and 5 resp.
+
+    def __init__(self):
+        self.observation_space = gym.spaces.Graph(
+            node_space=gym.spaces.Box(
+                low=np.array([0, 0, 0]), high=np.array([1, 10, 1]), dtype=np.int8
+            ),
+            edge_space=None,
+        )
+
+    @property
+    def n_nodes(self):
+        return 2 * sum(
+            len(l_by_start) for l_by_start in self.edges_end_nodes_with_distance
+        )
+
+    def node2state(self, node: int):
+        node_features = np.zeros((self.n_nodes, self.node_features_dim), dtype=np.int8)
+        node_features[: len(self.edges_end_nodes_with_distance), self.POSITION] = 1
+        node_features[node, self.CURRENT] = 1
+        edge_links = []
+        i_node = len(self.edges_end_nodes_with_distance)
+        for start_node, end_nodes_n_dist in enumerate(
+            self.edges_end_nodes_with_distance
+        ):
+            for end_node, dist in end_nodes_n_dist:
+                edge_links.append((start_node, i_node))
+                edge_links.append((i_node, end_node))
+                node_features[i_node, self.DISTANCE] = dist
+                i_node += 1
+        edge_links_np = np.array(edge_links)
+        edge_features = None
+        return gym.spaces.GraphInstance(
+            nodes=node_features, edges=edge_features, edge_links=edge_links_np
+        )
+
+    def state2node(self, state: Union[int, gym.spaces.GraphInstance]) -> int:
+        return int(state.nodes[:, self.CURRENT].nonzero()[0][0])
+
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[int, dict[str, Any]]:
+        super().reset(seed=seed, options=options)
+        self.state = self.node2state(0)
+        return self.state, {}
+
+    def step(
+        self, action: npt.NDArray[int]
+    ) -> tuple[gym.spaces.GraphInstance, SupportsFloat, bool, bool, dict[str, Any]]:
+        current_node = self.state2node(self.state)
+        action_id, node = action
+        if action_id == 1:
+            ok = False
+            for node2, dist in self.edges_end_nodes_with_distance[current_node]:
+                if node2 == node:
+                    ok = True
+                    break
+            if ok:
+                current_node = node
+                self.state = self.node2state(node)
+            else:
+                raise RuntimeError()
+        else:
+            dist = 1
+
+        terminated = current_node == self.N_STATES - 1
+        if terminated:
+            reward = 0
+        else:
+            reward = -dist
+        return self.state, reward, terminated, False, {}
+
+    def action_masks(self) -> npt.NDArray[int]:
+        """Actually returns the applicable actions as a whole numpy array."""
+        return np.array(self.applicable_actions())
+
+    def applicable_actions(self) -> list[npt.NDArray[int]]:
+        current_node = self.state2node(self.state)
+        return [np.array((0, -1))] + [
+            np.array((1, node))
+            for node, dist in self.edges_end_nodes_with_distance[current_node]
+        ]
+
+
 class D(
     Domain,
     SingleAgent,
@@ -166,7 +289,7 @@ class D(
     FullyObservable,
     Rewards,
 ):
-    T_state = int  # Type of states
+    T_state = Union[int, gym.spaces.GraphInstance]  # Type of states
     T_observation = T_state  # Type of observations
     T_event = npt.NDArray[int]  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
@@ -176,6 +299,33 @@ class D(
 class GraphWalkDomain(D):
     def __init__(self, state_encoding: StateEncoding = StateEncoding.NATIVE):
         self._gym_env = GraphWalkEnv(state_encoding=state_encoding)
+
+    def _state_reset(self) -> D.T_state:
+        return self._gym_env.reset()[0]
+
+    def _state_step(
+        self, action: D.T_event
+    ) -> TransitionOutcome[D.T_state, Value[D.T_value], D.T_predicate, D.T_info]:
+        state, reward, terminated, truncated, info = self._gym_env.step(action)
+        return TransitionOutcome(
+            state=state, value=Value(reward=reward), termination=terminated, info=info
+        )
+
+    def _get_applicable_actions_from(
+        self, memory: D.T_memory[D.T_state]
+    ) -> D.T_agent[Space[D.T_event]]:
+        return ListSpace(self._gym_env.applicable_actions())
+
+    def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
+        return MaskableMultiDiscreteSpace(nvec=self._gym_env.action_space.nvec)
+
+    def _get_observation_space(self) -> D.T_agent[Space[D.T_observation]]:
+        return GymSpace(gym_space=self._gym_env.observation_space)
+
+
+class HeteroGraphWalkDomain(D):
+    def __init__(self):
+        self._gym_env = HeteroGraphWalkEnv()
 
     def _state_reset(self) -> D.T_state:
         return self._gym_env.reset()[0]
@@ -211,6 +361,16 @@ def graph_walk_with_graph_obs_env():
 
 
 @fixture
+def graph_walk_with_heterograph_obs_env():
+    return HeteroGraphWalkEnv()
+
+
+@fixture
+def action_components_node_flag_indices():
+    return [None, HeteroGraphWalkEnv.POSITION]
+
+
+@fixture
 def graph_walk_domain_factory():
     return GraphWalkDomain
 
@@ -218,3 +378,8 @@ def graph_walk_domain_factory():
 @fixture
 def graph_walk_with_graph_obs_domain_factory():
     return lambda: GraphWalkDomain(state_encoding=StateEncoding.GRAPH)
+
+
+@fixture
+def graph_walk_with_heterograph_obs_domain_factory():
+    return HeteroGraphWalkDomain
