@@ -91,6 +91,9 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
 
         # By default no graph2node components (not even sure to have graph obs) and thus no graph->node gnn
         self.n_graph2node_components = 0
+        self.heterograph2node_flagfeature_by_component: list[Optional[int]] = [
+            None
+        ] * len(action_space.nvec)
         self.action_gnn_class: Optional[type[nn.Module]] = None
         self.action_gnn_kwargs: dict[str, Any] = {}
 
@@ -355,11 +358,13 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             (
                 mlp_extractor_action_component,
                 action_component_net,
+                heterograph2node_flagfeature,
             ),
         ) in enumerate(
             zip(
                 self.mlp_extractors_action,
                 self.action_nets,
+                self.heterograph2node_flagfeature_by_component,
             )
         ):
             # all (batchwise) components for this idx are <0 => no more true components
@@ -405,8 +410,15 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                     action_component_logits_graph: thg.data.Data = action_component_net(
                         enriched_obs
                     )
+                    if heterograph2node_flagfeature is not None:
+                        # keep only nodes with proper flag
+                        nodes_to_keep = enriched_obs.x[
+                            :, heterograph2node_flagfeature
+                        ].nonzero(as_tuple=True)
+                    else:
+                        nodes_to_keep = None
                     action_component_full_logits = unbatch_node_logits(
-                        action_component_logits_graph
+                        action_component_logits_graph, nodes_to_keep=nodes_to_keep
                     )
             else:
                 # only some samples are relevant
@@ -422,14 +434,21 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 else:
                     # graph->node GNN directly from observation graph enriched with previous components
                     # extract relevant samples from batch
-                    enriched_obs = thg.data.Batch.from_data_list(
+                    relevant_enriched_obs = thg.data.Batch.from_data_list(
                         enriched_obs.index_select(indices_samples_with_component)
                     )
                     action_component_logits_graph: thg.data.Data = action_component_net(
-                        enriched_obs
+                        relevant_enriched_obs
                     )
+                    if heterograph2node_flagfeature is not None:
+                        # keep only nodes with proper flag
+                        nodes_to_keep = relevant_enriched_obs.x[
+                            :, heterograph2node_flagfeature
+                        ].nonzero(as_tuple=True)
+                    else:
+                        nodes_to_keep = None
                     action_component_logits = unbatch_node_logits(
-                        action_component_logits_graph
+                        action_component_logits_graph, nodes_to_keep=nodes_to_keep
                     )
                 # fill logits with 0 for irrelevant samples  (will be masked afterwards)
                 action_component_full_logits = th.zeros_like(
@@ -550,8 +569,15 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             (
                 mlp_extractor_action_component,
                 action_component_net,
+                heterograph2node_flagfeature,
             ),
-        ) in enumerate(zip(self.mlp_extractors_action, self.action_nets)):
+        ) in enumerate(
+            zip(
+                self.mlp_extractors_action,
+                self.action_nets,
+                self.heterograph2node_flagfeature_by_component,
+            )
+        ):
 
             # mask for current action component considered
             action_component_mask = extract_action_component_mask(
@@ -576,8 +602,15 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 action_component_logits_graph: thg.data.Data = action_component_net(
                     enriched_obs
                 )
+                if heterograph2node_flagfeature is not None:
+                    # keep only nodes with proper flag
+                    nodes_to_keep = enriched_obs.x[
+                        :, heterograph2node_flagfeature
+                    ].nonzero(as_tuple=True)
+                else:
+                    nodes_to_keep = None
                 action_component_logits = unbatch_node_logits(
-                    action_component_logits_graph
+                    action_component_logits_graph, nodes_to_keep=nodes_to_keep
                 )
 
             # Set marginal distribution dim, logits, and mask
@@ -772,5 +805,74 @@ class AutoregressiveGraph2NodeActorCriticPolicy(AutoregressiveGNNActorCriticPoli
             observation_space,
             action_space,
             lr_schedule,
+            **kwargs,
+        )
+
+
+class AutoregressiveHeteroGraph2NodeActorCriticPolicy(
+    AutoregressiveGraph2NodeActorCriticPolicy
+):
+    """Policy with autoregressive action prediction from hetero graph obs, last action components being graph nodes.
+
+    This is typically used for parametric action where:
+    - first component corresponds to the action type which are represented by some nodes of the graph
+    - other components are parameters that are themselves other nodes of the observation graph
+
+    As for `AutoregressiveGraph2NodeActorCriticPolicy`, we need to specify the numer of components being nodes of the
+    observation graph, but also to know which nodes are of which type. For that we assume that some node features encode
+    that: the new argument `heterograph2node_flagfeature_by_component` specifies component by component which binary
+    node feature decide the nodes that can be used for each component.
+    The resulting action component will be the index of the chosen node among the nodes of the proper type.
+
+    Same hypotheses as for `AutoregressiveGraph2NodeActorCriticPolicy` apply:
+    - action space multidiscrete, but with possibility of components at -1 to encode variable length actions.
+      (e.g. parametric actions whose arity depends on the action type)
+    - action components start with the independent ones then the graph nodes
+    - not all actions are available depending on environment state
+    - the current applicable actions are given via the argument `action_masks`, from `MaskableActorCriticPolicy` API,
+      as a variable-length numpy.array's (for a single sample) or a list of such numpy.array's when evaluating
+      several samples at once.
+
+    """
+
+    def __init__(
+        self,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        lr_schedule: Schedule,
+        heterograph2node_flagfeature_by_component: list[Optional[int]],
+        action_gnn_class: Optional[type[nn.Module]] = None,
+        action_gnn_kwargs: Optional[dict[str, Any]] = None,
+        n_graph2node_components: int = 0,
+        **kwargs: Any
+    ):
+        """
+
+        Args:
+            observation_space:
+            action_space:
+            lr_schedule:
+            heterograph2node_flagfeature_by_component: list, component by component, of integer or None.
+              - None: all nodes can be used a priori for the corresponding component.
+              - integer: this is the index of the binary node feature to use to extract the relevant nodes for this
+                component
+            action_gnn_class: GNN class for graph -> node nets.
+                See `skdecide.hub.solver.utils.gnn.torch_layers.Graph2NodeLayer` for default values.
+            action_gnn_kwargs: kwargs for `action_gnn_class`
+            n_graph2node_components: number of action components that are actually nodes of the obs graph.
+                It is assumed that the action components start with the independent ones then the one that are nodes.
+            **kwargs:
+        """
+        self.heterograph2node_flagfeature_by_component = (
+            heterograph2node_flagfeature_by_component
+        )
+
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            lr_schedule=lr_schedule,
+            action_gnn_class=action_gnn_class,
+            action_gnn_kwargs=action_gnn_kwargs,
+            n_graph2node_components=n_graph2node_components,
             **kwargs,
         )
