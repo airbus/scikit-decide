@@ -38,7 +38,11 @@ from skdecide.builders.domain import (
     SingleAgent,
     TransformedObservable,
 )
-from skdecide.hub.domain.plado.llg_encoder import LLGEncoder
+from skdecide.hub.domain.plado.llg_encoder import (
+    LLGEncoder,
+    NodeLabel,
+    map_nodelabel2int,
+)
 from skdecide.hub.space.gym import (
     BoxSpace,
     DiscreteSpace,
@@ -281,6 +285,29 @@ class BasePladoDomain(D):
         ] = {}
         self._init_state_encoding()
         self._init_action_encoding()
+
+    def get_action_components_node_flag_indices(self) -> list[Optional[int]]:
+        """Give the indices of the node features encoding which node can be used for each action component.
+
+        This is used by autoregressive GNN based solvers that will predict
+        a node of a different type for each component of the action. The node type is encoded in a node feature,
+        potentially different for each component (action nodes then object nodes).
+
+        Not implemented if action_encoding is not multidiscrete;
+
+        Returns:
+            list of node feature indices corresponding to each action component.
+
+        """
+        if self.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
+            if self.state_encoding == StateEncoding.GYM_GRAPH_LLG:
+                return [map_nodelabel2int[NodeLabel.ACTION]] + [
+                    map_nodelabel2int[NodeLabel.OBJECT]
+                ] * self._max_action_arity
+            else:
+                return (1 + self._max_action_arity) * [None]
+        else:
+            raise NotImplementedError()
 
     def _init_state_encoding(self):
         if self.state_encoding == StateEncoding.NATIVE:
