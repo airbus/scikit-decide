@@ -170,3 +170,67 @@ def test_autoregressive_graph2node_ppo_w_skdecide_domain(
         assert (
             len(actions) < max_steps - 1
         )  # optimal would be 2, but not always found...
+
+
+def test_autoregressive_heterograph2node_ppo_w_gym_env(
+    graph_walk_with_heterograph_obs_env, heterograph2node_flagfeature_by_component
+):
+    env = graph_walk_with_heterograph_obs_env
+
+    algo = AutoregressiveGraphPPO(
+        "HeteroGraph2NodePolicy",
+        env,
+        policy_kwargs=dict(
+            heterograph2node_flagfeature_by_component=heterograph2node_flagfeature_by_component
+        ),
+        n_steps=100,
+    )
+    algo.learn(total_timesteps=500)
+
+    # rollout
+    obs, info = env.reset()
+    terminal = False
+    i_step = 0
+    print(f"#{i_step}: obs={obs}, terminal={terminal}")
+
+    max_steps = 20
+
+    while i_step < max_steps and not terminal:
+        i_step += 1
+        action, _ = algo.predict(obs, action_masks=env.action_masks())
+        obs, reward, terminal, truncated, info = env.step(action)
+        print(f"#{i_step}: action={action}, obs={obs}, terminal={terminal}")
+
+    assert i_step < max_steps  # optimal would be 2, but not always found...
+
+
+def test_autoregressive_heterograph2node_ppo_w_skdecide_domain(
+    graph_walk_with_heterograph_obs_domain_factory,
+    heterograph2node_flagfeature_by_component,
+):
+    domain_factory = graph_walk_with_heterograph_obs_domain_factory
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=AutoregressiveGraphPPO,
+        baselines_policy="HeteroGraph2NodePolicy",
+        autoregressive_action=True,
+        learn_config={"total_timesteps": 300},
+        n_steps=100,
+        policy_kwargs=dict(
+            heterograph2node_flagfeature_by_component=heterograph2node_flagfeature_by_component
+        ),
+    ) as solver:
+        solver.solve()
+        max_steps = 20
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=max_steps,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+        observations, actions, values = episodes[0]
+        assert (
+            len(actions) < max_steps - 1
+        )  # optimal would be 2, but not always found...

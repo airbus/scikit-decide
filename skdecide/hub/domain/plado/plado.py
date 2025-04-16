@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import itertools
 import logging
+from collections import defaultdict
 from collections.abc import Hashable, Iterable
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import gymnasium as gym
 import numpy as np
@@ -36,6 +37,11 @@ from skdecide.builders.domain import (
     Sequential,
     SingleAgent,
     TransformedObservable,
+)
+from skdecide.hub.domain.plado.llg_encoder import (
+    LLGEncoder,
+    NodeLabel,
+    map_nodelabel2int,
 )
 from skdecide.hub.space.gym import (
     BoxSpace,
@@ -63,6 +69,7 @@ else:
     from plado.semantics.applicable_actions_generator import ApplicableActionsGenerator
     from plado.semantics.goal_checker import GoalChecker
     from plado.semantics.successor_generator import SuccessorGenerator
+    from plado.semantics.task import AddEffect, Atom, DelEffect, SimpleCondition
     from plado.semantics.task import State as PladoState
     from plado.semantics.task import Task
     from plado.utils import Float
@@ -143,7 +150,9 @@ class D(
     FullyObservable,
     PositiveCosts,
 ):
-    T_state = Union[SkPladoState, GymVectorType]  # Type of states
+    T_state = Union[
+        SkPladoState, GymVectorType, gym.spaces.GraphInstance
+    ]  # Type of states
     T_observation = T_state  # Type of observations
     T_event = Union[PladoAction, int, GymMultidiscreteType]  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
@@ -202,6 +211,16 @@ class ActionSpace(Space[D.T_event]):
 class StateEncoding(Enum):
     NATIVE = "native"  # SkPladoState: hashable version of plado.State
     GYM_VECTOR = "gym-vector"  # flat numpy.array (in particular for RL algorithms)
+    GYM_GRAPH_LLG = "gym-graph-llg"
+    """Lifted learning graph encoding actions and predicates schemes + instance specificities.
+
+    Corresponds more or less to the "LLG" from
+    Chen, D. Z., Thiébaux, S., & Trevizan, F. (2024).
+    Learning Domain-Independent Heuristics for Grounded and Lifted Planning.
+    Proceedings of the AAAI Conference on Artificial Intelligence, 38(18), 20078-20086.
+    https://doi.org/10.1609/aaai.v38i18.29986
+
+    """
 
 
 class ObservationEncoding(Enum):
@@ -231,7 +250,6 @@ class BasePladoDomain(D):
         problem_path: str,
         state_encoding: StateEncoding = StateEncoding.NATIVE,
         action_encoding: ActionEncoding = ActionEncoding.NATIVE,
-        graph_objects_encode_static_facts: bool = True,
     ):
         """
 
@@ -240,15 +258,12 @@ class BasePladoDomain(D):
             problem_path:
             state_encoding:
             action_encoding:
-            graph_objects_encode_static_facts: if state_encoding==StateEncoding.GYM_GRAPH_OBJECTS, decide
-                whether the graph encode also static facts.
 
         """
         self.domain_path: str = domain_path
         self.problem_path: str = problem_path
         self.state_encoding = state_encoding
         self.action_encoding = action_encoding
-        self.graph_objects_encode_static_facts = graph_objects_encode_static_facts
         domain, problem = parse_and_normalize(domain_path, problem_path)
         self.task: Task = Task(domain, problem)
         self.check_goal: GoalChecker = GoalChecker(self.task)
@@ -256,25 +271,53 @@ class BasePladoDomain(D):
             self.task
         )
         self.succ_gen: SuccessorGenerator = SuccessorGenerator(self.task)
-        self.total_cost: int | None = None
+        self.total_cost: Optional[int] = None
         for i, f in enumerate(self.task.functions):
             if f.name == "total-cost":
                 self.total_cost = i
                 break
-        self.cost_functions: set[int] = set(
-            [self.total_cost] if self.total_cost is not None else []
-        )
+        if self.total_cost is None:
+            self.cost_functions = set()
+        else:
+            self.cost_functions = {self.total_cost}
         self._map_transition_value: dict[
             tuple[Hashable, Hashable, Hashable], D.T_value
         ] = {}
         self._init_state_encoding()
         self._init_action_encoding()
 
+    def get_action_components_node_flag_indices(self) -> list[Optional[int]]:
+        """Give the indices of the node features encoding which node can be used for each action component.
+
+        This is used by autoregressive GNN based solvers that will predict
+        a node of a different type for each component of the action. The node type is encoded in a node feature,
+        potentially different for each component (action nodes then object nodes).
+
+        Not implemented if action_encoding is not multidiscrete;
+
+        Returns:
+            list of node feature indices corresponding to each action component.
+
+        """
+        if self.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
+            if self.state_encoding == StateEncoding.GYM_GRAPH_LLG:
+                return [map_nodelabel2int[NodeLabel.ACTION]] + [
+                    map_nodelabel2int[NodeLabel.OBJECT]
+                ] * self._max_action_arity
+            else:
+                return (1 + self._max_action_arity) * [None]
+        else:
+            raise NotImplementedError()
+
     def _init_state_encoding(self):
         if self.state_encoding == StateEncoding.NATIVE:
             ...
         elif self.state_encoding == StateEncoding.GYM_VECTOR:
             self._init_state_encoding_vector()
+        elif self.state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            self._llg_encoder = LLGEncoder(
+                task=self.task, cost_functions=self.cost_functions
+            )
         else:
             raise NotImplementedError()
 
@@ -295,6 +338,8 @@ class BasePladoDomain(D):
             )
         elif self.state_encoding == StateEncoding.GYM_VECTOR:
             return self._state2vector(state)
+        elif self.state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            return self._llg_encoder.encode(state)
         else:
             raise NotImplementedError()
 
@@ -303,6 +348,8 @@ class BasePladoDomain(D):
             return state.to_plado()
         elif self.state_encoding == StateEncoding.GYM_VECTOR:
             return self._vector2state(vector=state)
+        elif self.state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            return self._llg_encoder.decode(state)
         else:
             raise NotImplementedError()
 
@@ -311,6 +358,11 @@ class BasePladoDomain(D):
             return state
         elif self.state_encoding == StateEncoding.GYM_VECTOR:
             return tuple(state)
+        elif self.state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            return SkPladoState.from_plado(
+                state=self._llg_encoder.decode(state),
+                cost_functions=self.cost_functions,
+            )
         else:
             raise NotImplementedError()
 
@@ -393,6 +445,8 @@ class BasePladoDomain(D):
                 ),
                 dtype=dtype,
             )
+        elif self.state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            return GymSpace(self._llg_encoder.graph_space)
         else:
             raise NotImplementedError()
 

@@ -39,25 +39,25 @@ domain_factory = lambda: PladoTransformedObservablePddlDomain(
     action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
 )
 
-# Feature extraction via GNN
-with StableBaseline(
-    domain_factory=domain_factory,
-    algo_class=AutoregressiveGraphPPO,
-    baselines_policy="GraphInputPolicy",
-    autoregressive_action=True,
-    learn_config={"total_timesteps": 10_000},
-    verbose=1,
-) as solver:
-    solver.solve()
-    max_steps = 50
-    episodes = rollout(
-        domain=domain_factory(),
-        solver=solver,
-        max_steps=max_steps,
-        num_episodes=1,
-        render=False,
-        return_episodes=True,
-    )
+# # Feature extraction via GNN
+# with StableBaseline(
+#     domain_factory=domain_factory,
+#     algo_class=AutoregressiveGraphPPO,
+#     baselines_policy="GraphInputPolicy",
+#     autoregressive_action=True,
+#     learn_config={"total_timesteps": 10_000},
+#     verbose=1,
+# ) as solver:
+#     solver.solve()
+#     max_steps = 50
+#     episodes = rollout(
+#         domain=domain_factory(),
+#         solver=solver,
+#         max_steps=max_steps,
+#         num_episodes=1,
+#         render=False,
+#         return_episodes=True,
+#     )
 
 
 # + node prediction via GNN for actions parameters
