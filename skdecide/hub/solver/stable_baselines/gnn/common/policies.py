@@ -23,10 +23,8 @@ from torch import nn
 from torch.nn.functional import pad
 
 from skdecide.hub.solver.utils.gnn.torch_layers import Graph2NodeLayer
-from skdecide.hub.solver.utils.gnn.torch_utils import (
-    extract_module_parameters_values,
-    unbatch_node_logits,
-)
+from skdecide.hub.solver.utils.gnn.torch_utils import unbatch_node_logits
+from skdecide.hub.solver.utils.torch.utils import extract_module_parameters_values
 
 from .preprocessing import preprocess_obs
 from .torch_layers import CombinedFeaturesExtractor, GraphFeaturesExtractor
