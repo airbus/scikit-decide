@@ -24,6 +24,14 @@ class StateEncoding(Enum):
     GRAPH = "graph"
 
 
+class ActionEncoding(Enum):
+    NEXT_NODE = "next-node"  # action specifies only action type + next node
+    BOTH_NODES = (
+        "both-nodes"  # action specifies action type + starting or next node + next node
+    )
+    # (purely for unit testing purposes)
+
+
 class GraphWalkEnv(gym.Env[int, int]):
     """Custom env.
 
@@ -46,21 +54,29 @@ class GraphWalkEnv(gym.Env[int, int]):
     """
 
     N_STATES = 5
-
-    action_space = gym.spaces.MultiDiscrete((2, N_STATES))
-
     state = 0
 
     edges_end_nodes = [[1, 3], [2], [4], [4], []]  # start node 0 -> 1,3
 
-    def __init__(self, state_encoding: StateEncoding = StateEncoding.NATIVE):
+    def __init__(
+        self,
+        state_encoding: StateEncoding = StateEncoding.NATIVE,
+        action_encoding: ActionEncoding = ActionEncoding.BOTH_NODES,
+    ):
         self.state_encoding = state_encoding
+        self.action_encoding = action_encoding
         if self.state_encoding == StateEncoding.NATIVE:
             self.observation_space = gym.spaces.Discrete(self.N_STATES)
         else:
             self.observation_space = gym.spaces.Graph(
                 node_space=gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.int8),
                 edge_space=None,
+            )
+        if self.action_encoding == ActionEncoding.NEXT_NODE:
+            self.action_space = gym.spaces.MultiDiscrete((2, self.N_STATES))
+        else:
+            self.action_space = gym.spaces.MultiDiscrete(
+                (2, self.N_STATES, self.N_STATES)
             )
 
     def node2state(self, node: int):
@@ -98,7 +114,12 @@ class GraphWalkEnv(gym.Env[int, int]):
         self, action: npt.NDArray[int]
     ) -> tuple[int, SupportsFloat, bool, bool, dict[str, Any]]:
         current_node = self.state2node(self.state)
-        action_id, node = action
+        if self.action_encoding == ActionEncoding.NEXT_NODE:
+            action_id, node = action
+        else:
+            action_id, start_node, node = action
+            if action_id == 1 and start_node != current_node and start_node != node:
+                raise RuntimeError()
         if action_id == 1:
             if node not in self.edges_end_nodes[current_node]:
                 raise RuntimeError()
@@ -118,9 +139,22 @@ class GraphWalkEnv(gym.Env[int, int]):
 
     def applicable_actions(self) -> list[npt.NDArray[int]]:
         current_node = self.state2node(self.state)
-        return [np.array((0, -1))] + [
-            np.array((1, node)) for node in self.edges_end_nodes[current_node]
-        ]
+        if self.action_encoding == ActionEncoding.NEXT_NODE:
+            return [np.array((0, -1))] + [
+                np.array((1, node)) for node in self.edges_end_nodes[current_node]
+            ]
+        else:
+            return (
+                [np.array((0, -1, -1))]
+                + [
+                    np.array((1, current_node, node))
+                    for node in self.edges_end_nodes[current_node]
+                ]
+                + [
+                    np.array((1, node, node))
+                    for node in self.edges_end_nodes[current_node]
+                ]
+            )
 
 
 class D(

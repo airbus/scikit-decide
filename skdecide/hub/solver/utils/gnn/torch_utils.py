@@ -3,7 +3,6 @@ from typing import Optional, Union
 import gymnasium as gym
 import numpy as np
 import torch as th
-import torch.nn
 import torch_geometric as thg
 from torch.nn.functional import pad
 
@@ -68,9 +67,3 @@ def unbatch_node_logits(data: thg.data.Data) -> th.Tensor:
             )
         )
     return node_logits
-
-
-def extract_module_parameters_values(m: torch.nn.Module) -> dict[str, np.ndarray]:
-    return {
-        name: np.array(param.data.cpu().numpy()) for name, param in m.named_parameters()
-    }

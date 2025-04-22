@@ -37,9 +37,9 @@ class MultiMaskableCategoricalDistribution(Distribution):
     def __init__(self, distributions: list[MaskableCategoricalDistribution]):
         super().__init__()
         self.distributions = distributions
-        self._ind_valid_samples_by_distributions: list[
-            Optional[tuple[th.Tensor, th.Tensor]]
-        ] = [None] * len(distributions)
+        self._ind_valid_samples_by_distributions: list[Optional[th.Tensor]] = [
+            None
+        ] * len(distributions)
         self._all_valid_samples_by_distributions: list[bool] = [False] * len(
             distributions
         )
@@ -58,8 +58,8 @@ class MultiMaskableCategoricalDistribution(Distribution):
         self.distributions[i_component].apply_masking(masks=component_masks)
         # valid samples: at least one 1 in the corresponding mask
         valid_samples = component_masks.sum(-1) > 0
-        self._any_valid_samples_by_distributions[i_component] = valid_samples.all()
-        self._all_valid_samples_by_distributions[i_component] = valid_samples.any()
+        self._any_valid_samples_by_distributions[i_component] = valid_samples.any()
+        self._all_valid_samples_by_distributions[i_component] = valid_samples.all()
         # store valid sample indices if not all valid
         if (
             self._any_valid_samples_by_distributions[i_component]
@@ -67,7 +67,7 @@ class MultiMaskableCategoricalDistribution(Distribution):
         ):
             self._ind_valid_samples_by_distributions[
                 i_component
-            ] = valid_samples.nonzero(as_tuple=True)
+            ] = valid_samples.nonzero(as_tuple=True)[0]
 
     def set_proba_distribution_component(
         self, i_component: int, action_component_logits: th.Tensor
@@ -108,7 +108,7 @@ class MultiMaskableCategoricalDistribution(Distribution):
         self, i_component: int
     ) -> Optional[tuple[int, ...]]:
         distribution = self.distributions[i_component]
-        if self.distribution.distribution is None:
+        if distribution.distribution is None:
             return None
         else:
             return distribution.distribution.logits.shape[:-1]
@@ -132,8 +132,10 @@ class MultiMaskableCategoricalDistribution(Distribution):
                     ind_valid_samples = self._ind_valid_samples_by_distributions[
                         i_component
                     ]
-                    marginal_logp[ind_valid_samples] = marginal_dist.log_prob(
-                        x[ind_valid_samples, i_component]
+                    marginal_logp.scatter_(
+                        dim=0,
+                        index=ind_valid_samples,
+                        src=marginal_dist.log_prob(x[ind_valid_samples, i_component]),
                     )
                 marginal_logps.append(marginal_logp)
 
@@ -158,7 +160,9 @@ class MultiMaskableCategoricalDistribution(Distribution):
                     ind_valid_samples = self._ind_valid_samples_by_distributions[
                         i_component
                     ]
-                    marginal_entropy[ind_valid_samples] = marginal_dist.entropy()
+                    marginal_entropy.scatter_(
+                        dim=0, index=ind_valid_samples, src=marginal_dist.entropy()
+                    )
                 marginal_entropies.append(marginal_entropy)
 
         return sum(marginal_entropies)

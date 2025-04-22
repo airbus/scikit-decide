@@ -16,6 +16,7 @@ from stable_baselines3.common.torch_layers import (
 )
 from stable_baselines3.common.type_aliases import Schedule
 from torch import nn
+from torch.nn import ModuleList
 from torch.nn import functional as F
 
 from skdecide.hub.solver.stable_baselines.autoregressive.common.distributions import (
@@ -150,19 +151,21 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         previous_action_components_features_dims = np.cumsum(
             [0] + list(self.action_space.nvec[:-1])
         )
-        self.mlp_extractors_action = [
-            MlpExtractor(
-                self.features_dim + previous_action_components_features_dim,
-                net_arch=net_arch_action,
-                activation_fn=self.activation_fn,
-                device=self.device,
-            )
-            if i_component < self._n_graphindependent_components
-            else None
-            for i_component, previous_action_components_features_dim in enumerate(
-                previous_action_components_features_dims
-            )
-        ]
+        self.mlp_extractors_action = ModuleList(
+            [
+                MlpExtractor(
+                    self.features_dim + previous_action_components_features_dim,
+                    net_arch=net_arch_action,
+                    activation_fn=self.activation_fn,
+                    device=self.device,
+                )
+                if i_component < self._n_graphindependent_components
+                else None
+                for i_component, previous_action_components_features_dim in enumerate(
+                    previous_action_components_features_dims
+                )
+            ]
+        )
 
     def _build(self, lr_schedule: Schedule) -> None:
         self._build_mlp_extractor()
@@ -193,20 +196,23 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             )
 
         # action nets
-        self.action_nets = [
-            nn.Linear(
-                mlp_extractor_action.latent_dim_pi, self.action_space.nvec[i_component]
-            )
-            if i_component < self._n_graphindependent_components
-            else Graph2NodeLayer(
-                observation_space=enriched_observation_space,
-                gnn_class=self.action_gnn_class,
-                gnn_kwargs=self.action_gnn_kwargs,
-            )
-            for i_component, mlp_extractor_action in enumerate(
-                self.mlp_extractors_action,
-            )
-        ]
+        self.action_nets = ModuleList(
+            [
+                nn.Linear(
+                    mlp_extractor_action.latent_dim_pi,
+                    self.action_space.nvec[i_component],
+                )
+                if i_component < self._n_graphindependent_components
+                else Graph2NodeLayer(
+                    observation_space=enriched_observation_space,
+                    gnn_class=self.action_gnn_class,
+                    gnn_kwargs=self.action_gnn_kwargs,
+                )
+                for i_component, mlp_extractor_action in enumerate(
+                    self.mlp_extractors_action,
+                )
+            ]
+        )
 
         if self.ortho_init:
             module_gains = {
@@ -466,6 +472,9 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                         actions_component + node_shift_by_sample
                     )[actions_component >= 0]
                 )  # keep only relevant samples (remove -1 components)
+                # NB: avoid torch.autograd.backward issue, we cannot change inplace node features
+                # (as already part of previous component gradient computation)
+                enriched_obs.x = copy.copy(enriched_obs.x)
                 enriched_obs.x[
                     component_nodes, n_node_features_before_position_feature + position
                 ] = 1
@@ -673,19 +682,24 @@ def _encode_actions_first_components_for_features(
     actions: th.Tensor, action_space: spaces.MultiDiscrete, n_components: int
 ) -> th.Tensor:
     # Tensor concatenation of one hot encodings of first categorical sub-spaces
-    return th.cat(
-        [
-            F.one_hot(
-                actions[:, i_component].long() + 1,  # -1 -> mapped to 0
-                num_classes=int(action_space.nvec[i_component]) + 1,  # new category: -1
-            )[
-                :, 1:
-            ]  # remove new category
-            # we loop over action components (except last one)
-            for i_component in range(n_components)
-        ],
-        dim=-1,
-    )
+    if n_components > 0:
+        return th.cat(
+            [
+                F.one_hot(
+                    actions[:, i_component].long() + 1,  # -1 -> mapped to 0
+                    num_classes=int(action_space.nvec[i_component])
+                    + 1,  # new category: -1
+                )[
+                    :, 1:
+                ]  # remove new category
+                # we loop over action components (except last one)
+                for i_component in range(n_components)
+            ],
+            dim=-1,
+        )
+    else:
+        # 0 components => empty tensor with proper batch size
+        return actions[:, :0]
 
 
 class AutoregressiveGNNActorCriticPolicy(
@@ -745,7 +759,7 @@ class AutoregressiveGraph2NodeActorCriticPolicy(AutoregressiveGNNActorCriticPoli
         lr_schedule: Schedule,
         action_gnn_class: Optional[type[nn.Module]] = None,
         action_gnn_kwargs: Optional[dict[str, Any]] = None,
-        n_graph2node_components: int = 1,
+        n_graph2node_components: Optional[int] = None,
         **kwargs: Any
     ):
         """
