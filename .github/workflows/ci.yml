@@ -581,7 +581,7 @@ jobs:
           if [ "$python_version" = "3.12" ]; then
             pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" pytest-cases "matplotlib<3.10" "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib"
           else
-            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna pytest-cases "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib"
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna pytest-cases "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib" "dm-haiku<0.0.14"
           fi
 
       - name: Test with pytest
@@ -683,7 +683,7 @@ jobs:
           if [ "$python_version" = "3.12" ]; then
             pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" pytest-cases "matplotlib<3.10" "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib"
           else
-            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna pytest-cases "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib"
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna pytest-cases "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib" "dm-haiku<0.0.14"
           fi
 
       - name: Test with pytest
@@ -783,7 +783,7 @@ jobs:
           if [ "$python_version" = "3.12" ]; then
             pip install ${wheelfile}[all] pytest "pygame>=2.5" "cffi>=1.17" docopt commonmark optuna pytest-cases "matplotlib<3.10" "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib"
           else
-            pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna pytest-cases "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib"
+            pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna pytest-cases "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib" "dm-haiku<0.0.14"
           fi
 
       - name: Test with pytest
