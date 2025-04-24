@@ -35,8 +35,12 @@ if test -d .ccache; then
     ccache --set-config compression=true
 fi
 
-# Uses the Python version requested as first argument, otherwise use 3.8 by default
-PYTHON_VERSION=${1:-3.8}
+# use cmake installed manually
+export PATH=/opt/python/cp310-cp310/bin:$PATH
+cmake --version
+
+# Uses the Python version requested as first argument, otherwise use 3.10 by default
+PYTHON_VERSION=${1:-3.10}
 #
 for PYBIN in /opt/python/cp${PYTHON_VERSION/./}*/bin; do
     (cd /io/ && "${PYBIN}/python" -m build --sdist --wheel --outdir /io/temp-wheels)
