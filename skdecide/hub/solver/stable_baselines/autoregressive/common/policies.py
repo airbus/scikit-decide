@@ -280,13 +280,9 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         assert len(actions.shape) == 2
 
         # features
-        if self._n_graphindependent_components > 0:
-            features = self.extract_features(obs)
-            # hyp: features are flat
-            assert len(features.shape) == 2
-        else:
-            # not needed
-            features = None
+        features = self.extract_features(obs)
+        # hyp: features are flat
+        assert len(features.shape) == 2
 
         # batch_dim?
         if features is None:
@@ -322,19 +318,14 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 n_components=n_components_to_encode,
             )
         )
-        if features is not None:
-            full_features = th.cat(
-                (features, encoded_graph_independent_action_components), -1
-            )
-            n_features_by_component = features.shape[-1] + np.cumsum(
-                [0]
-                + list(
-                    self.action_space.nvec[: self._n_graphindependent_components - 1]
-                )
-            )
-        else:
-            full_features = None
-            n_features_by_component = [0] * len(self.action_space.nvec)
+        full_features = th.cat(
+            (features, encoded_graph_independent_action_components), -1
+        )
+        n_features_by_component = features.shape[-1] + np.cumsum(
+            [0]
+            + list(self.action_space.nvec[: self._n_graphindependent_components - 1])
+        )
+
         if self.n_graph2node_components > 0:
             # node features
             # + onehot encoded (graph independent) action components (concatenate once for efficiency)
@@ -576,6 +567,13 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         # init enriched observation (graph + previous action components)
         if self.n_graph2node_components > 0:
             enriched_obs = copy.copy(observation)
+            if self._n_graphindependent_components == 0:
+                # no graph-independent components to first encode => init node feature encoding position of each node
+                # in remaining components
+                (
+                    n_node_features_before_position_feature,
+                    enriched_obs,
+                ) = self._add_position_feature_to_graph_obs(enriched_obs=enriched_obs)
         else:
             enriched_obs = None
 
@@ -681,23 +679,12 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                     else:
                         # last graph-independent component => init node feature encoding position of each node
                         # in remaining components
-                        if self.n_graph2node_components > 0:
-                            n_node_features_before_position_feature = (
-                                enriched_obs.x.shape[1]
-                            )
-                            enriched_obs.x = th.cat(
-                                (
-                                    enriched_obs.x,
-                                    th.zeros(
-                                        (
-                                            len(enriched_obs.x),
-                                            self.n_graph2node_components,
-                                        ),
-                                        dtype=enriched_obs.x.dtype,
-                                    ),
-                                ),
-                                -1,
-                            )
+                        (
+                            n_node_features_before_position_feature,
+                            enriched_obs,
+                        ) = self._add_position_feature_to_graph_obs(
+                            enriched_obs=enriched_obs
+                        )
                 else:  # graph-node component
                     # add position among graph node components:
                     # ie a 1 for corresponding node (row) at corresponding position (column)
@@ -717,6 +704,25 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
         ]  # add a batch dimension
 
         return actions
+
+    def _add_position_feature_to_graph_obs(
+        self, enriched_obs: thg.data.Data
+    ) -> tuple[int, thg.data.Data]:
+        n_node_features_before_position_feature = enriched_obs.x.shape[1]
+        enriched_obs.x = th.cat(
+            (
+                enriched_obs.x,
+                th.zeros(
+                    (
+                        len(enriched_obs.x),
+                        self.n_graph2node_components,
+                    ),
+                    dtype=enriched_obs.x.dtype,
+                ),
+            ),
+            -1,
+        )
+        return n_node_features_before_position_feature, enriched_obs
 
 
 def _encode_actions_first_components_for_features(
