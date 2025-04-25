@@ -29,7 +29,9 @@ class GraphFeaturesExtractor(nn.Module):
             - If gnn is given, should not be None and should match the output of gnn
             - If gnn is not given, will be used to generate it. By default, gnn_out_dim = 2 * features_dim
         gnn_class: GNN network class (for instance chosen from `torch_geometric.nn.models` used to embed the graph observations)
+             It must accept "in_channels" as keyword argument.
         gnn_kwargs: used by `gnn_class.__init__()`. Without effect if `gnn_class` is None.
+            The key "in_channels" will be overriden (or created) to be mapped to the node space dimension.
         reduction_layer_class: network class to be plugged after the gnn to get a fixed number of features.
         reduction_layer_kwargs: used by `reduction_layer_class.__init__()`. Without effect if `reduction_layer_class` is None.
 
@@ -58,8 +60,8 @@ class GraphFeaturesExtractor(nn.Module):
                     "and should match `gnn` output."
                 )
 
+        node_features_dim = int(np.prod(observation_space.node_space.shape))
         if gnn_class is None:
-            node_features_dim = int(np.prod(observation_space.node_space.shape))
             self.gnn = thg.nn.models.GCN(
                 in_channels=node_features_dim,
                 hidden_channels=gnn_out_dim,
@@ -69,6 +71,9 @@ class GraphFeaturesExtractor(nn.Module):
         else:
             if gnn_kwargs is None:
                 gnn_kwargs = {}
+            else:
+                gnn_kwargs = dict(gnn_kwargs)
+            gnn_kwargs["in_channels"] = node_features_dim
             self.gnn = gnn_class(**gnn_kwargs)
 
         if reduction_layer_class is None:
@@ -135,10 +140,12 @@ class Graph2NodeLayer(nn.Module):
     Args:
         observation_space:
         gnn_class: GNN network class (for instance chosen from `torch_geometric.nn.models` used to embed the graph observations)
+            It must accept "in_channels" and "out_channels" as keyword arguments.
             If specified, but not gnn_kwargs, we assume that it accepts the same args as `torch_geometric.nn.models.basic_gnn.BasicGNN`,
             and set them to 4 layers, 128 hidden channels, 1 out channel, and the in channels corresponding to observation_space.
         gnn_kwargs: used by `gnn_class.__init__()`. Without effect if `gnn_class` is None.
-            Should use as input channels the observation space dimension and 1 as output channels.
+            The keys "in_channels" and "out_channels" will be overriden (or created) to be mapped resp.
+            to the node space dimension and to 1.
 
     """
 
@@ -151,10 +158,15 @@ class Graph2NodeLayer(nn.Module):
     ):
         super().__init__()
 
+        observation_node_features_dim = int(np.prod(observation_space.node_space.shape))
+
+        if gnn_kwargs is not None:
+            gnn_kwargs = dict(gnn_kwargs)
+            gnn_kwargs["in_channels"] = observation_node_features_dim
+            gnn_kwargs["out_channels"] = 1
+
         if gnn_kwargs is None or gnn_class is None:
-            observation_node_features_dim = int(
-                np.prod(observation_space.node_space.shape)
-            )
+
             gnn_kwargs = dict(
                 in_channels=observation_node_features_dim,
                 hidden_channels=128,

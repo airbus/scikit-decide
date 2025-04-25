@@ -38,6 +38,7 @@ def test_ppo(unmasked_graph_domain_factory):
         algo_class=GraphPPO,
         baselines_policy="GraphInputPolicy",
         learn_config={"total_timesteps": 100},
+        n_steps=100,
     ) as solver:
 
         solver.solve()
@@ -76,6 +77,7 @@ def test_a2c(unmasked_jsp_domain_factory):
         algo_class=GraphA2C,
         baselines_policy="GraphInputPolicy",
         learn_config={"total_timesteps": 100},
+        n_steps=100,
     ) as solver:
 
         solver.solve()
@@ -90,20 +92,15 @@ def test_a2c(unmasked_jsp_domain_factory):
 
 def test_ppo_user_gnn(caplog, unmasked_jsp_domain_factory, my_gnn_class, my_gnn_kwargs):
     domain_factory = unmasked_jsp_domain_factory
-    domain = domain_factory()
-    node_features_dim = int(
-        np.prod(domain.get_observation_space().unwrapped().node_space.shape)
-    )
     gnn_out_dim = 64
     gnn_class = my_gnn_class
-    gnn_kwargs = my_gnn_kwargs(
-        node_features_dim=node_features_dim, gnn_out_dim=gnn_out_dim
-    )
+    gnn_kwargs = my_gnn_kwargs(gnn_out_dim=gnn_out_dim)
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=GraphPPO,
         baselines_policy="GraphInputPolicy",
         learn_config={"total_timesteps": 100},
+        n_steps=100,
         policy_kwargs=dict(
             features_extractor_class=GraphFeaturesExtractor,
             features_extractor_kwargs=dict(
@@ -123,7 +120,7 @@ def test_ppo_user_gnn(caplog, unmasked_jsp_domain_factory, my_gnn_class, my_gnn_
             num_episodes=1,
             render=False,
         )
-    assert gnn_class(**gnn_kwargs).warning() in caplog.text
+    assert gnn_class(in_channels=1, **gnn_kwargs).warning() in caplog.text
 
 
 def test_ppo_user_reduction_layer(
@@ -145,6 +142,7 @@ def test_ppo_user_reduction_layer(
         algo_class=GraphPPO,
         baselines_policy="GraphInputPolicy",
         learn_config={"total_timesteps": 100},
+        n_steps=100,
         policy_kwargs=dict(
             features_extractor_class=GraphFeaturesExtractor,
             features_extractor_kwargs=dict(
@@ -174,6 +172,7 @@ def test_maskable_ppo(graph_domain_factory):
         algo_class=MaskableGraphPPO,
         baselines_policy="GraphInputPolicy",
         learn_config={"total_timesteps": 100},
+        n_steps=100,
         use_action_masking=True,
     ) as solver:
 
@@ -201,6 +200,7 @@ def test_dict_ppo(unmasked_jsp_dict_domain_factory):
         algo_class=GraphPPO,
         baselines_policy="MultiInputPolicy",
         learn_config={"total_timesteps": 100},
+        n_steps=100,
     ) as solver:
 
         solver.solve()
@@ -220,6 +220,7 @@ def test_dict_maskable_ppo(jsp_dict_domain_factory):
         algo_class=MaskableGraphPPO,
         baselines_policy="MultiInputPolicy",
         learn_config={"total_timesteps": 100},
+        n_steps=100,
         use_action_masking=True,
     ) as solver:
 
@@ -245,6 +246,7 @@ def test_dict_a2c(unmasked_jsp_dict_domain_factory):
         algo_class=GraphA2C,
         baselines_policy="MultiInputPolicy",
         learn_config={"total_timesteps": 100},
+        n_steps=100,
     ) as solver:
         solver.solve()
         rollout(

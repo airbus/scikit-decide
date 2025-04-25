@@ -600,9 +600,8 @@ class MyGNN(thg.nn.models.GAT):
         return self.LOG_SENTENCE + f" custom_param={self.custom_param}"
 
 
-def my_gnn_kwargs_fn(node_features_dim: int, gnn_out_dim: int) -> dict[str, Any]:
+def my_gnn_kwargs_fn(gnn_out_dim: int) -> dict[str, Any]:
     return dict(
-        in_channels=node_features_dim,
         hidden_channels=gnn_out_dim,
         num_layers=2,
         dropout=0.2,

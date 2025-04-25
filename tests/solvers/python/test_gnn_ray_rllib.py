@@ -60,15 +60,9 @@ def test_ppo_user_gnn(
     caplog,
 ):
     domain_factory = unmasked_jsp_domain_factory
-    domain = domain_factory()
-    node_features_dim = int(
-        np.prod(domain.get_observation_space().unwrapped().node_space.shape)
-    )
     gnn_out_dim = 64
     gnn_class = my_gnn_class
-    gnn_kwargs = my_gnn_kwargs(
-        node_features_dim=node_features_dim, gnn_out_dim=gnn_out_dim
-    )
+    gnn_kwargs = my_gnn_kwargs(gnn_out_dim=gnn_out_dim)
 
     solver_kwargs = dict(
         algo_class=GraphPPO,
@@ -93,7 +87,7 @@ def test_ppo_user_gnn(
             render=False,
         )
 
-    assert gnn_class(**gnn_kwargs).warning() in caplog.text
+    assert gnn_class(in_channels=1, **gnn_kwargs).warning() in caplog.text
 
 
 def test_ppo_user_reduction_layer(
@@ -207,14 +201,9 @@ def test_ppo_masked_user_gnn(
     caplog,
 ):
     domain_factory = jsp_domain_factory
-    node_features_dim = int(
-        np.prod(domain_factory().get_observation_space().unwrapped().node_space.shape)
-    )
     gnn_out_dim = 64
     gnn_class = my_gnn_class
-    gnn_kwargs = my_gnn_kwargs(
-        node_features_dim=node_features_dim, gnn_out_dim=gnn_out_dim
-    )
+    gnn_kwargs = my_gnn_kwargs(gnn_out_dim=gnn_out_dim)
 
     solver_kwargs = dict(
         algo_class=GraphPPO,
@@ -232,7 +221,7 @@ def test_ppo_masked_user_gnn(
         assert solver._action_masking and solver._is_graph_obs
         with caplog.at_level(logging.WARNING):
             solver.solve()
-    assert gnn_class(**gnn_kwargs).warning() in caplog.text
+    assert gnn_class(in_channels=1, **gnn_kwargs).warning() in caplog.text
 
 
 def test_dict_ppo_masked_user_gnn(
@@ -244,19 +233,9 @@ def test_dict_ppo_masked_user_gnn(
     caplog,
 ):
     domain_factory = jsp_dict_domain_factory
-    node_features_dim = int(
-        np.prod(
-            domain_factory()
-            .get_observation_space()
-            .unwrapped()["graph"]
-            .node_space.shape
-        )
-    )
     gnn_out_dim = 64
     gnn_class = my_gnn_class
-    gnn_kwargs = my_gnn_kwargs(
-        node_features_dim=node_features_dim, gnn_out_dim=gnn_out_dim
-    )
+    gnn_kwargs = my_gnn_kwargs(gnn_out_dim=gnn_out_dim)
 
     solver_kwargs = dict(
         algo_class=GraphPPO,
@@ -274,7 +253,7 @@ def test_dict_ppo_masked_user_gnn(
         assert solver._action_masking and solver._is_graph_multiinput_obs
         with caplog.at_level(logging.WARNING):
             solver.solve()
-    assert gnn_class(**gnn_kwargs).warning() in caplog.text
+    assert gnn_class(in_channels=1, **gnn_kwargs).warning() in caplog.text
 
 
 def test_graph2node_ppo(
