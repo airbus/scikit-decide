@@ -7,7 +7,7 @@ import torch_geometric as thg
 from torch import nn
 from torch_geometric.nn import global_max_pool
 
-from skdecide.hub.solver.utils.gnn.torch_utils import extract_module_parameters_values
+from skdecide.hub.solver.utils.torch.utils import extract_module_parameters_values
 
 
 class GraphFeaturesExtractor(nn.Module):

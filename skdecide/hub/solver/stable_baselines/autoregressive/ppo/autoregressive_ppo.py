@@ -11,6 +11,7 @@ from skdecide.hub.solver.stable_baselines.autoregressive.common.policies import 
     AutoregressiveActorCriticPolicy,
     AutoregressiveGNNActorCriticPolicy,
     AutoregressiveGraph2NodeActorCriticPolicy,
+    AutoregressiveHeteroGraph2NodeActorCriticPolicy,
 )
 
 
@@ -51,4 +52,5 @@ class AutoregressiveGraphPPO(
     policy_aliases: ClassVar[dict[str, type[BasePolicy]]] = {
         "GraphInputPolicy": AutoregressiveGNNActorCriticPolicy,
         "Graph2NodePolicy": AutoregressiveGraph2NodeActorCriticPolicy,
+        "HeteroGraph2NodePolicy": AutoregressiveHeteroGraph2NodeActorCriticPolicy,
     }
