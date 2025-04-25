@@ -6,8 +6,10 @@
 import os
 import random
 
+import gymnasium as gym
 import numpy as np
 import pytest
+import torch as th
 from pytest_cases import fixture, fixture_union, param_fixture
 from ray.rllib.algorithms.dqn import DQN
 
@@ -21,6 +23,7 @@ from skdecide.hub.domain.plado import (
     PladoTransformedObservablePPddlDomain,
     StateEncoding,
 )
+from skdecide.hub.domain.plado.llg_encoder import decode_llg
 from skdecide.hub.domain.plado.plado import BasePladoDomain
 from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.solver.ray_rllib import RayRLlib
@@ -29,12 +32,15 @@ from skdecide.hub.solver.stable_baselines.autoregressive.ppo.autoregressive_ppo 
     AutoregressiveGraphPPO,
     AutoregressivePPO,
 )
+from skdecide.hub.solver.utils.gnn.torch_layers import Graph2NodeLayer
+from skdecide.hub.solver.utils.torch.utils import extract_module_parameters_values
 
 try:
     import plado
 except ImportError:
     pytest.skip("plado not available", allow_module_level=True)
-
+else:
+    from plado.semantics.task import State as PladoState
 
 test_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -80,9 +86,12 @@ def plado_fully_observable_domain_factory(
     pddl_domain_problem_paths, state_encoding, action_encoding
 ):
     domain_path, problem_path = pddl_domain_problem_paths
-    if "agricola" in domain_path and action_encoding == ActionEncoding.GYM_DISCRETE:
-        pytest.skip("Discrete action encoding not tractable for agricola domain.")
+    if "agricola" in domain_path:
+        if action_encoding == ActionEncoding.GYM_DISCRETE:
+            pytest.skip("Discrete action encoding not tractable for agricola domain.")
     if "tireworld" in domain_path:
+        if state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            pytest.skip("LLG encoding not implemented yet for PPDDL.")
         plado_domain_cls = PladoPPddlDomain
     else:
         plado_domain_cls = PladoPddlDomain
@@ -99,8 +108,9 @@ def plado_partiallyobservable_domain_factory(
     pddl_domain_problem_paths, obs_encoding, action_encoding
 ):
     domain_path, problem_path = pddl_domain_problem_paths
-    if "agricola" in domain_path and action_encoding == ActionEncoding.GYM_DISCRETE:
-        pytest.skip("Discrete action encoding not tractable for agricola domain.")
+    if "agricola" in domain_path:
+        if action_encoding == ActionEncoding.GYM_DISCRETE:
+            pytest.skip("Discrete action encoding not tractable for agricola domain.")
     if "tireworld" in domain_path:
         plado_domain_cls = PladoTransformedObservablePPddlDomain
     else:
@@ -123,6 +133,8 @@ plado_domain_factory = fixture_union(
 def plado_ppddl_domain_factory(
     tireworld_domain_problem_paths, state_encoding, action_encoding
 ):
+    if state_encoding == StateEncoding.GYM_GRAPH_LLG:
+        pytest.skip("LLG encoding not implemented yet for PPDDL.")
     domain_path, problem_path = tireworld_domain_problem_paths
     return lambda: PladoPPddlDomain(
         domain_path=domain_path,
@@ -179,14 +191,23 @@ def plado_gym_autoregressive_domain_factory(blocksworld_domain_problem_paths):
 
 
 @fixture
-def plado_gym_gnn_autoregressive_domain_factory(
-    blocksworld_domain_problem_paths, obs_encoding
-):
+def plado_llg_domain_factory(blocksworld_domain_problem_paths):
+    domain_path, problem_path = blocksworld_domain_problem_paths
+    return lambda: PladoPddlDomain(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=StateEncoding.GYM_GRAPH_LLG,
+        action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
+    )
+
+
+@fixture
+def plado_graph_object_domain_factory(blocksworld_domain_problem_paths):
     domain_path, problem_path = blocksworld_domain_problem_paths
     return lambda: PladoTransformedObservablePddlDomain(
         domain_path=domain_path,
         problem_path=problem_path,
-        obs_encoding=obs_encoding,
+        obs_encoding=ObservationEncoding.GYM_GRAPH_OBJECTS,
         action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
     )
 
@@ -202,10 +223,32 @@ def plado_ppddl_gym_autoregressive_domain_factory(tireworld_domain_problem_paths
     )
 
 
+def are_graphs_equal(
+    g1: gym.spaces.GraphInstance, g2: gym.spaces.GraphInstance
+) -> bool:
+    return (
+        (g1.edge_links == g2.edge_links).all()
+        and (g1.nodes == g2.nodes).all()
+        and (g1.edges is None and g2.edges is None)
+        or (g1.edges == g2.edges).all()
+    )
+
+
+def are_pladostates_equal(s1: PladoState, s2: PladoState) -> bool:
+    return (
+        s1.atoms == s2.atoms
+        and s1.fluents == s2.fluents
+        #     (
+        #     [f for i, f in enumerate(s1.fluents) if i not in cost_functions]
+        #     == [f for i, f in enumerate(s2.fluents) if i not in cost_functions]
+        # )
+    )
+
+
 def test_plado_domain_random(plado_domain_factory):
     domain_factory = plado_domain_factory
-
     domain = domain_factory()
+
     obs = domain.reset()
     assert obs in domain.get_observation_space()
 
@@ -222,8 +265,7 @@ def test_plado_domain_random(plado_domain_factory):
         new_pladostate = domain._translate_state_to_plado(
             domain._translate_state_from_plado(pladostate)
         )
-        assert new_pladostate.fluents == pladostate.fluents
-        assert new_pladostate.atoms == pladostate.atoms
+        assert are_pladostates_equal(new_pladostate, pladostate)
         if domain.state_encoding == StateEncoding.NATIVE:
             assert (
                 domain._translate_state_from_plado(
@@ -238,6 +280,24 @@ def test_plado_domain_random(plado_domain_factory):
                 )
                 == obs
             ).all()
+        elif domain.state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            assert are_graphs_equal(
+                domain._translate_state_from_plado(
+                    domain._translate_state_to_plado(obs)
+                ),
+                obs,
+            )
+            # check decode_llg
+            assert are_pladostates_equal(
+                decode_llg(obs, domain.cost_functions),
+                domain._translate_state_to_plado(obs),
+            )
+            assert are_pladostates_equal(
+                decode_llg(outcome.observation, domain.cost_functions),
+                domain._translate_state_to_plado(outcome.observation),
+            )
+        else:
+            raise NotImplementedError()
 
         if domain.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
             assert (
@@ -329,6 +389,9 @@ def test_plado_state_sample_pddl(plado_pddl_domain_factory):
     if isinstance(state1, np.ndarray):
         assert (state1 == state2).all()
         assert (state3 == state2).all()
+    elif isinstance(state1, gym.spaces.GraphInstance):
+        assert are_graphs_equal(state1, state2)
+        assert are_graphs_equal(state2, state3)
     else:
         assert state1 == state2
         assert state3 == state2
@@ -385,7 +448,41 @@ def test_plado_domain_blocksworld_autoregressive_sb3(
         learn_config={"total_timesteps": 300},
         n_steps=100,
     ) as solver:
+        # store initial weigths to see if they update during training
+        solver._init_algo()
+        value_init_params = extract_module_parameters_values(
+            solver._algo.policy.value_net
+        )
+        action_init_params = [
+            extract_module_parameters_values(action_net)
+            for action_net in solver._algo.policy.action_nets
+        ]
+        # solve
         solver.solve()
+        # check policy params updated
+        value_final_params = extract_module_parameters_values(
+            solver._algo.policy.value_net
+        )
+        action_final_params = [
+            extract_module_parameters_values(action_net)
+            for action_net in solver._algo.policy.action_nets
+        ]
+        assert not (
+            all(
+                np.allclose(value_init_params[name], value_final_params[name])
+                for name in value_init_params
+            )
+        ), f"value net params not updated"
+        for i in range(len(action_init_params)):
+            assert not (
+                all(
+                    np.allclose(
+                        action_init_params[i][name], action_final_params[i][name]
+                    )
+                    for name in action_init_params[i]
+                )
+            ), f"action net #{i} params not updated"
+        # rollout
         max_steps = 20
         episodes = rollout(
             domain=domain_factory(),
@@ -426,9 +523,9 @@ def test_plado_domain_ppddl_autoregressive_sb3(
 
 
 def test_plado_domain_blocksworld_autoregressive_gnn_sb3(
-    plado_gym_gnn_autoregressive_domain_factory,
+    plado_graph_object_domain_factory,
 ):
-    domain_factory = plado_gym_gnn_autoregressive_domain_factory
+    domain_factory = plado_graph_object_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=AutoregressiveGraphPPO,
@@ -437,7 +534,57 @@ def test_plado_domain_blocksworld_autoregressive_gnn_sb3(
         learn_config={"total_timesteps": 300},
         n_steps=100,
     ) as solver:
+        # pre-init algo (done normally during solve()) to extract init weights
+        solver._init_algo()
+        value_init_params = extract_module_parameters_values(
+            solver._algo.policy.value_net
+        )
+        gnn_features_init_params = extract_module_parameters_values(
+            solver._algo.policy.features_extractor
+        )
+        action_init_params = [
+            extract_module_parameters_values(action_net)
+            for action_net in solver._algo.policy.action_nets
+        ]
+        # solve
         solver.solve()
+        # compare final parameters to see if actually updated during training
+        value_final_params = extract_module_parameters_values(
+            solver._algo.policy.value_net
+        )
+        gnn_features_final_params = extract_module_parameters_values(
+            solver._algo.policy.features_extractor
+        )
+        action_final_params = [
+            extract_module_parameters_values(action_net)
+            for action_net in solver._algo.policy.action_nets
+        ]
+
+        assert not (
+            all(
+                np.allclose(value_init_params[name], value_final_params[name])
+                for name in value_init_params
+            )
+        ), f"value net params not updated"
+        assert not (
+            all(
+                np.allclose(
+                    gnn_features_init_params[name], gnn_features_final_params[name]
+                )
+                for name in gnn_features_final_params
+            )
+        ), f"value net params not updated"
+        for i in range(len(action_init_params)):
+            assert not (
+                all(
+                    np.allclose(
+                        action_init_params[i][name], action_final_params[i][name]
+                    )
+                    for name in action_init_params[i]
+                )
+            ), f"action net #{i} params not updated"
+
+        # rollout
         max_steps = 20
         episodes = rollout(
             domain=domain_factory(),
@@ -452,9 +599,9 @@ def test_plado_domain_blocksworld_autoregressive_gnn_sb3(
 
 
 def test_plado_domain_blocksworld_autoregressive_graph2node_sb3(
-    plado_gym_gnn_autoregressive_domain_factory,
+    plado_graph_object_domain_factory,
 ):
-    domain_factory = plado_gym_gnn_autoregressive_domain_factory
+    domain_factory = plado_graph_object_domain_factory
     with StableBaseline(
         domain_factory=domain_factory,
         algo_class=AutoregressiveGraphPPO,
@@ -463,7 +610,151 @@ def test_plado_domain_blocksworld_autoregressive_graph2node_sb3(
         learn_config={"total_timesteps": 300},
         n_steps=100,
     ) as solver:
+        # pre-init algo (done normally during solve()) to extract init weights
+        solver._init_algo()
+        for i in range(len(domain_factory().get_action_space()._gym_space.nvec)):
+            if i == 0:
+                assert isinstance(solver._algo.policy.action_nets[i], th.nn.Linear)
+            else:
+                assert isinstance(solver._algo.policy.action_nets[i], Graph2NodeLayer)
+        value_init_params = extract_module_parameters_values(
+            solver._algo.policy.value_net
+        )
+        gnn_features_init_params = extract_module_parameters_values(
+            solver._algo.policy.features_extractor
+        )
+        action_init_params = [
+            extract_module_parameters_values(action_net)
+            for action_net in solver._algo.policy.action_nets
+        ]
+
+        # solve
         solver.solve()
+
+        # compare final parameters to see if actually updated during training
+        value_final_params = extract_module_parameters_values(
+            solver._algo.policy.value_net
+        )
+        gnn_features_final_params = extract_module_parameters_values(
+            solver._algo.policy.features_extractor
+        )
+        action_final_params = [
+            extract_module_parameters_values(action_net)
+            for action_net in solver._algo.policy.action_nets
+        ]
+
+        assert not (
+            all(
+                np.allclose(value_init_params[name], value_final_params[name])
+                for name in value_init_params
+            )
+        ), f"value net params not updated"
+        assert not (
+            all(
+                np.allclose(
+                    gnn_features_init_params[name], gnn_features_final_params[name]
+                )
+                for name in gnn_features_final_params
+            )
+        ), f"value net params not updated"
+        for i in range(len(action_init_params)):
+            assert not (
+                all(
+                    np.allclose(
+                        action_init_params[i][name], action_final_params[i][name]
+                    )
+                    for name in action_init_params[i]
+                )
+            ), f"action net #{i} params not updated"
+
+        # rollout
+        max_steps = 20
+        episodes = rollout(
+            domain=domain_factory(),
+            solver=solver,
+            max_steps=max_steps,
+            num_episodes=1,
+            render=False,
+            return_episodes=True,
+        )
+        observations, actions, values = episodes[0]
+        #  assert len(actions) < max_steps - 1  # unsucessful to reach goal
+
+
+def test_plado_domain_blocksworld_autoregressive_heterograph2node_sb3(
+    plado_llg_domain_factory,
+):
+    domain_factory = plado_llg_domain_factory
+    domain = domain_factory()
+    action_components_node_flag_indices = (
+        domain.get_action_components_node_flag_indices()
+    )
+    with StableBaseline(
+        domain_factory=domain_factory,
+        algo_class=AutoregressiveGraphPPO,
+        baselines_policy="HeteroGraph2NodePolicy",
+        policy_kwargs=dict(
+            action_components_node_flag_indices=action_components_node_flag_indices
+        ),
+        autoregressive_action=True,
+        learn_config={"total_timesteps": 100},
+        n_steps=100,
+    ) as solver:
+        # pre-init algo (done normally during solve()) to extract init weights
+        solver._init_algo()
+        for action_net in solver._algo.policy.action_nets:
+            assert isinstance(action_net, Graph2NodeLayer)
+        value_init_params = extract_module_parameters_values(
+            solver._algo.policy.value_net
+        )
+        gnn_features_init_params = extract_module_parameters_values(
+            solver._algo.policy.features_extractor
+        )
+        action_init_params = [
+            extract_module_parameters_values(action_net)
+            for action_net in solver._algo.policy.action_nets
+        ]
+
+        # solve
+        solver.solve()
+
+        # compare final parameters to see if actually updated during training
+        value_final_params = extract_module_parameters_values(
+            solver._algo.policy.value_net
+        )
+        gnn_features_final_params = extract_module_parameters_values(
+            solver._algo.policy.features_extractor
+        )
+        action_final_params = [
+            extract_module_parameters_values(action_net)
+            for action_net in solver._algo.policy.action_nets
+        ]
+
+        assert not (
+            all(
+                np.allclose(value_init_params[name], value_final_params[name])
+                for name in value_init_params
+            )
+        ), f"value net params not updated"
+        assert not (
+            all(
+                np.allclose(
+                    gnn_features_init_params[name], gnn_features_final_params[name]
+                )
+                for name in gnn_features_final_params
+            )
+        ), f"value net params not updated"
+        for i in range(len(action_init_params)):
+            assert not (
+                all(
+                    np.allclose(
+                        action_init_params[i][name], action_final_params[i][name]
+                    )
+                    for name in action_init_params[i]
+                )
+            ), f"action net #{i} params not updated"
+
+        # rollout
         max_steps = 20
         episodes = rollout(
             domain=domain_factory(),
