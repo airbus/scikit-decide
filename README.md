@@ -30,11 +30,13 @@ This framework was initiated at [Airbus](https://www.airbus.com) AI Research and
 
 ## Main features
 
-- Problem solving: describe your decision-making problem once and auto-match compatible solvers.
-  For instance planning/scheduling problems can be solved by RL solvers and GNNs.
-- Growing catalog: enjoy a growing list of domains & solvers catalog, supported by the community.
-- Open & Extensible: scikit-decide is open source and is able to wrap existing state-of-the-art domains/solvers.
-- Domains available:
+<!--features-list-start-->
+
+- **Problem solving:** describe your decision-making problem once and auto-match compatible solvers.\
+  _For instance planning/scheduling problems can be solved by RL solvers using GNNs._
+- **Growing catalog:** enjoy a growing list of domains & solvers catalog, supported by the community.
+- **Open & Extensible:** scikit-decide is open source and is able to wrap existing state-of-the-art domains/solvers.
+- **Domains available:**
   - [Gym(nasium)](https://gymnasium.farama.org/) environments for reinforcement learning (RL)
   - [PDDL](https://planning.wiki/) (Planning Domain Definition Language) via [unified-planning](https://github.com/aiplan4eu/unified-planning) and [plado](https://github.com/massle/plado) libraries
     - encoding in gym(nasium) spaces compatible with RL
@@ -43,14 +45,14 @@ This framework was initiated at [Airbus](https://www.airbus.com) AI Research and
   - Flight planning, based on [openap](https://openap.dev/) or in-house Poll-Schumann for performance model
   - Scheduling, based on rcpsp problem from [discrete-optimization](https://airbus.github.io/discrete-optimization) library
   - Toy domains like: maze, mastermind, rock-paper-scissors
-- Solvers available:
+- **Solvers available:**
   - RL solvers from ray.rllib and stable-baselines3
     - existing algos with action masking
-    - adaptation of RL algos for graph observation, based on GNNs from [pytorch-geometric](https://pytorch-geometric.readthedocs.io/)
+    - adaptation of RL algos for graph observation, based on GNNs from [pytorch-geometric](https://pytorch-geometric.readthedocs.io/) :new:
     - autoregressive models with action masking component by component for parametric actions :new:
-  - planning solvers from [unified-planning](https://github.com/aiplan4eu/unified-planning) library
+  - Planning solvers from [unified-planning](https://github.com/aiplan4eu/unified-planning) library
   - RDDL solvers jax and gurobi-based based on pyRDDLGym-jax and pyRDDLGym-gurobi from [pyrddl-gym project](https://github.com/pyrddlgym-project)
-  - search solvers coded in scikit-decide library:
+  - Search solvers coded in scikit-decide library:
     - A*
     - AO*
     - Improved-LAO*
@@ -63,20 +65,18 @@ This framework was initiated at [Airbus](https://www.airbus.com) AI Research and
     - Partially-Observable Monte Carlo Planning (POMCP)
     - Monte Carlo Tree Search Methods (MCTS)
     - Multi-Agent Heuristic meta-solver (MAHD)
-  - Cartesian Genetic Programming (CGP): evolution strategy
-
-
-  - scheduling solvers from [discrete-optimization](https://airbus.github.io/discrete-optimization),
-    itself wrapping [ortools](https://developers.google.com/optimization), [gurobi](https://www.gurobi.com/),
+  - Evolution strategy: Cartesian Genetic Programming (CGP)
+  - Scheduling solvers from [discrete-optimization](https://airbus.github.io/discrete-optimization),
+    - itself wrapping [ortools](https://developers.google.com/optimization), [gurobi](https://www.gurobi.com/),
     [toulbar](https://toulbar2.github.io/toulbar2/#), [minizinc](https://www.minizinc.org/),
     [deap](https://deap.readthedocs.io/) (genetic algorithm), [didppy](https://didppy.readthedocs.io/) (dynamic programming),
-    and adding local search (hill climber, simulated annealing), Large Neighborhood Search (LNS),
-    genetic programming based hyper-heuristic (GPHH),
-
-- Tuning solvers hyperparameters with optuna
+    - and coding local search (hill climber, simulated annealing), Large Neighborhood Search (LNS), and
+    genetic programming based hyper-heuristic (GPHH)
+- **Tuning solvers hyperparameters**
   - hyperparameters definition
-  - automated study
+  - automated study with optuna
 
+<!--features-list-end-->
 
 ## Installation
 
