@@ -30,6 +30,8 @@ This framework was initiated at [Airbus](https://www.airbus.com) AI Research and
 
 ## Main features
 
+<!--features-list-start-->
+
 - Problem solving: describe your decision-making problem once and auto-match compatible solvers.
 - Growing catalog: enjoy a growing list of domains & solvers catalog, supported by the community.
 - Open & Extensible: scikit-decide is open source and is able to wrap existing state-of-the-art domains/solvers.
@@ -78,6 +80,7 @@ This framework was initiated at [Airbus](https://www.airbus.com) AI Research and
   - hyperparameters definition
   - automated study
 
+<!--features-list-end-->
 
 ## Installation
 
