@@ -22,7 +22,7 @@ def test_pyrddlgymdomain_sb3():
     movie_name = "test-sb3"
     movie_path = f"rddl_movies/{movie_name}"
     domain_factory = lambda: RDDLDomainRL(
-        rddl_domain="Cartpole_Continuous_gym",
+        rddl_domain="CartPole_Continuous_gym",
         rddl_instance="0",
         movie_name=movie_name,
         display_with_pygame=False,
@@ -51,7 +51,7 @@ def test_pyrddlgymdomain_sb3():
 
 def test_pyrddlgymdomainsimp_cgp():
     domain_factory = lambda: RDDLDomainSimplifiedSpaces(
-        rddl_domain="Cartpole_Continuous_gym",
+        rddl_domain="CartPole_Continuous_gym",
         rddl_instance="0",
         display_with_pygame=False,
         display_within_jupyter=False,

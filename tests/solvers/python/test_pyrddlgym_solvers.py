@@ -18,7 +18,7 @@ def test_pyrddlgymdomain_jax():
 
     # domain factory (with proper backend and vectorized flag)
     domain_factory = lambda: RDDLDomain(
-        rddl_domain="Cartpole_Continuous_gym",
+        rddl_domain="CartPole_Continuous_gym",
         rddl_instance="0",
         backend=JaxRDDLSimulator,
         display_with_pygame=False,
@@ -38,7 +38,7 @@ def test_pyrddlgymdomain_jax():
 def test_pyrddlgymdomain_gurobi():
     # domain factory (with proper backend and vectorized flag)
     domain_factory = lambda: RDDLDomain(
-        rddl_domain="Cartpole_Continuous_gym",
+        rddl_domain="CartPole_Continuous_gym",
         rddl_instance="0",
         display_with_pygame=False,
         display_within_jupyter=False,
