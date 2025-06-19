@@ -24,6 +24,13 @@ NOTEBOOKS_PAGE_RELATIVE_PATH = "notebooks/README.md"
 NOTEBOOKS_SECTION_KEY_VAR_SEP = "_"
 NOTEBOOKS_DIRECTORY_NAME = "notebooks"
 
+FEATURES_LIST_PLACEHOLDER = "[[main-features-list]]"
+HOME_PAGE_TEMPLATE_RELATIVE_PATH = "README.template.md"
+HOME_PAGE_RELATIVE_PATH = "README.md"
+REPO_README_RELATIVE_PATH = "../README.md"
+FEATURES_LIST_START_TAG = "<!--features-list-start-->"
+FEATURES_LIST_END_TAG = "<!--features-list-end-->"
+
 DEFAULT_REPO_NAME = "airbus/scikit-decide"
 
 docdir = os.path.dirname(os.path.abspath(__file__))
@@ -806,4 +813,27 @@ if __name__ == "__main__":
     )
 
     with open(f"{docdir}/{NOTEBOOKS_PAGE_RELATIVE_PATH}", "wt") as f:
+        f.write(readme_text)
+
+    # Extract features list from readme and put it in home page
+    with open(f"{docdir}/{REPO_README_RELATIVE_PATH}", "rt") as f:
+        repo_readme_text = f.read()
+
+    start = repo_readme_text.find(FEATURES_LIST_START_TAG) + len(
+        FEATURES_LIST_START_TAG
+    )
+    end = repo_readme_text.find(FEATURES_LIST_END_TAG)
+    if start > -1 and end > -1:
+        features_list_text = repo_readme_text[start:end]
+    else:
+        features_list_text = ""
+
+    with open(f"{docdir}/{HOME_PAGE_TEMPLATE_RELATIVE_PATH}", "rt") as f:
+        readme_template_text = f.read()
+
+    readme_text = readme_template_text.replace(
+        FEATURES_LIST_PLACEHOLDER, features_list_text
+    )
+
+    with open(f"{docdir}/{HOME_PAGE_RELATIVE_PATH}", "wt") as f:
         f.write(readme_text)

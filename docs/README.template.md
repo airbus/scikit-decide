@@ -25,3 +25,8 @@ This framework was initiated at [Airbus](https://www.airbus.com) AI Research and
 ::: tip
 Please refer to the **Guide** and **Reference** sections at the top to learn how to use scikit-decide.
 :::
+
+
+## Main features
+
+[[main-features-list]]
