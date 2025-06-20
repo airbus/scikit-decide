@@ -1732,14 +1732,14 @@ importlib-metadata = {version = ">=4.6", markers = "python_version < \"3.10\""}
 jaxlib = ">=0.4.27,<=0.4.30"
 ml-dtypes = ">=0.2.0"
 numpy = [
-    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
-    {version = ">=1.23.2", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
     {version = ">=1.22", markers = "python_version < \"3.11\""},
+    {version = ">=1.23.2", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
 ]
 opt-einsum = "*"
 scipy = [
-    {version = ">=1.11.1", markers = "python_version >= \"3.12\""},
     {version = ">=1.9", markers = "python_version < \"3.12\""},
+    {version = ">=1.11.1", markers = "python_version >= \"3.12\""},
 ]
 
 [package.extras]
@@ -1802,8 +1802,8 @@ files = [
 ml-dtypes = ">=0.2.0"
 numpy = ">=1.22"
 scipy = [
-    {version = ">=1.11.1", markers = "python_version >= \"3.12\""},
     {version = ">=1.9", markers = "python_version < \"3.12\""},
+    {version = ">=1.11.1", markers = "python_version >= \"3.12\""},
 ]
 
 [[package]]
@@ -2416,10 +2416,10 @@ files = [
 
 [package.dependencies]
 numpy = [
-    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
-    {version = ">=1.23.3", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
     {version = ">1.20", markers = "python_version < \"3.10\""},
     {version = ">=1.21.2", markers = "python_version >= \"3.10\" and python_version < \"3.11\""},
+    {version = ">=1.23.3", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
 ]
 
 [package.extras]
@@ -3016,12 +3016,12 @@ files = [
 
 [package.dependencies]
 numpy = [
-    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
-    {version = ">=1.23.5", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
     {version = ">=1.21.0", markers = "python_version == \"3.9\" and platform_system == \"Darwin\" and platform_machine == \"arm64\""},
     {version = ">=1.21.4", markers = "python_version >= \"3.10\" and platform_system == \"Darwin\" and python_version < \"3.11\""},
     {version = ">=1.21.2", markers = "platform_system != \"Darwin\" and python_version >= \"3.10\" and python_version < \"3.11\""},
     {version = ">=1.19.3", markers = "platform_system == \"Linux\" and platform_machine == \"aarch64\" and python_version >= \"3.8\" and python_version < \"3.10\" or python_version > \"3.9\" and python_version < \"3.10\" or python_version >= \"3.9\" and platform_system != \"Darwin\" and python_version < \"3.10\" or python_version >= \"3.9\" and platform_machine != \"arm64\" and python_version < \"3.10\""},
+    {version = ">=1.23.5", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
 ]
 
 [[package]]
@@ -3165,9 +3165,9 @@ files = [
 
 [package.dependencies]
 numpy = [
-    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
-    {version = ">=1.23.2", markers = "python_version == \"3.11\""},
     {version = ">=1.22.4", markers = "python_version < \"3.11\""},
+    {version = ">=1.23.2", markers = "python_version == \"3.11\""},
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
 ]
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
@@ -5536,11 +5536,11 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 type = ["pytest-mypy"]
 
 [extras]
-all = ["cartopy", "gymnasium", "jax", "joblib", "matplotlib", "numpy", "openap", "plado", "pyRDDLGym", "pyRDDLGym-gurobi", "pyRDDLGym-jax", "pyRDDLGym-rl", "pygeodesy", "pygrib", "pygrib", "ray", "rddlrepository", "sb3_contrib", "scipy", "stable-baselines3", "torch-geometric", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
+all = ["cartopy", "gymnasium", "jax", "jax", "jax", "joblib", "matplotlib", "numpy", "openap", "plado", "pyRDDLGym", "pyRDDLGym-gurobi", "pyRDDLGym-jax", "pyRDDLGym-rl", "pygeodesy", "pygrib", "pygrib", "ray", "rddlrepository", "sb3_contrib", "scipy", "stable-baselines3", "torch-geometric", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
 domains = ["cartopy", "gymnasium", "matplotlib", "numpy", "openap", "plado", "pyRDDLGym", "pyRDDLGym-rl", "pygeodesy", "pygrib", "pygrib", "rddlrepository", "scipy", "unified-planning"]
-solvers = ["gymnasium", "jax", "joblib", "numpy", "pyRDDLGym-gurobi", "pyRDDLGym-jax", "ray", "sb3_contrib", "scipy", "stable-baselines3", "torch-geometric", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
+solvers = ["gymnasium", "jax", "jax", "jax", "joblib", "numpy", "pyRDDLGym-gurobi", "pyRDDLGym-jax", "ray", "sb3_contrib", "scipy", "stable-baselines3", "torch-geometric", "unified-planning", "up-enhsp", "up-fast-downward", "up-pyperplan", "up-tamer"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.9, <3.13"
-content-hash = "6bcc098db9e98aa7248f79444d1ce85aa39d82b7ae4da485cbda940691736292"
+python-versions = "^3.9"
+content-hash = "4bde1cee2af0c0868de3db8908bb880eb1daae179009255b8861d48fc10562d8"
