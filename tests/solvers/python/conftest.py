@@ -301,9 +301,9 @@ class GraphJspDomain(D):
                     low=0.0,
                     high=1.0,
                     shape=(self.n_nodes_features,),
-                    dtype=np.float_,
+                    dtype=np.float64,
                 ),
-                edge_space=Box(low=0, high=1.0, dtype=np.float_),
+                edge_space=Box(low=0, high=1.0, dtype=np.float64),
             )
 
         else:
