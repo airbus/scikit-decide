@@ -407,7 +407,7 @@ class FlightPlanningDomain(
         fuel_loop_solver_cls: Optional[Type[Solver]] = None,
         fuel_loop_solver_kwargs: Optional[Dict[str, Any]] = None,
         fuel_loop_tol: float = 1e-3,
-        graph_width: Optional[str] = "medium",
+        graph_width: str = "medium",
         res_img_dir: Optional[str] = None,
         starting_time: float = 3_600.0 * 8.0,
     ):
@@ -451,7 +451,7 @@ class FlightPlanningDomain(
             fuel_loop_solver_kwargs (Dict[str, Any], optional):
                 Kwargs to initialize the solver used in the fuel loop.
             graph_width (str, optional):
-                Airways graph width, in ["small", "medium", "large", "xlarge"]. Defaults to None
+                Airways graph width, in ["small", "medium", "large", "xlarge"]. Defaults to "medium"
             res_img_dir (str, optional):
                 Directory in which images will be saved. Defaults to None
             starting_time (float, optional):
@@ -1055,7 +1055,7 @@ class FlightPlanningDomain(
         cas_climb: float,
         mach_cruise: float,
         cas_descent: float,
-        graph_width: float = None,
+        graph_width: str = "medium",
     ):
         """
         Creation of the airway graph.
@@ -1068,7 +1068,7 @@ class FlightPlanningDomain(
             nb_vertical_points (int): Number of vertical points in the graph
             climbing_slope (float, optional): Climbing slope of the plane during climbing phase. Defaults to None.
             descending_slope (float, optional):  Descent slope of the plane during descent phase. Defaults to None.
-            graph_width (float, optional): Graph width of the graph. Defaults to None.
+            graph_width (str, optional): Graph width of the graph. Defaults to "medium".
 
         # Returns
             A 3D matrix containing for each points its latitude, longitude, altitude between origin & destination.
