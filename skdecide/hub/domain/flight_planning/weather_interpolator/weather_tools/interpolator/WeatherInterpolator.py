@@ -90,9 +90,11 @@ class WeatherForecastInterpolator(WeatherInterpolator):
             self.long_dict = {var: long_dict_filtered for var in datas.keys()}
             self.alt_dict = {var: alt_dict_filtered for var in datas.keys()}
             self.time_dict = {
-                var: time_dict
-                if self.time_cut_index is None
-                else time_dict[: min(self.time_cut_index, len(time_dict))]
+                var: (
+                    time_dict
+                    if self.time_cut_index is None
+                    else time_dict[: min(self.time_cut_index, len(time_dict))]
+                )
                 for var in datas.keys()
             }
 

@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from typing import Optional
+
 from pygeodesy.ellipsoidalVincenty import LatLon
+
 
 @dataclass
 class FourDimensionsState:
     """
     Class representing a 4-D state (3D position and time)
     """
-
 
     zp_ft: Optional[float] = None  # pressure altitude
     time_sec: Optional[float] = None

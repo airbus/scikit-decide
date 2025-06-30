@@ -6,7 +6,7 @@ from enum import Enum
 from math import asin, atan2, cos, radians, sin, sqrt
 
 # typing
-from typing import Any, Dict, Optional, Tuple, Type, Union, List
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 # plotting
 import matplotlib.pyplot as plt
@@ -16,13 +16,7 @@ import pandas as pd
 
 # aircraft performance model
 from openap.extra.aero import bearing as aero_bearing
-from openap.extra.aero import (
-    distance,
-    ft,
-    latlon,
-    mach2cas,
-    mach2tas,
-)
+from openap.extra.aero import distance, ft, latlon, mach2cas, mach2tas
 from openap.extra.nav import airport
 from pygeodesy.ellipsoidalVincenty import LatLon
 
@@ -52,9 +46,8 @@ from skdecide.hub.domain.flight_planning.aircraft_performance.weather.service.at
 from skdecide.hub.domain.flight_planning.aircraft_performance.weather.settings.isa_atmosphere_settings import (
     IsaAtmosphereSettings,
 )
-from skdecide.hub.domain.flight_planning.flightplanning_utils import (
-    plot_full
-)
+from skdecide.hub.domain.flight_planning.flightplanning_utils import plot_full
+from skdecide.hub.domain.flight_planning.graph import create_flight_graph, prune_graph
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.get_weather_noaa import (
     get_weather_matrix,
 )
@@ -65,8 +58,6 @@ from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.inte
     WeatherForecastInterpolator,
 )
 from skdecide.hub.space.gym import DiscreteSpace, EnumSpace, ListSpace, TupleSpace
-
-from skdecide.hub.domain.flight_planning.graph import create_flight_graph, prune_graph
 
 
 class WeatherDate:
@@ -388,7 +379,6 @@ class FlightPlanningDomain(
         mach_cruise: float = 0.78,
         mach_climb: float = 0.7,
         mach_descent: float = 0.6,
-
         nb_forward_points: int = 30,
         nb_lateral_points: int = 10,
         nb_climb_descent_steps: int = 4,
@@ -396,23 +386,18 @@ class FlightPlanningDomain(
         graph_width: str = "medium",
         origin: Optional[Tuple[str, LatLon]] = None,
         destination: Optional[Tuple[str, LatLon]] = None,
-
         objective: str = "fuel",
         heuristic_name: str = "fuel",
         starting_time: float = 3_600.0 * 8.0,
-
         weather_date: Optional[WeatherDate] = None,
         wind_interpolator: Optional[GenericWindInterpolator] = None,
-        
         constraints=None,
         fuel_loaded: Optional[float] = None,
         fuel_loop: bool = False,
         fuel_loop_solver_cls: Optional[Type[Solver]] = None,
         fuel_loop_solver_kwargs: Optional[Dict[str, Any]] = None,
         fuel_loop_tol: float = 1e-3,
-
         res_img_dir: Optional[str] = None,
-        
     ):
         """Initialisation of a flight planning instance
 
@@ -465,7 +450,7 @@ class FlightPlanningDomain(
         self.mach_cruise = mach_cruise
         self.mach_climb = mach_climb
         self.mach_descent = mach_descent
-        
+
         # Graph construction
         self.nb_forward_points = nb_forward_points
         self.nb_lateral_points = nb_lateral_points
@@ -504,15 +489,11 @@ class FlightPlanningDomain(
             model_path=aircraft_state.model_type,
             performance_model_type=aircraft_state.performance_model_type,
         )
-        
+
         # --- Initialize the network ---
-        if isinstance(origin, str): # origin is an airport
+        if isinstance(origin, str):  # origin is an airport
             ap1 = airport(origin)
-            self.origin = LatLon(
-                ap1["lat"],
-                ap1["lon"],
-                ap1["alt"] * ft
-            )
+            self.origin = LatLon(ap1["lat"], ap1["lon"], ap1["alt"] * ft)
             self.lat1 = ap1["lat"]
             self.lon1 = ap1["lon"]
             self.alt1 = ap1["alt"]
@@ -523,11 +504,7 @@ class FlightPlanningDomain(
 
         if isinstance(destination, str):
             ap2 = airport(destination)
-            self.destination = LatLon(
-                ap2["lat"],
-                ap2["lon"],
-                ap2["alt"] * ft
-            )
+            self.destination = LatLon(ap2["lat"], ap2["lon"], ap2["alt"] * ft)
             self.lat2 = ap2["lat"]
             self.lon2 = ap2["lon"]
             self.alt2 = ap2["alt"]
@@ -542,7 +519,6 @@ class FlightPlanningDomain(
         if wind_interpolator is None:
             self.weather_interpolator = self.get_weather_interpolator()
 
-
         self.network = self.set_network(
             p0=self.origin,
             p1=self.destination,
@@ -550,11 +526,15 @@ class FlightPlanningDomain(
             nb_lateral_points=nb_lateral_points,
             nb_climb_descent_steps=nb_climb_descent_steps,
             flight_levels_ft=flight_levels_ft,
-            graph_width=graph_width
+            graph_width=graph_width,
         )
 
-        self.node_id_to_key = {i: node_key for i, node_key in enumerate(self.network.nodes())}
-        self.node_key_to_id = {node_key: i for i, node_key in enumerate(self.network.nodes())}
+        self.node_id_to_key = {
+            i: node_key for i, node_key in enumerate(self.network.nodes())
+        }
+        self.node_key_to_id = {
+            node_key: i for i, node_key in enumerate(self.network.nodes())
+        }
 
         # self.fuel_loaded = fuel_loaded
 
@@ -592,12 +572,16 @@ class FlightPlanningDomain(
         # assert fuel_loaded <= aircraft_state.MFC  # Ensure fuel loaded <= fuel capacity
 
         id = 0
-        if self.initial_aircraft_state.x_graph is not None and self.initial_aircraft_state.y_graph is not None and self.initial_aircraft_state.z_graph is not None:
+        if (
+            self.initial_aircraft_state.x_graph is not None
+            and self.initial_aircraft_state.y_graph is not None
+            and self.initial_aircraft_state.z_graph is not None
+        ):
             starting_node = self.network.nodes[
                 (
                     self.initial_aircraft_state.x_graph,
                     self.initial_aircraft_state.y_graph,
-                    self.initial_aircraft_state.z_graph
+                    self.initial_aircraft_state.z_graph,
                 )
             ]
             self.origin: LatLon = starting_node["latlon"]
@@ -605,12 +589,16 @@ class FlightPlanningDomain(
             self.lat1 = self.origin.lat
             self.lon1 = self.origin.lon
             self.alt1 = self.origin.height / ft
-            id = self.node_key_to_id[(
+            id = self.node_key_to_id[
+                (
                     self.initial_aircraft_state.x_graph,
                     self.initial_aircraft_state.y_graph,
-                    self.initial_aircraft_state.z_graph
-                )]
-            print(f"Aircraft zp: {self.initial_aircraft_state.zp_ft} does not match its initial position altitude: {self.alt1}")
+                    self.initial_aircraft_state.z_graph,
+                )
+            ]
+            print(
+                f"Aircraft zp: {self.initial_aircraft_state.zp_ft} does not match its initial position altitude: {self.alt1}"
+            )
             print("Setting aircraft zp to node altitude")
             self.initial_aircraft_state.zp_ft = self.alt1
 
@@ -624,13 +612,15 @@ class FlightPlanningDomain(
                         "alt": self.origin.height / ft,
                         "mass": aircraft_state.gw_kg,
                         "mach": aircraft_state.mach,
-                        "cas": mach2cas(mach=aircraft_state.mach, h=self.origin.height, dT=0),
+                        "cas": mach2cas(
+                            mach=aircraft_state.mach, h=self.origin.height, dT=0
+                        ),
                         "fuel": 0.0,
-                        "phase": "climb"
+                        "phase": "climb",
                     }
                 ]
             ),
-            id=id
+            id=id,
         )
 
         # self.res_img_dir = res_img_dir
@@ -656,7 +646,7 @@ class FlightPlanningDomain(
         successors_y = node_successors[:, 1]
         successors_z = node_successors[:, 2]
 
-        if node_successors.shape==0:
+        if node_successors.shape == 0:
             return memory
 
         horizontal_indices = None
@@ -666,7 +656,7 @@ class FlightPlanningDomain(
             horizontal_indices = np.where(successors_y < current_y)[0]
         else:
             horizontal_indices = np.where(successors_y > current_y)[0]
-        
+
         vertical_indices = None
         if action[1].name == "cruise":
             vertical_indices = np.where(successors_z == current_z)[0]
@@ -706,13 +696,13 @@ class FlightPlanningDomain(
             current_speed = self.mach_descent
         else:
             raise ValueError("Current phase key not recognized.")
-        
+
         new_trajectory_segment = self.flying(
             from_=memory.trajectory.tail(1),
-            to_=(to_lat, to_lon, to_alt), # Pass altitude in meters
+            to_=(to_lat, to_lon, to_alt),  # Pass altitude in meters
             current_speed=current_speed,
             current_phase=current_phase,
-            current_rating=current_rating
+            current_rating=current_rating,
         )
 
         state = State(
@@ -815,7 +805,7 @@ class FlightPlanningDomain(
         """
 
         # The state is terminal if it does not have any successors
-        return state.id == len(list(self.network.nodes))-1
+        return state.id == len(list(self.network.nodes)) - 1
 
     def _get_applicable_actions_from(self, state: State) -> Space[D.T_event]:
         """
@@ -833,7 +823,7 @@ class FlightPlanningDomain(
         # no successors => no actions
         if not successor_node_keys:
             return ListSpace([])
-        
+
         space = []
         for successor in successor_node_keys:
             successor_y = successor[1]
@@ -852,7 +842,7 @@ class FlightPlanningDomain(
                 horizontal_action = H_Action.right
             else:
                 horizontal_action = H_Action.left
-            
+
             space.append((horizontal_action, vertical_action))
 
         return ListSpace(space)
@@ -867,7 +857,7 @@ class FlightPlanningDomain(
         """
         Define observation space.
         """
-        
+
         return TupleSpace(
             (
                 DiscreteSpace(self.network.number_of_nodes()),
@@ -882,7 +872,7 @@ class FlightPlanningDomain(
         Returns:
             matplotlib figure
         """
-        return 
+        return
         # return plot_trajectory(
         #     self.lat1,
         #     self.lon1,
@@ -941,7 +931,7 @@ class FlightPlanningDomain(
                 current_speed = self.mach_descent
             else:
                 raise ValueError("Current phase key not recognized.")
-            
+
             aircraft_state = AircraftState(
                 model_type=self.initial_aircraft_state.model_type,
                 performance_model_type=self.initial_aircraft_state.performance_model_type,
@@ -951,8 +941,8 @@ class FlightPlanningDomain(
                 phase=current_phase,
                 rating_level=current_rating,
                 cg=0.3,
-                gamma_air_deg=0
-            )   
+                gamma_air_deg=0,
+            )
             if current_phase.name == "CRUISE":
                 # compute the thrust coefficient for cruise
                 if alt_to - aircraft_state.zp_ft > 0:
@@ -964,30 +954,38 @@ class FlightPlanningDomain(
 
                 cx = self.aerodynamics_service.compute_drag_coefficient(
                     aerodynamics_settings=self.aerodynamics_settings,
-                    aircraft_state=aircraft_state
+                    aircraft_state=aircraft_state,
                 )
                 aircraft_state.cx = cx
-                dynamic_pressure = 0.7 * aircraft_state.weather_state.static_pressure_pa * aircraft_state.mach**2
-                aircraft_state.drag_n = aircraft_state.cx * dynamic_pressure * self.propulsion_settings.sref
+                dynamic_pressure = (
+                    0.7
+                    * aircraft_state.weather_state.static_pressure_pa
+                    * aircraft_state.mach**2
+                )
+                aircraft_state.drag_n = (
+                    aircraft_state.cx * dynamic_pressure * self.propulsion_settings.sref
+                )
                 aircraft_state.thrust_n = aircraft_state.drag_n * reduction_coeff
                 try:
-                    aircraft_state.tsp = self.propulsion_service.compute_tsp_from_thrust(
-                        propulsion_settings=self.propulsion_settings,
-                        aircraft_state=aircraft_state,
-                        target_thrust_n=aircraft_state.thrust_n
+                    aircraft_state.tsp = (
+                        self.propulsion_service.compute_tsp_from_thrust(
+                            propulsion_settings=self.propulsion_settings,
+                            aircraft_state=aircraft_state,
+                            target_thrust_n=aircraft_state.thrust_n,
+                        )
                     )
                 except:
                     return np.inf
             elif current_phase.name == "CLIMB":
                 aircraft_state.tsp = self.propulsion_service.compute_max_rating(
                     propulsion_settings=self.propulsion_settings,
-                    aircraft_state=aircraft_state
+                    aircraft_state=aircraft_state,
                 )
             elif current_phase.name == "DESCENT":
                 aircraft_state.tsp = 0.0
             else:
                 raise ValueError("Current phase not recognized in loop.")
-            
+
             aircraft_state.cl = (2 * aircraft_state.gw_kg * 9.80665) / (
                 delta
                 * 101325.0
@@ -1143,7 +1141,7 @@ class FlightPlanningDomain(
             nb_lateral_points=nb_lateral_points,
             nb_climb_descent_steps=nb_climb_descent_steps,
             flight_levels_ft=flight_levels_ft,
-            graph_width=graph_width
+            graph_width=graph_width,
         )
 
         self.network = prune_graph(G=graph)
@@ -1159,7 +1157,7 @@ class FlightPlanningDomain(
         to_: Tuple[float, float, int],
         current_speed: float,
         current_phase: PhaseEnum,
-        current_rating: RatingEnum
+        current_rating: RatingEnum,
     ) -> pd.DataFrame:
         """Compute the trajectory of a flying object from a given point to a given point
 
@@ -1181,7 +1179,7 @@ class FlightPlanningDomain(
             phase=current_phase,
             rating_level=current_rating,
             cg=0.3,
-            gamma_air_deg=0
+            gamma_air_deg=0,
         )
 
         lat_to, lon_to, alt_to = to_[0], to_[1], to_[2]
@@ -1276,7 +1274,7 @@ class FlightPlanningDomain(
             if current_phase.name == "CLIMB" or current_phase.name == "CRUISE":
                 aircraft_state.tsp = self.propulsion_service.compute_max_rating(
                     propulsion_settings=self.propulsion_settings,
-                    aircraft_state=aircraft_state
+                    aircraft_state=aircraft_state,
                 )
             elif current_phase.name == "DESCENT":
                 aircraft_state.tsp = 0.0
@@ -1285,7 +1283,7 @@ class FlightPlanningDomain(
 
             ff = self.propulsion_service.compute_total_fuel_flow_kg_per_sec(
                 propulsion_settings=self.propulsion_settings,
-                aircraft_state=aircraft_state
+                aircraft_state=aircraft_state,
             )
 
             pos["fuel"] = ff * dt
@@ -1302,7 +1300,7 @@ class FlightPlanningDomain(
                 if self.weather_date != self.initial_date:
                     self.weather_date = self.weather_date.previous_day()
                     self.weather_interpolator = self.get_weather_interpolator()
-            
+
             dist = distance(
                 ll[0],
                 ll[1],
@@ -1318,9 +1316,9 @@ class FlightPlanningDomain(
                 "alt": alt_to,
                 "mass": mass_new,
                 "mach": current_speed,
-                "cas": mach2cas(mach=aircraft_state.mach, h=alt_to*ft, dT=0),
+                "cas": mach2cas(mach=aircraft_state.mach, h=alt_to * ft, dT=0),
                 "fuel": pos["fuel"],
-                "phase": current_phase.name
+                "phase": current_phase.name,
             }
 
             aircraft_state.gw_kg = mass_new
@@ -1426,7 +1424,10 @@ class FlightPlanningDomain(
                             f"Goal reached after {i_step} steps, but there is not enough fuel remaining!"
                         )
             else:
-                if self.initial_aircraft_state.MFC >= terminal_state_constraints["fuel"]:
+                if (
+                    self.initial_aircraft_state.MFC
+                    >= terminal_state_constraints["fuel"]
+                ):
                     print(f"Goal reached after {i_step} steps!")
                 else:
                     print(

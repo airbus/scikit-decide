@@ -4,9 +4,11 @@
 
 
 import time
-import networkx as nx
+
+import folium
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import pandas as pd
 from cartopy import crs as ccrs
@@ -15,7 +17,7 @@ from matplotlib.figure import Figure
 from openap import aero
 from openap.extra.aero import ft, nm
 from pygeodesy.ellipsoidalVincenty import LatLon
-import folium
+
 
 class Timer(object):
     def __init__(self, name=None):
@@ -31,9 +33,8 @@ class Timer(object):
             )
         print("Elapsed: %s" % (time.time() - self.tstart))
 
-def plot_graph_vertical(
-        G: nx.DiGraph, 
-        title: str = "Flight Graph Vertical Profile"):
+
+def plot_graph_vertical(G: nx.DiGraph, title: str = "Flight Graph Vertical Profile"):
     fig = plt.figure(figsize=(12, 7))
     ax = fig.add_subplot(111)
 
@@ -41,9 +42,9 @@ def plot_graph_vertical(
     for u, v in G.edges():
         x1, _, z1 = u
         x2, _, z2 = v
-        alt1 = G.nodes[u]['flight_level']
-        alt2 = G.nodes[v]['flight_level']
-        ax.plot([x1, x2], [alt1, alt2], c='gray', alpha=0.3, linewidth=1)
+        alt1 = G.nodes[u]["flight_level"]
+        alt2 = G.nodes[v]["flight_level"]
+        ax.plot([x1, x2], [alt1, alt2], c="gray", alpha=0.3, linewidth=1)
 
     # Plot all nodes
     x_indices = []
@@ -51,43 +52,58 @@ def plot_graph_vertical(
     for node_key, data in G.nodes(data=True):
         x_indices.append(node_key[0])
         altitudes.append(data["flight_level"])
-    ax.scatter(x_indices, altitudes, c='blue', s=20, alpha=0.7, label='Nodes')
+    ax.scatter(x_indices, altitudes, c="blue", s=20, alpha=0.7, label="Nodes")
 
     # Highlight Start Node
     y_center_idx = max(n[1] for n in G.nodes) // 2
     start_node_key = (0, y_center_idx, 0)
     if start_node_key in G.nodes:
         start_data = G.nodes[start_node_key]
-        ax.scatter(start_node_key[0], start_data['flight_level'],
-                   c='green', s=120, marker='^', label='Start Node')
+        ax.scatter(
+            start_node_key[0],
+            start_data["flight_level"],
+            c="green",
+            s=120,
+            marker="^",
+            label="Start Node",
+        )
 
     # Highlight End Node
     max_x_index = max(n[0] for n in G.nodes)
     end_node_key = (max_x_index, y_center_idx, 0)
     if end_node_key in G.nodes:
         end_data = G.nodes[end_node_key]
-        ax.scatter(end_node_key[0], end_data['flight_level'],
-                   c='red', s=120, marker='X', label='End Node')
+        ax.scatter(
+            end_node_key[0],
+            end_data["flight_level"],
+            c="red",
+            s=120,
+            marker="X",
+            label="End Node",
+        )
 
-    ax.set_xlabel('Forward Point Index (X-axis in graph)')
-    ax.set_ylabel('Altitude (ft)')
+    ax.set_xlabel("Forward Point Index (X-axis in graph)")
+    ax.set_ylabel("Altitude (ft)")
     ax.set_title(title)
     # ax.legend()
     ax.grid(True)
     plt.tight_layout()
     plt.show()
 
+
 def plot_flight_graph_on_map_with_edges(
-        G: nx.DiGraph, 
-        nb_lateral_points_param: int) -> folium.Map:
+    G: nx.DiGraph, nb_lateral_points_param: int
+) -> folium.Map:
     # Extract lat/lon
-    lats = [data['latlon'].lat for _, data in G.nodes(data=True)]
-    lons = [data['latlon'].lon for _, data in G.nodes(data=True)]
+    lats = [data["latlon"].lat for _, data in G.nodes(data=True)]
+    lons = [data["latlon"].lon for _, data in G.nodes(data=True)]
     center_lat = sum(lats) / len(lats) if lats else 0.0
     center_lon = sum(lons) / len(lons) if lons else 0.0
 
     # Initialize map
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=6, tiles='CartoDB positron')
+    m = folium.Map(
+        location=[center_lat, center_lon], zoom_start=6, tiles="CartoDB positron"
+    )
 
     # ✅ Draw edges correctly between connected nodes
     for u, v in G.edges():
@@ -95,13 +111,13 @@ def plot_flight_graph_on_map_with_edges(
         v_data = G.nodes[v]
 
         try:
-            u_latlon = u_data['latlon']
-            v_latlon = v_data['latlon']
+            u_latlon = u_data["latlon"]
+            v_latlon = v_data["latlon"]
             folium.PolyLine(
                 locations=[(u_latlon.lat, u_latlon.lon), (v_latlon.lat, v_latlon.lon)],
-                color='gray',
+                color="gray",
                 weight=1,
-                opacity=0.4
+                opacity=0.4,
             ).add_to(m)
         except KeyError:
             continue  # Skip if latlon is missing
@@ -109,12 +125,12 @@ def plot_flight_graph_on_map_with_edges(
     # 🔵 Plot all nodes
     for node, data in G.nodes(data=True):
         folium.CircleMarker(
-            location=(data['latlon'].lat, data['latlon'].lon),
+            location=(data["latlon"].lat, data["latlon"].lon),
             radius=2,
-            color='blue',
+            color="blue",
             fill=True,
             fill_opacity=0.6,
-            tooltip=f"FL: {data['flight_level']:.0f}ft (Node: {node})"
+            tooltip=f"FL: {data['flight_level']:.0f}ft (Node: {node})",
         ).add_to(m)
 
     # ✅ Start node marker
@@ -123,9 +139,9 @@ def plot_flight_graph_on_map_with_edges(
     if start_node_key in G.nodes:
         start = G.nodes[start_node_key]
         folium.Marker(
-            location=(start['latlon'].lat, start['latlon'].lon),
-            popup='Start',
-            icon=folium.Icon(color='green', icon='play')
+            location=(start["latlon"].lat, start["latlon"].lon),
+            popup="Start",
+            icon=folium.Icon(color="green", icon="play"),
         ).add_to(m)
 
     # ✅ End node marker
@@ -134,12 +150,13 @@ def plot_flight_graph_on_map_with_edges(
     if end_node_key in G.nodes:
         end = G.nodes[end_node_key]
         folium.Marker(
-            location=(end['latlon'].lat, end['latlon'].lon),
-            popup='End',
-            icon=folium.Icon(color='red', icon='stop')
+            location=(end["latlon"].lat, end["latlon"].lon),
+            popup="End",
+            icon=folium.Icon(color="red", icon="stop"),
         ).add_to(m)
 
     return m
+
 
 def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
     fig = plt.figure(figsize=(10, 7))
@@ -254,7 +271,10 @@ def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
 
     return fig
 
-def plot_network_adapted(graph: nx.DiGraph, p0: LatLon, p1: LatLon, dir_path: str = None):
+
+def plot_network_adapted(
+    graph: nx.DiGraph, p0: LatLon, p1: LatLon, dir_path: str = None
+):
     """
     Plots the vertical profile and map trajectory of a given flight graph.
     This version is adapted to work with the graph from create_flight_graph.
@@ -278,14 +298,14 @@ def plot_network_adapted(graph: nx.DiGraph, p0: LatLon, p1: LatLon, dir_path: st
     # Plot edges first to form the background structure
     for u, v in graph.edges():
         x_edge = [u[0], v[0]]
-        y_edge = [graph.nodes[u]['flight_level'], graph.nodes[v]['flight_level']]
+        y_edge = [graph.nodes[u]["flight_level"], graph.nodes[v]["flight_level"]]
         ax1.plot(x_edge, y_edge, color="gray", alpha=0.5, linewidth=0.7)
 
     # Plot nodes on top of the edges
     # x-axis is the forward point index from the node key: (x, y, z) -> x
     # y-axis is the flight level in feet from the node attribute
     x_coords = [node[0] for node in graph.nodes]
-    y_coords_ft = [data['flight_level'] for node, data in graph.nodes(data=True)]
+    y_coords_ft = [data["flight_level"] for node, data in graph.nodes(data=True)]
     ax1.scatter(x_coords, y_coords_ft, color="blue", s=8, zorder=5, label="Nodes")
 
     ax1.set_xlabel("Forward Point Index")
@@ -301,7 +321,10 @@ def plot_network_adapted(graph: nx.DiGraph, p0: LatLon, p1: LatLon, dir_path: st
     latmin, latmax = min(p0.lat, p1.lat), max(p0.lat, p1.lat)
     lonmin, lonmax = min(p0.lon, p1.lon), max(p0.lon, p1.lon)
     padding = 3  # Degrees of padding
-    ax2.set_extent([lonmin - padding, lonmax + padding, latmin - padding, latmax + padding], crs=ccrs.PlateCarree())
+    ax2.set_extent(
+        [lonmin - padding, lonmax + padding, latmin - padding, latmax + padding],
+        crs=ccrs.PlateCarree(),
+    )
 
     # Add map features
     ax2.add_feature(BORDERS, lw=0.5, color="gray")
@@ -313,26 +336,41 @@ def plot_network_adapted(graph: nx.DiGraph, p0: LatLon, p1: LatLon, dir_path: st
         u_data = graph.nodes[u]
         v_data = graph.nodes[v]
         # Check that both nodes have the latlon attribute before plotting
-        if u_data.get('latlon') and v_data.get('latlon'):
-            lon_edge = [u_data['latlon'].lon, v_data['latlon'].lon]
-            lat_edge = [u_data['latlon'].lat, v_data['latlon'].lat]
-            ax2.plot(lon_edge, lat_edge, transform=ccrs.Geodetic(), color="gray", alpha=0.6, linewidth=0.5)
+        if u_data.get("latlon") and v_data.get("latlon"):
+            lon_edge = [u_data["latlon"].lon, v_data["latlon"].lon]
+            lat_edge = [u_data["latlon"].lat, v_data["latlon"].lat]
+            ax2.plot(
+                lon_edge,
+                lat_edge,
+                transform=ccrs.Geodetic(),
+                color="gray",
+                alpha=0.6,
+                linewidth=0.5,
+            )
 
     # Plot graph nodes
     # Access lat/lon correctly from the 'latlon' object
     for node, data in graph.nodes(data=True):
-        if data.get('latlon'):
+        if data.get("latlon"):
             ax2.scatter(
                 data["latlon"].lon,
                 data["latlon"].lat,
                 transform=ccrs.Geodetic(),
                 color="blue",
                 s=2,
-                zorder=5
+                zorder=5,
             )
 
     # Plot start and end points
-    ax2.scatter(p0.lon, p0.lat, transform=ccrs.Geodetic(), color="red", s=30, zorder=10, label="Start/End")
+    ax2.scatter(
+        p0.lon,
+        p0.lat,
+        transform=ccrs.Geodetic(),
+        color="red",
+        s=30,
+        zorder=10,
+        label="Start/End",
+    )
     ax2.scatter(p1.lon, p1.lat, transform=ccrs.Geodetic(), color="red", s=30, zorder=10)
     ax2.set_title("Geographical Trajectory")
     ax2.legend()
