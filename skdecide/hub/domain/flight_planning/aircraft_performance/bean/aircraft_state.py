@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 from skdecide.hub.domain.flight_planning.aircraft_performance.bean.four_dimensions_state import (
     FourDimensionsState,
@@ -16,6 +16,7 @@ from skdecide.hub.domain.flight_planning.aircraft_performance.performance.phase_
 from skdecide.hub.domain.flight_planning.aircraft_performance.performance.rating_enum import (
     RatingEnum,
 )
+from openap.extra.aero import ft
 
 
 @dataclass
@@ -35,21 +36,27 @@ class AircraftState(FourDimensionsState):
         weather_state: Optional[WeatherState] = None,
         tas_meters_per_sec: Optional[float] = None,
         mach: Optional[float] = None,
-        mach_cruise: Optional[float] = None,
-        cas_climb_kts: Optional[float] = None,
-        cas_descent_kts: Optional[float] = None,
+
+        x_graph: Optional[int] = None,
+        y_graph: Optional[int] = None,
+        z_graph: Optional[int] = None,
+        latitude_deg: Optional[float] = None,
+        longitude_deg: Optional[float] = None,
+
         total_temperature_k: Optional[float] = None,
         total_pressure_pa: Optional[float] = None,
+
         # Flight
         ground_dist_m: Optional[float] = None,
         gamma_air_deg: Optional[float] = None,
         cost_index: Optional[float] = None,  # kg / min
-        rocd_ft_min: Optional[float] = None,
+
         # aero
         cl: Optional[float] = None,
         lift_n: Optional[float] = None,
         cx: Optional[float] = None,
         drag_n: Optional[float] = None,
+
         # propu
         is_one_eo: Optional[bool] = False,
         is_air_cond_on: Optional[bool] = False,
@@ -57,32 +64,33 @@ class AircraftState(FourDimensionsState):
         tsp: Optional[float] = None,  # reduced tsp
         thrust_n: Optional[float] = None,
         fuel_flow_kg_per_sec: Optional[float] = None,
+
         # phase
         phase: Optional[PhaseEnum] = None,
     ):
 
         self.performance_model_type = performance_model_type
-
         self.model_type = model_type
 
         self.zp_ft = zp_ft
         self.gw_kg = gw_kg
         self.cg = cg
+        self.x_graph = x_graph
+        self.y_graph = y_graph
+        self.z_graph = z_graph
+        self.latitude_deg = latitude_deg
+        self.longitude_deg = longitude_deg
 
         self.weather_state = weather_state
 
         self.tas_meters_per_sec = tas_meters_per_sec
         self.mach = mach
-        self.mach_cruise = mach_cruise
-        self.cas_climb_kts = cas_climb_kts
-        self.cas_descent_kts = cas_descent_kts
         self.total_temperature_k = total_temperature_k
         self.total_pressure_pa = total_pressure_pa
 
         self.ground_dist_m = ground_dist_m
         self.gamma_air_deg = gamma_air_deg
         self.cost_index = cost_index
-        self.rocd_ft_min = rocd_ft_min
 
         self.cl = cl
         self.lift_n = lift_n
@@ -142,3 +150,42 @@ class AircraftState(FourDimensionsState):
             self.zp_ft = zp_ft
         if mach is not None:
             self.mach = mach
+
+    def clone(self):
+        new_state = AircraftState(
+            performance_model_type=self.performance_model_type,
+            model_type=self.model_type
+        )
+
+        new_state.gw_kg = self.gw_kg
+        new_state.cg = self.cg
+        new_state.weather_state = self.weather_state
+        new_state.zp_ft = self.zp_ft
+        new_state.time_sec = self.time_sec
+        new_state.latitude_deg = self.latitude_deg
+        new_state.longitude_deg = self.longitude_deg
+        new_state.x_graph = self.x_graph
+        new_state.y_graph = self.y_graph
+        new_state.z_graph = self.z_graph
+        
+        new_state.tas_meters_per_sec = self.tas_meters_per_sec
+        new_state.mach = self.mach
+        new_state.total_pressure_pa = self.total_pressure_pa
+        new_state.total_temperature_k = self.total_temperature_k
+
+        new_state.ground_dist_m = self.ground_dist_m
+        new_state.gamma_air_deg = self.gamma_air_deg
+        new_state.cost_index = self.cost_index
+
+        new_state.cl = self.cl
+        new_state.lift_n = self.lift_n
+        new_state.cx = self.cx
+        new_state.drag_n = self.drag_n
+        new_state.thrust_n = self.thrust_n
+        new_state.tsp = self.tsp 
+        new_state.fuel_flow_kg_per_sec = self.fuel_flow_kg_per_sec
+
+        new_state.phase = self.phase
+        new_state.rating_level = self.rating_level
+
+        return new_state

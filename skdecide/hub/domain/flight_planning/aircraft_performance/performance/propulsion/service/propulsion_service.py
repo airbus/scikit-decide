@@ -83,13 +83,7 @@ class PropulsionService:
         aircraft_state: AircraftState,
         target_thrust_n: float,
     ) -> float:
-        aircraft_state_copy = deepcopy(aircraft_state)
-        if aircraft_state.is_one_eo:
-            aircraft_state_copy.rating_level = RatingEnum.MCN
-        elif aircraft_state.phase == PhaseEnum.TAKE_OFF:
-            aircraft_state_copy.rating_level = RatingEnum.T0N
-        else:
-            aircraft_state_copy.rating_level = RatingEnum.MCL
+        aircraft_state_copy = aircraft_state.clone()
 
         tsp_max = self.compute_max_rating(
             propulsion_settings=propulsion_settings, aircraft_state=aircraft_state_copy
@@ -113,24 +107,67 @@ class PropulsionService:
         if target_thrust_n < thrust_min:
             raise Exception("Target thrust exceeds min")
 
-        computed_thrust_n = 0
+        # Handle edge cases where target_thrust is very close to min/max
+        if abs(target_thrust_n - thrust_min) < 0.5:
+            return tsp_min
+
+        if abs(target_thrust_n - thrust_max) < 0.5:
+            return tsp_max
+
+        # Initial guess for trial_tsp using linear interpolation (secant method's first step)
+        # Ensure thrust_max - thrust_min is not zero before division
+        if (
+            abs(thrust_max - thrust_min) < 1e-9
+        ):  # very small difference, close enough to either bound
+
+            return tsp_min  # or tsp_max, doesn't matter much
+
         trial_tsp = tsp_min + (tsp_max - tsp_min) / (thrust_max - thrust_min) * (
             target_thrust_n - thrust_min
         )
-        while abs(target_thrust_n - computed_thrust_n) > 0.5:
+
+        computed_thrust_n = 0
+        iteration_count = 0
+        max_iterations = 100  # Add a safety break for infinite loops
+        while abs(target_thrust_n - computed_thrust_n) > 10:
+            iteration_count += 1
+            if iteration_count > max_iterations:
+                print(
+                    f"Warning: Max iterations ({max_iterations}) reached. Returning current trial_tsp."
+                )
+                return trial_tsp  # Or raise an exception, depending on desired behavior
+
+            # Ensure trial_tsp stays within valid TSP range
+            # This is crucial if the interpolation formula leads to values outside [tsp_min_initial, tsp_max_initial]
+            trial_tsp = max(tsp_min, min(tsp_max, trial_tsp))
             aircraft_state_copy.tsp = trial_tsp
             computed_thrust_n = self.compute_total_net_thrust_n(
                 propulsion_settings=propulsion_settings,
                 aircraft_state=aircraft_state_copy,
             )
-            if thrust_min < computed_thrust_n < target_thrust_n:
+
+            # Update bounds based on where computed_thrust_n falls relative to target_thrust_n
+            if computed_thrust_n < target_thrust_n:
                 tsp_min = trial_tsp
                 thrust_min = computed_thrust_n
-            elif thrust_max > computed_thrust_n > target_thrust_n:
+            else:  # computed_thrust_n >= target_thrust_n
                 tsp_max = trial_tsp
                 thrust_max = computed_thrust_n
 
-            trial_tsp = tsp_min + (tsp_max - tsp_min) / (thrust_max - thrust_min) * (
+            # Re-calculate trial_tsp for the next iteration
+            # Add a safeguard for division by zero or very small numbers
+            thrust_range = thrust_max - thrust_min
+
+            if (
+                abs(thrust_range) < 1e-9
+            ):  # If the thrust range becomes too small, we've likely converged or are stuck
+                print(
+                    f"Warning: Thrust range ({thrust_range}) too small. Returning current trial_tsp."
+                )
+                break  # Exit loop
+
+            trial_tsp = tsp_min + (tsp_max - tsp_min) / thrust_range * (
                 target_thrust_n - thrust_min
             )
+
         return trial_tsp
