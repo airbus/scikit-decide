@@ -2,6 +2,7 @@ import sys
 
 import pytest
 from openap.extra.aero import cas2mach, ft, kts
+
 from skdecide.hub.solver.lazy_astar import LazyAstar
 
 
@@ -75,7 +76,10 @@ def test_aircraft_state():
 )
 def test_flight_planning():
     import datetime
+
     import numpy as np
+    from pygeodesy.ellipsoidalVincenty import LatLon
+
     from skdecide.hub.domain.flight_planning.aircraft_performance.bean.aircraft_state import (
         AircraftState,
     )
@@ -92,7 +96,6 @@ def test_flight_planning():
         FlightPlanningDomain,
         WeatherDate,
     )
-    from pygeodesy.ellipsoidalVincenty import LatLon
 
     acState_poll_schumann = AircraftState(
         model_type="A320",  # only for OPENAP and POLL_SCHUMANN
@@ -108,7 +111,9 @@ def test_flight_planning():
 
     # we set a date valid for 4 months to avoid downloading weather data at each daily run.
     today = datetime.date.today()
-    month = ((today.month) - 1) // 4 * 4 + 1  # will result in january, may, or september
+    month = (
+        (today.month) - 1
+    ) // 4 * 4 + 1  # will result in january, may, or september
     year = today.year
     day = 1
 
@@ -116,23 +121,19 @@ def test_flight_planning():
 
     domain_factory = lambda: FlightPlanningDomain(
         aircraft_state=acState_poll_schumann,
-
         mach_cruise=0.78,
         mach_climb=0.7,
         mach_descent=0.65,
-
         nb_forward_points=20,
         nb_lateral_points=10,
         nb_climb_descent_steps=5,
-        flight_levels_ft=list(np.arange(30_000, 38_000+2_000, 2_000)),
+        flight_levels_ft=list(np.arange(30_000, 38_000 + 2_000, 2_000)),
         graph_width="medium",
         origin=LatLon(43.629444, 1.363056),
         destination="EDDB",
-
         objective="fuel",
         heuristic_name="lazy_fuel",
-
-        weather_date=weather_date
+        weather_date=weather_date,
     )
 
     domain = domain_factory()
