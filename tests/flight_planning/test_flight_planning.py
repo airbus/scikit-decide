@@ -1,7 +1,6 @@
 import sys
 
 import pytest
-from openap.extra.aero import cas2mach, ft, kts
 
 from skdecide.hub.solver.lazy_astar import LazyAstar
 

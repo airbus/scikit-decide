@@ -5,7 +5,6 @@
 
 import time
 
-import folium
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -14,7 +13,6 @@ import pandas as pd
 from cartopy import crs as ccrs
 from cartopy.feature import BORDERS, LAND, OCEAN
 from matplotlib.figure import Figure
-from openap import aero
 from openap.extra.aero import ft, nm
 from pygeodesy.ellipsoidalVincenty import LatLon
 
@@ -89,73 +87,6 @@ def plot_graph_vertical(G: nx.DiGraph, title: str = "Flight Graph Vertical Profi
     ax.grid(True)
     plt.tight_layout()
     plt.show()
-
-
-def plot_flight_graph_on_map_with_edges(
-    G: nx.DiGraph, nb_lateral_points_param: int
-) -> folium.Map:
-    # Extract lat/lon
-    lats = [data["latlon"].lat for _, data in G.nodes(data=True)]
-    lons = [data["latlon"].lon for _, data in G.nodes(data=True)]
-    center_lat = sum(lats) / len(lats) if lats else 0.0
-    center_lon = sum(lons) / len(lons) if lons else 0.0
-
-    # Initialize map
-    m = folium.Map(
-        location=[center_lat, center_lon], zoom_start=6, tiles="CartoDB positron"
-    )
-
-    # ✅ Draw edges correctly between connected nodes
-    for u, v in G.edges():
-        u_data = G.nodes[u]
-        v_data = G.nodes[v]
-
-        try:
-            u_latlon = u_data["latlon"]
-            v_latlon = v_data["latlon"]
-            folium.PolyLine(
-                locations=[(u_latlon.lat, u_latlon.lon), (v_latlon.lat, v_latlon.lon)],
-                color="gray",
-                weight=1,
-                opacity=0.4,
-            ).add_to(m)
-        except KeyError:
-            continue  # Skip if latlon is missing
-
-    # 🔵 Plot all nodes
-    for node, data in G.nodes(data=True):
-        folium.CircleMarker(
-            location=(data["latlon"].lat, data["latlon"].lon),
-            radius=2,
-            color="blue",
-            fill=True,
-            fill_opacity=0.6,
-            tooltip=f"FL: {data['flight_level']:.0f}ft (Node: {node})",
-        ).add_to(m)
-
-    # ✅ Start node marker
-    y_center_idx = nb_lateral_points_param // 2
-    start_node_key = (0, y_center_idx, 0)
-    if start_node_key in G.nodes:
-        start = G.nodes[start_node_key]
-        folium.Marker(
-            location=(start["latlon"].lat, start["latlon"].lon),
-            popup="Start",
-            icon=folium.Icon(color="green", icon="play"),
-        ).add_to(m)
-
-    # ✅ End node marker
-    max_x = max(n[0] for n in G.nodes) if G.nodes else 0
-    end_node_key = (max_x, y_center_idx, 0)
-    if end_node_key in G.nodes:
-        end = G.nodes[end_node_key]
-        folium.Marker(
-            location=(end["latlon"].lat, end["latlon"].lon),
-            popup="End",
-            icon=folium.Icon(color="red", icon="stop"),
-        ).add_to(m)
-
-    return m
 
 
 def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
