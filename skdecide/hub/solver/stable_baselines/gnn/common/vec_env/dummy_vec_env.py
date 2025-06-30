@@ -68,11 +68,11 @@ def wrap_graph_env(
         observation_space = env.observation_space
         if isinstance(observation_space, gym.spaces.Graph):
             observation_space._shape = (0,)
-            observation_space.dtype = np.float_
+            observation_space.dtype = np.float64
         elif isinstance(observation_space, gym.spaces.Dict):
             for subspace in observation_space.spaces.values():
                 if isinstance(subspace, gym.spaces.Graph):
                     subspace._shape = (0,)
-                    subspace.dtype = np.float_
+                    subspace.dtype = np.float64
         env = GraphDummyVecEnv([lambda: env])  # type: ignore[list-item, return-value]
     return env

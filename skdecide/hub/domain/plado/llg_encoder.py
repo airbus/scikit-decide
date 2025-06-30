@@ -477,7 +477,7 @@ class LLGEncoder:
 
     def index_function(
         self, x: Union[int, npt.NDArray[np.int_]]
-    ) -> npt.NDArray[Union[np.int_, np.float_]]:
+    ) -> npt.NDArray[Union[np.int_, np.float64]]:
         """Maps an index into sphere S^T."""
         if self.index_function_type == IndexFunctionType.ONEHOT:
             return np.eye(self.index_function_dim, dtype=self.nodes_dtype)[
@@ -487,7 +487,7 @@ class LLGEncoder:
             raise NotImplementedError()
 
     def index_function_inverse(
-        self, y: npt.NDArray[Union[np.int_, np.float_]]
+        self, y: npt.NDArray[Union[np.int_, np.float64]]
     ) -> Union[int, npt.NDArray[np.int_]]:
         """Inverse of index function."""
         if self.index_function_type == IndexFunctionType.ONEHOT:
@@ -635,7 +635,7 @@ class LLGEncoder:
         ):
             return np.int_
         else:
-            return np.float_
+            return np.float64
 
     def _encode_condition(
         self,

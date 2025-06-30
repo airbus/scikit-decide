@@ -1031,10 +1031,10 @@ class BasePladoTransformedObservableDomain(D):
         )
 
         self.dtype_edge_features = (
-            np.int8 if len(self.i_edge_fluents) == 0 else np.float_
+            np.int8 if len(self.i_edge_fluents) == 0 else np.float64
         )
         self.dtype_node_features = (
-            np.int8 if len(self.i_node_fluents) == 0 else np.float_
+            np.int8 if len(self.i_node_fluents) == 0 else np.float64
         )
 
         self.n_nodes = len(self.task.objects)
