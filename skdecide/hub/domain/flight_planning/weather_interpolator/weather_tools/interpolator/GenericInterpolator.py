@@ -103,9 +103,9 @@ class GenericEnsembleInterpolator(GenericInterpolator):
             items = {var: self.datas[var].item() for var in fields}
             self.lat_dict = {var: items[var]["lats"] for var in items}
             self.long_dict = {
-                var: items[var]["longs"]
-                if "longs" in items[var]
-                else items[var]["lons"]
+                var: (
+                    items[var]["longs"] if "longs" in items[var] else items[var]["lons"]
+                )
                 for var in items
             }
             self.levels_dict = {
@@ -113,11 +113,13 @@ class GenericEnsembleInterpolator(GenericInterpolator):
                 for var in items
             }
             self.time_dict = {
-                var: items[var]["times"]
-                if self.time_cut_index is None
-                else items[var]["times"][
-                    : min(self.time_cut_index, len(items[var]["times"]))
-                ]
+                var: (
+                    items[var]["times"]
+                    if self.time_cut_index is None
+                    else items[var]["times"][
+                        : min(self.time_cut_index, len(items[var]["times"]))
+                    ]
+                )
                 for var in items
             }
 
@@ -148,9 +150,9 @@ class GenericEnsembleInterpolator(GenericInterpolator):
             items = {var: self.datas[var] for var in fields}
             self.lat_dict = {var: items[var]["lats"] for var in fields}
             self.long_dict = {
-                var: items[var]["longs"]
-                if "longs" in items[var]
-                else items[var]["lons"]
+                var: (
+                    items[var]["longs"] if "longs" in items[var] else items[var]["lons"]
+                )
                 for var in fields
             }
             self.levels_dict = {

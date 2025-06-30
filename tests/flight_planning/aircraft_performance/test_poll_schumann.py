@@ -65,9 +65,7 @@ def test_drag():
             performance_model_type=PerformanceModelEnum.OPENAP,
             gw_kg=58800.0,
             zp_ft=case["zp_ft"],
-            mach_cruise=0.753,
-            cas_climb_kts=170,
-            cas_descent_kts=250,
+            mach=0.753,
             phase=PhaseEnum.CRUISE,
             rating_level=RatingEnum.MCL,
             cg=0.3,
@@ -81,7 +79,6 @@ def test_drag():
         )
 
         acState.weather_state = weather_state
-        acState.mach = 0.753
 
         delta = acState.weather_state.static_pressure_pa / 101325.0
 
@@ -162,9 +159,7 @@ def test_thrust():
             performance_model_type=PerformanceModelEnum.OPENAP,
             gw_kg=58800.0,
             zp_ft=case["zp_ft"],
-            mach_cruise=0.753,
-            cas_climb_kts=170,
-            cas_descent_kts=250,
+            mach=0.753,
             phase=PhaseEnum.CRUISE,
             rating_level=RatingEnum.MCL,
             cg=0.3,
@@ -178,7 +173,6 @@ def test_thrust():
         )
 
         acState.weather_state = weather_state
-        acState.mach = 0.753
 
         delta = acState.weather_state.static_pressure_pa / 101325.0
 

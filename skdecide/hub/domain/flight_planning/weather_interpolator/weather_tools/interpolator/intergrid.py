@@ -223,7 +223,7 @@ class Intergrid:
             order=self.order,
             prefilter=self.prefilter,
             mode="nearest",  # outside -> edge
-            # test: mode="constant", cval=np.NaN,
+            # test: mode="constant", cval=np.nan,
             output=out,
         )
         if self.verbose:

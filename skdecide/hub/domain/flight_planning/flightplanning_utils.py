@@ -4,16 +4,15 @@
 
 
 import time
-from copy import deepcopy
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import pandas as pd
 from cartopy import crs as ccrs
 from cartopy.feature import BORDERS, LAND, OCEAN
 from matplotlib.figure import Figure
-from openap import aero
 from openap.extra.aero import ft, nm
 from pygeodesy.ellipsoidalVincenty import LatLon
 
@@ -33,9 +32,64 @@ class Timer(object):
         print("Elapsed: %s" % (time.time() - self.tstart))
 
 
-def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
-    network = domain.network
+def plot_graph_vertical(G: nx.DiGraph, title: str = "Flight Graph Vertical Profile"):
+    fig = plt.figure(figsize=(12, 7))
+    ax = fig.add_subplot(111)
 
+    # Plot all edges (as lines between nodes in vertical profile)
+    for u, v in G.edges():
+        x1, _, z1 = u
+        x2, _, z2 = v
+        alt1 = G.nodes[u]["flight_level"]
+        alt2 = G.nodes[v]["flight_level"]
+        ax.plot([x1, x2], [alt1, alt2], c="gray", alpha=0.3, linewidth=1)
+
+    # Plot all nodes
+    x_indices = []
+    altitudes = []
+    for node_key, data in G.nodes(data=True):
+        x_indices.append(node_key[0])
+        altitudes.append(data["flight_level"])
+    ax.scatter(x_indices, altitudes, c="blue", s=20, alpha=0.7, label="Nodes")
+
+    # Highlight Start Node
+    y_center_idx = max(n[1] for n in G.nodes) // 2
+    start_node_key = (0, y_center_idx, 0)
+    if start_node_key in G.nodes:
+        start_data = G.nodes[start_node_key]
+        ax.scatter(
+            start_node_key[0],
+            start_data["flight_level"],
+            c="green",
+            s=120,
+            marker="^",
+            label="Start Node",
+        )
+
+    # Highlight End Node
+    max_x_index = max(n[0] for n in G.nodes)
+    end_node_key = (max_x_index, y_center_idx, 0)
+    if end_node_key in G.nodes:
+        end_data = G.nodes[end_node_key]
+        ax.scatter(
+            end_node_key[0],
+            end_data["flight_level"],
+            c="red",
+            s=120,
+            marker="X",
+            label="End Node",
+        )
+
+    ax.set_xlabel("Forward Point Index (X-axis in graph)")
+    ax.set_ylabel("Altitude (ft)")
+    ax.set_title(title)
+    # ax.legend()
+    ax.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
     fig = plt.figure(figsize=(10, 7))
 
     # define the grid layout
@@ -138,7 +192,9 @@ def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
 
     # add title to figure
     fig.suptitle(
-        f"Leg: {domain.origin} -> {domain.destination} \n A/C perf. model: {domain.aircraft_state.performance_model_type.name}; Fuel: {total_fuel} Kg; Time: {total_time}",
+        f"Leg: {str(domain.origin)} -> {str(domain.destination)} \n"
+        f"A/C perf. model: {domain.initial_aircraft_state.performance_model_type.name}; "
+        f"Fuel: {total_fuel} Kg; Time: {total_time}",
         fontsize=16,
     )
 
@@ -147,292 +203,114 @@ def plot_full(domain, trajectory: pd.DataFrame) -> Figure:
     return fig
 
 
-def plot_trajectory(lat1, lon1, lat2, lon2, trajectory: pd.DataFrame) -> Figure:
-    """Plot the trajectory of an object
-
-    # Parameters
-        trajectory (pd.DataFrame): the trajectory of the object
-
-    # Returns
-        Figure: the figure
+def plot_network_adapted(
+    graph: nx.DiGraph, p0: LatLon, p1: LatLon, dir_path: str = None
+):
     """
+    Plots the vertical profile and map trajectory of a given flight graph.
+    This version is adapted to work with the graph from create_flight_graph.
 
-    fig = Figure(figsize=(600, 600))
-    fig.canvas.header_visible = False
-    fig.canvas.footer_visible = False
-    fig.canvas.resizable = False
-    fig.set_dpi(1)
-
-    latmin, latmax = min(lat1, lat2), max(lat1, lat2)
-    lonmin, lonmax = min(lon1, lon2), max(lon1, lon2)
-
-    ax = plt.axes(projection=ccrs.TransverseMercator())
-
-    ax.set_extent([lonmin - 4, lonmax + 4, latmin - 2, latmax + 2])
-    ax.add_feature(OCEAN, facecolor="#d1e0e0", zorder=-1, lw=0)
-    ax.add_feature(LAND, facecolor="#f5f5f5", lw=0)
-    ax.add_feature(BORDERS, lw=0.5, color="gray")
-    ax.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
-    ax.coastlines(resolution="50m", lw=0.5, color="gray")
-
-    # great circle
-    ax.scatter(lon1, lat1, c="darkgreen", transform=ccrs.Geodetic())
-    ax.scatter(lon2, lat2, c="red", transform=ccrs.Geodetic())
-
-    ax.plot(
-        [lon1, lon2],
-        [lat1, lat2],
-        label="Great Circle",
-        color="red",
-        ls="--",
-        transform=ccrs.Geodetic(),
-    )
-
-    # trajectory
-    ax.plot(
-        trajectory.lon,
-        trajectory.lat,
-        color="green",
-        transform=ccrs.Geodetic(),
-        linewidth=2,
-        marker=".",
-        label="Optimal",
-    )
-
-    ax.legend()
-
-    return fig
-
-
-def plot_trajectory_no_map(lat1, lon1, lat2, lon2, trajectory: pd.DataFrame) -> Figure:
-    """Plot the trajectory of an object
-
-    # Parameters
-        trajectory (pd.DataFrame): the trajectory of the object
-
-    # Returns
-        Figure: the figure
+    Args:
+        graph (nx.DiGraph): The flight graph to plot.
+        p0 (LatLon): The starting point object.
+        p1 (LatLon): The ending point object.
+        dir_path (str, optional): Directory to save the plot image. Defaults to None.
     """
+    if not graph or graph.number_of_nodes() == 0:
+        print("Graph is empty, cannot plot.")
+        return
 
-    fig = Figure(figsize=(600, 600))
-    fig.canvas.header_visible = False
-    fig.canvas.footer_visible = False
-    fig.canvas.resizable = False
-    fig.set_dpi(1)
+    fig = plt.figure(figsize=(20, 9))
+    gs = gridspec.GridSpec(1, 2, width_ratios=[1, 1.5])  # Give more space to the map
 
-    latmin, latmax = min(lat1, lat2), max(lat1, lat2)
-    lonmin, lonmax = min(lon1, lon2), max(lon1, lon2)
-
-    fig, ax = plt.subplots(1)
-
-    wind_sample = 30
-    ax.set_xlim([lonmin, lonmax])
-    ax.set_ylim([latmin, latmax])
-    # great circle
-    ax.scatter(lon1, lat1, c="darkgreen")
-    ax.scatter(lon2, lat2, c="red")
-
-    ax.plot(
-        [lon1, lon2],
-        [lat1, lat2],
-        label="Great Circle",
-        color="red",
-        ls="--",
-    )
-
-    # trajectory
-    ax.plot(
-        trajectory.lon,
-        trajectory.lat,
-        color="green",
-        linewidth=2,
-        marker=".",
-        label="Optimal",
-    )
-
-    ax.legend()
-
-    # Save it to a temporary buffer.
-    # buf = BytesIO()
-    # fig.savefig(buf, format="png")
-    # Embed the result in the html output.
-    # data = base64.b64encode(buf.getbuffer()).decode("ascii")
-
-    return fig
-
-
-def plot_mass(trajectory: pd.DataFrame) -> Figure:
-    fig = plt.Figure()
-    ax = plt.axes()
-    pos = [
-        LatLon(
-            trajectory.iloc[i]["lat"],
-            trajectory.iloc[i]["lon"],
-            trajectory.iloc[i]["alt"],
-        )
-        for i in range(len(trajectory.alt))
-    ]
-    dist = np.array([d.distanceTo(pos[0]) for d in pos])
-
-    ax.plot(dist / nm, trajectory.mass)
-    ax.set_xlabel("ESAD (nm)")
-    ax.set_ylabel("Mass (Kg)")
-
-    return fig
-
-
-def plot_altitude(trajectory: pd.DataFrame) -> Figure:
-    fig = plt.Figure()
-    ax = plt.axes()
-    pos = [
-        LatLon(
-            trajectory.iloc[i]["lat"],
-            trajectory.iloc[i]["lon"],
-            trajectory.iloc[i]["alt"] * ft,
-        )
-        for i in range(len(trajectory.alt))
-    ]
-    dist = np.array([d.distanceTo(pos[0]) for d in pos])
-
-    ax.plot(dist / nm, trajectory.alt)
-    ax.set_xlabel("ESAD (nm)")
-    ax.set_ylabel("Zp (ft)")
-
-    return fig
-
-
-def plot_network(domain, dir=None):
-    network = domain.network
-
-    fig = plt.figure(figsize=(10, 7))
-
-    # define the grid layout
-    gs = gridspec.GridSpec(1, 2)
-
-    # add subplots for the line plots
+    # --- 1. Altitude Profile Plot ---
     ax1 = fig.add_subplot(gs[0])
 
-    # plot the altitude
-    for node in network.nodes:
-        ax1.scatter(
-            network.nodes[node]["ts"],
-            network.nodes[node]["height"] / ft,
-            color="k",
-            s=0.5,
-        )
+    # Plot edges first to form the background structure
+    for u, v in graph.edges():
+        x_edge = [u[0], v[0]]
+        y_edge = [graph.nodes[u]["flight_level"], graph.nodes[v]["flight_level"]]
+        ax1.plot(x_edge, y_edge, color="gray", alpha=0.5, linewidth=0.7)
 
-    ax1.set_xlabel("Time (s)")
-    ax1.set_ylabel("Zp (ft)")
-    ax1.set_title("Altitude profile")
+    # Plot nodes on top of the edges
+    # x-axis is the forward point index from the node key: (x, y, z) -> x
+    # y-axis is the flight level in feet from the node attribute
+    x_coords = [node[0] for node in graph.nodes]
+    y_coords_ft = [data["flight_level"] for node, data in graph.nodes(data=True)]
+    ax1.scatter(x_coords, y_coords_ft, color="blue", s=8, zorder=5, label="Nodes")
 
-    # plot the trajectory
-    latmin, latmax = min(domain.lat1, domain.lat2), max(domain.lat1, domain.lat2)
-    lonmin, lonmax = min(domain.lon1, domain.lon2), max(domain.lon1, domain.lon2)
+    ax1.set_xlabel("Forward Point Index")
+    ax1.set_ylabel("Altitude (ft)")
+    ax1.set_title("Altitude Profile")
+    ax1.grid(True)
+    ax1.legend()
 
-    ax3 = fig.add_subplot(gs[1], projection=ccrs.PlateCarree())
+    # --- 2. Map Trajectory Plot ---
+    ax2 = fig.add_subplot(gs[1], projection=ccrs.PlateCarree())
 
-    ax3.set_extent([lonmin - 3, lonmax + 3, latmin - 2, latmax + 2])
+    # Set map extent based on start and end points with some padding
+    latmin, latmax = min(p0.lat, p1.lat), max(p0.lat, p1.lat)
+    lonmin, lonmax = min(p0.lon, p1.lon), max(p0.lon, p1.lon)
+    padding = 3  # Degrees of padding
+    ax2.set_extent(
+        [lonmin - padding, lonmax + padding, latmin - padding, latmax + padding],
+        crs=ccrs.PlateCarree(),
+    )
 
-    ax3.add_feature(BORDERS, lw=0.5, color="gray")
-    ax3.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
-    ax3.coastlines(resolution="50m", lw=0.5, color="gray")
+    # Add map features
+    ax2.add_feature(BORDERS, lw=0.5, color="gray")
+    ax2.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
+    ax2.coastlines(resolution="50m", lw=0.5, color="gray")
 
-    for node in network.nodes:
-        ax3.scatter(
-            network.nodes[node]["lon"],
-            network.nodes[node]["lat"],
-            transform=ccrs.Geodetic(),
-            color="blue",
-            s=1,
-        )
+    # Plot graph edges
+    for u, v in graph.edges():
+        u_data = graph.nodes[u]
+        v_data = graph.nodes[v]
+        # Check that both nodes have the latlon attribute before plotting
+        if u_data.get("latlon") and v_data.get("latlon"):
+            lon_edge = [u_data["latlon"].lon, v_data["latlon"].lon]
+            lat_edge = [u_data["latlon"].lat, v_data["latlon"].lat]
+            ax2.plot(
+                lon_edge,
+                lat_edge,
+                transform=ccrs.Geodetic(),
+                color="gray",
+                alpha=0.6,
+                linewidth=0.5,
+            )
 
-    # plot airports
-    lat_start, lon_start = domain.lat1, domain.lon1
-    lat_end, lon_end = domain.lat2, domain.lon2
+    # Plot graph nodes
+    # Access lat/lon correctly from the 'latlon' object
+    for node, data in graph.nodes(data=True):
+        if data.get("latlon"):
+            ax2.scatter(
+                data["latlon"].lon,
+                data["latlon"].lat,
+                transform=ccrs.Geodetic(),
+                color="blue",
+                s=2,
+                zorder=5,
+            )
 
-    ax3.scatter(lon_start, lat_start, transform=ccrs.Geodetic(), color="red", s=3)
-    ax3.scatter(lon_end, lat_end, transform=ccrs.Geodetic(), color="red", s=3)
+    # Plot start and end points
+    ax2.scatter(
+        p0.lon,
+        p0.lat,
+        transform=ccrs.Geodetic(),
+        color="red",
+        s=30,
+        zorder=10,
+        label="Start/End",
+    )
+    ax2.scatter(p1.lon, p1.lat, transform=ccrs.Geodetic(), color="red", s=30, zorder=10)
+    ax2.set_title("Geographical Trajectory")
+    ax2.legend()
 
     plt.tight_layout()
     plt.show()
 
-    if dir:
-        fig.savefig(f"{dir}/network points.png")
+    # Save the figure
+    if dir_path:
+        fig.savefig(f"{dir_path}/network_plot.png", dpi=300)
     else:
-        fig.savefig("network points.png")
-
-
-def trajectory_on_map(df, windfield=None, ax=None, wind_sample=4):
-
-    lat1, lon1 = df.lat.iloc[0], df.lon.iloc[0]
-    lat2, lon2 = df.lat.iloc[-1], df.lon.iloc[-1]
-
-    latmin, latmax = min(lat1, lat2), max(lat1, lat2)
-    lonmin, lonmax = min(lon1, lon2), max(lon1, lon2)
-
-    if ax is None:
-        ax = plt.axes(
-            projection=ccrs.TransverseMercator(
-                central_longitude=df.lon.mean(), central_latitude=df.lat.mean()
-            )
-        )
-
-    ax.set_extent([lonmin - 4, lonmax + 4, latmin - 2, latmax + 2])
-    ax.add_feature(OCEAN, facecolor="#d1e0e0", zorder=-1, lw=0)
-    ax.add_feature(LAND, facecolor="#f5f5f5", lw=0)
-    ax.add_feature(BORDERS, lw=0.5, color="gray")
-    ax.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
-    ax.coastlines(resolution="50m", lw=0.5, color="gray")
-
-    if windfield is not None:
-        # get the closed altitude
-        h_max = df.alt.max() * aero.ft
-        fl = int(round(h_max / aero.ft / 100, -1))
-        idx = np.argmin(abs(windfield.h.unique() - h_max))
-        df_wind = (
-            windfield.query(f"h=={windfield.h.unique()[idx]}")
-            .query(f"longitude <= {lonmax + 2}")
-            .query(f"longitude >= {lonmin - 2}")
-            .query(f"latitude <= {latmax + 2}")
-            .query(f"latitude >= {latmin - 2}")
-        )
-
-        ax.barbs(
-            df_wind.longitude.values[::wind_sample],
-            df_wind.latitude.values[::wind_sample],
-            df_wind.u.values[::wind_sample],
-            df_wind.v.values[::wind_sample],
-            transform=ccrs.PlateCarree(),
-            color="k",
-            length=5,
-            lw=0.5,
-            label=f"Wind FL{fl}",
-        )
-
-    # great circle
-    ax.scatter(lon1, lat1, c="darkgreen", transform=ccrs.Geodetic())
-    ax.scatter(lon2, lat2, c="tab:red", transform=ccrs.Geodetic())
-
-    ax.plot(
-        [lon1, lon2],
-        [lat1, lat2],
-        label="Great Circle",
-        color="tab:red",
-        ls="--",
-        transform=ccrs.Geodetic(),
-    )
-
-    # trajectory
-    ax.plot(
-        df.lon,
-        df.lat,
-        color="tab:green",
-        transform=ccrs.Geodetic(),
-        linewidth=2,
-        marker=".",
-        label="Optimal",
-    )
-
-    ax.legend()
-
-    return plt
+        fig.savefig("network_plot.png", dpi=300)

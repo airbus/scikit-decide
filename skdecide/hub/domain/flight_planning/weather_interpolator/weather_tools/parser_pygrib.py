@@ -216,7 +216,7 @@ class GribPygribUniqueForecast(object):
         ]
         axis_sizes = [len(c_values) for (c_name, c_values) in coordinates]
         nan_array = np.empty(axis_sizes)
-        nan_array.fill(np.NaN)
+        nan_array.fill(np.nan)
         merged_matrix_dict[parameter.upper()]["values"] = nan_array
         gribs.rewind()
         for grib in gribs:
@@ -338,7 +338,7 @@ class GribPygribUniqueForecast(object):
             ]
             axis_sizes = [len(c_values) for (c_name, c_values) in coordinates]
             nan_array = np.empty(axis_sizes)
-            nan_array.fill(np.NaN)
+            nan_array.fill(np.nan)
             merged_matrix_dict[parameter.upper()]["values"] = nan_array
             gribs.rewind()
             for grib in gribs:
@@ -362,7 +362,7 @@ class GribPygribUniqueForecast(object):
             ]
             axis_sizes = [len(c_values) for (c_name, c_values) in coordinates]
             nan_array = np.empty(axis_sizes)
-            nan_array.fill(np.NaN)
+            nan_array.fill(np.nan)
             merged_matrix_dict[parameter.upper()]["values"] = nan_array
             gribs.rewind()
             for grib in gribs:
@@ -419,7 +419,7 @@ class GribPygribUniqueForecast(object):
             ]
             axis_sizes = [len(c_values) for (c_name, c_values) in coordinates]
             nan_array = np.empty(axis_sizes)
-            nan_array.fill(np.NaN)
+            nan_array.fill(np.nan)
             for var in parameters:
                 merged_matrix_dict[var.upper()]["values"] = nan_array
             gribs.rewind()
@@ -444,7 +444,7 @@ class GribPygribUniqueForecast(object):
             ]
             axis_sizes = [len(c_values) for (c_name, c_values) in coordinates]
             nan_array = np.empty(axis_sizes)
-            nan_array.fill(np.NaN)
+            nan_array.fill(np.nan)
             for var in parameters:
                 merged_matrix_dict[var.upper()]["values"] = nan_array
             gribs.rewind()
