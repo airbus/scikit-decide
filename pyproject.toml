@@ -82,13 +82,13 @@ pygrib = [
     { version = "==2.1.5", platform = "darwin", markers = "platform_machine == 'x86_64'", optional = true },
 ]
 pyRDDLGym = [
-    { version = ">=2.3", optional = true }
+    { version = ">=2.3", python = "<3.13", optional = true }
 ]
 pyRDDLGym-rl = [
-    { version = ">=0.2", optional = true },
+    { version = ">=0.2", python = "<3.13", optional = true },
 ]
-pyRDDLGym-jax = { version = ">=2.5", optional = true }
-pyRDDLGym-gurobi = { version = ">=0.2", optional = true }
+pyRDDLGym-jax = { version = ">=2.5", python = "<3.13", optional = true }
+pyRDDLGym-gurobi = { version = ">=0.2", python = "<3.13", optional = true }
 rddlrepository = {version = ">=2.1", optional = true }
 torch-geometric = {version = ">=2.5", optional = true}
 plado = {version = ">=0.1.3", python = ">=3.10", optional = true}
