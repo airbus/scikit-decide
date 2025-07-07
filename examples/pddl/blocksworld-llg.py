@@ -16,7 +16,7 @@ sb3-autoregressive: components of the action are predicted one by one,
 
 import os
 
-from skdecide import rollout
+from skdecide import EnvironmentOutcome, rollout
 from skdecide.hub.domain.plado import ActionEncoding, PladoPddlDomain, StateEncoding
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.autoregressive.ppo.autoregressive_ppo import (
@@ -30,6 +30,20 @@ pddl_domains_def_dir = os.path.abspath(
 domain_problem_dirpath = f"{pddl_domains_def_dir}/blocks"
 domain_path = f"{domain_problem_dirpath}/domain.pddl"
 problem_path = f"{domain_problem_dirpath}/probBLOCKS-3-0.pddl"
+problem_path_2 = f"{domain_problem_dirpath}/probBLOCKS-4-0.pddl"
+
+algo_save_path = f"{pddl_examples_dir}/blocks-llg-sb3-ppo"
+
+
+def outcome_formater(outcome: EnvironmentOutcome, domain: PladoPddlDomain) -> str:
+    return f"observation={domain.repr_obs_as_plado(outcome.observation)}, value={outcome.value}, termination={outcome.termination}, info={outcome.info}"
+
+
+def observation_formater(
+    observation: PladoPddlDomain.T_observation, domain: PladoPddlDomain
+) -> str:
+    return domain.repr_obs_as_plado(observation)
+
 
 domain_factory = lambda: PladoPddlDomain(
     domain_path=domain_path,
@@ -37,10 +51,19 @@ domain_factory = lambda: PladoPddlDomain(
     state_encoding=StateEncoding.GYM_GRAPH_LLG,
     action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
 )
+domain_factory_2 = lambda: PladoPddlDomain(
+    domain_path=domain_path,
+    problem_path=problem_path_2,
+    state_encoding=StateEncoding.GYM_GRAPH_LLG,
+    action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
+)
 
+domain = domain_factory()
+domain_2 = domain_factory_2()
+
+# learn + save + rollout on first problem
 
 # Action components via GNN -> node (actions or objects) of the llg graph
-domain = domain_factory()
 action_components_node_flag_indices = domain.get_action_components_node_flag_indices()
 with StableBaseline(
     domain_factory=domain_factory,
@@ -51,9 +74,11 @@ with StableBaseline(
     ),
     autoregressive_action=True,
     learn_config={"total_timesteps": 10_000},
+    n_steps=2000,
     verbose=1,
 ) as solver:
     solver.solve()
+    solver.save(path=algo_save_path)
     max_steps = 50
     episodes = rollout(
         domain=domain,
@@ -62,4 +87,34 @@ with StableBaseline(
         num_episodes=1,
         render=False,
         return_episodes=True,
+        outcome_formatter=lambda outcome: outcome_formater(outcome, domain),
+        observation_formatter=lambda obs: observation_formater(obs, domain),
+    )
+
+
+# load + small solve + rollout on second problem
+with StableBaseline(
+    domain_factory=domain_factory_2,  # use the domain_factory with the proper action_space needed for rollout
+    algo_class=AutoregressiveGraphPPO,
+    baselines_policy="HeteroGraph2NodePolicy",
+    policy_kwargs=dict(
+        action_components_node_flag_indices=action_components_node_flag_indices
+    ),
+    autoregressive_action=True,
+    learn_config={"total_timesteps": 200},
+    n_steps=100,
+    verbose=1,
+) as solver:
+    solver.load(path=algo_save_path)
+    solver.solve()  # re-train briefly to show that it is possible
+    max_steps = 50
+    episodes = rollout(
+        domain=domain_factory_2(),
+        solver=solver,
+        max_steps=max_steps,
+        num_episodes=1,
+        render=False,
+        return_episodes=True,
+        outcome_formatter=lambda outcome: outcome_formater(outcome, domain_2),
+        observation_formatter=lambda obs: observation_formater(obs, domain_2),
     )
