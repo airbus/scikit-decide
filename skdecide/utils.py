@@ -245,6 +245,9 @@ def rollout(
     verbose: bool = True,
     action_formatter: Optional[Callable[[D.T_event], str]] = lambda a: str(a),
     outcome_formatter: Optional[Callable[[EnvironmentOutcome], str]] = lambda o: str(o),
+    observation_formatter: Optional[Callable[[D.T_observation], str]] = lambda o: str(
+        o
+    ),
     return_episodes: bool = False,
     goal_logging_level: int = logging.INFO,
     rollout_callback: Optional[RolloutCallback] = None,
@@ -272,6 +275,7 @@ def rollout(
     verbose: Whether to print information to the console during rollout.
     action_formatter: The function transforming actions in the string to print (if None, no print).
     outcome_formatter: The function transforming EnvironmentOutcome objects in the string to print (if None, no print).
+    observation_formatter: The function transforming Observation objects in the string to print (if None, no print).
     return_episodes: if True, return the list of episodes, each episode as a tuple of observations, actions, and values.
         else return nothing.
     goal_logging_level: logging level at which we want to display if goal has been reached or not
@@ -383,8 +387,11 @@ def rollout(
                 raise ValueError(
                     "from_memory must be None if domain has no set_memory() method."
                 )
-        logger.debug(f"Episode {i_episode + 1} started with following observation:")
-        logger.debug(observation)
+        if observation_formatter is not None:
+            logger.debug(f"Episode {i_episode + 1} started with following observation:")
+            logger.debug(observation_formatter(observation))
+        else:
+            logger.debug(f"Episode {i_episode + 1} starting")
         # Run episode
         step = 1
 
