@@ -968,6 +968,38 @@ jobs:
             },
           });
 
+          // Keep only 3 assets
+
+          // 1. list them
+          const assets = await github.rest.repos.listReleaseAssets({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: release.data.id,
+          }).then(d => d.data);
+
+          // 2. sort by ascending updated_at
+          assets.sort((a, b) => {
+            if (a.updated_at < b.updated_at) {
+              return -1;
+            }
+            if (a.updated_at > b.updated_at) {
+              return 1;
+            }
+
+            // names must be equal
+            return 0;
+          });
+
+          // 3. delete all but the last 3
+          for (const asset of assets.slice(0, -3)) {
+            console.log(`Asset id: ${asset.id}`);
+            await github.rest.repos.deleteReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              asset_id: asset.id,
+            });
+          }
+
           return uploadedAsset.data.browser_download_url;
         result-encoding: string
 
