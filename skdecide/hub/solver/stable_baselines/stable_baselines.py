@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
@@ -32,6 +33,8 @@ from skdecide.builders.domain import (
 from skdecide.builders.solver import Maskable, Policies, Restorable
 from skdecide.hub.domain.gym import AsGymnasiumEnv
 from skdecide.hub.space.gym import GymSpace, MultiDiscreteSpace
+
+logger = logging.getLogger(__name__)
 
 
 class D(Domain, SingleAgent, Sequential, UnrestrictedActions, Initializable):
@@ -244,7 +247,13 @@ class StableBaseline(Solver, Policies, Restorable, Maskable):
         self._algo.save(path)
 
     def _load(self, path: str):
-        self._algo = self._algo_class.load(path, env=self._learning_env)
+        load_algo_kwargs = dict(self._algo_kwargs)
+        if "policy_kwargs" in load_algo_kwargs:
+            logger.warning("load(): ignoring 'policy_kwargs'.")
+            load_algo_kwargs.pop("policy_kwargs")
+        self._algo = self._algo_class.load(
+            path, env=self._learning_env, **load_algo_kwargs
+        )
 
     def get_policy(self) -> BasePolicy:
         """Return the computed policy."""

@@ -826,7 +826,9 @@ class AutoregressiveGraph2NodeActorCriticPolicy(AutoregressiveGNNActorCriticPoli
         if not isinstance(action_space, spaces.MultiDiscrete):
             raise ValueError("action_space must be a multidiscrete space.")
         if n_graph2node_components is None:
-            self.n_graph2node_components = len(action_space.nvec) - 1
+            self.n_graph2node_components = self.default_n_graph2node_components(
+                action_space
+            )
         else:
             self.n_graph2node_components = n_graph2node_components
         if action_gnn_kwargs is None:
@@ -840,6 +842,11 @@ class AutoregressiveGraph2NodeActorCriticPolicy(AutoregressiveGNNActorCriticPoli
             lr_schedule,
             **kwargs,
         )
+
+    @staticmethod
+    def default_n_graph2node_components(action_space: spaces.MultiDiscrete) -> int:
+        """Default number of action components that are graph nodes if not specified."""
+        return len(action_space.nvec) - 1
 
 
 class AutoregressiveHeteroGraph2NodeActorCriticPolicy(
@@ -901,9 +908,6 @@ class AutoregressiveHeteroGraph2NodeActorCriticPolicy(
         if not isinstance(action_space, spaces.MultiDiscrete):
             raise ValueError("action_space must be a multidiscrete space.")
 
-        if n_graph2node_components is None:
-            n_graph2node_components = len(action_space.nvec)
-
         super().__init__(
             observation_space=observation_space,
             action_space=action_space,
@@ -916,3 +920,8 @@ class AutoregressiveHeteroGraph2NodeActorCriticPolicy(
 
         # init action_components_node_flag_indices after super().__init__() to avoid to be overriden
         self.action_components_node_flag_indices = action_components_node_flag_indices
+
+    @staticmethod
+    def default_n_graph2node_components(action_space: spaces.MultiDiscrete) -> int:
+        """Default number of action components that are graph nodes if not specified."""
+        return len(action_space.nvec)

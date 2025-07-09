@@ -157,7 +157,7 @@ class GraphWalkEnv(gym.Env[int, int]):
             )
 
 
-class HeteroGraphWalkEnv(gym.Env[int, int]):
+class HeteroGraphWalkEnv(gym.Env[gym.spaces.GraphInstance, int]):
     """Custom env with "hetero" graph.
 
     Some nodes are position and other represent the distance between positions.
@@ -180,15 +180,18 @@ class HeteroGraphWalkEnv(gym.Env[int, int]):
 
     """
 
-    N_STATES = 5
-    POSITION = 0
-    DISTANCE = 1
-    CURRENT = 2
+    TERMINAL_POSITION = 4
+    POSITION_FEATURE = 0
+    DISTANCE_FEATURE = 1
+    CURRENT_POSITION_FEATURE = 2
     node_features_dim = 3
 
-    action_space = gym.spaces.MultiDiscrete((2, N_STATES))
-
-    state = 0
+    observation_space = gym.spaces.Graph(
+        node_space=gym.spaces.Box(
+            low=np.array([0, 0, 0]), high=np.array([1, 10, 1]), dtype=np.int8
+        ),
+        edge_space=None,
+    )
 
     edges_end_nodes_with_distance = [
         [(1, 1), (3, 5)],
@@ -198,33 +201,37 @@ class HeteroGraphWalkEnv(gym.Env[int, int]):
         [],
     ]  # start node 0 -> 1,3 with dist 1 and 5 resp.
 
-    def __init__(self):
-        self.observation_space = gym.spaces.Graph(
-            node_space=gym.spaces.Box(
-                low=np.array([0, 0, 0]), high=np.array([1, 10, 1]), dtype=np.int8
-            ),
-            edge_space=None,
-        )
+    def __init__(
+        self, additional_position: bool = False, additional_action: bool = False
+    ):
+        self.n_positions = self.TERMINAL_POSITION + 1
+        if additional_position:
+            self.n_positions += 1
+        self.n_actions = 2
+        if additional_action:
+            self.n_actions += 1
+        self.action_space = gym.spaces.MultiDiscrete((self.n_actions, self.n_positions))
 
     @property
     def n_nodes(self):
-        return 2 * sum(
+        # nb position nodes + nb edges (dist nodes)
+        return self.n_positions + sum(
             len(l_by_start) for l_by_start in self.edges_end_nodes_with_distance
         )
 
     def node2state(self, node: int):
         node_features = np.zeros((self.n_nodes, self.node_features_dim), dtype=np.int8)
-        node_features[: len(self.edges_end_nodes_with_distance), self.POSITION] = 1
-        node_features[node, self.CURRENT] = 1
+        i_node = self.n_positions
+        node_features[:i_node, self.POSITION_FEATURE] = 1
+        node_features[node, self.CURRENT_POSITION_FEATURE] = 1
         edge_links = []
-        i_node = len(self.edges_end_nodes_with_distance)
         for start_node, end_nodes_n_dist in enumerate(
             self.edges_end_nodes_with_distance
         ):
             for end_node, dist in end_nodes_n_dist:
                 edge_links.append((start_node, i_node))
                 edge_links.append((i_node, end_node))
-                node_features[i_node, self.DISTANCE] = dist
+                node_features[i_node, self.DISTANCE_FEATURE] = dist
                 i_node += 1
         edge_links_np = np.array(edge_links)
         edge_features = None
@@ -233,11 +240,11 @@ class HeteroGraphWalkEnv(gym.Env[int, int]):
         )
 
     def state2node(self, state: Union[int, gym.spaces.GraphInstance]) -> int:
-        return int(state.nodes[:, self.CURRENT].nonzero()[0][0])
+        return int(state.nodes[:, self.CURRENT_POSITION_FEATURE].nonzero()[0][0])
 
     def reset(
         self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
-    ) -> tuple[int, dict[str, Any]]:
+    ) -> tuple[gym.spaces.GraphInstance, dict[str, Any]]:
         super().reset(seed=seed, options=options)
         self.state = self.node2state(0)
         return self.state, {}
@@ -261,7 +268,7 @@ class HeteroGraphWalkEnv(gym.Env[int, int]):
         else:
             dist = 1
 
-        terminated = current_node == self.N_STATES - 1
+        terminated = current_node == self.TERMINAL_POSITION
         if terminated:
             reward = 0
         else:
@@ -324,8 +331,12 @@ class GraphWalkDomain(D):
 
 
 class HeteroGraphWalkDomain(D):
-    def __init__(self):
-        self._gym_env = HeteroGraphWalkEnv()
+    def __init__(
+        self, additional_position: bool = False, additional_action: bool = False
+    ):
+        self._gym_env = HeteroGraphWalkEnv(
+            additional_position=additional_position, additional_action=additional_action
+        )
 
     def _state_reset(self) -> D.T_state:
         return self._gym_env.reset()[0]
@@ -367,7 +378,7 @@ def graph_walk_with_heterograph_obs_env():
 
 @fixture
 def action_components_node_flag_indices():
-    return [None, HeteroGraphWalkEnv.POSITION]
+    return [None, HeteroGraphWalkEnv.POSITION_FEATURE]
 
 
 @fixture
@@ -383,3 +394,13 @@ def graph_walk_with_graph_obs_domain_factory():
 @fixture
 def graph_walk_with_heterograph_obs_domain_factory():
     return HeteroGraphWalkDomain
+
+
+@fixture
+def graph_walk_with_heterograph_obs_domain_factory_2():
+    return lambda: HeteroGraphWalkDomain(additional_position=True)
+
+
+@fixture
+def graph_walk_with_heterograph_obs_domain_factory_3():
+    return lambda: HeteroGraphWalkDomain(additional_action=True)

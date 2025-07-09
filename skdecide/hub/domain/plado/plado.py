@@ -343,6 +343,11 @@ class BasePladoDomain(D):
         else:
             raise NotImplementedError()
 
+    def repr_obs_as_plado(self, obs: D.T_observation) -> str:
+        """Return a string representation of the observation similar to plado representation."""
+        plado_state = self._translate_state_to_plado(obs)
+        return f"PladoState(atoms={plado_state.atoms}, fluents={plado_state.fluents})"
+
     def _translate_state_to_plado(self, state: D.T_state) -> PladoState:
         if self.state_encoding == StateEncoding.NATIVE:
             return state.to_plado()
