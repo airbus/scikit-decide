@@ -1,15 +1,14 @@
-import math
-from typing import Dict, List, Tuple
+from typing import Optional
 
 import networkx as nx
-from openap.extra.aero import bearing, distance, ft
+from openap.extra.aero import bearing, ft
 from pygeodesy.ellipsoidalVincenty import LatLon
 
 
 # --- Simplified calculate_grid_point_coords (reverting to a version closer to initial intent) ---
 def calculate_grid_point_coords(
     p0: LatLon, p1: LatLon, x_local_km: float, y_local_km: float, z_local_ft: float
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """
     Calculates the geographical coordinates of a grid point.
     Lateral displacement is perpendicular to the *current* tangent of the great circle.
@@ -59,13 +58,15 @@ def create_flight_graph(
     nb_forward_points: int = 10,
     nb_lateral_points: int = 5,
     nb_climb_descent_steps: int = 3,
-    flight_levels_ft: List[float] = [32000.0],
+    flight_levels_ft: Optional[list[float]] = None,
     graph_width: str = "medium",
 ) -> nx.DiGraph:
     """
     Creates a symmetric 3D directed graph representing potential flight paths between two points,
     with phase-aware node generation and edge connectivity.
     """
+    if flight_levels_ft is None:
+        flight_levels_ft = [32000.0]
 
     start_alt_ft = p0.height / 0.3048
     end_alt_ft = p1.height / 0.3048
