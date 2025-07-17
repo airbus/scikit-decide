@@ -72,6 +72,7 @@ class RDDLDomain(D):
                 shutil.rmtree(tmp_pngs)
             os.makedirs(tmp_pngs)
             self.movie_gen = MovieGenerator(tmp_pngs, movie_name, max_frames=max_frames)
+            self._max_frames = max_frames
             self.rddl_gym_env.set_visualizer(visualizer, self.movie_gen)
         else:
             self.movie_gen = None
@@ -83,7 +84,7 @@ class RDDLDomain(D):
         next_state, reward, terminated, truncated, _ = self.rddl_gym_env.step(action)
         termination = terminated or truncated
         if self.movie_gen is not None and (
-            termination or self._nb_step >= self.movie_gen.max_frames - 1
+            termination or self._nb_step >= self._max_frames - 1
         ):
             self.movie_gen.save_animation(self.movie_name)
             tmp_pngs = os.path.join(self.movie_path, "tmp_pngs")
