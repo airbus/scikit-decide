@@ -58,9 +58,7 @@ def test_thrust():
             performance_model_type=PerformanceModelEnum.OPENAP,  # PerformanceModelEnum.OPENAP, PerformanceModelEnum.BADA
             gw_kg=gw_kg,
             zp_ft=zp_ft,
-            mach_cruise=mach,
-            cas_climb_kts=170,
-            cas_descent_kts=250,
+            mach=mach,
             phase=PhaseEnum.CRUISE,
             rating_level=RatingEnum.MCL,
             cg=0.3,
@@ -72,7 +70,6 @@ def test_thrust():
             atmosphere_settings=IsaAtmosphereSettings(d_isa=disa),
             four_dimensions_state=acState,
         )
-        acState.mach = mach
 
         # compute
         val_skdecide = openap_propu.compute_total_net_thrust_n(
@@ -142,9 +139,7 @@ def test_fuelflow():
             performance_model_type=PerformanceModelEnum.OPENAP,  # PerformanceModelEnum.OPENAP, PerformanceModelEnum.BADA
             gw_kg=gw_kg,
             zp_ft=zp_ft,
-            mach_cruise=mach,
-            cas_climb_kts=170,
-            cas_descent_kts=250,
+            mach=mach,
             phase=PhaseEnum.CRUISE,
             rating_level=RatingEnum.MCL,
             cg=0.3,
