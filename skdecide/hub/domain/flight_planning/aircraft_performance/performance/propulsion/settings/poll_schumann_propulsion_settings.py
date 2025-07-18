@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Dict
 
 from skdecide.hub.domain.flight_planning.aircraft_performance.performance.performance_model_enum import (
     PerformanceModelEnum,
@@ -15,7 +14,7 @@ class PollSchumannPropulsionSettings(PropulsionSettings):
     Propulsion settings for OpenAP models
     """
 
-    ac_parameters: Dict[str, float] = None
+    ac_parameters: dict[str, float] = None
     sref: float = None
 
     def __post_init__(self):

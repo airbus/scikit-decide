@@ -1,3 +1,4 @@
+import logging
 import math
 from argparse import Action
 from enum import Enum
@@ -6,11 +7,10 @@ from enum import Enum
 from math import asin, atan2, cos, radians, sin, sqrt
 
 # typing
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Optional, Union
 
 # plotting
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 import pandas as pd
 
@@ -58,6 +58,8 @@ from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.inte
     WeatherForecastInterpolator,
 )
 from skdecide.hub.space.gym import DiscreteSpace, EnumSpace, ListSpace, TupleSpace
+
+logger = logging.getLogger(__name__)
 
 
 class WeatherDate:
@@ -188,7 +190,7 @@ class State:
     """
 
     trajectory: pd.DataFrame
-    id: Dict[str, float]
+    id: dict[str, float]
 
     def __init__(self, trajectory, id):
         """Initialisation of a state
@@ -265,9 +267,7 @@ class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
     T_agent = Union  # Type of agent
 
 
-class FlightPlanningDomain(
-    DeterministicPlanningDomain, UnrestrictedActions, Renderable
-):
+class FlightPlanningDomain(DeterministicPlanningDomain, UnrestrictedActions):
     """Automated flight planning domain.
 
     Domain definition
@@ -331,7 +331,6 @@ class FlightPlanningDomain(
     When using an A* algorithm to compute the flight plan, we need to feed it with a heuristic function, which guide the algorithm.
     For now, there is 5 different (not admissible) heuristic function, depending on `self.heuristic_name`:
 
-    - fuel, which computes the required fuel to get to the goal. It takes in consideration the local wind & speed of the aircraft.
     - time, which computes the required time to get to the goal. It takes in consideration the local wind & speed of the aircraft.
     - distance, wich computes the distance to the goal.
     - lazy_fuel, which propagates the fuel consummed so far.
@@ -367,7 +366,7 @@ class FlightPlanningDomain(
 
     T_state = State  # Type of states
     T_observation = State  # Type of observations
-    T_event = Tuple[H_Action, V_Action]  # Type of events
+    T_event = tuple[H_Action, V_Action]  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
     T_predicate = bool  # Type of transition predicates (terminal states)
     T_info = None  # Type of additional information in environment outcome
@@ -382,20 +381,20 @@ class FlightPlanningDomain(
         nb_forward_points: int = 30,
         nb_lateral_points: int = 10,
         nb_climb_descent_steps: int = 4,
-        flight_levels_ft: List[int] = [36_000, 38_000],
+        flight_levels_ft: Optional[list[int]] = None,
         graph_width: str = "medium",
-        origin: Optional[Tuple[str, LatLon]] = None,
-        destination: Optional[Tuple[str, LatLon]] = None,
+        origin: Optional[tuple[str, LatLon]] = None,
+        destination: Optional[tuple[str, LatLon]] = None,
         objective: str = "fuel",
-        heuristic_name: str = "fuel",
+        heuristic_name: str = "lazy_fuel",
         starting_time: float = 3_600.0 * 8.0,
         weather_date: Optional[WeatherDate] = None,
         wind_interpolator: Optional[GenericWindInterpolator] = None,
         constraints=None,
         fuel_loaded: Optional[float] = None,
         fuel_loop: bool = False,
-        fuel_loop_solver_cls: Optional[Type[Solver]] = None,
-        fuel_loop_solver_kwargs: Optional[Dict[str, Any]] = None,
+        fuel_loop_solver_cls: Optional[type[Solver]] = None,
+        fuel_loop_solver_kwargs: Optional[dict[str, Any]] = None,
         fuel_loop_tol: float = 1e-3,
         res_img_dir: Optional[str] = None,
     ):
@@ -436,7 +435,7 @@ class FlightPlanningDomain(
                 Boolean to create a fuel loop to optimize the fuel loaded for the flight. Defaults to False
             fuel_loop_solver_cls (type[Solver], optional):
                 Solver class used in the fuel loop. Defaults to LazyAstar.
-            fuel_loop_solver_kwargs (Dict[str, Any], optional):
+            fuel_loop_solver_kwargs (dict[str, Any], optional):
                 Kwargs to initialize the solver used in the fuel loop.
             graph_width (str, optional):
                 Airways graph width, in ["small", "medium", "large", "xlarge"]. Defaults to None
@@ -455,7 +454,10 @@ class FlightPlanningDomain(
         self.nb_forward_points = nb_forward_points
         self.nb_lateral_points = nb_lateral_points
         self.nb_climb_descent_steps = nb_climb_descent_steps
-        self.flight_levels_ft = flight_levels_ft
+        if flight_levels_ft is None:
+            self.flight_levels_ft = [36_000, 38_000]
+        else:
+            self.flight_levels_ft = flight_levels_ft
         self.graph_width = graph_width
         self.origin = origin
         self.destination = destination
@@ -463,6 +465,8 @@ class FlightPlanningDomain(
         # Graph solving
         self.objective = objective
         self.heuristic_name = heuristic_name
+        if heuristic_name not in ["distance", "time", "lazy_fuel", "lazy_time"]:
+            logger.warning(f"{heuristic_name} is not a known heuristic.")
         self.starting_time = starting_time
 
         # Fuel loop
@@ -536,41 +540,6 @@ class FlightPlanningDomain(
             node_key: i for i, node_key in enumerate(self.network.nodes())
         }
 
-        # self.fuel_loaded = fuel_loaded
-
-        # # Initialisation of the flight plan, with the initial state
-        # if fuel_loop:
-        #     if fuel_loop_solver_cls is None:
-        #         LazyAstar = load_registered_solver("LazyAstar")
-        #         fuel_loop_solver_cls = LazyAstar
-        #         fuel_loop_solver_kwargs = dict(heuristic=lambda d, s: d.heuristic(s))
-        #     elif fuel_loop_solver_kwargs is None:
-        #         fuel_loop_solver_kwargs = {}
-        #     fuel_loaded = fuel_optimisation(
-        #         origin=origin,
-        #         destination=destination,
-        #         aircraft_state=self.aircraft_state,
-        #         cruise_height_min=cruise_height_min,
-        #         cruise_height_max=cruise_height_max,
-        #         constraints=constraints,
-        #         weather_date=weather_date,
-        #         solver_cls=fuel_loop_solver_cls,
-        #         solver_kwargs=fuel_loop_solver_kwargs,
-        #         fuel_tol=fuel_loop_tol,
-        #     )
-        #     # Adding fuel reserve (but we can't put more fuel than maxFuel)
-        #     fuel_loaded = min(1.1 * fuel_loaded, aircraft_state.MFC)
-        # elif fuel_loaded:
-        #     self.constraints["fuel"] = (
-        #         0.97 * fuel_loaded
-        #     )  # Update of the maximum fuel there is to be used
-        # else:
-        #     fuel_loaded = aircraft_state.MFC
-
-        # self.fuel_loaded = fuel_loaded
-
-        # assert fuel_loaded <= aircraft_state.MFC  # Ensure fuel loaded <= fuel capacity
-
         id = 0
         if (
             self.initial_aircraft_state.x_graph is not None
@@ -612,9 +581,7 @@ class FlightPlanningDomain(
                         "alt": self.origin.height / ft,
                         "mass": aircraft_state.gw_kg,
                         "mach": aircraft_state.mach,
-                        "cas": mach2cas(
-                            mach=aircraft_state.mach, h=self.origin.height, dT=0
-                        ),
+                        "cas": mach2cas(mach=aircraft_state.mach, h=self.origin.height),
                         "fuel": 0.0,
                         "phase": "climb",
                     }
@@ -865,22 +832,6 @@ class FlightPlanningDomain(
             )
         )
 
-    def _render_from(self, memory: State, **kwargs: Any) -> Any:
-        """
-        Render visually the map.
-
-        Returns:
-            matplotlib figure
-        """
-        return
-        # return plot_trajectory(
-        #     self.lat1,
-        #     self.lon1,
-        #     self.lat2,
-        #     self.lon2,
-        #     memory.trajectory,
-        # )
-
     def heuristic(self, s: D.T_state, heuristic_name: str = None) -> Value[D.T_value]:
         """
         Heuristic to be used by search algorithms, depending on the objective and constraints.
@@ -915,155 +866,6 @@ class FlightPlanningDomain(
 
         if heuristic_name == "distance":
             cost = distance_to_goal
-
-        elif heuristic_name == "fuel":
-            if pos["phase"] == "cruise":
-                current_phase = PhaseEnum.CRUISE
-                current_rating = RatingEnum.CR
-                current_speed = self.mach_cruise
-            elif pos["phase"] == "climb":
-                current_phase = PhaseEnum.CLIMB
-                current_rating = RatingEnum.MCL
-                current_speed = self.mach_climb
-            elif pos["phase"] == "descent":
-                current_phase = PhaseEnum.DESCENT
-                current_rating = RatingEnum.IDLE
-                current_speed = self.mach_descent
-            else:
-                raise ValueError("Current phase key not recognized.")
-
-            aircraft_state = AircraftState(
-                model_type=self.initial_aircraft_state.model_type,
-                performance_model_type=self.initial_aircraft_state.performance_model_type,
-                gw_kg=pos["mass"],
-                zp_ft=pos["alt"],
-                mach=current_speed,
-                phase=current_phase,
-                rating_level=current_rating,
-                cg=0.3,
-                gamma_air_deg=0,
-            )
-            if current_phase.name == "CRUISE":
-                # compute the thrust coefficient for cruise
-                if alt_to - aircraft_state.zp_ft > 0:
-                    reduction_coeff = 1.25
-                elif alt_to - aircraft_state.zp_ft == 0:
-                    reduction_coeff = 1.0
-                else:
-                    reduction_coeff = 0.75
-
-                cx = self.aerodynamics_service.compute_drag_coefficient(
-                    aerodynamics_settings=self.aerodynamics_settings,
-                    aircraft_state=aircraft_state,
-                )
-                aircraft_state.cx = cx
-                dynamic_pressure = (
-                    0.7
-                    * aircraft_state.weather_state.static_pressure_pa
-                    * aircraft_state.mach**2
-                )
-                aircraft_state.drag_n = (
-                    aircraft_state.cx * dynamic_pressure * self.propulsion_settings.sref
-                )
-                aircraft_state.thrust_n = aircraft_state.drag_n * reduction_coeff
-                try:
-                    aircraft_state.tsp = (
-                        self.propulsion_service.compute_tsp_from_thrust(
-                            propulsion_settings=self.propulsion_settings,
-                            aircraft_state=aircraft_state,
-                            target_thrust_n=aircraft_state.thrust_n,
-                        )
-                    )
-                except:
-                    return np.inf
-            elif current_phase.name == "CLIMB":
-                aircraft_state.tsp = self.propulsion_service.compute_max_rating(
-                    propulsion_settings=self.propulsion_settings,
-                    aircraft_state=aircraft_state,
-                )
-            elif current_phase.name == "DESCENT":
-                aircraft_state.tsp = 0.0
-            else:
-                raise ValueError("Current phase not recognized in loop.")
-
-            aircraft_state.cl = (2 * aircraft_state.gw_kg * 9.80665) / (
-                delta
-                * 101325.0
-                * 1.4
-                * self.propulsion_settings.sref
-                * aircraft_state.mach**2
-            )
-
-            # bearing of the plane
-            bearing_degrees = aero_bearing(pos["lat"], pos["lon"], lat_to, lon_to)
-
-            # weather computations & A/C speed modification
-            we, wn = 0, 0
-            temp = 273.15
-            if self.weather_interpolator:
-                # wind computations
-                wind_ms = self.weather_interpolator.interpol_wind_classic(
-                    lat=pos["lat"], longi=pos["lon"], alt=pos["alt"], t=pos["ts"]
-                )
-                we, wn = wind_ms[2][0], wind_ms[2][1]  # 0, 300
-
-                # temperature computations
-                temp = self.weather_interpolator.interpol_field(
-                    [pos["ts"], (pos["alt"] + alt_to) / 2, pos["lat"], pos["lon"]],
-                    field="temperature",
-                )
-
-                # check for NaN values
-                if math.isnan(temp):
-                    print("NaN values in temp")
-
-            # compute dISA
-            dISA = temp - temperature((pos["alt"] + alt_to) / 2, disa=0)
-            isa_atmosphere_settings = IsaAtmosphereSettings(d_isa=dISA)
-
-            weather_state = self.atmosphere_service.retrieve_weather_state(
-                atmosphere_settings=isa_atmosphere_settings,
-                four_dimensions_state=aircraft_state,
-            )
-
-            aircraft_state.weather_state = weather_state
-
-            delta = aircraft_state.weather_state.static_pressure_pa / 101325.0
-            aircraft_state.cl = (2 * aircraft_state.gw_kg * 9.80665) / (
-                delta
-                * 101325.0
-                * 1.4
-                * self.propulsion_settings.sref
-                * aircraft_state.mach**2
-            )
-
-            wspd = sqrt(wn * wn + we * we)
-
-            tas = mach2tas(
-                aircraft_state.mach, aircraft_state.zp_ft * ft
-            )  # alt ft -> meters
-
-            aircraft_state.tas_meters_per_sec = tas
-
-            gs = compute_gspeed(
-                tas=tas,
-                true_course=radians(bearing_degrees),
-                wind_speed=wspd,
-                wind_direction=3 * math.pi / 2 - atan2(wn, we),
-            )
-
-            # compute "time to arrival"
-            dt = distance_to_goal / gs
-
-            if distance_to_goal == 0:
-                return Value(cost=0)
-
-            ff = self.propulsion_service.compute_total_fuel_flow_kg_per_sec(
-                propulsion_settings=self.propulsion_settings,
-                aircraft_state=aircraft_state,
-            )
-
-            cost = ff * dt
 
         elif heuristic_name == "time":
             we, wn = 0, 0
@@ -1115,8 +917,8 @@ class FlightPlanningDomain(
         nb_forward_points: int,
         nb_lateral_points: int,
         nb_climb_descent_steps: int,
-        flight_levels_ft: List[float],
-        graph_width: float = "medium",
+        flight_levels_ft: list[float],
+        graph_width: str = "medium",
     ):
         """
         Creation of the airway graph.
@@ -1127,7 +929,7 @@ class FlightPlanningDomain(
             nb_forward_points (int): Number of forward points in the graph
             nb_lateral_points (int): Number of lateral points in the graph
             nb_climb_descent_steps (int): Number of steps in climb and descent
-            flight_levels_ft (List[float]): List of flight levels during cruise
+            flight_levels_ft (list[float]): list of flight levels during cruise
             graph_width (str, optional): small, medium and wide strings (default to medium)
 
         # Returns
@@ -1154,7 +956,7 @@ class FlightPlanningDomain(
     def flying(
         self,
         from_: pd.DataFrame,
-        to_: Tuple[float, float, int],
+        to_: tuple[float, float, int],
         current_speed: float,
         current_phase: PhaseEnum,
         current_rating: RatingEnum,
@@ -1163,7 +965,7 @@ class FlightPlanningDomain(
 
         # Parameters
             from_ (pd.DataFrame): the trajectory of the object so far
-            to_ (Tuple[float, float]): the destination of the object
+            to_ (tuple[float, float]): the destination of the object
 
         # Returns
             pd.DataFrame: the final trajectory of the object
@@ -1316,7 +1118,7 @@ class FlightPlanningDomain(
                 "alt": alt_to,
                 "mass": mass_new,
                 "mach": current_speed,
-                "cas": mach2cas(mach=aircraft_state.mach, h=alt_to * ft, dT=0),
+                "cas": mach2cas(mach=aircraft_state.mach, h=alt_to * ft),
                 "fuel": pos["fuel"],
                 "phase": current_phase.name,
             }
@@ -1478,8 +1280,8 @@ def fuel_optimisation(
     cruise_height_max: float,
     constraints: dict,
     weather_date: WeatherDate,
-    solver_cls: Type[Solver],
-    solver_kwargs: Dict[str, Any],
+    solver_cls: type[Solver],
+    solver_kwargs: dict[str, Any],
     max_steps: int = 100,
     fuel_tol: float = 1e-3,
 ) -> float:
@@ -1508,7 +1310,7 @@ def fuel_optimisation(
         solver_cls (type[Solver]):
             Solver class used in the fuel loop.
 
-        solver_kwargs (Dict[str, Any]):
+        solver_kwargs (dict[str, Any]):
             Kwargs to initialize the solver used in the fuel loop.
 
         max_steps (int):
