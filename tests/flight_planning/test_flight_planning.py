@@ -74,8 +74,6 @@ def test_aircraft_state():
     sys.platform.startswith("win"), reason="pygrib does not install on windows"
 )
 def test_flight_planning():
-    import datetime
-
     import numpy as np
     from pygeodesy.ellipsoidalVincenty import LatLon
 
@@ -91,10 +89,7 @@ def test_flight_planning():
     from skdecide.hub.domain.flight_planning.aircraft_performance.performance.rating_enum import (
         RatingEnum,
     )
-    from skdecide.hub.domain.flight_planning.domain import (
-        FlightPlanningDomain,
-        WeatherDate,
-    )
+    from skdecide.hub.domain.flight_planning.domain import FlightPlanningDomain
 
     acState_poll_schumann = AircraftState(
         model_type="A320",  # only for OPENAP and POLL_SCHUMANN
@@ -107,16 +102,6 @@ def test_flight_planning():
         cg=0.3,
         gamma_air_deg=0,
     )
-
-    # we set a date valid for 4 months to avoid downloading weather data at each daily run.
-    today = datetime.date.today()
-    month = (
-        (today.month) - 1
-    ) // 4 * 4 + 1  # will result in january, may, or september
-    year = today.year
-    day = 1
-
-    weather_date = WeatherDate(day=day, month=month, year=year)
 
     domain_factory = lambda: FlightPlanningDomain(
         aircraft_state=acState_poll_schumann,
@@ -131,7 +116,6 @@ def test_flight_planning():
         origin=LatLon(43.629444, 1.363056),
         destination="EDDB",
         objective="fuel",
-        weather_date=weather_date,
     )
 
     domain = domain_factory()
