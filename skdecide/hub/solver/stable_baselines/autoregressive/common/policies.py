@@ -337,6 +337,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                     encoded_graph_independent_action_components[enriched_obs.batch, :],
                     th.zeros(
                         (len(enriched_obs.x), self.n_graph2node_components),
+                        device=self.device,
                         dtype=enriched_obs.x.dtype,
                     ),
                 ),
@@ -487,7 +488,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 ]
                 component_nodes = (
                     (  # shift node ids to match node ids in the batched graph
-                        actions_component + node_shift_by_sample
+                        actions_component + node_shift_by_sample.to(self.device)
                     )[actions_component >= 0].long()
                 )  # keep only relevant samples (remove -1 components)
                 # NB: avoid torch.autograd.backward issue, we cannot change inplace node features
@@ -578,7 +579,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             enriched_obs = None
 
         # action components
-        action_components = th.as_tensor([], dtype=int)
+        action_components = th.as_tensor([], device=self.device, dtype=int)
         for (
             i_action_component,
             (
@@ -717,6 +718,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                         len(enriched_obs.x),
                         self.n_graph2node_components,
                     ),
+                    device=self.device,
                     dtype=enriched_obs.x.dtype,
                 ),
             ),

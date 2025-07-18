@@ -127,6 +127,7 @@ class MultiMaskableCategoricalDistribution(Distribution):
                     # add only contribution for valid samples
                     marginal_logp = th.zeros(
                         self.get_proba_distribution_component_batch_shape(i_component),
+                        device=x.device,
                         dtype=x.dtype,
                     )
                     ind_valid_samples = self._ind_valid_samples_by_distributions[
@@ -155,6 +156,7 @@ class MultiMaskableCategoricalDistribution(Distribution):
                     # add only contribution for valid samples
                     marginal_entropy = th.zeros(
                         self.get_proba_distribution_component_batch_shape(i_component),
+                        device=distribution.distribution.probs.device,
                         dtype=marginal_dist.logits.dtype,
                     )
                     ind_valid_samples = self._ind_valid_samples_by_distributions[
