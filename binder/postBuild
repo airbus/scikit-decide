@@ -19,7 +19,7 @@ minizinc --version
 
 
 # install nightly build (only for master version binder environment)
-using_nightly_version=true
+using_nightly_version=false
 if [ "$using_nightly_version" = "true" ]; then
     python ~/binder/install_nightly_build.py
 fi
