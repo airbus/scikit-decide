@@ -83,9 +83,12 @@ def cost(domain, f, t):
     lon2 = wp2["latlon"].lon
 
     AIRCRAFT_SPEED = 500
-    WIND_SPEED, _, (w_a, w_b) = domain.weather_interpolator.interpol_wind_classic(
-        lat=lat1, longi=lon1, alt=alt1
-    )
+    if domain.weather_interpolator is not None:
+        WIND_SPEED, _, (w_a, w_b) = domain.weather_interpolator.interpol_wind_classic(
+            lat=lat1, longi=lon1, alt=alt1
+        )
+    else:
+        WIND_SPEED, w_a, w_b = 0.0, 0.0, 0.0
     # Computes coordinates of the direction vector in the Earth-centered system
     dir_x = EARTH_RADIUS * (
         (cos(lat2 * pi / 180.0) * cos(lon2 * pi / 180.0))
