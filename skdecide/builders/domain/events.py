@@ -25,32 +25,16 @@ class Events:
         history), or in the internal one if omitted.
 
         By default, #Events.get_enabled_events() provides some boilerplate code and internally
-        calls #Events._get_enabled_events(). The boilerplate code automatically passes the #_memory attribute instead of
+        calls #Events._get_enabled_events_from(). The boilerplate code automatically passes the #_memory attribute instead of
         the memory parameter whenever the latter is None.
+        It also autocasts itself to be used at the proper characteristics level by each solver.
 
         # Parameters
         memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
 
         # Returns
         The space of enabled events.
-        """
-        return self._get_enabled_events(memory)
 
-    def _get_enabled_events(
-        self, memory: Optional[D.T_memory[D.T_state]] = None
-    ) -> Space[D.T_event]:
-        """Get the space (finite or infinite set) of enabled uncontrollable events in the given memory (state or
-        history), or in the internal one if omitted.
-
-        By default, #Events._get_enabled_events() provides some boilerplate code and internally
-        calls #Events._get_enabled_events_from(). The boilerplate code automatically passes the #_memory attribute
-        instead of the memory parameter whenever the latter is None.
-
-        # Parameters
-        memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
-
-        # Returns
-        The space of enabled events.
         """
         if memory is None:
             memory = self._memory
@@ -81,32 +65,16 @@ class Events:
         internal one if omitted.
 
         By default, #Events.is_enabled_event() provides some boilerplate code and internally
-        calls #Events._is_enabled_event(). The boilerplate code automatically passes the #_memory attribute instead of
+        calls #Events._is_enabled_event_from(). The boilerplate code automatically passes the #_memory attribute instead of
         the memory parameter whenever the latter is None.
+        It also autocasts itself to be used at the proper characteristics level by each solver.
 
         # Parameters
         memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
 
         # Returns
         True if the event is enabled (False otherwise).
-        """
-        return self._is_enabled_event(event, memory)
 
-    def _is_enabled_event(
-        self, event: D.T_event, memory: Optional[D.T_memory[D.T_state]] = None
-    ) -> bool:
-        """Indicate whether an uncontrollable event is enabled in the given memory (state or history), or in the
-        internal one if omitted.
-
-        By default, #Events._is_enabled_event() provides some boilerplate code and internally
-        calls #Events._is_enabled_event_from(). The boilerplate code automatically passes the #_memory attribute instead
-        of the memory parameter whenever the latter is None.
-
-        # Parameters
-        memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
-
-        # Returns
-        True if the event is enabled (False otherwise).
         """
         if memory is None:
             memory = self._memory
@@ -213,32 +181,16 @@ class Events:
         the internal one if omitted.
 
         By default, #Events.get_applicable_actions() provides some boilerplate code and internally
-        calls #Events._get_applicable_actions(). The boilerplate code automatically passes the #_memory attribute
-        instead of the memory parameter whenever the latter is None.
-
-        # Parameters
-        memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
-
-        # Returns
-        The space of applicable actions.
-        """
-        return self._get_applicable_actions(memory)
-
-    def _get_applicable_actions(
-        self, memory: Optional[D.T_memory[D.T_state]] = None
-    ) -> D.T_agent[Space[D.T_event]]:
-        """Get the space (finite or infinite set) of applicable actions in the given memory (state or history), or in
-        the internal one if omitted.
-
-        By default, #Events._get_applicable_actions() provides some boilerplate code and internally
         calls #Events._get_applicable_actions_from(). The boilerplate code automatically passes the #_memory attribute
         instead of the memory parameter whenever the latter is None.
+        It also autocasts itself to be used at the proper characteristics level by each solver.
 
         # Parameters
         memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
 
         # Returns
         The space of applicable actions.
+
         """
         if memory is None:
             memory = self._memory
@@ -270,28 +222,8 @@ class Events:
         omitted.
 
         By default, #Events.is_applicable_action() provides some boilerplate code and internally
-        calls #Events._is_applicable_action(). The boilerplate code automatically passes the #_memory attribute instead
+        calls #Events._is_applicable_action_from(), with the #_memory attribute instead
         of the memory parameter whenever the latter is None.
-
-        # Parameters
-        memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
-
-        # Returns
-        True if the action is applicable (False otherwise).
-        """
-        return self._is_applicable_action(action, memory)
-
-    def _is_applicable_action(
-        self,
-        action: D.T_agent[D.T_event],
-        memory: Optional[D.T_memory[D.T_state]] = None,
-    ) -> bool:
-        """Indicate whether an action is applicable in the given memory (state or history), or in the internal one if
-        omitted.
-
-        By default, #Events._is_applicable_action() provides some boilerplate code and internally
-        calls #Events._is_applicable_action_from(). The boilerplate code automatically passes the #_memory attribute
-        instead of the memory parameter whenever the latter is None.
 
         # Parameters
         memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
@@ -338,8 +270,9 @@ class Events:
         space can be iterated over in some way. It is represented by a flat array of 0's and 1's ordered as the actions
         when enumerated: 1 for an applicable action, and 0 for a not applicable action.
 
-        More precisely, this implementation makes the assumption that each agent action space is an `EnumerableSpace`,
-        and calls internally `self.get_applicable_action()`.
+        By default, #Events.get_action_mask() provides some boilerplate code and internally
+        calls #Events._get_action_mask_from(), with the #_memory attribute instead
+        of the memory parameter whenever the latter is None.
 
         The action mask is used for instance by RL solvers to shut down logits associated to non-applicable actions in
         the output of their internal neural network.
@@ -351,18 +284,18 @@ class Events:
         a numpy array (or dict agent-> numpy array for multi-agent domains) with 0-1 indicating applicability of
         the action (1 meaning applicable and 0 not applicable)
         """
-        return self._get_action_mask(memory=memory)
+        if memory is None:
+            memory = self._memory
+        return self._get_action_mask_from(memory=memory)
 
-    def _get_action_mask(
-        self, memory: Optional[D.T_memory[D.T_state]] = None
-    ) -> D.T_agent[Mask]:
+    def _get_action_mask_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Mask]:
         """Get action mask for the given memory or internal one if omitted.
 
         An action mask is another (more specific) format for applicable actions, that has a meaning only if the action
         space can be iterated over in some way. It is represented by a flat array of 0's and 1's ordered as the actions
         when enumerated: 1 for an applicable action, and 0 for a not applicable action.
 
-        More precisely, this implementation makes the assumption that each agent action space is an `EnumerableSpace`,
+        The default implementation makes the assumption that each agent action space is an `EnumerableSpace`,
         and calls internally `self.get_applicable_action()`.
 
         The action mask is used for instance by RL solvers to shut down logits associated to non-applicable actions in
@@ -375,7 +308,7 @@ class Events:
         a numpy array (or dict agent-> numpy array for multi-agent domains) with 0-1 indicating applicability of
         the action (1 meaning applicable and 0 not applicable)
         """
-        applicable_actions = self._get_applicable_actions(memory=memory)
+        applicable_actions = self._get_applicable_actions_from(memory=memory)
         action_space = self._get_action_space()
         if self.T_agent == Union:
             # single agent
