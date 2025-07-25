@@ -18,21 +18,10 @@ class Initializable:
     def reset(self) -> D.T_agent[D.T_observation]:
         """Reset the state of the environment and return an initial observation.
 
-        By default, #Initializable.reset() provides some boilerplate code and internally calls #Initializable._reset()
-        (which returns an initial state). The boilerplate code automatically stores the initial state into the #_memory
-        attribute and samples a corresponding observation.
-
-        # Returns
-        An initial observation.
-        """
-        return self._reset()
-
-    def _reset(self) -> D.T_agent[D.T_observation]:
-        """Reset the state of the environment and return an initial observation.
-
-        By default, #Initializable._reset() provides some boilerplate code and internally
-        calls #Initializable._state_reset() (which returns an initial state). The boilerplate code automatically stores
+        By default, #Initializable.reset() provides some boilerplate code and internally calls
+        #Initializable._state_reset() (which returns an initial state). The boilerplate code automatically stores
         the initial state into the #_memory attribute and samples a corresponding observation.
+        It also autocasts itself to be used at the proper characteristics level by each solver.
 
         # Returns
         An initial observation.

@@ -25,32 +25,16 @@ class Events:
         history), or in the internal one if omitted.
 
         By default, #Events.get_enabled_events() provides some boilerplate code and internally
-        calls #Events._get_enabled_events(). The boilerplate code automatically passes the #_memory attribute instead of
+        calls #Events._get_enabled_events_from(). The boilerplate code automatically passes the #_memory attribute instead of
         the memory parameter whenever the latter is None.
+        It also autocasts itself to be used at the proper characteristics level by each solver.
 
         # Parameters
         memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
 
         # Returns
         The space of enabled events.
-        """
-        return self._get_enabled_events(memory)
 
-    def _get_enabled_events(
-        self, memory: Optional[D.T_memory[D.T_state]] = None
-    ) -> Space[D.T_event]:
-        """Get the space (finite or infinite set) of enabled uncontrollable events in the given memory (state or
-        history), or in the internal one if omitted.
-
-        By default, #Events._get_enabled_events() provides some boilerplate code and internally
-        calls #Events._get_enabled_events_from(). The boilerplate code automatically passes the #_memory attribute
-        instead of the memory parameter whenever the latter is None.
-
-        # Parameters
-        memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
-
-        # Returns
-        The space of enabled events.
         """
         if memory is None:
             memory = self._memory
@@ -81,32 +65,16 @@ class Events:
         internal one if omitted.
 
         By default, #Events.is_enabled_event() provides some boilerplate code and internally
-        calls #Events._is_enabled_event(). The boilerplate code automatically passes the #_memory attribute instead of
+        calls #Events._is_enabled_event_from(). The boilerplate code automatically passes the #_memory attribute instead of
         the memory parameter whenever the latter is None.
+        It also autocasts itself to be used at the proper characteristics level by each solver.
 
         # Parameters
         memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
 
         # Returns
         True if the event is enabled (False otherwise).
-        """
-        return self._is_enabled_event(event, memory)
 
-    def _is_enabled_event(
-        self, event: D.T_event, memory: Optional[D.T_memory[D.T_state]] = None
-    ) -> bool:
-        """Indicate whether an uncontrollable event is enabled in the given memory (state or history), or in the
-        internal one if omitted.
-
-        By default, #Events._is_enabled_event() provides some boilerplate code and internally
-        calls #Events._is_enabled_event_from(). The boilerplate code automatically passes the #_memory attribute instead
-        of the memory parameter whenever the latter is None.
-
-        # Parameters
-        memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
-
-        # Returns
-        True if the event is enabled (False otherwise).
         """
         if memory is None:
             memory = self._memory
@@ -213,32 +181,16 @@ class Events:
         the internal one if omitted.
 
         By default, #Events.get_applicable_actions() provides some boilerplate code and internally
-        calls #Events._get_applicable_actions(). The boilerplate code automatically passes the #_memory attribute
-        instead of the memory parameter whenever the latter is None.
-
-        # Parameters
-        memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
-
-        # Returns
-        The space of applicable actions.
-        """
-        return self._get_applicable_actions(memory)
-
-    def _get_applicable_actions(
-        self, memory: Optional[D.T_memory[D.T_state]] = None
-    ) -> D.T_agent[Space[D.T_event]]:
-        """Get the space (finite or infinite set) of applicable actions in the given memory (state or history), or in
-        the internal one if omitted.
-
-        By default, #Events._get_applicable_actions() provides some boilerplate code and internally
         calls #Events._get_applicable_actions_from(). The boilerplate code automatically passes the #_memory attribute
         instead of the memory parameter whenever the latter is None.
+        It also autocasts itself to be used at the proper characteristics level by each solver.
 
         # Parameters
         memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
 
         # Returns
         The space of applicable actions.
+
         """
         if memory is None:
             memory = self._memory
