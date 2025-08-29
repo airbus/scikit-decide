@@ -169,12 +169,12 @@ class GraphMaze(D):
         maze_memory = self._graph2mazestate(memory)
         self.maze_domain._render_from(memory=maze_memory, **kwargs)
 
-    def _get_action_mask(
+    def _get_action_mask_from(
         self, memory: Optional[D.T_memory[D.T_state]] = None
     ) -> D.T_agent[Mask]:
         # a different way to display applicable actions
-        # we could also override only _get_applicable_action() but it will be more computationally efficient to
-        # implement directly get_action_mask()
+        # we could also override only _get_applicable_action_from() but it will be more computationally efficient to
+        # implement directly _get_action_mask_from()
         if memory is None:
             memory = self._memory
         mazestate_memory = self._graph2mazestate(memory)
@@ -196,7 +196,7 @@ class GraphMaze(D):
                 action
                 for action, mask in zip(
                     self._get_action_space().get_elements(),
-                    self._get_action_mask(memory=memory),
+                    self._get_action_mask_from(memory=memory),
                 )
                 if mask
             ]
@@ -278,7 +278,7 @@ class GraphJspDomain(D):
             action_mask = action_mask[self._kept_nodes]
         return ListSpace(np.nonzero(action_mask)[0])
 
-    def _get_action_mask(
+    def _get_action_mask_from(
         self, memory: Optional[D.T_memory[D.T_state]] = None
     ) -> D.T_agent[Mask]:
         """Compute action mask.
@@ -292,7 +292,7 @@ class GraphJspDomain(D):
             action_mask = action_mask[self._kept_nodes]
             return np.asarray(action_mask, dtype=np.int8)
         else:
-            return super()._get_action_mask(memory)
+            return super()._get_action_mask_from(memory)
 
     def _get_observation_space_(self) -> Space[D.T_observation]:
         if self._gym_env.normalize_observation_space:

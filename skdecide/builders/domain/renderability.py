@@ -20,32 +20,17 @@ class Renderable:
     ) -> Any:
         """Compute a visual render of the given memory (state or history), or the internal one if omitted.
 
-        By default, #Renderable.render() provides some boilerplate code and internally calls #Renderable._render(). The
-        boilerplate code automatically passes the #_memory attribute instead of the memory parameter whenever the latter
-        is None.
+        By default, #Renderable.render() provides some boilerplate code and internally calls #Renderable._render_from().
+        The boilerplate code automatically passes the #_memory attribute instead of the memory parameter whenever
+        the latter is None.
+        It also autocasts itself to be used at the proper characteristics level by each solver.
 
         # Parameters
         memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
 
         # Returns
         A render (e.g. image) or nothing (if the function handles the display directly).
-        """
-        return self._render(memory, **kwargs)
 
-    def _render(
-        self, memory: Optional[D.T_memory[D.T_state]] = None, **kwargs: Any
-    ) -> Any:
-        """Compute a visual render of the given memory (state or history), or the internal one if omitted.
-
-        By default, #Renderable._render() provides some boilerplate code and internally
-        calls #Renderable._render_from(). The boilerplate code automatically passes the #_memory attribute instead of
-        the memory parameter whenever the latter is None.
-
-        # Parameters
-        memory: The memory to consider (if None, the internal memory attribute #_memory is used instead).
-
-        # Returns
-        A render (e.g. image) or nothing (if the function handles the display directly).
         """
         if memory is None:
             memory = self._memory

@@ -48,49 +48,14 @@ class Environment:
     ]:
         """Run one step of the environment's dynamics.
 
-        By default, #Environment.step() provides some boilerplate code and internally calls #Environment._step() (which
-        returns a transition outcome). The boilerplate code automatically stores next state into the #_memory attribute
-        and samples a corresponding observation.
-
-        !!! tip
-            Whenever an existing environment needs to be wrapped instead of implemented fully in scikit-decide (e.g. compiled
-            ATARI games), it is recommended to overwrite #Environment.step() to call the external environment and not
-            use the #Environment._step() helper function.
+        By default, #Environment.step() provides some boilerplate code and internally calls #Environment._state_step()
+        (which returns a transition outcome). The boilerplate code automatically stores next state into the
+        #_memory attribute and samples a corresponding observation.
+        It also autocasts itself to be used at the proper characteristics level by each solver.
 
         !!! warning
             Before calling #Environment.step() the first time or when the end of an episode is
             reached, #Initializable.reset() must be called to reset the environment's state.
-
-        # Parameters
-        action: The action taken in the current memory (state or history) triggering the transition.
-
-        # Returns
-        The environment outcome of this step.
-        """
-        return self._step(action)
-
-    def _step(
-        self, action: D.T_agent[D.T_concurrency[D.T_event]]
-    ) -> EnvironmentOutcome[
-        D.T_agent[D.T_observation],
-        D.T_agent[Value[D.T_value]],
-        D.T_agent[D.T_predicate],
-        D.T_agent[D.T_info],
-    ]:
-        """Run one step of the environment's dynamics.
-
-        By default, #Environment._step() provides some boilerplate code and internally
-        calls #Environment._state_step() (which returns a transition outcome). The boilerplate code automatically stores
-        next state into the #_memory attribute and samples a corresponding observation.
-
-        !!! tip
-            Whenever an existing environment needs to be wrapped instead of implemented fully in scikit-decide (e.g. compiled
-            ATARI games), it is recommended to overwrite #Environment._step() to call the external environment and not
-            use the #Environment._state_step() helper function.
-
-        !!! warning
-            Before calling #Environment._step() the first time or when the end of an episode is
-            reached, #Initializable._reset() must be called to reset the environment's state.
 
         # Parameters
         action: The action taken in the current memory (state or history) triggering the transition.
@@ -212,44 +177,10 @@ class Simulation(Environment):
     ]:
         """Sample one transition of the simulator's dynamics.
 
-        By default, #Simulation.sample() provides some boilerplate code and internally calls #Simulation._sample()
+        By default, #Simulation.sample() provides some boilerplate code and internally calls #Simulation._state_sample()
         (which returns a transition outcome). The boilerplate code automatically samples an observation corresponding to
         the sampled next state.
-
-        !!! tip
-            Whenever an existing simulator needs to be wrapped instead of implemented fully in scikit-decide (e.g. a
-            simulator), it is recommended to overwrite #Simulation.sample() to call the external simulator and not use
-            the #Simulation._sample() helper function.
-
-        # Parameters
-        memory: The source memory (state or history) of the transition.
-        action: The action taken in the given memory (state or history) triggering the transition.
-
-        # Returns
-        The environment outcome of the sampled transition.
-        """
-        return self._sample(memory, action)
-
-    def _sample(
-        self,
-        memory: D.T_memory[D.T_state],
-        action: D.T_agent[D.T_concurrency[D.T_event]],
-    ) -> EnvironmentOutcome[
-        D.T_agent[D.T_observation],
-        D.T_agent[Value[D.T_value]],
-        D.T_agent[D.T_predicate],
-        D.T_agent[D.T_info],
-    ]:
-        """Sample one transition of the simulator's dynamics.
-
-        By default, #Simulation._sample() provides some boilerplate code and internally
-        calls #Simulation._state_sample() (which returns a transition outcome). The boilerplate code automatically
-        samples an observation corresponding to the sampled next state.
-
-        !!! tip
-            Whenever an existing simulator needs to be wrapped instead of implemented fully in scikit-decide (e.g. a
-            simulator), it is recommended to overwrite #Simulation._sample() to call the external simulator and not use
-            the #Simulation._state_sample() helper function.
+        It also autocasts itself to be used at the proper characteristics level by each solver.
 
         # Parameters
         memory: The source memory (state or history) of the transition.
