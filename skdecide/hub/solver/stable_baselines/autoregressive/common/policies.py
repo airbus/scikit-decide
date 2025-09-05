@@ -846,7 +846,9 @@ class AutoregressiveGraph2NodeActorCriticPolicy(AutoregressiveGNNActorCriticPoli
         )
 
     @staticmethod
-    def default_n_graph2node_components(action_space: spaces.MultiDiscrete) -> int:
+    def default_n_graph2node_components(
+        action_space: spaces.MultiDiscrete, **kwargs: Any
+    ) -> int:
         """Default number of action components that are graph nodes if not specified."""
         return len(action_space.nvec) - 1
 
@@ -862,7 +864,7 @@ class AutoregressiveHeteroGraph2NodeActorCriticPolicy(
 
     As for `AutoregressiveGraph2NodeActorCriticPolicy`, we need to specify the numer of components being nodes of the
     observation graph, but also to know which nodes are of which type. For that we assume that some node features encode
-    that: the new argument `heterograph2node_flagfeature_by_component` specifies component by component which binary
+    that: the new argument `action_components_node_flag_indices` specifies component by component which binary
     node feature decide the nodes that can be used for each component.
     The resulting action component will be the index of the chosen node among the nodes of the proper type.
 
@@ -895,20 +897,38 @@ class AutoregressiveHeteroGraph2NodeActorCriticPolicy(
             action_space:
             lr_schedule:
             action_components_node_flag_indices: list, component by component, of integer or None.
-              - None: all nodes can be used a priori for the corresponding component.
+              - None: all nodes can be used a priori for the corresponding component,
+                or this does not correspond to a graph dependent component.
               - integer: this is the index of the binary node feature to use to extract the relevant nodes for this
                 component
+
             action_gnn_class: GNN class for graph -> node nets.
                 See `skdecide.hub.solver.utils.gnn.torch_layers.Graph2NodeLayer` for default values.
             action_gnn_kwargs: kwargs for `action_gnn_class`
             n_graph2node_components: number of action components that are actually nodes of the obs graph.
                 It is assumed that the action components start with the independent ones then the one that are nodes.
-                By default, all components are assumed to be graph dependent ie
-                `n_graph2node_components = len(action_space.nvec)`
+                By default, we assume that graph dependent components starts with the first one not having a None in
+                `action_components_node_flag_indices`, ie
+                `n_graph2node_components = argmax_i action_components_node_flag_indices[:-i] = [None, ..., None]`.
             **kwargs:
         """
         if not isinstance(action_space, spaces.MultiDiscrete):
             raise ValueError("action_space must be a multidiscrete space.")
+
+        if len(action_components_node_flag_indices) != len(action_space.nvec):
+            raise ValueError(
+                "action_components_node_flag_indices must be of same length as the number of action components."
+            )
+
+        if n_graph2node_components is None:
+            n_graphindependent_components = len(action_components_node_flag_indices)
+            for i, flag_index in enumerate(action_components_node_flag_indices):
+                if flag_index is not None:
+                    n_graphindependent_components = i
+                    break
+            n_graph2node_components = (
+                len(action_components_node_flag_indices) - n_graphindependent_components
+            )
 
         super().__init__(
             observation_space=observation_space,
@@ -924,6 +944,17 @@ class AutoregressiveHeteroGraph2NodeActorCriticPolicy(
         self.action_components_node_flag_indices = action_components_node_flag_indices
 
     @staticmethod
-    def default_n_graph2node_components(action_space: spaces.MultiDiscrete) -> int:
+    def default_n_graph2node_components(
+        action_space: spaces.MultiDiscrete,
+        action_components_node_flag_indices: Optional[list[Optional[int]]] = None,
+        **kwargs: Any
+    ) -> int:
         """Default number of action components that are graph nodes if not specified."""
-        return len(action_space.nvec)
+        if action_components_node_flag_indices is None:
+            raise RuntimeError("action_components_node_flag_indices cannot be None")
+        n_graphindependent_components = len(action_components_node_flag_indices)
+        for i, flag_index in enumerate(action_components_node_flag_indices):
+            if flag_index is not None:
+                n_graphindependent_components = i
+                break
+        return len(action_components_node_flag_indices) - n_graphindependent_components

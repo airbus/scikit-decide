@@ -38,11 +38,7 @@ from skdecide.builders.domain import (
     SingleAgent,
     TransformedObservable,
 )
-from skdecide.hub.domain.plado.llg_encoder import (
-    LLGEncoder,
-    NodeLabel,
-    map_nodelabel2int,
-)
+from skdecide.hub.domain.plado.llg_encoder import LLGEncoder, NodeLabel
 from skdecide.hub.space.gym import (
     BoxSpace,
     DiscreteSpace,
@@ -250,6 +246,7 @@ class BasePladoDomain(D):
         problem_path: str,
         state_encoding: StateEncoding = StateEncoding.NATIVE,
         action_encoding: ActionEncoding = ActionEncoding.NATIVE,
+        llg_encoder_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
 
@@ -258,12 +255,17 @@ class BasePladoDomain(D):
             problem_path:
             state_encoding:
             action_encoding:
+            llg_encoder_kwargs:
 
         """
         self.domain_path: str = domain_path
         self.problem_path: str = problem_path
         self.state_encoding = state_encoding
         self.action_encoding = action_encoding
+        if llg_encoder_kwargs is None:
+            self.llg_encoder_kwargs = {}
+        else:
+            self.llg_encoder_kwargs = llg_encoder_kwargs
         domain, problem = parse_and_normalize(domain_path, problem_path)
         self.task: Task = Task(domain, problem)
         self.check_goal: GoalChecker = GoalChecker(self.task)
@@ -301,9 +303,14 @@ class BasePladoDomain(D):
         """
         if self.action_encoding == ActionEncoding.GYM_MULTIDISCRETE:
             if self.state_encoding == StateEncoding.GYM_GRAPH_LLG:
-                return [map_nodelabel2int[NodeLabel.ACTION]] + [
-                    map_nodelabel2int[NodeLabel.OBJECT]
-                ] * self._max_action_arity
+                if self._llg_encoder.encode_actions:
+                    return [self._llg_encoder.map_nodelabel2int[NodeLabel.ACTION]] + [
+                        self._llg_encoder.map_nodelabel2int[NodeLabel.OBJECT]
+                    ] * self._max_action_arity
+                else:
+                    return [None] + [
+                        self._llg_encoder.map_nodelabel2int[NodeLabel.OBJECT]
+                    ] * self._max_action_arity
             else:
                 return (1 + self._max_action_arity) * [None]
         else:
@@ -316,7 +323,9 @@ class BasePladoDomain(D):
             self._init_state_encoding_vector()
         elif self.state_encoding == StateEncoding.GYM_GRAPH_LLG:
             self._llg_encoder = LLGEncoder(
-                task=self.task, cost_functions=self.cost_functions
+                task=self.task,
+                cost_functions=self.cost_functions,
+                **self.llg_encoder_kwargs,
             )
         else:
             raise NotImplementedError()

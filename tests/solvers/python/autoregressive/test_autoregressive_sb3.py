@@ -303,7 +303,6 @@ def test_autoregressive_heterograph2node_ppo(
         n_steps=100,
         policy_kwargs=dict(
             action_components_node_flag_indices=action_components_node_flag_indices,
-            n_graph2node_components=1,
         ),
     ) as solver:
         # pre-init algo (done normally during solve()) to extract init weights
@@ -398,7 +397,6 @@ def test_autoregressive_heterograph2node_ppo_save_load(
             n_steps=10,
             policy_kwargs=dict(
                 action_components_node_flag_indices=action_components_node_flag_indices,
-                n_graph2node_components=1,
             ),
         ) as solver:
             # solve
@@ -447,7 +445,6 @@ def test_autoregressive_heterograph2node_ppo_save_load(
             n_steps=15,
             policy_kwargs=dict(
                 action_components_node_flag_indices=action_components_node_flag_indices,
-                n_graph2node_components=1,
             ),
         ) as solver:
             # load
@@ -485,7 +482,6 @@ def test_autoregressive_heterograph2node_ppo_save_load_nok(
             n_steps=10,
             policy_kwargs=dict(
                 action_components_node_flag_indices=action_components_node_flag_indices,
-                n_graph2node_components=1,
             ),
         ) as solver:
             # solve
@@ -503,7 +499,6 @@ def test_autoregressive_heterograph2node_ppo_save_load_nok(
             n_steps=15,
             policy_kwargs=dict(
                 action_components_node_flag_indices=action_components_node_flag_indices,
-                n_graph2node_components=1,
             ),
         ) as solver:
             # load nok
