@@ -81,10 +81,33 @@ pddl_domain_problem_paths = fixture_union(
 state_encoding = param_fixture("state_encoding", list(StateEncoding))
 action_encoding = param_fixture("action_encoding", list(ActionEncoding))
 obs_encoding = param_fixture("obs_encoding", list(ObservationEncoding))
+llg_encoder_kwargs = param_fixture(
+    "llg_encoder_kwargs",
+    [
+        dict(encode_actions=True, simplify_encoding=False),
+        dict(encode_actions=True, simplify_encoding=True),
+        dict(encode_actions=False, simplify_encoding=False),
+        dict(encode_static_facts=False, encode_actions=False),
+    ],
+    ids=[
+        "full-llg",
+        "actions-simplified-llg",
+        "no-actions-all-features-llg",
+        "no-actions-no-static-facts",
+    ],
+)
+llg_encoder_kwargs2 = param_fixture(
+    "llg_encoder_kwargs2",
+    [
+        dict(encode_actions=True, simplify_encoding=False),
+        dict(encode_actions=False, simplify_encoding=True),
+    ],
+    ids=["full-llg", "simplified-wo-actions-llg"],
+)
 
 
 @fixture
-def plado_fully_observable_domain_factory(
+def plado_fully_observable_domain_factory_no_llg_options(
     pddl_domain_problem_paths, state_encoding, action_encoding
 ):
     domain_path, problem_path = pddl_domain_problem_paths
@@ -103,6 +126,39 @@ def plado_fully_observable_domain_factory(
         state_encoding=state_encoding,
         action_encoding=action_encoding,
     )
+
+
+@fixture
+def plado_fully_observable_domain_factory_llg_options(
+    pddl_domain_problem_paths, action_encoding, llg_encoder_kwargs
+):
+    state_encoding = StateEncoding.GYM_GRAPH_LLG
+    domain_path, problem_path = pddl_domain_problem_paths
+    if "agricola" in domain_path:
+        if action_encoding == ActionEncoding.GYM_DISCRETE:
+            pytest.skip("Discrete action encoding not tractable for agricola domain.")
+    if "tireworld" in domain_path:
+        if state_encoding == StateEncoding.GYM_GRAPH_LLG:
+            pytest.skip("LLG encoding not implemented yet for PPDDL.")
+        plado_domain_cls = PladoPPddlDomain
+    else:
+        plado_domain_cls = PladoPddlDomain
+    return lambda: plado_domain_cls(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=state_encoding,
+        action_encoding=action_encoding,
+        llg_encoder_kwargs=llg_encoder_kwargs,
+    )
+
+
+plado_fully_observable_domain_factory = fixture_union(
+    "plado_fully_observable_domain_factory",
+    (
+        plado_fully_observable_domain_factory_no_llg_options,
+        plado_fully_observable_domain_factory_llg_options,
+    ),
+)
 
 
 @fixture
@@ -147,7 +203,7 @@ def plado_ppddl_domain_factory(
 
 
 @fixture
-def plado_pddl_domain_factory(
+def plado_pddl_domain_factory_no_llg_options(
     blocksworld_domain_problem_paths, state_encoding, action_encoding
 ):
     domain_path, problem_path = blocksworld_domain_problem_paths
@@ -157,6 +213,27 @@ def plado_pddl_domain_factory(
         state_encoding=state_encoding,
         action_encoding=action_encoding,
     )
+
+
+@fixture
+def plado_pddl_domain_factory_llg_options(
+    blocksworld_domain_problem_paths, llg_encoder_kwargs, action_encoding
+):
+    domain_path, problem_path = blocksworld_domain_problem_paths
+    state_encoding = StateEncoding.GYM_GRAPH_LLG
+    return lambda: PladoPddlDomain(
+        domain_path=domain_path,
+        problem_path=problem_path,
+        state_encoding=state_encoding,
+        action_encoding=action_encoding,
+        llg_encoder_kwargs=llg_encoder_kwargs,
+    )
+
+
+plado_pddl_domain_factory = fixture_union(
+    "plado_pddl_domain_factory",
+    (plado_pddl_domain_factory_no_llg_options, plado_pddl_domain_factory_llg_options),
+)
 
 
 @fixture
@@ -193,13 +270,14 @@ def plado_gym_autoregressive_domain_factory(blocksworld_domain_problem_paths):
 
 
 @fixture
-def plado_llg_domain_factory(blocksworld_domain_problem_paths):
+def plado_llg_domain_factory(blocksworld_domain_problem_paths, llg_encoder_kwargs2):
     domain_path, problem_path = blocksworld_domain_problem_paths
     return lambda: PladoPddlDomain(
         domain_path=domain_path,
         problem_path=problem_path,
         state_encoding=StateEncoding.GYM_GRAPH_LLG,
         action_encoding=ActionEncoding.GYM_MULTIDISCRETE,
+        llg_encoder_kwargs=llg_encoder_kwargs2,
     )
 
 
@@ -289,15 +367,19 @@ def test_plado_domain_random(plado_domain_factory):
                 ),
                 obs,
             )
-            # check decode_llg
-            assert are_pladostates_equal(
-                decode_llg(obs, domain.cost_functions),
-                domain._translate_state_to_plado(obs),
-            )
-            assert are_pladostates_equal(
-                decode_llg(outcome.observation, domain.cost_functions),
-                domain._translate_state_to_plado(outcome.observation),
-            )
+            if (
+                domain._llg_encoder.encode_actions
+                and not domain._llg_encoder.simplify_encoding
+            ):
+                # check decode_llg
+                assert are_pladostates_equal(
+                    decode_llg(obs, domain.cost_functions),
+                    domain._translate_state_to_plado(obs),
+                )
+                assert are_pladostates_equal(
+                    decode_llg(outcome.observation, domain.cost_functions),
+                    domain._translate_state_to_plado(outcome.observation),
+                )
         else:
             raise NotImplementedError()
 
@@ -798,8 +880,11 @@ def test_plado_domain_blocksworld_autoregressive_heterograph2node_sb3(
     ) as solver:
         # pre-init algo (done normally during solve()) to extract init weights
         solver._init_algo()
-        for action_net in solver._algo.policy.action_nets:
-            assert isinstance(action_net, Graph2NodeLayer)
+        for i_component, action_net in enumerate(solver._algo.policy.action_nets):
+            if i_component > 0 or domain._llg_encoder.encode_actions:
+                assert isinstance(action_net, Graph2NodeLayer)
+            else:
+                assert isinstance(action_net, th.nn.Linear)
         value_init_params = extract_module_parameters_values(
             solver._algo.policy.value_net
         )
@@ -914,8 +999,11 @@ def test_plado_domain_blocksworld_autoregressive_heterograph2node_advancedgnn_sb
     ) as solver:
         # pre-init algo (done normally during solve()) to extract init weights
         solver._init_algo()
-        for action_net in solver._algo.policy.action_nets:
-            assert isinstance(action_net, Graph2NodeLayer)
+        for i_component, action_net in enumerate(solver._algo.policy.action_nets):
+            if i_component > 0 or domain._llg_encoder.encode_actions:
+                assert isinstance(action_net, Graph2NodeLayer)
+            else:
+                assert isinstance(action_net, th.nn.Linear)
         value_init_params = extract_module_parameters_values(
             solver._algo.policy.value_net
         )

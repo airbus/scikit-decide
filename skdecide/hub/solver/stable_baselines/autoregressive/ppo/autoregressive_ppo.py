@@ -95,9 +95,21 @@ class AutoregressiveGraphPPO(
                     "policy_kwargs" not in data
                     or "n_graph2node_components" not in data["policy_kwargs"]
                 ):
+                    default_n_graph2node_components_kwargs = dict(
+                        action_space=data["action_space"]
+                    )
+                    if issubclass(
+                        data["policy_class"],
+                        AutoregressiveHeteroGraph2NodeActorCriticPolicy,
+                    ):
+                        default_n_graph2node_components_kwargs[
+                            "action_components_node_flag_indices"
+                        ] = data["policy_kwargs"]["action_components_node_flag_indices"]
                     n_graph2node_components = data[
                         "policy_class"
-                    ].default_n_graph2node_components(data["action_space"])
+                    ].default_n_graph2node_components(
+                        **default_n_graph2node_components_kwargs
+                    )
                 else:
                     n_graph2node_components = data["policy_kwargs"][
                         "n_graph2node_components"
