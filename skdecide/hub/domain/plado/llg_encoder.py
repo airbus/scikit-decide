@@ -50,10 +50,10 @@ else:
 
 
 class EdgeLabel(Enum):
-    NU = "nu"
-    GAMMA = "gamma"
-    PRE = "pre"
-    EFFECT = "effect"
+    NU = "nu"  # link between predicate/fluent/action and its variables
+    GAMMA = "gamma"  # state or goal encoding
+    PRE = "pre"  # action precondition encoding
+    EFFECT = "effect"  # action effect encoding
 
 
 map_edgelabel2int = {label: idx for idx, label in enumerate(EdgeLabel)}
@@ -80,9 +80,9 @@ class NodeLabel(Enum):
     ASSIGN = "assign"  # operator assigning arg 1 (numeric value) to arg 0 (numeric predicate)
 
 
-map_nodelabel2int = {label: idx for idx, label in enumerate(NodeLabel)}
 map_int2nodelabel = list(NodeLabel)
-value_index = len(NodeLabel)  # index of node value in node features
+map_nodelabel2int = {label: idx for idx, label in enumerate(map_int2nodelabel)}
+value_index = len(map_int2nodelabel)
 
 
 class IndexFunctionType(Enum):
@@ -129,7 +129,32 @@ class LLGEncoder:
         index_function_type: IndexFunctionType = IndexFunctionType.ONEHOT,
         index_function_default_dim: int = 2,
         cost_functions: Optional[set[int]] = None,
+        encode_actions: bool = False,
+        simplify_encoding: bool = True,
+        encode_static_facts: bool = True,
     ):
+        """
+
+        Args:
+            task:
+            index_function_type:
+            index_function_default_dim:
+            cost_functions:
+            encode_actions: decide whether to generate the subgraph dedicated to action encoding
+            simplify_encoding: decrease node and edge features dimension by dropping labels never used by the graph
+                (e.g.: if no action encoding, drop EdgeLabel.EFFECT and EdgeLabel.PRE, NodeLabel.ACTION, NodeLabel.ASSIGN, ...,
+                 if no fluents defined, drop NodeLabel.NUMERIC, NodeLabel.GREATER, NodeLabel.PLUS, ...)
+                NB: the encoding will be domain dependent.
+            encode_static_facts: whether to encode the static facts or not.
+
+        """
+        if encode_actions:
+            assert (
+                encode_static_facts
+            ), "encode_static_facts must be True if encode_actions is True."
+        self.encode_static_facts = encode_static_facts
+        self.encode_actions = encode_actions
+        self.simplify_encoding = simplify_encoding
         self.index_function_default_dim = index_function_default_dim
         self.index_function_type = index_function_type
         self.task = task
@@ -147,6 +172,16 @@ class LLGEncoder:
             self.cost_functions = cost_functions
 
         self._init_graph()
+
+    @property
+    def predicates_to_encode(self):
+        """Subset of the task.predicates sufficient to encode."""
+        if self.encode_static_facts:
+            return self.task.predicates
+        else:
+            return self.task.predicates[
+                : self.task.num_fluent_predicates + self.task.num_derived_predicates
+            ]
 
     def encode(self, state: State) -> gym.spaces.GraphInstance:
         """Encode plado state into an LLG."""
@@ -173,7 +208,7 @@ class LLGEncoder:
         )
         state_nodes = (
             graph.nodes[
-                self._state_node_start :, map_nodelabel2int[NodeLabel.STATE]
+                self._state_node_start :, self.map_nodelabel2int[NodeLabel.STATE]
             ].nonzero()[0]
             + self._state_node_start
         )
@@ -186,7 +221,10 @@ class LLGEncoder:
             atom_args = []
             predicate = None
             function_id = None
-            value = Float(graph.nodes[state_node, value_index])
+            if self.has_value_column:
+                value = Float(graph.nodes[state_node, self.value_column_index])
+            else:
+                value = Float(0)
             for (
                 node
             ) in state_node_neighbours:  # predicate/function then arg0, arg1, ...
@@ -216,22 +254,29 @@ class LLGEncoder:
 
     @property
     def graph_space(self) -> gym.spaces.Graph:
-        if self.has_fluents():
-            value_low = -np.inf
-            value_high = np.inf
-        else:
-            value_low = 0
-            value_high = 0
+        node_low_list = [0] * len(self.map_int2nodelabel)
+        node_high_list = [1] * len(self.map_int2nodelabel)
+        if self.has_value_column:
+            if self.has_fluents():
+                value_low = -np.inf
+                value_high = np.inf
+            else:
+                value_low = 0
+                value_high = 0
+            node_low_list.append(value_low)
+            node_high_list.append(value_high)
+        node_low_list += self._index_lows
+        node_high_list += self._index_highs
         node_low = np.array(
-            [0] * len(NodeLabel) + [value_low] + self._index_lows,
+            node_low_list,
             dtype=self.nodes_dtype,
         )
         node_high = np.array(
-            [1] * len(NodeLabel) + [value_high] + self._index_highs,
+            node_high_list,
             dtype=self.nodes_dtype,
         )
-        edge_low = np.zeros((len(EdgeLabel),), dtype=self.edges_dtype)
-        edge_high = np.ones((len(EdgeLabel),), dtype=self.edges_dtype)
+        edge_low = np.zeros((self.edges_dim,), dtype=self.edges_dtype)
+        edge_high = np.ones((self.edges_dim,), dtype=self.edges_dtype)
         return gym.spaces.Graph(
             node_space=gym.spaces.Box(
                 low=node_low, high=node_high, dtype=self.nodes_dtype
@@ -282,7 +327,7 @@ class LLGEncoder:
             ax=ax,
         )
 
-    def _check_hypotheses(self):
+    def _check_actions_hypotheses(self):
         # hyp:
         #   - actions
         #      - effect: no probabilistic effect, no conditional effect
@@ -331,8 +376,7 @@ class LLGEncoder:
         )
 
     def _init_graph(self):
-        self._check_hypotheses()
-
+        self._check_actions_hypotheses()
         self._reset_graph()
 
         # add only one edges (and the other way will be added at the end systematically)
@@ -343,11 +387,13 @@ class LLGEncoder:
             node: i for i, node in enumerate(self._object_nodes)
         }
         # predicates
-        self._predicate_nodes = self._get_new_node_ids(len(self.task.predicates))
+        self._predicate_nodes = self._get_new_node_ids(len(self.predicates_to_encode))
         self._map_predicate_node2id = {
             node: i for i, node in enumerate(self._predicate_nodes)
         }
-        for node_pred, predicate in zip(self._predicate_nodes, self.task.predicates):
+        for node_pred, predicate in zip(
+            self._predicate_nodes, self.predicates_to_encode
+        ):
             for node_obj in self._object_nodes:
                 self._add_edge(node_obj, node_pred, EdgeLabel.NU, subgraph=predicate)
 
@@ -368,28 +414,30 @@ class LLGEncoder:
             variable_nodes=self._object_nodes,
         )
 
-        # actions
-        for action in self.task.actions:
-            self._encode_action(action)
+        if self.encode_actions:
+            # actions
+            for action in self.task.actions:
+                self._encode_action(action)
 
-        # static facts
-        for static_predicate, predicate_atoms in enumerate(self.task.static_facts):
-            predicate = (
-                self.task.num_fluent_predicates
-                + self.task.num_derived_predicates
-                + static_predicate
-            )
-            for atom_args in predicate_atoms:
-                self._static_state_nodes.append(
-                    self._encode_atom(
-                        atom=Atom(
-                            predicate=predicate, args=atom_args, variables=tuple()
-                        ),
-                        edge_label=EdgeLabel.GAMMA,
-                        grounded=True,
-                        variable_nodes=self._object_nodes,
-                    )
+        if self.encode_static_facts:
+            # static facts
+            for static_predicate, predicate_atoms in enumerate(self.task.static_facts):
+                predicate = (
+                    self.task.num_fluent_predicates
+                    + self.task.num_derived_predicates
+                    + static_predicate
                 )
+                for atom_args in predicate_atoms:
+                    self._static_state_nodes.append(
+                        self._encode_atom(
+                            atom=Atom(
+                                predicate=predicate, args=atom_args, variables=tuple()
+                            ),
+                            edge_label=EdgeLabel.GAMMA,
+                            grounded=True,
+                            variable_nodes=self._object_nodes,
+                        )
+                    )
 
         # graph w/o current state encoded
         self._initial_graph = self._compute_gym_graph()
@@ -399,33 +447,76 @@ class LLGEncoder:
 
     def _compute_gym_graph(self) -> gym.spaces.GraphInstance:
         nodes = np.zeros((self._get_n_nodes(), self.nodes_dim), dtype=self.nodes_dtype)
-        nodes[self._predicate_nodes, map_nodelabel2int[NodeLabel.PREDICATE]] = 1
-        nodes[self._function_nodes, map_nodelabel2int[NodeLabel.FLUENT]] = 1
+        nodes[self._predicate_nodes, self.map_nodelabel2int[NodeLabel.PREDICATE]] = 1
+        nodes[self._function_nodes, self.map_nodelabel2int[NodeLabel.FLUENT]] = 1
         for node, comparators in self._map_node2comparator.items():
             for comparator in comparators:
-                nodes[node, map_nodelabel2int[comparator]] = 1
+                nodes[node, self.map_nodelabel2int[comparator]] = 1
         for node, value in self._map_node2value.items():
-            nodes[node, value_index] = value
-            nodes[node, map_nodelabel2int[NodeLabel.NUMERIC]] = 1
+            nodes[node, self.value_column_index] = value
+            nodes[node, self.map_nodelabel2int[NodeLabel.NUMERIC]] = 1
         for node, operator in self._map_node2operator.items():
-            nodes[node, map_nodelabel2int[operator]] = 1
+            nodes[node, self.map_nodelabel2int[operator]] = 1
         nodes[
             self._predicate_nodes[
                 self.task.num_fluent_predicates + self.task.num_derived_predicates :
             ],
-            map_nodelabel2int[NodeLabel.STATIC],
+            self.map_nodelabel2int[NodeLabel.STATIC],
         ] = 1
-        nodes[self._negated_atom_nodes, map_nodelabel2int[NodeLabel.NEGATED]] = 1
-        nodes[self._object_nodes, map_nodelabel2int[NodeLabel.OBJECT]] = 1
-        nodes[self._action_nodes, map_nodelabel2int[NodeLabel.ACTION]] = 1
-        nodes[self._goal_nodes, map_nodelabel2int[NodeLabel.GOAL]] = 1
-        nodes[self._static_state_nodes, map_nodelabel2int[NodeLabel.STATE]] = 1
-        nodes[self._state_nodes, map_nodelabel2int[NodeLabel.STATE]] = 1
+        nodes[self._negated_atom_nodes, self.map_nodelabel2int[NodeLabel.NEGATED]] = 1
+        nodes[self._object_nodes, self.map_nodelabel2int[NodeLabel.OBJECT]] = 1
+        nodes[self._action_nodes, self.map_nodelabel2int[NodeLabel.ACTION]] = 1
+        nodes[self._goal_nodes, self.map_nodelabel2int[NodeLabel.GOAL]] = 1
+        nodes[self._static_state_nodes, self.map_nodelabel2int[NodeLabel.STATE]] = 1
+        nodes[self._state_nodes, self.map_nodelabel2int[NodeLabel.STATE]] = 1
         for node, index in self._map_node2argindex.items():
             nodes[node, -self.index_function_dim :] = self.index_function(index)
-        edge_int_labels = [map_edgelabel2int[label] for label in self._edge_labels]
-        edges = np.eye(len(EdgeLabel), dtype=self.edges_dtype)[edge_int_labels]
+        edges = self._encode_edge_features(self._edge_labels)
         edge_links = np.array(self._edge_links)
+        if self.simplify_encoding:
+            # keep only necessary node features
+            necessary_node_labels = {
+                self.map_int2nodelabel[i_label]
+                for i_label in nodes[:, : self._n_node_labels].sum(axis=0).nonzero()[0]
+            }
+            # do not forget labels necessary for encoding state
+            necessary_node_labels.add(NodeLabel.STATE)
+            if self.has_fluents():
+                necessary_node_labels.add(NodeLabel.NUMERIC)
+            # columns to keep (old indices)
+            nodes_features_dim_old = (
+                self.nodes_dim
+            )  # will change with has_value_column and map_int2nodelabel
+            indices_nodes_columns_to_keep = [
+                i_label
+                for i_label, label in enumerate(self.map_int2nodelabel)
+                if label in necessary_node_labels
+            ]
+            # keep value column?
+            self.has_value_column = NodeLabel.NUMERIC in necessary_node_labels
+            if self.has_value_column:
+                indices_nodes_columns_to_keep.append(self.value_column_index)
+            # index function
+            indices_nodes_columns_to_keep += list(
+                range(
+                    nodes_features_dim_old - self.index_function_dim,
+                    nodes_features_dim_old,
+                )
+            )
+
+            # update nodes by dropping not used features
+            nodes = nodes[:, indices_nodes_columns_to_keep]
+
+            # update maps idx<->feature (keep same order as before)
+            self.map_int2nodelabel = [
+                label
+                for label in self.map_int2nodelabel
+                if label in necessary_node_labels
+            ]
+            self.map_nodelabel2int = {
+                label: idx for idx, label in enumerate(self.map_int2nodelabel)
+            }
+
         return gym.spaces.GraphInstance(
             nodes=nodes,
             edges=edges,
@@ -439,26 +530,25 @@ class LLGEncoder:
         )
         nodes_state[
             np.array(self._state_nodes) - self._state_node_start,
-            map_nodelabel2int[NodeLabel.STATE],
+            self.map_nodelabel2int[NodeLabel.STATE],
         ] = 1
         for node, value in self._map_node2value.items():
             if node >= self._state_node_start:
-                nodes_state[node - self._state_node_start, value_index] = value
                 nodes_state[
-                    node - self._state_node_start, map_nodelabel2int[NodeLabel.NUMERIC]
+                    node - self._state_node_start, self.value_column_index
+                ] = value
+                nodes_state[
+                    node - self._state_node_start,
+                    self.map_nodelabel2int[NodeLabel.NUMERIC],
                 ] = 1
         for node, index in self._map_node2argindex.items():
             if node >= self._state_node_start:
                 nodes_state[
                     node - self._state_node_start, -self.index_function_dim :
                 ] = self.index_function(index)
-        edge_int_labels_state = [
-            map_edgelabel2int[label]
-            for label in self._edge_labels[self._state_edge_start :]
-        ]
-        edges_state = np.eye(len(EdgeLabel), dtype=self.edges_dtype)[
-            edge_int_labels_state
-        ]
+        edges_state = self._encode_edge_features(
+            self._edge_labels[self._state_edge_start :]
+        )
         edge_links_state = np.array(self._edge_links[self._state_edge_start :])
         nodes = np.vstack(
             (self._initial_graph.nodes, nodes_state),
@@ -474,6 +564,23 @@ class LLGEncoder:
             edges=edges,
             edge_links=edge_links,
         )
+
+    @property
+    def edges_dim(self) -> int:
+        if self.encode_actions or not self.simplify_encoding:
+            return len(EdgeLabel)
+        else:
+            return 1
+
+    def _encode_edge_features(self, edge_labels: list[EdgeLabel]) -> np.ndarray:
+        if self.encode_actions or not self.simplify_encoding:
+            edge_int_labels_state = [map_edgelabel2int[label] for label in edge_labels]
+            return np.eye(self.edges_dim, dtype=self.edges_dtype)[edge_int_labels_state]
+        else:
+            return np.array(
+                tuple(1 if label == EdgeLabel.GAMMA else 0 for label in edge_labels),
+                dtype=self.edges_dtype,
+            ).reshape((len(edge_labels), self.edges_dim))
 
     def index_function(
         self, x: Union[int, npt.NDArray[np.int_]]
@@ -539,6 +646,19 @@ class LLGEncoder:
         self._subgraphs_edges: dict[Any, list[int]] = defaultdict(list)
         self._reset_index_function()
         self._ready_for_state_encoding = False
+        self.has_value_column = True
+        self.map_nodelabel2int = map_nodelabel2int
+        self.map_int2nodelabel = map_int2nodelabel
+
+    @property
+    def value_column_index(self):
+        """Index of node value among node features"""
+        return self._n_node_labels
+
+    @property
+    def _n_node_labels(self):
+        """Nb of node labels used by the graph."""
+        return len(self.map_int2nodelabel)
 
     def _get_ready_for_state_encoding(self):
         assert len(self._state_nodes) == 0
@@ -609,7 +729,7 @@ class LLGEncoder:
         if self.index_function_type == IndexFunctionType.ONEHOT:
             # max arity of predicates (min 2 because of binary operators in numeric expressions)
             self.index_function_dim = max(
-                2, max(len(p.parameters) for p in self.task.predicates)
+                2, max(len(p.parameters) for p in self.predicates_to_encode)
             )
             self._index_lows = [0] * self.index_function_dim
             self._index_highs = [1] * self.index_function_dim
@@ -622,7 +742,11 @@ class LLGEncoder:
     @property
     def nodes_dim(self) -> int:
         # flags (ie node labels) + value + index function
-        return len(NodeLabel) + 1 + self.index_function_dim
+        return (
+            len(self.map_int2nodelabel)
+            + int(self.has_value_column)
+            + self.index_function_dim
+        )
 
     def has_fluents(self) -> bool:
         return len(self.task.functions) > 0
@@ -879,7 +1003,7 @@ class LLGEncoder:
         subgraph: Optional[Any] = None,
     ) -> int:
         if subgraph is None:
-            subgraph = self.task.predicates[atom.predicate]
+            subgraph = self.predicates_to_encode[atom.predicate]
         predicate_node = self._predicate_nodes[atom.predicate]
         return self._encode_atom_or_fluent(
             atom_or_fluent=atom,
@@ -925,27 +1049,38 @@ class LLGEncoder:
             )
         return scheme_pred_node
 
+    def _get_edges_color(self, graph: gym.spaces.GraphInstance):
+        if self.edges_dim > 1:
+            return {
+                tuple(e): self.map_edgelabel2color[map_int2edgelabel[int(i_lab)]]
+                for e, i_lab in zip(graph.edge_links, np.argmax(graph.edges, -1))
+            }
+        else:
+            return {
+                tuple(e): self.map_edgelabel2color[EdgeLabel.GAMMA]
+                if is_gamma
+                else self.map_edgelabel2color[EdgeLabel.NU]
+                for e, is_gamma in zip(graph.edge_links, graph.edges.ravel())
+            }
+
     def _prepare_for_plot(
         self, graph: gym.spaces.GraphInstance
     ) -> tuple[dict[int, str], dict[int, str], dict[tuple[int, int], str],]:
-        edge_color = {
-            tuple(e): self.map_edgelabel2color[map_int2edgelabel[int(i_lab)]]
-            for e, i_lab in zip(graph.edge_links, np.argmax(graph.edges, -1))
-        }
+        edge_color = self._get_edges_color(graph)
         node_color = {
-            node: self.map_nodelabel2color[map_int2nodelabel[int(i_lab)]]
+            node: self.map_nodelabel2color[self.map_int2nodelabel[int(i_lab)]]
             if has_lab
             else self.map_nodelabel2color[None]
             for node, (i_lab, has_lab) in enumerate(
                 zip(
-                    np.argmax(graph.nodes[:, : len(NodeLabel)], -1),
-                    np.sum(graph.nodes[:, : len(NodeLabel)], -1),
+                    np.argmax(graph.nodes[:, : self._n_node_labels], -1),
+                    np.sum(graph.nodes[:, : self._n_node_labels], -1),
                 )
             )
         }
         node_labels_np = np.full(shape=(len(graph.nodes),), fill_value="", dtype=object)
         node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.NEGATED]].nonzero()[0]
+            self._get_node_indices_from_label(graph, label=NodeLabel.NEGATED)
         ] = "not"
         try:
             argindex_nodes_features = graph.nodes[:, -self.index_function_dim :]
@@ -959,39 +1094,38 @@ class LLGEncoder:
                 node_labels_np[node] = str(idx)
 
         node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.LESS]].nonzero()[0]
+            self._get_node_indices_from_label(graph, label=NodeLabel.LESS)
         ] += "<"
         node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.GREATER]].nonzero()[0]
+            self._get_node_indices_from_label(graph, label=NodeLabel.GREATER)
         ] += ">"
         node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.EQUAL]].nonzero()[0]
+            self._get_node_indices_from_label(graph, label=NodeLabel.EQUAL)
         ] += "="
-        ind = (
-            graph.nodes[:, map_nodelabel2int[NodeLabel.NUMERIC]].astype(bool)
-        ).nonzero()[0]
+        ind = self._get_node_indices_from_label(graph, label=NodeLabel.NUMERIC)
         node_labels_np[ind] = [
-            node_labels_np[i] + ", " + str(graph.nodes[i, value_index]) for i in ind
+            node_labels_np[i] + ", " + str(graph.nodes[i, self.value_column_index])
+            for i in ind
         ]
         node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.PLUS]].nonzero()[0]
+            self._get_node_indices_from_label(graph, label=NodeLabel.PLUS)
         ] += ", +"
         node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.MINUS]].nonzero()[0]
+            self._get_node_indices_from_label(graph, label=NodeLabel.MINUS)
         ] += ", -"
         node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.MULTIPLY]].nonzero()[0]
+            self._get_node_indices_from_label(graph, label=NodeLabel.MULTIPLY)
         ] += ", *"
         node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.DIVIDE]].nonzero()[0]
+            self._get_node_indices_from_label(graph, label=NodeLabel.DIVIDE)
         ] += ", /"
         node_labels_np[
-            graph.nodes[:, map_nodelabel2int[NodeLabel.ASSIGN]].nonzero()[0]
+            self._get_node_indices_from_label(graph, label=NodeLabel.ASSIGN)
         ] += ":="
         for i, node in enumerate(self._action_nodes):
             node_labels_np[node] = self.task.actions[i].name
         for i, node in enumerate(self._predicate_nodes):
-            node_labels_np[node] = self.task.predicates[i].name
+            node_labels_np[node] = self.predicates_to_encode[i].name
         for i, node in enumerate(self._function_nodes):
             node_labels_np[node] = self.task.functions[i].name
         for i, node in enumerate(self._object_nodes):
@@ -1001,6 +1135,14 @@ class LLGEncoder:
 
         return node_labels, node_color, edge_color
 
+    def _get_node_indices_from_label(
+        self, graph: gym.spaces.GraphInstance, label: NodeLabel
+    ) -> np.ndarray:
+        if label in self.map_int2nodelabel:
+            return graph.nodes[:, self.map_nodelabel2int[label]].nonzero()[0]
+        else:
+            return np.array([], dtype=int)
+
 
 def decode_llg(
     graph: gym.spaces.GraphInstance, cost_functions: Optional[set[int]] = None
@@ -1008,6 +1150,8 @@ def decode_llg(
     """Decode a llg graph into a plado state without information about the plado.Task.
 
     This may be less efficient than LLGEncoder.decode() but is self-sufficient.
+
+    Works only if LLGEncoder was used with options encode_actions=True and simplify_encoding=False.
 
     """
     if cost_functions is None:
