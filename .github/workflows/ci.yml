@@ -77,7 +77,7 @@ jobs:
 
           python_version_build = ["3.9", "3.10", "3.11", "3.12"]
           python_version_test = ["3.9", "3.12"]
-          test = ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
+          test = ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
           build_doc = "true"
 
           oses = ["macos", "ubuntu", "windows"]
@@ -96,7 +96,7 @@ jobs:
                   python_version_test = [v for v in python_version_test if python_filter[v]]
               os_filter = {
                   'macos-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-latest]') }}"),
-                  'macos-13': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-13]') }}"),
+                  'macos-15-intel': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-15-intel]') }}"),
                   'ubuntu-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: ubuntu-latest]') }}"),
                   'windows-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: windows-latest]') }}"),
               }
@@ -235,10 +235,10 @@ jobs:
     strategy:
       matrix:
         python-version: ${{ fromJSON(needs.setup.outputs.python_version_build_per_os).macos }}
-        os: [ "macos-latest", "macos-13" ]
+        os: [ "macos-latest", "macos-15-intel" ]
         arch: [ "arm64", "x86_64" ]
         exclude:
-          - os: macos-13
+          - os: macos-15-intel
             arch: arm64
           - os: macos-latest
             arch: x86_64
