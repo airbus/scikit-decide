@@ -563,22 +563,10 @@ class SchedulingDomain(
                                     "task": completed_task,
                                     "cond": self.get_task_on_completion_added_conditions()[
                                         completed_task
-                                    ][
-                                        i
-                                    ].get_values()[
-                                        j
-                                    ][
-                                        0
-                                    ],
+                                    ][i].get_values()[j][0],
                                     "prob": self.get_task_on_completion_added_conditions()[
                                         completed_task
-                                    ][
-                                        i
-                                    ].get_values()[
-                                        j
-                                    ][
-                                        1
-                                    ],
+                                    ][i].get_values()[j][1],
                                 }
                             )
                             all_models[completed_task].append(len(all_values) - 1)
@@ -881,7 +869,6 @@ class SchedulingDomain(
         return self.update_start_tasks(state, action)
 
     def get_possible_starting_tasks(self, state: State):
-
         mode_details = self.get_tasks_modes()
         possible_task_precedence = [
             (n, mode_details[n])
@@ -981,13 +968,13 @@ class SchedulingDomain(
                 # update the resource used / resource availability function on the possible new availability
                 # and consumption of ongoing task -> quite boring to code and debug probably
                 for res in self.get_resource_units_names():
-                    next_state.resource_availability[
-                        res
-                    ] = self.sample_quantity_resource(resource=res, time=next_state.t)
+                    next_state.resource_availability[res] = (
+                        self.sample_quantity_resource(resource=res, time=next_state.t)
+                    )
                 for res in self.get_resource_types_names():
-                    next_state.resource_availability[
-                        res
-                    ] = self.sample_quantity_resource(resource=res, time=next_state.t)
+                    next_state.resource_availability[res] = (
+                        self.sample_quantity_resource(resource=res, time=next_state.t)
+                    )
                 # TODO :
                 # Here, if the resource_used[res] is > resource_availability[res] we should be forced to pause some task??
                 # If yes which one ? all ? and we let the algorithm resume the one of its choice in the next time step ?
@@ -1047,7 +1034,6 @@ class SchedulingDomain(
         action: D.T_agent[D.T_concurrency[D.T_event]],
         next_state: Optional[D.T_state] = None,
     ) -> D.T_agent[Value[D.T_value]]:
-
         transition_makespan = 0.0
         transition_cost = 0.0
 
@@ -1235,9 +1221,9 @@ class SchedulingActionSpace(
         for choice in choices:
             if choice == SchedulingActionEnum.START:
                 # task, mode, list of Ressources
-                task_possible_to_start: dict[
-                    int, dict[int, list[str]]
-                ] = self.domain.get_possible_starting_tasks(self.state)
+                task_possible_to_start: dict[int, dict[int, list[str]]] = (
+                    self.domain.get_possible_starting_tasks(self.state)
+                )
                 list_action += [
                     SchedulingAction(
                         task=t,
@@ -1315,9 +1301,9 @@ class SchedulingActionSpaceWithResourceUnit(
         for choice in choices:
             if choice == SchedulingActionEnum.START:
                 # task, mode, list of Ressources
-                task_possible_to_start: dict[
-                    int, dict[int, list[str]]
-                ] = self.domain.get_possible_starting_tasks(self.state)
+                task_possible_to_start: dict[int, dict[int, list[str]]] = (
+                    self.domain.get_possible_starting_tasks(self.state)
+                )
                 for possible_to_start in task_possible_to_start:
                     for mode in task_possible_to_start[possible_to_start]:
                         possible = self.domain.find_one_ressource_to_do_one_task(
@@ -1408,13 +1394,13 @@ class SchedulingActionSpaceWithResourceUnitSamplable(SamplableSpace[SchedulingAc
         random_choice = random.choice(choices)
         if random_choice in {SchedulingActionEnum.START, SchedulingActionEnum.RESUME}:
             if random_choice == SchedulingActionEnum.START:
-                task_possible_to_start: dict[
-                    int, dict[int, list[str]]
-                ] = self.domain.get_possible_starting_tasks(self.state)
+                task_possible_to_start: dict[int, dict[int, list[str]]] = (
+                    self.domain.get_possible_starting_tasks(self.state)
+                )
             else:
-                task_possible_to_start: dict[
-                    int, dict[int, list[str]]
-                ] = self.domain.get_possible_resume_tasks(self.state)
+                task_possible_to_start: dict[int, dict[int, list[str]]] = (
+                    self.domain.get_possible_resume_tasks(self.state)
+                )
             task_modes = [
                 (t, m)
                 for t in task_possible_to_start
@@ -1493,7 +1479,6 @@ class SchedulingActionSpaceWithResourceUnitSamplable(SamplableSpace[SchedulingAc
                     time_progress=False,
                 )
             else:
-
                 return SchedulingAction(
                     task=None,
                     action=SchedulingActionEnum.TIME_PR,

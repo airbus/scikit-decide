@@ -43,7 +43,6 @@ with RayRLlib(
     train_iterations=1,
     graph_node_action=True,
 ) as solver:
-
     solver.solve()
     rollout(
         domain=domain_factory(),

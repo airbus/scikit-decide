@@ -582,7 +582,9 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
 
         register_env(
             "skdecide_env",
-            lambda _, domain_factory=self._domain_factory, rayrllib=self: AsRLlibMultiAgentEnv(
+            lambda _,
+            domain_factory=self._domain_factory,
+            rayrllib=self: AsRLlibMultiAgentEnv(
                 domain=domain_factory(),
                 action_masking=rayrllib._action_masking,
                 graph2node=rayrllib._graph2node,

@@ -33,7 +33,6 @@ class ApplicableActionsOnPolicyAlgorithm(SkdecideOnPolicyAlgorithm):
         rollout_buffer_class: Optional[type[RolloutBuffer]] = None,
         **kwargs,
     ):
-
         # Use proper default rollout buffer class
         if rollout_buffer_class is None:
             if isinstance(env.observation_space, spaces.Graph):

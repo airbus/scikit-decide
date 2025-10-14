@@ -50,7 +50,6 @@ def temperature(altitude_ft, disa=0.0):
 
 
 def disa_alt_temp(altitude_ft: float, temperature_K: float = 288.15):
-
     disa = temperature_K - temperature(altitude_ft, disa=0.0)
 
     return disa

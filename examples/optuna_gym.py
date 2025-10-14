@@ -113,8 +113,12 @@ kwargs_fixed_by_solver: dict[type[Solver], dict[str, Any]] = {
         heuristic=heuristic,
     ),
     IW: dict(
-        node_ordering=lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty
-        > b_novelty,
+        node_ordering=lambda a_gscore,
+        a_novelty,
+        a_depth,
+        b_gscore,
+        b_novelty,
+        b_depth: a_novelty > b_novelty,
         parallel=False,
         verbose=False,
     ),

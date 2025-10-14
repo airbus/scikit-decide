@@ -55,7 +55,6 @@ class MyDomain(D):
         memory: D.T_memory[D.T_state],
         action: D.T_agent[D.T_concurrency[D.T_event]],
     ) -> D.T_state:
-
         if action == Action.left:
             next_state = State(max(memory.x - 1, 0), memory.y)
         if action == Action.right:
@@ -73,7 +72,6 @@ class MyDomain(D):
         action: D.T_agent[D.T_concurrency[D.T_event]],
         next_state: Optional[D.T_state] = None,
     ) -> D.T_agent[Value[D.T_value]]:
-
         if next_state.x == memory.x and next_state.y == memory.y:
             cost = 2  # big penalty when hitting a wall
         else:
@@ -103,7 +101,6 @@ class MyDomain(D):
 # Not efficient on this tiny domain but provided for illustration
 # To activate parallelism, set parallel=True in the algotihms below
 class MyShmProxy:
-
     _register_ = [
         (State, 2),
         (Action, 1),
@@ -328,7 +325,6 @@ class MyShmProxy:
 
 
 if __name__ == "__main__":
-
     try_solvers = [
         # Lazy A* (classical planning)
         {
@@ -455,7 +451,7 @@ if __name__ == "__main__":
                 "\nChoose a solver:\n{solvers}\n".format(
                     solvers="\n".join(
                         ["0. Quit"]
-                        + [f'{i + 1}. {s["name"]}' for i, s in enumerate(solvers)]
+                        + [f"{i + 1}. {s['name']}" for i, s in enumerate(solvers)]
                     )
                 )
             )

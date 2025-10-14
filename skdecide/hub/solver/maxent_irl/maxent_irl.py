@@ -129,7 +129,6 @@ class MaxentIRL(Solver, Policies):
                 theta[j] = 0
 
     def adapt_action_to_environment(self, vals, types):
-
         if not isinstance(types, Iterable) and not isinstance(types, gym.spaces.Tuple):
             types = [types]
         if not isinstance(vals, Iterable) and not isinstance(vals, gym.spaces.Tuple):
@@ -272,7 +271,6 @@ class MaxentIRL(Solver, Policies):
     def _sample_action(
         self, observation: D.T_agent[D.T_observation]
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-
         state_idx = self.index_to_state(
             self.env.get_observation_space().unwrapped(), observation
         )

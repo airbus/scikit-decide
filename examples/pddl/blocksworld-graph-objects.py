@@ -10,7 +10,6 @@ sb3-autoregressive: components of the action are predicted one by one,
 
 """
 
-
 import os
 
 from skdecide import rollout

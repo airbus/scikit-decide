@@ -69,7 +69,6 @@ class MyDomain(D):
         memory: D.T_memory[D.T_state],
         action: D.T_agent[D.T_concurrency[D.T_event]],
     ) -> DiscreteDistribution[D.T_state]:
-
         if action == Action.left:
             next_state_1 = State(max(memory.x - 1, 0), memory.y)
             next_state_2 = State(max(memory.x - 1, 0), max(memory.y - 1, 0))
@@ -139,7 +138,6 @@ class MyDomain(D):
 # Not efficient on this tiny domain but provided for illustration.
 # To activate parallelism, set parallel=True in the algotihms below.
 class GridShmProxy:
-
     _register_ = [
         (State, 2),
         (Action, 1),
@@ -398,7 +396,6 @@ class GridShmProxy:
 
 
 if __name__ == "__main__":
-
     try_solvers = [
         # LRTDP
         {
@@ -483,7 +480,7 @@ if __name__ == "__main__":
                 "\nChoose a solver:\n{solvers}\n".format(
                     solvers="\n".join(
                         ["0. Quit"]
-                        + [f'{i + 1}. {s["name"]}' for i, s in enumerate(solvers)]
+                        + [f"{i + 1}. {s['name']}" for i, s in enumerate(solvers)]
                     )
                 )
             )

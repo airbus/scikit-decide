@@ -1174,12 +1174,10 @@ class FlightPlanningDomain(DeterministicPlanningDomain, UnrestrictedActions):
     def custom_rollout(
         self, solver: Solver, max_steps: int = 100, make_img: bool = True
     ) -> None:
-
         observation = self.reset()
 
         # loop until max_steps or goal is reached
         for i_step in range(1, max_steps + 1):
-
             # choose action according to solver
             action = solver.sample_action(observation)
             outcome = self.step(action)
@@ -1368,7 +1366,6 @@ def simple_fuel_loop(solver_factory, domain_factory, max_steps: int = 100) -> fl
 
         # loop until max_steps or goal is reached
         for i_step in range(1, max_steps + 1):
-
             # choose action according to solver
             action = solver.sample_action(observation)
 

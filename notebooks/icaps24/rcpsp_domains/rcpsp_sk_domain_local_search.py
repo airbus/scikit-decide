@@ -190,7 +190,7 @@ class RCPSP_LS_Domain(D):
         global records
         records.append(self.cur_makespan)
         if len(records) >= 30:
-            logger.info(f"{sum(records[-30:])/30}")
+            logger.info(f"{sum(records[-30:]) / 30}")
         self.state = np.copy(self.initial_state)
         self.resource_availability = np.copy(self.initial_resource_availability)
         self.scheduled_tasks = set()
@@ -376,7 +376,7 @@ class RCPSP_LS_Domain_OneStep(D):
         global records
         records.append(self.cur_makespan)
         if len(records) >= 30:
-            logger.info(f"{sum(records[-30:])/30}")
+            logger.info(f"{sum(records[-30:]) / 30}")
         self.current_permutation = np.array(
             [i for i in range(self.problem.n_jobs_non_dummy)]
         )

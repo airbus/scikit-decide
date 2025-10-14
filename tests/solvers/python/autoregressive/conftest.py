@@ -1,4 +1,5 @@
 """Fixtures to be reused by several test files."""
+
 from enum import Enum
 from typing import Any, Optional, SupportsFloat, Union
 

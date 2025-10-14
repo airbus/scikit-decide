@@ -20,7 +20,7 @@ except (ImportError, NameError, AttributeError, OSError):
 
 try:
     from skdecide import __version__ as skdecide_version
-except (ImportError):
+except ImportError:
     skdecide_version = "Not available"
 
 # System Environment Information
@@ -302,6 +302,7 @@ def get_libc_version():
 def get_pip_packages(run_lambda):
     """Returns `pip list` output. Note: will also find conda-installed pytorch
     and numpy packages."""
+
     # People generally have `pip` as `pip` or `pip3`
     # But here it is incoved as `python -mpip`
     def run_with_pip(pip):

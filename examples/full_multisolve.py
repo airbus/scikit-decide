@@ -23,6 +23,7 @@ NB: to be able to launch this example, you need to install scikit-decide with al
     to the proper certificate (https://stackoverflow.com/a/31060428).
 
 """
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from math import sqrt
@@ -122,7 +123,6 @@ def set_state_get_state_cart_pole(env, state: CartPoleState):
 
 
 if __name__ == "__main__":
-
     try_domains = [
         # Simple Grid World
         {
@@ -311,8 +311,12 @@ if __name__ == "__main__":
             "entry": "IW",
             "config": {
                 "state_features": lambda d, s: d.state_features(s),
-                "node_ordering": lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_novelty
-                > b_novelty,
+                "node_ordering": lambda a_gscore,
+                a_novelty,
+                a_depth,
+                b_gscore,
+                b_novelty,
+                b_depth: a_novelty > b_novelty,
                 "parallel": False,
                 "verbose": False,
             },
@@ -353,7 +357,7 @@ if __name__ == "__main__":
             input(
                 "\nChoose a domain:\n{domains}\n".format(
                     domains="\n".join(
-                        [f'{i + 1}. {d["name"]}' for i, d in enumerate(domains)]
+                        [f"{i + 1}. {d['name']}" for i, d in enumerate(domains)]
                     )
                 )
             )
@@ -385,7 +389,7 @@ if __name__ == "__main__":
                         solvers="\n".join(
                             ["0. [Change domain]"]
                             + [
-                                f'{i + 1}. {s["name"]}'
+                                f"{i + 1}. {s['name']}"
                                 for i, s in enumerate(solvers)
                                 if s["entry"] in compatible
                             ]
@@ -482,9 +486,9 @@ if __name__ == "__main__":
                                     "config_gym4width_rollout"
                                 ]  # specificities for rollout
                             )
-                    selected_solver["config"][
-                        "domain_factory"
-                    ] = lambda: actual_domain_type(**actual_domain_config)
+                    selected_solver["config"]["domain_factory"] = (
+                        lambda: actual_domain_type(**actual_domain_config)
+                    )
 
                     with solver_type(**selected_solver["config"]) as solver:
                         solver.solve()

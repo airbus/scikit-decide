@@ -530,9 +530,9 @@ def check_task_duration(domain, states: list[State]):
                 actual_duration = (
                     tasks_complete_dict[id].end - tasks_complete_dict[id].start
                 )
-                assert (
-                    actual_duration == expected_duration
-                ), "duration different than expected for task " + str(id)
+                assert actual_duration == expected_duration, (
+                    "duration different than expected for task " + str(id)
+                )
     else:
         tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
         for id in domain.get_tasks_ids():
@@ -541,9 +541,9 @@ def check_task_duration(domain, states: list[State]):
                 actual_duration = (
                     tasks_complete_dict[id].end - tasks_complete_dict[id].start
                 )
-                assert (
-                    actual_duration == expected_duration
-                ), "duration different than expected for task " + str(id)
+                assert actual_duration == expected_duration, (
+                    "duration different than expected for task " + str(id)
+                )
 
 
 def check_resource_constraints(domain, states: list[State]):

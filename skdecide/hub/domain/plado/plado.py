@@ -4,6 +4,7 @@ This code is inspired by
 https://github.com/massle/plado/blob/60958c34105c01ec43f0dae8247dae889272220a/examples/skdecide_domain.py
 
 """
+
 from __future__ import annotations
 
 import itertools
@@ -65,9 +66,8 @@ else:
     from plado.semantics.applicable_actions_generator import ApplicableActionsGenerator
     from plado.semantics.goal_checker import GoalChecker
     from plado.semantics.successor_generator import SuccessorGenerator
-    from plado.semantics.task import AddEffect, Atom, DelEffect, SimpleCondition
+    from plado.semantics.task import AddEffect, Atom, DelEffect, SimpleCondition, Task
     from plado.semantics.task import State as PladoState
-    from plado.semantics.task import Task
     from plado.utils import Float
 
 SkAtomsType = tuple[tuple[tuple[int, ...], ...], ...]

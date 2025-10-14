@@ -13,7 +13,6 @@ sb3-autoregressive: components of the action are predicted one by one,
 
 """
 
-
 import os
 
 from skdecide import EnvironmentOutcome, rollout
@@ -93,18 +92,20 @@ with StableBaseline(
 
 
 # load + small solve + rollout on second problem
-with StableBaseline(
-    domain_factory=domain_factory_2,  # use the domain_factory with the proper action_space needed for rollout
-    algo_class=AutoregressiveGraphPPO,
-    baselines_policy="HeteroGraph2NodePolicy",
-    policy_kwargs=dict(
-        action_components_node_flag_indices=action_components_node_flag_indices
-    ),
-    autoregressive_action=True,
-    learn_config={"total_timesteps": 200},
-    n_steps=100,
-    verbose=1,
-) as solver:
+with (
+    StableBaseline(
+        domain_factory=domain_factory_2,  # use the domain_factory with the proper action_space needed for rollout
+        algo_class=AutoregressiveGraphPPO,
+        baselines_policy="HeteroGraph2NodePolicy",
+        policy_kwargs=dict(
+            action_components_node_flag_indices=action_components_node_flag_indices
+        ),
+        autoregressive_action=True,
+        learn_config={"total_timesteps": 200},
+        n_steps=100,
+        verbose=1,
+    ) as solver
+):
     solver.load(path=algo_save_path)
     solver.solve()  # re-train briefly to show that it is possible
     max_steps = 50

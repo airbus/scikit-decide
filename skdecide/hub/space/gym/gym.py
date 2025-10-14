@@ -222,7 +222,9 @@ class TupleSpace(GymSpace[T]):
         self._element_class = element_class
         assert element_class is tuple or all(
             m in dir(element_class) for m in ["to_tuple", "from_tuple"]
-        ), "Tuple space's element class must be of type tuple or it must provide the to_tuple and from_tuple methods"
+        ), (
+            "Tuple space's element class must be of type tuple or it must provide the to_tuple and from_tuple methods"
+        )
         self._to_tuple = (
             (lambda e: e) if element_class is tuple else (lambda e: e.to_tuple())
         )
@@ -283,7 +285,9 @@ class DictSpace(GymSpace[T]):
         self._element_class = element_class
         assert element_class is dict or all(
             m in dir(element_class) for m in ["to_dict", "from_dict"]
-        ), "Dict space's element class must be of type dict or it must provide the to_dict and from_dict methods"
+        ), (
+            "Dict space's element class must be of type dict or it must provide the to_dict and from_dict methods"
+        )
         self._to_dict = (
             (lambda e: e) if element_class is dict else (lambda e: e.to_dict())
         )
@@ -539,7 +543,6 @@ class DataSpace(GymSpace[T]):
 
 
 class VariableSpace(GymSpace[T]):
-
     """This class wraps a gymnasium Space (gym.spaces.Space) to allow dynamic length of elements."""
 
     def __init__(

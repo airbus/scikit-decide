@@ -36,7 +36,6 @@ class AerodynamicsService:
     def compute_drag_coefficient(
         self, aerodynamics_settings: AerodynamicsSettings, aircraft_state: AircraftState
     ) -> float:
-
         return self.all_aerodynamics_services[
             aerodynamics_settings.performance_model_type
         ].compute_drag_coefficient(aerodynamics_settings, aircraft_state)
@@ -44,7 +43,6 @@ class AerodynamicsService:
     def compute_crossover(
         self, aerodynamics_settings: AerodynamicsSettings, aircraft_state: AircraftState
     ) -> float:
-
         return self.all_aerodynamics_services[
             aerodynamics_settings.performance_model_type
         ].compute_crossover(aerodynamics_settings, aircraft_state)

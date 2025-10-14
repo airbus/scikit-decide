@@ -63,7 +63,6 @@ class AircraftState(FourDimensionsState):
         # phase
         phase: Optional[PhaseEnum] = None,
     ):
-
         self.performance_model_type = performance_model_type
         self.model_type = model_type
 
@@ -138,7 +137,6 @@ class AircraftState(FourDimensionsState):
         zp_ft: Optional[float] = None,
         mach: Optional[float] = None,
     ):
-
         if gw_kg is not None:
             self.gw_kg = gw_kg
         if zp_ft is not None:

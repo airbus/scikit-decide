@@ -8,7 +8,6 @@ from typing import Optional
 
 
 class Task:
-
     id: int
     start: int
     end: int
