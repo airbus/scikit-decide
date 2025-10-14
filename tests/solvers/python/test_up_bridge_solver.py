@@ -16,7 +16,6 @@ else:
     optuna_available = True
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
 def test_up_bridge_solver_classic():
     import unified_planning
     from unified_planning.plans import ActionInstance
@@ -83,10 +82,6 @@ def test_up_bridge_solver_classic():
     assert UPSolver.check_domain(domain) and step == 9 and p == ep
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 10),
-    reason="requires python3.10 or higher",
-)
 def test_up_bridge_solver_numeric():
     import unified_planning
     from unified_planning.shortcuts import (
@@ -163,10 +158,6 @@ def test_up_bridge_solver_numeric():
     )
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 10),
-    reason="requires python3.10 or higher",
-)
 @pytest.mark.skipif(
     not optuna_available,
     reason="requires optuna",
