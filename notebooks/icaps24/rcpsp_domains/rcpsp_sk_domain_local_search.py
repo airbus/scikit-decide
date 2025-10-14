@@ -3,25 +3,14 @@ from typing import Optional
 
 import networkx as nx
 import numpy as np
-from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, RCPSPSolution
-from discrete_optimization.rcpsp.rcpsp_utils import compute_graph_rcpsp
-from discrete_optimization.rcpsp.solver.cpm import (
-    CPM,
-    CPMObject,
-    run_partial_classic_cpm,
-)
+from discrete_optimization.rcpsp.problem import RcpspProblem, RcpspSolution
+from discrete_optimization.rcpsp.solvers.cpm import CpmRcpspSolver
+from discrete_optimization.rcpsp.utils import compute_graph_rcpsp
 
-import skdecide
 from skdecide import Space, TransitionOutcome, Value
-from skdecide.builders.domain import FullyObservable, Goals
-from skdecide.domains import DeterministicPlanningDomain, RLDomain
-from skdecide.hub.space.gym import (
-    BoxSpace,
-    DiscreteSpace,
-    GymSpace,
-    ListSpace,
-    MultiDiscreteSpace,
-)
+from skdecide.builders.domain import FullyObservable
+from skdecide.domains import RLDomain
+from skdecide.hub.space.gym import BoxSpace, MultiDiscreteSpace
 
 logger = logging.getLogger(__name__)
 records = []
@@ -51,7 +40,7 @@ class ParamsDomainEncodingLS:
 class RCPSP_LS_Domain(D):
     def __init__(
         self,
-        problem: Optional[RCPSPModel] = None,
+        problem: Optional[RcpspProblem] = None,
         params_domain_encoding: Optional[ParamsDomainEncodingLS] = None,
     ):
         self.params_domain_encoding = params_domain_encoding
@@ -112,8 +101,8 @@ class RCPSP_LS_Domain(D):
         self.scheduled_tasks = set()
         self.cur_makespan = 0
         self.records = []
-        self.cpm = CPM(problem=self.problem)
-        self.cur_sol = RCPSPSolution(
+        self.cpm = CpmRcpspSolver(problem=self.problem)
+        self.cur_sol = RcpspSolution(
             problem=self.problem, rcpsp_permutation=self.current_permutation
         )
         self.state = np.array(
@@ -149,7 +138,7 @@ class RCPSP_LS_Domain(D):
         # self.current_permutation[i0] = self.current_permutation[i1]
         # self.current_permutation[i1] = pre
         pre_m = self.cur_makespan
-        self.cur_sol = RCPSPSolution(
+        self.cur_sol = RcpspSolution(
             problem=self.problem, rcpsp_permutation=self.current_permutation
         )
         self.cur_makespan = self.cur_sol.rcpsp_schedule[self.problem.sink_task][
@@ -199,7 +188,7 @@ class RCPSP_LS_Domain(D):
         self.current_permutation = np.array(
             [i for i in range(self.problem.n_jobs_non_dummy)]
         )[::-1]
-        self.cur_sol = RCPSPSolution(
+        self.cur_sol = RcpspSolution(
             problem=self.problem, rcpsp_permutation=self.current_permutation
         )
         self.state = np.array(
@@ -234,7 +223,7 @@ class ParamsDomainEncodingLSOneStep:
 class RCPSP_LS_Domain_OneStep(D):
     def __init__(
         self,
-        problem: Optional[RCPSPModel] = None,
+        problem: Optional[RcpspProblem] = None,
         params_domain_encoding: Optional[ParamsDomainEncodingLSOneStep] = None,
     ):
         self.params_domain_encoding = params_domain_encoding
@@ -295,8 +284,8 @@ class RCPSP_LS_Domain_OneStep(D):
         self.scheduled_tasks = set()
         self.cur_makespan = 0
         self.records = []
-        self.cpm = CPM(problem=self.problem)
-        self.cur_sol = RCPSPSolution(
+        self.cpm = CpmRcpspSolver(problem=self.problem)
+        self.cur_sol = RcpspSolution(
             problem=self.problem, rcpsp_permutation=self.current_permutation
         )
         self.state = np.array(
@@ -324,7 +313,7 @@ class RCPSP_LS_Domain_OneStep(D):
         # self.current_permutation[i0] = self.current_permutation[i1]
         # self.current_permutation[i1] = pre
         pre_m = self.cur_makespan
-        self.cur_sol = RCPSPSolution(
+        self.cur_sol = RcpspSolution(
             problem=self.problem, rcpsp_permutation=self.current_permutation
         )
         self.cur_makespan = self.cur_sol.rcpsp_schedule[self.problem.sink_task][
@@ -380,7 +369,7 @@ class RCPSP_LS_Domain_OneStep(D):
         self.current_permutation = np.array(
             [i for i in range(self.problem.n_jobs_non_dummy)]
         )
-        self.cur_sol = RCPSPSolution(
+        self.cur_sol = RcpspSolution(
             problem=self.problem, rcpsp_permutation=self.current_permutation
         )
         self.state = np.array(
