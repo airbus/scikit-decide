@@ -75,8 +75,8 @@ jobs:
         run: |
           from os import environ
 
-          python_version_build = ["3.9", "3.10", "3.11", "3.12"]
-          python_version_test = ["3.9", "3.12"]
+          python_version_build = ["3.9", "3.10", "3.11", "3.12", "3.13"]
+          python_version_test = ["3.9", "3.13"]
           test = ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
           build_doc = "true"
 
@@ -88,6 +88,7 @@ jobs:
               python_filter = {
                   '3.11': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.11]') }}"),
                   '3.12': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.12]') }}"),
+                  '3.13': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.13]') }}"),
                   '3.9': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.9]') }}"),
                   '3.10': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.10]') }}"),
               }
@@ -578,7 +579,7 @@ jobs:
           pip install ray[rllib]>=2.20
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
-          if [ "$python_version" = "3.12" ]; then
+          if [ "$python_version" = "3.13" ]; then
             pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" pytest-cases "matplotlib<3.10" "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib"
           else
             pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna pytest-cases "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib" "dm-haiku<0.0.14"
@@ -680,7 +681,7 @@ jobs:
           python_version=${{ matrix.python-version }}
           arch=$(uname -m)
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
-          if [ "$python_version" = "3.12" ]; then
+          if [ "$python_version" = "3.13" ]; then
             pip install ${wheelfile}[all] pytest "pygame>=2.5" optuna "cffi>=1.17" pytest-cases "matplotlib<3.10" "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib"
           else
             pip install ${wheelfile}[all] pytest gymnasium[classic-control] optuna pytest-cases "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib" "dm-haiku<0.0.14"
@@ -780,7 +781,7 @@ jobs:
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
-          if [ "$python_version" = "3.12" ]; then
+          if [ "$python_version" = "3.13" ]; then
             pip install ${wheelfile}[all] pytest "pygame>=2.5" "cffi>=1.17" docopt commonmark optuna pytest-cases "matplotlib<3.10" "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib"
           else
             pip install ${wheelfile}[all] pytest gymnasium[classic-control] docopt commonmark optuna pytest-cases "git+https://github.com/nhuet/graph-jsp-env.git@signal-rllib" "dm-haiku<0.0.14"
