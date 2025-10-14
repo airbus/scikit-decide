@@ -44,7 +44,6 @@ if skdecide_cpp_extension_lib_path not in sys.path:
     sys.path.append(skdecide_cpp_extension_lib_path)
 
 try:
-
     from __skdecide_hub_cpp import _MCTSOptions_ as mcts_options
     from __skdecide_hub_cpp import _MCTSSolver_ as mcts_solver
 
@@ -516,9 +515,8 @@ try:
             continuous_planning: bool = True,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[
-                [HMCTS, Optional[int]], bool
-            ] = lambda slv, i=None: False,
+            callback: Callable[[HMCTS, Optional[int]], bool] = lambda slv,
+            i=None: False,
             verbose: bool = False,
         ):
             """Construct a HMCTS solver instance

@@ -40,7 +40,6 @@ def test_ppo(unmasked_graph_domain_factory):
         learn_config={"total_timesteps": 100},
         n_steps=100,
     ) as solver:
-
         solver.solve()
         rollout(
             domain=domain_factory(),
@@ -59,7 +58,6 @@ def test_dqn(unmasked_graph_domain_factory):
         baselines_policy="GraphInputPolicy",
         learn_config={"total_timesteps": 100},
     ) as solver:
-
         solver.solve()
         rollout(
             domain=domain_factory(),
@@ -79,7 +77,6 @@ def test_a2c(unmasked_jsp_domain_factory):
         learn_config={"total_timesteps": 100},
         n_steps=100,
     ) as solver:
-
         solver.solve()
         rollout(
             domain=domain_factory(),
@@ -175,7 +172,6 @@ def test_maskable_ppo(graph_domain_factory):
         n_steps=100,
         use_action_masking=True,
     ) as solver:
-
         solver.solve()
         episodes = rollout(
             domain=domain_factory(),
@@ -202,7 +198,6 @@ def test_dict_ppo(unmasked_jsp_dict_domain_factory):
         learn_config={"total_timesteps": 100},
         n_steps=100,
     ) as solver:
-
         solver.solve()
         rollout(
             domain=domain_factory(),
@@ -223,7 +218,6 @@ def test_dict_maskable_ppo(jsp_dict_domain_factory):
         n_steps=100,
         use_action_masking=True,
     ) as solver:
-
         solver.solve()
         episodes = rollout(
             domain=domain_factory(),
@@ -266,7 +260,6 @@ def test_dict_dqn(unmasked_jsp_dict_domain_factory):
         baselines_policy="MultiInputPolicy",
         learn_config={"total_timesteps": 100},
     ) as solver:
-
         solver.solve()
         rollout(
             domain=domain_factory(),
@@ -278,7 +271,6 @@ def test_dict_dqn(unmasked_jsp_dict_domain_factory):
 
 
 def test_graph2node_ppo(unmasked_jsp_domain_factory, variable_n_nodes):
-
     domain_factory = unmasked_jsp_domain_factory
 
     with StableBaseline(
@@ -329,7 +321,6 @@ def test_graph2node_ppo(unmasked_jsp_domain_factory, variable_n_nodes):
 
 
 def test_maskable_graph2node_ppo(jsp_graph2node_domain_factory):
-
     domain_factory = jsp_graph2node_domain_factory
 
     with StableBaseline(

@@ -29,9 +29,9 @@ def preprocess_obs(
             )
         return preprocessed_obs  # type: ignore[return-value]
 
-    assert isinstance(
-        obs, (th.Tensor, thg.data.Data)
-    ), f"Expecting a torch Tensor or torch geometric Data, but got {type(obs)}"
+    assert isinstance(obs, (th.Tensor, thg.data.Data)), (
+        f"Expecting a torch Tensor or torch geometric Data, but got {type(obs)}"
+    )
 
     if isinstance(observation_space, spaces.Graph):
         return obs
@@ -59,6 +59,9 @@ def get_obs_shape(
                 observation_space.node_space.shape + observation_space.edge_space.shape
             )
     elif isinstance(observation_space, spaces.Dict):
-        return {key: get_obs_shape(subspace) for (key, subspace) in observation_space.spaces.items()}  # type: ignore[misc]
+        return {
+            key: get_obs_shape(subspace)
+            for (key, subspace) in observation_space.spaces.items()
+        }  # type: ignore[misc]
     else:
         return sb3_get_obs_shape(observation_space=observation_space)

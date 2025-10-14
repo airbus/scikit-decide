@@ -215,7 +215,6 @@ class MyDomain(D):
 
 
 if __name__ == "__main__":
-
     try:
         options, remainder = getopt.getopt(
             sys.argv[1:],
@@ -295,7 +294,7 @@ if __name__ == "__main__":
                 "\nChoose a solver:\n{solvers}\n".format(
                     solvers="\n".join(
                         ["0. Quit"]
-                        + [f'{i + 1}. {s["name"]}' for i, s in enumerate(solvers)]
+                        + [f"{i + 1}. {s['name']}" for i, s in enumerate(solvers)]
                     )
                 )
             )

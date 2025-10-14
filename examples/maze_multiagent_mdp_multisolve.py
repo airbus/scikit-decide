@@ -550,7 +550,6 @@ def mcts_callback(solver, i=None):
 
 
 if __name__ == "__main__":
-
     try_solvers = [
         # Multi-agent RTDP
         {
@@ -560,7 +559,8 @@ if __name__ == "__main__":
                 "multiagent_solver_class": MARTDP,
                 "singleagent_solver_class": LRTDP,
                 "multiagent_domain_factory": lambda: MultiAgentMaze(),
-                "singleagent_domain_factory": lambda multiagent_domain, agent: SingleAgentMaze(
+                "singleagent_domain_factory": lambda multiagent_domain,
+                agent: SingleAgentMaze(
                     multiagent_domain._maze, multiagent_domain._agents_goals[agent]
                 ),
                 "multiagent_solver_kwargs": {
@@ -599,7 +599,8 @@ if __name__ == "__main__":
                 "multiagent_solver_class": HMCTS,
                 "singleagent_solver_class": LRTDP,
                 "multiagent_domain_factory": lambda: MultiAgentMaze(),
-                "singleagent_domain_factory": lambda multiagent_domain, agent: SingleAgentMaze(
+                "singleagent_domain_factory": lambda multiagent_domain,
+                agent: SingleAgentMaze(
                     multiagent_domain._maze, multiagent_domain._agents_goals[agent]
                 ),
                 "multiagent_solver_kwargs": {
@@ -652,7 +653,7 @@ if __name__ == "__main__":
                 "\nChoose a solver:\n{solvers}\n".format(
                     solvers="\n".join(
                         ["0. Quit"]
-                        + [f'{i + 1}. {s["name"]}' for i, s in enumerate(solvers)]
+                        + [f"{i + 1}. {s['name']}" for i, s in enumerate(solvers)]
                     )
                 )
             )

@@ -39,7 +39,7 @@ class RDDLJaxSolver(Solver, Policies, FromInitialState):
     def _solve(self, from_memory: Optional[D.T_state] = None) -> None:
         planner = JaxBackpropPlanner(
             rddl=self._domain.rddl_gym_env.model,
-            **(self.planner_args if self.planner_args is not None else {})
+            **(self.planner_args if self.planner_args is not None else {}),
         )
         self.controller = JaxOfflineController(
             planner, **(self.train_args if self.train_args is not None else {})

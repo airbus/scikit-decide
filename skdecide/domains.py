@@ -3,6 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 
 """This module contains base classes for quickly building domains."""
+
 from __future__ import annotations
 
 import logging

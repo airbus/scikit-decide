@@ -70,9 +70,9 @@ class GraphRolloutBuffer(ScikitDecideRolloutBuffer, GraphBaseBuffer):
     observations: Union[list[spaces.GraphInstance], list[list[spaces.GraphInstance]]]
 
     def reset(self) -> None:
-        assert isinstance(
-            self.observation_space, spaces.Graph
-        ), "GraphRolloutBuffer must be used with Graph obs space only"
+        assert isinstance(self.observation_space, spaces.Graph), (
+            "GraphRolloutBuffer must be used with Graph obs space only"
+        )
         super().reset()
         self.observations = list()
 
@@ -87,7 +87,6 @@ class GraphRolloutBuffer(ScikitDecideRolloutBuffer, GraphBaseBuffer):
 
 
 class DictGraphRolloutBuffer(GraphRolloutBuffer, DictRolloutBuffer):
-
     observations: dict[
         str,
         Union[
@@ -161,7 +160,6 @@ class DictGraphRolloutBuffer(GraphRolloutBuffer, DictRolloutBuffer):
 
 
 class MaskableGraph2NodeRolloutBufferMixin(MaskableScikitDecideRolloutBufferMixin):
-
     action_masks: list[np.ndarray]
 
     def reset(self):
@@ -188,22 +186,19 @@ class MaskableGraph2NodeRolloutBufferMixin(MaskableScikitDecideRolloutBufferMixi
 
 class MaskableGraphRolloutBuffer(
     MaskableScikitDecideRolloutBufferMixin, GraphRolloutBuffer, MaskableRolloutBuffer
-):
-    ...
+): ...
 
 
 class MaskableDictGraphRolloutBuffer(
     MaskableScikitDecideRolloutBufferMixin,
     DictGraphRolloutBuffer,
     MaskableDictRolloutBuffer,
-):
-    ...
+): ...
 
 
 class MaskableGraph2NodeRolloutBuffer(
     MaskableGraph2NodeRolloutBufferMixin, GraphRolloutBuffer, MaskableRolloutBuffer
-):
-    ...
+): ...
 
 
 class GraphReplayBuffer(ScikitDecideReplayBuffer, GraphBaseBuffer):

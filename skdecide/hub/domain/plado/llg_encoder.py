@@ -149,9 +149,9 @@ class LLGEncoder:
 
         """
         if encode_actions:
-            assert (
-                encode_static_facts
-            ), "encode_static_facts must be True if encode_actions is True."
+            assert encode_static_facts, (
+                "encode_static_facts must be True if encode_actions is True."
+            )
         self.encode_static_facts = encode_static_facts
         self.encode_actions = encode_actions
         self.simplify_encoding = simplify_encoding
@@ -534,9 +534,9 @@ class LLGEncoder:
         ] = 1
         for node, value in self._map_node2value.items():
             if node >= self._state_node_start:
-                nodes_state[
-                    node - self._state_node_start, self.value_column_index
-                ] = value
+                nodes_state[node - self._state_node_start, self.value_column_index] = (
+                    value
+                )
                 nodes_state[
                     node - self._state_node_start,
                     self.map_nodelabel2int[NodeLabel.NUMERIC],
@@ -1065,7 +1065,11 @@ class LLGEncoder:
 
     def _prepare_for_plot(
         self, graph: gym.spaces.GraphInstance
-    ) -> tuple[dict[int, str], dict[int, str], dict[tuple[int, int], str],]:
+    ) -> tuple[
+        dict[int, str],
+        dict[int, str],
+        dict[tuple[int, int], str],
+    ]:
         edge_color = self._get_edges_color(graph)
         node_color = {
             node: self.map_nodelabel2color[self.map_int2nodelabel[int(i_lab)]]

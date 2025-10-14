@@ -1,6 +1,7 @@
 """
 Adapted from https://github.com/pybind/cmake_example
 """
+
 import fileinput
 import os
 import platform
@@ -28,7 +29,6 @@ class CMakeExtension(Extension):
         cmake_component: str = None,
         cmake_depends_on: List[str] = (),
     ) -> None:
-
         """
         Custom setuptools extension that configures a CMake project.
         Args:
@@ -82,7 +82,9 @@ class ExtensionBuilder(build_ext):
                     + ", ".join(e.name for e in cmake_extensions)
                 )
             if platform.system() == "Windows":
-                cmake_version = LooseVersion(re.search(r"version\s*([\d.]+)", out.decode()).group(1))  # type: ignore
+                cmake_version = LooseVersion(
+                    re.search(r"version\s*([\d.]+)", out.decode()).group(1)
+                )  # type: ignore
                 if cmake_version < "3.1.0":
                     raise RuntimeError("CMake >= 3.1.0 is required on Windows")
 

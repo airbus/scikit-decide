@@ -150,7 +150,6 @@ class ScikitDecideReplayBuffer(ReplayBuffer):
         done: np.ndarray,
         infos: list[dict[str, Any]],
     ) -> None:
-
         self._add_obs(obs=obs, next_obs=next_obs)
 
         # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392

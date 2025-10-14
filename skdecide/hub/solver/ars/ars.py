@@ -144,7 +144,6 @@ class AugmentedRandomSearch(Solver, Policies):
         num_plays = 0.0
         sum_rewards = 0
         while not done and num_plays < self.epoch_size:
-
             state = cgp.norm_and_flatten(
                 state, self.env.get_observation_space().unwrapped()
             )
@@ -203,7 +202,6 @@ class AugmentedRandomSearch(Solver, Policies):
         normalizer = Normalizer(input_size)
 
         for step in range(self.n_epochs):
-
             # Initializing the perturbations deltas and the positive/negative rewards
 
             deltas = [
@@ -261,7 +259,6 @@ class AugmentedRandomSearch(Solver, Policies):
     def _sample_action(
         self, observation: D.T_agent[D.T_observation]
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-
         # print('observation', observation, 'Policy', self.policy)
         action = self.policy.dot(
             cgp.norm_and_flatten(

@@ -34,7 +34,6 @@ if skdecide_cpp_extension_lib_path not in sys.path:
     sys.path.append(skdecide_cpp_extension_lib_path)
 
 try:
-
     from __skdecide_hub_cpp import _IWSolver_ as iw_solver
 
     class D(
@@ -64,8 +63,12 @@ try:
             state_features: Callable[[Domain, D.T_state], Any],
             use_state_feature_hash: bool = False,
             node_ordering: Callable[[float, int, int, float, int, int], bool] = (
-                lambda a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth: a_gscore
-                > b_gscore
+                lambda a_gscore,
+                a_novelty,
+                a_depth,
+                b_gscore,
+                b_novelty,
+                b_depth: a_gscore > b_gscore
             ),
             time_budget: int = 0,
             parallel: bool = False,

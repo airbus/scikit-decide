@@ -460,9 +460,9 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 action_component_full_logits = th.zeros_like(
                     action_component_mask, dtype=action_component_logits.dtype
                 )
-                action_component_full_logits[
-                    indices_samples_with_component, :
-                ] = action_component_logits
+                action_component_full_logits[indices_samples_with_component, :] = (
+                    action_component_logits
+                )
 
             # param and mask distributions
             self.action_dist.set_proba_distribution_component(
@@ -479,18 +479,17 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             ):  # the component is a graph2node one
                 position = (
                     # position of component among graph node components:
-                    i_action_component
-                    - self._n_graphindependent_components
+                    i_action_component - self._n_graphindependent_components
                 )
                 actions_component = actions[:, i_action_component]
                 node_shift_by_sample = enriched_obs._slice_dict["x"][
                     : enriched_obs.num_graphs
                 ]
-                component_nodes = (
-                    (  # shift node ids to match node ids in the batched graph
-                        actions_component + node_shift_by_sample.to(self.device)
-                    )[actions_component >= 0].long()
-                )  # keep only relevant samples (remove -1 components)
+                component_nodes = (  # shift node ids to match node ids in the batched graph
+                    actions_component + node_shift_by_sample.to(self.device)
+                )[
+                    actions_component >= 0
+                ].long()  # keep only relevant samples (remove -1 components)
                 # NB: avoid torch.autograd.backward issue, we cannot change inplace node features
                 # (as already part of previous component gradient computation)
                 enriched_obs.x = copy.copy(enriched_obs.x)
@@ -594,7 +593,6 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 self.action_components_node_flag_indices,
             )
         ):
-
             # mask for current action component considered
             action_component_mask = extract_action_component_mask(
                 action_components=action_components,
@@ -700,9 +698,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             action_components,
             pad=(0, len(self.action_dist.distributions) - action_components.shape[-1]),
             value=-1,  # -1 = no component
-        )[
-            None
-        ]  # add a batch dimension
+        )[None]  # add a batch dimension
 
         return actions
 
@@ -738,9 +734,7 @@ def _encode_actions_first_components_for_features(
                     actions[:, i_component].long() + 1,  # -1 -> mapped to 0
                     num_classes=int(action_space.nvec[i_component])
                     + 1,  # new category: -1
-                )[
-                    :, 1:
-                ]  # remove new category
+                )[:, 1:]  # remove new category
                 # we loop over action components (except last one)
                 for i_component in range(n_components)
             ],
@@ -768,9 +762,8 @@ class AutoregressiveGNNActorCriticPolicy(
         action_space: spaces.Space,
         lr_schedule: Schedule,
         features_extractor_class: type[BaseFeaturesExtractor] = GraphFeaturesExtractor,
-        **kwargs: Any
+        **kwargs: Any,
     ):
-
         super().__init__(
             observation_space,
             action_space,
@@ -809,7 +802,7 @@ class AutoregressiveGraph2NodeActorCriticPolicy(AutoregressiveGNNActorCriticPoli
         action_gnn_class: Optional[type[nn.Module]] = None,
         action_gnn_kwargs: Optional[dict[str, Any]] = None,
         n_graph2node_components: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """
 
@@ -888,7 +881,7 @@ class AutoregressiveHeteroGraph2NodeActorCriticPolicy(
         action_gnn_class: Optional[type[nn.Module]] = None,
         action_gnn_kwargs: Optional[dict[str, Any]] = None,
         n_graph2node_components: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """
 
@@ -947,7 +940,7 @@ class AutoregressiveHeteroGraph2NodeActorCriticPolicy(
     def default_n_graph2node_components(
         action_space: spaces.MultiDiscrete,
         action_components_node_flag_indices: Optional[list[Optional[int]]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> int:
         """Default number of action components that are graph nodes if not specified."""
         if action_components_node_flag_indices is None:

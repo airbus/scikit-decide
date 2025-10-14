@@ -395,9 +395,7 @@ def _shm_launch_domain_server_(
                                 raise IndexError(
                                     """No more available register for type {}.
                                                     Please increase the number of registers
-                                                    for that type.""".format(
-                                        res_name
-                                    )
+                                                    for that type.""".format(res_name)
                                 )
                         else:
                             type_counters[res_name] = start
@@ -447,13 +445,9 @@ class ShmParallelDomain(ParallelDomain):
         self._activations = [mp.Value("b", False, lock=True) for i in range(nb_domains)]
         self._dones = [mp.Value("b", False, lock=True) for i in range(nb_domains)]
         self._shm_proxy = shm_proxy
-        self._shm_registers = (
-            {}
-        )  # Maps from registered method parameter types to vectorized array ranges
+        self._shm_registers = {}  # Maps from registered method parameter types to vectorized array ranges
         self._shm_types = {}  # Maps from register index to type
-        self._shm_sizes = (
-            {}
-        )  # Maps from register method parameter types to number of arrays encoding each type
+        self._shm_sizes = {}  # Maps from register method parameter types to number of arrays encoding each type
         self._shm_arrays = []  # Methods' vectorized parameters
         self._rsize = 0  # Total size of the register (updated below)
         self._shm_lambdas = [None] * nb_domains  # Vectorized lambdas' ids
@@ -533,9 +527,7 @@ class ShmParallelDomain(ParallelDomain):
                         raise IndexError(
                             """No more available register for type {}.
                                             Please increase the number of registers
-                                            for that type.""".format(
-                                arg_name
-                            )
+                                            for that type.""".format(arg_name)
                         )
                 else:
                     type_counters[arg_name] = start

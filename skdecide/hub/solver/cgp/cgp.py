@@ -350,7 +350,6 @@ class CGPWrapper(Solver, DeterministicPolicies):
     def _get_next_action(
         self, observation: D.T_agent[D.T_observation]
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-
         return denorm(
             self._es.father.run(
                 norm_and_flatten(

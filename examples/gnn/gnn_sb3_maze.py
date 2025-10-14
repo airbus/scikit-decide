@@ -54,7 +54,6 @@ with StableBaseline(
     baselines_policy="GraphInputPolicy",
     learn_config={"total_timesteps": 100},
 ) as solver:
-
     solver.solve()
     rollout(domain=domain_factory(), solver=solver, max_steps=max_steps, num_episodes=1)
 
@@ -67,7 +66,6 @@ with StableBaseline(
     learn_config={"total_timesteps": 100},
     use_action_masking=True,
 ) as solver:
-
     solver.solve()
     rollout(
         domain=domain_factory(),

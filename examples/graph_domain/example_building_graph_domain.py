@@ -5,6 +5,7 @@
 Example script to show how to build a GraphDomain from an example of deterministic planning domain.
 A* is then run on both domain to check the computation time impact.
 """
+
 import time
 
 from skdecide.hub.domain.graph_domain.graph_domain_builders import (

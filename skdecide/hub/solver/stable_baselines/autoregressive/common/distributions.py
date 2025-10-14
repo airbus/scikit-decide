@@ -65,9 +65,9 @@ class MultiMaskableCategoricalDistribution(Distribution):
             self._any_valid_samples_by_distributions[i_component]
             and not self._all_valid_samples_by_distributions[i_component]
         ):
-            self._ind_valid_samples_by_distributions[
-                i_component
-            ] = valid_samples.nonzero(as_tuple=True)[0]
+            self._ind_valid_samples_by_distributions[i_component] = (
+                valid_samples.nonzero(as_tuple=True)[0]
+            )
 
     def set_proba_distribution_component(
         self, i_component: int, action_component_logits: th.Tensor

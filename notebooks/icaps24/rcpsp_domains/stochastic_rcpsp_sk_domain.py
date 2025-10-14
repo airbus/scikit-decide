@@ -1,24 +1,27 @@
 import os
 import sys
-from copy import deepcopy
 from typing import Optional
 
 import networkx as nx
-from discrete_optimization.rcpsp.rcpsp_utils import compute_graph_rcpsp
+from discrete_optimization.rcpsp.utils import compute_graph_rcpsp
 
 this_folder = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.abspath(os.path.join(this_folder, "../../")))
 import logging
 
 import numpy as np
-from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel
-from discrete_optimization.rcpsp.solver.cpm import CPM, run_partial_classic_cpm
+from discrete_optimization.rcpsp.problem import RcpspProblem
+from discrete_optimization.rcpsp.solvers.cpm import (
+    CpmRcpspSolver,
+    run_partial_classic_cpm,
+)
 
-from notebooks.rcpsp_domains.rcpsp_sk_domain import ParamsDomainEncoding
 from skdecide import Space, TransitionOutcome, Value
 from skdecide.builders.domain import FullyObservable
 from skdecide.domains import RLDomain
-from skdecide.hub.space.gym import BoxSpace, DiscreteSpace, ListSpace, SetSpace
+from skdecide.hub.space.gym import BoxSpace, DiscreteSpace, SetSpace
+
+from .rcpsp_sk_domain import ParamsDomainEncoding
 
 logger = logging.getLogger(__name__)
 records = []
@@ -35,7 +38,7 @@ class D(RLDomain, FullyObservable):
 class StochasticRCPSPSGSDomain(D):
     def __init__(
         self,
-        problem: Optional[RCPSPModel] = None,
+        problem: Optional[RcpspProblem] = None,
         params_domain_encoding: Optional[ParamsDomainEncoding] = None,
     ):
         self.params_domain_encoding = params_domain_encoding
@@ -107,7 +110,7 @@ class StochasticRCPSPSGSDomain(D):
         self.scheduled_tasks = set()
         self.cur_makespan = 0
         self.records = []
-        self.cpm = CPM(problem=self.problem)
+        self.cpm = CpmRcpspSolver(problem=self.problem)
 
     def shallow_copy(self) -> "StochasticRCPSPSGSDomain":
         d = StochasticRCPSPSGSDomain()
@@ -255,7 +258,7 @@ class StochasticRCPSPSGSDomain(D):
         if self.state[-1, 0] or True:
             records.append(self.state[-1, 1])
             if len(records) >= 30:
-                logger.info(f"{sum(records[-30:])/30}")
+                logger.info(f"{sum(records[-30:]) / 30}")
         self.state = np.copy(self.initial_state)
         self.resource_availability = np.copy(self.initial_resource_availability)
         self.scheduled_tasks = set()

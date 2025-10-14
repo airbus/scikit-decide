@@ -6,7 +6,6 @@ from skdecide.hub.solver.ars import ars
 from skdecide.utils import load_registered_domain, rollout
 
 if __name__ == "__main__":
-
     try_domains = [
         {
             "name": "Heading Control Task",
@@ -118,7 +117,7 @@ if __name__ == "__main__":
             input(
                 "\nChoose a domain:\n{domains}\n".format(
                     domains="\n".join(
-                        [f'{i + 1}. {d["name"]}' for i, d in enumerate(domains)]
+                        [f"{i + 1}. {d['name']}" for i, d in enumerate(domains)]
                     )
                 )
             )

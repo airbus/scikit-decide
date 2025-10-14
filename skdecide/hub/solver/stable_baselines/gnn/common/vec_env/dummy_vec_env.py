@@ -39,9 +39,9 @@ def copy_obs_dict(obs: dict[str, EnvSubObs]) -> dict[str, EnvSubObs]:
     :param obs: a dict of numpy arrays.
     :return: a dict of copied numpy arrays.
     """
-    assert isinstance(
-        obs, OrderedDict
-    ), f"unexpected type for observations '{type(obs)}'"
+    assert isinstance(obs, OrderedDict), (
+        f"unexpected type for observations '{type(obs)}'"
+    )
     return OrderedDict(
         [(k, copy_np_array_or_list_of_graph_instances(v)) for k, v in obs.items()]
     )

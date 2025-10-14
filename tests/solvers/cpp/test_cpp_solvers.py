@@ -71,7 +71,6 @@ class GridDomain(D):
         memory: D.T_memory[D.T_state],
         action: D.T_agent[D.T_concurrency[D.T_event]],
     ) -> D.T_state:
-
         if action == Action.left:
             next_state = State(max(memory.x - 1, 0), memory.y, memory.s + 1)
         if action == Action.right:
@@ -93,7 +92,6 @@ class GridDomain(D):
         action: D.T_agent[D.T_concurrency[D.T_event]],
         next_state: Optional[D.T_state] = None,
     ) -> D.T_agent[Value[D.T_value]]:
-
         if next_state.x == memory.x and next_state.y == memory.y:
             cost = 2  # big penalty when hitting a wall
         else:
@@ -256,7 +254,6 @@ def get_plan(domain, solver):
 
 
 class GridShmProxy:
-
     _register_ = [
         (State, 2),
         (Action, 1),

@@ -166,7 +166,6 @@ class Graph2NodeLayer(nn.Module):
             gnn_kwargs["out_channels"] = 1
 
         if gnn_kwargs is None or gnn_class is None:
-
             gnn_kwargs = dict(
                 in_channels=observation_node_features_dim,
                 hidden_channels=128,

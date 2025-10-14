@@ -135,9 +135,9 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
 
         for a in self._multiagent_domain.get_agents():
             singleagent_solver_kwargs = dict(self._singleagent_solver_kwargs)
-            singleagent_solver_kwargs[
-                "domain_factory"
-            ] = lambda: self._singleagent_domain_factory(self._multiagent_domain, a)
+            singleagent_solver_kwargs["domain_factory"] = (
+                lambda: self._singleagent_domain_factory(self._multiagent_domain, a)
+            )
             self._singleagent_solvers[a] = self._singleagent_solver_class(
                 **singleagent_solver_kwargs
             )

@@ -79,15 +79,14 @@ def get_ref(object):
 
 
 def format_doc(doc):
-
     # Replace references like "#obj.func()" by "`obj.func()`" for Markdown code highlighting - TODO: replace in doc?
-    doc = re.sub(r"#(?P<ref>[\w\.,()]*[\w()])", lambda m: f'`{m.group("ref")}`', doc)
+    doc = re.sub(r"#(?P<ref>[\w\.,()]*[\w()])", lambda m: f"`{m.group('ref')}`", doc)
 
     # Replace content of "# Parameters" by list of parameters
     def list_content(content):
         content = re.sub(
             r"^(?P<param>\w+)",
-            lambda m: f'- **{m.group("param")}**',
+            lambda m: f"- **{m.group('param')}**",
             content,
             flags=re.MULTILINE,
         )
@@ -122,7 +121,7 @@ def format_doc(doc):
 
     doc = re.sub(
         r"!!! (?=tip|warning|danger)(?P<head>.*)\n(?P<content>(?:\n? {4,}.*)+)",
-        lambda m: f'::: {m.group("head")}\n{strip_content(m.group("content"))}\n:::',
+        lambda m: f"::: {m.group('head')}\n{strip_content(m.group('content'))}\n:::",
         doc,
     )
 
@@ -322,32 +321,30 @@ if __name__ == "__main__":
     # Generate Reference Markdown files (reference/_skdecide.*.md)
     os.makedirs(f"{docdir}/reference", exist_ok=True)
     for module in autodocs:
-
         # Initiate Markdown
         md = ""
 
         # Write module title
-        md += f'# {module["ref"].split(".", 1)[-1]}\n\n'
+        md += f"# {module['ref'].split('.', 1)[-1]}\n\n"
 
         # Write module doc (if any)
         if "doc" in module:
-            md += f'{module["doc"]}\n\n'
+            md += f"{module['doc']}\n\n"
 
         # Write domain spec summary
         md += "::: tip Domain specification\n<skdecide-summary></skdecide-summary>\n:::\n\n"
 
         # Write members
         for member in module["members"]:
-
             # Write member title
-            md += f'## {md_escape(member["name"])}\n\n'
+            md += f"## {md_escape(member['name'])}\n\n"
 
             # Write member signature (if any)
             md = write_signature(md, member)
 
             # Write member doc (if any)
             if "doc" in member:
-                md += f'{doc_escape(member["doc"])}\n\n'
+                md += f"{doc_escape(member['doc'])}\n\n"
 
             # Write submembers (if any)
             if "members" in member:
@@ -356,10 +353,9 @@ if __name__ == "__main__":
                     key=lambda x: (x["name"].startswith("_"), x["name"]),
                 ):
                     if submember["type"] != "variable":
-
                         # Write submember title
                         md += (
-                            f'### {md_escape(submember["name"]) if submember["name"] != member["name"] else "Constructor"}'
+                            f"### {md_escape(submember['name']) if submember['name'] != member['name'] else 'Constructor'}"
                             f' <Badge text="{submember["owner"]}" type="{"tip" if submember["owner"] == member["name"] else "warn"}"/>\n\n'
                         )
 
@@ -368,9 +364,9 @@ if __name__ == "__main__":
 
                         # Write submember doc (if any)
                         if "doc" in submember:
-                            md += f'{doc_escape(submember["doc"])}\n\n'
+                            md += f"{doc_escape(submember['doc'])}\n\n"
 
-        with open(f'{docdir}/reference/_{module["ref"]}.md', "w") as f:
+        with open(f"{docdir}/reference/_{module['ref']}.md", "w") as f:
             f.write(md)
 
     # Write Reference index (reference/README.md)
@@ -398,7 +394,7 @@ if __name__ == "__main__":
                 if section[-1] != "skdecide":
                     title = section[-1]
                     reference += "\n"
-                reference += f'{"".join(["#"]*i)} {title}\n\n'
+                reference += f"{''.join(['#'] * i)} {title}\n\n"
                 sections.add(section)
         reference += f'- <router-link to="_{e["link"]}">{e["text"]}</router-link>\n'
 
@@ -451,9 +447,9 @@ if __name__ == "__main__":
                     ),
                 }
             )
-            spec += f'<template v-slot:{template["name"]}>\n\n'
+            spec += f"<template v-slot:{template['name']}>\n\n"
             if "doc" in template:
-                spec += f'{doc_escape(template["doc"])}\n\n'
+                spec += f"{doc_escape(template['doc'])}\n\n"
             spec += "</template>\n\n"
 
         tmp_characteristics = []
@@ -464,9 +460,9 @@ if __name__ == "__main__":
                 tmp_characteristics[-1]["levels"].append("(none)")
             for level in characteristic["members"]:
                 tmp_characteristics[-1]["levels"].append(level["name"])
-                spec += f'<template v-slot:{level["name"]}>\n\n'
+                spec += f"<template v-slot:{level['name']}>\n\n"
                 if "doc" in level:
-                    spec += f'{doc_escape(level["doc"])}\n\n'
+                    spec += f"{doc_escape(level['doc'])}\n\n"
                 spec += "</template>\n\n"
 
         state["selection"][element] = {
@@ -484,7 +480,7 @@ if __name__ == "__main__":
             "navbar: false\n"
             "sidebar: false\n"
             "---\n\n"
-            f'<skdecide-spec{" isSolver" if element == "solver" else ""}>\n\n' + spec
+            f"<skdecide-spec{' isSolver' if element == 'solver' else ''}>\n\n" + spec
         )
         spec += "</skdecide-spec>\n\n"
 
@@ -493,15 +489,13 @@ if __name__ == "__main__":
 
     # Write Json state (.vuepress/_state.json)
     state["objects"] = {
-        member["name"]: f'/reference/_skdecide.core.html#{member["name"].lower()}'
+        member["name"]: f"/reference/_skdecide.core.html#{member['name'].lower()}"
         for module in autodocs
         if module["ref"] == "skdecide.core"
         for member in module["members"]
     }
     for element in ["domain", "solver"]:
-        tmp_methods = (
-            {}
-        )  # TODO: detect classmethods/staticmethods to add decorator in code generator (only necessary if there was any NotImplemented classmethod/staticmethod in base template or any characteristic level)
+        tmp_methods = {}  # TODO: detect classmethods/staticmethods to add decorator in code generator (only necessary if there was any NotImplemented classmethod/staticmethod in base template or any characteristic level)
         tmp_types = {}
         tmp_signatures = {}
         for module in autodocs:

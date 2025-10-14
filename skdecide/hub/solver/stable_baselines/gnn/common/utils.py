@@ -25,7 +25,7 @@ def copy_graph_instance(g: gym.spaces.GraphInstance) -> gym.spaces.GraphInstance
 
 
 def copy_np_array_or_list_of_graph_instances(
-    obs: Union[np.ndarray, list[gym.spaces.GraphInstance]]
+    obs: Union[np.ndarray, list[gym.spaces.GraphInstance]],
 ) -> Union[np.ndarray, list[gym.spaces.GraphInstance]]:
     if isinstance(obs[0], gym.spaces.GraphInstance):
         return [copy_graph_instance(g) for g in obs]

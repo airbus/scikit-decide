@@ -116,9 +116,9 @@ class AutoregressiveGraphPPO(
                     ]
                 # check action spaces have still same length
                 assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
-                assert len(env.action_space.nvec) == len(
-                    data["action_space"].nvec
-                ), f"Action spaces must have same length: len({env.action_space}.nvec) != len({data['action_space']}.nvec)"
+                assert len(env.action_space.nvec) == len(data["action_space"].nvec), (
+                    f"Action spaces must have same length: len({env.action_space}.nvec) != len({data['action_space']}.nvec)"
+                )
                 # check independent from graph component have same dim
                 for i_component in range(
                     len(env.action_space.nvec) - n_graph2node_components
@@ -126,7 +126,9 @@ class AutoregressiveGraphPPO(
                     assert (
                         env.action_space.nvec[i_component]
                         == data["action_space"].nvec[i_component]
-                    ), f"Action spaces independent components must have same dim: comp #{i_component} of {env.action_space} and {data['action_space']}"
+                    ), (
+                        f"Action spaces independent components must have same dim: comp #{i_component} of {env.action_space} and {data['action_space']}"
+                    )
 
                 # update action space
                 data["action_space"] = env.action_space

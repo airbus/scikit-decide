@@ -12,7 +12,6 @@ from skdecide.utils import (
 )
 
 if __name__ == "__main__":
-
     print("\nAll registered domains:\n-----------------------")
     pprint({d: load_registered_domain(d) for d in get_registered_domains()})
 

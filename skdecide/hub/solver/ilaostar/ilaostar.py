@@ -37,7 +37,6 @@ if skdecide_cpp_extension_lib_path not in sys.path:
     sys.path.append(skdecide_cpp_extension_lib_path)
 
 try:
-
     from __skdecide_hub_cpp import _ILAOStarSolver_ as ilaostar_solver
 
     # TODO: remove Markovian req?

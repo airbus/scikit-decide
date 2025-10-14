@@ -3,6 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 
 """This module contains utility functions."""
+
 from __future__ import annotations
 
 import copy
@@ -451,7 +452,7 @@ def rollout(
         if has_goal:
             logger.log(
                 goal_logging_level,
-                f'The goal was{"" if domain.is_goal(observation) else " not"} reached '
+                f"The goal was{'' if domain.is_goal(observation) else ' not'} reached "
                 f"in episode {i_episode + 1}.",
             )
         if return_episodes:

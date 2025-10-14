@@ -4,6 +4,7 @@ Created on Mon Apr 18 11:53:11 2016
 
 @author: popo
 """
+
 """"http://stackoverflow.com/questions/16217995/fast-interpolation-of-regularly-sampled-3d-data-with-different-intervals-in-x-y/16221098#16221098"""
 """ interpolate data given on an Nd rectangular grid, uniform or non-uniform.
 
@@ -200,11 +201,13 @@ class Intergrid:
                 if not b:
                     return self.cval
         X = np.asanyarray(X)
-        assert (
-            X.shape[-1] == self.dim
-        ), "the query array must have %d columns, " "but its shape is %s" % (
-            self.dim,
-            X.shape,
+        assert X.shape[-1] == self.dim, (
+            "the query array must have %d columns, "
+            "but its shape is %s"
+            % (
+                self.dim,
+                X.shape,
+            )
         )
         Xdim = X.ndim
         if Xdim == 1:

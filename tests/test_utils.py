@@ -219,8 +219,7 @@ def test_rollout_cb(caplog):
         )  # one observation per step + starting point
 
 
-class D(Domain, Sequential):
-    ...
+class D(Domain, Sequential): ...
 
 
 class MyMaskedRandomSolver(Solver, DeterministicPolicies, Maskable):

@@ -28,7 +28,9 @@ class UncertainResourceAvailabilityChanges:
 
     def check_unique_resource_names(
         self,
-    ) -> bool:  # TODO: How to enforce a call to this function when initialising a domain ?
+    ) -> (
+        bool
+    ):  # TODO: How to enforce a call to this function when initialising a domain ?
         """Return True if there are no duplicates in resource names across both resource types
         and resource units name lists."""
         list1 = self.get_resource_types_names() + self.get_resource_units_names()

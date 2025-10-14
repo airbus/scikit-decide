@@ -189,9 +189,9 @@ class GraphDomain(DeterministicPlanningDomain):
                         next_state_map[k][action] = graph_domain.next_state_map[k][
                             action
                         ]
-                        next_state_attributes[k][
-                            action
-                        ] = graph_domain.next_state_attributes[k][action]
+                        next_state_attributes[k][action] = (
+                            graph_domain.next_state_attributes[k][action]
+                        )
         return GraphDomain(
             next_state_map, next_state_attributes, self.targets, self.attribute_weight
         )

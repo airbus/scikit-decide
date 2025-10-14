@@ -50,7 +50,6 @@ class MaskableGraphPPO(GraphOnPolicyAlgorithm, MaskablePPO):
         rollout_buffer_class: Optional[type[RolloutBuffer]] = None,
         **kwargs,
     ):
-
         # Use proper default rollout buffer class
         if rollout_buffer_class is None:
             if isinstance(env.observation_space, spaces.Graph):
@@ -100,7 +99,6 @@ class MaskableGraph2NodePPO(GraphOnPolicyAlgorithm, MaskablePPO):
         rollout_buffer_class: Optional[type[RolloutBuffer]] = None,
         **kwargs,
     ):
-
         # Use proper default rollout buffer class
         if rollout_buffer_class is None:
             if isinstance(env.observation_space, spaces.Graph):

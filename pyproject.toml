@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scikit-decide"
-version = "0.0.0" # placeholder for poetry-dynamic-versioning
+version = "1.0.4.dev6+5295f637" # placeholder for poetry-dynamic-versioning
 description = "The AI framework for Reinforcement Learning, Automated Planning and Scheduling"
 authors = ["Airbus AI Research <scikit-decide@airbus.com>"]
 license = "MIT"
@@ -34,7 +34,7 @@ script = "builder.py"
 generate-setup-file = true
 
 [tool.poetry-dynamic-versioning]
-enable = true
+enable = false
 vcs = "git"
 format-jinja = """
     {%- if distance == 0 -%}
@@ -235,9 +235,6 @@ pytest-cases = {version = ">=3.8"}
 minversion = "6.0"
 addopts = "-ra -q"
 testpaths = ["tests"]
-
-[tool.isort]
-profile = "black"
 
 [tool.pycln]
 all = true

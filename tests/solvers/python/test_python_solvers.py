@@ -21,6 +21,7 @@ from skdecide.utils import load_registered_solver
 
 logger = logging.getLogger(__name__)
 
+
 # Must be defined outside the grid_domain() fixture
 # so that parallel domains can pickle it
 # /!\ Is it worth defining the domain as a fixture?

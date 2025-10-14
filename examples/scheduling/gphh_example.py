@@ -96,7 +96,7 @@ def fitness_makespan_correlation():
         delta_time_freedom=0,
         deap_verbose=True,
         evaluation=evaluation,
-        permutation_distance=PermutationDistance.KTD
+        permutation_distance=PermutationDistance.KTD,
         # permutation_distance = PermutationDistance.KTD_HAMMING
     )
 
@@ -170,7 +170,6 @@ def fitness_makespan_correlation():
 
 
 def run_gphh():
-
     import time
 
     n_runs = 1
@@ -186,7 +185,6 @@ def run_gphh():
 
     runtimes = []
     for i in range(n_runs):
-
         domain.set_inplace_environment(False)
         state = domain.get_initial_state()
 
@@ -207,7 +205,7 @@ def run_gphh():
             reference_permutations=cp_reference_permutations,
             # reference_makespans=cp_reference_makespans,
             training_domains_names=training_domains_names,
-            params_gphh=ParametersGPHH.fast_test()
+            params_gphh=ParametersGPHH.fast_test(),
             # params_gphh=ParametersGPHH.default()
         )
         solver.solve()
@@ -242,7 +240,6 @@ def run_gphh():
 
 
 def run_pooled_gphh():
-
     n_runs = 1
     pool_size = 5
     remove_extreme_values = 1
@@ -259,7 +256,6 @@ def run_pooled_gphh():
         training_domains.append(load_domain(file_path=get_complete_path(td)))
 
     for i in range(n_runs):
-
         domain.set_inplace_environment(False)
         state = domain.get_initial_state()
 
@@ -326,7 +322,6 @@ def run_pooled_gphh():
 
 
 def run_gphh_with_settings():
-
     domain: RCPSP = load_domain(get_complete_path("j301_1.sm"))
     training_domains = [
         load_domain(get_complete_path("j301_2.sm")),
@@ -728,7 +723,7 @@ def run_comparaison_stochastic():
                 delta_time_freedom=0,
                 deap_verbose=True,
                 evaluation=EvaluationGPHH.SGS_DEVIATION,
-                permutation_distance=PermutationDistance.KTD
+                permutation_distance=PermutationDistance.KTD,
                 # permutation_distance = PermutationDistance.KTD_HAMMING
             )
 
@@ -740,7 +735,7 @@ def run_comparaison_stochastic():
                 reference_permutations=cp_reference_permutations,
                 # reference_makespans=cp_reference_makespans,
                 training_domains_names=training_domains_names,
-                params_gphh=params_gphh
+                params_gphh=params_gphh,
                 # set_feature=set_feature)
             )
             solver.solve()
@@ -998,7 +993,7 @@ def run_comparaison():
             delta_time_freedom=0,
             deap_verbose=True,
             evaluation=EvaluationGPHH.SGS_DEVIATION,
-            permutation_distance=PermutationDistance.KTD
+            permutation_distance=PermutationDistance.KTD,
             # permutation_distance = PermutationDistance.KTD_HAMMING
         )
 

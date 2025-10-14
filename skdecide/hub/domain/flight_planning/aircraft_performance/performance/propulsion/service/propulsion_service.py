@@ -119,7 +119,6 @@ class PropulsionService:
         if (
             abs(thrust_max - thrust_min) < 1e-9
         ):  # very small difference, close enough to either bound
-
             return tsp_min  # or tsp_max, doesn't matter much
 
         trial_tsp = tsp_min + (tsp_max - tsp_min) / (thrust_max - thrust_min) * (

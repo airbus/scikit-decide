@@ -71,7 +71,6 @@ class MyDomain(D):
         memory: D.T_memory[D.T_state],
         action: D.T_agent[D.T_concurrency[D.T_event]],
     ) -> DiscreteDistribution[D.T_state]:
-
         if action == Action.left:
             next_state_1 = State(max(memory.x - 1, 0), memory.y)
             next_state_2 = State(max(memory.x - 1, 0), max(memory.y - 1, 0))
@@ -138,7 +137,6 @@ class MyDomain(D):
 
 
 class GridShmProxy:
-
     _register_ = [
         (State, 2),
         (Action, 1),
@@ -398,7 +396,6 @@ class GridShmProxy:
 
 
 if __name__ == "__main__":
-
     try_solvers = [
         # LRTDP
         {

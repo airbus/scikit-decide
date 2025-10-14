@@ -1,5 +1,4 @@
 import logging
-from copy import deepcopy
 from typing import Optional
 
 import networkx as nx
@@ -14,7 +13,7 @@ from discrete_optimization.rcpsp.utils import compute_graph_rcpsp
 from skdecide import Space, TransitionOutcome, Value
 from skdecide.builders.domain import FullyObservable
 from skdecide.domains import RLDomain
-from skdecide.hub.space.gym import BoxSpace, DiscreteSpace, ListSpace, SetSpace
+from skdecide.hub.space.gym import BoxSpace, DiscreteSpace, SetSpace
 
 logger = logging.getLogger(__name__)
 records = []
@@ -287,7 +286,7 @@ class RCPSPSGSDomain(D):
         if self.state[-1, 0]:
             records.append(self.state[-1, 1])
             if len(records) >= 30:
-                logger.info(f"{sum(records[-30:])/30}")
+                logger.info(f"{sum(records[-30:]) / 30}")
         self.state = np.copy(self.initial_state)
         self.resource_availability = np.copy(self.initial_resource_availability)
         self.scheduled_tasks = set()

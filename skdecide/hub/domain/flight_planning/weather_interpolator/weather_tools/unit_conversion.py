@@ -338,7 +338,6 @@ def press_conv(P, from_units=default_press_units, to_units=default_press_units):
     elif from_units == "psi":
         P *= 6894.757  # derived from NASA Reference Publication 1046 value
     elif from_units == "psf" or from_units == "lb/ft**2":
-
         P *= 47.88026  # from NASA Reference Publication 1046
     elif from_units == "hpa" or from_units == "mb":
         P *= 100.0

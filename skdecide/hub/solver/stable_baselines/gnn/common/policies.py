@@ -56,9 +56,9 @@ class BaseGNNPolicy(BasePolicy):
                 observation, self.observation_space
             )
         elif isinstance(observation, dict):
-            assert isinstance(
-                self.observation_space, gym.spaces.Dict
-            ), f"The observation provided is a dict but the obs space is {self.observation_space}"
+            assert isinstance(self.observation_space, gym.spaces.Dict), (
+                f"The observation provided is a dict but the obs space is {self.observation_space}"
+            )
             # need to copy the dict as the dict in VecFrameStack will become a torch tensor
             observation = copy.deepcopy(observation)
             for key, obs in observation.items():
@@ -76,7 +76,9 @@ class BaseGNNPolicy(BasePolicy):
                         obs_, obs_space
                     )
                     # Add batch dimension if needed
-                    observation[key] = obs_.reshape((-1, *self.observation_space[key].shape))  # type: ignore[misc]
+                    observation[key] = obs_.reshape(
+                        (-1, *self.observation_space[key].shape)
+                    )  # type: ignore[misc]
         else:
             return super().obs_to_tensor(observation)
 
@@ -88,9 +90,9 @@ class BaseGNNPolicy(BasePolicy):
     ) -> bool:
         vectorized_env = False
         if isinstance(observation, dict):
-            assert isinstance(
-                self.observation_space, gym.spaces.Dict
-            ), f"The observation provided is a dict but the obs space is {self.observation_space}"
+            assert isinstance(self.observation_space, gym.spaces.Dict), (
+                f"The observation provided is a dict but the obs space is {self.observation_space}"
+            )
             for key, obs in observation.items():
                 obs_space = self.observation_space.spaces[key]
                 vectorized_env = vectorized_env or is_vectorized_observation(

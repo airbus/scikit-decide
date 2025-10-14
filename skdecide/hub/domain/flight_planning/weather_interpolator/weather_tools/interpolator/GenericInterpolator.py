@@ -30,8 +30,7 @@ class GenericInterpolator(ABC):
         ...
 
     @abstractmethod
-    def render(self, ax, **kwargs):
-        ...
+    def render(self, ax, **kwargs): ...
 
 
 def guess_axes(
@@ -140,7 +139,6 @@ class GenericEnsembleInterpolator(GenericInterpolator):
         elif isinstance(
             file_npz, dict
         ):  # Already loaded data in a dict (directly from parseWeather indeed)
-
             self.datas = file_npz
             if fields is None:
                 fields = self.datas.keys()

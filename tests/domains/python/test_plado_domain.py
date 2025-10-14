@@ -316,8 +316,7 @@ def are_graphs_equal(
 
 def are_pladostates_equal(s1: PladoState, s2: PladoState) -> bool:
     return (
-        s1.atoms == s2.atoms
-        and s1.fluents == s2.fluents
+        s1.atoms == s2.atoms and s1.fluents == s2.fluents
         #     (
         #     [f for i, f in enumerate(s1.fluents) if i not in cost_functions]
         #     == [f for i, f in enumerate(s2.fluents) if i not in cost_functions]
@@ -687,31 +686,33 @@ def test_plado_domain_blocksworld_autoregressive_advancedgnn_sb3(
 ):
     domain_factory = plado_graph_object_domain_factory
     gnn_hidden_channels = 16
-    with StableBaseline(
-        domain_factory=domain_factory,
-        algo_class=AutoregressiveGraphPPO,
-        baselines_policy="GraphInputPolicy",
-        policy_kwargs=dict(
-            features_extractor_kwargs=dict(
-                # kwargs for GraphFeaturesExtractor
-                gnn_class=AdvancedGNN,
-                gnn_kwargs=dict(
-                    # in_channels automatically filled by GraphFeaturesExtractor
-                    hidden_channels=gnn_hidden_channels,  # output_dim as out_channels=None
-                    num_layers=3,
-                    dropout=0.2,
-                    message_passing_cls=thg.nn.GCNConv,
-                    supports_edge_weight=True,
-                    supports_edge_attr=False,
-                    using_encoder=True,
-                ),
-                gnn_out_dim=gnn_hidden_channels,  # correspond to GNN ouput dim
-            )
-        ),
-        autoregressive_action=True,
-        learn_config={"total_timesteps": 300},
-        n_steps=100,
-    ) as solver:
+    with (
+        StableBaseline(
+            domain_factory=domain_factory,
+            algo_class=AutoregressiveGraphPPO,
+            baselines_policy="GraphInputPolicy",
+            policy_kwargs=dict(
+                features_extractor_kwargs=dict(
+                    # kwargs for GraphFeaturesExtractor
+                    gnn_class=AdvancedGNN,
+                    gnn_kwargs=dict(
+                        # in_channels automatically filled by GraphFeaturesExtractor
+                        hidden_channels=gnn_hidden_channels,  # output_dim as out_channels=None
+                        num_layers=3,
+                        dropout=0.2,
+                        message_passing_cls=thg.nn.GCNConv,
+                        supports_edge_weight=True,
+                        supports_edge_attr=False,
+                        using_encoder=True,
+                    ),
+                    gnn_out_dim=gnn_hidden_channels,  # correspond to GNN ouput dim
+                )
+            ),
+            autoregressive_action=True,
+            learn_config={"total_timesteps": 300},
+            n_steps=100,
+        ) as solver
+    ):
         # pre-init algo (done normally during solve()) to extract init weights
         solver._init_algo()
         value_init_params = extract_module_parameters_values(
@@ -958,45 +959,47 @@ def test_plado_domain_blocksworld_autoregressive_heterograph2node_advancedgnn_sb
         domain.get_action_components_node_flag_indices()
     )
     gnn_hidden_channels = 16
-    with StableBaseline(
-        domain_factory=domain_factory,
-        algo_class=AutoregressiveGraphPPO,
-        baselines_policy="HeteroGraph2NodePolicy",
-        policy_kwargs=dict(
-            action_components_node_flag_indices=action_components_node_flag_indices,
-            action_gnn_class=AdvancedGNN,  # Graph2NodeLayer's gnn_class
-            action_gnn_kwargs=dict(  # Graph2NodeLayer's gnn_kwargs
-                # in_channels automatically filled by Graph2NodeLayer
-                # out_channels automatically filled by Graph2NodeLayer
-                hidden_channels=gnn_hidden_channels,
-                num_layers=3,
-                dropout=0.2,
-                message_passing_cls=thg.nn.GCNConv,
-                supports_edge_weight=True,
-                supports_edge_attr=False,
-                using_encoder=True,
-                using_decoder=True,
-            ),
-            features_extractor_kwargs=dict(
-                # kwargs for GraphFeaturesExtractor
-                gnn_class=AdvancedGNN,
-                gnn_kwargs=dict(
-                    # in_channels automatically filled by GraphFeaturesExtractor
-                    hidden_channels=gnn_hidden_channels,  # output_dim as out_channels=None
+    with (
+        StableBaseline(
+            domain_factory=domain_factory,
+            algo_class=AutoregressiveGraphPPO,
+            baselines_policy="HeteroGraph2NodePolicy",
+            policy_kwargs=dict(
+                action_components_node_flag_indices=action_components_node_flag_indices,
+                action_gnn_class=AdvancedGNN,  # Graph2NodeLayer's gnn_class
+                action_gnn_kwargs=dict(  # Graph2NodeLayer's gnn_kwargs
+                    # in_channels automatically filled by Graph2NodeLayer
+                    # out_channels automatically filled by Graph2NodeLayer
+                    hidden_channels=gnn_hidden_channels,
                     num_layers=3,
                     dropout=0.2,
                     message_passing_cls=thg.nn.GCNConv,
                     supports_edge_weight=True,
                     supports_edge_attr=False,
                     using_encoder=True,
+                    using_decoder=True,
                 ),
-                gnn_out_dim=gnn_hidden_channels,  # correspond to GNN ouput dim
+                features_extractor_kwargs=dict(
+                    # kwargs for GraphFeaturesExtractor
+                    gnn_class=AdvancedGNN,
+                    gnn_kwargs=dict(
+                        # in_channels automatically filled by GraphFeaturesExtractor
+                        hidden_channels=gnn_hidden_channels,  # output_dim as out_channels=None
+                        num_layers=3,
+                        dropout=0.2,
+                        message_passing_cls=thg.nn.GCNConv,
+                        supports_edge_weight=True,
+                        supports_edge_attr=False,
+                        using_encoder=True,
+                    ),
+                    gnn_out_dim=gnn_hidden_channels,  # correspond to GNN ouput dim
+                ),
             ),
-        ),
-        autoregressive_action=True,
-        learn_config={"total_timesteps": 100},
-        n_steps=100,
-    ) as solver:
+            autoregressive_action=True,
+            learn_config={"total_timesteps": 100},
+            n_steps=100,
+        ) as solver
+    ):
         # pre-init algo (done normally during solve()) to extract init weights
         solver._init_algo()
         for i_component, action_net in enumerate(solver._algo.policy.action_nets):

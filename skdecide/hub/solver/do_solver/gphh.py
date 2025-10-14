@@ -271,7 +271,6 @@ class PermutationDistance(Enum):
 
 
 class ParametersGPHH(Hyperparametrizable):
-
     hyperparameters = [
         FloatHyperparameter(name="tournament_ratio"),
         IntegerHyperparameter(name="pop_size", low=1, high=100),
@@ -686,7 +685,6 @@ class GPHH(Solver, DeterministicPolicies):
         func_heuristic = self.toolbox.compile(expr=individual)
         # print('individual', individual)
         for domain in domains:
-
             ###
             initial_state = domain.get_initial_state()
 
@@ -752,7 +750,6 @@ class GPHH(Solver, DeterministicPolicies):
         # print('individual', individual)
 
         for domain in domains:
-
             raw_values = []
             initial_state = domain.get_initial_state()
 
@@ -765,7 +762,6 @@ class GPHH(Solver, DeterministicPolicies):
                 cpm_esd = self.cpm_data[domain]["cpm_esd"]
 
             for task_id in domain.get_available_tasks(state=initial_state):
-
                 input_features = [
                     feature_function_map[lf](
                         domain=domain,
@@ -1008,7 +1004,6 @@ class PooledGPHHPolicy(DeterministicPolicies):
     def _get_next_action(
         self, observation: D.T_agent[D.T_observation]
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-
         run_sgs = True
         cheat_mode = False
         regenerate_cpm = True
@@ -1110,7 +1105,6 @@ class PooledGPHHPolicy(DeterministicPolicies):
             modes_dictionnary[i + 1] = 1
 
         if run_sgs:
-
             solution = RcpspSolution(
                 problem=do_model,
                 rcpsp_permutation=normalized_values_for_do,
@@ -1217,7 +1211,6 @@ class FixedPermutationPolicy(DeterministicPolicies):
             modes_dictionnary[i + 1] = 1
 
         if run_sgs:
-
             solution = RcpspSolution(
                 problem=do_model,
                 rcpsp_permutation=normalized_values_for_do,

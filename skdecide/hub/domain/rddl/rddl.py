@@ -49,7 +49,7 @@ class RDDLDomain(D):
         movie_dir: str = "rddl_movies",
         max_frames=1000,
         enforce_action_constraints=True,
-        **kwargs
+        **kwargs,
     ):
         self.rddl_gym_env = pyRDDLGym.make(
             rddl_domain,
@@ -57,7 +57,7 @@ class RDDLDomain(D):
             base_class=base_class,
             backend=backend,
             enforce_action_constraints=enforce_action_constraints,
-            **kwargs
+            **kwargs,
         )
         self.display_within_jupyter = display_within_jupyter
         self.display_with_pygame = display_with_pygame
@@ -140,7 +140,7 @@ class RDDLDomainRL(RDDLDomain):
         movie_dir: str = "rddl_movies",
         max_frames=1000,
         enforce_action_constraints=True,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             rddl_domain=rddl_domain,
@@ -154,7 +154,7 @@ class RDDLDomainRL(RDDLDomain):
             movie_dir=movie_dir,
             max_frames=max_frames,
             enforce_action_constraints=enforce_action_constraints,
-            **kwargs
+            **kwargs,
         )
 
 

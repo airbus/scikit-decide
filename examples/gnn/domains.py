@@ -1,4 +1,5 @@
 """Fixtures to be reused by several test files."""
+
 import logging
 from typing import Any, Callable, Dict, Optional, Union
 
