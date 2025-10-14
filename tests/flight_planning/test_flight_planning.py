@@ -6,9 +6,6 @@ from skdecide.hub.solver.lazy_astar import LazyAstar
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 9), reason="cartopy requires python3.9 or higher"
-)
-@pytest.mark.skipif(
     sys.platform.startswith("win"), reason="pygrib does not install on windows"
 )
 def test_aircraft_state():
@@ -67,9 +64,6 @@ def test_aircraft_state():
     )
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9), reason="cartopy requires python3.9 or higher"
-)
 @pytest.mark.skipif(
     sys.platform.startswith("win"), reason="pygrib does not install on windows"
 )

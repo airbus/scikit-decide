@@ -4,9 +4,6 @@ import pytest
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 9), reason="cartopy requires python3.9 or higher"
-)
-@pytest.mark.skipif(
     sys.platform.startswith("win"), reason="pygrib does not install on windows"
 )
 def test_thrust():
@@ -84,9 +81,6 @@ def test_thrust():
         np.testing.assert_almost_equal(val_skdecide, val_true, decimal=1)
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9), reason="cartopy requires python3.9 or higher"
-)
 @pytest.mark.skipif(
     sys.platform.startswith("win"), reason="pygrib does not install on windows"
 )

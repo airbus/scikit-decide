@@ -4,9 +4,6 @@ import pytest
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 9), reason="cartopy requires python3.9 or higher"
-)
-@pytest.mark.skipif(
     sys.platform.startswith("win"), reason="pygrib does not install on windows"
 )
 def test_drag():
@@ -95,9 +92,6 @@ def test_drag():
         np.testing.assert_almost_equal(val_skdecide, case["expected_cd"], decimal=4)
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9), reason="cartopy requires python3.9 or higher"
-)
 @pytest.mark.skipif(
     sys.platform.startswith("win"), reason="pygrib does not install on windows"
 )

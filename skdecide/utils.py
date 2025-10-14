@@ -91,27 +91,13 @@ def get_data_home(data_home: Optional[str] = None) -> str:
 
 
 def _get_registered_entries(entry_type: str) -> list[str]:
-    if (
-        sys.version_info.minor < 10 and sys.version_info.major == 3
-    ):  # different behaviour for 3.8 and 3.9
-        return [e.name for e in importlib.metadata.entry_points()[entry_type]]
-    else:
-        return [e.name for e in importlib.metadata.entry_points(group=entry_type)]
+    return [e.name for e in importlib.metadata.entry_points(group=entry_type)]
 
 
 def _load_registered_entry(entry_type: str, entry_name: str) -> Optional[Any]:
-    if (
-        sys.version_info.minor < 10 and sys.version_info.major == 3
-    ):  # different behaviour for 3.8 and 3.9
-        potential_entry_points = tuple(
-            e
-            for e in importlib.metadata.entry_points()[entry_type]
-            if e.name == entry_name
-        )
-    else:
-        potential_entry_points = tuple(
-            importlib.metadata.entry_points(group=entry_type, name=entry_name)
-        )
+    potential_entry_points = tuple(
+        importlib.metadata.entry_points(group=entry_type, name=entry_name)
+    )
     if len(potential_entry_points) == 0:
         logger.warning(
             rf'/!\ {entry_name} could not be loaded because it is not registered in group "{entry_type}".'
