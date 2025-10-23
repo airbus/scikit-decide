@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import os
-import sys
 from collections.abc import Callable
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
@@ -14,7 +12,7 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     IntegerHyperparameter,
 )
 
-from skdecide import Domain, Solver, hub
+from skdecide import Domain, Solver
 from skdecide.builders.domain import (
     Actions,
     FullyObservable,
@@ -28,13 +26,8 @@ from skdecide.builders.domain import (
 from skdecide.builders.solver import DeterministicPolicies, FromAnyState, Utilities
 from skdecide.core import Value
 
-record_sys_path = sys.path
-skdecide_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
-if skdecide_cpp_extension_lib_path not in sys.path:
-    sys.path.append(skdecide_cpp_extension_lib_path)
-
 try:
-    from __skdecide_hub_cpp import _MARTDPSolver_ as martdp_solver
+    from skdecide.hub.__skdecide_hub_cpp import _MARTDPSolver_ as martdp_solver
 
     # TODO: remove Markovian req?
     class D(
@@ -344,7 +337,6 @@ try:
             return self._solver.get_policy()
 
 except ImportError:
-    sys.path = record_sys_path
     print(
         'Scikit-decide C++ hub library not found. Please check it is installed in "skdecide/hub".'
     )

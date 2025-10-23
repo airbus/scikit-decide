@@ -6,52 +6,60 @@
 
 The use of a virtual environment for scikit-decide is recommended, and you will need to ensure that the environment use a Python version greater than 3.9.
 This can be achieved either by using [conda](https://docs.conda.io/en/latest/) or by using [pyenv](https://github.com/pyenv/pyenv) (or [pyenv-win](https://github.com/pyenv-win/pyenv-win) on windows)
-and [venv](https://docs.python.org/fr/3/library/venv.html) module.
+and [venv](https://docs.python.org/fr/3/library/venv.html) module, or by using [uv](https://docs.astral.sh/uv/).
 
-The following examples show how to create a virtual environment with Python version 3.9.18 with the mentioned methods.
+The following examples show how to create a virtual environment with Python version 3.12 with the mentioned methods.
 
-#### With conda (all platforms)
+#### With conda
 
 ```shell
-conda create -n skdecide python=3.9.18
+conda create -n skdecide python=3.12
 conda activate skdecide
 ```
 
-#### With pyenv + venv (Linux/MacOS)
+#### With pyenv + venv
 
 ```shell
-pyenv install 3.9.18
-pyenv shell 3.9.18
+pyenv install 3.12
+pyenv shell 3.12
 python -m venv skdecide-venv
-source skdecide-venv/bin/activate
+source skdecide-venv/bin/activate  # skdecide-venv\Scripts\activate on windows
 ```
 
-#### With pyenv-win + venv (Windows)
+#### With uv
 
 ```shell
-pyenv install 3.9.18
-pyenv shell 3.9.18
-python -m venv skdecide-venv
-skdecide-venv\Scripts\activate
+uv venv skdecide-venv --python 3.12
+source skdecide-venv/bin/activate  # skdecide-venv\Scripts\activate on windows
 ```
 
 ## Install scikit-decide library
 
-### Full install [Recommended]
+### Full install
 
 Install scikit-decide library from PyPI with all dependencies required by domains/solvers in the hub (scikit-decide catalog).
+
+You can use pip:
 ```shell
 pip install -U pip
-pip install -U scikit-decide[all]
+pip install scikit-decide[all]
+```
+
+or via the faster `uv pip` if you already installed [uv](https://docs.astral.sh/uv/):
+```shell
+uv pip install scikit-decide[all]
 ```
 
 ### Minimal install
 Alternatively you can choose to only install the core library, which is enough if you intend to create your own domain and solver.
 ```shell
 pip install -U pip
-pip install -U scikit-decide
+pip install scikit-decide
 ```
-
+or
+```shell
+uv pip install scikit-decide
+```
 
 ## Known issues
 
@@ -63,7 +71,7 @@ You can overcome this by first installing `eccodes` which provides GRIB header f
 ```shell
 brew install eccodes
 ```
-Then, reinstall `scikit-decide[all]` with pip.
+Then, reinstall `scikit-decide[all]`.
 
 If the issue persists, you can try to install the pygrib package available on conda-forge:
 ```shell

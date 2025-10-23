@@ -43,7 +43,7 @@ cmake --version
 PYTHON_VERSION=${1:-3.10}
 #
 for PYBIN in /opt/python/cp${PYTHON_VERSION/./}*/bin; do
-    (cd /io/ && "${PYBIN}/python" -m build --sdist --wheel --outdir /io/temp-wheels)
+    (cd /io/ && "${PYBIN}/python" -m build --wheel --outdir /io/temp-wheels)
     (cd /io/ && rm -rf build)
 done
 

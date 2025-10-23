@@ -29,25 +29,15 @@ rootdir = os.path.abspath(f"{docdir}/..")
 refs = set()
 
 
-# https://stackoverflow.com/questions/48879353/how-do-you-recursively-get-all-submodules-in-a-python-package
-def find_abs_modules(package):
+def find_abs_modules(package, include_private=False):
+    """Find names of all submodules in the package."""
     path_list = []
-    spec_list = []
-    for importer, modname, ispkg in pkgutil.walk_packages(package.__path__):
-        if modname == "hub.__skdecide_hub_cpp":
-            continue
-        import_path = f"{package.__name__}.{modname}"
-        if ispkg:
-            spec = pkgutil._get_spec(importer, modname)
-            try:
-                importlib._bootstrap._load(spec)
-                spec_list.append(spec)
-            except Exception as e:
-                print(f"Could not load package {modname}, so it will be ignored ({e}).")
-        else:
-            path_list.append(import_path)
-    for spec in spec_list:
-        del sys.modules[spec.name]
+    for modinfo in pkgutil.walk_packages(package.__path__, f"{package.__name__}."):
+        if not modinfo.ispkg:
+            if include_private or not (
+                modinfo.name.split(".")[-1].startswith("_")
+            ):  # skip module names with leading _
+                path_list.append(modinfo.name)
     return path_list
 
 
