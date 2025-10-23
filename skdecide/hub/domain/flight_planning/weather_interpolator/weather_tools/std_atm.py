@@ -388,7 +388,6 @@ def _alt2press_ratio_gradient(
     Tb,
     L,
 ):
-
     # eqn from USAF TPS PEC binder, page PS1-31
 
     return (Pb / P0) * (1 + (L / Tb) * (H - Hb)) ** ((-1000 * g) / (Rd * L))
@@ -400,7 +399,6 @@ def _alt2press_ratio_isothermal(
     Pb,
     Tb,
 ):
-
     # eqn from USAF TPS PEC binder, page PS1-26
 
     return (Pb / P0) * M.exp((-1 * (H - Hb)) * ((1000 * g) / (Rd * Tb)))
@@ -649,7 +647,6 @@ def _density2alt_gradient(
     Tb,
     L,
 ):
-
     return Hb + (Tb / L) * ((Rho / Rhob) ** (-1 / ((1000 * g) / (Rd * L) + 1)) - 1)
 
 
@@ -659,7 +656,6 @@ def _density2alt_isothermal(
     Hb,
     Tb,
 ):
-
     return Hb - ((Rd * Tb) * M.log(Rho / Rhob)) / (1000 * g)
 
 
@@ -931,7 +927,6 @@ def sat_press(
     """
 
     if DP != "FALSE":
-
         # use dew point method
 
         if T != "FALSE":
@@ -946,7 +941,6 @@ def sat_press(
 
         Pv = _sat_press(DP) * 100
     else:
-
         if RH == "FALSE":
             raise ValueError(
                 "Either DP (dew point) or RH (relative humidity) must be specified."
@@ -1120,7 +1114,6 @@ def _press2alt_gradient(
     Tb,
     L,
 ):
-
     return Hb + (Tb / L) * ((P / Pb) ** (((-1 * Rd) * L) / (1000 * g)) - 1)
 
 
@@ -1130,7 +1123,6 @@ def _press2alt_isothermal(
     Hb,
     Tb,
 ):
-
     return Hb - ((Rd * Tb) * M.log(P / Pb)) / (1000 * g)
 
 

@@ -4,6 +4,7 @@ Created on Tue May  3 12:09:06 2016 !!!
 Useful custom functions callable by many part of the projects
 @author: popo
 """
+
 import collections
 import math
 import os

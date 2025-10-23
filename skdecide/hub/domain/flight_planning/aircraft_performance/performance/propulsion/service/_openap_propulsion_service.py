@@ -48,7 +48,6 @@ class _OpenapPropulsionService(PropulsionServiceInterface):
         propulsion_settings: OpenapPropulsionSettings,
         aircraft_state: AircraftState,
     ) -> float:
-
         tas_meters_per_sec = mach2tas(aircraft_state.mach, aircraft_state.zp_ft * ft)
 
         try:

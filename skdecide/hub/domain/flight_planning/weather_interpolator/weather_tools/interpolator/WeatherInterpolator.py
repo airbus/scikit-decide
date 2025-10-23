@@ -44,8 +44,7 @@ class WeatherInterpolator(ABC):
         ...
 
     @abstractmethod
-    def render(self, ax, **kwargs):
-        ...
+    def render(self, ax, **kwargs): ...
 
 
 class WeatherForecastInterpolator(WeatherInterpolator):
@@ -124,7 +123,6 @@ class WeatherForecastInterpolator(WeatherInterpolator):
         elif isinstance(
             file_npz, dict
         ):  # Already loaded data in a dict (directly from parseWeather indeed)
-
             self.datas = file_npz
             self.lat_dict = {var: self.datas[var]["lats"] for var in self.datas.keys()}
             self.long_dict = {

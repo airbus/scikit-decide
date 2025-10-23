@@ -103,9 +103,9 @@ def pad_graph_buffers(
                 new_list_edges.append(edges)
                 new_list_edge_links.append(edge_links)
 
-            buffers_entry[
-                buffers_entry_indices_struct[EDGE_LINKS]
-            ] = new_list_edge_links
+            buffers_entry[buffers_entry_indices_struct[EDGE_LINKS]] = (
+                new_list_edge_links
+            )
             buffers_entry[buffers_entry_indices_struct[EDGES]] = new_list_edges
             buffers_entry[buffers_entry_indices_struct[NODES]] = new_list_nodes
 

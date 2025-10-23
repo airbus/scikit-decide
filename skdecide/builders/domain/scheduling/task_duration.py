@@ -33,9 +33,9 @@ class SimulatedTaskDuration:
         if mode not in self.sampled_durations[task]:
             self.sampled_durations[task][mode] = {}
         if progress_from not in self.sampled_durations[task][mode]:
-            self.sampled_durations[task][mode][
-                progress_from
-            ] = self._sample_task_duration(task, mode, progress_from)
+            self.sampled_durations[task][mode][progress_from] = (
+                self._sample_task_duration(task, mode, progress_from)
+            )
         return self.sampled_durations[task][mode][progress_from]
 
     def _sample_task_duration(

@@ -40,7 +40,6 @@ if skdecide_cpp_extension_lib_path not in sys.path:
     sys.path.append(skdecide_cpp_extension_lib_path)
 
 try:
-
     from __skdecide_hub_cpp import _LRTDPSolver_ as lrtdp_solver
 
     # TODO: remove Markovian req?
@@ -95,9 +94,8 @@ try:
             continuous_planning: bool = True,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[
-                [LRTDP, Optional[int]], bool
-            ] = lambda slv, i=None: False,
+            callback: Callable[[LRTDP, Optional[int]], bool] = lambda slv,
+            i=None: False,
             verbose: bool = False,
         ) -> None:
             """Construct a LRTDP solver instance

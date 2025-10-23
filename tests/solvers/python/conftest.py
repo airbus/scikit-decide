@@ -1,4 +1,5 @@
 """Fixtures to be reused by several test files."""
+
 import logging
 from typing import Any, Callable, Dict, Optional, Union
 
@@ -560,7 +561,6 @@ unmasked_graph_domain_factory = fixture_union(
 
 
 class MyGNN(thg.nn.models.GAT):
-
     LOG_SENTENCE = "Using custom GNN."
 
     def __init__(

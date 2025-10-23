@@ -21,7 +21,6 @@ class GraphOffPolicyAlgorithm(OffPolicyAlgorithm):
         replay_buffer_class: Optional[type[ReplayBuffer]] = None,
         **kwargs,
     ):
-
         # Use proper default rollout buffer class
         if replay_buffer_class is None:
             if isinstance(env.observation_space, spaces.Graph):

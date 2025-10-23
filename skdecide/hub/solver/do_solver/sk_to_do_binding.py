@@ -66,7 +66,7 @@ def build_do_domain(
         MultiModeMultiSkillRCPSP,
         MultiModeMultiSkillRCPSPCalendar,
         SingleModeRCPSP_Stochastic_Durations,
-    ]
+    ],
 ) -> Union[RcpspProblem, MultiskillRcpspProblem]:
     """Transform the scheduling domain (from scikit-decide) into a discrete-optimization problem.
 
@@ -82,12 +82,10 @@ def build_do_domain(
                 for r in modes_details[task][mode].get_ressource_names():
                     mode_details_do[task][mode][r] = modes_details[task][
                         mode
-                    ].get_resource_need_at_time(
-                        r, time=0
-                    )  # should be constant anyway
-                mode_details_do[task][mode][
-                    "duration"
-                ] = scheduling_domain.get_task_duration(task=task, mode=mode)
+                    ].get_resource_need_at_time(r, time=0)  # should be constant anyway
+                mode_details_do[task][mode]["duration"] = (
+                    scheduling_domain.get_task_duration(task=task, mode=mode)
+                )
         return RcpspProblem(
             resources={
                 r: scheduling_domain.get_original_quantity_resource(r)
@@ -113,12 +111,10 @@ def build_do_domain(
                 for r in modes_details[task][mode].get_ressource_names():
                     mode_details_do[task][mode][r] = modes_details[task][
                         mode
-                    ].get_resource_need_at_time(
-                        r, time=0
-                    )  # should be constant anyway
-                mode_details_do[task][mode][
-                    "duration"
-                ] = scheduling_domain.sample_task_duration(task=task, mode=mode)
+                    ].get_resource_need_at_time(r, time=0)  # should be constant anyway
+                mode_details_do[task][mode]["duration"] = (
+                    scheduling_domain.sample_task_duration(task=task, mode=mode)
+                )
         return RcpspProblem(
             resources={
                 r: scheduling_domain.get_original_quantity_resource(r)
@@ -144,12 +140,10 @@ def build_do_domain(
                 for r in modes_details[task][mode].get_ressource_names():
                     mode_details_do[task][mode][r] = modes_details[task][
                         mode
-                    ].get_resource_need_at_time(
-                        r, time=0
-                    )  # should be constant anyway
-                mode_details_do[task][mode][
-                    "duration"
-                ] = scheduling_domain.get_task_duration(task=task, mode=mode)
+                    ].get_resource_need_at_time(r, time=0)  # should be constant anyway
+                mode_details_do[task][mode]["duration"] = (
+                    scheduling_domain.get_task_duration(task=task, mode=mode)
+                )
         return RcpspProblem(
             resources={
                 r: scheduling_domain.get_original_quantity_resource(r)
@@ -175,12 +169,10 @@ def build_do_domain(
                 for r in modes_details[task][mode].get_ressource_names():
                     mode_details_do[task][mode][r] = modes_details[task][
                         mode
-                    ].get_resource_need_at_time(
-                        r, time=0
-                    )  # should be constant anyway
-                mode_details_do[task][mode][
-                    "duration"
-                ] = scheduling_domain.get_task_duration(task=task, mode=mode)
+                    ].get_resource_need_at_time(r, time=0)  # should be constant anyway
+                mode_details_do[task][mode]["duration"] = (
+                    scheduling_domain.get_task_duration(task=task, mode=mode)
+                )
         horizon = scheduling_domain.get_max_horizon()
         return RcpspProblem(
             resources={
@@ -213,16 +205,14 @@ def build_do_domain(
                 for r in modes_details[task][mode].get_ressource_names():
                     mode_details_do[task][mode][r] = modes_details[task][
                         mode
-                    ].get_resource_need_at_time(
-                        r, time=0
-                    )  # should be constant anyway
+                    ].get_resource_need_at_time(r, time=0)  # should be constant anyway
                 skills = scheduling_domain.get_skills_of_task(task=task, mode=mode)
                 for s in skills:
                     mode_details_do[task][mode][s] = skills[s]
                     skills_set.add(s)
-                mode_details_do[task][mode][
-                    "duration"
-                ] = scheduling_domain.get_task_duration(task=task, mode=mode)
+                mode_details_do[task][mode]["duration"] = (
+                    scheduling_domain.get_task_duration(task=task, mode=mode)
+                )
         horizon = scheduling_domain.get_max_horizon()
         employees_dict = {}
         employees = scheduling_domain.get_resource_units_names()

@@ -417,7 +417,7 @@ def build_n_determinist_from_stochastic(srcpsp: Stochastic_RCPSP, nb_instance: i
                 max_horizon=srcpsp.get_max_horizon(),
                 # resource_availability=srcpsp.resource_availability,
                 resource_availability=resource_availability_dict,
-                resource_renewable=srcpsp.get_resource_renewability()
+                resource_renewable=srcpsp.get_resource_renewability(),
                 # resource_renewable=srcpsp.resource_renewable
             )
         ]

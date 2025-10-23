@@ -24,6 +24,7 @@ from skdecide.utils import rollout
 Define your state space (agent positions) & action space (agent movements).
 """
 
+
 # %%
 class State(NamedTuple):
     x: int
@@ -42,6 +43,7 @@ class Action(Enum):
 Define your domain type from a base template (DeterministicPlanningDomain here) with optional refinements (UnrestrictedActions & Renderable here).
 """
 
+
 # %%
 class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
     T_state = State  # Type of states
@@ -56,6 +58,7 @@ class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
 """
 Implement the maze domain by filling all non-implemented methods and adding a constructor to define the maze & start/end positions.
 """
+
 
 # %%
 class MyDomain(D):

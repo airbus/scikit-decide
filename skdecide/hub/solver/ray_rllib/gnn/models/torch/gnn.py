@@ -40,9 +40,9 @@ class GnnBasedModel(TorchModelV2, nn.Module):
 
         # gnn-based feature extractor
         features_extractor_kwargs = custom_config.get("features_extractor", {})
-        assert is_graph_dict_space(
-            obs_space
-        ), f"{self.__class__.__name__} can only be applied to Graph observation spaces."
+        assert is_graph_dict_space(obs_space), (
+            f"{self.__class__.__name__} can only be applied to Graph observation spaces."
+        )
         graph_observation_space = convert_dict_space_to_graph_space(obs_space)
         self.features_extractor = GraphFeaturesExtractor(
             observation_space=graph_observation_space, **features_extractor_kwargs
@@ -108,9 +108,9 @@ class GnnBasedGraph2NodeModel(TorchModelV2, nn.Module):
 
         # gnn-based feature extractor
         features_extractor_kwargs = custom_config.get("features_extractor", {})
-        assert is_graph_dict_space(
-            obs_space
-        ), f"{self.__class__.__name__} can only be applied to Graph observation spaces."
+        assert is_graph_dict_space(obs_space), (
+            f"{self.__class__.__name__} can only be applied to Graph observation spaces."
+        )
         graph_observation_space = convert_dict_space_to_graph_space(obs_space)
         self.features_extractor = GraphFeaturesExtractor(
             observation_space=graph_observation_space, **features_extractor_kwargs

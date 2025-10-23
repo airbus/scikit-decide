@@ -19,7 +19,7 @@ def plot_map(path, G, domain):
             icon=folium.Icon(color="beige"),
         ).add_to(m)
 
-    for (f, t) in G.edges:
+    for f, t in G.edges:
         folium.PolyLine(
             locations=[
                 (

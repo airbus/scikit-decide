@@ -58,7 +58,6 @@ class RockPaperScissors(D):
         D.T_agent[D.T_predicate],
         D.T_agent[D.T_info],
     ]:
-
         # Get players' moves
         move1, move2 = action["player1"], action["player2"]
 

@@ -48,8 +48,7 @@ def impact_pressure_max_operating_limits(max_mach_num: float) -> float:
     """
     v_cas_mo_over_c_msl = max_calibrated_airspeed_over_speed_of_sound(max_mach_num)
     return p_surface * (
-        (1.0 + 0.5 * (gamma - 1.0) * v_cas_mo_over_c_msl**2)
-        ** (gamma / (gamma - 1.0))
+        (1.0 + 0.5 * (gamma - 1.0) * v_cas_mo_over_c_msl**2) ** (gamma / (gamma - 1.0))
         - 1.0
     )
 
