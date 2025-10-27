@@ -50,7 +50,7 @@ def load_domain(file_path):
 
 
 def load_multiskill_domain(file_path):
-    from discrete_optimization.rcpsp_multiskill.parser import parse_file
+    from discrete_optimization.rcpsp_multiskill.parser_imopse import parse_file
 
     model_msrcpsp, new_tame_to_original_task_id = parse_file(
         file_path, max_horizon=2000
