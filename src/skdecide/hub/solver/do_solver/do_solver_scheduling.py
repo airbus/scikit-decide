@@ -228,7 +228,7 @@ class DOSolver(Solver, DeterministicPolicies):
 
             available = look_for_solver(do_domain)
         elif isinstance(do_domain, RcpspProblem):
-            from discrete_optimization.rcpsp.solvers_maps import (
+            from discrete_optimization.rcpsp.solvers_map import (
                 look_for_solver,
                 solvers_map,
             )
