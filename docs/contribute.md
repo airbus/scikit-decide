@@ -28,7 +28,7 @@ This guide is organized as follows:
 
 > **Disclaimer**: The following process has only been tested on Linux/MacOS platforms.
 
-In order to install scikit-decide from the source so that your modification to the library are taken into account, we recommmend using poetry.
+In order to install scikit-decide from the source so that your modification to the library are taken into account, we recommend using [uv](https://docs.astral.sh/uv/).
 
 ####  Prerequisites for C++
 To build the  c++ part of the library,
@@ -52,7 +52,7 @@ export CXXFLAGS="$CXXFLAGS -I$OpenMP_ROOT/include"
 export LDFLAGS="$LDFLAGS -Wl,-rpath,$OpenMP_ROOT/lib -L$OpenMP_ROOT/lib -lomp"
 ```
 
-#### Installation with pyenv + poetry
+#### Installation with uv
 
 Here are the steps to follow:
 
@@ -62,94 +62,60 @@ Here are the steps to follow:
     cd scikit-decide
     ```
 
-- Set proper python version (e.g. 3.12.2) for the scikit-decide project.
+- Set proper python version (e.g. 3.12) for the scikit-decide project.
     ```shell
-    pyenv local 3.12.2
+    echo 3.12 > .python-version
     ```
+  or add `--python=3.12` to the first uv command (`sync` or `run`).
+  You can also skip this step and uv will take the current python version.
 
-- Update pip installer (the one that `pyenv` makes you use).
-    ```shell
-    pip install -U pip
-    ```
+- Install uv (see [uv documentation](https://docs.astral.sh/uv/getting-started/installation/)).
 
-  - Use poetry to install the project:
+- Install (and build the c++ library) the scikit-decide library in editable mode
+  (it will take into account any code changes in python source), optionally with extra "all", and all dev dependencies (jupyter, pytest, ...)
 
-      - Install [poetry](https://python-poetry.org/docs/#installation).
-          ```shell
-          curl -sSL https://install.python-poetry.org | python3 -
-          export PATH="$HOME/.local/bin:$PATH"  # add path to poetry
-          ```
+  ```shell
+  uv sync --extra=all -v
+  ```
 
-      - Install poetry-dynamic-versioning in poetry root env
-          ```shell
-          poetry self add poetry-dynamic-versioning
-          ```
-
-      - Specify to poetry the python version to use so that it creates the appropriate virtual environment.
-          ```shell
-          poetry env use 3.12.2
-          ```
-
-      - Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
-          ```shell
-          rm -rf build  # removing previous build
-          poetry install --extras all
-          ```
-
-#### Alternate installation with conda + poetry
-
-You can also use conda rather than pyenv. It can be useful when you cannot install poetry via the above method,
-as it can also be installed by conda via the conda-forge channel.
-
-- Clone the source and got to the "scikit-decide" root directory.
-    ```shell
-    git clone --recurse-submodules -j8 https://github.com/airbus/scikit-decide.git
-    cd scikit-decide
-    ```
-
-- Create and activate a conda environment with the proper python version for the scikit-decide project.
-    ```shell
-    conda create -n test_dev_skdecide python=3.12.2
-    conda activate test_dev_skdecide
-    ```
-- Update pip installer
-    ```shell
-    pip install -U pip
-    ```
-
-- Install poetry in the environment
-    ```shell
-    conda install -c conda-forge poetry
-    ```
-
-- Install poetry-dynamic-versioning in poetry root env
-    ```shell
-    poetry self add poetry-dynamic-versioning
-    ```
-
-- Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
-    ```shell
-    rm -rf build  # removing previous build
-    poetry install --extras all
-    ```
+  ::: tip Notes
+    - `--extra=all`: adds "all" extra necessary for using all solvers and domains in hub
+    - `-v`: add verbosity to see what is happening during c++ library build
+    - to speed-up rebuilds, the c++ build are done in a directory "build/{wheel_tag}". If you encounter build issues you can try removing the build directory.
+  :::
 
 #### Use of developer mode installation
 
 Now you are able to use the library in developer mode (i.e. with code modifications directly taken into account)
-by prefixing all commands with `poetry run`.
+by prefixing all commands with `uv run`.
 For instance:
+- to run the tutorial script from examples:
+    ```shell
+    uv run python examples/tutorial.py
+    ```
 
-- to see the list of installed packages: `poetry run pip list`  (NB: you can also use `poetry show`)
-- to run the tutorial script from examples: `poetry run python examples/tutorial.py`
+To see the list of installed package, you can go
+- either `uv tree`,
+- or `uv pip list`.
+
+See more command for uv in its [documentation](https://docs.astral.sh/uv/concepts/projects/).
+
+
+
+::: tip
+If uv or the build backend (scikit-build-core) "thinks" that your built code has changed (for instance when you switch between git branches)
+it will rebuilt it automatically at next `uv run` call. It should be quite fast thanks to the use of a deterministic build directory name ("build/{wheel_tag}"),
+but you can also avoid it if you know the c++ library has not changed by adding the option `--no-sync`
+(be aware that it will also prevent any changes in dependencies you introduced in pyproject.toml). Ex:
+```shell
+uv run --no-sync python examples/tutorial.py
+```
+:::
 
 ### Building the docs locally
 
 The documentation is using [VuePress](https://v1.vuepress.vuejs.org) to generate an interactive static website.
 Some pages are generated from code thanks to the Python script `docs/autodoc.py`.
-
-#### Install the library in developer mode.
-
-See [above](#installing-from-source-in-developer-mode) to install scikit-decide with poetry.
 
 #### Install the documentation dependencies
 
@@ -181,42 +147,33 @@ export AUTODOC_NOTEBOOKS_REPO_URL=${current_repo_url_withdotgit/.git/}
 export AUTODOC_NOTEBOOKS_BRANCH=$(git branch --show-current)
 ```
 
+
 #### Build the docs
 
-Make sure you are in the "scikit-decide" root directory and using the virtual environment where you installed scikit-decide.
-If you used poetry, that means prepending python commands with `poetry run`.
-Then generate and serve locally the documentation with:
+Make sure you are in the "scikit-decide" root directory,
+then generate and serve locally the documentation with:
 
 ```shell
-poetry run yarn docs:dev
+NODE_OPTIONS=--openssl-legacy-provider uv run yarn docs:dev
 ```
 
-The above command will call `python docs/autodoc.py` hence the use of `poetry run`.
-
-NB: you can encounter an error when using Node version >=17 :
-```
-node:internal/crypto/hash:71
-  this[kHandle] = new _Hash(algorithm, xofLen);
-                  ^
-```
-In that case, typing the command below may help you:
-```shell
-export NODE_OPTIONS=--openssl-legacy-provider
-```
+- The above command will call `python docs/autodoc.py` hence the use of `uv run`.
+- The NODE_OPTIONS env variable prevents an issue with node >= 17 due to our javascript dependencies.
+This is ok because we do not have external network interaction during doc building.
 
 
-Open your web browser to access the documentation (by default on http://localhost:8080/scikit-decide/).
+Open your web browser to access the documentation (by default on [http://localhost:8080/scikit-decide/](http://localhost:8080/scikit-decide/)).
 
 ### Running unit tests
 
 The unit tests are gathered in `tests/` folder and run with [pytest](https://docs.pytest.org/).
 Providing you installed the library in developer mode as described [above](#installing-from-source-in-developer-mode),
-pytest should have been already installed by poetry.
+pytest should have been already installed by uv.
 
 From the "scikit-decide" root directory, run unit tests with:
 
  ```shell
- poetry run pytest tests
+ uv run pytest tests
 ```
 
 ### Running notebooks as tests
@@ -224,7 +181,7 @@ From the "scikit-decide" root directory, run unit tests with:
 One can test programmatically that notebooks are not broken thanks to [nbmake](https://github.com/treebeardtech/nbmake) extension for pytest.
 
 ```shell
-poetry run pytest --nbmake notebooks -v
+uv run pytest --nbmake notebooks -v
 ```
 
 ## Guidelines to follow when preparing a contribution

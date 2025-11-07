@@ -4,19 +4,20 @@
 
 from __future__ import annotations
 
-import os
-import sys
 from collections.abc import Callable
-from typing import Any
 
-from skdecide import Domain, Solver, hub
+from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
+    FloatHyperparameter,
+)
+
+from skdecide import Domain, Solver
 from skdecide.builders.domain import (
     Actions,
-    DeterministicInitialized,
-    DeterministicTransitions,
+    EnumerableTransitions,
     FullyObservable,
+    Goals,
     Markovian,
-    Rewards,
+    PositiveCosts,
     Sequential,
     SingleAgent,
 )
@@ -28,63 +29,69 @@ from skdecide.builders.solver import (
 )
 from skdecide.core import Value
 
-record_sys_path = sys.path
-skdecide_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
-if skdecide_cpp_extension_lib_path not in sys.path:
-    sys.path.append(skdecide_cpp_extension_lib_path)
-
 try:
-    from __skdecide_hub_cpp import _BFWSSolver_ as bfws_solver
+    from skdecide.hub.__skdecide_hub_cpp import _ILAOStarSolver_ as ilaostar_solver
 
+    # TODO: remove Markovian req?
     class D(
         Domain,
         SingleAgent,
         Sequential,
-        DeterministicTransitions,
+        EnumerableTransitions,
         Actions,
-        DeterministicInitialized,
+        Goals,
         Markovian,
         FullyObservable,
-        Rewards,
-    ):  # TODO: check why DeterministicInitialized & PositiveCosts/Rewards?
+        PositiveCosts,
+    ):
         pass
 
-    class BFWS(ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState):
-        """This is the skdecide implementation Best First Width Search from
-        "Best-First Width Search: Exploration and Exploitation in Classical Planning"
-        by Nir Lipovetzky and Hector Geffner (2017)
+    class ILAOstar(
+        ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState
+    ):
+        """This is the skdecide implementation of Improved-LAO* as described in
+        "LAO*: A heuristic search algorithm that finds solutions with loops" by Eric
+        A. Hansen and Shlomo Zilberstein (2001)
         """
 
         T_domain = D
 
+        hyperparameters = [
+            FloatHyperparameter(name="discount"),
+            FloatHyperparameter(name="epsilon"),
+        ]
+
         def __init__(
             self,
             domain_factory: Callable[[], Domain],
-            state_features: Callable[[Domain, D.T_state], Any],
             heuristic: Callable[
                 [Domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
+            discount: float = 1.0,
+            epsilon: float = 0.001,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[BFWS], bool] = lambda slv: False,
+            callback: Callable[[ILAOstar], bool] = lambda slv: False,
             verbose: bool = False,
         ) -> None:
-            """Construct a BFWS solver instance
+            """Construct a ILAO* solver instance
 
             # Parameters
             domain_factory (Callable[[], Domain]): The lambda function to create a domain instance.
-            state_features (Callable[[Domain, D.T_state], Any]): State feature vector
-                used to compute the novelty measure
-            heuristic (Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]):
+            heuristic (Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]], optional):
                 Lambda function taking as arguments the domain and a state object,
                 and returning the heuristic estimate from the state to the goal.
                 Defaults to (lambda d, s: Value(cost=0)).
-            parallel (bool, optional): Parallelize the generation of state-action transitions
-                on different processes using duplicated domains (True) or not (False). Defaults to False.
+            discount (float, optional): Value function's discount factor. Defaults to 1.0.
+            epsilon (float, optional): Maximum Bellman error (residual) allowed to decide that
+                the value function of the root state of the search has converged. Defaults to 0.001.
+            parallel (bool, optional): Parallelize the generation of state-action transitions and the update
+                of state attributes (e.g. Bellman residuals) on different processes using duplicated domains (True)
+                or not (False). Defaults to False.
             shared_memory_proxy (_type_, optional): The optional shared memory proxy. Defaults to None.
-            callback (Callable[[BFWS], bool], optional): Lambda function called before popping
-                the next state from the (priority) open queue, taking as arguments the solver and the domain,
-                and returning true if the solver must be stopped. Defaults to (lambda slv: False).
+            callback (_type_, optional): Lambda function called at the beginning of each policy update
+                depth-first search, taking as arguments the solver and the domain, and returning true if
+                the solver must be stopped. Defaults to (lambda slv: False).
             verbose (bool, optional): Boolean indicating whether verbose messages should be
                 logged (True) or not (False). Defaults to False.
             """
@@ -94,26 +101,20 @@ try:
                 parallel=parallel,
                 shared_memory_proxy=shared_memory_proxy,
             )
-            self._lambdas = [
-                state_features,
-                heuristic,
-            ]
+            self._lambdas = [heuristic]
             self._ipc_notify = True
 
-            self._solver = bfws_solver(
+            self._solver = ilaostar_solver(
                 solver=self,
                 domain=self.get_domain(),
                 goal_checker=lambda d, s: d.is_goal(s),
-                state_features=(
-                    (lambda d, s: state_features(d, s))
-                    if not parallel
-                    else (lambda d, s: d.call(None, 0, s))
-                ),
                 heuristic=(
                     (lambda d, s: heuristic(d, s))
                     if not parallel
-                    else (lambda d, s: d.call(None, 1, s))
+                    else (lambda d, s: d.call(None, 0, s))
                 ),
+                discount=discount,
+                epsilon=epsilon,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -133,10 +134,10 @@ try:
             self._solver.clear()
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-            """Run the BFWS algorithm from a given root solving state
+            """Run the ILAO* algorithm from a given root solving state
 
             # Parameters
-            memory (D.T_memory[D.T_state]): State from which BFWS graph traversals
+            memory (D.T_memory[D.T_state]): State from which ILAO* graph traversals
                 are performed (root of the search graph)
             """
             self._solver.solve(memory)
@@ -160,13 +161,13 @@ try:
         def _get_next_action(
             self, observation: D.T_agent[D.T_observation]
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-            """Get the best computed action in terms of minimum cost-to-go in a given state.
+            """Get the best computed action in terms of of best Q-value in a given state.
                 The solver is run from `observation` if no solution is defined (i.e. has been
                 previously computed) in `observation`.
 
             !!! warning
                 Returns a random action if no action is defined in the given state,
-                which is why it is advised to call `BFWS.is_solution_defined_for` before
+                which is why it is advised to call `ILAOstar.is_solution_defined_for` before
 
             # Parameters
             observation (D.T_agent[D.T_observation]): State for which the best action is requested
@@ -190,56 +191,44 @@ try:
                 return action
 
         def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
-            """Get the minimum cost-to-go in a given state
+            """Get the best Q-value in a given state
 
             !!! warning
                 Returns None if no action is defined in the given state, which is why
-                it is advised to call `BFWS.is_solution_defined_for` before
+                it is advised to call `ILAOstar.is_solution_defined_for` before
 
             # Parameters
-            observation (D.T_agent[D.T_observation]): State from which the minimum cost-to-go is requested
+            observation (D.T_agent[D.T_observation]): State from which the best Q-value is requested
 
             # Returns
-            D.T_value: Minimum cost-to-go of the given state over the applicable actions in this state
+            D.T_value: Minimum Q-Value of the given state over the applicable actions in this state
             """
             return self._solver.get_utility(observation)
 
-        def get_nb_explored_states(self) -> int:
+        def get_nb_of_explored_states(self) -> int:
             """Get the number of states present in the search graph
 
             # Returns
             int: Number of states present in the search graph
             """
-            return self._solver.get_nb_explored_states()
+            return self._solver.get_nb_of_explored_states()
 
         def get_explored_states(self) -> set[D.T_agent[D.T_observation]]:
             """Get the set of states present in the search graph (i.e. the graph's
-                state nodes minus the nodes' encapsulation and their neighbors)
+                state nodes minus the nodes' encapsulation and their children)
 
             # Returns
             set[D.T_agent[D.T_observation]]: Set of states present in the search graph
             """
             return self._solver.get_explored_states()
 
-        def get_nb_tip_states(self) -> int:
-            """Get the number of states present in the priority queue (i.e. those
-                explored states that have not been yet closed by BFWS)
+        def best_solution_graph_size(self) -> int:
+            """Get the number of states present in the current best policy graph
 
             # Returns
-            int: Number of states present in the (priority) open queue
+            int: Number of states present in the current best policy graph
             """
-            return self._solver.get_nb_tip_states()
-
-        def get_top_tip_state(self) -> D.T_agent[D.T_observation]:
-            """Get the top tip state, i.e. the tip state with the lowest f-score
-
-            !!! warning
-                Returns None if the priority queue is empty
-
-            # Returns
-            D.T_agent[D.T_observation]: Next tip state to be closed by BFWS
-            """
-            return self._solver.get_top_tip_state()
+            return self._solver.best_solution_graph_size()
 
         def get_solving_time(self) -> int:
             """Get the solving time in milliseconds since the beginning of the
@@ -250,55 +239,26 @@ try:
             """
             return self._solver.get_solving_time()
 
-        def get_plan(
-            self, observation: D.T_agent[D.T_observation]
-        ) -> list[
-            tuple[
-                D.T_agent[D.T_observation],
-                D.T_agent[D.T_concurrency[D.T_event]],
-                D.T_value,
-            ]
-        ]:
-            """Get the solution plan starting in a given state
-
-            !!! warning
-                Returns an empty list if no plan has been previously computed that goes
-                through the given state.
-                Throws a runtime exception if a state cycle is detected in the plan
-
-            # Parameters
-            observation (D.T_agent[D.T_observation]): State from which a solution plan
-                to a goal state is requested
-
-            # Returns
-            list[ tuple[ D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]], D.T_value, ] ]:
-                Sequence of tuples of state, action and transition cost (computed as the
-                difference of g-scores between this state and the next one) visited
-                along the execution of the plan
-            """
-            return self._solver.get_plan(observation)
-
         def get_policy(
             self,
         ) -> dict[
             D.T_agent[D.T_observation],
-            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
         ]:
             """Get the (partial) solution policy defined for the states for which
-                a solution plan that goes through them has been previously computed at
-                least once
+                the Q-value has been updated at least once (which is optimal for
+                the states reachable by the policy from the root solving state)
 
             !!! warning
                 Only defined over the states reachable from the root solving state
 
             # Returns
             dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
-                Mapping from states to pairs of action and minimum cost-to-go
+                Mapping from states to pairs of action and best Q-value
             """
             return self._solver.get_policy()
 
 except ImportError:
-    sys.path = record_sys_path
     print(
         'Scikit-decide C++ hub library not found. Please check it is installed in "skdecide/hub".'
     )

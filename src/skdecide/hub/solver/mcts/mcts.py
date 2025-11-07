@@ -4,9 +4,7 @@
 
 from __future__ import annotations
 
-import os
 import random as rd
-import sys
 from collections.abc import Callable
 from enum import Enum
 from math import sqrt
@@ -19,7 +17,7 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     IntegerHyperparameter,
 )
 
-from skdecide import Domain, Solver, hub
+from skdecide import Domain, Solver
 from skdecide.builders.domain import (
     Actions,
     DeterministicInitialized,
@@ -38,14 +36,9 @@ from skdecide.builders.solver import (
 )
 from skdecide.core import Value
 
-record_sys_path = sys.path
-skdecide_cpp_extension_lib_path = os.path.abspath(hub.__path__[0])
-if skdecide_cpp_extension_lib_path not in sys.path:
-    sys.path.append(skdecide_cpp_extension_lib_path)
-
 try:
-    from __skdecide_hub_cpp import _MCTSOptions_ as mcts_options
-    from __skdecide_hub_cpp import _MCTSSolver_ as mcts_solver
+    from skdecide.hub.__skdecide_hub_cpp import _MCTSOptions_ as mcts_options
+    from skdecide.hub.__skdecide_hub_cpp import _MCTSSolver_ as mcts_solver
 
     class D(
         Domain,
@@ -930,7 +923,6 @@ try:
             )
 
 except ImportError:
-    sys.path = record_sys_path
     print(
         'Scikit-decide C++ hub library not found. Please check it is installed in "skdecide/hub".'
     )

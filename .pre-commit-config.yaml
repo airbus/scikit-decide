@@ -25,6 +25,7 @@ repos:
           (?x)^(
             notebooks/icaps24/images/Quadcopter-JaxAgent_example.gif
             |notebooks/icaps24/images/schedule_animation_example.gif
+            |uv.lock
           )$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit

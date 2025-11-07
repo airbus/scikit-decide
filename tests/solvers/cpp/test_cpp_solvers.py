@@ -465,7 +465,7 @@ class GridShmProxy:
 # TESTS
 
 
-def test_solver_cpp(solver_cpp, parallel, shared_memory):
+def test_solver_cpp(parallel, solver_cpp, shared_memory):
     dom = GridDomain()
     solver_type = load_registered_solver(solver_cpp["entry"])
     solver_args = deepcopy(solver_cpp["config"])
@@ -509,7 +509,7 @@ class MyCallback:
         return stopping
 
 
-def test_solver_cpp_with_cb(solver_cpp, parallel, shared_memory, caplog):
+def test_solver_cpp_with_cb(parallel, solver_cpp, shared_memory, caplog):
     solver_type = load_registered_solver(solver_cpp["entry"])
     if "callback" not in inspect.signature(solver_type.__init__).parameters:
         pytest.skip(f"Solver {solver_cpp['entry']} is not yet implementing callbacks.")
