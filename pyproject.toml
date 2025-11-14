@@ -76,7 +76,7 @@ solvers = [
     "torch-geometric>=2.5",
     "torch>=2.3; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "torch>=2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
-    "torch!=2.9; sys_platform == 'win32' and python_version >= '3.12'",
+    "torch!=2.9.0,!=2.9.1; sys_platform == 'win32' and python_version >= '3.12'",
     "flax>=0.10.6; (sys_platform == 'linux' or sys_platform == 'win32') and python_version >= '3.12'",
     "dm-haiku<=0.0.13; python_version <= '3.9'",
 ]
