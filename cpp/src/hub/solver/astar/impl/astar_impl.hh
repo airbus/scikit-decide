@@ -115,7 +115,7 @@ void SK_ASTAR_SOLVER_CLASS::solve(const State &s) {
 
         Logger::info(
             "A* finished to solve from state " + s.print() + " in " +
-            StringConverter::from((double)get_solving_time() / (double)1e6) +
+            StringConverter::from((double)get_solving_time() / (double)1e3) +
             " seconds.");
         return;
       }

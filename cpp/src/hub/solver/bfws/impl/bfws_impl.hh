@@ -190,7 +190,7 @@ void SK_BFWS_SOLVER_CLASS::solve(const State &s) {
 
         Logger::info(
             "BFWS finished to solve from state " + s.print() + " in " +
-            StringConverter::from((double)get_solving_time() / (double)1e6) +
+            StringConverter::from((double)get_solving_time() / (double)1e3) +
             " seconds.");
         return;
       }

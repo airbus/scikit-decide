@@ -137,14 +137,14 @@ void SK_IW_SOLVER_CLASS::solve(const State &s) {
         } else {
           Logger::info(
               "IW finished to solve from state " + s.print() + " in " +
-              StringConverter::from((double)get_solving_time() / (double)1e6) +
+              StringConverter::from((double)get_solving_time() / (double)1e3) +
               " seconds.");
           return;
         }
       } else if (found_goal) {
         Logger::info(
             "IW finished to solve from state " + s.print() + " in " +
-            StringConverter::from((double)get_solving_time() / (double)1e6) +
+            StringConverter::from((double)get_solving_time() / (double)1e3) +
             " seconds.");
         return;
       } else if (!res.second) { // no states pruned => problem is unsolvable
