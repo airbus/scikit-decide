@@ -216,7 +216,7 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
 
     Logger::info(
         "AO* finished to solve from state " + s.print() + " in " +
-        StringConverter::from((double)get_solving_time() / (double)1e6) +
+        StringConverter::from((double)get_solving_time() / (double)1e3) +
         " seconds.");
   } catch (const std::exception &e) {
     Logger::error("AO* failed solving from state " + s.print() +

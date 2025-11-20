@@ -118,7 +118,7 @@ void SK_MARTDP_SOLVER_CLASS::solve(const State &s) {
 
     Logger::info(
         "MARTDP finished to solve from state " + s.print() + " in " +
-        StringConverter::from((double)get_solving_time() / (double)1e6) +
+        StringConverter::from((double)get_solving_time() / (double)1e3) +
         " seconds with " + StringConverter::from(_nb_rollouts) +
         " rollouts and visited " + StringConverter::from(_graph.size()) +
         " states. ");

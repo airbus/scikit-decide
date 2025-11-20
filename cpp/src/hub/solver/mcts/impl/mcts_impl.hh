@@ -144,7 +144,7 @@ void SK_MCTS_SOLVER_CLASS::solve(const State &s) {
 
     Logger::info(
         "MCTS finished to solve from state " + s.print() + " in " +
-        StringConverter::from((double)get_solving_time() / (double)1e6) +
+        StringConverter::from((double)get_solving_time() / (double)1e3) +
         " seconds with " + StringConverter::from(_nb_rollouts) + " rollouts.");
   } catch (const std::exception &e) {
     Logger::error("MCTS failed solving from state " + s.print() +

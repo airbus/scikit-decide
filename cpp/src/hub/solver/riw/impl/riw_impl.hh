@@ -715,7 +715,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(const State &s,
       Logger::debug(
           "time budget: " +
           StringConverter::from((double)_parent_solver.get_solving_time() /
-                                (double)1e6) +
+                                (double)1e3) +
           " ms, rollout budget: " + StringConverter::from(nb_rollouts) +
           ", states pruned: " + StringConverter::from(states_pruned));
 
