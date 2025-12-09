@@ -10,21 +10,7 @@ It is meant for being a one-stop shop solution to formalize decision-making prob
 
 <img :src="$withBase('/architecture.png')" alt="Architecture">
 
-Please refer to our <router-link to="/install">installation instructions</router-link> for installing scikit-decide.
-
-### As a domain developer
-
-::: tip
-Scikit-decide supports formalizing the problem one characteristic at a time without the need of being an algorithmic expert nor knowing in advance the best kind of solver for this task (RL, planning, scheduling or any hybrid type).
-:::
-
-### As a solver developer
-
-::: tip
-Scikit-decide provides a meaningful API to interact with domains at the expected level of information, as well as a catalog of domains/solvers to test/benchmark new algorithms.
-:::
-
-## Getting started
+### Domain characteristics
 
 Domain characteristics are one of the key concepts in scikit-decide: they are combined on the one hand to define domains, on the other hand to specify the envelope of domains a solver can tackle.
 
@@ -32,19 +18,10 @@ Each characteristic has various levels, from general (high-level) to specialized
 
 <img :src="$withBase('/characteristics.png')" alt="Characteristics">
 
-Defining a domain to solve is a matter of:
-- selecting a base domain class (`Domain` by default or any pre-made template for typical combinations like `DeterministicPlanningDomain`)
-- fine-tuning any necessary characteristic level with something more specialized (lower-level)
-- auto-generating the code skeleton from the combination above (technically by implementing all abstract methods)
-- filling the code as needed based on domain expertise
 
-::: tip
-When starting a new domain or solver, it is highly recommended to check the [code generators](#code-generators) for assistance and auto-generation of the skeleton to fill.
-:::
+## Getting started
 
-Check [How to](#how-to) to see how to find compatible solvers and compute a solution, once a domain is defined.
-
-## How to
+In the next subsections, we present how to find compatible solvers and compute a solution, once a domain is defined.
 
 ::: warning
 Exact prints and outputs may vary depending on which domains/solvers are registered on your system.
@@ -124,6 +101,49 @@ with LazyAstar(domain_factory=MyDomain) as mysolver:
     utils.rollout(MyDomain(), mysolver)
 ```
 :::
+
+
+## Going further
+
+### As a domain developer
+
+Scikit-decide supports formalizing the problem one characteristic at a time without the need of being an algorithmic expert nor knowing in advance the best kind of solver for this task (RL, planning, scheduling or any hybrid type).
+See above the [domain characteristics diagram](#domain-characteristics) for more details.
+
+Defining a domain to solve is a matter of:
+- selecting a base domain class (`Domain` by default or any pre-made template for typical combinations like `DeterministicPlanningDomain`)
+- fine-tuning any necessary characteristic level with something more specialized (lower-level)
+- auto-generating the code skeleton from the combination above (technically by implementing all abstract methods)
+- filling the code as needed based on domain expertise
+
+::: tip
+When starting a new domain, it is highly recommended to check the [code generators](#code-generators) for assistance and auto-generation of the skeleton to fill.
+:::
+
+You can find 2 tutorials on how to write a new domain in the notebooks page:
+- [Implementing the maze domain](../notebooks/README.md#how-to-write-a-new-scikit-decide-domain-maze),
+- [Implementing a RDDL domain](../notebooks/README.md#implementing-a-scikit-decide-domain-for-rddl-problems).
+
+### As a solver developer
+
+Scikit-decide provides a meaningful API to interact with domains at the expected level of information, as well as a catalog of domains to test/benchmark new algorithms.
+
+Defining a solver is a matter of:
+- defining the needed characteristics from the domain to solve (see the [domain characteristics diagram](#domain-characteristics) for more details)
+- selecting the necessary solver characteristics
+- auto-generating the code skeleton from the combination above (technically by implementing all abstract methods)
+- filling the code as needed
+
+::: tip
+When starting a new solver, it is highly recommended to check the [code generators](#code-generators) for assistance and auto-generation of the skeleton to fill.
+:::
+
+You can find a tutorial on how to write a new solver in the notebooks page:
+- [Implementing a depth-first-search greedy solver](../notebooks/README.md#how-to-write-a-new-scikit-decide-solver-greedy-depth-first-search),
+- [Implementing a RDDL solver](../notebooks/README.md#implementing-a-scikit-decide-solver-embedding-the-jaxplan-and-gurobiplan-planners-and-solving-rddl-based-scikit-decide-domains),
+  which is the follow-up of the one [implementing a RDDL domain](../notebooks/README.md#implementing-a-scikit-decide-domain-for-rddl-problems).
+
+
 
 ## Examples
 
