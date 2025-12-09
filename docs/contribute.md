@@ -130,23 +130,21 @@ Make sure you are in the "scikit-decide" root directory and install documentatio
 yarn install
 ```
 
-#### Define environment variables for binder and colab links
+#### Define environment variables for binder and colab links  [optional]
 
-In order to define appropriate links for notebooks (github source + launching on binder), we need several environment variables:
-- AUTODOC_BINDER_ENV_GH_REPO_NAME: name of the github repository hosting the binder environment
-- AUTODOC_BINDER_ENV_GH_BRANCH: branch hosting the binder environment
+In order to define appropriate links for notebooks (github source + launching on binder or colab), we need several environment variables:
 - AUTODOC_NOTEBOOKS_REPO_URL: url of the content repository for the notebooks
 - AUTODOC_NOTEBOOKS_BRANCH: branch containing the notebooks
 
 For instance:
 ```shell
-export AUTODOC_BINDER_ENV_GH_REPO_NAME="airbus/scikit-decide"
-export AUTODOC_BINDER_ENV_GH_BRANCH="binder"
 current_repo_url_withdotgit=$(git remote get-url origin)
 export AUTODOC_NOTEBOOKS_REPO_URL=${current_repo_url_withdotgit/.git/}
 export AUTODOC_NOTEBOOKS_BRANCH=$(git branch --show-current)
 ```
 
+If you skip this part, the python script will try to use the above commands to fill the variables.
+If `git` is missing or for some reason the commands fail, the github, binder, and colab links will simply be not generated.
 
 #### Build the docs
 
@@ -154,12 +152,10 @@ Make sure you are in the "scikit-decide" root directory,
 then generate and serve locally the documentation with:
 
 ```shell
-NODE_OPTIONS=--openssl-legacy-provider uv run yarn docs:dev
+uv run yarn docs:dev
 ```
 
 - The above command will call `python docs/autodoc.py` hence the use of `uv run`.
-- The NODE_OPTIONS env variable prevents an issue with node >= 17 due to our javascript dependencies.
-This is ok because we do not have external network interaction during doc building.
 
 
 Open your web browser to access the documentation (by default on [http://localhost:8080/scikit-decide/](http://localhost:8080/scikit-decide/)).
