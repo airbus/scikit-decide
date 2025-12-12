@@ -686,7 +686,10 @@ jobs:
           python_version=${{ matrix.python-version }}
           arch=$(uname -m)
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
-          uv pip install --system ${wheelfile}[all] --group test
+          if ${{ matrix.os == 'macos-15-intel' && matrix.python-version == '3.12' }} == 'true'; then
+            additional_specs="llvmlite!=0.46.0"
+          fi
+          uv pip install --system ${wheelfile}[all] --group test  ${additional_specs}
           uv pip list
 
       - name: Test with pytest
