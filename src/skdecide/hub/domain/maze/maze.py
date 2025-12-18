@@ -14,6 +14,15 @@ from skdecide import DeterministicPlanningDomain, Space, Value
 from skdecide.builders.domain import Renderable, UnrestrictedActions
 from skdecide.hub.space.gym import EnumSpace, ListSpace, MultiDiscreteSpace
 
+try:
+    from IPython.display import clear_output, display
+except ImportError:
+    # jupyter not installed
+    def display(figure): ...
+
+    def clear_output(wait=False): ...
+
+
 DEFAULT_MAZE = """
 +-+-+-+-+o+-+-+-+-+-+
 |   |             | |
@@ -63,7 +72,14 @@ class D(DeterministicPlanningDomain, UnrestrictedActions, Renderable):
 
 
 class Maze(D):
-    def __init__(self, maze_str: str = DEFAULT_MAZE):
+    def __init__(self, maze_str: str = DEFAULT_MAZE, display_in_jupyter: bool = False):
+        """
+
+        # Parameters
+        maze_str: string representing the maze
+        display_in_jupyter: flag to use when rendering inside a jupyter notebook
+
+        """
         maze = []
         for y, line in enumerate(maze_str.strip().split("\n")):
             line = line.rstrip()
@@ -84,6 +100,7 @@ class Maze(D):
         self._num_rows = len(maze)
         self._ax = None
         self._image = None
+        self.display_in_jupyter = display_in_jupyter
 
     def _get_next_state(
         self,
@@ -158,7 +175,13 @@ class Maze(D):
         if self._image is None:
             self._image = self._ax.imshow(maze)
         else:
+            if self.display_in_jupyter:
+                clear_output(wait=True)
             self._image.set_data(maze)
         # self._ax.pcolormesh(maze)
         # plt.draw()
+
+        if self.display_in_jupyter:
+            display(self._image.figure)
+
         plt.pause(0.001)
