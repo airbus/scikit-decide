@@ -67,6 +67,11 @@ class Solver(Hyperparametrizable, FromInitialState):
         self._domain_factory = cast_domain_factory
         self._original_domain_factory = domain_factory
 
+    @property
+    def domain_factory(self) -> Callable[[], Domain]:
+        """The wrapped domain factory returning a domain auto-cast to the level expected by the solver."""
+        return self._domain_factory
+
     @classmethod
     def get_domain_requirements(cls) -> list[type]:
         """Get domain requirements for this solver class to be applicable.
@@ -201,7 +206,7 @@ class Solver(Hyperparametrizable, FromInitialState):
 # ALTERNATE BASE CLASSES (for typical combinations)
 
 
-class DeterministicPolicySolver(Solver, DeterministicPolicies):
+class DeterministicPolicySolver(Solver, FromInitialState, DeterministicPolicies):
     """This is a typical deterministic policy solver class.
 
     This helper class can be used as an alternate base class for domains, inheriting the following:
