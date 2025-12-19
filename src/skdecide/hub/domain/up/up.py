@@ -365,7 +365,9 @@ class UPDomain(D):
                 for fn, s in state.items():
                     values[fn] = self._fnodes_variables_map[fn][3](s)
                 values.update(self._static_fluent_values)
-                skup_state = SkUPState(UPState(values))
+                skup_state = SkUPState(
+                    UPState(values, problems_fluent_set=self._problem)
+                )
                 self._states_up2np[skup_state] = state
                 self._states_np2up[kstate] = skup_state
                 return skup_state
@@ -378,7 +380,9 @@ class UPDomain(D):
                 for i, fn in enumerate(self._fnodes_vars_ordering):
                     values[fn] = self._fnodes_variables_map[fn][3](state.item(i))
                 values.update(self._static_fluent_values)
-                skup_state = SkUPState(UPState(values))
+                skup_state = SkUPState(
+                    UPState(values, problems_fluent_set=self._problem)
+                )
                 self._states_up2np[skup_state] = state
                 self._states_np2up[kstate] = skup_state
                 return skup_state
@@ -400,7 +404,7 @@ class UPDomain(D):
                                 values[k[0]] = Int(int(fluent[-1]))
 
             values.update(self._static_fluent_values)
-            return SkUPState(UPState(values))
+            return SkUPState(UPState(values, problems_fluent_set=self._problem))
         else:
             return None
 

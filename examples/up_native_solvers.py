@@ -5,6 +5,7 @@
 import sys
 
 import unified_planning
+from ray.rllib.algorithms.dqn import DQN
 from unified_planning.shortcuts import (
     BoolType,
     Fluent,
@@ -15,6 +16,7 @@ from unified_planning.shortcuts import (
 )
 
 from skdecide.hub.domain.up import UPDomain
+from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.hub.solver.up import UPSolver
 from skdecide.utils import rollout
 
