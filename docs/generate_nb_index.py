@@ -5,7 +5,9 @@ import json
 import logging
 import os
 import re
+import subprocess
 import urllib
+import urllib.parse
 from glob import glob
 
 NOTEBOOKS_LIST_PLACEHOLDER = "[[notebooks-list]]"
@@ -21,48 +23,44 @@ NOTEBOOKS_SECTION_README_FILENAME = "README.md"
 CREDITS_START_TAG = "<!--credits-->"
 CREDITS_END_TAG = "<!--/credits-->"
 
-DEFAULT_REPO_NAME = "airbus/scikit-decide"
-
 
 logger = logging.getLogger(__name__)
 
 
-def get_repo_n_branches_for_binder_n_github_links() -> tuple[
-    bool, str, str, str, str, str, bool
-]:
+def get_repo_n_branches_for_binder_n_github_links() -> tuple[bool, str, str, str]:
     # repos + branches to use for binder environment and notebooks content.
     creating_links = True
-    use_nbgitpuller = False
-    try:
-        use_nbgitpuller_str = os.environ["AUTODOC_BINDER_NBGITPULLER"]
-        try:
-            use_nbgitpuller_int = int(use_nbgitpuller_str)
-        except ValueError:
-            use_nbgitpuller_int = 1
-        if (use_nbgitpuller_str.lower() != "false") and (use_nbgitpuller_int != 0):
-            use_nbgitpuller = True
-    except KeyError:
-        pass
-    try:
-        binder_env_repo_name = os.environ["AUTODOC_BINDER_ENV_GH_REPO_NAME"]
-    except KeyError:
-        binder_env_repo_name = DEFAULT_REPO_NAME
-    try:
-        binder_env_branch = os.environ["AUTODOC_BINDER_ENV_GH_BRANCH"]
-    except KeyError:
-        binder_env_branch = "binder"
     try:
         notebooks_repo_url = os.environ["AUTODOC_NOTEBOOKS_REPO_URL"]
         notebooks_branch = os.environ["AUTODOC_NOTEBOOKS_BRANCH"]
     except KeyError:
-        # missing environment variables => no github and binder links creation
-        notebooks_repo_url = ""
-        notebooks_branch = ""
-        creating_links = False
-        logger.warning(
-            "Missing environment variables AUTODOC_NOTEBOOKS_REPO_URL "
-            "or AUTODOC_NOTEBOOKS_BRANCH to create github and binder links for notebooks."
-        )
+        # try define default values using git
+        try:
+            res = subprocess.run(
+                ["git", "remote", "get-url", "origin"], capture_output=True
+            )
+            notebooks_repo_url = res.stdout.decode().strip()
+            if notebooks_repo_url.endswith(".git"):
+                notebooks_repo_url = notebooks_repo_url[: -len(".git")]
+            res = subprocess.run(
+                ["git", "branch", "--show-current"], capture_output=True
+            )
+            notebooks_branch = res.stdout.decode().strip()
+        except:
+            logger.warning(
+                "Missing git command or origin remote "
+                "to derive default environment variables AUTODOC_NOTEBOOKS_REPO_URL or AUTODOC_NOTEBOOKS_BRANCH"
+            )
+            notebooks_repo_url = ""
+            notebooks_branch = ""
+
+        if len(notebooks_repo_url) == 0 or len(notebooks_branch) == 0:
+            # missing environment variables => no github, binder, and colab links creation
+            creating_links = False
+            logger.warning(
+                "Missing environment variables AUTODOC_NOTEBOOKS_REPO_URL "
+                "or AUTODOC_NOTEBOOKS_BRANCH to create github and binder links for notebooks."
+            )
     try:
         notebooks_repo_name = os.environ["AUTODOC_NOTEBOOKS_REPO_NAME"]
     except KeyError:
@@ -75,40 +73,23 @@ def get_repo_n_branches_for_binder_n_github_links() -> tuple[
         notebooks_repo_url,
         notebooks_repo_name,
         notebooks_branch,
-        binder_env_repo_name,
-        binder_env_branch,
-        use_nbgitpuller,
     )
 
 
 def get_binder_link(
-    binder_env_repo_name: str,
-    binder_env_branch: str,
-    notebooks_repo_url: str,
     notebooks_branch: str,
     notebook_relative_path: str,
     notebooks_repo_name: str,
-    use_nbgitpuller: bool = False,
 ) -> str:
     # binder hub url
     jupyterhub = urllib.parse.urlsplit("https://mybinder.org")
 
-    if use_nbgitpuller:
+    if notebooks_repo_name:
         # path to the binder env
-        binder_path = f"v2/gh/{binder_env_repo_name}/{binder_env_branch}"
+        binder_path = f"v2/gh/{notebooks_repo_name}/{notebooks_branch}"
 
-        # nbgitpuller query
-        notebooks_repo_basename = os.path.basename(notebooks_repo_url)
-        urlpath = f"tree/{notebooks_repo_basename}/{notebook_relative_path}"
-        next_url_params = urllib.parse.urlencode(
-            {
-                "repo": notebooks_repo_url,
-                "urlpath": urlpath,
-                "branch": notebooks_branch,
-            }
-        )
-        next_url = f"git-pull?{next_url_params}"
-        query = urllib.parse.urlencode({"urlpath": next_url})
+        # query to open proper notebook
+        query = urllib.parse.urlencode({"labpath": notebook_relative_path})
 
         # full link
         link = urllib.parse.urlunsplit(
@@ -121,25 +102,7 @@ def get_binder_link(
             )
         )
     else:
-        if notebooks_repo_name:
-            # path to the binder env
-            binder_path = f"v2/gh/{notebooks_repo_name}/{notebooks_branch}"
-
-            # query to open proper notebook
-            query = urllib.parse.urlencode({"labpath": notebook_relative_path})
-
-            # full link
-            link = urllib.parse.urlunsplit(
-                urllib.parse.SplitResult(
-                    scheme=jupyterhub.scheme,
-                    netloc=jupyterhub.netloc,
-                    path=binder_path,
-                    query=query,
-                    fragment="",
-                )
-            )
-        else:
-            link = ""
+        link = ""
 
     return link
 
@@ -165,7 +128,7 @@ def get_github_link(
 
 def extract_notebook_title_n_description(
     notebook_filepath: str,
-) -> tuple[str, list[str]]:
+) -> tuple[str, str]:
     # load notebook
     with open(notebook_filepath, "rt", encoding="utf-8") as f:
         notebook = json.load(f)
@@ -251,9 +214,6 @@ def generate_notebooks_list_text(rootdir: str) -> str:
         notebooks_repo_url,
         notebooks_repo_name,
         notebooks_branch,
-        binder_env_repo_name,
-        binder_env_branch,
-        use_nbgitpuller,
     ) = get_repo_n_branches_for_binder_n_github_links()
     # loop on notebooks sorted alphabetically by filenames
     for notebook_filepath in notebook_filepaths:
@@ -289,13 +249,9 @@ def generate_notebooks_list_text(rootdir: str) -> str:
             notebook_path_prefix_len = len(f"{rootdir}/")
             notebook_relative_path = notebook_filepath[notebook_path_prefix_len:]
             binder_link = get_binder_link(
-                binder_env_repo_name=binder_env_repo_name,
-                binder_env_branch=binder_env_branch,
-                notebooks_repo_url=notebooks_repo_url,
                 notebooks_branch=notebooks_branch,
                 notebook_relative_path=notebook_relative_path,
                 notebooks_repo_name=notebooks_repo_name,
-                use_nbgitpuller=use_nbgitpuller,
             )
             if binder_link:
                 binder_badge = (

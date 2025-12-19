@@ -1,7 +1,11 @@
 {
     "scripts": {
-        "docs:dev": "(cd docs && python autodoc.py) && vuepress dev docs",
-        "docs:build": "(cd docs && python autodoc.py) && vuepress build docs"
+        "_comments":  [
+          "We use NODE_OPTIONS=--openssl-legacy-provider to avoid an issue between deps and node>=17",
+          "This is ok because we do not have external network interaction during doc building."
+        ],
+        "docs:dev": "python docs/autodoc.py && NODE_OPTIONS=--openssl-legacy-provider vuepress dev docs",
+        "docs:build": "python docs/autodoc.py && NODE_OPTIONS=--openssl-legacy-provider vuepress build docs && touch docs/.vuepress/dist/.nojekyll"
     },
     "resolutions": {
         "glob-parent": "^5.1.2",
