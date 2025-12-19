@@ -139,7 +139,7 @@ When starting a new solver, it is highly recommended to check the [code generato
 :::
 
 You can find a tutorial on how to write a new solver in the notebooks page:
-- [Implementing a depth-first-search greedy solver](../notebooks/README.md#how-to-write-a-new-scikit-decide-solver-greedy-depth-first-search),
+- [Implementing a depth-first-search solver](../notebooks/README.md#how-to-write-a-new-scikit-decide-solver-depth-first-search),
 - [Implementing a RDDL solver](../notebooks/README.md#implementing-a-scikit-decide-solver-embedding-the-jaxplan-and-gurobiplan-planners-and-solving-rddl-based-scikit-decide-domains),
   which is the follow-up of the one [implementing a RDDL domain](../notebooks/README.md#implementing-a-scikit-decide-domain-for-rddl-problems).
 
