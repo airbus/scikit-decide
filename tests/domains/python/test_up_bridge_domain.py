@@ -204,6 +204,20 @@ def test_up_bridge_domain_rl():
     domain = domain_factory()
     action_space = domain.get_action_space()
     observation_space = domain.get_observation_space()
+    assert RayRLlib.check_domain(domain)
+    assert isinstance(action_space.unwrapped(), gym.spaces.Discrete)
+    assert action_space.unwrapped().n == 9
+    assert isinstance(observation_space.unwrapped(), gym.spaces.Box)
+    assert (
+        len(observation_space.unwrapped().low)
+        == len(observation_space.unwrapped().high)
+        == 2
+    )
+    assert all(
+        observation_space.unwrapped().low[i] == 0
+        and observation_space.unwrapped().high[i] in {1, 150}
+        for i in range(2)
+    )
 
     with RayRLlib(
         domain_factory=domain_factory,
@@ -225,17 +239,3 @@ def test_up_bridge_domain_rl():
             max_framerate=30,
             outcome_formatter=None,
         )
-    assert RayRLlib.check_domain(domain)
-    assert isinstance(action_space.unwrapped(), gym.spaces.Discrete)
-    assert action_space.unwrapped().n == 9
-    assert isinstance(observation_space.unwrapped(), gym.spaces.Box)
-    assert (
-        len(observation_space.unwrapped().low)
-        == len(observation_space.unwrapped().high)
-        == 11
-    )
-    assert all(
-        observation_space.unwrapped().low[i] == 0
-        and observation_space.unwrapped().high[i] in {1, 150}
-        for i in range(11)
-    )

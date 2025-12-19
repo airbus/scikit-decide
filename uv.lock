@@ -1030,6 +1030,9 @@ dependencies = [
     { name = "typing-extensions", marker = "python_full_version >= '3.10'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0e/bc/2a53b259ec14101a42690992ea8fc2456edcacc73ede62f803dd3c4b0bdc/configspace-1.2.1.tar.gz", hash = "sha256:2fc1c4477f7839d38b53d8813c2581967df57ccd7d8b4b506e879a8835cb964c", size = 130983, upload-time = "2024-11-21T10:18:39.79Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f1/d0/e899691a9cdec2b866fbf7c39747195b9402e64260632f415c851ae8e503/configspace-1.2.1-py3-none-any.whl", hash = "sha256:78d3cef1bdb447bf25c2433891580bf6c2b468d47b729356a8646d5b7cd9eb5a", size = 117557, upload-time = "2025-12-16T13:10:39.616Z" },
+]
 
 [[package]]
 name = "contourpy"
@@ -7213,6 +7216,7 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e6/44/070bd5d8d1894d04dfee18082042564acdaf163eb4b81a3cb01c69162f37/pytamer-0.1.22-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:4f9719e2510882f9e861c54bc57f5a293987949e39e227633ce0f721f040e8e7", size = 4341350, upload-time = "2025-05-21T07:41:29.54Z" },
     { url = "https://files.pythonhosted.org/packages/66/80/b77768b403728e1ec44f66b0219d9fd32a3ace8a551c17b3021be1dbbc5e/pytamer-0.1.22-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:56ec1ba62ad5e52a5d50ffbd736badb2391bf5cdb5783a1b5529f5d4adb80000", size = 6304333, upload-time = "2025-05-21T07:41:31.124Z" },
     { url = "https://files.pythonhosted.org/packages/e5/8c/eb3af682a5a6a8b7b766f7c30443fb91c235841da4aeac1d05f20baeb9b0/pytamer-0.1.22-cp312-cp312-win_amd64.whl", hash = "sha256:3310bf6b5a949584ad84e7dff33e7fb1fd163a8aabd8db38878efac7db48fa1a", size = 3662302, upload-time = "2025-05-21T07:41:33.267Z" },
+    { url = "https://files.pythonhosted.org/packages/14/1e/037ccac05fdbe7f79982ee343fc9c0ea7a5391a667e8ee2b32d47f771605/pytamer-0.1.22-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:8ce01bc90208bc600a2dd50247204edb92634414f14565a7d9f45e1a7dce4b4b", size = 6304359, upload-time = "2025-11-26T16:16:42.26Z" },
     { url = "https://files.pythonhosted.org/packages/00/f9/43d93bebd6d32615fe904965b45c63b960d43eac18ad2ff6a0e34d701dba/pytamer-0.1.22-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:0ccc67a43404eead4b5ae51fa2d1c80790e06a36ff8b9c07da33d43da106e1eb", size = 4342455, upload-time = "2025-05-21T07:41:43.183Z" },
     { url = "https://files.pythonhosted.org/packages/14/33/52ffe6ed5d96db721cd3f19e4a1be60693eb12492e7bd829ee5daab3cfa5/pytamer-0.1.22-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:45c5000284e827f9f375cda616ba9c37f4b8dc45d2c56f9fa8fc4fe0239ee3ad", size = 6279167, upload-time = "2025-05-21T07:41:46.515Z" },
     { url = "https://files.pythonhosted.org/packages/41/04/792d80f84b915989bad40f820535f7ba31c2070d0b27aa9fe2f49d0a0053/pytamer-0.1.22-cp39-cp39-win_amd64.whl", hash = "sha256:9524c497b7a824b402c64e9597ede73cd895fe2f8a8a14e8e0fbe188a856514f", size = 3673103, upload-time = "2025-05-21T07:41:48.246Z" },
@@ -8242,7 +8246,7 @@ requires-dist = [
     { name = "torch", marker = "(platform_machine != 'x86_64' and extra == 'solvers') or (sys_platform != 'darwin' and extra == 'solvers')", specifier = ">=2.3" },
     { name = "torch", marker = "python_full_version >= '3.12' and sys_platform == 'win32' and extra == 'solvers'", specifier = "!=2.9.0,!=2.9.1" },
     { name = "torch-geometric", marker = "extra == 'solvers'", specifier = ">=2.5" },
-    { name = "unified-planning", marker = "python_full_version >= '3.10' and extra == 'shared'", specifier = ">=1.1.0" },
+    { name = "unified-planning", marker = "python_full_version >= '3.10' and extra == 'shared'", specifier = ">=1.3.0" },
     { name = "up-enhsp", marker = "python_full_version >= '3.10' and extra == 'solvers'", specifier = ">=0.0.25,<0.0.28" },
     { name = "up-fast-downward", marker = "python_full_version >= '3.10' and extra == 'solvers'", specifier = ">=0.4.1" },
     { name = "up-pyperplan", marker = "python_full_version >= '3.10' and extra == 'solvers'", specifier = ">=1.1.0" },
@@ -9700,7 +9704,7 @@ wheels = [
 
 [[package]]
 name = "unified-planning"
-version = "1.2.0"
+version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "configspace", marker = "python_full_version >= '3.10'" },
@@ -9708,9 +9712,9 @@ dependencies = [
     { name = "networkx", version = "3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pyparsing", marker = "python_full_version >= '3.10'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/72/89/257aea5e839fadb676f4b10b9a461d7274b2f660c6fcd9e2c12cfb1794c8/unified_planning-1.2.0.tar.gz", hash = "sha256:68c46ad518574c1acce15fda5f7018717796c9926a326c64bfed4da33385d26a", size = 490056, upload-time = "2024-12-19T14:56:49.117Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/46/b47cea09306a213e98160f7b6c3fb85d08c954066e413ced6758482a4419/unified_planning-1.3.0.tar.gz", hash = "sha256:9f1914377172626e512bd4c1545aebddbfd4752bf37b36f9cd41ff059a7e6a52", size = 513819, upload-time = "2025-12-17T10:55:57.391Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/d1/97f61a90f2cd3b9c4670baee906708cae2463d65333a32ebcc08147ad353/unified_planning-1.2.0-py3-none-any.whl", hash = "sha256:487e321fd01eb3c583015ce5f5e11d43e2f5c8aa1d8da04c19d11d03d9a604ad", size = 713331, upload-time = "2024-12-19T14:56:45.369Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/9d/e1fe9f8f478fcdf45ddecdb9587f6a6befe4d434159f51d2759afe4accbe/unified_planning-1.3.0-py3-none-any.whl", hash = "sha256:3ad9c790d238a12ce1dfd25f564e728d98350a0b4b79d3beb60978f95487fa46", size = 743538, upload-time = "2025-12-17T10:55:55.591Z" },
 ]
 
 [[package]]
