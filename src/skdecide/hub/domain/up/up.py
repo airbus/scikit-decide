@@ -4,6 +4,7 @@
 
 from typing import Optional, Union
 
+import gymnasium as gym
 import numpy as np
 import unified_planning as up
 from numpy.typing import ArrayLike
@@ -186,6 +187,10 @@ class UPDomain(D):
         # We might be in a different process from the one where the UP problem was created
         # thus we must set the global environment to the one of the UP problem
         up.environment.GLOBAL_ENVIRONMENT = self._problem._env
+        # store true and false nodes
+        self._true_node = problem.environment.expression_manager.true_expression
+        self._false_node = problem.environment.expression_manager.false_expression
+
         self._simulator = UPSequentialSimulator(
             self._problem, error_on_failed_checks=True, **simulator_params
         )
@@ -208,6 +213,7 @@ class UPDomain(D):
         self._states_np2up = None
         self._actions_up2np = None
         self._actions_np2up = None
+        self._init_values = None
         self.max_len = max_len  # used only in the variable state encoding
         self.max_actions = max_actions  # used only in the variable state encoding
 
@@ -252,6 +258,8 @@ class UPDomain(D):
         if self._state_encoding == "variable":
             self.objects = []
             self.max_param = 0
+            if self._actions_np2up is None:
+                self._init_action_encoding_()
             for i, a in enumerate(self._actions_np2up):
                 if len(a.up_parameters) > self.max_param:
                     self.max_param = len(a.up_parameters)
@@ -271,85 +279,81 @@ class UPDomain(D):
             self.variable_mapping = {}
             self.inv_mapping = {}
             self.bools = []
-            self.bool_val = {}
-            self.non_bool_val = {}
 
-        init_state = self._simulator.get_initial_state()
+        self._init_values = self._problem.initial_values
         static_fluents = self._problem.get_static_fluents()
         self._static_fluent_values = {}
-        ci = init_state
-        while ci is not None:
-            for fn, fv in ci._values.items():
-                if self._state_encoding == "variable":
-                    if fn.fluent().type.is_bool_type():
-                        if self.n2id[fn.fluent().name] not in self.bools:
-                            self.bools.append(self.n2id[fn.fluent().name])
-                        if int(fv.constant_value()) not in self.bool_val.keys():
-                            self.bool_val[int(fv.constant_value())] = fv
-                    else:
-                        self.bool_val[int(fv.constant_value())] = fv
-                    fluent = np.array([-1 for _ in range(self.max_param + 2)])
-                    fluent[0] = self.n2id[fn.fluent().name]
-                    fluent[-1] = int(fv.constant_value())
-                    c = 1
-                    for j in fn._content.args:
-                        fluent[c] = self.objects.index(j)
-                        c += 1
+        for fn, fv in self._init_values.items():
+            if self._state_encoding == "variable":
+                if fn.fluent().type.is_bool_type():
+                    if self.n2id[fn.fluent().name] not in self.bools:
+                        self.bools.append(self.n2id[fn.fluent().name])
+                fluent = np.array([-1 for _ in range(self.max_param + 2)])
+                fluent[0] = self.n2id[fn.fluent().name]
+                fluent[-1] = int(fv.constant_value())
+                c = 1
+                for j in fn._content.args:
+                    fluent[c] = self.objects.index(j)
+                    c += 1
 
-                    self.variable_mapping[(fn, fv)] = (fluent[:-1], fluent[-1])
-                    self.inv_mapping[tuple(fluent[:-1])] = fn
-                if (
-                    fn.fluent() not in static_fluents
-                    and fn.fluent().name != "total-cost"
-                ):
-                    self._fnodes_vars_ordering.append(fn)
-                    if fn.fluent().type.is_bool_type():
-                        self._fnodes_variables_map[fn] = (
+                self.variable_mapping[(fn, fv)] = (fluent[:-1], fluent[-1])
+                self.inv_mapping[tuple(fluent[:-1])] = fn
+            if fn.fluent() not in static_fluents and fn.fluent().name != "total-cost":
+                self._fnodes_vars_ordering.append(fn)
+                if fn.fluent().type.is_bool_type():
+                    self._fnodes_variables_map[fn] = (
+                        0,
+                        1,
+                        lambda b_fnode: int(b_fnode.constant_value()),
+                        lambda i_int: Bool(bool(i_int)),
+                    )
+                elif fn.fluent().type.is_int_type():
+                    lb = int(fnode_lower_bound(fn))
+                    ub = int(fnode_upper_bound(fn))
+                    self._fnodes_variables_map[fn] = (
+                        (
                             0,
-                            1,
-                            lambda b_fnode: int(b_fnode.constant_value()),
-                            lambda i_int: Bool(bool(i_int)),
+                            ub - lb + 1,
+                            lambda i_fnode, lb=lb: i_fnode.constant_value() - lb,
+                            lambda i_int, lb=lb: Int(i_int + lb),
                         )
-                    elif fn.fluent().type.is_int_type():
-                        lb = int(fnode_lower_bound(fn))
-                        ub = int(fnode_upper_bound(fn))
-                        self._fnodes_variables_map[fn] = (
-                            (
-                                0,
-                                ub - lb + 1,
-                                lambda i_fnode, lb=lb: i_fnode.constant_value() - lb,
-                                lambda i_int, lb=lb: Int(i_int + lb),
-                            )
-                            if self._state_encoding == "dictionary"
-                            else (
-                                lb,
-                                ub,
-                                lambda i_fnode: int(i_fnode.constant_value()),
-                                lambda i_int: Int(i_int),
-                            )
+                        if self._state_encoding == "dictionary"
+                        else (
+                            lb,
+                            ub,
+                            lambda i_fnode: int(i_fnode.constant_value()),
+                            lambda i_int: Int(i_int),
                         )
-                    elif fn.fluent().type.is_real_type():
-                        self._fnodes_variables_map[fn] = (
-                            float(fnode_lower_bound(fn)),
-                            float(fnode_upper_bound(fn)),
-                            lambda x_fnode: float(x_fnode.constant_value()),
-                            lambda x_float: Real(x_float),
-                        )
-                    elif fn.fluent().type.is_user_type():
-                        co = list(self._problem.objects(fn.fluent().type))
-                        o2i = {o: i for i, o in enumerate(co)}
-                        self._fnodes_variables_map[fn] = (
-                            0,
-                            len(co),
-                            lambda o_fnode, o2i=o2i: o2i[o_fnode.object()],
-                            lambda i_int, i2o=co: ObjectExp(i2o[i_int]),
-                        )
-                    elif fn.fluent().type.is_time_type():
-                        raise RuntimeError("Time types not handled by UPDomain")
-                elif fn.fluent().name != "total-cost":
-                    if self._state_encoding != "variable":
-                        self._static_fluent_values[fn] = fv
-            ci = ci._father
+                    )
+                elif fn.fluent().type.is_real_type():
+                    self._fnodes_variables_map[fn] = (
+                        float(fnode_lower_bound(fn)),
+                        float(fnode_upper_bound(fn)),
+                        lambda x_fnode: float(x_fnode.constant_value()),
+                        lambda x_float: Real(x_float),
+                    )
+                elif fn.fluent().type.is_user_type():
+                    co = list(self._problem.objects(fn.fluent().type))
+                    o2i = {o: i for i, o in enumerate(co)}
+                    self._fnodes_variables_map[fn] = (
+                        0,
+                        len(co),
+                        lambda o_fnode, o2i=o2i: o2i[o_fnode.object()],
+                        lambda i_int, i2o=co: ObjectExp(i2o[i_int]),
+                    )
+                elif fn.fluent().type.is_time_type():
+                    raise RuntimeError("Time types not handled by UPDomain")
+            elif fn.fluent().name != "total-cost":
+                if self._state_encoding != "variable":
+                    self._static_fluent_values[fn] = fv
+
+    def _convert_int_to_boolnode(self, i: int):
+        if i == 0:
+            return self._false_node
+        elif i == 1:
+            return self._true_node
+        else:
+            raise ValueError("We can convert to bool node only 0 an 1.")
 
     def _convert_to_skup_state_(self, state):
         if state is None:
@@ -392,14 +396,16 @@ class UPDomain(D):
                 if tuple(fluent[:-1]) in self.inv_mapping.keys():
                     k = self.inv_mapping[tuple(fluent[:-1])]
                     if fluent[0] in self.bools:
-                        values[k] = self.bool_val[fluent[-1]]
+                        values[k] = self._convert_int_to_boolnode(int(fluent[-1]))
                     else:
                         values[k] = Int(int(fluent[-1]))
                 else:
                     for k in self.variable_mapping.keys():
                         if self.variable_mapping[k][0].all() == fluent[:-1].all():
                             if fluent[0] in self.bools:
-                                values[k[0]] = self.bool_val[fluent[-1]]
+                                values[k[0]] = self._convert_int_to_boolnode(
+                                    int(fluent[-1])
+                                )
                             else:
                                 values[k[0]] = Int(int(fluent[-1]))
 
@@ -433,13 +439,17 @@ class UPDomain(D):
                 any_real = False
                 for fn in self._fnodes_vars_ordering:
                     ci = skup_state._up_state
+                    value_specified = False
                     while ci is not None:
                         if fn in ci._values:
-                            state.append(
-                                self._fnodes_variables_map[fn][2](ci._values[fn])
-                            )
+                            value = ci._values[fn]
+                            value_specified = True
                             break
                         ci = ci._father
+                    if not value_specified:
+                        # use default value from init state
+                        value = self._init_values[fn]
+                    state.append(self._fnodes_variables_map[fn][2](value))
                     any_real = any_real or fn.fluent().type.is_real_type()
                 state = np.array(state, dtype=np.float32 if any_real else np.int32)
                 self._states_np2up[tuple(state.flatten())] = skup_state
@@ -588,12 +598,9 @@ class UPDomain(D):
                     self._init_action_encoding_()
                 self._action_space = ListSpace(self._actions_np2up)
             elif self._action_encoding == "int":
-                if self._state_encoding != "variable":
-                    self._action_space = DiscreteSpace(len(self._actions_np2up))
-                else:
-                    self._action_space = DiscreteSpace(self.max_actions)
+                self._action_space = DiscreteSpace(len(self._actions_np2up))
             else:
-                return None
+                raise RuntimeError("action_encoding must be 'native' or 'int'.")
         return self._action_space
 
     def _get_applicable_actions_from(
@@ -630,7 +637,7 @@ class UPDomain(D):
 
     def _get_initial_state_(self) -> D.T_state:
         init_state = self._convert_from_skup_state_(
-            SkUPState(self._simulator.get_initial_state())
+            SkUPState(UPState(self._problem.initial_values, self._problem))
         )
         return init_state
 
@@ -688,7 +695,7 @@ class UPDomain(D):
                 )
             elif self._state_encoding == "variable":
                 self._observation_space = VariableSpace(
-                    BoxSpace(
+                    gym.spaces.Box(
                         low=-1
                         if np.array(
                             [
