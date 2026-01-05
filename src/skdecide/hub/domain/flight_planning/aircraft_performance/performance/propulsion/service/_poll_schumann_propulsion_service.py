@@ -14,9 +14,6 @@ from skdecide.hub.domain.flight_planning.aircraft_performance.performance.aero.s
 from skdecide.hub.domain.flight_planning.aircraft_performance.performance.performance_model_enum import (
     PerformanceModelEnum,
 )
-from skdecide.hub.domain.flight_planning.aircraft_performance.performance.phase_enum import (
-    PhaseEnum,
-)
 from skdecide.hub.domain.flight_planning.aircraft_performance.performance.propulsion.service.propulsion_service_interface import (
     PropulsionServiceInterface,
 )

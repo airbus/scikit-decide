@@ -2,7 +2,6 @@ import math
 
 import numpy as np
 
-import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.std_atm as std_atm
 from skdecide.hub.domain.flight_planning.aircraft_performance.bean.aircraft_state import (
     AircraftState,
 )

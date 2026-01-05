@@ -12,7 +12,6 @@ import numpy as np
 from joblib import Parallel, delayed
 
 from .cgp import CGP
-from .evaluator import Evaluator
 
 if TYPE_CHECKING:  # avoids circular imports
     from ..cgp import CGPWrapper

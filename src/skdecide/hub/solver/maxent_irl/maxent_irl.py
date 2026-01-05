@@ -16,7 +16,7 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
 )
 
 from skdecide import D, Domain, RLDomain, Solver
-from skdecide.builders.solver import Policies, Restorable
+from skdecide.builders.solver import Policies
 from skdecide.hub.solver.cgp import cgp
 
 

@@ -24,7 +24,7 @@ from skdecide.builders.domain import (
     SingleAgent,
     UnrestrictedActions,
 )
-from skdecide.builders.solver import Policies, Restorable
+from skdecide.builders.solver import Policies
 from skdecide.hub.solver.cgp import cgp
 
 

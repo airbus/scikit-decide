@@ -12,12 +12,10 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
 )
 from unified_planning.engines import Engine
 from unified_planning.environment import get_environment
-from unified_planning.exceptions import UPValueError
-from unified_planning.shortcuts import FluentExp, SequentialSimulator
 
 from skdecide import Domain, Solver, Value
 from skdecide.builders.solver import DeterministicPolicies, Utilities
-from skdecide.hub.domain.up import SkUPAction, SkUPState, UPDomain
+from skdecide.hub.domain.up import SkUPAction, UPDomain
 
 
 # TODO: remove Markovian req?

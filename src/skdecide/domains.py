@@ -31,13 +31,6 @@ from skdecide.builders.domain.observability import (
     TransformedObservable,
 )
 from skdecide.builders.domain.value import PositiveCosts, Rewards
-from skdecide.builders.solver.fromanystatesolvability import FromAnyState
-from skdecide.core import D, autocast_all
-
-if (
-    False
-):  # trick to avoid circular import & IDE error ("Unresolved reference 'Solver'")
-    from skdecide.solvers import Solver
 
 __all__ = [
     "Domain",

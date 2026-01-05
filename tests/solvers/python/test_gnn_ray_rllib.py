@@ -1,8 +1,6 @@
 import logging
 import os
 
-import numpy as np
-import pytest
 import ray
 from pytest_cases import fixture
 

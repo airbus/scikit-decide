@@ -9,7 +9,6 @@ import logging
 import os
 import pkgutil
 import re
-import sys
 from enum import Enum
 from functools import lru_cache
 from glob import glob

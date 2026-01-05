@@ -6,7 +6,6 @@ from collections.abc import Callable
 from typing import Any, Optional
 
 import folium
-import gym_jsbsim
 import gymnasium as gym
 import numpy as np
 from gym_jsbsim.catalogs.catalog import Catalog as prp

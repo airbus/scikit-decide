@@ -2,7 +2,6 @@ from typing import Optional, Union
 
 import gymnasium as gym
 import numpy as np
-import torch as th
 import torch_geometric as thg
 from ray.rllib.utils.torch_utils import (
     convert_to_torch_tensor as convert_to_torch_tensor_original,

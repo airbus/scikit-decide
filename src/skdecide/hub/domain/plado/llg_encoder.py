@@ -14,17 +14,6 @@ import numpy.typing as npt
 logger = logging.getLogger(__name__)
 
 try:
-    import plado
-except ImportError:
-    plado_available = False
-    logger.warning(
-        "You need to install plado library to use PladoPddlDomain or PladoPPddlDomain!"
-    )
-    from fractions import Fraction
-
-    Float = Fraction
-else:
-    plado_available = True
     from plado.datalog.numeric import (
         Addition,
         BinaryOperation,
@@ -47,6 +36,16 @@ else:
         State,
         Task,
     )
+except ImportError:
+    plado_available = False
+    logger.warning(
+        "You need to install plado library to use PladoPddlDomain or PladoPPddlDomain!"
+    )
+    from fractions import Fraction
+
+    Float = Fraction
+else:
+    plado_available = True
 
 
 class EdgeLabel(Enum):

@@ -3,12 +3,10 @@
 # LICENSE file in the root directory of this source tree.
 
 import json
-import sys
 from math import sqrt
 from typing import Any
 
 import folium
-import gym_jsbsim
 import gymnasium as gym
 import numpy as np
 from gym_jsbsim.catalogs.catalog import Catalog as prp

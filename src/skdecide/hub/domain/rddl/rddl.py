@@ -19,12 +19,11 @@ from skdecide.domains import RLDomain
 from skdecide.hub.space.gym import GymSpace
 
 try:
-    import IPython
+    from IPython.display import clear_output, display
 except ImportError:
     ipython_available = False
 else:
     ipython_available = True
-    from IPython.display import clear_output, display
 
 
 class D(RLDomain, UnrestrictedActions, FullyObservable, Renderable):

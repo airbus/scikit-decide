@@ -1,1 +1,3 @@
-from .rddl import RDDLDomain, RDDLDomainRL, RDDLDomainSimplifiedSpaces
+from .rddl import RDDLDomain as RDDLDomain
+from .rddl import RDDLDomainRL as RDDLDomainRL
+from .rddl import RDDLDomainSimplifiedSpaces as RDDLDomainSimplifiedSpaces

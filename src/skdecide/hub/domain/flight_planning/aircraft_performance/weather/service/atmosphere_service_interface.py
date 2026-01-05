@@ -1,8 +1,5 @@
 from abc import ABC, abstractmethod
 
-from skdecide.hub.domain.flight_planning.aircraft_performance.bean.aircraft_state import (
-    AircraftState,
-)
 from skdecide.hub.domain.flight_planning.aircraft_performance.bean.four_dimensions_state import (
     FourDimensionsState,
 )

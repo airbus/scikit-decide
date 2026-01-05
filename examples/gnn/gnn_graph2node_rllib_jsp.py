@@ -1,5 +1,5 @@
 import numpy as np
-from domains import GraphJspDomain, UnmaskedGraphJspDomain
+from domains import UnmaskedGraphJspDomain
 from graph_jsp_env.disjunctive_graph_jsp_env import DisjunctiveGraphJspEnv
 
 from skdecide.hub.solver.ray_rllib import RayRLlib

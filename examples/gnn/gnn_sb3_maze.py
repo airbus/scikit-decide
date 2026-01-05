@@ -1,18 +1,8 @@
-from typing import Any, Optional
-
-import numpy as np
 from domains import GraphMaze
-from gymnasium.spaces import Box, Discrete, Graph, GraphInstance
 
-from skdecide.builders.domain import Renderable, UnrestrictedActions
-from skdecide.core import Mask, Space, Value
-from skdecide.domains import DeterministicPlanningDomain
-from skdecide.hub.domain.maze import Maze
-from skdecide.hub.domain.maze.maze import DEFAULT_MAZE, Action, State
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.gnn import GraphPPO
 from skdecide.hub.solver.stable_baselines.gnn.ppo_mask import MaskableGraphPPO
-from skdecide.hub.space.gym import GymSpace, ListSpace
 from skdecide.utils import rollout
 
 MAZE = """

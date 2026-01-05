@@ -6,7 +6,6 @@ from collections.abc import Callable
 from typing import Any
 
 import folium
-import gym_jsbsim
 import gymnasium as gym
 from gym_jsbsim.catalogs.catalog import Catalog as prp
 from gym_jsbsim.envs.taxi_utils import *

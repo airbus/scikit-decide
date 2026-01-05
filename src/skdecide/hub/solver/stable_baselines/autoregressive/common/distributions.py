@@ -4,7 +4,6 @@ import torch as th
 from sb3_contrib.common.maskable.distributions import (
     MaskableCategorical,
     MaskableCategoricalDistribution,
-    MaskableDistribution,
     MaybeMasks,
 )
 from stable_baselines3.common.distributions import Distribution, SelfDistribution

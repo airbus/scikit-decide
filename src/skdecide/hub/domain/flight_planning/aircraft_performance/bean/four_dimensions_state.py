@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from pygeodesy.ellipsoidalVincenty import LatLon
-
 
 @dataclass
 class FourDimensionsState:

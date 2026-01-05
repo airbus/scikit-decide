@@ -38,11 +38,10 @@ from skdecide.hub.solver.utils.gnn.torch_layers import Graph2NodeLayer
 from skdecide.hub.solver.utils.torch.utils import extract_module_parameters_values
 
 try:
-    import plado
+    from plado.semantics.task import State as PladoState
 except ImportError:
     pytest.skip("plado not available", allow_module_level=True)
-else:
-    from plado.semantics.task import State as PladoState
+
 
 test_dir = os.path.dirname(os.path.abspath(__file__))
 

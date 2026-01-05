@@ -10,7 +10,6 @@ from typing import Optional, Union
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     EnumHyperparameter,
-    IntegerHyperparameter,
 )
 from discrete_optimization.generic_tools.hyperparameters.hyperparametrizable import (
     Hyperparametrizable,

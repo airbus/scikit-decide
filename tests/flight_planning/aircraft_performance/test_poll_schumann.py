@@ -11,7 +11,6 @@ import pytest
 )
 def test_drag():
     import numpy as np
-    from openap.extra.aero import ft, kts, mach2tas
 
     from skdecide.hub.domain.flight_planning.aircraft_performance.bean.aircraft_state import (
         AircraftState,
@@ -103,7 +102,6 @@ def test_drag():
 )
 def test_thrust():
     import numpy as np
-    from openap.extra.aero import ft, kts, mach2tas
 
     from skdecide.hub.domain.flight_planning.aircraft_performance.bean.aircraft_state import (
         AircraftState,

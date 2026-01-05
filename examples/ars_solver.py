@@ -1,7 +1,5 @@
-import gym_jsbsim
 import gymnasium as gym
 
-from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.solver.ars import ars
 from skdecide.utils import load_registered_domain, rollout
 

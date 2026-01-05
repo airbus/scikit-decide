@@ -1,1 +1,1 @@
-from .ppo.ppo import GraphPPO
+from .ppo.ppo import GraphPPO as GraphPPO

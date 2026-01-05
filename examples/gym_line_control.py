@@ -17,7 +17,6 @@ from skdecide.hub.domain.gym import (
     GymDiscreteActionDomain,
     GymWidthDomain,
 )
-from skdecide.hub.solver.iw import IW
 from skdecide.hub.solver.riw import RIW
 from skdecide.utils import rollout
 
@@ -125,7 +124,6 @@ class FakeGymEnv(gym.Env):
 
         try:
             import pygame
-            from pygame import gfxdraw
         except ImportError as e:
             raise DependencyNotInstalled(
                 "pygame is not installed, run `pip install gymnasium[classic-control]`"

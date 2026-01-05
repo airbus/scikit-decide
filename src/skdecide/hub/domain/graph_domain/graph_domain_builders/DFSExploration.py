@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from skdecide import DeterministicPlanningDomain, Memory
+from skdecide import DeterministicPlanningDomain
 from skdecide.hub.domain.graph_domain.graph_domain_builders.GraphExploration import (
     GraphExploration,
 )
