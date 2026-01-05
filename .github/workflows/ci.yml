@@ -585,7 +585,10 @@ jobs:
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
-          uv pip install --system ${wheelfile}[all] --group test
+          if ${{ matrix.python-version == '3.12' }} == 'true'; then
+            additional_specs="${additional_specs} llvmlite>=0.45"
+          fi
+          uv pip install --system ${wheelfile}[all] --group test  ${additional_specs}
           uv pip list
 
       - name: Test with pytest
@@ -688,6 +691,9 @@ jobs:
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
           if ${{ matrix.os == 'macos-15-intel' && matrix.python-version == '3.12' }} == 'true'; then
             additional_specs="llvmlite!=0.46.0"
+          fi
+          if ${{ matrix.python-version == '3.12' }} == 'true'; then
+            additional_specs="${additional_specs} llvmlite>=0.45"
           fi
           uv pip install --system ${wheelfile}[all] --group test  ${additional_specs}
           uv pip list
@@ -794,7 +800,10 @@ jobs:
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
-          uv pip install --system ${wheelfile}[all] --group test
+          if ${{ matrix.python-version == '3.12' }} == 'true'; then
+            additional_specs="${additional_specs} llvmlite>=0.45"
+          fi
+          uv pip install --system ${wheelfile}[all] --group test  ${additional_specs}
           uv pip list
 
       - name: Test with pytest
