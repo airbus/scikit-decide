@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>hub.solver.rayrllib.actionmasking.models.torch.masked_actions | Scikit-decide</title>
+    <meta name="generator" content="VuePress 1.8.2">
+    
+    <meta name="description" content="This is scikit-decide documentation">
+    
+    <link rel="preload" href="/scikit-decide/version/1.0.3/assets/css/0.styles.7ea782e7.css" as="style"><link rel="preload" href="/scikit-decide/version/1.0.3/assets/js/app.62cf8712.js" as="script"><link rel="preload" href="/scikit-decide/version/1.0.3/assets/js/3.0d3eec02.js" as="script"><link rel="preload" href="/scikit-decide/version/1.0.3/assets/js/6.b1520538.js" as="script"><link rel="preload" href="/scikit-decide/version/1.0.3/assets/js/123.d49ef76f.js" as="script"><link rel="preload" href="/scikit-decide/version/1.0.3/assets/js/8.047bff44.js" as="script"><link rel="preload" href="/scikit-decide/version/1.0.3/assets/js/9.317636b3.js" as="script"><link rel="preload" href="/scikit-decide/version/1.0.3/assets/js/5.fe62d74f.js" as="script"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/1.903016a6.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/10.e3e9aece.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/100.f6d49ae1.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/101.e0319939.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/102.59bebbb7.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/103.13c86b4d.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/104.cee07a67.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/105.71c23639.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/106.2b08f177.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/107.db7c9e40.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/108.7d9cb815.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/109.8476b3c1.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/11.13443afe.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/110.b03c7f5f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/111.6b5e72c1.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/112.241cd43c.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/113.9726fc6a.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/114.c5f2cb71.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/115.ca42f358.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/116.ad97c895.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/117.bc023a0c.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/118.535a4441.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/119.c2e6609f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/12.ffbbeb9a.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/120.ab3c51d8.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/121.a9c67517.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/122.4b86ccd5.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/124.0b617b50.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/125.07666f41.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/126.f9c5f896.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/127.06c879dc.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/128.e2a20379.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/129.96e33ae2.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/13.07af27b0.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/130.b249ae41.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/131.005e73ee.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/132.78b5eeef.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/133.a3008858.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/134.f6087bca.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/135.3ee24899.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/136.e62d798b.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/137.3cd4307a.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/138.7726b07e.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/139.c2587b7a.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/14.e70cb3a6.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/140.2cf1caa5.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/141.89af0dcb.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/142.365e1226.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/143.f1961cb4.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/144.d189c835.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/145.8b00b533.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/146.bac1d799.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/147.79952dc1.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/148.1da30468.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/149.5227fae6.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/15.bd3d0100.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/150.7f4b73f7.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/151.d4355b7d.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/152.2984beee.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/153.a8fc066b.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/154.7f7b2647.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/155.a4424df2.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/156.f0b7da6c.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/157.f5c3f342.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/158.3d86d65d.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/159.6078d809.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/16.f3b1de8a.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/160.b299caa0.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/161.93766697.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/162.eaafd288.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/163.b6d8ce39.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/164.287b1765.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/165.01a0dca6.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/166.1a26e23a.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/167.9cf8e374.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/168.369a2e5f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/169.06caf3f9.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/17.af139114.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/170.817aaa9f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/171.01bd0afd.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/172.54107c12.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/173.dceabfab.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/174.d53e3aca.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/175.7e5bb36f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/18.9f8fe7cd.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/19.701583a8.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/20.0626ffd3.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/21.fd118791.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/22.a55e85bf.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/23.25461e4d.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/24.b64ad4d5.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/25.03d9f03e.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/26.cbd7a07b.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/27.f2620383.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/28.67834196.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/29.a8bc890b.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/30.e3dc3d94.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/31.35d351fe.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/32.2ef7f8ed.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/33.d0a1bd07.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/34.7504e6f2.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/35.89916fbe.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/36.3f86eeb0.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/37.738a62bd.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/38.54e25fd3.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/39.28362d33.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/4.1033bc0a.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/40.9930b56c.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/41.79a5872f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/42.8726bb27.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/43.f5674a4e.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/44.d155b458.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/45.bf7705d9.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/46.9b149fcd.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/47.a203963e.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/48.f8448980.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/49.f9a334f1.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/50.684d90bf.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/51.c2d49bfc.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/52.86c9f9dc.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/53.1a522ef1.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/54.3b1e8f13.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/55.50e1819f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/56.c05d9d49.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/57.3ad3b195.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/58.330f829f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/59.214bbd3a.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/60.fc4eb6f2.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/61.9318efce.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/62.5f94444d.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/63.1a0abc96.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/64.10e7060c.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/65.0d7d7e77.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/66.0e931191.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/67.1393bb7c.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/68.d9120570.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/69.92a28ffe.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/7.645e7686.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/70.7c4776d4.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/71.7527cfe0.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/72.34717f9f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/73.7d7549b9.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/74.31765b2b.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/75.21849825.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/76.a50269a0.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/77.30142592.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/78.a62e1d8b.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/79.e0041947.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/80.b42c2823.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/81.bdd463bc.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/82.4e73d37d.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/83.6be2969c.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/84.99f2ec27.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/85.e09d9f97.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/86.a15617e9.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/87.17f83aec.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/88.b662587a.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/89.b8b8162f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/90.1d34dd90.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/91.f54ff47c.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/92.e3967b07.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/93.94f97927.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/94.de93b27f.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/95.55469826.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/96.454c6c5c.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/97.4d929eae.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/98.ee2c397d.js"><link rel="prefetch" href="/scikit-decide/version/1.0.3/assets/js/99.658c4c8a.js">
+    <link rel="stylesheet" href="/scikit-decide/version/1.0.3/assets/css/0.styles.7ea782e7.css">
+  </head>
+  <body>
+    <div id="app" data-server-rendered="true"><div class="theme-container"><header class="navbar"><div class="sidebar-button"><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" viewBox="0 0 448 512" class="icon"><path fill="currentColor" d="M436 124H12c-6.627 0-12-5.373-12-12V80c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12z"></path></svg></div> <a href="/scikit-decide/version/1.0.3/" class="home-link router-link-active"><img src="/scikit-decide/version/1.0.3/logo.svg" alt="Scikit-decide" class="logo"> <span class="site-name can-hide">Scikit-decide</span></a> <!----> <div class="links"><div class="search-box"><input aria-label="Search" autocomplete="off" spellcheck="false" value=""> <!----></div> <nav class="nav-links can-hide"><div class="nav-item"><a href="/scikit-decide/version/1.0.3/" class="nav-link">
+  Home
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/install.html" class="nav-link">
+  Install
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/guide/" class="nav-link">
+  Guide
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/notebooks/" class="nav-link">
+  Notebooks
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/codegen/" class="nav-link">
+  Code generators
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/reference/" class="nav-link router-link-active">
+  Reference
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/contribute.html" class="nav-link">
+  Contribute
+</a></div> <a href="https://github.com/airbus/scikit-decide" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <span><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> <span class="sr-only">(opens new window)</span></span></a></nav></div></header> <div class="sidebar-mask"></div> <aside class="sidebar"><nav class="nav-links"><div class="nav-item"><a href="/scikit-decide/version/1.0.3/" class="nav-link">
+  Home
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/install.html" class="nav-link">
+  Install
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/guide/" class="nav-link">
+  Guide
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/notebooks/" class="nav-link">
+  Notebooks
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/codegen/" class="nav-link">
+  Code generators
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/reference/" class="nav-link router-link-active">
+  Reference
+</a></div><div class="nav-item"><a href="/scikit-decide/version/1.0.3/contribute.html" class="nav-link">
+  Contribute
+</a></div> <a href="https://github.com/airbus/scikit-decide" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <span><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> <span class="sr-only">(opens new window)</span></span></a></nav>  <ul class="sidebar-links"><li><section class="sidebar-group depth-0"><p class="sidebar-heading open"><span>hub.solver.rayrllib.actionmasking.models.torch.masked_actions</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#torchmaskedactionsmodel" class="sidebar-link">TorchMaskedActionsModel</a><ul class="sidebar-sub-headers"><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#constructor" class="sidebar-link">Constructor</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#add-module" class="sidebar-link">add_module</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#apply" class="sidebar-link">apply</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#bfloat16" class="sidebar-link">bfloat16</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#buffers" class="sidebar-link">buffers</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#children" class="sidebar-link">children</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#compile" class="sidebar-link">compile</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#context" class="sidebar-link">context</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#cpu" class="sidebar-link">cpu</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#cuda" class="sidebar-link">cuda</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#custom-loss" class="sidebar-link">custom_loss</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#double" class="sidebar-link">double</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#eval" class="sidebar-link">eval</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#extra-repr" class="sidebar-link">extra_repr</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#float" class="sidebar-link">float</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#forward" class="sidebar-link">forward</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#get-buffer" class="sidebar-link">get_buffer</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#get-extra-state" class="sidebar-link">get_extra_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#get-initial-state" class="sidebar-link">get_initial_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#get-parameter" class="sidebar-link">get_parameter</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#get-submodule" class="sidebar-link">get_submodule</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#half" class="sidebar-link">half</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#ipu" class="sidebar-link">ipu</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#is-time-major" class="sidebar-link">is_time_major</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#last-output" class="sidebar-link">last_output</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#load-state-dict" class="sidebar-link">load_state_dict</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#metrics" class="sidebar-link">metrics</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#modules" class="sidebar-link">modules</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#mtia" class="sidebar-link">mtia</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#named-buffers" class="sidebar-link">named_buffers</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#named-children" class="sidebar-link">named_children</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#named-modules" class="sidebar-link">named_modules</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#named-parameters" class="sidebar-link">named_parameters</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#parameters" class="sidebar-link">parameters</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-backward-hook" class="sidebar-link">register_backward_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-buffer" class="sidebar-link">register_buffer</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-forward-hook" class="sidebar-link">register_forward_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-forward-pre-hook" class="sidebar-link">register_forward_pre_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-full-backward-hook" class="sidebar-link">register_full_backward_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-full-backward-pre-hook" class="sidebar-link">register_full_backward_pre_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-load-state-dict-post-hook" class="sidebar-link">register_load_state_dict_post_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-load-state-dict-pre-hook" class="sidebar-link">register_load_state_dict_pre_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-module" class="sidebar-link">register_module</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-parameter" class="sidebar-link">register_parameter</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-state-dict-post-hook" class="sidebar-link">register_state_dict_post_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-state-dict-pre-hook" class="sidebar-link">register_state_dict_pre_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#requires-grad" class="sidebar-link">requires_grad_</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#set-extra-state" class="sidebar-link">set_extra_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#set-submodule" class="sidebar-link">set_submodule</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#share-memory" class="sidebar-link">share_memory</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#state-dict" class="sidebar-link">state_dict</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#to" class="sidebar-link">to</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#to-empty" class="sidebar-link">to_empty</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#train" class="sidebar-link">train</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#trainable-variables" class="sidebar-link">trainable_variables</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#type" class="sidebar-link">type</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#value-function" class="sidebar-link">value_function</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#variables" class="sidebar-link">variables</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#xpu" class="sidebar-link">xpu</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#zero-grad" class="sidebar-link">zero_grad</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#annotated-type" class="sidebar-link">_annotated_type</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#get-backward-hooks" class="sidebar-link">_get_backward_hooks</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#load-from-state-dict" class="sidebar-link">_load_from_state_dict</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#named-members" class="sidebar-link">_named_members</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-load-state-dict-pre-hook-2" class="sidebar-link">_register_load_state_dict_pre_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#register-state-dict-hook" class="sidebar-link">_register_state_dict_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/version/1.0.3/reference/_skdecide.hub.solver.ray_rllib.action_masking.models.torch.masked_actions.html#save-to-state-dict" class="sidebar-link">_save_to_state_dict</a></li></ul></li></ul></section></li></ul> </aside> <main class="page"> <div class="theme-default-content content__default"><h1 id="hub-solver-ray-rllib-action-masking-models-torch-masked-actions"><a href="#hub-solver-ray-rllib-action-masking-models-torch-masked-actions" class="header-anchor">#</a> hub.solver.ray_rllib.action_masking.models.torch.masked_actions</h1> <div class="custom-block tip"><p class="custom-block-title">Domain specification</p> <div style="margin:10px 0px;" data-v-0ec7540b><div style="margin-top: 5px; margin-bottom: 10px" data-v-0ec7540b><span class="el-tag el-tag--danger el-tag--dark" style="margin-bottom:5px;" data-v-0ec7540b><strong data-v-0ec7540b>Domain</strong></span> </div> <button type="button" class="el-button el-button--info el-button--small is-round" style="margin-right:15px;margin-bottom:5px;" data-v-0ec7540b><!----><i class="el-icon-edit"></i><span><strong data-v-0ec7540b>Edit</strong></span></button> <label class="el-checkbox is-checked" data-v-0ec7540b><span class="el-checkbox__input is-checked"><span class="el-checkbox__inner"></span><input type="checkbox" aria-hidden="false" checked="checked" class="el-checkbox__original"></span><span class="el-checkbox__label">Only show finetuned characteristics<!----></span></label> <label class="el-checkbox is-checked" data-v-0ec7540b><span class="el-checkbox__input is-checked"><span class="el-checkbox__inner"></span><input type="checkbox" aria-hidden="false" checked="checked" class="el-checkbox__original"></span><span class="el-checkbox__label">Simplify signatures<!----></span></label> <div class="el-dialog__wrapper" style="display:none;" data-v-0ec7540b><div role="dialog" aria-modal="true" aria-label="Edit domain specification" class="el-dialog" style="margin-top:15vh;"><div class="el-dialog__header"><span class="el-dialog__title">Edit domain specification</span><button type="button" aria-label="Close" class="el-dialog__headerbtn"><i class="el-dialog__close el-icon el-icon-close"></i></button></div><!----><!----></div></div></div></div> <h2 id="torchmaskedactionsmodel"><a href="#torchmaskedactionsmodel" class="header-anchor">#</a> TorchMaskedActionsModel</h2> <p>Simplified version of TorchParametricActionsModel.</p> <p>Instead of embedding the observations into an intermediate space and then map to the correct
+num_ouputs with weights that depends on the applicability of each action,
+we directly embed the observations in a space of dim the expected num_ouputs.
+As we still apply the log-mask onto the action logits, it seems to perform equally (the differences
+made by the tweak of last layer weights according to the applicablitiy of each action are cancelled
+by the mask at the end).</p> <h3 id="constructor"><a href="#constructor" class="header-anchor">#</a> Constructor <span class="badge tip" style="vertical-align:top;" data-v-15b7b770>TorchMaskedActionsModel</span></h3> <pre><code class="language-python"><span class="token function">TorchMaskedActionsModel</span>(
+  obs_space<!----><!---->,<br>  action_space<!----><!---->,<br>  num_outputs<!----><!---->,<br>  model_config<!----><!---->,<br>  name<!----><!---->,<br>  **kw<!----><!----><!----><br>)<!----></code>
+</pre> <p>Initialize a TorchModelV2.</p> <p>Here is an example implementation for a subclass
+<code>MyModelClass(TorchModelV2, nn.Module)</code>::</p> <div class="language- extra-class"><pre><code>def __init__(self, *args, **kwargs):
+    TorchModelV2.__init__(self, *args, **kwargs)
+    nn.Module.__init__(self)
+    self._hidden_layers = nn.Sequential(...)
+    self._logits = ...
+    self._value_branch = ...
+</code></pre></div><h3 id="add-module"><a href="#add-module" class="header-anchor">#</a> add_module <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">add_module</span>(
+  self<!----><!---->,<br>  name: <span><class 'str'></span><!---->,<br>  module: <span>typing.Optional[ForwardRef('Module')]</span><!----><!----><br>)<!----></code>
+</pre> <p>Add a child module to the current module.</p> <p>The module can be accessed as an attribute using the given name.</p> <p>Args:
+name (str): name of the child module. The child module can be
+accessed from this module using the given name
+module (Module): child module to be added to the module.</p> <h3 id="apply"><a href="#apply" class="header-anchor">#</a> apply <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">apply</span>(
+  self: <span>~T</span><!---->,<br>  fn: <span>typing.Callable[[ForwardRef('Module')], NoneType]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Apply <code>fn</code> recursively to every submodule (as returned by <code>.children()</code>) as well as self.</p> <p>Typical use includes initializing the parameters of a model
+(see also :ref:<code>nn-init-doc</code>).</p> <p>Args:
+fn (:class:<code>Module</code> -&gt; None): function to be applied to each submodule</p> <p>Returns:
+Module: self</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; @torch.no_grad()
+&gt;&gt;&gt; def init_weights(m):
+&gt;&gt;&gt;     print(m)
+&gt;&gt;&gt;     if type(m) == nn.Linear:
+&gt;&gt;&gt;         m.weight.fill_(1.0)
+&gt;&gt;&gt;         print(m.weight)
+&gt;&gt;&gt; net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
+&gt;&gt;&gt; net.apply(init_weights)
+Linear(in_features=2, out_features=2, bias=True)
+Parameter containing:
+tensor([[1., 1.],
+        [1., 1.]], requires_grad=True)
+Linear(in_features=2, out_features=2, bias=True)
+Parameter containing:
+tensor([[1., 1.],
+        [1., 1.]], requires_grad=True)
+Sequential(
+  (0): Linear(in_features=2, out_features=2, bias=True)
+  (1): Linear(in_features=2, out_features=2, bias=True)
+)
+</code></pre></div><h3 id="bfloat16"><a href="#bfloat16" class="header-anchor">#</a> bfloat16 <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">bfloat16</span>(
+  self: <span>~T</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Casts all floating point parameters and buffers to <code>bfloat16</code> datatype.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Returns:
+Module: self</p> <h3 id="buffers"><a href="#buffers" class="header-anchor">#</a> buffers <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">buffers</span>(
+  self<!----><!---->,<br>  recurse: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator[torch.Tensor]</span></code>
+</pre> <p>Return an iterator over module buffers.</p> <p>Args:
+recurse (bool): if True, then yields buffers of this module
+and all submodules. Otherwise, yields only buffers that
+are direct members of this module.</p> <p>Yields:
+torch.Tensor: module buffer</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; for buf in model.buffers():
+&gt;&gt;&gt;     print(type(buf), buf.size())
+\&lt;class 'torch.Tensor'&gt; (20L,)
+\&lt;class 'torch.Tensor'&gt; (20L, 1L, 5L, 5L)
+</code></pre></div><h3 id="children"><a href="#children" class="header-anchor">#</a> children <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">children</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator['Module']</span></code>
+</pre> <p>Return an iterator over immediate children modules.</p> <p>Yields:
+Module: a child module</p> <h3 id="compile"><a href="#compile" class="header-anchor">#</a> compile <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">compile</span>(
+  self<!----><!---->,<br>  *args<!----><!---->,<br>  **kwargs<!----><!----><!----><br>)<!----></code>
+</pre> <p>Compile this Module's forward using :func:<code>torch.compile</code>.</p> <p>This Module's <code>__call__</code> method is compiled and all arguments are passed as-is
+to :func:<code>torch.compile</code>.</p> <p>See :func:<code>torch.compile</code> for details on the arguments for this function.</p> <h3 id="context"><a href="#context" class="header-anchor">#</a> context <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ModelV2</span></h3> <pre><code class="language-python"><span class="token function">context</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'contextlib.AbstractContextManager'></span></code>
+</pre> <p>Returns a contextmanager for the current forward pass.</p> <h3 id="cpu"><a href="#cpu" class="header-anchor">#</a> cpu <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">cpu</span>(
+  self: <span>~T</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Move all model parameters and buffers to the CPU.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Returns:
+Module: self</p> <h3 id="cuda"><a href="#cuda" class="header-anchor">#</a> cuda <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">cuda</span>(
+  self: <span>~T</span><!---->,<br>  device: <span>typing.Union[int, torch.device, NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Move all model parameters and buffers to the GPU.</p> <p>This also makes associated parameters and buffers different objects. So
+it should be called before constructing the optimizer if the module will
+live on GPU while being optimized.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Args:
+device (int, optional): if specified, all parameters will be
+copied to that device</p> <p>Returns:
+Module: self</p> <h3 id="custom-loss"><a href="#custom-loss" class="header-anchor">#</a> custom_loss <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ModelV2</span></h3> <pre><code class="language-python"><span class="token function">custom_loss</span>(
+  self<!----><!---->,<br>  policy_loss: <span>typing.Union[<built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]</span><!---->,<br>  loss_inputs: <span>typing.Dict[str, typing.Union[<built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Union[typing.List[typing.Union[<built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]], <built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]</span></code>
+</pre> <p>Override to customize the loss function used to optimize this model.</p> <p>This can be used to incorporate self-supervised losses (by defining
+a loss over existing input and output tensors of this model), and
+supervised losses (by defining losses over a variable-sharing copy of
+this model's layers).</p> <p>You can find an runnable example in examples/custom_loss.py.</p> <p>Args:
+policy_loss: List of or single policy loss(es) from the policy.
+loss_inputs: map of input placeholders for rollout data.</p> <p>Returns:
+List of or scalar tensor for the customized loss(es) for this
+model.</p> <h3 id="double"><a href="#double" class="header-anchor">#</a> double <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">double</span>(
+  self: <span>~T</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Casts all floating point parameters and buffers to <code>double</code> datatype.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Returns:
+Module: self</p> <h3 id="eval"><a href="#eval" class="header-anchor">#</a> eval <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">eval</span>(
+  self: <span>~T</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Set the module in evaluation mode.</p> <p>This has an effect only on certain modules. See the documentation of
+particular modules for details of their behaviors in training/evaluation
+mode, i.e. whether they are affected, e.g. :class:<code>Dropout</code>, :class:<code>BatchNorm</code>,
+etc.</p> <p>This is equivalent with :meth:<code>self.train(False) \&lt;torch.nn.Module.train&gt;</code>.</p> <p>See :ref:<code>locally-disable-grad-doc</code> for a comparison between
+<code>.eval()</code> and several similar mechanisms that may be confused with it.</p> <p>Returns:
+Module: self</p> <h3 id="extra-repr"><a href="#extra-repr" class="header-anchor">#</a> extra_repr <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">extra_repr</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'str'></span></code>
+</pre> <p>Return the extra representation of the module.</p> <p>To print customized extra information, you should re-implement
+this method in your own modules. Both single-line and multi-line
+strings are acceptable.</p> <h3 id="float"><a href="#float" class="header-anchor">#</a> float <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">float</span>(
+  self: <span>~T</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Casts all floating point parameters and buffers to <code>float</code> datatype.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Returns:
+Module: self</p> <h3 id="forward"><a href="#forward" class="header-anchor">#</a> forward <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">forward</span>(
+  self<!----><!---->,<br>  input_dict<!----><!---->,<br>  state<!----><!---->,<br>  seq_lens<!----><!----><!----><br>)<!----></code>
+</pre> <p>Call the model with the given input tensors and state.</p> <p>Any complex observations (dicts, tuples, etc.) will be unpacked by
+<strong>call</strong> before being passed to forward(). To access the flattened
+observation tensor, refer to input_dict[&quot;obs_flat&quot;].</p> <p>This method can be called any number of times. In eager execution,
+each call to forward() will eagerly evaluate the model. In symbolic
+execution, each call to forward creates a computation graph that
+operates over the variables of this model (i.e., shares weights).</p> <p>Custom models should override this instead of <strong>call</strong>.</p> <p>Args:
+input_dict: dictionary of input tensors, including &quot;obs&quot;,
+&quot;obs_flat&quot;, &quot;prev_action&quot;, &quot;prev_reward&quot;, &quot;is_training&quot;,
+&quot;eps_id&quot;, &quot;agent_id&quot;, &quot;infos&quot;, and &quot;t&quot;.
+state: list of state tensors with sizes matching those
+returned by get_initial_state + the batch dimension
+seq_lens: 1d tensor holding input sequence lengths</p> <p>Returns:
+A tuple consisting of the model output tensor of size
+[BATCH, num_outputs] and the list of new RNN state(s) if any.</p> <p>.. testcode::
+:skipif: True</p> <div class="language- extra-class"><pre><code>import numpy as np
+from ray.rllib.models.modelv2 import ModelV2
+class MyModel(ModelV2):
+    # ...
+    def forward(self, input_dict, state, seq_lens):
+        model_out, self._value_out = self.base_model(
+            input_dict[&quot;obs&quot;])
+        return model_out, state
+</code></pre></div><h3 id="get-buffer"><a href="#get-buffer" class="header-anchor">#</a> get_buffer <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">get_buffer</span>(
+  self<!----><!---->,<br>  target: <span><class 'str'></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>Tensor</span></code>
+</pre> <p>Return the buffer given by <code>target</code> if it exists, otherwise throw an error.</p> <p>See the docstring for <code>get_submodule</code> for a more detailed
+explanation of this method's functionality as well as how to
+correctly specify <code>target</code>.</p> <p>Args:
+target: The fully-qualified string name of the buffer
+to look for. (See <code>get_submodule</code> for how to specify a
+fully-qualified string.)</p> <p>Returns:
+torch.Tensor: The buffer referenced by <code>target</code></p> <p>Raises:
+AttributeError: If the target string references an invalid
+path or resolves to something that is not a
+buffer</p> <h3 id="get-extra-state"><a href="#get-extra-state" class="header-anchor">#</a> get_extra_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">get_extra_state</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Any</span></code>
+</pre> <p>Return any extra state to include in the module's state_dict.</p> <p>Implement this and a corresponding :func:<code>set_extra_state</code> for your module
+if you need to store extra state. This function is called when building the
+module's <code>state_dict()</code>.</p> <p>Note that extra state should be picklable to ensure working serialization
+of the state_dict. We only provide backwards compatibility guarantees
+for serializing Tensors; other objects may break backwards compatibility if
+their serialized pickled form changes.</p> <p>Returns:
+object: Any extra state to store in the module's state_dict</p> <h3 id="get-initial-state"><a href="#get-initial-state" class="header-anchor">#</a> get_initial_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ModelV2</span></h3> <pre><code class="language-python"><span class="token function">get_initial_state</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.List[typing.Union[<built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span></code>
+</pre> <p>Get the initial recurrent state values for the model.</p> <p>Returns:
+List of np.array (for tf) or Tensor (for torch) objects containing the
+initial hidden state of an RNN, if applicable.</p> <p>.. testcode::
+:skipif: True</p> <div class="language- extra-class"><pre><code>import numpy as np
+from ray.rllib.models.modelv2 import ModelV2
+class MyModel(ModelV2):
+    # ...
+    def get_initial_state(self):
+        return [
+            np.zeros(self.cell_size, np.float32),
+            np.zeros(self.cell_size, np.float32),
+        ]
+</code></pre></div><h3 id="get-parameter"><a href="#get-parameter" class="header-anchor">#</a> get_parameter <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">get_parameter</span>(
+  self<!----><!---->,<br>  target: <span><class 'str'></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>Parameter</span></code>
+</pre> <p>Return the parameter given by <code>target</code> if it exists, otherwise throw an error.</p> <p>See the docstring for <code>get_submodule</code> for a more detailed
+explanation of this method's functionality as well as how to
+correctly specify <code>target</code>.</p> <p>Args:
+target: The fully-qualified string name of the Parameter
+to look for. (See <code>get_submodule</code> for how to specify a
+fully-qualified string.)</p> <p>Returns:
+torch.nn.Parameter: The Parameter referenced by <code>target</code></p> <p>Raises:
+AttributeError: If the target string references an invalid
+path or resolves to something that is not an
+<code>nn.Parameter</code></p> <h3 id="get-submodule"><a href="#get-submodule" class="header-anchor">#</a> get_submodule <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">get_submodule</span>(
+  self<!----><!---->,<br>  target: <span><class 'str'></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>Module</span></code>
+</pre> <p>Return the submodule given by <code>target</code> if it exists, otherwise throw an error.</p> <p>For example, let's say you have an <code>nn.Module</code> <code>A</code> that
+looks like this:</p> <p>.. code-block:: text</p> <div class="language- extra-class"><pre><code>A(
+    (net_b): Module(
+        (net_c): Module(
+            (conv): Conv2d(16, 33, kernel_size=(3, 3), stride=(2, 2))
+        )
+        (linear): Linear(in_features=100, out_features=200, bias=True)
+    )
+)
+</code></pre></div><p>(The diagram shows an <code>nn.Module</code> <code>A</code>. <code>A</code> which has a nested
+submodule <code>net_b</code>, which itself has two submodules <code>net_c</code>
+and <code>linear</code>. <code>net_c</code> then has a submodule <code>conv</code>.)</p> <p>To check whether or not we have the <code>linear</code> submodule, we
+would call <code>get_submodule(&quot;net_b.linear&quot;)</code>. To check whether
+we have the <code>conv</code> submodule, we would call
+<code>get_submodule(&quot;net_b.net_c.conv&quot;)</code>.</p> <p>The runtime of <code>get_submodule</code> is bounded by the degree
+of module nesting in <code>target</code>. A query against
+<code>named_modules</code> achieves the same result, but it is O(N) in
+the number of transitive modules. So, for a simple check to see
+if some submodule exists, <code>get_submodule</code> should always be
+used.</p> <p>Args:
+target: The fully-qualified string name of the submodule
+to look for. (See above example for how to specify a
+fully-qualified string.)</p> <p>Returns:
+torch.nn.Module: The submodule referenced by <code>target</code></p> <p>Raises:
+AttributeError: If at any point along the path resulting from
+the target string the (sub)path resolves to a non-existent
+attribute name or an object that is not an instance of <code>nn.Module</code>.</p> <h3 id="half"><a href="#half" class="header-anchor">#</a> half <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">half</span>(
+  self: <span>~T</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Casts all floating point parameters and buffers to <code>half</code> datatype.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Returns:
+Module: self</p> <h3 id="ipu"><a href="#ipu" class="header-anchor">#</a> ipu <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">ipu</span>(
+  self: <span>~T</span><!---->,<br>  device: <span>typing.Union[int, torch.device, NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Move all model parameters and buffers to the IPU.</p> <p>This also makes associated parameters and buffers different objects. So
+it should be called before constructing the optimizer if the module will
+live on IPU while being optimized.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Arguments:
+device (int, optional): if specified, all parameters will be
+copied to that device</p> <p>Returns:
+Module: self</p> <h3 id="is-time-major"><a href="#is-time-major" class="header-anchor">#</a> is_time_major <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ModelV2</span></h3> <pre><code class="language-python"><span class="token function">is_time_major</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'bool'></span></code>
+</pre> <p>If True, data for calling this ModelV2 must be in time-major format.</p> <p>Returns
+Whether this ModelV2 requires a time-major (TxBx...) data
+format.</p> <h3 id="last-output"><a href="#last-output" class="header-anchor">#</a> last_output <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ModelV2</span></h3> <pre><code class="language-python"><span class="token function">last_output</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Union[<built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]</span></code>
+</pre> <p>Returns the last output returned from calling the model.</p> <h3 id="load-state-dict"><a href="#load-state-dict" class="header-anchor">#</a> load_state_dict <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">load_state_dict</span>(
+  self<!----><!---->,<br>  state_dict: <span>collections.abc.Mapping[str, typing.Any]</span><!---->,<br>  strict: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span>,<br>  assign: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>)<!----></code>
+</pre> <p>Copy parameters and buffers from :attr:<code>state_dict</code> into this module and its descendants.</p> <p>If :attr:<code>strict</code> is <code>True</code>, then
+the keys of :attr:<code>state_dict</code> must exactly match the keys returned
+by this module's :meth:<code>~torch.nn.Module.state_dict</code> function.</p> <p>.. warning::
+If :attr:<code>assign</code> is <code>True</code> the optimizer must be created after
+the call to :attr:<code>load_state_dict</code> unless
+:func:<code>~torch.__future__.get_swap_module_params_on_conversion</code> is <code>True</code>.</p> <p>Args:
+state_dict (dict): a dict containing parameters and
+persistent buffers.
+strict (bool, optional): whether to strictly enforce that the keys
+in :attr:<code>state_dict</code> match the keys returned by this module's
+:meth:<code>~torch.nn.Module.state_dict</code> function. Default: <code>True</code>
+assign (bool, optional): When set to <code>False</code>, the properties of the tensors
+in the current module are preserved whereas setting it to <code>True</code> preserves
+properties of the Tensors in the state dict. The only
+exception is the <code>requires_grad</code> field of :class:<code>~torch.nn.Parameter</code>s
+for which the value from the module is preserved.
+Default: <code>False</code></p> <p>Returns:
+<code>NamedTuple</code> with <code>missing_keys</code> and <code>unexpected_keys</code> fields:
+* <strong>missing_keys</strong> is a list of str containing any keys that are expected
+by this module but missing from the provided <code>state_dict</code>.
+* <strong>unexpected_keys</strong> is a list of str containing the keys that are not
+expected by this module but present in the provided <code>state_dict</code>.</p> <p>Note:
+If a parameter or buffer is registered as <code>None</code> and its corresponding key
+exists in :attr:<code>state_dict</code>, :meth:<code>load_state_dict</code> will raise a
+<code>RuntimeError</code>.</p> <h3 id="metrics"><a href="#metrics" class="header-anchor">#</a> metrics <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ModelV2</span></h3> <pre><code class="language-python"><span class="token function">metrics</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Union[<built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span></code>
+</pre> <p>Override to return custom metrics from your model.</p> <p>The stats will be reported as part of the learner stats, i.e.,
+info.learner.[policy_id, e.g. &quot;default_policy&quot;].model.key1=metric1</p> <p>Returns:
+The custom metrics for this model.</p> <h3 id="modules"><a href="#modules" class="header-anchor">#</a> modules <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">modules</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator['Module']</span></code>
+</pre> <p>Return an iterator over all modules in the network.</p> <p>Yields:
+Module: a module in the network</p> <p>Note:
+Duplicate modules are returned only once. In the following
+example, <code>l</code> will be returned only once.</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; l = nn.Linear(2, 2)
+&gt;&gt;&gt; net = nn.Sequential(l, l)
+&gt;&gt;&gt; for idx, m in enumerate(net.modules()):
+...     print(idx, '-&gt;', m)
+
+0 -&gt; Sequential(
+  (0): Linear(in_features=2, out_features=2, bias=True)
+  (1): Linear(in_features=2, out_features=2, bias=True)
+)
+1 -&gt; Linear(in_features=2, out_features=2, bias=True)
+</code></pre></div><h3 id="mtia"><a href="#mtia" class="header-anchor">#</a> mtia <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">mtia</span>(
+  self: <span>~T</span><!---->,<br>  device: <span>typing.Union[int, torch.device, NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Move all model parameters and buffers to the MTIA.</p> <p>This also makes associated parameters and buffers different objects. So
+it should be called before constructing the optimizer if the module will
+live on MTIA while being optimized.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Arguments:
+device (int, optional): if specified, all parameters will be
+copied to that device</p> <p>Returns:
+Module: self</p> <h3 id="named-buffers"><a href="#named-buffers" class="header-anchor">#</a> named_buffers <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">named_buffers</span>(
+  self<!----><!---->,<br>  prefix: <span><class 'str'></span><!---->,<br>  recurse: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span>,<br>  remove_duplicate: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator[tuple[str, torch.Tensor]]</span></code>
+</pre> <p>Return an iterator over module buffers, yielding both the name of the buffer as well as the buffer itself.</p> <p>Args:
+prefix (str): prefix to prepend to all buffer names.
+recurse (bool, optional): if True, then yields buffers of this module
+and all submodules. Otherwise, yields only buffers that
+are direct members of this module. Defaults to True.
+remove_duplicate (bool, optional): whether to remove the duplicated buffers in the result. Defaults to True.</p> <p>Yields:
+(str, torch.Tensor): Tuple containing the name and buffer</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; for name, buf in self.named_buffers():
+&gt;&gt;&gt;     if name in ['running_var']:
+&gt;&gt;&gt;         print(buf.size())
+</code></pre></div><h3 id="named-children"><a href="#named-children" class="header-anchor">#</a> named_children <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">named_children</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator[tuple[str, 'Module']]</span></code>
+</pre> <p>Return an iterator over immediate children modules, yielding both the name of the module as well as the module itself.</p> <p>Yields:
+(str, Module): Tuple containing a name and child module</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; for name, module in model.named_children():
+&gt;&gt;&gt;     if name in ['conv4', 'conv5']:
+&gt;&gt;&gt;         print(module)
+</code></pre></div><h3 id="named-modules"><a href="#named-modules" class="header-anchor">#</a> named_modules <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">named_modules</span>(
+  self<!----><!---->,<br>  memo: <span>typing.Optional[set['Module']]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  prefix: <span><class 'str'></span><!---->,<br>  remove_duplicate: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>)<!----></code>
+</pre> <p>Return an iterator over all modules in the network, yielding both the name of the module as well as the module itself.</p> <p>Args:
+memo: a memo to store the set of modules already added to the result
+prefix: a prefix that will be added to the name of the module
+remove_duplicate: whether to remove the duplicated module instances in the result
+or not</p> <p>Yields:
+(str, Module): Tuple of name and module</p> <p>Note:
+Duplicate modules are returned only once. In the following
+example, <code>l</code> will be returned only once.</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; l = nn.Linear(2, 2)
+&gt;&gt;&gt; net = nn.Sequential(l, l)
+&gt;&gt;&gt; for idx, m in enumerate(net.named_modules()):
+...     print(idx, '-&gt;', m)
+
+0 -&gt; ('', Sequential(
+  (0): Linear(in_features=2, out_features=2, bias=True)
+  (1): Linear(in_features=2, out_features=2, bias=True)
+))
+1 -&gt; ('0', Linear(in_features=2, out_features=2, bias=True))
+</code></pre></div><h3 id="named-parameters"><a href="#named-parameters" class="header-anchor">#</a> named_parameters <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">named_parameters</span>(
+  self<!----><!---->,<br>  prefix: <span><class 'str'></span><!---->,<br>  recurse: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span>,<br>  remove_duplicate: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator[tuple[str, torch.nn.parameter.Parameter]]</span></code>
+</pre> <p>Return an iterator over module parameters, yielding both the name of the parameter as well as the parameter itself.</p> <p>Args:
+prefix (str): prefix to prepend to all parameter names.
+recurse (bool): if True, then yields parameters of this module
+and all submodules. Otherwise, yields only parameters that
+are direct members of this module.
+remove_duplicate (bool, optional): whether to remove the duplicated
+parameters in the result. Defaults to True.</p> <p>Yields:
+(str, Parameter): Tuple containing the name and parameter</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; for name, param in self.named_parameters():
+&gt;&gt;&gt;     if name in ['bias']:
+&gt;&gt;&gt;         print(param.size())
+</code></pre></div><h3 id="parameters"><a href="#parameters" class="header-anchor">#</a> parameters <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">parameters</span>(
+  self<!----><!---->,<br>  recurse: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator[torch.nn.parameter.Parameter]</span></code>
+</pre> <p>Return an iterator over module parameters.</p> <p>This is typically passed to an optimizer.</p> <p>Args:
+recurse (bool): if True, then yields parameters of this module
+and all submodules. Otherwise, yields only parameters that
+are direct members of this module.</p> <p>Yields:
+Parameter: module parameter</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; for param in model.parameters():
+&gt;&gt;&gt;     print(type(param), param.size())
+\&lt;class 'torch.Tensor'&gt; (20L,)
+\&lt;class 'torch.Tensor'&gt; (20L, 1L, 5L, 5L)
+</code></pre></div><h3 id="register-backward-hook"><a href="#register-backward-hook" class="header-anchor">#</a> register_backward_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_backward_hook</span>(
+  self<!----><!---->,<br>  hook: <span>typing.Callable[[ForwardRef('Module'), typing.Union[tuple[torch.Tensor, ...], torch.Tensor], typing.Union[tuple[torch.Tensor, ...], torch.Tensor]], typing.Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.utils.hooks.RemovableHandle'></span></code>
+</pre> <p>Register a backward hook on the module.</p> <p>This function is deprecated in favor of :meth:<code>~torch.nn.Module.register_full_backward_hook</code> and
+the behavior of this function will change in future versions.</p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-buffer"><a href="#register-buffer" class="header-anchor">#</a> register_buffer <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_buffer</span>(
+  self<!----><!---->,<br>  name: <span><class 'str'></span><!---->,<br>  tensor: <span>typing.Optional[torch.Tensor]</span><!---->,<br>  persistent: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>)<!----></code>
+</pre> <p>Add a buffer to the module.</p> <p>This is typically used to register a buffer that should not to be
+considered a model parameter. For example, BatchNorm's <code>running_mean</code>
+is not a parameter, but is part of the module's state. Buffers, by
+default, are persistent and will be saved alongside parameters. This
+behavior can be changed by setting :attr:<code>persistent</code> to <code>False</code>. The
+only difference between a persistent buffer and a non-persistent buffer
+is that the latter will not be a part of this module's
+:attr:<code>state_dict</code>.</p> <p>Buffers can be accessed as attributes using given names.</p> <p>Args:
+name (str): name of the buffer. The buffer can be accessed
+from this module using the given name
+tensor (Tensor or None): buffer to be registered. If <code>None</code>, then operations
+that run on buffers, such as :attr:<code>cuda</code>, are ignored. If <code>None</code>,
+the buffer is <strong>not</strong> included in the module's :attr:<code>state_dict</code>.
+persistent (bool): whether the buffer is part of this module's
+:attr:<code>state_dict</code>.</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; self.register_buffer('running_mean', torch.zeros(num_features))
+</code></pre></div><h3 id="register-forward-hook"><a href="#register-forward-hook" class="header-anchor">#</a> register_forward_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_forward_hook</span>(
+  self<!----><!---->,<br>  hook: <span>typing.Union[typing.Callable[[~T, tuple[typing.Any, ...], typing.Any], typing.Optional[typing.Any]], typing.Callable[[~T, tuple[typing.Any, ...], dict[str, typing.Any], typing.Any], typing.Optional[typing.Any]]]</span><!---->,<br>  prepend: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span>,<br>  with_kwargs: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span>,<br>  always_call: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.utils.hooks.RemovableHandle'></span></code>
+</pre> <p>Register a forward hook on the module.</p> <p>The hook will be called every time after :func:<code>forward</code> has computed an output.</p> <p>If <code>with_kwargs</code> is <code>False</code> or not specified, the input contains only
+the positional arguments given to the module. Keyword arguments won't be
+passed to the hooks and only to the <code>forward</code>. The hook can modify the
+output. It can modify the input inplace but it will not have effect on
+forward since this is called after :func:<code>forward</code> is called. The hook
+should have the following signature::</p> <div class="language- extra-class"><pre><code>hook(module, args, output) -&gt; None or modified output
+</code></pre></div><p>If <code>with_kwargs</code> is <code>True</code>, the forward hook will be passed the
+<code>kwargs</code> given to the forward function and be expected to return the
+output possibly modified. The hook should have the following signature::</p> <div class="language- extra-class"><pre><code>hook(module, args, kwargs, output) -&gt; None or modified output
+</code></pre></div><p>Args:
+hook (Callable): The user defined hook to be registered.
+prepend (bool): If <code>True</code>, the provided <code>hook</code> will be fired
+before all existing <code>forward</code> hooks on this
+:class:<code>torch.nn.Module</code>. Otherwise, the provided
+<code>hook</code> will be fired after all existing <code>forward</code> hooks on
+this :class:<code>torch.nn.Module</code>. Note that global
+<code>forward</code> hooks registered with
+:func:<code>register_module_forward_hook</code> will fire before all hooks
+registered by this method.
+Default: <code>False</code>
+with_kwargs (bool): If <code>True</code>, the <code>hook</code> will be passed the
+kwargs given to the forward function.
+Default: <code>False</code>
+always_call (bool): If <code>True</code> the <code>hook</code> will be run regardless of
+whether an exception is raised while calling the Module.
+Default: <code>False</code></p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-forward-pre-hook"><a href="#register-forward-pre-hook" class="header-anchor">#</a> register_forward_pre_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_forward_pre_hook</span>(
+  self<!----><!---->,<br>  hook: <span>typing.Union[typing.Callable[[~T, tuple[typing.Any, ...]], typing.Optional[typing.Any]], typing.Callable[[~T, tuple[typing.Any, ...], dict[str, typing.Any]], typing.Optional[tuple[typing.Any, dict[str, typing.Any]]]]]</span><!---->,<br>  prepend: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span>,<br>  with_kwargs: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.utils.hooks.RemovableHandle'></span></code>
+</pre> <p>Register a forward pre-hook on the module.</p> <p>The hook will be called every time before :func:<code>forward</code> is invoked.</p> <p>If <code>with_kwargs</code> is false or not specified, the input contains only
+the positional arguments given to the module. Keyword arguments won't be
+passed to the hooks and only to the <code>forward</code>. The hook can modify the
+input. User can either return a tuple or a single modified value in the
+hook. We will wrap the value into a tuple if a single value is returned
+(unless that value is already a tuple). The hook should have the
+following signature::</p> <div class="language- extra-class"><pre><code>hook(module, args) -&gt; None or modified input
+</code></pre></div><p>If <code>with_kwargs</code> is true, the forward pre-hook will be passed the
+kwargs given to the forward function. And if the hook modifies the
+input, both the args and kwargs should be returned. The hook should have
+the following signature::</p> <div class="language- extra-class"><pre><code>hook(module, args, kwargs) -&gt; None or a tuple of modified input and kwargs
+</code></pre></div><p>Args:
+hook (Callable): The user defined hook to be registered.
+prepend (bool): If true, the provided <code>hook</code> will be fired before
+all existing <code>forward_pre</code> hooks on this
+:class:<code>torch.nn.Module</code>. Otherwise, the provided
+<code>hook</code> will be fired after all existing <code>forward_pre</code> hooks
+on this :class:<code>torch.nn.Module</code>. Note that global
+<code>forward_pre</code> hooks registered with
+:func:<code>register_module_forward_pre_hook</code> will fire before all
+hooks registered by this method.
+Default: <code>False</code>
+with_kwargs (bool): If true, the <code>hook</code> will be passed the kwargs
+given to the forward function.
+Default: <code>False</code></p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-full-backward-hook"><a href="#register-full-backward-hook" class="header-anchor">#</a> register_full_backward_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_full_backward_hook</span>(
+  self<!----><!---->,<br>  hook: <span>typing.Callable[[ForwardRef('Module'), typing.Union[tuple[torch.Tensor, ...], torch.Tensor], typing.Union[tuple[torch.Tensor, ...], torch.Tensor]], typing.Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]</span><!---->,<br>  prepend: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.utils.hooks.RemovableHandle'></span></code>
+</pre> <p>Register a backward hook on the module.</p> <p>The hook will be called every time the gradients with respect to a module
+are computed, i.e. the hook will execute if and only if the gradients with
+respect to module outputs are computed. The hook should have the following
+signature::</p> <div class="language- extra-class"><pre><code>hook(module, grad_input, grad_output) -&gt; tuple(Tensor) or None
+</code></pre></div><p>The :attr:<code>grad_input</code> and :attr:<code>grad_output</code> are tuples that contain the gradients
+with respect to the inputs and outputs respectively. The hook should
+not modify its arguments, but it can optionally return a new gradient with
+respect to the input that will be used in place of :attr:<code>grad_input</code> in
+subsequent computations. :attr:<code>grad_input</code> will only correspond to the inputs given
+as positional arguments and all kwarg arguments are ignored. Entries
+in :attr:<code>grad_input</code> and :attr:<code>grad_output</code> will be <code>None</code> for all non-Tensor
+arguments.</p> <p>For technical reasons, when this hook is applied to a Module, its forward function will
+receive a view of each Tensor passed to the Module. Similarly the caller will receive a view
+of each Tensor returned by the Module's forward function.</p> <p>.. warning ::
+Modifying inputs or outputs inplace is not allowed when using backward hooks and
+will raise an error.</p> <p>Args:
+hook (Callable): The user-defined hook to be registered.
+prepend (bool): If true, the provided <code>hook</code> will be fired before
+all existing <code>backward</code> hooks on this
+:class:<code>torch.nn.Module</code>. Otherwise, the provided
+<code>hook</code> will be fired after all existing <code>backward</code> hooks on
+this :class:<code>torch.nn.Module</code>. Note that global
+<code>backward</code> hooks registered with
+:func:<code>register_module_full_backward_hook</code> will fire before
+all hooks registered by this method.</p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-full-backward-pre-hook"><a href="#register-full-backward-pre-hook" class="header-anchor">#</a> register_full_backward_pre_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_full_backward_pre_hook</span>(
+  self<!----><!---->,<br>  hook: <span>typing.Callable[[ForwardRef('Module'), typing.Union[tuple[torch.Tensor, ...], torch.Tensor]], typing.Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]</span><!---->,<br>  prepend: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.utils.hooks.RemovableHandle'></span></code>
+</pre> <p>Register a backward pre-hook on the module.</p> <p>The hook will be called every time the gradients for the module are computed.
+The hook should have the following signature::</p> <div class="language- extra-class"><pre><code>hook(module, grad_output) -&gt; tuple[Tensor] or None
+</code></pre></div><p>The :attr:<code>grad_output</code> is a tuple. The hook should
+not modify its arguments, but it can optionally return a new gradient with
+respect to the output that will be used in place of :attr:<code>grad_output</code> in
+subsequent computations. Entries in :attr:<code>grad_output</code> will be <code>None</code> for
+all non-Tensor arguments.</p> <p>For technical reasons, when this hook is applied to a Module, its forward function will
+receive a view of each Tensor passed to the Module. Similarly the caller will receive a view
+of each Tensor returned by the Module's forward function.</p> <p>.. warning ::
+Modifying inputs inplace is not allowed when using backward hooks and
+will raise an error.</p> <p>Args:
+hook (Callable): The user-defined hook to be registered.
+prepend (bool): If true, the provided <code>hook</code> will be fired before
+all existing <code>backward_pre</code> hooks on this
+:class:<code>torch.nn.Module</code>. Otherwise, the provided
+<code>hook</code> will be fired after all existing <code>backward_pre</code> hooks
+on this :class:<code>torch.nn.Module</code>. Note that global
+<code>backward_pre</code> hooks registered with
+:func:<code>register_module_full_backward_pre_hook</code> will fire before
+all hooks registered by this method.</p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-load-state-dict-post-hook"><a href="#register-load-state-dict-post-hook" class="header-anchor">#</a> register_load_state_dict_post_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_load_state_dict_post_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!----><!----><br>)<!----></code>
+</pre> <p>Register a post-hook to be run after module's :meth:<code>~nn.Module.load_state_dict</code> is called.</p> <p>It should have the following signature::
+hook(module, incompatible_keys) -&gt; None</p> <p>The <code>module</code> argument is the current module that this hook is registered
+on, and the <code>incompatible_keys</code> argument is a <code>NamedTuple</code> consisting
+of attributes <code>missing_keys</code> and <code>unexpected_keys</code>. <code>missing_keys</code>
+is a <code>list</code> of <code>str</code> containing the missing keys and
+<code>unexpected_keys</code> is a <code>list</code> of <code>str</code> containing the unexpected keys.</p> <p>The given incompatible_keys can be modified inplace if needed.</p> <p>Note that the checks performed when calling :func:<code>load_state_dict</code> with
+<code>strict=True</code> are affected by modifications the hook makes to
+<code>missing_keys</code> or <code>unexpected_keys</code>, as expected. Additions to either
+set of keys will result in an error being thrown when <code>strict=True</code>, and
+clearing out both missing and unexpected keys will avoid an error.</p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-load-state-dict-pre-hook"><a href="#register-load-state-dict-pre-hook" class="header-anchor">#</a> register_load_state_dict_pre_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_load_state_dict_pre_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!----><!----><br>)<!----></code>
+</pre> <p>Register a pre-hook to be run before module's :meth:<code>~nn.Module.load_state_dict</code> is called.</p> <p>It should have the following signature::
+hook(module, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs) -&gt; None  # noqa: B950</p> <p>Arguments:
+hook (Callable): Callable hook that will be invoked before
+loading the state dict.</p> <h3 id="register-module"><a href="#register-module" class="header-anchor">#</a> register_module <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_module</span>(
+  self<!----><!---->,<br>  name: <span><class 'str'></span><!---->,<br>  module: <span>typing.Optional[ForwardRef('Module')]</span><!----><!----><br>)<!----></code>
+</pre> <p>Alias for :func:<code>add_module</code>.</p> <h3 id="register-parameter"><a href="#register-parameter" class="header-anchor">#</a> register_parameter <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_parameter</span>(
+  self<!----><!---->,<br>  name: <span><class 'str'></span><!---->,<br>  param: <span>typing.Optional[torch.nn.parameter.Parameter]</span><!----><!----><br>)<!----></code>
+</pre> <p>Add a parameter to the module.</p> <p>The parameter can be accessed as an attribute using given name.</p> <p>Args:
+name (str): name of the parameter. The parameter can be accessed
+from this module using the given name
+param (Parameter or None): parameter to be added to the module. If
+<code>None</code>, then operations that run on parameters, such as :attr:<code>cuda</code>,
+are ignored. If <code>None</code>, the parameter is <strong>not</strong> included in the
+module's :attr:<code>state_dict</code>.</p> <h3 id="register-state-dict-post-hook"><a href="#register-state-dict-post-hook" class="header-anchor">#</a> register_state_dict_post_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_state_dict_post_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!----><!----><br>)<!----></code>
+</pre> <p>Register a post-hook for the :meth:<code>~torch.nn.Module.state_dict</code> method.</p> <p>It should have the following signature::
+hook(module, state_dict, prefix, local_metadata) -&gt; None</p> <p>The registered hooks can modify the <code>state_dict</code> inplace.</p> <h3 id="register-state-dict-pre-hook"><a href="#register-state-dict-pre-hook" class="header-anchor">#</a> register_state_dict_pre_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_state_dict_pre_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!----><!----><br>)<!----></code>
+</pre> <p>Register a pre-hook for the :meth:<code>~torch.nn.Module.state_dict</code> method.</p> <p>It should have the following signature::
+hook(module, prefix, keep_vars) -&gt; None</p> <p>The registered hooks can be used to perform pre-processing before the <code>state_dict</code>
+call is made.</p> <h3 id="requires-grad"><a href="#requires-grad" class="header-anchor">#</a> requires_grad_ <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">requires_grad_</span>(
+  self: <span>~T</span><!---->,<br>  requires_grad: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Change if autograd should record operations on parameters in this module.</p> <p>This method sets the parameters' :attr:<code>requires_grad</code> attributes
+in-place.</p> <p>This method is helpful for freezing part of the module for finetuning
+or training parts of a model individually (e.g., GAN training).</p> <p>See :ref:<code>locally-disable-grad-doc</code> for a comparison between
+<code>.requires_grad_()</code> and several similar mechanisms that may be confused with it.</p> <p>Args:
+requires_grad (bool): whether autograd should record operations on
+parameters in this module. Default: <code>True</code>.</p> <p>Returns:
+Module: self</p> <h3 id="set-extra-state"><a href="#set-extra-state" class="header-anchor">#</a> set_extra_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">set_extra_state</span>(
+  self<!----><!---->,<br>  state: <span>typing.Any</span><!----><!----><br>)<!----></code>
+</pre> <p>Set extra state contained in the loaded <code>state_dict</code>.</p> <p>This function is called from :func:<code>load_state_dict</code> to handle any extra state
+found within the <code>state_dict</code>. Implement this function and a corresponding
+:func:<code>get_extra_state</code> for your module if you need to store extra state within its
+<code>state_dict</code>.</p> <p>Args:
+state (dict): Extra state from the <code>state_dict</code></p> <h3 id="set-submodule"><a href="#set-submodule" class="header-anchor">#</a> set_submodule <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">set_submodule</span>(
+  self<!----><!---->,<br>  target: <span><class 'str'></span><!---->,<br>  module: <span>Module</span><!---->,<br>  strict: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>)<!----></code>
+</pre> <p>Set the submodule given by <code>target</code> if it exists, otherwise throw an error.</p> <p>.. note::
+If <code>strict</code> is set to <code>False</code> (default), the method will replace an existing submodule
+or create a new submodule if the parent module exists. If <code>strict</code> is set to <code>True</code>,
+the method will only attempt to replace an existing submodule and throw an error if
+the submodule does not exist.</p> <p>For example, let's say you have an <code>nn.Module</code> <code>A</code> that
+looks like this:</p> <p>.. code-block:: text</p> <div class="language- extra-class"><pre><code>A(
+    (net_b): Module(
+        (net_c): Module(
+            (conv): Conv2d(3, 3, 3)
+        )
+        (linear): Linear(3, 3)
+    )
+)
+</code></pre></div><p>(The diagram shows an <code>nn.Module</code> <code>A</code>. <code>A</code> has a nested
+submodule <code>net_b</code>, which itself has two submodules <code>net_c</code>
+and <code>linear</code>. <code>net_c</code> then has a submodule <code>conv</code>.)</p> <p>To override the <code>Conv2d</code> with a new submodule <code>Linear</code>, you
+could call <code>set_submodule(&quot;net_b.net_c.conv&quot;, nn.Linear(1, 1))</code>
+where <code>strict</code> could be <code>True</code> or <code>False</code></p> <p>To add a new submodule <code>Conv2d</code> to the existing <code>net_b</code> module,
+you would call <code>set_submodule(&quot;net_b.conv&quot;, nn.Conv2d(1, 1, 1))</code>.</p> <p>In the above if you set <code>strict=True</code> and call
+<code>set_submodule(&quot;net_b.conv&quot;, nn.Conv2d(1, 1, 1), strict=True)</code>, an AttributeError
+will be raised because <code>net_b</code> does not have a submodule named <code>conv</code>.</p> <p>Args:
+target: The fully-qualified string name of the submodule
+to look for. (See above example for how to specify a
+fully-qualified string.)
+module: The module to set the submodule to.
+strict: If <code>False</code>, the method will replace an existing submodule
+or create a new submodule if the parent module exists. If <code>True</code>,
+the method will only attempt to replace an existing submodule and throw an error
+if the submodule doesn't already exist.</p> <p>Raises:
+ValueError: If the <code>target</code> string is empty or if <code>module</code> is not an instance of <code>nn.Module</code>.
+AttributeError: If at any point along the path resulting from
+the <code>target</code> string the (sub)path resolves to a non-existent
+attribute name or an object that is not an instance of <code>nn.Module</code>.</p> <h3 id="share-memory"><a href="#share-memory" class="header-anchor">#</a> share_memory <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">share_memory</span>(
+  self: <span>~T</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>See :meth:<code>torch.Tensor.share_memory_</code>.</p> <h3 id="state-dict"><a href="#state-dict" class="header-anchor">#</a> state_dict <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">state_dict</span>(
+  self<!----><!---->,<br>  *args<!----><!---->,<br>  destination<!----> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  prefix<!----><!---->,<br>  keep_vars<!----> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>)<!----></code>
+</pre> <p>Return a dictionary containing references to the whole state of the module.</p> <p>Both parameters and persistent buffers (e.g. running averages) are
+included. Keys are corresponding parameter and buffer names.
+Parameters and buffers set to <code>None</code> are not included.</p> <p>.. note::
+The returned object is a shallow copy. It contains references
+to the module's parameters and buffers.</p> <p>.. warning::
+Currently <code>state_dict()</code> also accepts positional arguments for
+<code>destination</code>, <code>prefix</code> and <code>keep_vars</code> in order. However,
+this is being deprecated and keyword arguments will be enforced in
+future releases.</p> <p>.. warning::
+Please avoid the use of argument <code>destination</code> as it is not
+designed for end-users.</p> <p>Args:
+destination (dict, optional): If provided, the state of module will
+be updated into the dict and the same object is returned.
+Otherwise, an <code>OrderedDict</code> will be created and returned.
+Default: <code>None</code>.
+prefix (str, optional): a prefix added to parameter and buffer
+names to compose the keys in state_dict. Default: <code>''</code>.
+keep_vars (bool, optional): by default the :class:<code>~torch.Tensor</code> s
+returned in the state dict are detached from autograd. If it's
+set to <code>True</code>, detaching will not be performed.
+Default: <code>False</code>.</p> <p>Returns:
+dict:
+a dictionary containing a whole state of the module</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; module.state_dict().keys()
+['bias', 'weight']
+</code></pre></div><h3 id="to"><a href="#to" class="header-anchor">#</a> to <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">to</span>(
+  self<!----><!---->,<br>  *args<!----><!---->,<br>  **kwargs<!----><!----><!----><br>)<!----></code>
+</pre> <p>Move and/or cast the parameters and buffers.</p> <p>This can be called as</p> <p>.. function:: to(device=None, dtype=None, non_blocking=False)
+:noindex:</p> <p>.. function:: to(dtype, non_blocking=False)
+:noindex:</p> <p>.. function:: to(tensor, non_blocking=False)
+:noindex:</p> <p>.. function:: to(memory_format=torch.channels_last)
+:noindex:</p> <p>Its signature is similar to :meth:<code>torch.Tensor.to</code>, but only accepts
+floating point or complex :attr:<code>dtype</code>\ s. In addition, this method will
+only cast the floating point or complex parameters and buffers to :attr:<code>dtype</code>
+(if given). The integral parameters and buffers will be moved
+:attr:<code>device</code>, if that is given, but with dtypes unchanged. When
+:attr:<code>non_blocking</code> is set, it tries to convert/move asynchronously
+with respect to the host if possible, e.g., moving CPU Tensors with
+pinned memory to CUDA devices.</p> <p>See below for examples.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Args:
+device (:class:<code>torch.device</code>): the desired device of the parameters
+and buffers in this module
+dtype (:class:<code>torch.dtype</code>): the desired floating point or complex dtype of
+the parameters and buffers in this module
+tensor (torch.Tensor): Tensor whose dtype and device are the desired
+dtype and device for all parameters and buffers in this module
+memory_format (:class:<code>torch.memory_format</code>): the desired memory
+format for 4D parameters and buffers in this module (keyword
+only argument)</p> <p>Returns:
+Module: self</p> <p>Examples::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +IGNORE_WANT(&quot;non-deterministic&quot;)
+&gt;&gt;&gt; linear = nn.Linear(2, 2)
+&gt;&gt;&gt; linear.weight
+Parameter containing:
+tensor([[ 0.1913, -0.3420],
+        [-0.5113, -0.2325]])
+&gt;&gt;&gt; linear.to(torch.double)
+Linear(in_features=2, out_features=2, bias=True)
+&gt;&gt;&gt; linear.weight
+Parameter containing:
+tensor([[ 0.1913, -0.3420],
+        [-0.5113, -0.2325]], dtype=torch.float64)
+&gt;&gt;&gt; # xdoctest: +REQUIRES(env:TORCH_DOCTEST_CUDA1)
+&gt;&gt;&gt; gpu1 = torch.device(&quot;cuda:1&quot;)
+&gt;&gt;&gt; linear.to(gpu1, dtype=torch.half, non_blocking=True)
+Linear(in_features=2, out_features=2, bias=True)
+&gt;&gt;&gt; linear.weight
+Parameter containing:
+tensor([[ 0.1914, -0.3420],
+        [-0.5112, -0.2324]], dtype=torch.float16, device='cuda:1')
+&gt;&gt;&gt; cpu = torch.device(&quot;cpu&quot;)
+&gt;&gt;&gt; linear.to(cpu)
+Linear(in_features=2, out_features=2, bias=True)
+&gt;&gt;&gt; linear.weight
+Parameter containing:
+tensor([[ 0.1914, -0.3420],
+        [-0.5112, -0.2324]], dtype=torch.float16)
+
+&gt;&gt;&gt; linear = nn.Linear(2, 2, bias=None).to(torch.cdouble)
+&gt;&gt;&gt; linear.weight
+Parameter containing:
+tensor([[ 0.3741+0.j,  0.2382+0.j],
+        [ 0.5593+0.j, -0.4443+0.j]], dtype=torch.complex128)
+&gt;&gt;&gt; linear(torch.ones(3, 2, dtype=torch.cdouble))
+tensor([[0.6122+0.j, 0.1150+0.j],
+        [0.6122+0.j, 0.1150+0.j],
+        [0.6122+0.j, 0.1150+0.j]], dtype=torch.complex128)
+</code></pre></div><h3 id="to-empty"><a href="#to-empty" class="header-anchor">#</a> to_empty <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">to_empty</span>(
+  self: <span>~T</span><!---->,<br>  device: <span>typing.Union[int, str, torch.device, NoneType]</span><!---->,<br>  recurse: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Move the parameters and buffers to the specified device without copying storage.</p> <p>Args:
+device (:class:<code>torch.device</code>): The desired device of the parameters
+and buffers in this module.
+recurse (bool): Whether parameters and buffers of submodules should
+be recursively moved to the specified device.</p> <p>Returns:
+Module: self</p> <h3 id="train"><a href="#train" class="header-anchor">#</a> train <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">train</span>(
+  self: <span>~T</span><!---->,<br>  mode: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Set the module in training mode.</p> <p>This has an effect only on certain modules. See the documentation of
+particular modules for details of their behaviors in training/evaluation
+mode, i.e., whether they are affected, e.g. :class:<code>Dropout</code>, :class:<code>BatchNorm</code>,
+etc.</p> <p>Args:
+mode (bool): whether to set training mode (<code>True</code>) or evaluation
+mode (<code>False</code>). Default: <code>True</code>.</p> <p>Returns:
+Module: self</p> <h3 id="trainable-variables"><a href="#trainable-variables" class="header-anchor">#</a> trainable_variables <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ModelV2</span></h3> <pre><code class="language-python"><span class="token function">trainable_variables</span>(
+  self<!----><!---->,<br>  as_dict: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Union[typing.List[typing.Union[<built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]], typing.Dict[str, typing.Union[<built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]]</span></code>
+</pre> <p>Returns the list of trainable variables for this model.</p> <p>Args:
+as_dict: Whether variables should be returned as dict-values
+(using descriptive keys).</p> <p>Returns:
+The list (or dict if <code>as_dict</code> is True) of all trainable
+(tf)/requires_grad (torch) variables of this ModelV2.</p> <h3 id="type"><a href="#type" class="header-anchor">#</a> type <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">type</span>(
+  self: <span>~T</span><!---->,<br>  dst_type: <span>typing.Union[torch.dtype, str]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Casts all parameters and buffers to :attr:<code>dst_type</code>.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Args:
+dst_type (type or string): the desired type</p> <p>Returns:
+Module: self</p> <h3 id="value-function"><a href="#value-function" class="header-anchor">#</a> value_function <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ModelV2</span></h3> <pre><code class="language-python"><span class="token function">value_function</span>(
+  self<!----><!----><!----><br>)<!----></code>
+</pre> <p>Returns the value function output for the most recent forward pass.</p> <p>Note that a <code>forward</code> call has to be performed first, before this
+methods can return anything and thus that calling this method does not
+cause an extra forward pass through the network.</p> <p>Returns:
+Value estimate tensor of shape [BATCH].</p> <h3 id="variables"><a href="#variables" class="header-anchor">#</a> variables <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ModelV2</span></h3> <pre><code class="language-python"><span class="token function">variables</span>(
+  self<!----><!---->,<br>  as_dict: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Union[typing.List[typing.Union[<built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]], typing.Dict[str, typing.Union[<built-in function array>, ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]]</span></code>
+</pre> <p>Returns the list (or a dict) of variables for this model.</p> <p>Args:
+as_dict: Whether variables should be returned as dict-values
+(using descriptive str keys).</p> <p>Returns:
+The list (or dict if <code>as_dict</code> is True) of all variables of this
+ModelV2.</p> <h3 id="xpu"><a href="#xpu" class="header-anchor">#</a> xpu <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">xpu</span>(
+  self: <span>~T</span><!---->,<br>  device: <span>typing.Union[int, torch.device, NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>) <span class="token operator">-&gt;</span> <span>~T</span></code>
+</pre> <p>Move all model parameters and buffers to the XPU.</p> <p>This also makes associated parameters and buffers different objects. So
+it should be called before constructing optimizer if the module will
+live on XPU while being optimized.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Arguments:
+device (int, optional): if specified, all parameters will be
+copied to that device</p> <p>Returns:
+Module: self</p> <h3 id="zero-grad"><a href="#zero-grad" class="header-anchor">#</a> zero_grad <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">zero_grad</span>(
+  self<!----><!---->,<br>  set_to_none: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>)<!----></code>
+</pre> <p>Reset gradients of all model parameters.</p> <p>See similar function under :class:<code>torch.optim.Optimizer</code> for more context.</p> <p>Args:
+set_to_none (bool): instead of setting to zero, set the grads to None.
+See :meth:<code>torch.optim.Optimizer.zero_grad</code> for details.</p> <h3 id="annotated-type"><a href="#annotated-type" class="header-anchor">#</a> _annotated_type <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ModelV2</span></h3> <h3 id="get-backward-hooks"><a href="#get-backward-hooks" class="header-anchor">#</a> _get_backward_hooks <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_get_backward_hooks</span>(
+  self<!----><!----><!----><br>)<!----></code>
+</pre> <p>Return the backward hooks for use in the call function.</p> <p>It returns two lists, one with the full backward hooks and one with the non-full
+backward hooks.</p> <h3 id="load-from-state-dict"><a href="#load-from-state-dict" class="header-anchor">#</a> _load_from_state_dict <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_load_from_state_dict</span>(
+  self<!----><!---->,<br>  state_dict<!----><!---->,<br>  prefix<!----><!---->,<br>  local_metadata<!----><!---->,<br>  strict<!----><!---->,<br>  missing_keys<!----><!---->,<br>  unexpected_keys<!----><!---->,<br>  error_msgs<!----><!----><!----><br>)<!----></code>
+</pre> <p>Copy parameters and buffers from :attr:<code>state_dict</code> into only this module, but not its descendants.</p> <p>This is called on every submodule
+in :meth:<code>~torch.nn.Module.load_state_dict</code>. Metadata saved for this
+module in input :attr:<code>state_dict</code> is provided as :attr:<code>local_metadata</code>.
+For state dicts without metadata, :attr:<code>local_metadata</code> is empty.
+Subclasses can achieve class-specific backward compatible loading using
+the version number at <code>local_metadata.get(&quot;version&quot;, None)</code>.
+Additionally, :attr:<code>local_metadata</code> can also contain the key
+<code>assign_to_params_buffers</code> that indicates whether keys should be
+assigned their corresponding tensor in the state_dict.</p> <p>.. note::
+:attr:<code>state_dict</code> is not the same object as the input
+:attr:<code>state_dict</code> to :meth:<code>~torch.nn.Module.load_state_dict</code>. So
+it can be modified.</p> <p>Args:
+state_dict (dict): a dict containing parameters and
+persistent buffers.
+prefix (str): the prefix for parameters and buffers used in this
+module
+local_metadata (dict): a dict containing the metadata for this module.
+See
+strict (bool): whether to strictly enforce that the keys in
+:attr:<code>state_dict</code> with :attr:<code>prefix</code> match the names of
+parameters and buffers in this module
+missing_keys (list of str): if <code>strict=True</code>, add missing keys to
+this list
+unexpected_keys (list of str): if <code>strict=True</code>, add unexpected
+keys to this list
+error_msgs (list of str): error messages should be added to this
+list, and will be reported together in
+:meth:<code>~torch.nn.Module.load_state_dict</code></p> <h3 id="named-members"><a href="#named-members" class="header-anchor">#</a> _named_members <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_named_members</span>(
+  self<!----><!---->,<br>  get_members_fn<!----><!---->,<br>  prefix<!----><!---->,<br>  recurse<!----> <span class="token operator">=</span> <span class="token boolean">True</span>,<br>  remove_duplicate: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>)<!----></code>
+</pre> <p>Help yield various names + members of modules.</p> <h3 id="register-load-state-dict-pre-hook-2"><a href="#register-load-state-dict-pre-hook-2" class="header-anchor">#</a> _register_load_state_dict_pre_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_register_load_state_dict_pre_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!---->,<br>  with_module<!----> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>)<!----></code>
+</pre> <p>See :meth:<code>~torch.nn.Module.register_load_state_dict_pre_hook</code> for details.</p> <p>A subtle difference is that if <code>with_module</code> is set to <code>False</code>, then the
+hook will not take the <code>module</code> as the first argument whereas
+:meth:<code>~torch.nn.Module.register_load_state_dict_pre_hook</code> always takes the
+<code>module</code> as the first argument.</p> <p>Arguments:
+hook (Callable): Callable hook that will be invoked before
+loading the state dict.
+with_module (bool, optional): Whether or not to pass the module
+instance to the hook as the first parameter.</p> <h3 id="register-state-dict-hook"><a href="#register-state-dict-hook" class="header-anchor">#</a> _register_state_dict_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_register_state_dict_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!----><!----><br>)<!----></code>
+</pre> <p>Register a post-hook for the :meth:<code>~torch.nn.Module.state_dict</code> method.</p> <p>It should have the following signature::
+hook(module, state_dict, prefix, local_metadata) -&gt; None or state_dict</p> <p>The registered hooks can modify the <code>state_dict</code> inplace or return a new one.
+If a new <code>state_dict</code> is returned, it will only be respected if it is the root
+module that :meth:<code>~nn.Module.state_dict</code> is called from.</p> <h3 id="save-to-state-dict"><a href="#save-to-state-dict" class="header-anchor">#</a> _save_to_state_dict <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_save_to_state_dict</span>(
+  self<!----><!---->,<br>  destination<!----><!---->,<br>  prefix<!----><!---->,<br>  keep_vars<!----><!----><!----><br>)<!----></code>
+</pre> <p>Save module state to the <code>destination</code> dictionary.</p> <p>The <code>destination</code> dictionary will contain the state
+of the module, but not its descendants. This is called on every
+submodule in :meth:<code>~torch.nn.Module.state_dict</code>.</p> <p>In rare cases, subclasses can achieve class-specific behavior by
+overriding this method with custom logic.</p> <p>Args:
+destination (dict): a dict where state will be stored
+prefix (str): the prefix for parameters and buffers used in this
+module</p></div> <footer class="page-edit"><!----> <!----></footer> <!----> </main></div><div class="global-ui"><!----></div></div>
+    <script src="/scikit-decide/version/1.0.3/assets/js/app.62cf8712.js" defer></script><script src="/scikit-decide/version/1.0.3/assets/js/3.0d3eec02.js" defer></script><script src="/scikit-decide/version/1.0.3/assets/js/6.b1520538.js" defer></script><script src="/scikit-decide/version/1.0.3/assets/js/123.d49ef76f.js" defer></script><script src="/scikit-decide/version/1.0.3/assets/js/8.047bff44.js" defer></script><script src="/scikit-decide/version/1.0.3/assets/js/9.317636b3.js" defer></script><script src="/scikit-decide/version/1.0.3/assets/js/5.fe62d74f.js" defer></script>
+  </body>
+</html>
