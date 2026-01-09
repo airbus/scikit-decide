@@ -8246,7 +8246,7 @@ requires-dist = [
     { name = "torch", marker = "(platform_machine != 'x86_64' and extra == 'solvers') or (sys_platform != 'darwin' and extra == 'solvers')", specifier = ">=2.3" },
     { name = "torch", marker = "python_full_version >= '3.12' and sys_platform == 'win32' and extra == 'solvers'", specifier = "!=2.9.0,!=2.9.1" },
     { name = "torch-geometric", marker = "extra == 'solvers'", specifier = ">=2.5" },
-    { name = "unified-planning", marker = "python_full_version >= '3.10' and extra == 'shared'", specifier = ">=1.3.0" },
+    { name = "unified-planning", marker = "python_full_version >= '3.10' and extra == 'shared'", specifier = ">=1.1,<1.3" },
     { name = "up-enhsp", marker = "python_full_version >= '3.10' and extra == 'solvers'", specifier = ">=0.0.25,<0.0.28" },
     { name = "up-fast-downward", marker = "python_full_version >= '3.10' and extra == 'solvers'", specifier = ">=0.4.1" },
     { name = "up-pyperplan", marker = "python_full_version >= '3.10' and extra == 'solvers'", specifier = ">=1.1.0" },
@@ -9704,7 +9704,7 @@ wheels = [
 
 [[package]]
 name = "unified-planning"
-version = "1.3.0"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "configspace", marker = "python_full_version >= '3.10'" },
@@ -9712,9 +9712,9 @@ dependencies = [
     { name = "networkx", version = "3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pyparsing", marker = "python_full_version >= '3.10'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/46/b47cea09306a213e98160f7b6c3fb85d08c954066e413ced6758482a4419/unified_planning-1.3.0.tar.gz", hash = "sha256:9f1914377172626e512bd4c1545aebddbfd4752bf37b36f9cd41ff059a7e6a52", size = 513819, upload-time = "2025-12-17T10:55:57.391Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/89/257aea5e839fadb676f4b10b9a461d7274b2f660c6fcd9e2c12cfb1794c8/unified_planning-1.2.0.tar.gz", hash = "sha256:68c46ad518574c1acce15fda5f7018717796c9926a326c64bfed4da33385d26a", size = 490056, upload-time = "2024-12-19T14:56:49.117Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b2/9d/e1fe9f8f478fcdf45ddecdb9587f6a6befe4d434159f51d2759afe4accbe/unified_planning-1.3.0-py3-none-any.whl", hash = "sha256:3ad9c790d238a12ce1dfd25f564e728d98350a0b4b79d3beb60978f95487fa46", size = 743538, upload-time = "2025-12-17T10:55:55.591Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/d1/97f61a90f2cd3b9c4670baee906708cae2463d65333a32ebcc08147ad353/unified_planning-1.2.0-py3-none-any.whl", hash = "sha256:487e321fd01eb3c583015ce5f5e11d43e2f5c8aa1d8da04c19d11d03d9a604ad", size = 713331, upload-time = "2024-12-19T14:56:45.369Z" },
 ]
 
 [[package]]
