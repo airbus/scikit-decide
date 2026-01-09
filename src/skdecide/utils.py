@@ -234,7 +234,7 @@ class ReplaySolver(DeterministicPolicies):
 
 def rollout(
     domain: Domain,
-    solver: Optional[Union[Solver, Policies]] = None,
+    solver: Optional[Policies] = None,
     from_memory: Optional[D.T_memory[D.T_state]] = None,
     from_action: Optional[D.T_agent[D.T_concurrency[D.T_event]]] = None,
     num_episodes: int = 1,
@@ -315,10 +315,6 @@ def rollout(
                 autocast_all(self._domain, self._domain, self)
 
             @autocastable
-            def reset(self) -> None:
-                pass
-
-            @autocastable
             def sample_action(
                 self, observation: D.T_agent[D.T_observation]
             ) -> D.T_agent[D.T_concurrency[D.T_event]]:
@@ -367,7 +363,8 @@ def rollout(
         rollout_callback.at_episode_start()
 
         # Initialize episode
-        solver.reset()
+        if isinstance(solver, Solver):
+            solver.reset()
         if from_memory is None:
             if isinstance(domain, Initializable):
                 observation = domain.reset()
