@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from openap.extra.aero import ft
-
 from skdecide.hub.domain.flight_planning.aircraft_performance.bean.four_dimensions_state import (
     FourDimensionsState,
 )

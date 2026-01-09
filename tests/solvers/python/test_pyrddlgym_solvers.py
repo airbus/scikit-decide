@@ -1,7 +1,3 @@
-import os
-import shutil
-from urllib.request import urlcleanup, urlretrieve
-
 import pyRDDLGym_jax.examples.configs
 from pyRDDLGym_jax.core.simulator import JaxRDDLSimulator
 

@@ -6,8 +6,6 @@ from __future__ import annotations
 
 # Load rcpsp domains from psplib files.
 # You need the discrete optimisation library to be able to use those.
-from typing import Union
-
 from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP
 
 

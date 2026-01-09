@@ -2,7 +2,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import platform
 import sys
 
 import pytest
@@ -175,10 +174,9 @@ def test_up_bridge_solver_numeric():
 def test_up_bridge_classic_optuna():
     import unified_planning
     from optuna.samplers import BruteForceSampler
-    from unified_planning.plans import ActionInstance
     from unified_planning.shortcuts import BoolType, OneshotPlanner, UserType
 
-    from skdecide.hub.domain.up import SkUPAction, UPDomain
+    from skdecide.hub.domain.up import UPDomain
     from skdecide.hub.solver.up import UPSolver
 
     Location = UserType("Location")

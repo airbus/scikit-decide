@@ -1,6 +1,5 @@
 import logging
 
-import numpy as np
 import torch as th
 import torch_geometric as thg
 

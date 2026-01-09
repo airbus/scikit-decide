@@ -9,7 +9,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from skdecide.core import D, EmptySpace, EnumerableSpace, Mask, Space, autocastable
+from skdecide.core import D, EmptySpace, Mask, Space, autocastable
 
 __all__ = ["Events", "Actions", "UnrestrictedActions"]
 

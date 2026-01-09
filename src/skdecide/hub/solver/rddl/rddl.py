@@ -13,7 +13,7 @@ from pyRDDLGym_jax.core.planner import (
 )
 
 from skdecide import Solver
-from skdecide.builders.solver import FromInitialState, Policies
+from skdecide.builders.solver import Policies
 from skdecide.hub.domain.rddl import RDDLDomain
 
 
@@ -21,7 +21,7 @@ class D(RDDLDomain):
     pass
 
 
-class RDDLJaxSolver(Solver, Policies, FromInitialState):
+class RDDLJaxSolver(Solver, Policies):
     T_domain = D
 
     def __init__(
@@ -52,7 +52,7 @@ class RDDLJaxSolver(Solver, Policies, FromInitialState):
         return True
 
 
-class RDDLGurobiSolver(Solver, Policies, FromInitialState):
+class RDDLGurobiSolver(Solver, Policies):
     T_domain = D
 
     def __init__(

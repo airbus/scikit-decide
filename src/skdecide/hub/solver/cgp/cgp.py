@@ -26,7 +26,7 @@ from skdecide.builders.domain import (
 )
 from skdecide.builders.solver import DeterministicPolicies
 
-from .pycgp.cgpes import CGP, CGPES, Evaluator
+from .pycgp.cgpes import CGP, CGPES
 from .pycgp.cgpfunctions import (
     f_abs,
     f_acos,
@@ -50,6 +50,7 @@ from .pycgp.cgpfunctions import (
     f_sum,
     f_zero,
 )
+from .pycgp.evaluator import Evaluator
 
 
 class D(

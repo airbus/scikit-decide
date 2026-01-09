@@ -9,12 +9,6 @@ from typing import Optional
 
 import numpy as np
 
-from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools import (
-    std_atm as standard_atmosphere,
-)
-from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.GenericInterpolator import (
-    GenericWindInterpolator,
-)
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.parser_pygrib import (
     GribPygribUniqueForecast,
 )

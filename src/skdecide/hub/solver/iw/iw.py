@@ -24,7 +24,6 @@ from skdecide.builders.solver import (
     ParallelSolver,
     Utilities,
 )
-from skdecide.hub.space.gym import ListSpace
 
 try:
     from skdecide.hub.__skdecide_hub_cpp import _IWSolver_ as iw_solver

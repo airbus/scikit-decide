@@ -4,7 +4,7 @@
 
 from importlib.metadata import PackageNotFoundError, version
 
-from skdecide import hub
+from skdecide import hub as hub
 from skdecide.core import *
 from skdecide.domains import *
 from skdecide.solvers import *

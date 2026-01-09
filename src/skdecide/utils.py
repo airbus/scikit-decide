@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-import copy
-import datetime
 import importlib.metadata
 import logging
 import os

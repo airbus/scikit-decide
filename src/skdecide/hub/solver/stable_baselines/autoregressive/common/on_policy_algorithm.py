@@ -3,14 +3,7 @@ from typing import Optional, Union
 import numpy as np
 import torch as th
 from gymnasium import spaces
-from sb3_contrib.common.maskable.buffers import (
-    MaskableDictRolloutBuffer,
-    MaskableRolloutBuffer,
-)
-from sb3_contrib.common.maskable.utils import get_action_masks, is_masking_supported
 from stable_baselines3.common.buffers import RolloutBuffer
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.type_aliases import GymEnv, TensorDict
 from stable_baselines3.common.vec_env import VecEnv

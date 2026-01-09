@@ -9,9 +9,6 @@ import numpy as np
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.common_utils as Toolbox
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.intergrid as intergrid
 import skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.std_atm as std_atm
-from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.common_utils import (
-    convert,
-)
 from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.interpolator.WeatherInterpolator import (
     WeatherInterpolator,
 )

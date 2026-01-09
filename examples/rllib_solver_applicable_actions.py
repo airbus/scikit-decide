@@ -7,7 +7,6 @@ from enum import Enum
 from typing import Optional
 
 from ray.rllib.algorithms.dqn import DQN
-from ray.rllib.algorithms.ppo import PPO
 
 from skdecide.builders.domain.events import Actions
 from skdecide.core import Space, Value

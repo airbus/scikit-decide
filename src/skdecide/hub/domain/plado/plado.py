@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import itertools
 import logging
-from collections import defaultdict
 from collections.abc import Hashable, Iterable
 from enum import Enum
 from typing import Any, Optional, Union
@@ -51,7 +50,13 @@ from skdecide.hub.space.gym import (
 logger = logging.getLogger(__name__)
 
 try:
-    import plado
+    from plado.parser import parse_and_normalize
+    from plado.semantics.applicable_actions_generator import ApplicableActionsGenerator
+    from plado.semantics.goal_checker import GoalChecker
+    from plado.semantics.successor_generator import SuccessorGenerator
+    from plado.semantics.task import State as PladoState
+    from plado.semantics.task import Task
+    from plado.utils import Float
 except ImportError:
     plado_available = False
     logger.warning(
@@ -62,13 +67,7 @@ except ImportError:
     Float = Fraction
 else:
     plado_available = True
-    from plado.parser import parse_and_normalize
-    from plado.semantics.applicable_actions_generator import ApplicableActionsGenerator
-    from plado.semantics.goal_checker import GoalChecker
-    from plado.semantics.successor_generator import SuccessorGenerator
-    from plado.semantics.task import AddEffect, Atom, DelEffect, SimpleCondition, Task
-    from plado.semantics.task import State as PladoState
-    from plado.utils import Float
+
 
 SkAtomsType = tuple[tuple[tuple[int, ...], ...], ...]
 AtomsType = list[set[tuple[int, ...]]]

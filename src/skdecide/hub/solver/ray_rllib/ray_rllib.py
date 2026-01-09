@@ -6,10 +6,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import Any, Optional, Union
 
 import gymnasium as gym
-import numpy as np
 import ray
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     CategoricalHyperparameter,
@@ -49,7 +48,6 @@ from .gnn.evaluation.rollout_worker import Graph2NodeRolloutWorker, GraphRollout
 from .gnn.models.torch.complex_input_net import GraphComplexInputNetwork
 from .gnn.models.torch.gnn import GnnBasedGraph2NodeModel, GnnBasedModel
 from .gnn.utils.monkey_patch import (
-    monkey_patch_rllib_for_graph,
     unmonkey_patch_rllib_for_graph,
 )
 from .gnn.utils.spaces.space_utils import (

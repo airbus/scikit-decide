@@ -15,7 +15,7 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparametrizable imp
 
 from skdecide import autocast_all
 from skdecide.builders.solver.fromanystatesolvability import FromInitialState
-from skdecide.builders.solver.policy import DeterministicPolicies
+from skdecide.builders.solver.policy import DeterministicPolicies, Policies
 from skdecide.domains import Domain
 
 __all__ = ["Solver", "DeterministicPolicySolver"]
@@ -24,7 +24,7 @@ __all__ = ["Solver", "DeterministicPolicySolver"]
 # MAIN BASE CLASS
 
 
-class Solver(Hyperparametrizable, FromInitialState):
+class Solver(Hyperparametrizable, FromInitialState, Policies):
     """This is the highest level solver class (inheriting top-level class for each mandatory solver characteristic).
 
     This helper class can be used as the main base class for solvers.

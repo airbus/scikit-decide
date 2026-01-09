@@ -1,13 +1,8 @@
-from copy import deepcopy
-
 from skdecide.hub.domain.flight_planning.aircraft_performance.bean.aircraft_state import (
     AircraftState,
 )
 from skdecide.hub.domain.flight_planning.aircraft_performance.performance.performance_model_enum import (
     PerformanceModelEnum,
-)
-from skdecide.hub.domain.flight_planning.aircraft_performance.performance.phase_enum import (
-    PhaseEnum,
 )
 from skdecide.hub.domain.flight_planning.aircraft_performance.performance.propulsion.service._openap_propulsion_service import (
     _OpenapPropulsionService,

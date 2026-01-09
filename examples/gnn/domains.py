@@ -1,15 +1,10 @@
 """Fixtures to be reused by several test files."""
 
-import logging
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Optional
 
 import numpy as np
-import torch as th
-import torch_geometric as thg
 from graph_jsp_env.disjunctive_graph_jsp_env import DisjunctiveGraphJspEnv
 from gymnasium.spaces import Box, Discrete, Graph, GraphInstance
-from pytest_cases import fixture, fixture_union, param_fixture
-from torch_geometric.nn import global_add_pool
 
 from skdecide.builders.domain import (
     FullyObservable,

@@ -17,7 +17,6 @@ from skdecide import (
     Domain,
     EnumerableSpace,
     ImplicitSpace,
-    Memory,
     SamplableSpace,
     Space,
     T,
@@ -25,7 +24,6 @@ from skdecide import (
 )
 from skdecide.builders.domain import (
     Actions,
-    DeterministicTransitions,
     FullyObservable,
     Goals,
     Markovian,

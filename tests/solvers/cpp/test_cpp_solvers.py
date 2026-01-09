@@ -24,7 +24,6 @@ from skdecide import (
     Value,
 )
 from skdecide.builders.domain import UnrestrictedActions
-from skdecide.builders.solver import ParallelSolver
 from skdecide.hub.space.gym import EnumSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver
 

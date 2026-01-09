@@ -3,7 +3,6 @@ from enum import Enum
 from typing import Optional
 
 import gymnasium as gym
-import ray.rllib.utils
 from ray.rllib.algorithms.dqn import DQN
 from ray.rllib.algorithms.ppo import PPO
 
