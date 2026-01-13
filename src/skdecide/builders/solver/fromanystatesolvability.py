@@ -20,15 +20,11 @@ class FromInitialState:
     ) -> None:
         """Run the solving process.
 
-        After solving by calling self._solve(), autocast itself so that rollout methods apply
-        to the domain original characteristics.
-
         !!! tip
             The nature of the solutions produced here depends on other solver's characteristics like
             #policy and #assessibility.
         """
         self._solve()
-        self.autocast()
 
     def _solve(
         self,
@@ -52,9 +48,6 @@ class FromAnyState(FromInitialState):
     ) -> None:
         """Run the solving process.
 
-        After solving by calling self._solve(), autocast itself so that rollout methods apply
-        to the domain original characteristics.
-
         # Parameters
         from_memory: The source memory (state or history) from which we begin the solving process.
             If None, initial state is used if the domain is initializable, else a ValueError is raised.
@@ -64,7 +57,6 @@ class FromAnyState(FromInitialState):
             #policy and #assessibility.
         """
         self._solve(from_memory=from_memory)
-        self.autocast()
 
     def _solve(
         self,
@@ -95,9 +87,6 @@ class FromAnyState(FromInitialState):
     def solve_from(self, memory: D.T_memory[D.T_state]) -> None:
         """Run the solving process from a given state.
 
-        After solving by calling self._solve_from(), autocast itself so that rollout methods apply
-        to the domain original characteristics.
-
         # Parameters
         memory: The source memory (state or history) of the transition.
 
@@ -106,7 +95,6 @@ class FromAnyState(FromInitialState):
             #policy and #assessibility.
         """
         self._solve_from(memory)
-        self.autocast()
 
     def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
         """Run the solving process from a given state.

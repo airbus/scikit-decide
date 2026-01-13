@@ -30,14 +30,10 @@ class Restorable:
     def load(self, path: str) -> None:
         """Restore the solver state from given path.
 
-        After calling self._load(), autocast itself so that rollout methods apply
-        to the domain original characteristics.
-
         # Parameters
         path: The path where the solver state was saved.
         """
         self._load(path)
-        self.autocast()
 
     def _load(self, path: str) -> None:
         """Restore the solver state from given path.
