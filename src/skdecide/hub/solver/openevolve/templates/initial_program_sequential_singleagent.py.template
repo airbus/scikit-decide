@@ -1,0 +1,37 @@
+from skdecide import Space
+
+from {{domain_module}} import {{domain_cls}}
+
+
+# EVOLVE-BLOCK-START
+class Planner:
+    """Random planner.
+
+    It demonstrates the needed api, but performs poorly.
+
+    """
+
+    def __init__(self, domain: {{domain_cls}}):
+        """
+
+        Args:
+            domain: the domain to solve
+        """
+        self.domain = domain
+
+    def sample_action(self, observation: {{domain_cls}}.T_observation, applicable_actions: Space[{{domain_cls}}.T_event]) -> {{domain_cls}}.T_event:
+        """Sample next action for the given observation.
+
+        Pure random sampling, not using any heuristic, not leading to great results.
+
+        Args:
+            observation: the current observation
+            applicable_actions: the space of applicable actions according to the current domain state
+
+        Returns:
+            sampled action
+
+        """
+        return applicable_actions.sample()
+
+# EVOLVE-BLOCK-END
