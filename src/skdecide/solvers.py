@@ -76,6 +76,11 @@ class Solver(Hyperparametrizable, FromInitialState):
         """The wrapped domain factory returning a domain auto-cast to the level expected by the solver."""
         return self._domain_factory
 
+    @property
+    def original_domain_factory(self) -> Callable[[], Domain]:
+        """The original domain factory (without any autocast)."""
+        return self._original_domain_factory
+
     @classmethod
     def get_domain_requirements(cls) -> list[type]:
         """Get domain requirements for this solver class to be applicable.
