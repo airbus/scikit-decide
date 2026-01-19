@@ -1,0 +1,34 @@
+from {{domain_module}} import {{domain_cls}}
+
+
+# EVOLVE-BLOCK-START
+class Planner:
+    """Random planner.
+
+    It demonstrates the needed api, but performs poorly.
+
+    """
+
+    def __init__(self, domain: {{domain_cls}}):
+        """
+
+        Args:
+            domain: the domain to solve
+        """
+        self.domain = domain
+
+    def sample_action(self, observation: {{domain_cls}}.T_observation) -> {{domain_cls}}.T_event:
+        """Sample next action for the given observation.
+
+        Pure random sampling, not using any heuristic, not leading to great results.
+
+        Args:
+            observation: the current observation
+
+        Returns:
+            sampled action
+
+        """
+        return self.domain.get_action_space().sample()
+
+# EVOLVE-BLOCK-END
