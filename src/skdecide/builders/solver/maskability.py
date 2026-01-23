@@ -27,12 +27,29 @@ class ApplicableActions:
         For instance, action masking could be possible only if
         considered domain action space is enumerable for each agent.
 
+        """
+        return self._using_applicable_actions()
+
+    def _using_applicable_actions(self):
+        """Tell if the solver is able to use applicable actions information.
+
+        For instance, action masking could be possible only if
+        considered domain action space is enumerable for each agent.
+
         The default implementation returns always True.
 
         """
         return True
 
     def retrieve_applicable_actions(self, domain: Domain) -> None:
+        """Retrieve applicable actions and use it for future call to `self.step()`.
+
+        To be called during rollout to get the actual applicable actions from the actual domain used in rollout.
+
+        """
+        return self._retrieve_applicable_actions(domain=domain)
+
+    def _retrieve_applicable_actions(self, domain: Domain) -> None:
         """Retrieve applicable actions and use it for future call to `self.step()`.
 
         To be called during rollout to get the actual applicable actions from the actual domain used in rollout.
@@ -55,7 +72,7 @@ class Maskable(ApplicableActions):
 
     _action_mask: Optional[D.T_agent[Mask]] = None
 
-    def retrieve_applicable_actions(self, domain: Domain) -> None:
+    def _retrieve_applicable_actions(self, domain: Domain) -> None:
         """Retrieve applicable actions and use it for future call to `self.step()`.
 
         To be called during rollout to get the actual applicable actions from the actual domain used in rollout.
