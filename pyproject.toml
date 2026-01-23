@@ -46,7 +46,7 @@ shared = [  # define a common extra to avoid redefining dependencies in both dom
     "unified-planning>=1.3.0; python_version>='3.10'",
 ]
 domains = [
-    "scikit-decide[shared]",  # self-reference allowed by pip since 21.2 (https://github.com/pypa/pip/issues/11296)
+    "scikit-decide[shared]", # self-reference allowed by pip since 21.2 (https://github.com/pypa/pip/issues/11296)
     "matplotlib>=3.3.4",
     "openap>=1.5",
     "pygeodesy>=23.6.12",
@@ -58,6 +58,7 @@ domains = [
     "pyRDDLGym-rl>=0.2; python_version < '3.13'",
     "rddlrepository>=2.1",
     "plado>=0.1.3;  python_version>='3.10'",
+    "pytz>=2025.2",
 ]
 solvers = [
     "scikit-decide[shared]", # self-reference allowed by pip since 21.2 (https://github.com/pypa/pip/issues/11296)
