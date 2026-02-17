@@ -54,6 +54,7 @@ domains = [
     "pygrib>=2.1.6; sys_platform == 'linux'",
     "pygrib>=2.1.6; sys_platform == 'darwin' and platform_machine != 'x86_64'",
     "pygrib==2.1.5; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "setuptools<82.0.0; sys_platform == 'darwin' and platform_machine == 'x86_64'",  # pkg_resources removed from 82.0.0, and needed by pygrib 2.1.5
     "pyRDDLGym>=2.3; python_version < '3.13'",
     "pyRDDLGym-rl>=0.2; python_version < '3.13'",
     "rddlrepository>=2.1",
