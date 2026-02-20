@@ -8224,6 +8224,7 @@ requires-dist = [
     { name = "jax", marker = "sys_platform == 'win32' and extra == 'solvers'", specifier = ">=0.4,<0.6" },
     { name = "joblib", marker = "extra == 'solvers'", specifier = ">=1.0.1" },
     { name = "matplotlib", marker = "extra == 'domains'", specifier = ">=3.3.4" },
+    { name = "numpy", marker = "python_full_version < '3.13' and extra == 'domains'", specifier = "<2.4" },
     { name = "numpy", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin' and extra == 'shared'", specifier = ">=1.20.1,<2" },
     { name = "numpy", marker = "(platform_machine != 'x86_64' and extra == 'shared') or (sys_platform != 'darwin' and extra == 'shared')", specifier = ">=2.0" },
     { name = "openap", marker = "extra == 'domains'", specifier = ">=1.5" },
