@@ -25,10 +25,10 @@ from stable_baselines3.common.type_aliases import MaybeCallback
 
 from skdecide import Domain, Solver
 from skdecide.builders.domain import (
+    Actions,
     Initializable,
     Sequential,
     SingleAgent,
-    UnrestrictedActions,
 )
 from skdecide.builders.solver import Maskable, Policies, Restorable
 from skdecide.hub.domain.gym import AsGymnasiumEnv
@@ -37,7 +37,7 @@ from skdecide.hub.space.gym import GymSpace, MultiDiscreteSpace
 logger = logging.getLogger(__name__)
 
 
-class D(Domain, SingleAgent, Sequential, UnrestrictedActions, Initializable):
+class D(Domain, SingleAgent, Sequential, Actions, Initializable):
     pass
 
 
