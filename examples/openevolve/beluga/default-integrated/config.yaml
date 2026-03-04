@@ -1,0 +1,76 @@
+# Configuration for maze heuristic
+
+# General settings
+max_iterations: 100
+checkpoint_interval: 5
+
+# Evolution settings
+diff_based_evolution: true
+max_code_length: 20000
+
+# LLM configuration
+llm:
+  models:
+    # List of available models with their weights (no weight = 1)
+    - name: "gpt-oss-120b"
+#    - name: "qwen-3-235b-a22b-instruct-2507"
+#    - name: "llama-3.3-70b"
+    - name: "llama3.1-8b"
+#    - name: "qwen-3-32b"
+#    - name: "zai-glm-4.7"
+
+  api_base: "https://api.cerebras.ai/v1"
+  max_tokens: 30000
+  timeout: 300
+
+# Prompt configuration
+prompt:
+  system_message: |
+    You are an expert mathematician specialized in planning and scheduling.
+    Your task is to improve a function that suggests the next action to take given the current position in a pddl domain.
+    It will be applied to a real-world logistic planning problem dealing with the storage and management of cargo transported by Airbus Beluga aircrafts.
+
+    Aircraft parts are held on *jigs*, which can slide and be stored on the *racks*.
+    *Trailers* are used as special moving racks to transfer the jigs between the Beluga
+    and the fixed racks. When the aircraft parts are sent to the production lines,
+    they transit to hangars where cranes remove the parts from the jigs.
+    The parts are then sent to production and the jigs return empty to the rack system.
+
+    The racks can contain several jigs in sequence, but only the jigs which are at the edges of the racks
+    (either factory side or Beluga side) can be pulled out from the racks. This might require swapping jigs
+    located at the rack edges to other racks in order to free the pass to jigs which are strictly inside the racks
+    (i.e. not at their edges).
+
+    Concerning the empty jigs to be returned to the Beluga, we only need to know their types
+    (a jig type being a class of jigs of same loaded size and same empty size) and how many such
+    empty jig types must be returned.
+
+    When the Beluga lands on the production site, 2 high-level tasks must be performed:
+    - unloading the parts (held on jigs) from the Beluga and storing them in the rack system ;
+    - unstoring empty jigs from the rack system and loading them into the Beluga.
+
+    Between 2 Beluga flights, 3 high-level tasks must be considered:
+    - unstoring parts held on jigs from the rack system and sending them to the production lines via the craning hangars ;
+    - sending back empty jigs from the craning hangars to the rack system;
+    - [optionally] swapping the jigs which are at the edges of the racks (either factory side or Beluga side) from one rack to another, in order to free the pass to jigs which are strictly inside the racks
+
+    Your sampling function will be evaluated by applying it on several instances of the domain and computing the resulting average cost.
+    More precisely, given a maze, a new action is sampled and applied to the problem until the goal is reached
+    or until a max number of steps related to the domain size (i.e. the number of jigs) is overcome. We take the average of the total cost on each test problem.
+
+    The heuristic is wrapped into a planner that can be used to stores information about the current problem from previous calls
+    to increase the computation speed.
+
+
+# Database configuration
+database:
+  population_size: 50
+  archive_size: 20
+  num_islands: 3
+
+# Evaluator configuration
+evaluator:
+  timeout: 90  # llm response + evaluation
+  cascade_evaluation: false
+  parallel_evaluations: 3  # prompts sent at once
+  use_llm_feedback: false  # evaluation of code by llm?
