@@ -12,7 +12,11 @@ from skdecide.builders.solver import ApplicableActions
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
-def test_up_bridge_domain_random():
+@pytest.mark.parametrize(
+    "state_encoding", ["native", "dictionary", "vector", "variable"]
+)
+@pytest.mark.parametrize("action_encoding", ["native", "int"])
+def test_up_bridge_domain_random(state_encoding, action_encoding):
     import unified_planning
     from unified_planning.shortcuts import Fluent, InstantaneousAction, Not
 
@@ -51,21 +55,26 @@ def test_up_bridge_domain_random():
         unified_planning.model.metrics.MinimizeActionCosts({a: 10, b: 1, c: 1})
     )
 
-    domain_factory = lambda: UPDomain(problem, state_encoding="dictionary")
+    domain_factory = lambda: UPDomain(
+        problem, state_encoding=state_encoding, action_encoding=action_encoding
+    )
     domain = domain_factory()
     action_space = domain.get_action_space()
-    observation_space = domain.get_observation_space()
 
     s = domain.get_initial_state()
     step = 0
     while not domain.is_goal(s) and step < 10:
         s = domain.get_next_state(s, domain.get_applicable_actions(s).sample())
         step += 1
-    assert len(action_space._elements) == 3
-    assert all(
-        isinstance(s, gym.spaces.Discrete) and s.n == 2
-        for s in observation_space.unwrapped().spaces.values()
-    )
+    assert len(action_space.get_elements()) == 3
+
+    if state_encoding != "native":
+        observation_space = domain.get_observation_space()
+        if state_encoding == "dictionary":
+            assert all(
+                isinstance(s, gym.spaces.Discrete) and s.n == 2
+                for s in observation_space.unwrapped().spaces.values()
+            )
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
@@ -211,7 +220,7 @@ def test_up_bridge_domain_rl():
     assert (
         len(observation_space.unwrapped().low)
         == len(observation_space.unwrapped().high)
-        == 2
+        == 11
     )
     assert all(
         observation_space.unwrapped().low[i] == 0
@@ -223,6 +232,7 @@ def test_up_bridge_domain_rl():
         domain_factory=domain_factory,
         algo_class=DQN,
         train_iterations=1,
+        config=DQN.get_default_config().training(train_batch_size=128),
     ) as solver:
         solver.solve()
         # check that rollout will automatically use action masking
