@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparametrizable import (
     Hyperparametrizable,
@@ -59,6 +58,7 @@ class Solver(Hyperparametrizable, FromInitialState):
 
         """
 
+        # cast domain to required characteristic (broader) level according to T_domain
         def cast_domain_factory():
             domain = domain_factory()
             autocast_all(domain, domain, self.T_domain)
@@ -66,6 +66,10 @@ class Solver(Hyperparametrizable, FromInitialState):
 
         self._domain_factory = cast_domain_factory
         self._original_domain_factory = domain_factory
+
+        # cast solver to required (finer) characteristic level according to given domain_factory
+        original_domain_cls = type(self._original_domain_factory())
+        autocast_all(self, self.T_domain, original_domain_cls)
 
     @property
     def domain_factory(self) -> Callable[[], Domain]:
@@ -187,20 +191,6 @@ class Solver(Hyperparametrizable, FromInitialState):
         is a good habit to always call solvers within a 'with' statement.
         """
         self._cleanup()
-
-    def autocast(self, domain_cls: Optional[type[Domain]] = None) -> None:
-        """Autocast itself to the level corresponding to the given domain class.
-
-        # Parameters
-        domain_cls: the domain class to which level the solver needs to autocast itself.
-            By default, use the original domain factory passed to its constructor.
-
-        """
-        if not self._already_autocast:
-            if domain_cls is None:
-                domain_cls = type(self._original_domain_factory())
-            autocast_all(self, self.T_domain, domain_cls)
-            self._already_autocast = True
 
 
 # ALTERNATE BASE CLASSES (for typical combinations)
