@@ -279,7 +279,7 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         if kwargs:
             self._config.update_from_dict(kwargs)
 
-    def using_applicable_actions(self):
+    def _using_applicable_actions(self):
         return self._action_masking
 
     def get_policy(self) -> dict[str, Policy]:

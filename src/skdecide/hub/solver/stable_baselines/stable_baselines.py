@@ -25,10 +25,10 @@ from stable_baselines3.common.type_aliases import MaybeCallback
 
 from skdecide import Domain, Solver
 from skdecide.builders.domain import (
+    Actions,
     Initializable,
     Sequential,
     SingleAgent,
-    UnrestrictedActions,
 )
 from skdecide.builders.solver import Maskable, Policies, Restorable
 from skdecide.hub.domain.gym import AsGymnasiumEnv
@@ -37,7 +37,7 @@ from skdecide.hub.space.gym import GymSpace, MultiDiscreteSpace
 logger = logging.getLogger(__name__)
 
 
-class D(Domain, SingleAgent, Sequential, UnrestrictedActions, Initializable):
+class D(Domain, SingleAgent, Sequential, Actions, Initializable):
     pass
 
 
@@ -165,17 +165,17 @@ class StableBaseline(Solver, Policies, Restorable, Maskable):
             ent_coef_log = kwargs.pop("ent_coef_log")
             kwargs["ent_coef"] = 10**ent_coef_log
 
-    def using_applicable_actions(self):
+    def _using_applicable_actions(self):
         """Tell if the solver is able to use applicable actions information."""
         return self.use_action_masking or self.autoregressive_action
 
-    def retrieve_applicable_actions(self, domain: Domain) -> None:
+    def _retrieve_applicable_actions(self, domain: Domain) -> None:
         if self.autoregressive_action:
             self._applicable_actions = np.array(
                 domain.get_applicable_actions().get_elements()
             )
         else:
-            super().retrieve_applicable_actions(domain)
+            super()._retrieve_applicable_actions(domain)
 
     def get_applicable_actions(self) -> Optional[npt.NDArray[int]]:
         return self._applicable_actions
