@@ -28,7 +28,7 @@ from discrete_optimization.rcpsp.solvers.cpm import CpmRcpspSolver
 from scipy import stats
 from scipy.spatial import distance
 
-from skdecide import Solver
+from skdecide import Domain, Solver
 from skdecide.builders.domain.scheduling.modes import SingleMode
 from skdecide.builders.domain.scheduling.scheduling_domains import D, SchedulingDomain
 from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
@@ -666,9 +666,9 @@ class GPHH(Solver, DeterministicPolicies):
         )
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        action = self.policy.sample_action(observation)
+        action = self.policy.sample_action(observation, domain=domain)
         # print('action_1: ', action.action)
         return action
 
@@ -849,7 +849,7 @@ class GPHHPolicy(DeterministicPolicies):
         pass
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         run_sgs = True
         cheat_mode = False
@@ -965,7 +965,7 @@ class GPHHPolicy(DeterministicPolicies):
             permutation_task=normalized_values,
             modes_dictionnary=modes_dictionnary,
         )
-        action: SchedulingAction = sgs_policy.sample_action(observation)
+        action: SchedulingAction = sgs_policy.sample_action(observation, domain=domain)
         # print('action_2: ', action.action)
         return action
 
@@ -1002,7 +1002,7 @@ class PooledGPHHPolicy(DeterministicPolicies):
         pass
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         run_sgs = True
         cheat_mode = False
@@ -1134,7 +1134,7 @@ class PooledGPHHPolicy(DeterministicPolicies):
             permutation_task=normalized_values,
             modes_dictionnary=modes_dictionnary,
         )
-        action: SchedulingAction = sgs_policy.sample_action(observation)
+        action: SchedulingAction = sgs_policy.sample_action(observation, domain=domain)
         # print('action_2: ', action.action)
         return action
 
@@ -1154,7 +1154,7 @@ class FixedPermutationPolicy(DeterministicPolicies):
         pass
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         run_sgs = True
         cheat_mode = False
@@ -1240,7 +1240,7 @@ class FixedPermutationPolicy(DeterministicPolicies):
             permutation_task=normalized_values,
             modes_dictionnary=modes_dictionnary,
         )
-        action: SchedulingAction = sgs_policy.sample_action(observation)
+        action: SchedulingAction = sgs_policy.sample_action(observation, domain=domain)
         # print('action_2: ', action.action)
         return action
 

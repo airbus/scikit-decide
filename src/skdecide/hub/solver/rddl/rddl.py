@@ -12,7 +12,7 @@ from pyRDDLGym_jax.core.planner import (
     load_config,
 )
 
-from skdecide import Solver
+from skdecide import Domain, Solver
 from skdecide.builders.solver import Policies
 from skdecide.hub.domain.rddl import RDDLDomain
 
@@ -45,7 +45,9 @@ class RDDLJaxSolver(Solver, Policies):
             planner, **(self.train_args if self.train_args is not None else {})
         )
 
-    def _sample_action(self, observation: D.T_observation) -> D.T_event:
+    def _sample_action(
+        self, observation: D.T_observation, domain: Optional[Domain] = None
+    ) -> D.T_event:
         return self.controller.sample_action(observation)
 
     def _is_policy_defined_for(self, observation: D.T_observation) -> bool:
@@ -86,7 +88,9 @@ class RDDLGurobiSolver(Solver, Policies):
             model_params=self.model_params,
         )
 
-    def _sample_action(self, observation: D.T_observation) -> D.T_event:
+    def _sample_action(
+        self, observation: D.T_observation, domain: Optional[Domain] = None
+    ) -> D.T_event:
         return self.controller.sample_action(observation)
 
     def _is_policy_defined_for(self, observation: D.T_observation) -> bool:

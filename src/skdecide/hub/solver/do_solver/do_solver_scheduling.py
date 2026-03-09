@@ -289,9 +289,11 @@ class DOSolver(Solver, DeterministicPolicies):
         )
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        return self.policy_object.get_next_action(observation=observation)
+        return self.policy_object.get_next_action(
+            observation=observation, domain=domain
+        )
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
         return self.policy_object.is_policy_defined_for(observation=observation)

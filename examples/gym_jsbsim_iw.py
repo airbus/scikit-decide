@@ -274,12 +274,12 @@ class GymIW(IW):
         )
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[D] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         state = GymDomainStateProxy(
             state=normalize_and_round(observation._state), context=observation._context
         )
-        action = super()._get_next_action(state)
+        action = super()._get_next_action(state, domain=domain)
         if action is None:
             state._context[5] = 0
             self.reset()

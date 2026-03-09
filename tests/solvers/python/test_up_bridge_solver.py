@@ -72,7 +72,7 @@ def test_up_bridge_solver_classic():
         step = 0
         p = []
         while not domain.is_goal(s) and step < 10:
-            p.append(solver.get_next_action(s))
+            p.append(solver.get_next_action(s, domain=domain))
             s = domain.get_next_state(s, p[-1])
             step += 1
         ep = [
@@ -148,7 +148,7 @@ def test_up_bridge_solver_numeric():
         step = 0
         p = []
         while not domain.is_goal(s) and step < 10:
-            p.append(solver.get_next_action(s))
+            p.append(solver.get_next_action(s, domain=domain))
             s = domain.get_next_state(s, p[-1])
             step += 1
 

@@ -24,7 +24,7 @@ def my_custom_rollout(
     summed_value = 0.0
     actions = []
     while True:
-        action = policy.get_next_action(states[-1])
+        action = policy.get_next_action(states[-1], domain=domain)
         next_transition = domain.sample(states[-1], action)
         next_state = next_transition.observation
         value = next_transition.value
@@ -108,7 +108,7 @@ def construct_dict_policy(
         s = stack.pop()
         if domain.is_terminal(s) or s in policy_dict:
             continue
-        action = policy.get_next_action(s)
+        action = policy.get_next_action(s, domain=domain)
         policy_dict[s] = action
         successors = domain.get_next_state_distribution(s, action).get_values()
         succs[s] = successors

@@ -1367,7 +1367,7 @@ def simple_fuel_loop(solver_factory, domain_factory, max_steps: int = 100) -> fl
         # loop until max_steps or goal is reached
         for i_step in range(1, max_steps + 1):
             # choose action according to solver
-            action = solver.sample_action(observation)
+            action = solver.sample_action(observation, domain=domain)
 
             # get corresponding action
             outcome = domain.step(action)
