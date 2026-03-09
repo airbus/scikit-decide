@@ -312,10 +312,6 @@ try:
                 self._solver.close()
             ParallelSolver.close(self)
 
-        def _reset(self) -> None:
-            """Clears the search graph."""
-            self._solver.clear()
-
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the MCTS algorithm from a given root solving state
 
@@ -620,11 +616,6 @@ try:
             self._compound_heuristic = heuristic
             self._heuristic_confidence = heuristic_confidence
             self._action_choice_noise = action_choice_noise
-            self._heuristic_records = {}
-
-        def _reset(self) -> None:
-            """Clears the search graph and the heuristic records."""
-            super()._reset()
             self._heuristic_records = {}
 
         def _value_heuristic(
