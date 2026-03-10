@@ -180,7 +180,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache
-          key: venv-${{ runner.os }}-${{ hashFiles('**/pyproject.toml') }}
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Restore Boost cache
         uses: actions/cache@v4
@@ -206,7 +206,7 @@ jobs:
             skdecide/hub/bin
             skdecide/hub/share
             skdecide/hub/*.msc
-          key: ${{ runner.os }}-cache-deps
+          key: ${{ runner.os }}-${{ matrix.python-version }}-cache-deps
 
       - name: Update SKDECIDE_SKIP_DEPS
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
@@ -262,10 +262,10 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.11  # for cibuildwheel (not the python version of the constructed wheel)
 
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
@@ -277,7 +277,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache
-          key: venv-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/pyproject.toml') }}
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.arch }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Restore Boost cache
         uses: actions/cache@v4
@@ -303,7 +303,7 @@ jobs:
             skdecide/hub/bin
             skdecide/hub/share
             skdecide/hub/*.msc
-          key: ${{ runner.os }}-${{ matrix.arch }}-cache-deps
+          key: ${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.arch }}-cache-deps
 
       - name: Update SKDECIDE_SKIP_DEPS
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
@@ -322,26 +322,9 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
           echo "CMAKE_C_COMPILER_LAUNCHER=ccache" >> ${GITHUB_ENV}
 
-      - name: Install conda
-        run: |
-          set -ex
-          # macos runners do not have conda installed. Thus we much install conda manually
-          EXPECTED_SHA="${{ matrix.miniforge_sha }}"
-          MINIFORGE_URL="${{ matrix.miniforge_url }}"
-          curl -L --retry 10 $MINIFORGE_URL -o miniforge.sh
-
-          # Check SHA
-          file_sha=$(shasum -a 256 miniforge.sh | awk '{print $1}')
-          if [ "$EXPECTED_SHA" != "$file_sha" ]; then
-              echo "SHA values did not match!"
-              exit 1
-          fi
-
-          # Install miniforge
-          MINIFORGE_PATH=$HOME/miniforge
-          bash ./miniforge.sh -b -p $MINIFORGE_PATH
-          echo "$MINIFORGE_PATH/bin" >> $GITHUB_PATH
-          echo "CONDA_HOME=$MINIFORGE_PATH" >> $GITHUB_ENV
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
 
       - name: Build wheel
         env:
@@ -363,9 +346,10 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET_WO_DOT=$(echo ${MACOSX_DEPLOYMENT_TARGET} | sed -e 's/\./_/g')  # replace "." by "_"
 
           # install appropriate version of openmp
-          sudo conda create -n build $OPENMP_URL
+          conda create -n build $OPENMP_URL
 
           # make openmp and boost available
+          export CONDA_HOME="$HOME/miniconda3"
           export Boost_ROOT=$PWD/$BOOST_DIR
           export OpenMP_ROOT=$CONDA_HOME/envs/build
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
@@ -376,7 +360,7 @@ jobs:
           # cmake flag to cross-compile the c++
           export CMAKE_OSX_ARCHITECTURES=${ARCH}
 
-          python -m pip install cibuildwheel
+          python -m pip install "cibuildwheel>=3.4"
           # cibuildwheel flags
           export CIBW_BUILD_FRONTEND="build"
           export CIBW_ARCHS=${ARCH}
@@ -430,7 +414,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache
-          key: venv-${{ runner.os }}-${{ hashFiles('**/pyproject.toml') }}
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Restore Boost cache
         uses: actions/cache@v4
@@ -456,7 +440,7 @@ jobs:
             skdecide/hub/bin
             skdecide/hub/share
             skdecide/hub/*.msc
-          key: ${{ runner.os }}-cache-deps
+          key: ${{ runner.os }}-${{ matrix.python-version }}-cache-deps
 
       - name: Update SKDECIDE_SKIP_DEPS
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
