@@ -1,0 +1,49 @@
+# Configuration for maze heuristic
+
+# General settings
+max_iterations: 30
+checkpoint_interval: 5
+
+# Evolution settings
+diff_based_evolution: true
+max_code_length: 20000
+
+# LLM configuration
+llm:
+  models:
+    # List of available models with their weights (no weight = 1)
+    - name: "gpt-oss-120b"
+#    - name: "qwen-3-235b-a22b-instruct-2507"
+    - name: "llama3.1-8b"
+#    - name: "zai-glm-4.7"
+
+  api_base: "https://api.cerebras.ai/v1"
+  max_tokens: 16000
+  timeout: 60
+
+# Prompt configuration
+prompt:
+  system_message: |
+    You are an expert mathematician specialized in planning.
+    Your task is to improve a heuristic function that suggests the next action to take given the current position in a 2d maze.
+
+    Your heuristic will be evaluated by applying it on several mazes and computing the resulting average cost.
+    More precisely, given a maze, a new action is sampled from the heuristic and applied to the maze until the goal is reached
+    or until a max number of steps related to the maze size is overcome. We take the average of the total cost on each test maze.
+
+    The heuristic is wrapped into a planner that can be used to stores information about the current maze from previous calls
+    to increase the computation speed.
+
+
+# Database configuration
+database:
+  population_size: 50
+  archive_size: 20
+  num_islands: 3
+
+# Evaluator configuration
+evaluator:
+  timeout: 90  # llm response + evaluation
+  cascade_evaluation: false
+  parallel_evaluations: 3  # prompts sent at once
+  use_llm_feedback: false  # evaluation of code by llm?

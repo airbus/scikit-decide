@@ -15,6 +15,7 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparametrizable imp
     Hyperparametrizable,
 )
 
+from skdecide import Domain
 from skdecide.builders.domain.scheduling.scheduling_domains import (
     D,
     MultiModeRCPSP,
@@ -153,7 +154,7 @@ class PolicyRCPSP(DeterministicPolicies):
         self.func = func
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         return self.func(state=observation)
 

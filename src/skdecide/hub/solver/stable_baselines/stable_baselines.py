@@ -30,7 +30,8 @@ from skdecide.builders.domain import (
     Sequential,
     SingleAgent,
 )
-from skdecide.builders.solver import Maskable, Policies, Restorable
+from skdecide.builders.solver import Policies, Restorable
+from skdecide.core import autocast
 from skdecide.hub.domain.gym import AsGymnasiumEnv
 from skdecide.hub.space.gym import GymSpace, MultiDiscreteSpace
 
@@ -41,7 +42,7 @@ class D(Domain, SingleAgent, Sequential, Actions, Initializable):
     pass
 
 
-class StableBaseline(Solver, Policies, Restorable, Maskable):
+class StableBaseline(Solver, Policies, Restorable):
     """This class wraps a stable OpenAI Baselines solver (stable_baselines3) as a scikit-decide solver.
 
     !!! warning
@@ -165,18 +166,6 @@ class StableBaseline(Solver, Policies, Restorable, Maskable):
             ent_coef_log = kwargs.pop("ent_coef_log")
             kwargs["ent_coef"] = 10**ent_coef_log
 
-    def _using_applicable_actions(self):
-        """Tell if the solver is able to use applicable actions information."""
-        return self.use_action_masking or self.autoregressive_action
-
-    def _retrieve_applicable_actions(self, domain: Domain) -> None:
-        if self.autoregressive_action:
-            self._applicable_actions = np.array(
-                domain.get_applicable_actions().get_elements()
-            )
-        else:
-            super()._retrieve_applicable_actions(domain)
-
     def get_applicable_actions(self) -> Optional[npt.NDArray[int]]:
         return self._applicable_actions
 
@@ -223,18 +212,31 @@ class StableBaseline(Solver, Policies, Restorable, Maskable):
         self._algo.learn(**learn_config)
 
     def _sample_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         if self.autoregressive_action:
             # e.g. algo = AutoregressivePPO
+            if domain is None:
+                raise ValueError(
+                    "The rollout `domain` cannot be None when using autoregressive policies."
+                )
+            get_applicable_actions = autocast(
+                domain.get_applicable_actions, domain, self.T_domain
+            )
+            applicable_actions = np.array(get_applicable_actions().get_elements())
             action, _ = self._algo.predict(
                 self._unwrap_obs(observation),
-                action_masks=self.get_applicable_actions(),
+                action_masks=applicable_actions,
             )
         elif self.use_action_masking:
             # e.g. algo = MaskablePPO or MaskableGraphPPO
+            if domain is None:
+                raise ValueError(
+                    "The rollout `domain` cannot be None when using action masking."
+                )
+            get_action_mask = autocast(domain.get_action_mask, domain, self.T_domain)
             action, _ = self._algo.predict(
-                self._unwrap_obs(observation), action_masks=self.get_action_mask()
+                self._unwrap_obs(observation), action_masks=get_action_mask()
             )
         else:
             action, _ = self._algo.predict(self._unwrap_obs(observation))

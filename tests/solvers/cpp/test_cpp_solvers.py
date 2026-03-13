@@ -241,7 +241,7 @@ def get_plan(domain, solver):
     observation = domain.reset()
     nb_steps = 0
     while (not domain.is_goal(observation)) and nb_steps < 20:
-        plan.append(solver.sample_action(observation))
+        plan.append(solver.sample_action(observation, domain=domain))
         outcome = domain.step(plan[-1])
         cost += outcome.value.cost
         observation = outcome.observation

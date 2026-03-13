@@ -157,7 +157,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         )
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         """Gets the best computed joint action according to the higher-level heuristic
             multi-agent solver in a given joint state.
@@ -169,7 +169,7 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
         # Returns
         D.T_agent[D.T_concurrency[D.T_event]]: Best computed joint action
         """
-        return self._multiagent_solver._get_next_action(observation)
+        return self._multiagent_solver._get_next_action(observation, domain=domain)
 
     def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
         """Gets the best value in a given joint state according to the higher-level
@@ -225,7 +225,9 @@ class MAHD(Solver, DeterministicPolicies, Utilities, FromAnyState):
                     else:
                         self._singleagent_solutions[a][observation[a]] = (
                             s.get_utility(observation[a]),
-                            s.get_next_action(observation[a]),
+                            s.get_next_action(
+                                observation[a], domain=self._get_singleagent_domain(a)
+                            ),
                         )
                 if undefined_solution:
                     is_terminal = (

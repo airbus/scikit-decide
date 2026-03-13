@@ -82,6 +82,7 @@ solvers = [
     "torch!=2.9.0,!=2.9.1,!=2.10; sys_platform == 'win32' and python_version >= '3.12'",
     "flax>=0.10.6; (sys_platform == 'linux' or sys_platform == 'win32') and python_version >= '3.12'",
     "dm-haiku<=0.0.13; python_version <= '3.9'",
+    "openevolve>=0.2.11",
 ]
 all = [
     # self-reference allowed by pip since 21.2 (https://github.com/pypa/pip/issues/11296)
@@ -142,7 +143,9 @@ RDDLGurobiSolver = "skdecide.hub.solver.rddl:RDDLGurobiSolver [solvers]"
 
 [dependency-groups]
 dev = [
+    "docopt>=0.6.2",
     "jupyter>=1.1.1",
+    "python-dotenv>=1.2.1",
 ]
 test = [
     "pytest>=6.2.2,<8.4", # pytest 8.4 not yet compatible with pytest-cases

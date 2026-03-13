@@ -7,9 +7,6 @@ import sys
 import gymnasium as gym
 import pytest
 
-from skdecide.builders.domain import UnrestrictedActions
-from skdecide.builders.solver import ApplicableActions
-
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
 @pytest.mark.parametrize(
@@ -129,7 +126,7 @@ def test_up_bridge_domain_planning():
         step = 0
         p = []
         while not domain.is_goal(s) and step < 10:
-            p.append(solver.get_next_action(s))
+            p.append(solver.get_next_action(s, domain=domain))
             s = domain.get_next_state(s, p[-1])
             step += 1
     assert LazyAstar.check_domain(domain)
@@ -235,12 +232,8 @@ def test_up_bridge_domain_rl():
         config=DQN.get_default_config().training(train_batch_size=128),
     ) as solver:
         solver.solve()
-        # check that rollout will automatically use action masking
-        assert (
-            not isinstance(domain, UnrestrictedActions)
-            and isinstance(solver, ApplicableActions)
-            and solver.using_applicable_actions()
-        )
+        # check that solver will use action masking
+        assert solver._action_masking
         rollout(
             domain_factory(),
             solver,

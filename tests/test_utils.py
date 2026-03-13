@@ -15,7 +15,8 @@ from skdecide.builders.domain import (
     Sequential,
     SingleAgent,
 )
-from skdecide.builders.solver import DeterministicPolicies, Maskable, Policies
+from skdecide.builders.solver import DeterministicPolicies, Policies
+from skdecide.core import autocast
 from skdecide.hub.domain.maze import Maze
 from skdecide.hub.solver.lazy_astar import LazyAstar
 from skdecide.hub.space.gym import DiscreteSpace, ListSpace
@@ -222,13 +223,14 @@ def test_rollout_cb(caplog):
 class D(Domain, Sequential): ...
 
 
-class MyMaskedRandomSolver(Solver, DeterministicPolicies, Maskable):
+class MyMaskedRandomSolver(Solver, DeterministicPolicies):
     """Ramdom solver proposing all actions except is `action_masks` in `sample_action()` kwargs."""
 
     T_domain = D
 
-    def __init__(self, domain_factory):
+    def __init__(self, domain_factory, using_mask: bool):
         super().__init__(domain_factory=domain_factory)
+        self.using_mask = using_mask
         self.actions = {
             agent: list(agent_action_space.get_elements())
             for agent, agent_action_space in self._domain_factory()
@@ -241,10 +243,12 @@ class MyMaskedRandomSolver(Solver, DeterministicPolicies, Maskable):
         }
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        action_masks = self.get_action_mask()
-        if action_masks is None:
+        if self.using_mask:
+            get_action_mask = autocast(domain.get_action_mask, domain, self.T_domain)
+            action_masks = get_action_mask()
+        else:
             action_masks = self.default_action_masks
         return {
             agent: np.random.choice(
@@ -390,7 +394,9 @@ def test_rollout_with_action_masking(random_seed, domain_factory):
     domain = domain_factory()
 
     # no masking => both actions possible
-    with MyMaskedRandomSolver(domain_factory=domain_factory) as solver:
+    with MyMaskedRandomSolver(
+        domain_factory=domain_factory, using_mask=False
+    ) as solver:
         solver.solve()  # needed to autocast methods like step()
         episodes = rollout(
             domain=domain,
@@ -402,14 +408,13 @@ def test_rollout_with_action_masking(random_seed, domain_factory):
             return_episodes=True,
             num_episodes=1,
             max_steps=10,
-            use_applicable_actions=False,
         )
     observations, actions, values = episodes[0]
     assert 0 in actions or {"superman": 0} in actions
     assert 1 in actions or {"superman": 1} in actions
 
     # with masking => only 1's
-    with MyMaskedRandomSolver(domain_factory=domain_factory) as solver:
+    with MyMaskedRandomSolver(domain_factory=domain_factory, using_mask=True) as solver:
         solver.solve()  # needed to autocast methods like step()
         episodes = rollout(
             domain=domain,
@@ -421,26 +426,6 @@ def test_rollout_with_action_masking(random_seed, domain_factory):
             return_episodes=True,
             num_episodes=1,
             max_steps=10,
-            use_applicable_actions=True,
-        )
-    observations, actions, values = episodes[0]
-    assert not (0 in actions or {"superman": 0} in actions)
-    assert 1 in actions or {"superman": 1} in actions
-
-    # should be using masking by default => only 1's
-    with MyMaskedRandomSolver(domain_factory=domain_factory) as solver:
-        solver.solve()  # needed to autocast methods like step()
-        episodes = rollout(
-            domain=domain,
-            solver=solver,
-            render=False,
-            verbose=False,
-            action_formatter=None,
-            outcome_formatter=None,
-            return_episodes=True,
-            num_episodes=1,
-            max_steps=10,
-            use_applicable_actions=True,
         )
     observations, actions, values = episodes[0]
     assert not (0 in actions or {"superman": 0} in actions)

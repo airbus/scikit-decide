@@ -1,0 +1,80 @@
+# Configuration for maze heuristic
+
+# General settings
+max_iterations: 100
+checkpoint_interval: 5
+
+# Evolution settings
+diff_based_evolution: true
+max_code_length: 20000
+
+# LLM configuration
+llm:
+  models:
+    # List of available models with their weights (no weight = 1)
+    - name: "gpt-oss-120b"
+#    - name: "qwen-3-235b-a22b-instruct-2507"
+#    - name: "llama-3.3-70b"
+    - name: "llama3.1-8b"
+#    - name: "qwen-3-32b"
+#    - name: "zai-glm-4.7"
+
+  api_base: "https://api.cerebras.ai/v1"
+  max_tokens: 30000
+  timeout: 60
+
+# Prompt configuration
+prompt:
+  system_message: |
+    # Role
+    You are an expert mathematician and PDDL planning specialist.
+
+    # Task
+    Improve the `sample_action` method in the `Planner` class to minimize the average cost of logistic operations for Airbus Beluga cargo.
+
+    # Domain Context: The Beluga Challenge
+    - **Jigs, racks, and trailers**: Aircraft parts are on jigs. Jigs slide into racks. Only jigs at the edges (factory or beluga side) can be moved.
+    Trailers are like special moving racks to transfer jigs between beluga and fixed racks.
+    - **Unblocking**: To access a jig inside a rack, you must `swap` edge jigs to other available racks.
+    - **Workflow**:
+        1. **Unload**: Move `loaded` jigs from Beluga to racks.
+        2. **Production**: Move `loaded` jigs from racks to craning hangars.
+        3. **Return**: Send `empty` jigs from hangars back to the rack system.
+        4. **Reload**: Load `empty` jigs from racks into the Beluga.
+
+
+    # State and action bridge
+    The provided PDDL definition describes the domain logic.
+    However, the state and action used by the domain `SkdPDDLDomain`
+    and the method `sample_action()` to implement are using a compact internal integer representation from the plado library.
+    To interact with them, **you must use**
+    - `readable_atoms, readable_fluents = domain.serialize_state(state)`:
+      - `readable_atoms` is a list of tuples of strings matching `:predicates` in the pddl domain definition, like ("clear", "jig01", "bside") representing true predicates.
+      - `readable_fluents` is a list of tuples of strings matching `:functions` in the pddl domain definition, and a final int like ("free-space", 'rack01', 8) representing the value of each fluent.
+    - `readable_action = domain.serialize_action(action)`: to see the PDDL name and parameters of an action, like `("unload-beluga", "jig1", "jig2", "trailer1", "beluga1")`
+
+    # PDDL domain definition
+    ```
+    [INSERT_RAW_PDDL_DOMAIN_FILE_CONTENT_HERE]
+    ```
+
+    # Simplified API Reference: `SkdPDDLDomain`
+    - `domain.serialize_state(state)`: Returns a readable version of the state atoms and fluents (see above).
+    - `domain.serialize_action(action)`: Returns a readable version of the action (see above).
+    - `domain.get_applicable_actions(state)`: Returns a `Space` of valid actions.
+    - `domain.get_next_state(state, action)`: Returns the resulting deterministic `State`.
+    - `domain.get_transition_value(s, a, ns).cost`: Returns the positive cost of the action.
+    - `domain.is_goal(state)`: Returns True if the logistics mission is complete.
+
+# Database configuration
+database:
+  population_size: 50
+  archive_size: 20
+  num_islands: 3
+
+# Evaluator configuration
+evaluator:
+  timeout: 60  # llm response + evaluation
+  cascade_evaluation: false
+  parallel_evaluations: 3  # prompts sent at once
+  use_llm_feedback: false  # evaluation of code by llm?

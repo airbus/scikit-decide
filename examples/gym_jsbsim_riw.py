@@ -6,7 +6,7 @@ import bisect
 import json
 import math
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional
 
 import folium
 import gymnasium as gym
@@ -306,7 +306,7 @@ class GymRIW(RIW):
         )
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[D] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         if self._continuous_planning or not self._is_solution_defined_for(observation):
             self._solve_from(observation)
