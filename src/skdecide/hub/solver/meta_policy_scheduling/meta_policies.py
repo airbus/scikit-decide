@@ -5,13 +5,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     IntegerHyperparameter,
 )
 
-from skdecide import rollout
+from skdecide import Domain, rollout
 from skdecide.builders.domain.scheduling.scheduling_domains import D, SchedulingDomain
 from skdecide.builders.solver import DeterministicPolicies
 
@@ -57,13 +57,13 @@ class MetaPolicy(DeterministicPolicies):
         self.current_states = {method: None for method in self.policies}
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         results = {}
         actions_map = {}
         self.domain.set_inplace_environment(True)
         actions_c = [
-            self.policies[method].get_next_action(observation)
+            self.policies[method].get_next_action(observation, domain=domain)
             for method in self.policies
         ]
         if len(set(actions_c)) > 1:

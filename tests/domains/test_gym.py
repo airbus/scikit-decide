@@ -83,7 +83,7 @@ def test_gymdomain():
     domain = domain_factory()
     observation = domain.reset()
     domain.render()
-    domain.step(action=solver.get_next_action(observation))
+    domain.step(action=solver.get_next_action(observation, domain=domain))
     domain.render()
 
 

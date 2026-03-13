@@ -20,7 +20,6 @@ from skdecide import (
     Domain,
     EnvironmentOutcome,
     Solver,
-    Space,
     Value,
     autocast_all,
     autocastable,
@@ -30,9 +29,8 @@ from skdecide.builders.domain import (
     Initializable,
     Markovian,
     Renderable,
-    UnrestrictedActions,
 )
-from skdecide.builders.solver import ApplicableActions, DeterministicPolicies, Policies
+from skdecide.builders.solver import DeterministicPolicies, Policies
 
 __all__ = [
     "get_registered_domains",
@@ -43,6 +41,7 @@ __all__ = [
     "rollout",
 ]
 
+from skdecide.core import autocast
 
 SKDECIDE_DEFAULT_DATAHOME = "~/skdecide_data"
 SKDECIDE_DEFAULT_DATAHOME_ENVVARNAME = "SKDECIDE_DATA"
@@ -215,7 +214,7 @@ class ReplaySolver(DeterministicPolicies):
         return True
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         if self._i_action >= len(self.actions):
             if self.out_of_action_method == ReplayOutOfActionMethod.LOOP:
@@ -278,11 +277,6 @@ def rollout(
     return_episodes: if True, return the list of episodes, each episode as a tuple of observations, actions, and values.
         else return nothing.
     goal_logging_level: logging level at which we want to display if goal has been reached or not
-    use_applicable_actions: if True, we call `solver.retrieve_applicable_actions()` before sampling actions.
-        If not set, it will be considered True if and only if
-        - `domain` does not inherit from `UnrestrictedActions`,
-        - `solver` inherits from `ApplicableActions`,
-        - and `solver.using_applicable_actions()` is True.
 
     """
     previous_log_level = logger.level
@@ -299,28 +293,19 @@ def rollout(
         # Create solver-like random walker that works for any domain
         class RandomWalk(Policies):
             T_domain = Domain
-            T_agent = Domain.T_agent
-            T_event = Domain.T_event
-
-            def __init__(self):
-                class CastDomain:  # trick to autocast domain's get_applicable_actions() without mutating domain
-                    T_agent = domain.T_agent
-                    T_event = domain.T_event
-
-                    @autocastable
-                    def get_applicable_actions(self) -> D.T_agent[Space[D.T_event]]:
-                        return domain.get_applicable_actions()
-
-                self._domain = CastDomain()
-                autocast_all(self._domain, self._domain, self)
 
             @autocastable
             def sample_action(
-                self, observation: D.T_agent[D.T_observation]
+                self,
+                observation: D.T_agent[D.T_observation],
+                domain: Optional[Domain] = None,
             ) -> D.T_agent[D.T_concurrency[D.T_event]]:
+                get_applicable_actions = autocast(
+                    domain.get_applicable_actions, domain, self.T_domain
+                )
                 return {
                     agent: [space.sample()]
-                    for agent, space in self._domain.get_applicable_actions().items()
+                    for agent, space in get_applicable_actions().items()
                 }
 
             @autocastable
@@ -331,14 +316,6 @@ def rollout(
 
         solver = RandomWalk()
         autocast_all(solver, solver.T_domain, domain)
-
-    # solver needs to know about applicable actions?
-    if use_applicable_actions is None:
-        use_applicable_actions = (
-            not isinstance(domain, UnrestrictedActions)
-            and isinstance(solver, ApplicableActions)
-            and solver.using_applicable_actions()
-        )
 
     episodes: list[
         tuple[
@@ -401,10 +378,7 @@ def rollout(
             old_time = time.perf_counter()
             if render and has_render:
                 domain.render()
-            if use_applicable_actions:
-                # tell the solver about the current applicable actions (e.g for action masking)
-                solver.retrieve_applicable_actions(domain=domain)
-            action = solver.sample_action(observation)
+            action = solver.sample_action(observation, domain=domain)
             if action_formatter is not None:
                 logger.debug("Action: {}".format(action_formatter(action)))
             outcome = domain.step(action)

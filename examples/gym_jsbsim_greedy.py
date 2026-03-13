@@ -3,7 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional
 
 import folium
 import gymnasium as gym
@@ -138,7 +138,7 @@ class GreedyPlanner(Solver, DeterministicPolicies, Utilities, FromAnyState):
         return False  # for to recompute the best action at each step greedily
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[D] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         if not self._is_solution_defined_for(observation):
             self._solve_from(observation)

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable, Iterable
+from typing import Optional
 
 import gymnasium as gym
 import numpy as np
@@ -269,7 +270,7 @@ class MaxentIRL(Solver, Policies):
         )
 
     def _sample_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         state_idx = self.index_to_state(
             self.env.get_observation_space().unwrapped(), observation

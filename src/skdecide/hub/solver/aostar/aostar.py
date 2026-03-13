@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Optional
 
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     FloatHyperparameter,
@@ -163,7 +164,9 @@ try:
             return self._solver.is_solution_defined_for(observation)
 
         def _get_next_action(
-            self, observation: D.T_agent[D.T_observation]
+            self,
+            observation: D.T_agent[D.T_observation],
+            domain: Optional[Domain] = None,
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             """Get the best computed action in terms of best Q-value in a given state.
                 The solver is run from `observation` if no solution is defined (i.e. has been
@@ -175,6 +178,8 @@ try:
 
             # Parameters
             observation (D.T_agent[D.T_observation]): State for which the best action is requested
+            domain: the domain source of the observation.
+                Typically used to get current applicable actions or action mask.
 
             # Returns
             D.T_agent[D.T_concurrency[D.T_event]]: Best computed action

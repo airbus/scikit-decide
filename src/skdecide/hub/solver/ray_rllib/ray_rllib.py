@@ -30,8 +30,8 @@ from ray.tune.registry import register_env
 
 from skdecide import Domain, Solver
 from skdecide.builders.domain import SingleAgent, UnrestrictedActions
-from skdecide.builders.solver import Maskable, Policies, Restorable
-from skdecide.core import EnumerableSpace, Mask
+from skdecide.builders.solver import Policies, Restorable
+from skdecide.core import EnumerableSpace, Mask, autocast
 from skdecide.domains import MultiAgentRLDomain
 from skdecide.hub.domain.gym import AsLegacyGymV21Env
 from skdecide.hub.space.gym import GymSpace
@@ -62,7 +62,7 @@ class D(MultiAgentRLDomain):
     pass
 
 
-class RayRLlib(Solver, Policies, Restorable, Maskable):
+class RayRLlib(Solver, Policies, Restorable):
     """This class wraps a Ray RLlib solver (ray[rllib]) as a scikit-decide solver.
 
     !!! warning
@@ -279,9 +279,6 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         if kwargs:
             self._config.update_from_dict(kwargs)
 
-    def _using_applicable_actions(self):
-        return self._action_masking
-
     def get_policy(self) -> dict[str, Policy]:
         """Return the computed policy."""
         return {
@@ -322,11 +319,15 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
             )
 
     def _sample_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
+        if self._action_masking and domain is None:
+            raise ValueError(
+                "The rollout `domain` cannot be None when using action masking."
+            )
         action = {
             k: self._algo.compute_single_action(
-                self._unwrap_obs(observation, k),
+                self._unwrap_obs(observation, k, domain),
                 policy_id=self._policy_mapping_fn(k, None, None),
             )
             for k in observation.keys()
@@ -464,14 +465,18 @@ class RayRLlib(Solver, Policies, Restorable, Maskable):
         # Trick to assign o's unwrapped value to self._unwrap_obs
         # (no unwrapping method for single elements in enumerable spaces)
         if self._action_masking:
-            self._unwrap_obs = lambda obs, agent: _unwrap_agent_obs_with_action_masking(
-                obs=obs,
-                agent=agent,
-                wrapped_observation_space=self._wrapped_observation_space,
-                action_mask=self.get_action_mask(),
+            self._unwrap_obs = (
+                lambda obs, agent, domain: _unwrap_agent_obs_with_action_masking(
+                    obs=obs,
+                    agent=agent,
+                    wrapped_observation_space=self._wrapped_observation_space,
+                    action_mask=(
+                        autocast(domain.get_action_mask, domain, self.T_domain)
+                    )(),
+                )
             )
         else:
-            self._unwrap_obs = lambda obs, agent: _unwrap_agent_obs(
+            self._unwrap_obs = lambda obs, agent, domain: _unwrap_agent_obs(
                 obs=obs,
                 agent=agent,
                 wrapped_observation_space=self._wrapped_observation_space,
