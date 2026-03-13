@@ -8,10 +8,11 @@ import functools
 import inspect
 import random
 import re
+from abc import abstractmethod
 from collections import deque
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Container, Iterable, Sequence
 from dataclasses import asdict, astuple, dataclass, replace
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -73,7 +74,7 @@ class Castable:
 
 
 # Space
-class Space(Generic[T]):
+class Space(Container[T], Generic[T]):
     """A space representing a finite or infinite set.
 
     This class (or any of its descendant) is typically used to specify action, observation or goal spaces.
@@ -114,7 +115,7 @@ class ImplicitSpace(Space[T]):
         return self.contains_function(x)
 
 
-class EnumerableSpace(Space[T]):
+class EnumerableSpace(Space[T], Sequence[T]):
     """A space which elements can be enumerated."""
 
     def get_elements(self) -> Sequence[T]:
@@ -127,6 +128,32 @@ class EnumerableSpace(Space[T]):
 
     def contains(self, x: T) -> bool:
         return x in self.get_elements()
+
+    @overload
+    @abstractmethod
+    def __getitem__(self, index: int) -> T: ...
+
+    @overload
+    @abstractmethod
+    def __getitem__(self, index: slice) -> Sequence[T]: ...
+
+    def __getitem__(self, index):
+        return self.get_elements()[index]
+
+    def __len__(self):
+        return len(self.get_elements())
+
+    def __reversed__(self):
+        return reversed(self.get_elements())
+
+    def __iter__(self):
+        return iter(self.get_elements())
+
+    def index(self, value, start=0, stop=...):
+        return self.get_elements().index(value, start, stop)
+
+    def count(self, value):
+        return self.get_elements().count(value)
 
 
 class EmptySpace(EnumerableSpace[T]):
