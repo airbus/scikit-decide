@@ -167,10 +167,6 @@ try:
                 verbose=verbose,
             )
 
-        def _reset(self) -> None:
-            """Clears the search graph."""
-            self._solver.clear()
-
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the MA-RTDP algorithm from a given root solving joint state
 
