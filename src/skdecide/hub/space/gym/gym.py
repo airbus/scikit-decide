@@ -8,7 +8,7 @@ import itertools
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from enum import EnumMeta
-from typing import Any, Generic, Union
+from typing import Any, Union
 
 import gymnasium as gym
 import gymnasium.spaces as gym_spaces
@@ -18,7 +18,7 @@ from gymnasium.spaces.space import T_cov
 from skdecide import EnumerableSpace, SamplableSpace, SerializableSpace, T
 
 
-class GymSpace(Generic[T], SamplableSpace[T], SerializableSpace[T]):
+class GymSpace(SamplableSpace[T], SerializableSpace[T]):
     """This class wraps a gymnasium space (gym.spaces) as a scikit-decide space.
 
     !!! warning
@@ -322,7 +322,7 @@ class DictSpace(GymSpace[T]):
         ]
 
 
-class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
+class EnumSpace(GymSpace[T], EnumerableSpace[T]):
     """This class creates a gymnasium Discrete space (gym.spaces.Discrete) from an enumeration and wraps it as a
     scikit-decide enumerable space.
 
@@ -371,7 +371,7 @@ class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
         return [self._list_enum[sample] for sample in sample_n]
 
 
-class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
+class ListSpace(GymSpace[T], EnumerableSpace[T]):
     """This class creates a gymnasium Discrete space (gym.spaces.Discrete) from a list of elements and wraps it as a
     scikit-decide enumerable space. If ordering is not important contrary to the 'contains' test, it is advised to
     use the 'SetSpace' class instead.
@@ -424,7 +424,7 @@ class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
         return [self._elements[sample] for sample in sample_n]
 
 
-class SetSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
+class SetSpace(GymSpace[T], EnumerableSpace[T]):
     """This class creates a gymnasium Discrete space (gym.spaces.Discrete) from a set of elements and wraps it as a
     scikit-decide enumerable space.
 
