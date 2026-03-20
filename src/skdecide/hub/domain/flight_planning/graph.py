@@ -1,8 +1,13 @@
 from typing import Optional
 
 import networkx as nx
-from openap.extra.aero import bearing, ft
 from pygeodesy.ellipsoidalVincenty import LatLon
+
+# Manage changing module paths in openap
+try:
+    from openap.aero import bearing, ft
+except ImportError:  # openap < 2.5
+    from openap.extra.aero import bearing, ft
 
 
 # --- Simplified calculate_grid_point_coords (reverting to a version closer to initial intent) ---

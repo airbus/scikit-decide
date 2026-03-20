@@ -2,7 +2,6 @@ import math
 
 import numpy as np
 from openap.drag import Drag
-from openap.extra.aero import T0, R, a0, beta, ft, g0, kts
 
 from skdecide.hub.domain.flight_planning.aircraft_performance.bean.aircraft_state import (
     AircraftState,
@@ -22,6 +21,12 @@ from skdecide.hub.domain.flight_planning.aircraft_performance.performance.perfor
 from skdecide.hub.domain.flight_planning.aircraft_performance.weather.service.atmosphere_service import (
     AtmosphereService,
 )
+
+# Manage changing module paths in openap
+try:
+    from openap.aero import T0, R, a0, beta, ft, g0, kts
+except ImportError:  # openap < 2.5
+    from openap.extra.aero import T0, R, a0, beta, ft, g0, kts
 
 
 class _OpenapAerodynamicsService(AerodynamicsSettings):

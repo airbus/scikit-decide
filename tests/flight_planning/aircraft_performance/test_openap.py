@@ -13,7 +13,6 @@ def test_thrust():
     from itertools import product
 
     import numpy as np
-    from openap.extra.aero import ft, kts, mach2tas
     from openap.thrust import Thrust
 
     from skdecide.hub.domain.flight_planning.aircraft_performance.bean.aircraft_state import (
@@ -37,6 +36,12 @@ def test_thrust():
     from skdecide.hub.domain.flight_planning.aircraft_performance.weather.settings.isa_atmosphere_settings import (
         IsaAtmosphereSettings,
     )
+
+    # Manage changing module paths in openap
+    try:
+        from openap.aero import ft, kts, mach2tas
+    except ImportError:  # openap < 2.5
+        from openap.extra.aero import ft, kts, mach2tas
 
     openap_propu = PropulsionService()
     openap_settings = openap_propu.init_settings("A320", PerformanceModelEnum.OPENAP)
@@ -94,7 +99,6 @@ def test_fuelflow():
     from itertools import product
 
     import numpy as np
-    from openap.extra.aero import ft, kts, mach2tas
     from openap.fuel import FuelFlow
 
     from skdecide.hub.domain.flight_planning.aircraft_performance.bean.aircraft_state import (
@@ -118,6 +122,12 @@ def test_fuelflow():
     from skdecide.hub.domain.flight_planning.aircraft_performance.weather.settings.isa_atmosphere_settings import (
         IsaAtmosphereSettings,
     )
+
+    # Manage changing module paths in openap
+    try:
+        from openap.aero import ft, kts, mach2tas
+    except ImportError:  # openap < 2.5
+        from openap.extra.aero import ft, kts, mach2tas
 
     openap_propu = PropulsionService()
     openap_settings = openap_propu.init_settings("A320", PerformanceModelEnum.OPENAP)

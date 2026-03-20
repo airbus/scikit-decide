@@ -15,8 +15,6 @@ import numpy as np
 import pandas as pd
 
 # aircraft performance model
-from openap.extra.aero import bearing as aero_bearing
-from openap.extra.aero import distance, ft, latlon, mach2cas, mach2tas
 from openap.extra.nav import airport
 from pygeodesy.ellipsoidalVincenty import LatLon
 
@@ -58,6 +56,15 @@ from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.inte
     WeatherForecastInterpolator,
 )
 from skdecide.hub.space.gym import DiscreteSpace, EnumSpace, ListSpace, TupleSpace
+
+# Manage changing module paths in openap
+try:
+    from openap.aero import bearing as aero_bearing
+    from openap.aero import distance, ft, latlon, mach2cas, mach2tas
+except ImportError:  # openap < 2.5
+    from openap.extra.aero import bearing as aero_bearing
+    from openap.extra.aero import distance, ft, latlon, mach2cas, mach2tas
+
 
 logger = logging.getLogger(__name__)
 

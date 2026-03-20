@@ -1,4 +1,3 @@
-from openap.extra.aero import ft, mach2tas
 from openap.fuel import FuelFlow
 from openap.thrust import Thrust
 
@@ -23,6 +22,12 @@ from skdecide.hub.domain.flight_planning.aircraft_performance.performance.propul
 from skdecide.hub.domain.flight_planning.aircraft_performance.weather.service.atmosphere_service import (
     AtmosphereService,
 )
+
+# Manage changing module paths in openap
+try:
+    from openap.aero import ft, mach2tas
+except ImportError:  # openap < 2.5
+    from openap.extra.aero import ft, mach2tas
 
 
 class _OpenapPropulsionService(PropulsionServiceInterface):
