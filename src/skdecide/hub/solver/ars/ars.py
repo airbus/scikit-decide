@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from typing import Optional
 
 import gymnasium as gym
 import numpy as np
@@ -257,7 +258,7 @@ class AugmentedRandomSearch(Solver, Policies):
         print("Final Reward:", self.reward_evaluation, "Policy", self.policy)
 
     def _sample_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         # print('observation', observation, 'Policy', self.policy)
         action = self.policy.dot(

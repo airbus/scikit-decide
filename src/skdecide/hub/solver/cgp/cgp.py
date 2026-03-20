@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from typing import Optional
 
 import gymnasium as gym
 import numpy as np
@@ -349,7 +350,7 @@ class CGPWrapper(Solver, DeterministicPolicies):
         es.run(self._n_it)
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         return denorm(
             self._es.father.run(

@@ -207,7 +207,9 @@ try:
             return self._solver.is_solution_defined_for(observation)
 
         def _get_next_action(
-            self, observation: D.T_agent[D.T_observation]
+            self,
+            observation: D.T_agent[D.T_observation],
+            domain: Optional[Domain] = None,
         ) -> D.T_agent[D.T_concurrency[D.T_event]]:
             """Get the best computed action in terms of best Q-value in a given state. The search
                 subgraph which is no more reachable after executing the returned action is

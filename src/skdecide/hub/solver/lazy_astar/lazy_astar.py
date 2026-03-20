@@ -219,7 +219,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         # return estim_total, path  # TODO: find a way to expose these things through public API?
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation]
+        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
     ) -> D.T_agent[D.T_concurrency[D.T_event]]:
         return self._policy[observation]
 
