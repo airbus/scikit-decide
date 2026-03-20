@@ -1,0 +1,24 @@
+
+if __name__ == "__main__":
+    # Rollout using the above planner.
+
+    domain = {{domain_cls}}()
+    planner = Planner(domain=domain)
+
+    # rollout
+    max_steps = 100
+    nb_step = 0
+    total_cost = 0
+    state = domain.get_initial_state()
+    while not domain.is_terminal(state) and nb_step < max_steps:
+        applicable_actions = domain.get_applicable_actions(state)
+        action = planner.sample_action(state, applicable_actions)
+        next_state = domain.get_next_state(memory=state, action=action)
+        value = domain.get_transition_value(
+            memory=state, action=action, next_state=next_state
+        )
+        state = next_state
+        total_cost += value.cost
+        nb_step += 1
+
+    print(f"total cost: {total_cost}")
