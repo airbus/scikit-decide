@@ -79,12 +79,17 @@ def build_solver(
     (and potentially init_model function)
     """
     if isinstance(do_domain, RcpspProblem):
-        from discrete_optimization.rcpsp.solvers_map import look_for_solver, solvers_map
+        from discrete_optimization.rcpsp.solvers_map import (
+            look_for_solver,
+            solvers,
+            solvers_map,
+        )
 
         do_domain_cls = RcpspProblem
     elif isinstance(do_domain, MultiskillRcpspProblem):
         from discrete_optimization.rcpsp_multiskill.solvers_map import (
             look_for_solver,
+            solvers,
             solvers_map,
         )
 
@@ -99,13 +104,18 @@ def build_solver(
             return solver_type, solvers_map[solver_type][1]
         else:
             return solver_type, {}
-    smap = [
-        (av, solvers_map[av])
-        for av in available
-        if solvers_map[av][0] == solving_method.value
-    ]
+    try:
+        smap = [
+            (solver_cls, solver_kwargs)
+            for solver_cls, solver_kwargs in solvers[solving_method.value]
+            if solver_cls in available
+        ]
+    except KeyError:
+        raise ValueError(
+            f"solving_method {solving_method} not available for {do_domain_cls}."
+        )
     if len(smap) > 0:
-        return smap[0][0], smap[0][1][1]
+        return smap[0]
     else:
         raise ValueError(
             f"solving_method {solving_method} not available for {do_domain_cls}."
@@ -241,16 +251,14 @@ class DOSolver(Solver, DeterministicPolicies):
     def _solve(self) -> None:
         self.domain = self._domain_factory()
         self.do_domain = build_do_domain(self.domain)
-        solvers = build_solver(
+        solver_cls, solver_kwargs = build_solver(
             solving_method=self.method,
             solver_type=self.do_solver_type,
             do_domain=self.do_domain,
         )
-        solver_class = solvers[0]
-        params = solvers[1]
-        for k in params:
+        for k in solver_kwargs:
             if k not in self.dict_params:
-                self.dict_params[k] = params[k]
+                self.dict_params[k] = solver_kwargs[k]
 
         # callbacks
         callbacks = [_DOCallback(callback=self.callback, solver=self)]
@@ -258,7 +266,7 @@ class DOSolver(Solver, DeterministicPolicies):
         if "callbacks" in copy_dict_params:
             callbacks = callbacks + copy_dict_params.pop("callbacks")
 
-        self.solver = solver_class(self.do_domain, **copy_dict_params)
+        self.solver = solver_cls(self.do_domain, **copy_dict_params)
 
         if hasattr(self.solver, "init_model") and callable(self.solver.init_model):
             self.solver.init_model(**copy_dict_params)
