@@ -1,4 +1,8 @@
-from openap.extra.aero import ft
+try:
+    # Manage changing module paths in openap
+    from openap.aero import ft
+except ImportError:  # openap < 2.5
+    from openap.extra.aero import ft
 
 TK = 273.15
 

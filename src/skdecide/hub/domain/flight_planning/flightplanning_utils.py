@@ -13,8 +13,13 @@ import pandas as pd
 from cartopy import crs as ccrs
 from cartopy.feature import BORDERS, LAND, OCEAN
 from matplotlib.figure import Figure
-from openap.extra.aero import ft, nm
 from pygeodesy.ellipsoidalVincenty import LatLon
+
+# Manage changing module paths in openap
+try:
+    from openap.aero import ft, nm
+except ImportError:  # openap < 2.5
+    from openap.extra.aero import ft, nm
 
 
 class Timer(object):
