@@ -1095,7 +1095,7 @@ def test_do_with_cb(caplog):
         ),
         method=SolvingMethod.LNS_CP,
         callback=MyCallback(),
-        # dict_params={"cp_solver_name": CpSolverName.GECODE}
+        dict_params={"stop_first_iteration_if_optimal": False},
     )
     solver.solve()
 
