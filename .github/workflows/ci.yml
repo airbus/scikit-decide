@@ -569,6 +569,7 @@ jobs:
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*win*.whl)
+          additional_specs="ortools!=9.15.6755"
           if ${{ matrix.python-version == '3.12' }} == 'true'; then
             additional_specs="${additional_specs} llvmlite>=0.45"
           fi
@@ -673,8 +674,9 @@ jobs:
           python_version=${{ matrix.python-version }}
           arch=$(uname -m)
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
+          additional_specs="ortools!=9.15.6755"
           if ${{ matrix.os == 'macos-15-intel' && matrix.python-version == '3.12' }} == 'true'; then
-            additional_specs="llvmlite!=0.46.0"
+            additional_specs="${additional_specs} llvmlite<0.46.0"
           fi
           if ${{ matrix.python-version == '3.12' }} == 'true'; then
             additional_specs="${additional_specs} llvmlite>=0.45"
@@ -784,6 +786,7 @@ jobs:
         run: |
           python_version=${{ matrix.python-version }}
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*manylinux*.whl)
+          additional_specs="ortools!=9.15.6755"
           if ${{ matrix.python-version == '3.12' }} == 'true'; then
             additional_specs="${additional_specs} llvmlite>=0.45"
           fi
