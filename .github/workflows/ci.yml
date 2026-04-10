@@ -66,7 +66,7 @@ jobs:
       do_windows: ${{ steps.generate-matrix.outputs.do_windows}}
       build_doc: ${{ steps.generate-matrix.outputs.build_doc}}
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: 3.9
       - name: Generate Matrix
@@ -131,14 +131,14 @@ jobs:
   lint-sources:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.9"
       - name: install pre-commit
         run: python -m pip install pre-commit
       - name: get cached pre-commit hooks
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pre-commit
           key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
@@ -160,13 +160,13 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -177,13 +177,13 @@ jobs:
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -200,7 +200,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             skdecide/hub/bin
@@ -224,7 +224,7 @@ jobs:
         run: 7z x dist/*.whl -y
 
       - name: Upload wheel as build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
           path: dist/*.whl
@@ -257,13 +257,13 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11  # for cibuildwheel (not the python version of the constructed wheel)
 
@@ -274,13 +274,13 @@ jobs:
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.arch }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -297,7 +297,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             skdecide/hub/bin
@@ -374,7 +374,7 @@ jobs:
         run: 7z x wheelhouse/*.whl -y
 
       - name: Upload wheel as build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.arch }}
           path: wheelhouse/*.whl
@@ -394,13 +394,13 @@ jobs:
 
     steps:
       - name: Checkout scikit-decide source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -411,13 +411,13 @@ jobs:
 
       - name: Load cached venv
         id: cached-pip-wheels
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Restore Boost cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache-boost
         with:
           path: ${{env.BOOST_DIR}}
@@ -434,7 +434,7 @@ jobs:
 
       - name: Restore build dependencies
         id: cache-build-dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             skdecide/hub/bin
@@ -448,7 +448,7 @@ jobs:
 
       - name: Restore docker dev image
         id: cache-dev-deps
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /tmp/docker
           key: dev-deps-${{ runner.os }}-${{ hashFiles('scripts/build-skdecide_dev.sh', 'scripts/Dockerfile_x86_64_dev') }}
@@ -456,7 +456,7 @@ jobs:
       - name: Restore ccache cache
         if: needs.trigger.outputs.is_release == 'false'
         id: ccache-restore
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .ccache
           key: ccache-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.run_id }}-${{github.run_number}}
@@ -489,7 +489,7 @@ jobs:
         run: 7z x dist/*.whl -y
 
       - name: Upload as build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
           path: dist/*.whl
@@ -514,17 +514,17 @@ jobs:
       minizinc_install_cmdline: cmd //c "minizinc_setup.exe /verysilent /currentuser /norestart /suppressmsgboxes /sp"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-windows*-${{ matrix.python-version }}
           merge-multiple: true
@@ -537,7 +537,7 @@ jobs:
 
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -558,7 +558,7 @@ jobs:
           minizinc --version
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8.0.0
         with:
           # Install a specific version of uv.
           version: "0.9.2"
@@ -615,18 +615,18 @@ jobs:
       minizinc_install_cmdline: sudo hdiutil attach bin/minizinc.dmg; sudo cp -R /Volumes/MiniZinc*/MiniZincIDE.app bin/.
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install needed brew dependencies
         run: brew install libomp eccodes
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-macos*-${{ matrix.python-version }}*
           merge-multiple: true
@@ -641,7 +641,7 @@ jobs:
 
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -662,7 +662,7 @@ jobs:
           minizinc --version
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8.0.0
         with:
           # Install a specific version of uv.
           version: "0.9.2"
@@ -721,7 +721,7 @@ jobs:
       minizinc_prerequisites_cmdline: sudo apt update && sudo apt install libegl1 -y
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install needed apt dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
@@ -729,12 +729,12 @@ jobs:
           packages: libeccodes-dev
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-ubuntu*-${{ matrix.python-version }}
           merge-multiple: true
@@ -754,7 +754,7 @@ jobs:
 
       - name: Restore MiniZinc cache
         id: cache-minizinc
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.get-mzn-cache-path.outputs.path }}
           key: ${{ env.minizinc_url }}
@@ -775,7 +775,7 @@ jobs:
           minizinc --version
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8.0.0
         with:
           # Install a specific version of uv.
           version: "0.9.2"
@@ -829,7 +829,7 @@ jobs:
       || ((needs.trigger.outputs.is_schedule == 'true') && (needs.trigger.outputs.on_main_repo == 'true'))
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         pattern: wheels-*
         merge-multiple: true
@@ -847,7 +847,7 @@ jobs:
     - if: needs.trigger.outputs.is_release == 'false'
       run: zip -r dist.zip dist/
 
-    - uses: actions/github-script@v7
+    - uses: actions/github-script@v9
       if: needs.trigger.outputs.is_release == 'false'
       id: asset
       with:
@@ -1018,7 +1018,7 @@ jobs:
       notebooks-branch: ${{ steps.write-output.outputs.notebooks_branch }}
       binder-full-ref: ${{ steps.write-output.outputs.binder_full_ref }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: replace scikit-decide version to install in colab notebooks
         run: |
           version=${{ needs.get-release-version.outputs.skdecide-version }}
@@ -1093,7 +1093,7 @@ jobs:
     if: needs.trigger.outputs.is_release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Optional, use if you use setuptools_scm
           submodules: true  # Optional, use if you have submodules
@@ -1101,7 +1101,7 @@ jobs:
       - name: Build SDist
         run: pipx run build --sdist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: skdecide-sdist
           path: dist/*.tar.gz
@@ -1112,14 +1112,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
           merge-multiple: true
           path: dist
 
       - name: Download sdist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: skdecide-sdist
           path: dist
