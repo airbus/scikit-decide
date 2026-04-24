@@ -164,7 +164,7 @@ default-groups = "all"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q"
+addopts = "-ra -q --import-mode=importlib"
 testpaths = ["tests"]
 
 [build-system]
