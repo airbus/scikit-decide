@@ -81,16 +81,16 @@ jobs:
           echo "AUTODOC_NOTEBOOKS_BRANCH=${AUTODOC_NOTEBOOKS_BRANCH}" >> $GITHUB_ENV
           # check computed variables
           echo "Notebooks source: ${AUTODOC_NOTEBOOKS_REPO_URL}/tree/${AUTODOC_NOTEBOOKS_BRANCH}"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Setup python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.python-version }}
           cache: "pip"
           cache-dependency-path: |
             pyproject.toml
       - name: Download wheel
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-ubuntu*-${{ env.python-version }}
           merge-multiple: true
@@ -119,7 +119,7 @@ jobs:
           yarn global add vuepress && yarn install
           yarn docs:build
       - name: upload as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.doc-artifact-name }}
           path: ${{ inputs.doc-path }}
