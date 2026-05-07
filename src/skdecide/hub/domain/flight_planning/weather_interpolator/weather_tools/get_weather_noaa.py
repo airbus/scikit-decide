@@ -1,6 +1,7 @@
 import calendar
 import collections
 import datetime as datetime
+import importlib
 import logging
 import os
 import urllib.request as request
@@ -9,10 +10,20 @@ from typing import Optional
 
 import numpy as np
 
-from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.parser_pygrib import (
-    GribPygribUniqueForecast,
-)
 from skdecide.utils import get_data_home
+
+if importlib.util.find_spec("pygrib"):
+    from skdecide.hub.domain.flight_planning.weather_interpolator.weather_tools.parser_pygrib import (
+        GribPygribUniqueForecast,
+    )
+else:
+
+    class GribPygribUniqueForecast:
+        def __init__(self, **kwargs):
+            raise RuntimeError(
+                "You need to install pygrib if you want to use the weather forecast."
+            )
+
 
 logger = logging.getLogger(__name__)
 

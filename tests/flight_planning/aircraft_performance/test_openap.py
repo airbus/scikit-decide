@@ -1,11 +1,3 @@
-import sys
-
-import pytest
-
-
-@pytest.mark.skipif(
-    sys.platform.startswith("win"), reason="pygrib does not install on windows"
-)
 def test_thrust():
     from itertools import product
 
@@ -86,9 +78,6 @@ def test_thrust():
         np.testing.assert_almost_equal(val_skdecide, val_true, decimal=1)
 
 
-@pytest.mark.skipif(
-    sys.platform.startswith("win"), reason="pygrib does not install on windows"
-)
 def test_fuelflow():
     from itertools import product
 
