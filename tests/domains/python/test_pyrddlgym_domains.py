@@ -15,10 +15,7 @@ from skdecide.utils import load_registered_domain, rollout
 
 
 def test_pyrddlgymdomain_sb3():
-    matplotlib.use(
-        "agg"
-    )  # avoid issues on macos-13 + python 3.9  (tkinter versions clash)
-
+    matplotlib.use("agg")
     movie_name = "test-sb3"
     movie_path = f"rddl_movies/{movie_name}"
     domain_factory = lambda: RDDLDomainRL(

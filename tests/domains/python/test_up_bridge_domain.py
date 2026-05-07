@@ -8,7 +8,6 @@ import gymnasium as gym
 import pytest
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
 @pytest.mark.parametrize(
     "state_encoding", ["native", "dictionary", "vector", "variable"]
 )
@@ -74,7 +73,6 @@ def test_up_bridge_domain_random(state_encoding, action_encoding):
             )
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python3.10 or higher")
 def test_up_bridge_domain_planning():
     import unified_planning
     from unified_planning.shortcuts import Fluent, InstantaneousAction, Not
@@ -136,8 +134,8 @@ def test_up_bridge_domain_planning():
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 10) or sys.platform == "darwin",
-    reason="requires python3.10 or higher, libomp segfault on MacOS",
+    sys.platform == "darwin",
+    reason="libomp segfault on MacOS",
 )
 def test_up_bridge_domain_rl():
     import unified_planning

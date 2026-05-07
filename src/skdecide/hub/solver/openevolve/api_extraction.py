@@ -6,6 +6,7 @@ import textwrap
 import typing
 from dataclasses import dataclass, field, fields, is_dataclass
 from enum import Enum
+from inspect import get_annotations
 from types import ModuleType
 from typing import Any, Generic, Optional, TypeVar, Union, get_type_hints
 
@@ -14,14 +15,6 @@ import skdecide.builders.domain as domain_builders
 import skdecide.hub as hub_module
 from skdecide import Domain, Space
 from skdecide.builders.domain import SingleAgent
-
-try:
-    from inspect import get_annotations
-except ImportError:
-    # does not exist prior to python 3.10
-    def get_annotations(*args, **kwargs):
-        return {}
-
 
 T = TypeVar("T")
 
@@ -679,11 +672,7 @@ def _simplify_signature_repr(sig: str, domain_cls: Union[type[Domain], None]) ->
             try:
                 type_name = v.__name__
             except AttributeError:
-                try:
-                    # python 3.9: Union does not have __name__ attribute but rather _name
-                    type_name = v._name
-                except AttributeError:
-                    type_name = str(v)
+                type_name = str(v)
             sig = sig.replace(f"D.{k}", type_name)
     # Remove extra Union[...] if only one arg
     sig = _flatten_unions_in_signature(sig)
