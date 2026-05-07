@@ -1,11 +1,3 @@
-import sys
-
-import pytest
-
-
-@pytest.mark.skipif(
-    sys.platform.startswith("win"), reason="pygrib does not install on windows"
-)
 def test_drag():
     import numpy as np
 
@@ -91,9 +83,6 @@ def test_drag():
         np.testing.assert_almost_equal(val_skdecide, case["expected_cd"], decimal=4)
 
 
-@pytest.mark.skipif(
-    sys.platform.startswith("win"), reason="pygrib does not install on windows"
-)
 def test_thrust():
     import numpy as np
 

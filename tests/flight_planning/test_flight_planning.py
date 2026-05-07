@@ -1,13 +1,8 @@
-import sys
-
 import pytest
 
 from skdecide.hub.solver.lazy_astar import LazyAstar
 
 
-@pytest.mark.skipif(
-    sys.platform.startswith("win"), reason="pygrib does not install on windows"
-)
 def test_aircraft_state():
     from skdecide.hub.domain.flight_planning.aircraft_performance.bean.aircraft_state import (
         AircraftState,
@@ -64,9 +59,6 @@ def test_aircraft_state():
     )
 
 
-@pytest.mark.skipif(
-    sys.platform.startswith("win"), reason="pygrib does not install on windows"
-)
 def test_flight_planning():
     import numpy as np
     from pygeodesy.ellipsoidalVincenty import LatLon
@@ -122,9 +114,6 @@ def test_flight_planning():
     assert solver.check_domain(domain)
 
 
-@pytest.mark.skipif(
-    sys.platform.startswith("win"), reason="pygrib does not install on windows"
-)
 @pytest.mark.parametrize(
     "heuristic_name", ["distance", "time", "fake", "lazy_fuel", "lazy_time"]
 )

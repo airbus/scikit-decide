@@ -3,8 +3,12 @@ import os
 import sys
 
 import numpy as np
-import pygrib
 import pytz
+
+try:
+    import pygrib
+except ImportError:
+    ...
 
 
 def computeTimeStamps(dates, times, steps):
