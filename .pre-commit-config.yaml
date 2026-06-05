@@ -55,3 +55,13 @@ repos:
     hooks:
       - id: nbstripout
         files: ^notebooks/
+
+  - repo: local
+    hooks:
+      - id: sanitize-uv-lock
+        name: Sanitizing uv.lock for public PyPI
+        entry: uv lock --no-config --index-url https://pypi.org/simple
+        language: system
+        files: ^uv\.lock$
+        pass_filenames: false
+        stages: [pre-push]
