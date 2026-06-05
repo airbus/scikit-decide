@@ -83,62 +83,10 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
         // Expand best tip node
         auto applicable_actions =
             _domain.get_applicable_actions(best_tip_node->state).get_elements();
-        std::for_each(
-            ExecutionPolicy::policy, applicable_actions.begin(),
-            applicable_actions.end(), [this, &best_tip_node](auto a) {
-              if (_verbose)
-                Logger::debug("Current expanded action: " + a.print() +
-                              ExecutionPolicy::print_thread());
-              _execution_policy.protect([&best_tip_node, &a] {
-                best_tip_node->actions.push_back(
-                    std::make_unique<ActionNode>(a));
-              });
-              ActionNode &an = *(best_tip_node->actions.back());
-              an.parent = best_tip_node;
-              auto next_states =
-                  _domain.get_next_state_distribution(best_tip_node->state, a)
-                      .get_values();
-              for (auto ns : next_states) {
-                if (_verbose)
-                  Logger::debug(
-                      "Current next state expansion: " + ns.state().print() +
-                      ExecutionPolicy::print_thread());
-                std::pair<typename Graph::iterator, bool> i;
-                _execution_policy.protect(
-                    [this, &i, &ns] { i = _graph.emplace(ns.state()); });
-                StateNode &next_node = const_cast<StateNode &>(
-                    *(i.first)); // we won't change the real key
-                                 // (StateNode::state) so we are safe
-                an.outcomes.push_back(std::make_tuple(
-                    ns.probability(),
-                    _domain
-                        .get_transition_value(best_tip_node->state, a,
-                                              next_node.state)
-                        .cost(),
-                    &next_node));
-                _execution_policy.protect(
-                    [&next_node, &an] { next_node.parents.push_back(&an); });
-                if (i.second) { // new node
-                  if (_goal_checker(_domain, next_node.state)) {
-                    if (_verbose)
-                      Logger::debug("Found goal state " +
-                                    next_node.state.print() +
-                                    ExecutionPolicy::print_thread());
-                    next_node.solved = true;
-                    next_node.best_value = 0.0;
-                  } else {
-                    next_node.best_value =
-                        _heuristic(_domain, next_node.state).cost();
-                    if (_verbose)
-                      Logger::debug(
-                          "New state " + next_node.state.print() +
-                          " with heuristic value " +
-                          StringConverter::from(next_node.best_value) +
-                          ExecutionPolicy::print_thread());
-                  }
-                }
-              }
-            });
+        std::for_each(ExecutionPolicy::policy, applicable_actions.begin(),
+                      applicable_actions.end(), [this, &best_tip_node](auto a) {
+                        expand_action(best_tip_node, a);
+                      });
       }
 
       // Back-propagate value function from best tip node
@@ -222,6 +170,55 @@ void SK_AOSTAR_SOLVER_CLASS::solve(const State &s) {
     Logger::error("AO* failed solving from state " + s.print() +
                   ". Reason: " + e.what());
     throw;
+  }
+}
+
+SK_AOSTAR_SOLVER_TEMPLATE_DECL
+void SK_AOSTAR_SOLVER_CLASS::expand_action(StateNode *best_tip_node,
+                                           const Action &a) {
+  if (_verbose)
+    Logger::debug("Current expanded action: " + a.print() +
+                  ExecutionPolicy::print_thread());
+  _execution_policy.protect([&best_tip_node, &a] {
+    best_tip_node->actions.push_back(std::make_unique<ActionNode>(a));
+  });
+  ActionNode &an = *(best_tip_node->actions.back());
+  an.parent = best_tip_node;
+  auto next_states =
+      _domain.get_next_state_distribution(best_tip_node->state, a).get_values();
+  for (auto ns : next_states) {
+    if (_verbose)
+      Logger::debug("Current next state expansion: " + ns.state().print() +
+                    ExecutionPolicy::print_thread());
+    std::pair<typename Graph::iterator, bool> i;
+    _execution_policy.protect(
+        [this, &i, &ns] { i = _graph.emplace(ns.state()); });
+    StateNode &next_node = const_cast<StateNode &>(
+        *(i.first)); // we won't change the real key
+                     // (StateNode::state) so we are safe
+    an.outcomes.push_back(std::make_tuple(
+        ns.probability(),
+        _domain.get_transition_value(best_tip_node->state, a, next_node.state)
+            .cost(),
+        &next_node));
+    _execution_policy.protect(
+        [&next_node, &an] { next_node.parents.push_back(&an); });
+    if (i.second) { // new node
+      if (_goal_checker(_domain, next_node.state)) {
+        if (_verbose)
+          Logger::debug("Found goal state " + next_node.state.print() +
+                        ExecutionPolicy::print_thread());
+        next_node.solved = true;
+        next_node.best_value = 0.0;
+      } else {
+        next_node.best_value = _heuristic(_domain, next_node.state).cost();
+        if (_verbose)
+          Logger::debug("New state " + next_node.state.print() +
+                        " with heuristic value " +
+                        StringConverter::from(next_node.best_value) +
+                        ExecutionPolicy::print_thread());
+      }
+    }
   }
 }
 
