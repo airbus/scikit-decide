@@ -220,6 +220,8 @@ private:
   PriorityQueue _priority_queue;
 
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+
+  void expand_action(StateNode *best_tip_node, const Action &a);
 };
 
 } // namespace skdecide
