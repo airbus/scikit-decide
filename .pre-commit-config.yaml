@@ -64,4 +64,4 @@ repos:
         language: system
         files: ^uv\.lock$
         pass_filenames: false
-        stages: [pre-push]
+        stages: [pre-commit]
