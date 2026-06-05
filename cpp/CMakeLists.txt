@@ -61,11 +61,7 @@ IF (MULTITHREADING_FRAMEWORK STREQUAL "TBB")
     ENDIF ()
 ENDIF()
 
-# BOOST
-FIND_PACKAGE(Boost)
-LIST(APPEND INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
-
-# SDK
+# SDK (before Boost so bundled headers take precedence over system-installed ones)
 ADD_SUBDIRECTORY(sdk/backward-cpp)
 LIST(APPEND LIBS backward)
 
@@ -78,6 +74,11 @@ SET(SPDLOG_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/sdk/spdlog/include)
 ADD_SUBDIRECTORY(sdk/spdlog)
 LIST(APPEND INCLUDE_DIRS "${SPDLOG_INCLUDE_DIR}")
 LIST(APPEND LIBS spdlog::spdlog)
+
+# BOOST (after SDK so bundled spdlog/fmt headers are found before any
+# system-installed versions that Boost's include path might expose)
+FIND_PACKAGE(Boost)
+LIST(APPEND INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
 
 CMAKE_POLICY(SET CMP0077 NEW)
 SET(NNG_STATIC_LIB ON CACHE INTERNAL "")
