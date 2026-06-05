@@ -2,8 +2,11 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.26.6)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.26.6...4.1)
 PROJECT(skdecide)
+
+# Allow third-party SDK libraries with old cmake_minimum_required (e.g. backward-cpp 3.0, spdlog 3.10...3.21)
+SET(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 OPTION(BUILD_TESTS OFF)
 OPTION(ONLY_PYTHON OFF)
@@ -58,7 +61,8 @@ IF (MULTITHREADING_FRAMEWORK STREQUAL "TBB")
     ENDIF ()
 ENDIF()
 
-# BOOST
+# BOOST (use config-mode; FindBoost module removed in CMake 4)
+CMAKE_POLICY(SET CMP0167 NEW)
 FIND_PACKAGE(Boost)
 LIST(APPEND INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
 
@@ -88,9 +92,11 @@ LIST(APPEND LIBS nng)
 LIST(APPEND INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/sdk/nngpp/include)
 
 IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
+    SET(PYBIND11_FINDPYTHON ON)
+    FIND_PACKAGE(Python REQUIRED COMPONENTS Interpreter Development.Module)
     ADD_SUBDIRECTORY(sdk/pybind11)
-    LIST(APPEND INCLUDE_DIRS "${PYBIND11_INCLUDE_DIR}")
-    LIST(APPEND INCLUDE_DIRS "${PYTHON_INCLUDE_DIRS}")
+    LIST(APPEND INCLUDE_DIRS "${pybind11_INCLUDE_DIR}")
+    LIST(APPEND INCLUDE_DIRS "${Python_INCLUDE_DIRS}")
 ENDIF ()
 
 IF (BUILD_TESTS AND NOT ONLY_PYTHON)

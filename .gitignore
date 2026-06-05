@@ -5,9 +5,6 @@
 .*/
 !.vuepress/
 
-# Github
-.github/
-
 # Python
 __pycache__/
 .python-version
