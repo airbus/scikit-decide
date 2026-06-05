@@ -2,7 +2,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.26.6...4.1)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.26.6...3.29)
 PROJECT(skdecide)
 
 # Allow third-party SDK libraries with old cmake_minimum_required (e.g. backward-cpp 3.0, spdlog 3.10...3.21)
