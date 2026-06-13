@@ -3,6 +3,15 @@
 import logging
 from typing import Any, Callable, Dict, Optional, Union
 
+import matplotlib
+import matplotlib.cm
+
+# Restore matplotlib.cm.get_cmap for libraries (graph-jsp-env) that still use
+# the pre-3.11 API.  Removed in matplotlib 3.11; the new equivalent is
+# matplotlib.colormaps[name].
+if not hasattr(matplotlib.cm, "get_cmap"):
+    matplotlib.cm.get_cmap = lambda name=None, lut=None: matplotlib.colormaps[name]
+
 import numpy as np
 import torch as th
 import torch_geometric as thg
