@@ -212,14 +212,15 @@ jobs:
         run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
 
       - name: Set up MSVC developer environment
-        shell: cmd
+        shell: pwsh
         run: |
-          setlocal EnableDelayedExpansion
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64
-          echo PATH=!PATH!>>"%GITHUB_ENV%"
-          echo INCLUDE=!INCLUDE!>>"%GITHUB_ENV%"
-          echo LIB=!LIB!>>"%GITHUB_ENV%"
-          echo LIBPATH=!LIBPATH!>>"%GITHUB_ENV%"
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $vcvarsall = Join-Path $vsPath "VC\Auxiliary\Build\vcvarsall.bat"
+          cmd /c "`"$vcvarsall`" amd64 >nul && set" | ForEach-Object {
+            if ($_ -match '^(PATH|INCLUDE|LIB|LIBPATH)=(.*)$') {
+              "$($Matches[1])=$($Matches[2])" >> $env:GITHUB_ENV
+            }
+          }
 
       - name: Build wheel
         run: |
