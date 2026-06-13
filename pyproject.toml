@@ -181,15 +181,4 @@ build-dir = "build/{wheel_tag}"  # speedup rebuilds (https://scikit-build-core.r
 [tool.scikit-build.cmake.define]
 ONLY_PYTHON = true
 
-[[tool.scikit-build.overrides]]
-if.platform-system = "^win32"
-if.platform-machine = "64"
-inherit.cmake.args = "append"
-cmake.args =  ["-A", "x64"]
-
-[[tool.scikit-build.overrides]]
-if.platform-system = "^win32"
-inherit.cmake.args = "append"
-build.tool-args =  ["/m"]
-
 [tool.setuptools_scm]
