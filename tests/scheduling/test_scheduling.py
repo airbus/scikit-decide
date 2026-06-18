@@ -21,14 +21,19 @@ from skdecide.builders.domain.scheduling.modes import (
     ConstantModeConsumption,
     ModeConsumption,
 )
-from skdecide.builders.domain.scheduling.preemptivity import WithoutPreemptivity
+from skdecide.builders.domain.scheduling.preallocations import WithoutPreallocations
+from skdecide.builders.domain.scheduling.preemptivity import (
+    WithoutPreemptivity,
+)
 from skdecide.builders.domain.scheduling.resource_availability import (
     DeterministicResourceAvailabilityChanges,
 )
 from skdecide.builders.domain.scheduling.scheduling_domains import (
+    DeterministicSchedulingDomain,
     MultiModeMultiSkillRCPSP,
     MultiModeRCPSPWithCost,
     SchedulingAction,
+    SchedulingDomain,
     SchedulingObjectiveEnum,
     SingleModeRCPSP,
     SingleModeRCPSP_Simulated_Stochastic_Durations_WithConditionalTasks,
@@ -43,6 +48,9 @@ from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     rebuild_tasks_modes_dict,
 )
 from skdecide.builders.domain.scheduling.task_duration import DeterministicTaskDuration
+from skdecide.builders.domain.scheduling.task_progress import DeterministicTaskProgress
+from skdecide.builders.domain.scheduling.time_lag import MaximumOnlyTimeLag, TimeLag
+from skdecide.builders.domain.scheduling.time_windows import EmptyTimeWindow, TimeWindow
 from skdecide.hub.domain.graph_domain.graph_domain_builders import DFS_MDP_Exploration
 from skdecide.hub.domain.rcpsp.rcpsp_sk import build_n_determinist_from_stochastic
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
@@ -470,6 +478,176 @@ class ToySimulatedCondSRCPSPDomain(
         return val
 
 
+class ToySchedulingDomain(
+    DeterministicSchedulingDomain,
+    WithoutPreemptivity,
+    DeterministicTaskProgress,
+    WithoutPreallocations,
+    WithoutConditionalTasks,
+):
+    horizon = 50
+    durations = {
+        1: {1: 0},
+        2: {1: 5, 2: 5},
+        3: {1: 6, 2: 3},
+        4: {1: 4, 2: 4},
+        5: {1: 0},
+    }
+    resource_quantities = {
+        "r1": 2,
+        "r2": 1,
+        "employee-1": 1,
+        "employee-2": 1,
+        "employee-3": 1,
+    }
+    resource_costs = {
+        "r1": 20,
+        "employee-1": 10,
+        "employee-2": 20,
+        "employee-3": 15,
+    }
+    mode_costs = {
+        1: {1: 0},
+        2: {
+            1: 10,
+            2: 10,
+        },
+        3: {
+            1: 15,
+            2: 30,
+        },
+        4: {
+            1: 0,
+            2: 0,
+        },
+        5: {1: 0},
+    }
+    resource_consumptions = {
+        1: {1: ConstantModeConsumption({"r1": 0, "r2": 0})},
+        2: {
+            1: ConstantModeConsumption({"r1": 1, "r2": 1}),
+            2: ConstantModeConsumption({"r1": 2, "r2": 0}),
+        },
+        3: {
+            1: ConstantModeConsumption({"r1": 1, "r2": 0}),
+            2: ConstantModeConsumption({"r1": 0, "r2": 1}),
+        },
+        4: {
+            1: ConstantModeConsumption({"r1": 2, "r2": 1}),
+            2: ConstantModeConsumption({"r1": 2, "r2": 0}),
+        },
+        5: {1: ConstantModeConsumption({"r1": 0, "r2": 0})},
+    }
+
+    time_windows = {
+        2: TimeWindow(
+            earliest_start=10,
+            earliest_end=35,
+            latest_end=40,
+            latest_start=32,
+        ),
+        **{i: EmptyTimeWindow(max_horizon=50) for i in range(6) if i != 2},
+    }
+    successors = {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
+    timelags = {
+        2: {4: TimeLag(minimum_time_lag=2, maximum_time_lag=4)},
+        3: {2: MaximumOnlyTimeLag(maximum_time_lag=-1)},
+    }
+    employees = ["employee-1", "employee-2", "employee-3"]
+    objectives = [SchedulingObjectiveEnum.MAKESPAN, SchedulingObjectiveEnum.COST]
+    resources = ["r1", "r2"]
+    renewability = {
+        "r1": True,
+        "r2": False,
+        "employee-1": True,
+        "employee-2": True,
+        "employee-3": True,
+    }
+    resources_skills = {
+        "employee-1": {"S1": 1},
+        "employee-2": {"S2": 1},
+        "employee-3": {"S3": 1},
+        "r1": {},
+        "r2": {},
+    }
+    tasks_skills = {
+        1: {1: {}},
+        2: {1: {"S1": 1}, 2: {"S2": 1}},
+        3: {1: {"S2": 1}, 2: {"S3": 1}},
+        4: {1: {"S1": 1, "S2": 1}, 2: {"S2": 1, "S3": 1}},
+        5: {1: {}},
+    }
+
+    def __init__(self):
+        self.initialize_domain()
+
+    def _sample_task_duration(
+        self, task: int, mode: int = 1, progress_from: float = 0.0
+    ) -> int:
+        return self.durations[task][mode]
+
+    def _get_time_lags(self) -> dict[int, dict[int, TimeLag]]:
+        return self.timelags
+
+    def _get_time_window(self) -> dict[int, TimeWindow]:
+        return self.time_windows
+
+    def _sample_quantity_resource(self, resource: str, time: int, **kwargs) -> int:
+        return self.resource_quantities[resource]
+
+    def _get_mode_costs(self) -> dict[int, dict[int, float]]:
+        return self.mode_costs
+
+    def _get_resource_cost_per_time_unit(self) -> dict[str, float]:
+        return self.resource_costs
+
+    def _get_resource_units_names(self) -> list[str]:
+        return self.employees
+
+    def _get_max_horizon(self) -> int:
+        return self.horizon
+
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
+        return self.objectives
+
+    def _get_successors(self) -> dict[int, list[int]]:
+        return self.successors
+
+    def _get_tasks_ids(self) -> Collection[int]:
+        return set(self.durations)
+
+    def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
+        return self.resource_consumptions
+
+    def _get_resource_types_names(self) -> list[str]:
+        return self.resources
+
+    def _get_resource_type_for_unit(self) -> dict[str, str]:
+        return {}
+
+    def _get_resource_renewability(self) -> dict[str, bool]:
+        return self.renewability
+
+    def _get_all_resources_skills(self) -> dict[str, dict[str, Any]]:
+        return self.resources_skills
+
+    def _get_all_tasks_skills(self) -> dict[int, dict[int, dict[str, Any]]]:
+        return self.tasks_skills
+
+
+class ToySchedulingDomainWithoutAPosterioriTimeConstraints(ToySchedulingDomain):
+    """Scheduling domain without max timelags or time window on ends."""
+
+    def __init__(self):
+        super().__init__()
+        for task in self.time_windows:
+            self.time_windows[task].latest_end = self.horizon
+            self.time_windows[task].earliest_end = 0
+        for task, task_timelags in self.timelags.items():
+            for next_task, timelag in task_timelags.items():
+                timelag.maximum_time_lag = None
+
+
 @pytest.mark.parametrize(
     "domain",
     [
@@ -479,6 +657,7 @@ class ToySimulatedCondSRCPSPDomain(
         (ToyMS_RCPSPDomain()),
         (ToyCondSRCPSPDomain()),
         (ToySimulatedCondSRCPSPDomain()),
+        (ToySchedulingDomainWithoutAPosterioriTimeConstraints()),
     ],
 )
 def test_rollout(domain, random_seed):
@@ -493,6 +672,7 @@ def test_rollout(domain, random_seed):
         verbose=False,
         return_episodes=True,
     )[0]
+    print(states[-1])
     check_rollout_consistency(domain, states)
 
 
@@ -501,9 +681,47 @@ def check_rollout_consistency(domain, states: list[State]):
     check_task_duration(domain, states)
     check_resource_constraints(domain, states)
     check_skills(domain, states)
+    check_time_windows(domain, states)
+    check_time_lags(domain, states)
 
 
-def check_precedence(domain, states: list[State]):
+def check_time_lags(domain: SchedulingDomain, states: list[State]):
+    tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
+    for task1, task1_time_lags in domain.get_time_lags().items():
+        for task2, time_lag in task1_time_lags.items():
+            assert (
+                (task1 not in states[-1].tasks_complete)
+                or (task2 not in states[-1].tasks_complete)
+            ) or (
+                (
+                    ((min_offset := time_lag.minimum_time_lag) is None)
+                    or (
+                        tasks_complete_dict[task1].end + min_offset
+                        <= tasks_complete_dict[task2].start
+                    )
+                )
+                and (
+                    ((max_offset := time_lag.maximum_time_lag) is None)
+                    or (
+                        tasks_complete_dict[task1].end + max_offset
+                        >= tasks_complete_dict[task2].start
+                    )
+                )
+            ), f"time lag not respected between task {task1} and task {task2}"
+
+
+def check_time_windows(domain: SchedulingDomain, states: list[State]):
+    tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
+    for task, tw in domain.get_time_window().items():
+        assert (task not in states[-1].tasks_complete) or (
+            (tasks_complete_dict[task].end >= tw.earliest_end)
+            and (tasks_complete_dict[task].end <= tw.latest_end)
+            and (tasks_complete_dict[task].start >= tw.earliest_start)
+            and (tasks_complete_dict[task].start <= tw.latest_start)
+        ), f"time window not respected for task {task}"
+
+
+def check_precedence(domain: SchedulingDomain, states: list[State]):
     # Check precedence
     tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
     for id in domain.get_tasks_ids():
@@ -513,14 +731,14 @@ def check_precedence(domain, states: list[State]):
                 if pred_id in states[-1].tasks_complete:  # needed for conditional tasks
                     end_0 = tasks_complete_dict[pred_id].end
                     assert start_1 >= end_0, (
-                        "precedence constraints not respecetd between tasks "
+                        "precedence constraints not respected between tasks "
                         + str(id)
                         + " and "
                         + str(pred_id)
                     )
 
 
-def check_task_duration(domain, states: list[State]):
+def check_task_duration(domain: SchedulingDomain, states: list[State]):
     # Check task durations on deterministic domains
     if isinstance(domain, DeterministicTaskDuration):
         tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
@@ -547,7 +765,7 @@ def check_task_duration(domain, states: list[State]):
                 )
 
 
-def check_resource_constraints(domain, states: list[State]):
+def check_resource_constraints(domain: SchedulingDomain, states: list[State]):
     # Check resource constraints on deterministic non-preemtive domains
     if (
         isinstance(domain, DeterministicResourceAvailabilityChanges)
@@ -579,7 +797,7 @@ def check_resource_constraints(domain, states: list[State]):
                 )
 
 
-def check_skills(domain, states: list[State]):
+def check_skills(domain: SchedulingDomain, states: list[State]):
     if isinstance(domain, ToyMS_RCPSPDomain):
         ressource_units = domain.get_resource_units_names()
         tasks_complete_dict = rebuild_tasks_complete_details_dict(states[-1])
@@ -659,6 +877,40 @@ def test_do(domain, do_solver):
 
 
 @pytest.mark.parametrize(
+    "do_solver",
+    [
+        (SolvingMethod.CP),
+        (SolvingMethod.LNS_CP),
+    ],
+)
+def test_do_generic(do_solver):
+    domain = ToySchedulingDomain()
+    domain.set_inplace_environment(False)
+    state = domain.get_initial_state()
+    solver = DOSolver(
+        domain_factory=lambda: domain,
+        policy_method_params=PolicyMethodParams(
+            base_policy_method=BasePolicyMethod.FOLLOW_GANTT,
+            delta_index_freedom=0,
+            delta_time_freedom=0,
+        ),
+        method=do_solver,
+    )
+    solver.solve()
+    states, actions, values = rollout(
+        domain=domain,
+        max_steps=1000,
+        solver=solver,
+        from_memory=state,
+        action_formatter=None,
+        outcome_formatter=None,
+        verbose=False,
+        return_episodes=True,
+    )[0]
+    check_rollout_consistency(domain, states)
+
+
+@pytest.mark.parametrize(
     "domain",
     [
         (ToyRCPSPDomain()),
@@ -699,8 +951,6 @@ def test_do_solver_type(domain, do_solver_type):
         verbose=False,
         return_episodes=True,
     )[0]
-    # action_formatter=lambda o: str(o),
-    # outcome_formatter=lambda o: f'{o.observation} - cost: {o.value.cost:.2f}')
     check_rollout_consistency(domain, states)
 
 

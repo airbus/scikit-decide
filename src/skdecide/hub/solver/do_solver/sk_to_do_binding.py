@@ -4,8 +4,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Hashable
 from typing import Union
 
+from discrete_optimization.generic_tasks_tools.calendar_resource import (
+    convert_calendar_to_availability_intervals,
+)
+from discrete_optimization.generic_tasks_tools.generic_scheduling_impl import (
+    GenericSchedulingImplProblem,
+)
+from discrete_optimization.generic_tasks_tools.generic_scheduling_utils import Objective
 from discrete_optimization.rcpsp.problem import RcpspProblem, RcpspSolution
 from discrete_optimization.rcpsp_multiskill.problem import (
     Employee,
@@ -21,6 +29,7 @@ from skdecide.builders.domain.scheduling.scheduling_domains import (
     MultiModeRCPSPCalendar,
     MultiModeRCPSPWithCost,
     SchedulingDomain,
+    SchedulingObjectiveEnum,
     SingleModeRCPSP,
     SingleModeRCPSP_Stochastic_Durations,
     SingleModeRCPSPCalendar,
@@ -32,6 +41,10 @@ from skdecide.hub.domain.rcpsp.rcpsp_sk import (
     RCPSP,
     MRCPSPCalendar,
     MSRCPSPCalendar,
+)
+
+DOSchedulingProblem = (
+    RcpspProblem | MultiskillRcpspProblem | GenericSchedulingImplProblem
 )
 
 
@@ -66,24 +79,25 @@ def build_do_domain(
         MultiModeMultiSkillRCPSP,
         MultiModeMultiSkillRCPSPCalendar,
         SingleModeRCPSP_Stochastic_Durations,
+        SchedulingDomain,
     ],
-) -> Union[RcpspProblem, MultiskillRcpspProblem]:
+) -> DOSchedulingProblem:
     """Transform the scheduling domain (from scikit-decide) into a discrete-optimization problem.
 
     This only works for scheduling template given in the type docstring.
     """
     if isinstance(scheduling_domain, SingleModeRCPSP):
         modes_details = scheduling_domain.get_tasks_modes().copy()
-        mode_details_do = {}
+        resource_consumptions = {}
         for task in modes_details:
-            mode_details_do[task] = {}
+            resource_consumptions[task] = {}
             for mode in modes_details[task]:
-                mode_details_do[task][mode] = {}
+                resource_consumptions[task][mode] = {}
                 for r in modes_details[task][mode].get_ressource_names():
-                    mode_details_do[task][mode][r] = modes_details[task][
+                    resource_consumptions[task][mode][r] = modes_details[task][
                         mode
                     ].get_resource_need_at_time(r, time=0)  # should be constant anyway
-                mode_details_do[task][mode]["duration"] = (
+                resource_consumptions[task][mode]["duration"] = (
                     scheduling_domain.get_task_duration(task=task, mode=mode)
                 )
         return RcpspProblem(
@@ -96,23 +110,22 @@ def build_do_domain(
                 for r in scheduling_domain.get_resource_renewability()
                 if not scheduling_domain.get_resource_renewability()[r]
             ],
-            mode_details=mode_details_do,
+            mode_details=resource_consumptions,
             successors=scheduling_domain.get_successors(),
             horizon=scheduling_domain.get_max_horizon(),
-            horizon_multiplier=1,
         )
-    if isinstance(scheduling_domain, SingleModeRCPSP_Stochastic_Durations):
+    elif isinstance(scheduling_domain, SingleModeRCPSP_Stochastic_Durations):
         modes_details = scheduling_domain.get_tasks_modes().copy()
-        mode_details_do = {}
+        resource_consumptions = {}
         for task in modes_details:
-            mode_details_do[task] = {}
+            resource_consumptions[task] = {}
             for mode in modes_details[task]:
-                mode_details_do[task][mode] = {}
+                resource_consumptions[task][mode] = {}
                 for r in modes_details[task][mode].get_ressource_names():
-                    mode_details_do[task][mode][r] = modes_details[task][
+                    resource_consumptions[task][mode][r] = modes_details[task][
                         mode
                     ].get_resource_need_at_time(r, time=0)  # should be constant anyway
-                mode_details_do[task][mode]["duration"] = (
+                resource_consumptions[task][mode]["duration"] = (
                     scheduling_domain.sample_task_duration(task=task, mode=mode)
                 )
         return RcpspProblem(
@@ -125,23 +138,22 @@ def build_do_domain(
                 for r in scheduling_domain.get_resource_renewability()
                 if not scheduling_domain.get_resource_renewability()[r]
             ],
-            mode_details=mode_details_do,
+            mode_details=resource_consumptions,
             successors=scheduling_domain.get_successors(),
             horizon=scheduling_domain.get_max_horizon(),
-            horizon_multiplier=1,
         )
-    if isinstance(scheduling_domain, (MultiModeRCPSP, MultiModeRCPSPWithCost)):
+    elif isinstance(scheduling_domain, (MultiModeRCPSP, MultiModeRCPSPWithCost)):
         modes_details = scheduling_domain.get_tasks_modes().copy()
-        mode_details_do = {}
+        resource_consumptions = {}
         for task in modes_details:
-            mode_details_do[task] = {}
+            resource_consumptions[task] = {}
             for mode in modes_details[task]:
-                mode_details_do[task][mode] = {}
+                resource_consumptions[task][mode] = {}
                 for r in modes_details[task][mode].get_ressource_names():
-                    mode_details_do[task][mode][r] = modes_details[task][
+                    resource_consumptions[task][mode][r] = modes_details[task][
                         mode
                     ].get_resource_need_at_time(r, time=0)  # should be constant anyway
-                mode_details_do[task][mode]["duration"] = (
+                resource_consumptions[task][mode]["duration"] = (
                     scheduling_domain.get_task_duration(task=task, mode=mode)
                 )
         return RcpspProblem(
@@ -154,23 +166,24 @@ def build_do_domain(
                 for r in scheduling_domain.get_resource_renewability()
                 if not scheduling_domain.get_resource_renewability()[r]
             ],
-            mode_details=mode_details_do,
+            mode_details=resource_consumptions,
             successors=scheduling_domain.get_successors(),
             horizon=scheduling_domain.get_max_horizon(),
-            horizon_multiplier=1,
         )
-    if isinstance(scheduling_domain, (MultiModeRCPSPCalendar, SingleModeRCPSPCalendar)):
+    elif isinstance(
+        scheduling_domain, (MultiModeRCPSPCalendar, SingleModeRCPSPCalendar)
+    ):
         modes_details = scheduling_domain.get_tasks_modes().copy()
-        mode_details_do = {}
+        resource_consumptions = {}
         for task in modes_details:
-            mode_details_do[task] = {}
+            resource_consumptions[task] = {}
             for mode in modes_details[task]:
-                mode_details_do[task][mode] = {}
+                resource_consumptions[task][mode] = {}
                 for r in modes_details[task][mode].get_ressource_names():
-                    mode_details_do[task][mode][r] = modes_details[task][
+                    resource_consumptions[task][mode][r] = modes_details[task][
                         mode
                     ].get_resource_need_at_time(r, time=0)  # should be constant anyway
-                mode_details_do[task][mode]["duration"] = (
+                resource_consumptions[task][mode]["duration"] = (
                     scheduling_domain.get_task_duration(task=task, mode=mode)
                 )
         horizon = scheduling_domain.get_max_horizon()
@@ -187,30 +200,29 @@ def build_do_domain(
                 for r in scheduling_domain.get_resource_renewability()
                 if not scheduling_domain.get_resource_renewability()[r]
             ],
-            mode_details=mode_details_do,
+            mode_details=resource_consumptions,
             successors=scheduling_domain.get_successors(),
             horizon=scheduling_domain.get_max_horizon(),
-            horizon_multiplier=1,
         )
-    if isinstance(
+    elif isinstance(
         scheduling_domain, (MultiModeMultiSkillRCPSP, MultiModeMultiSkillRCPSPCalendar)
     ):
         modes_details = scheduling_domain.get_tasks_modes().copy()
         skills_set = set()
-        mode_details_do = {}
+        resource_consumptions = {}
         for task in modes_details:
-            mode_details_do[task] = {}
+            resource_consumptions[task] = {}
             for mode in modes_details[task]:
-                mode_details_do[task][mode] = {}
+                resource_consumptions[task][mode] = {}
                 for r in modes_details[task][mode].get_ressource_names():
-                    mode_details_do[task][mode][r] = modes_details[task][
+                    resource_consumptions[task][mode][r] = modes_details[task][
                         mode
                     ].get_resource_need_at_time(r, time=0)  # should be constant anyway
                 skills = scheduling_domain.get_skills_of_task(task=task, mode=mode)
                 for s in skills:
-                    mode_details_do[task][mode][s] = skills[s]
+                    resource_consumptions[task][mode][s] = skills[s]
                     skills_set.add(s)
-                mode_details_do[task][mode]["duration"] = (
+                resource_consumptions[task][mode]["duration"] = (
                     scheduling_domain.get_task_duration(task=task, mode=mode)
                 )
         horizon = scheduling_domain.get_max_horizon()
@@ -249,22 +261,142 @@ def build_do_domain(
                 for r in scheduling_domain.get_resource_types_names()
             },
             employees=employees_dict,
-            employees_availability=[
-                sum(
-                    [
-                        scheduling_domain.get_quantity_resource(employee, time=t)
-                        for employee in employees
-                    ]
-                )
-                for t in range(horizon + 1)
-            ],
-            mode_details=mode_details_do,
+            mode_details=resource_consumptions,
             successors=scheduling_domain.get_successors(),
             horizon=horizon,
-            horizon_multiplier=1,
             sink_task=max(scheduling_domain.get_tasks_ids()),
             source_task=min(scheduling_domain.get_tasks_ids()),
             one_unit_per_task_max=False,
+        )
+    else:
+        horizon = scheduling_domain.get_max_horizon()
+        resources = scheduling_domain.get_resource_types_names()
+        renewability = scheduling_domain.get_resource_renewability()
+        modes_details = scheduling_domain.get_tasks_modes()
+        durations_per_mode = {
+            task: {
+                mode: scheduling_domain.sample_task_duration(task=task, mode=mode)
+                for mode in task_modes_details
+            }
+            for task, task_modes_details in modes_details.items()
+        }
+        resource_consumptions = {}
+        for task in modes_details:
+            resource_consumptions[task] = {}
+            for mode in modes_details[task]:
+                resource_consumptions[task][mode] = {}
+                for r in modes_details[task][mode].get_ressource_names():
+                    resource_consumptions[task][mode][r] = modes_details[task][
+                        mode
+                    ].get_resource_need_at_time(
+                        resource_name=r, time=0
+                    )  # should be constant anyway
+                skills = scheduling_domain.get_skills_of_task(task=task, mode=mode)
+                for s in skills:
+                    resource_consumptions[task][mode][s] = skills[s]
+        non_renewable_resources = {
+            r: scheduling_domain.sample_quantity_resource(resource=r, time=0)
+            for r in resources
+            if not renewability[r]
+        }
+        skills = scheduling_domain.get_skills_names()
+        unary_resources = set(scheduling_domain.get_resource_units_names())
+        if any(not renewability[r] for r in unary_resources):
+            raise NotImplementedError(
+                "Discrete-optimization cannot yet managed non-renewable unary resources."
+            )
+        unary_resources_skills = {
+            resource: skills_details
+            for resource, skills_details in scheduling_domain.get_all_resources_skills().items()
+            if resource in unary_resources
+        }
+        unary_resources_availabilities = {
+            r: [
+                (start, end)
+                for start, end, _ in convert_calendar_to_availability_intervals(
+                    calendar=[
+                        scheduling_domain.sample_quantity_resource(r, time=t)
+                        for t in range(horizon)
+                    ],
+                    horizon=horizon,
+                )
+            ]
+            for r in scheduling_domain.get_resource_types_names()
+            if r not in skills and r not in non_renewable_resources
+        }
+        non_skill_cumulative_resources = {
+            r: convert_calendar_to_availability_intervals(
+                calendar=[
+                    scheduling_domain.sample_quantity_resource(r, time=t)
+                    for t in range(horizon)
+                ],
+                horizon=horizon,
+            )
+            for r in scheduling_domain.get_resource_types_names()
+            if r not in skills
+            and r not in non_renewable_resources
+            and r not in unary_resources
+        }
+        successors = scheduling_domain.get_successors()
+        time_windows = {
+            task: (tw.earliest_start, tw.earliest_end, tw.latest_start, tw.latest_end)
+            for task, tw in scheduling_domain.get_time_window().items()
+        }
+        end_to_start_min_time_lags = []
+        start_to_end_min_time_lags = []
+        for task1, timelags in scheduling_domain.get_time_lags().items():
+            for task2, timelag in timelags.items():
+                min_offset = timelag.minimum_time_lag
+                max_offset = timelag.maximum_time_lag
+                if min_offset is not None:
+                    end_to_start_min_time_lags.append((task1, task2, min_offset))
+                if max_offset is not None:
+                    start_to_end_min_time_lags.append((task2, task1, -max_offset))
+
+        # cost: use only integer costs
+        mode_costs: dict[Hashable, dict[int, int]] = {
+            task: {mode: int(cost) for mode, cost in task_mode_costs.items()}
+            for task, task_mode_costs in scheduling_domain.get_mode_costs().items()
+        }
+        resource_cost_per_time_unit = (
+            scheduling_domain.get_resource_cost_per_time_unit()
+        )
+        unary_resource_costs: dict[Hashable, dict[int, dict[str, int]]] = {
+            task: {
+                mode: {
+                    unary_resource: duration
+                    * resource_cost_per_time_unit[unary_resource]
+                    for unary_resource in unary_resources
+                }
+                for mode, duration in task_durations_per_mode.items()
+            }
+            for task, task_durations_per_mode in durations_per_mode.items()
+        }
+        # objectives
+        sk_objectives = scheduling_domain.get_objectives()
+        do_objectives = []
+        if SchedulingObjectiveEnum.MAKESPAN in sk_objectives:
+            do_objectives.append((Objective.MAKESPAN, -1))
+        if SchedulingObjectiveEnum.COST in sk_objectives:
+            do_objectives.append((Objective.COST, -1))
+
+        return GenericSchedulingImplProblem(
+            horizon=horizon,
+            durations_per_mode=durations_per_mode,
+            resource_consumptions=resource_consumptions,
+            successors=successors,
+            non_renewable_resources=non_renewable_resources,
+            skills=skills,
+            unary_resources=unary_resources,
+            unary_resources_skills=unary_resources_skills,
+            unary_resources_availabilities=unary_resources_availabilities,
+            non_skill_cumulative_resources=non_skill_cumulative_resources,
+            time_windows=time_windows,
+            start_to_end_min_time_lags=start_to_end_min_time_lags,
+            end_to_start_min_time_lags=end_to_start_min_time_lags,
+            objective=do_objectives,
+            mode_costs=mode_costs,
+            unary_resource_costs=unary_resource_costs,
         )
 
 
