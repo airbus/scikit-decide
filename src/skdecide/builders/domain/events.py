@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-import functools
 from typing import Optional, Union
 
 import numpy as np
+import wrapt
 
 from skdecide.core import D, EmptySpace, Mask, Space, autocastable
 
@@ -114,7 +114,7 @@ class Events:
         """
         return self._get_action_space()
 
-    @functools.lru_cache()
+    @wrapt.lru_cache()
     def _get_action_space(self) -> D.T_agent[Space[D.T_event]]:
         """Get the (cached) domain action space (finite or infinite set).
 
@@ -331,6 +331,19 @@ class Events:
                 )
                 for agent, agent_applicable_actions in applicable_actions.items()
             }
+
+    def __getstate__(self):
+        """Get state for pickle.
+
+        Solve issue when instance has cached methods called. (And thus unpickable cache created.)
+        See https://github.com/GrahamDumpleton/wrapt/issues/343
+
+        """
+        return {
+            key: value
+            for key, value in super().__getstate__().items()
+            if not key.startswith("_lru_cache_")
+        }
 
 
 class Actions(Events):

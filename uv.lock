@@ -6418,6 +6418,7 @@ dependencies = [
     { name = "discrete-optimization" },
     { name = "pathos" },
     { name = "pynng" },
+    { name = "wrapt" },
 ]
 
 [package.optional-dependencies]
@@ -6588,6 +6589,7 @@ requires-dist = [
     { name = "up-fast-downward", marker = "extra == 'solvers'", specifier = ">=0.4.1" },
     { name = "up-pyperplan", marker = "extra == 'solvers'", specifier = ">=1.1.0" },
     { name = "up-tamer", marker = "python_full_version < '3.12' and platform_machine == 'x86_64' and extra == 'solvers'", specifier = ">=1.1.2" },
+    { name = "wrapt", specifier = ">=2.2.1" },
     { name = "z3-solver", marker = "extra == 'pddl'" },
 ]
 provides-extras = ["shared", "domains", "solvers", "pddl", "all"]

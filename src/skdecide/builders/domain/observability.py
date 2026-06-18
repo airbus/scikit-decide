@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
-import functools
 from typing import Optional, Union
+
+import wrapt
 
 from skdecide.core import D, Distribution, SingleValueDistribution, Space, autocastable
 
@@ -33,7 +34,7 @@ class PartiallyObservable:
         """
         return self._get_observation_space()
 
-    @functools.lru_cache()
+    @wrapt.lru_cache()
     def _get_observation_space(self) -> D.T_agent[Space[D.T_observation]]:
         """Get the (cached) observation space (finite or infinite set).
 
@@ -136,6 +137,19 @@ class PartiallyObservable:
         The probability distribution of the observation.
         """
         raise NotImplementedError
+
+    def __getstate__(self):
+        """Get state for pickle.
+
+        Solve issue when instance has cached methods called. (And thus unpickable cache created.)
+        See https://github.com/GrahamDumpleton/wrapt/issues/343
+
+        """
+        return {
+            key: value
+            for key, value in super().__getstate__().items()
+            if not key.startswith("_lru_cache_")
+        }
 
 
 class TransformedObservable(PartiallyObservable):
