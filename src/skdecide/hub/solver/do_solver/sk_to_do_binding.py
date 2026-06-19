@@ -280,7 +280,6 @@ def build_sk_domain(
         if varying_ressource:
             my_domain = MRCPSPCalendar(
                 resource_names=rcpsp_do_domain.resources_list,
-                task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
                 tasks_mode=rcpsp_do_domain.mode_details,
                 successors=rcpsp_do_domain.successors,
                 max_horizon=rcpsp_do_domain.horizon,
@@ -295,7 +294,6 @@ def build_sk_domain(
         else:
             my_domain = MRCPSP(
                 resource_names=rcpsp_do_domain.resources_list,
-                task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
                 tasks_mode=rcpsp_do_domain.mode_details,
                 successors=rcpsp_do_domain.successors,
                 max_horizon=rcpsp_do_domain.horizon,
@@ -316,7 +314,6 @@ def build_sk_domain(
     ):
         my_domain = RCPSP(
             resource_names=rcpsp_do_domain.resources_list,
-            task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
             tasks_mode=rcpsp_do_domain.mode_details,
             successors=rcpsp_do_domain.successors,
             max_horizon=rcpsp_do_domain.horizon,
@@ -334,7 +331,6 @@ def build_sk_domain(
     ):
         my_domain = MRCPSP(
             resource_names=rcpsp_do_domain.resources_list,
-            task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
             tasks_mode=rcpsp_do_domain.mode_details,
             successors=rcpsp_do_domain.successors,
             max_horizon=rcpsp_do_domain.horizon,
@@ -374,7 +370,6 @@ def build_sk_domain(
                 resource_unit_names=resource_unit_names,
                 resource_type_names=resource_type_names,
                 resource_skills=resource_skills,
-                task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
                 tasks_mode=rcpsp_do_domain.mode_details,
                 successors=rcpsp_do_domain.successors,
                 max_horizon=rcpsp_do_domain.horizon,
@@ -411,7 +406,6 @@ def build_sk_domain(
                 resource_unit_names=resource_unit_names,
                 resource_type_names=resource_type_names,
                 resource_skills=resource_skills,
-                task_ids=sorted(rcpsp_do_domain.mode_details.keys()),
                 tasks_mode=rcpsp_do_domain.mode_details,
                 successors=rcpsp_do_domain.successors,
                 max_horizon=rcpsp_do_domain.horizon,

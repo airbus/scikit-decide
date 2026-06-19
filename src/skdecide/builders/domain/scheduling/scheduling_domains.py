@@ -18,7 +18,6 @@ from skdecide import (
     ImplicitSpace,
     SamplableSpace,
     Space,
-    T,
     TransitionOutcome,
     Value,
 )
@@ -760,7 +759,7 @@ class SchedulingDomain(
         """Check if a start or resume action can be applied. It returns a boolean and a dictionary of resources to use."""
         started_task = action.task
         if action.action == SchedulingActionEnum.START:
-            time_since_start = state.t
+            time_since_start = 0
         elif action.action == SchedulingActionEnum.RESUME:
             time_since_start = state.tasks_details[started_task].get_task_active_time(
                 state.t
@@ -1037,8 +1036,10 @@ class SchedulingDomain(
         transition_makespan = 0.0
         transition_cost = 0.0
 
+        delta_t = next_state.t - memory.t
+
         if SchedulingObjectiveEnum.MAKESPAN in self.get_objectives():
-            transition_makespan = next_state.t - memory.t
+            transition_makespan = delta_t
 
         if SchedulingObjectiveEnum.COST in self.get_objectives():
             mode_cost_val = 0.0
@@ -1050,6 +1051,7 @@ class SchedulingDomain(
                 if self.is_renewable(res):
                     renewable_type_cost_val += (
                         self.get_resource_cost_per_time_unit()[res]
+                        * delta_t
                         * next_state.resource_used[res]
                     )
                 else:
@@ -1062,6 +1064,7 @@ class SchedulingDomain(
                 if self.is_renewable(res):
                     renewable_unit_cost_val += (
                         self.get_resource_cost_per_time_unit()[res]
+                        * delta_t
                         * next_state.resource_used[res]
                     )
                 else:
@@ -1205,7 +1208,7 @@ class SchedulingActionSpace(
         self.state = state
         self.elements = self._get_elements()
 
-    def _get_elements(self) -> Sequence[T]:
+    def _get_elements(self) -> Sequence[SchedulingAction]:
         choices = [
             SchedulingActionEnum.START,
             SchedulingActionEnum.PAUSE,
@@ -1268,10 +1271,10 @@ class SchedulingActionSpace(
                 )
         return list_action
 
-    def get_elements(self) -> Sequence[T]:
+    def get_elements(self) -> Sequence[SchedulingAction]:
         return self.elements
 
-    def sample(self) -> T:
+    def sample(self) -> SchedulingAction:
         return random.choice(self.elements)
 
 
@@ -1285,7 +1288,7 @@ class SchedulingActionSpaceWithResourceUnit(
         self.state = state
         self.elements = self._get_elements()
 
-    def _get_elements(self) -> Sequence[T]:
+    def _get_elements(self) -> Sequence[SchedulingAction]:
         choices = [
             SchedulingActionEnum.START,
             SchedulingActionEnum.PAUSE,
@@ -1368,10 +1371,10 @@ class SchedulingActionSpaceWithResourceUnit(
                 )
         return list_action
 
-    def get_elements(self) -> Sequence[T]:
+    def get_elements(self) -> Sequence[SchedulingAction]:
         return self.elements
 
-    def sample(self) -> T:
+    def sample(self) -> SchedulingAction:
         return random.choice(self.elements)
 
 
@@ -1380,7 +1383,7 @@ class SchedulingActionSpaceWithResourceUnitSamplable(SamplableSpace[SchedulingAc
         self.domain = domain
         self.state = state
 
-    def sample(self) -> T:
+    def sample(self) -> SchedulingAction:
         choices = [
             SchedulingActionEnum.START,
             SchedulingActionEnum.PAUSE,
@@ -1494,7 +1497,7 @@ class SchedulingActionSpaceWithResourceUnitSamplable(SamplableSpace[SchedulingAc
                 time_progress=True,
             )
 
-    def contains(self, x: T) -> bool:
+    def contains(self, x: SchedulingAction) -> bool:
         return True
 
 

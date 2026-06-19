@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from collections.abc import Collection
+from typing import Any, Optional
 
 from skdecide import DiscreteDistribution, Distribution
 from skdecide.builders.domain.scheduling.modes import (
@@ -44,35 +45,45 @@ class MRCPSP(D):
 
     def __init__(
         self,
-        resource_names: Optional[list[str]] = None,
-        task_ids: Optional[list[int]] = None,
-        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        tasks_mode: dict[int, dict[int, dict[str, int]]],
+        max_horizon: int,
         successors: Optional[dict[int, list[int]]] = None,
-        max_horizon: Optional[int] = None,
+        resource_names: Optional[list[str]] = None,
         resource_availability: Optional[dict[str, int]] = None,
         resource_renewable: Optional[dict[str, bool]] = None,
     ):
-        self.resource_names = resource_names
-        self.task_ids = task_ids
-        self.tasks_mode = tasks_mode
+        if successors is None:
+            self.successors: dict[int, list[int]] = {}
+        else:
+            self.successors = successors
+        if resource_names is None:
+            self.resource_names: list[str] = []
+        else:
+            self.resource_names = resource_names
+        if resource_availability is None:
+            self.resource_availability: dict[str, int] = {}
+        else:
+            self.resource_availability = resource_availability
+        if resource_renewable is None:
+            self.resource_renewable: dict[str, bool] = {}
+        else:
+            self.resource_renewable = resource_renewable
+        self.task_ids = list(tasks_mode)
         # transform the "mode_details" dict that we largely used in DO in the good format.
         self.task_mode_dict = {}
         self.duration_dict = {}
-        for task in self.tasks_mode:
+        for task in tasks_mode:
             self.task_mode_dict[task] = {}
             self.duration_dict[task] = {}
-            for mode in self.tasks_mode[task]:
+            for mode in tasks_mode[task]:
                 self.task_mode_dict[task][mode] = ConstantModeConsumption({})
-                for r in self.tasks_mode[task][mode]:
+                for r in tasks_mode[task][mode]:
                     if r in self.resource_names:
                         self.task_mode_dict[task][mode].mode_details[r] = [
-                            self.tasks_mode[task][mode][r]
+                            tasks_mode[task][mode][r]
                         ]
-                self.duration_dict[task][mode] = self.tasks_mode[task][mode]["duration"]
-        self.successors = successors
+                self.duration_dict[task][mode] = tasks_mode[task][mode]["duration"]
         self.max_horizon = max_horizon
-        self.resource_availability = resource_availability
-        self.resource_renewable = resource_renewable
         self.initialize_domain()
 
     def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
@@ -87,11 +98,11 @@ class MRCPSP(D):
     def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return self.task_ids
 
     def _get_task_duration(
-        self, task: int, mode: Optional[int] = 1, progress_from: Optional[float] = 0.0
+        self, task: int, mode: int = 1, progress_from: float = 0.0
     ) -> int:
         return self.duration_dict[task][mode]
 
@@ -101,7 +112,7 @@ class MRCPSP(D):
     def _get_resource_types_names(self) -> list[str]:
         return self.resource_names
 
-    def _get_objectives(self) -> list[int]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
 
@@ -129,39 +140,48 @@ class MRCPSPCalendar(D):
 
     def __init__(
         self,
-        resource_names: Optional[list[str]] = None,
-        task_ids: Optional[list[int]] = None,
-        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        tasks_mode: dict[int, dict[int, dict[str, int]]],
+        max_horizon: int,
         successors: Optional[dict[int, list[int]]] = None,
-        max_horizon: Optional[int] = None,
+        resource_names: Optional[list[str]] = None,
         resource_availability: Optional[dict[str, list[int]]] = None,
         resource_renewable: Optional[dict[str, bool]] = None,
     ):
-        self.resource_names = resource_names
-        self.task_ids = task_ids
-        self.tasks_mode = tasks_mode
+        if successors is None:
+            self.successors: dict[int, list[int]] = {}
+        else:
+            self.successors = successors
+        if resource_names is None:
+            self.resource_names: list[str] = []
+        else:
+            self.resource_names = resource_names
+        if resource_availability is None:
+            self.resource_availability: dict[str, list[int]] = {}
+        else:
+            self.resource_availability = resource_availability
+        if resource_renewable is None:
+            self.resource_renewable: dict[str, bool] = {}
+        else:
+            self.resource_renewable = resource_renewable
+        self.task_ids = list(tasks_mode)
         # transform the "mode_details" dict that we largely used in DO in the good format.
         self.task_mode_dict = {}
         self.duration_dict = {}
-        for task in self.tasks_mode:
+        for task in tasks_mode:
             self.task_mode_dict[task] = {}
             self.duration_dict[task] = {}
-            for mode in self.tasks_mode[task]:
+            for mode in tasks_mode[task]:
                 self.task_mode_dict[task][mode] = ConstantModeConsumption({})
-                for r in self.tasks_mode[task][mode]:
+                for r in tasks_mode[task][mode]:
                     if r in self.resource_names:
                         self.task_mode_dict[task][mode].mode_details[r] = [
-                            self.tasks_mode[task][mode][r]
+                            tasks_mode[task][mode][r]
                         ]
-                self.duration_dict[task][mode] = self.tasks_mode[task][mode]["duration"]
-        self.successors = successors
+                self.duration_dict[task][mode] = tasks_mode[task][mode]["duration"]
         self.max_horizon = max_horizon
-        self.resource_availability = resource_availability
         self.original_resource_availability = {
             r: max(self.resource_availability[r]) for r in self.resource_availability
         }
-
-        self.resource_renewable = resource_renewable
         self.initialize_domain()
 
     def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
@@ -176,11 +196,11 @@ class MRCPSPCalendar(D):
     def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return self.task_ids
 
     def _get_task_duration(
-        self, task: int, mode: Optional[int] = 1, progress_from: Optional[float] = 0.0
+        self, task: int, mode: int = 1, progress_from: float = 0.0
     ) -> int:
         return self.duration_dict[task][mode]
 
@@ -190,7 +210,7 @@ class MRCPSPCalendar(D):
     def _get_resource_types_names(self) -> list[str]:
         return self.resource_names
 
-    def _get_objectives(self) -> list[int]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
 
@@ -211,18 +231,15 @@ class RCPSP(MRCPSP, SingleMode):
 
     def __init__(
         self,
-        resource_names: Optional[list[str]] = None,
-        task_ids: Optional[list[int]] = None,
-        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        tasks_mode: dict[int, dict[int, dict[str, int]]],
+        max_horizon: int,
         successors: Optional[dict[int, list[int]]] = None,
-        max_horizon: Optional[int] = None,
+        resource_names: Optional[list[str]] = None,
         resource_availability: Optional[dict[str, int]] = None,
         resource_renewable: Optional[dict[str, bool]] = None,
     ):
-        MRCPSP.__init__(
-            self,
+        super().__init__(
             resource_names=resource_names,
-            task_ids=task_ids,
             tasks_mode=tasks_mode,
             successors=successors,
             max_horizon=max_horizon,
@@ -254,18 +271,15 @@ class RCPSPCalendar(MRCPSPCalendar, SingleMode):
 
     def __init__(
         self,
-        resource_names: Optional[list[str]] = None,
-        task_ids: Optional[list[int]] = None,
-        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        tasks_mode: dict[int, dict[int, dict[str, int]]],
+        max_horizon: int,
         successors: Optional[dict[int, list[int]]] = None,
-        max_horizon: Optional[int] = None,
+        resource_names: Optional[list[str]] = None,
         resource_availability: Optional[dict[str, list[int]]] = None,
         resource_renewable: Optional[dict[str, bool]] = None,
     ):
-        MRCPSPCalendar.__init__(
-            self,
+        super().__init__(
             resource_names=resource_names,
-            task_ids=task_ids,
             tasks_mode=tasks_mode,
             successors=successors,
             max_horizon=max_horizon,
@@ -296,6 +310,42 @@ class Stochastic_RCPSP(MultiModeRCPSP_Stochastic_Durations):
     resource_renewable: for each resource, indicates if it's renewable or not
     """
 
+    def __init__(
+        self,
+        duration_distribution: dict[int, dict[int, DiscreteDistribution]],
+        max_horizon: int,
+        tasks_mode: Optional[dict[int, dict[int, ModeConsumption]]] = None,
+        successors: Optional[dict[int, list[int]]] = None,
+        resource_names: Optional[list[str]] = None,
+        resource_availability: Optional[dict[str, int]] = None,
+        resource_renewable: Optional[dict[str, bool]] = None,
+    ):
+        if successors is None:
+            self.successors: dict[int, list[int]] = {}
+        else:
+            self.successors = successors
+        if resource_names is None:
+            self.resource_names: list[str] = []
+        else:
+            self.resource_names = resource_names
+        if resource_availability is None:
+            self.resource_availability: dict[str, int] = {}
+        else:
+            self.resource_availability = resource_availability
+        if resource_renewable is None:
+            self.resource_renewable: dict[str, bool] = {}
+        else:
+            self.resource_renewable = resource_renewable
+        if tasks_mode is None:
+            self.task_mode_dict: dict[int, dict[int, ModeConsumption]] = {}
+        else:
+            self.task_mode_dict = tasks_mode
+        self.task_ids = list(duration_distribution)
+        self.duration_distribution = duration_distribution
+        self.max_horizon = max_horizon
+
+        self.initialize_domain()
+
     def _get_max_horizon(self) -> int:
         return self.max_horizon
 
@@ -305,7 +355,7 @@ class Stochastic_RCPSP(MultiModeRCPSP_Stochastic_Durations):
     def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return self.task_ids
 
     def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
@@ -314,8 +364,8 @@ class Stochastic_RCPSP(MultiModeRCPSP_Stochastic_Durations):
     def _get_task_duration_distribution(
         self,
         task: int,
-        mode: Optional[int] = 1,
-        progress_from: Optional[float] = 0.0,
+        mode: int = 1,
+        progress_from: float = 0.0,
         multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         return self.duration_distribution[task][mode]
@@ -325,31 +375,6 @@ class Stochastic_RCPSP(MultiModeRCPSP_Stochastic_Durations):
 
     def _get_resource_types_names(self) -> list[str]:
         return self.resource_names
-
-    def __init__(
-        self,
-        resource_names: Optional[list[str]] = None,
-        task_ids: Optional[list[int]] = None,
-        tasks_mode: Optional[dict[int, dict[int, ModeConsumption]]] = None,
-        duration_distribution: Optional[
-            dict[int, dict[int, DiscreteDistribution]]
-        ] = None,
-        successors: Optional[dict[int, list[int]]] = None,
-        max_horizon: Optional[int] = None,
-        resource_availability: Optional[dict[str, int]] = None,
-        resource_renewable: Optional[dict[str, bool]] = None,
-    ):
-        self.resource_names = resource_names
-        self.task_ids = task_ids
-        self.tasks_mode = tasks_mode
-        # transform the "mode_details" dict that we largely used in DO in the good format.
-        self.task_mode_dict = self.tasks_mode
-        self.duration_distribution = duration_distribution
-        self.successors = successors
-        self.max_horizon = max_horizon
-        self.resource_availability = resource_availability
-        self.resource_renewable = resource_renewable
-        self.initialize_domain()
 
 
 def build_stochastic_from_deterministic(rcpsp: MRCPSP, task_to_noise: set[int] = None):
@@ -374,7 +399,6 @@ def build_stochastic_from_deterministic(rcpsp: MRCPSP, task_to_noise: set[int] =
 
     return Stochastic_RCPSP(
         resource_names=rcpsp.get_resource_types_names(),
-        task_ids=rcpsp.get_tasks_ids(),
         tasks_mode=rcpsp.get_tasks_modes(),  # ressource
         duration_distribution=duration_distribution,
         successors=rcpsp.successors,
@@ -410,7 +434,6 @@ def build_n_determinist_from_stochastic(srcpsp: Stochastic_RCPSP, nb_instance: i
         instances += [
             MRCPSP(
                 resource_names=srcpsp.get_resource_types_names(),
-                task_ids=srcpsp.get_tasks_ids(),
                 tasks_mode=modes_for_rcpsp,  # ressource
                 successors=srcpsp.successors,
                 # max_horizon=srcpsp.max_horizon,
@@ -447,8 +470,8 @@ class SMRCPSPCalendar(D):
     def _get_task_duration_distribution(
         self,
         task: int,
-        mode: Optional[int] = 1,
-        progress_from: Optional[float] = 0.0,
+        mode: int = 1,
+        progress_from: float = 0.0,
         multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         return self.duration_distribution[task][mode]
@@ -458,39 +481,40 @@ class SMRCPSPCalendar(D):
 
     def __init__(
         self,
-        resource_names: Optional[list[str]] = None,
-        task_ids: Optional[list[int]] = None,
-        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        duration_distribution: dict[int, dict[int, DiscreteDistribution]],
+        max_horizon: int,
+        tasks_mode: Optional[dict[int, dict[int, ModeConsumption]]] = None,
         successors: Optional[dict[int, list[int]]] = None,
-        duration_distribution: Optional[
-            dict[int, dict[int, DiscreteDistribution]]
-        ] = None,
-        max_horizon: Optional[int] = None,
+        resource_names: Optional[list[str]] = None,
         resource_availability: Optional[dict[str, list[int]]] = None,
         resource_renewable: Optional[dict[str, bool]] = None,
     ):
-        self.resource_names = resource_names
-        self.task_ids = task_ids
-        self.tasks_mode = tasks_mode
-        # transform the "mode_details" dict that we largely used in DO in the good format.
-        self.task_mode_dict = {}
-        self.duration_dict = {}
-        for task in self.tasks_mode:
-            self.task_mode_dict[task] = {}
-            self.duration_dict[task] = {}
-            for mode in self.tasks_mode[task]:
-                self.task_mode_dict[task][mode] = ConstantModeConsumption({})
-                for r in self.tasks_mode[task][mode]:
-                    if r in self.resource_names:
-                        self.task_mode_dict[task][mode].mode_details[r] = [
-                            self.tasks_mode[task][mode][r]
-                        ]
-                self.duration_dict[task][mode] = self.tasks_mode[task][mode]["duration"]
-        self.successors = successors
-        self.max_horizon = max_horizon
-        self.resource_availability = resource_availability
-        self.resource_renewable = resource_renewable
+        if successors is None:
+            self.successors: dict[int, list[int]] = {}
+        else:
+            self.successors = successors
+        if resource_names is None:
+            self.resource_names: list[str] = []
+        else:
+            self.resource_names = resource_names
+        if resource_availability is None:
+            self.resource_availability: dict[str, list[int]] = {}
+        else:
+            self.resource_availability = resource_availability
+        if resource_renewable is None:
+            self.resource_renewable: dict[str, bool] = {}
+        else:
+            self.resource_renewable = resource_renewable
+        if tasks_mode is None:
+            self.task_mode_dict: dict[int, dict[int, ModeConsumption]] = {}
+        else:
+            self.task_mode_dict = tasks_mode
+        self.task_ids = list(duration_distribution)
         self.duration_distribution = duration_distribution
+        self.max_horizon = max_horizon
+        self.original_resource_availability = {
+            r: max(self.resource_availability[r]) for r in self.resource_availability
+        }
         self.initialize_domain()
 
     def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
@@ -505,13 +529,8 @@ class SMRCPSPCalendar(D):
     def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return self.task_ids
-
-    def _get_task_duration(
-        self, task: int, mode: Optional[int] = 1, progress_from: Optional[float] = 0.0
-    ) -> int:
-        return self.duration_dict[task][mode]
 
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
         # return self.resource_availability[resource]
@@ -520,7 +539,7 @@ class SMRCPSPCalendar(D):
     def _get_resource_types_names(self) -> list[str]:
         return self.resource_names
 
-    def _get_objectives(self) -> list[int]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
 
@@ -541,48 +560,65 @@ class MSRCPSP(D):
 
     def __init__(
         self,
-        skills_names: Optional[list[str]] = None,
-        resource_unit_names: Optional[list[str]] = None,
-        resource_type_names: Optional[list[str]] = None,
-        resource_skills: Optional[dict[str, dict[str, Any]]] = None,
-        task_ids: Optional[list[int]] = None,
-        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        tasks_mode: dict[int, dict[int, dict[str, int]]],
+        max_horizon: int,
         successors: Optional[dict[int, list[int]]] = None,
-        max_horizon: Optional[int] = None,
+        resource_type_names: Optional[list[str]] = None,
         resource_availability: Optional[dict[str, int]] = None,
         resource_renewable: Optional[dict[str, bool]] = None,
+        skills_names: Optional[list[str]] = None,
+        resource_unit_names: Optional[list[str]] = None,
+        resource_skills: Optional[dict[str, dict[str, Any]]] = None,
     ):
-        self.skills_set = set(skills_names)
-        self.resource_unit_names = resource_unit_names
-        self.resource_type_names = resource_type_names
-        self.resource_skills = resource_skills
-        self.task_ids = task_ids
-        self.tasks_mode = tasks_mode
+        if skills_names is None:
+            self.skills_set: set[str] = set()
+        else:
+            self.skills_set = set(skills_names)
+        if successors is None:
+            self.successors: dict[int, list[int]] = {}
+        else:
+            self.successors = successors
+        if resource_type_names is None:
+            self.resource_type_names: list[str] = []
+        else:
+            self.resource_type_names = resource_type_names
+        if resource_unit_names is None:
+            self.resource_unit_names: list[str] = []
+        else:
+            self.resource_unit_names = resource_unit_names
+        if resource_skills is None:
+            self.resource_skills: dict[str, dict[str, Any]] = {}
+        else:
+            self.resource_skills = resource_skills
+        if resource_availability is None:
+            self.resource_availability: dict[str, int] = {}
+        else:
+            self.resource_availability = resource_availability
+        if resource_renewable is None:
+            self.resource_renewable: dict[str, bool] = {}
+        else:
+            self.resource_renewable = resource_renewable
+        self.task_ids = list(tasks_mode)
         # transform the "mode_details" dict that we largely used in DO in the good format.
         self.task_mode_dict = {}
         self.task_skills_dict = {}
         self.duration_dict = {}
-        for task in self.tasks_mode:
+        for task in tasks_mode:
             self.task_mode_dict[task] = {}
             self.task_skills_dict[task] = {}
             self.duration_dict[task] = {}
-            for mode in self.tasks_mode[task]:
+            for mode in tasks_mode[task]:
                 self.task_mode_dict[task][mode] = ConstantModeConsumption({})
                 self.task_skills_dict[task][mode] = {}
-                for r in self.tasks_mode[task][mode]:
+                for r in tasks_mode[task][mode]:
                     if r in self.resource_type_names:
                         self.task_mode_dict[task][mode].mode_details[r] = [
-                            self.tasks_mode[task][mode][r]
+                            tasks_mode[task][mode][r]
                         ]
                     if r in self.skills_set:
-                        self.task_skills_dict[task][mode][r] = self.tasks_mode[task][
-                            mode
-                        ][r]
-                self.duration_dict[task][mode] = self.tasks_mode[task][mode]["duration"]
-        self.successors = successors
+                        self.task_skills_dict[task][mode][r] = tasks_mode[task][mode][r]
+                self.duration_dict[task][mode] = tasks_mode[task][mode]["duration"]
         self.max_horizon = max_horizon
-        self.resource_availability = resource_availability
-        self.resource_renewable = resource_renewable
         self.initialize_domain()
 
     def _get_resource_units_names(self) -> list[str]:
@@ -595,9 +631,9 @@ class MSRCPSP(D):
     def _get_resource_type_for_unit(self) -> dict[str, str]:
         """Return a dictionary where the key is a resource unit name and the value a resource type name.
         An empty dictionary can be used if there are no resource unit matching a resource type."""
-        return None
+        return {}
 
-    def get_max_horizon(self) -> int:
+    def _get_max_horizon(self) -> int:
         return self.max_horizon
 
     def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
@@ -606,11 +642,11 @@ class MSRCPSP(D):
     def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return self.task_ids
 
     def _get_task_duration(
-        self, task: int, mode: Optional[int] = 1, progress_from: Optional[float] = 0.0
+        self, task: int, mode: int = 1, progress_from: float = 0.0
     ) -> int:
         return self.duration_dict[task][mode]
 
@@ -626,7 +662,7 @@ class MSRCPSP(D):
     def _get_all_tasks_skills(self) -> dict[int, dict[int, dict[str, Any]]]:
         return self.task_skills_dict
 
-    def _get_objectives(self) -> list[int]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
 
 
@@ -648,48 +684,68 @@ class MSRCPSPCalendar(D):
 
     def __init__(
         self,
-        skills_names: Optional[list[str]] = None,
-        resource_unit_names: Optional[list[str]] = None,
-        resource_type_names: Optional[list[str]] = None,
-        resource_skills: Optional[dict[str, dict[str, Any]]] = None,
-        task_ids: Optional[list[int]] = None,
-        tasks_mode: Optional[dict[int, dict[int, dict[str, int]]]] = None,
+        tasks_mode: dict[int, dict[int, dict[str, int]]],
+        max_horizon: int,
         successors: Optional[dict[int, list[int]]] = None,
-        max_horizon: Optional[int] = None,
+        resource_type_names: Optional[list[str]] = None,
         resource_availability: Optional[dict[str, list[int]]] = None,
         resource_renewable: Optional[dict[str, bool]] = None,
+        skills_names: Optional[list[str]] = None,
+        resource_unit_names: Optional[list[str]] = None,
+        resource_skills: Optional[dict[str, dict[str, Any]]] = None,
     ):
-        self.skills_set = set(skills_names)
-        self.resource_unit_names = resource_unit_names
-        self.resource_type_names = resource_type_names
-        self.resource_skills = resource_skills
-        self.task_ids = task_ids
-        self.tasks_mode = tasks_mode
+        if skills_names is None:
+            self.skills_set: set[str] = set()
+        else:
+            self.skills_set = set(skills_names)
+        if successors is None:
+            self.successors: dict[int, list[int]] = {}
+        else:
+            self.successors = successors
+        if resource_type_names is None:
+            self.resource_type_names: list[str] = []
+        else:
+            self.resource_type_names = resource_type_names
+        if resource_unit_names is None:
+            self.resource_unit_names: list[str] = []
+        else:
+            self.resource_unit_names = resource_unit_names
+        if resource_skills is None:
+            self.resource_skills: dict[str, dict[str, Any]] = {}
+        else:
+            self.resource_skills = resource_skills
+        if resource_availability is None:
+            self.resource_availability: dict[str, list[int]] = {}
+        else:
+            self.resource_availability = resource_availability
+        if resource_renewable is None:
+            self.resource_renewable: dict[str, bool] = {}
+        else:
+            self.resource_renewable = resource_renewable
+        self.task_ids = list(tasks_mode)
         # transform the "mode_details" dict that we largely used in DO in the good format.
         self.task_mode_dict = {}
         self.task_skills_dict = {}
         self.duration_dict = {}
-        for task in self.tasks_mode:
+        for task in tasks_mode:
             self.task_mode_dict[task] = {}
             self.task_skills_dict[task] = {}
             self.duration_dict[task] = {}
-            for mode in self.tasks_mode[task]:
+            for mode in tasks_mode[task]:
                 self.task_mode_dict[task][mode] = ConstantModeConsumption({})
                 self.task_skills_dict[task][mode] = {}
-                for r in self.tasks_mode[task][mode]:
+                for r in tasks_mode[task][mode]:
                     if r in self.resource_type_names:
                         self.task_mode_dict[task][mode].mode_details[r] = [
-                            self.tasks_mode[task][mode][r]
+                            tasks_mode[task][mode][r]
                         ]
                     if r in self.skills_set:
-                        self.task_skills_dict[task][mode][r] = self.tasks_mode[task][
-                            mode
-                        ][r]
-                self.duration_dict[task][mode] = self.tasks_mode[task][mode]["duration"]
-        self.successors = successors
+                        self.task_skills_dict[task][mode][r] = tasks_mode[task][mode][r]
+                self.duration_dict[task][mode] = tasks_mode[task][mode]["duration"]
         self.max_horizon = max_horizon
-        self.resource_availability = resource_availability
-        self.resource_renewable = resource_renewable
+        self.original_resource_availability = {
+            r: max(self.resource_availability[r]) for r in self.resource_availability
+        }
         self.initialize_domain()
 
     def _get_resource_units_names(self) -> list[str]:
@@ -702,10 +758,7 @@ class MSRCPSPCalendar(D):
     def _get_resource_type_for_unit(self) -> dict[str, str]:
         """Return a dictionary where the key is a resource unit name and the value a resource type name.
         An empty dictionary can be used if there are no resource unit matching a resource type."""
-        return None
-
-    def get_max_horizon(self) -> int:
-        return self.max_horizon
+        return {}
 
     def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:
         return self.task_mode_dict
@@ -713,16 +766,16 @@ class MSRCPSPCalendar(D):
     def _get_successors(self) -> dict[int, list[int]]:
         return self.successors
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return self.task_ids
 
     def _get_task_duration(
-        self, task: int, mode: Optional[int] = 1, progress_from: Optional[float] = 0.0
+        self, task: int, mode: int = 1, progress_from: float = 0.0
     ) -> int:
         return self.duration_dict[task][mode]
 
     def _get_original_quantity_resource(self, resource: str, **kwargs) -> int:
-        return self.resource_availability[resource]
+        return self.original_resource_availability[resource]
 
     def _get_resource_renewability(self) -> dict[str, bool]:
         return self.resource_renewable
@@ -733,5 +786,5 @@ class MSRCPSPCalendar(D):
     def _get_all_tasks_skills(self) -> dict[int, dict[int, dict[str, Any]]]:
         return self.task_skills_dict
 
-    def _get_objectives(self) -> list[int]:
+    def _get_objectives(self) -> list[SchedulingObjectiveEnum]:
         return [SchedulingObjectiveEnum.MAKESPAN]
