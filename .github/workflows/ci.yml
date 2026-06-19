@@ -211,12 +211,25 @@ jobs:
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'
         run: echo "SKDECIDE_SKIP_DEPS=0" >> $GITHUB_ENV
 
+      - name: Set up MSVC developer environment
+        shell: pwsh
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $vcvarsall = Join-Path $vsPath "VC\Auxiliary\Build\vcvarsall.bat"
+          cmd /c "`"$vcvarsall`" amd64 >nul && set" | ForEach-Object {
+            if ($_ -match '^(PATH|INCLUDE|LIB|LIBPATH)=(.*)$') {
+              "$($Matches[1])=$($Matches[2])" >> $env:GITHUB_ENV
+            }
+          }
+
       - name: Build wheel
         run: |
-          export "Boost_ROOT=$PWD/$BOOST_DIR"
+          export Boost_ROOT=$PWD/$BOOST_DIR
           python -m pip install --upgrade pip
           pip install build
           python -m build --wheel
+        env:
+          CMAKE_GENERATOR: Ninja
 
       - name: Update build cache from wheels
         if: steps.cache-build-dependencies.outputs.cache-hit != 'true'

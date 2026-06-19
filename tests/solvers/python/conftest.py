@@ -3,6 +3,23 @@
 import logging
 from typing import Any, Callable, Dict, Optional, Union
 
+
+def _patch_matplotlib_get_cmap():
+    """Restore matplotlib.cm.get_cmap removed in matplotlib 3.11.
+
+    Must be called in every process that creates a DisjunctiveGraphJspEnv
+    (graph-jsp-env 1.1.x still calls plt.cm.get_cmap). This includes Ray
+    worker processes that run domain factories.
+    """
+    import matplotlib
+    import matplotlib.cm
+
+    if not hasattr(matplotlib.cm, "get_cmap"):
+        matplotlib.cm.get_cmap = lambda name=None, lut=None: matplotlib.colormaps[name]
+
+
+_patch_matplotlib_get_cmap()
+
 import numpy as np
 import torch as th
 import torch_geometric as thg
@@ -463,16 +480,21 @@ jsp = np.array(
 variable_n_nodes = param_fixture("variable_n_nodes", [False, True])
 
 
+def _make_jsp_env():
+    _patch_matplotlib_get_cmap()
+    return DisjunctiveGraphJspEnv(
+        jps_instance=jsp,
+        perform_left_shift_if_possible=True,
+        normalize_observation_space=False,
+        flat_observation_space=False,
+        action_mode="task",
+    )
+
+
 @fixture
 def jsp_domain_factory(variable_n_nodes):
     return lambda: GraphJspDomain(
-        gym_env=DisjunctiveGraphJspEnv(
-            jps_instance=jsp,
-            perform_left_shift_if_possible=True,
-            normalize_observation_space=False,
-            flat_observation_space=False,
-            action_mode="task",
-        ),
+        gym_env=_make_jsp_env(),
         variable_n_nodes=variable_n_nodes,
     )
 
@@ -480,13 +502,7 @@ def jsp_domain_factory(variable_n_nodes):
 @fixture
 def jsp_graph2node_domain_factory(variable_n_nodes):
     return lambda: GraphJspDomain(
-        gym_env=DisjunctiveGraphJspEnv(
-            jps_instance=jsp,
-            perform_left_shift_if_possible=True,
-            normalize_observation_space=False,
-            flat_observation_space=False,
-            action_mode="task",
-        ),
+        gym_env=_make_jsp_env(),
         variable_n_nodes=variable_n_nodes,
         graph_node_action=True,
     )
@@ -495,13 +511,7 @@ def jsp_graph2node_domain_factory(variable_n_nodes):
 @fixture
 def unmasked_jsp_domain_factory(variable_n_nodes):
     return lambda: UnmaskedGraphJspDomain(
-        gym_env=DisjunctiveGraphJspEnv(
-            jps_instance=jsp,
-            perform_left_shift_if_possible=True,
-            normalize_observation_space=False,
-            flat_observation_space=False,
-            action_mode="task",
-        ),
+        gym_env=_make_jsp_env(),
         variable_n_nodes=variable_n_nodes,
     )
 
@@ -509,13 +519,7 @@ def unmasked_jsp_domain_factory(variable_n_nodes):
 @fixture
 def jsp_dict_domain_factory(variable_n_nodes):
     return lambda: MultiInputGraphJspDomain(
-        gym_env=DisjunctiveGraphJspEnv(
-            jps_instance=jsp,
-            perform_left_shift_if_possible=True,
-            normalize_observation_space=False,
-            flat_observation_space=False,
-            action_mode="task",
-        ),
+        gym_env=_make_jsp_env(),
         variable_n_nodes=variable_n_nodes,
     )
 
@@ -523,13 +527,7 @@ def jsp_dict_domain_factory(variable_n_nodes):
 @fixture
 def unmasked_jsp_dict_domain_factory(variable_n_nodes):
     return lambda: UnmaskedMultiInputGraphJspDomain(
-        gym_env=DisjunctiveGraphJspEnv(
-            jps_instance=jsp,
-            perform_left_shift_if_possible=True,
-            normalize_observation_space=False,
-            flat_observation_space=False,
-            action_mode="task",
-        ),
+        gym_env=_make_jsp_env(),
         variable_n_nodes=variable_n_nodes,
     )
 

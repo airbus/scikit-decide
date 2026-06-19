@@ -79,7 +79,7 @@ solvers = [
     "torch-geometric>=2.5",
     "torch>=2.3; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "torch>=2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
-    "torch!=2.9.0,!=2.9.1,!=2.10, !=2.11.0, !=2.12.0; sys_platform == 'win32'",
+    "torch!=2.9.0,!=2.9.1,!=2.10, !=2.11.0, !=2.12.0, !=2.12.1; sys_platform == 'win32'",
     "flax>=0.10.6; (sys_platform == 'linux' or sys_platform == 'win32') and python_version >= '3.12'",
     "openevolve>=0.2.11",
 ]
@@ -180,16 +180,5 @@ build-dir = "build/{wheel_tag}"  # speedup rebuilds (https://scikit-build-core.r
 
 [tool.scikit-build.cmake.define]
 ONLY_PYTHON = true
-
-[[tool.scikit-build.overrides]]
-if.platform-system = "^win32"
-if.platform-machine = "64"
-inherit.cmake.args = "append"
-cmake.args =  ["-A", "x64"]
-
-[[tool.scikit-build.overrides]]
-if.platform-system = "^win32"
-inherit.cmake.args = "append"
-build.tool-args =  ["/m"]
 
 [tool.setuptools_scm]

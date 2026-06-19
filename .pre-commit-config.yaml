@@ -55,3 +55,13 @@ repos:
     hooks:
       - id: nbstripout
         files: ^notebooks/
+
+  - repo: local
+    hooks:
+      - id: sanitize-uv-lock
+        name: Sanitizing uv.lock for public PyPI
+        entry: bash -c 'sed -i.bak -e "s|\"https://[^\"]*/simple\"|\"https://pypi.org/simple\"|g" -e "s|\"https://[^\"]*/packages/|\"https://files.pythonhosted.org/|g" uv.lock && rm -f uv.lock.bak && git add uv.lock'
+        language: system
+        files: ^uv\.lock$
+        pass_filenames: false
+        stages: [pre-commit]
