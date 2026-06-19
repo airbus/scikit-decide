@@ -1,0 +1,6 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/comparison_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/operation_expression.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/binary_expression.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/binary_expression_impl.hh"
+
+template class skdecide::pddl::BinaryExpression<skdecide::pddl::${Tderived}>;

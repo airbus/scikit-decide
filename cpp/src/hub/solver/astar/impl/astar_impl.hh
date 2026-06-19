@@ -342,6 +342,21 @@ bool SK_ASTAR_SOLVER_CLASS::NodeCompare::operator()(Node *&a, Node *&b) const {
                                     // the priority_queue => cost optimization
 }
 
+SK_ASTAR_SOLVER_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_ASTAR_SOLVER_CLASS>
+SK_ASTAR_SOLVER_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> goal_checker,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> /*terminal_value*/,
+    const Params &params, bool verbose) {
+  return std::make_unique<AStarSolver>(
+      domain, goal_checker, heuristic,
+      CallbackFunctor([](const AStarSolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose));
+}
+
 } // namespace skdecide
 
 #endif // SKDECIDE_ASTAR_IMPL_HH

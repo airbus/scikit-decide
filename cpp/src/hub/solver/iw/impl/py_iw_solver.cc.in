@@ -10,5 +10,4 @@
 
 template class skdecide::IWSolver<skdecide::PythonDomainProxy<${Texecution}>,
                                   skdecide::PythonContainerProxy<${Texecution}>,
-                                  ${Thashing_policy},
-                                  ${Texecution}>;
+                                  ${Thashing_policy}, ${Texecution}>;

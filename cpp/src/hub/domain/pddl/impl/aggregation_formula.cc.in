@@ -1,0 +1,4 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/aggregation_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/aggregation_formula_impl.hh"
+
+template class skdecide::pddl::AggregationFormula<skdecide::pddl::${Tderived}>;

@@ -1,0 +1,21 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/sspdethindsight/sspdethindsight.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/sspdethindsight/impl/sspdethindsight_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/determinization/determinized_domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/determinization/impl/determinized_domain_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/inner_solver/meta_inner_solver_base.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/inner_solver/meta_inner_solver.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/inner_solver/impl/meta_inner_solver_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
+
+template class skdecide::SSPDetHindsightSolver<
+    skdecide::PythonDomainProxy<skdecide::${Texecution}>,
+    skdecide::${Texecution},
+    skdecide::TransitionDeterminizationAdapter<
+        skdecide::PythonDomainProxy<skdecide::${Texecution}>,
+        skdecide::RandomOutcomeStrategy,
+        skdecide::${Texecution}>>;

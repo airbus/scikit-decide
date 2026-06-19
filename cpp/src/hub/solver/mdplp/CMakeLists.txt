@@ -1,3 +1,8 @@
+register_inner_solver(mdplp "MDPLPSolver<Domain, Texecution>" "MDPLP" true
+    "has_get_next_state_distribution<Domain>::value && has_is_terminal<Domain>::value")
+register_inner_solver(ssplp "SSPLPSolver<Domain, Texecution>" "SSPLP" false
+    "has_get_next_state_distribution<Domain>::value && has_is_terminal<Domain>::value" mdplp)
+
 IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
     generate_template_instantiation_files(
         PYTHON_MDPLP_SOLVER_TEMPLATE_FILES

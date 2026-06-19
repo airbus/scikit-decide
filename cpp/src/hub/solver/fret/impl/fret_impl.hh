@@ -12,16 +12,13 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
-#include <type_traits>
+#include <stack>
 
-#include "hub/solver/ldfs/ldfs.hh"
-#include "hub/solver/ldfs/impl/ldfs_impl.hh"
-#include "hub/solver/lrtdp/lrtdp.hh"
-#include "hub/solver/lrtdp/impl/lrtdp_impl.hh"
-#include "hub/solver/vi/vi.hh"
-#include "hub/solver/vi/impl/vi_impl.hh"
 #include "utils/logging.hh"
 #include "utils/string_converter.hh"
+
+#include "hub/solver/inner_solver/inner_solver_registry.hh"
+#include "hub/solver/inner_solver/meta_inner_solver.hh"
 
 namespace skdecide {
 
@@ -49,84 +46,25 @@ SK_FRET_CLASS::FRETSolver(Domain &domain,
   auto captured_args =
       std::make_tuple(std::forward<InnerSolverArgs>(inner_solver_args)...);
 
-  if constexpr (std::is_same_v<InnerSolver,
-                               LRTDPSolver<Tdomain, Texecution_policy>>) {
-    _inner_solver_factory = [this, captured_args = std::move(captured_args)](
-                                Domain &d, GoalCheckerFunctor sub_gc,
-                                HeuristicFunctor sub_h) mutable {
-      auto wrapped_gc = [sub_gc](Domain &dd, const State &st,
-                                 const std::size_t *) -> Predicate {
-        return sub_gc(dd, st);
-      };
-      auto wrapped_h = [sub_h](Domain &dd, const State &st,
-                               const std::size_t *) -> Value {
-        return sub_h(dd, st);
-      };
-      // Replace the terminal_value (first captured arg) with a dynamic
-      // one that assigns dead_end_cost to known dead-end states.
-      return std::apply(
-          [&](auto &&tv_orig, auto &&...rest) {
-            auto dynamic_tv = [this](const State &st) -> Value {
-              if (_dead_end_states.find(st) != _dead_end_states.end()) {
-                Value v;
-                v.cost(_dead_end_cost);
-                return v;
-              }
-              return Value(0.0, false);
-            };
-            return std::make_unique<InnerSolver>(
-                d, wrapped_gc, wrapped_h, dynamic_tv,
-                std::forward<decltype(rest)>(rest)...);
-          },
-          captured_args);
-    };
-  } else if constexpr (std::is_same_v<InnerSolver,
-                                      LDFSSolver<Tdomain, Texecution_policy>>) {
-    // LDFS also has terminal_value as first captured arg
-    _inner_solver_factory = [this, captured_args = std::move(captured_args)](
-                                Domain &d, GoalCheckerFunctor sub_gc,
-                                HeuristicFunctor sub_h) mutable {
-      return std::apply(
-          [&](auto &&tv_orig, auto &&...rest) {
-            auto dynamic_tv = [this](const State &st) -> Value {
-              if (_dead_end_states.find(st) != _dead_end_states.end()) {
-                Value v;
-                v.cost(_dead_end_cost);
-                return v;
-              }
-              return Value(0.0, false);
-            };
-            return std::make_unique<InnerSolver>(
-                d, sub_gc, sub_h, dynamic_tv,
-                std::forward<decltype(rest)>(rest)...);
-          },
-          captured_args);
-    };
-  } else if constexpr (std::is_same_v<InnerSolver,
-                                      VISolver<Tdomain, Texecution_policy>>) {
-    // VI has NO goal_checker — it uses domain.is_terminal() instead.
-    // terminal_value is the first captured arg.
-    _inner_solver_factory = [this, captured_args = std::move(captured_args)](
-                                Domain &d, GoalCheckerFunctor sub_gc,
-                                HeuristicFunctor sub_h) mutable {
-      return std::apply(
-          [&](auto &&tv_orig, auto &&...rest) {
-            auto dynamic_tv = [this](const State &st) -> Value {
-              if (_dead_end_states.find(st) != _dead_end_states.end()) {
-                Value v;
-                v.cost(_dead_end_cost);
-                return v;
-              }
-              return Value(0.0, false);
-            };
-            // VI takes (domain, heuristic, terminal_value, ...) — NO
-            // goal_checker
-            return std::make_unique<InnerSolver>(
-                d, sub_h, dynamic_tv, std::forward<decltype(rest)>(rest)...);
-          },
-          captured_args);
-    };
-  }
+  _inner_solver_factory = [this, captured_args = std::move(captured_args)](
+                              Domain &d, GoalCheckerFunctor sub_gc,
+                              HeuristicFunctor sub_h) mutable {
+    return std::apply(
+        [&](auto &&tv_orig, auto &&...rest) {
+          auto dynamic_tv = [this](const State &st) -> Value {
+            if (_dead_end_states.find(st) != _dead_end_states.end()) {
+              Value v;
+              v.cost(_dead_end_cost);
+              return v;
+            }
+            return Value(0.0, false);
+          };
+          return std::make_unique<InnerSolver>(
+              d, sub_gc, sub_h, dynamic_tv,
+              std::forward<decltype(rest)>(rest)...);
+        },
+        captured_args);
+  };
 
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm FRET");
@@ -233,14 +171,17 @@ SK_FRET_TEMPLATE_DECL
 std::vector<std::vector<typename SK_FRET_CLASS::State>>
 SK_FRET_CLASS::tarjan_scc(const GreedyGraph &graph) {
   std::vector<std::vector<State>> sccs;
-  typename MapTypeDeducer<State, TarjanData>::Map data;
+  using TarjanDataMap = typename MapTypeDeducer<State, TarjanData>::Map;
+  using StateVecConstIter = typename std::vector<State>::const_iterator;
+
+  TarjanDataMap data;
   std::stack<State> tarjan_stack;
   std::size_t index = 0;
 
   struct Frame {
     State node;
-    typename std::vector<State>::const_iterator neighbor_it;
-    typename std::vector<State>::const_iterator neighbor_end;
+    StateVecConstIter neighbor_it;
+    StateVecConstIter neighbor_end;
   };
   std::stack<Frame> call_stack;
 
@@ -641,6 +582,40 @@ SK_FRET_TEMPLATE_DECL
 std::vector<typename SetTypeDeducer<typename SK_FRET_CLASS::State>::Set>
 SK_FRET_CLASS::get_trapped_sccs() const {
   return _trapped_sccs;
+}
+
+SK_FRET_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_FRET_CLASS> SK_FRET_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> goal_checker,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> /*terminal_value*/,
+    const Params &params, bool verbose) {
+  std::string inner_name =
+      params.template get<std::string>("inner_solver", std::string("LRTDP"));
+
+  auto fret_factory =
+      [inner_name, params, verbose](
+          Domain &dd, std::function<Predicate(Domain &, const State &)> sub_gc,
+          std::function<Value(Domain &, const State &)> sub_h,
+          std::function<Value(const State &)> sub_tv)
+      -> std::unique_ptr<MetaInnerSolverBase<Domain>> {
+    const auto &inner_entry =
+        find_inner_solver<Domain, ExecutionPolicy>(inner_name);
+    return inner_entry.create(dd, sub_gc, sub_h, sub_tv, params, verbose);
+  };
+
+  auto dummy_tv = [](const State &) -> Value { return Value(); };
+
+  return std::make_unique<FRETSolver>(
+      domain, goal_checker, heuristic,
+      params.template get<double>("discount", 1.0),
+      params.template get<double>("epsilon", 0.001),
+      params.template get<double>("dead_end_cost", 10000.0),
+      CallbackFunctor([](const FRETSolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose), dummy_tv,
+      std::move(fret_factory));
 }
 
 } // namespace skdecide

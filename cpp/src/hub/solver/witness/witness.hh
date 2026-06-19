@@ -19,6 +19,23 @@
 
 namespace skdecide {
 
+/**
+ * @brief Exact POMDP solver using the Witness algorithm.
+ *
+ * From Littman, "The Witness Algorithm: Solving Partially Observable
+ * Markov Decision Processes", Brown University TR, 1994.
+ *
+ * Performs exact value iteration with piecewise-linear convex value
+ * functions represented as sets of alpha-vectors. Uses LP-based
+ * witness point finding to discover all non-dominated alpha-vectors
+ * and Monahan LP pruning to remove dominated ones.
+ *
+ * Intended for verifying correctness of approximate POMDP solvers
+ * on tiny test problems. Not suitable for large state/action spaces.
+ *
+ * @tparam Tdomain Type of the domain class (must be PartiallyObservable)
+ * @tparam Texecution_policy Type of the execution policy
+ */
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class WitnessSolver {
 public:
@@ -28,6 +45,11 @@ public:
   typedef typename Domain::Observation Observation;
   typedef typename Domain::Value Value;
   typedef Texecution_policy ExecutionPolicy;
+
+  enum class LPCallbackEvent {
+    SolverIteration,
+    LPProgress,
+  };
 
   typedef std::unordered_map<std::size_t, double> Belief;
 
@@ -43,9 +65,28 @@ public:
 
   typedef std::function<bool(const WitnessSolver &, Domain &)> CallbackFunctor;
 
+  /**
+   * @brief Construct a new WitnessSolver.
+   *
+   * @param domain The domain instance to solve.
+   * @param epsilon Convergence threshold for value function change at
+   *   corner beliefs between iterations. Defaults to 0.001.
+   * @param discount Discount factor gamma. Must be in (0, 1).
+   *   Defaults to 0.95.
+   * @param max_iterations Maximum number of value iteration steps.
+   *   Defaults to 100.
+   * @param lp_infinity Upper bound used for LP variable bounds with
+   *   HiGHS. Defaults to 1e20.
+   * @param lp_tolerance Numerical tolerance for LP feasibility checks
+   *   and alpha-vector comparisons. Defaults to 1e-10.
+   * @param callback Functor called at the end of each value iteration
+   *   step. Returns true to stop solving. Defaults to never stop.
+   * @param verbose Whether to log verbose messages. Defaults to false.
+   */
   WitnessSolver(
       Domain &domain, double epsilon = 0.001, double discount = 0.95,
       std::size_t max_iterations = 100, double lp_infinity = 1e20,
+      double lp_tolerance = 1e-10,
       const CallbackFunctor &callback = [](const WitnessSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -66,6 +107,9 @@ public:
   std::size_t get_nb_alpha_vectors() const;
   std::size_t get_nb_iterations() const;
   std::size_t get_solving_time() const;
+  LPCallbackEvent get_callback_event() const {
+    return LPCallbackEvent::SolverIteration;
+  }
 
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
@@ -86,6 +130,7 @@ private:
   double _discount;
   std::size_t _max_iterations;
   double _lp_infinity;
+  double _lp_tolerance;
   CallbackFunctor _callback;
   bool _verbose;
   ExecutionPolicy _execution_policy;

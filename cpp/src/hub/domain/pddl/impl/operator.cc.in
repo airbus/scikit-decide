@@ -1,0 +1,4 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/operator.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/operator_impl.hh"
+
+template class skdecide::pddl::Operator<skdecide::pddl::${Tderived}>;

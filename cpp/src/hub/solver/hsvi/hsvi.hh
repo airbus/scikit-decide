@@ -22,6 +22,23 @@
 
 namespace skdecide {
 
+/**
+ * @brief HSVI solver for discounted reward POMDPs.
+ *
+ * From Smith & Simmons, "Heuristic Search Value Iteration for POMDPs",
+ * UAI 2004.
+ *
+ * HSVI maintains dual bounds on the value function:
+ * - Lower bound: set of alpha-vectors, V(b) = max_alpha (alpha . b)
+ * - Upper bound: sawtooth interpolation from MDP corner values
+ *
+ * It performs heuristic search in belief space, selecting actions via
+ * the upper bound (optimistic) and observations via excess uncertainty.
+ * Converges when the gap at the initial belief falls below epsilon.
+ *
+ * @tparam Tdomain Type of the domain class (must be PartiallyObservable)
+ * @tparam Texecution_policy Type of the execution policy
+ */
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class HSVISolver {
 public:
@@ -37,12 +54,41 @@ public:
   typedef std::function<bool(const HSVISolver &, Domain &)> CallbackFunctor;
   typedef std::function<bool(Domain &, const State &)> GoalCheckerFunctor;
 
+  /**
+   * @brief Construct a new HSVISolver.
+   *
+   * @param domain The domain instance to solve.
+   * @param epsilon Convergence threshold for the gap
+   *   V_upper(b0) - V_lower(b0). Defaults to 0.001.
+   * @param discount Discount factor gamma. Must be strictly less than 1
+   *   for reward-maximizing HSVI. Defaults to 0.95.
+   * @param time_budget Maximum solving time in milliseconds.
+   *   Defaults to 300000 (5 minutes).
+   * @param max_sample_depth Maximum depth for heuristic exploration in
+   *   belief space. Defaults to 100.
+   * @param use_closed_list Whether to skip beliefs already explored at the
+   *   same depth. Defaults to false.
+   * @param depth_bound_eta Parameter eta for depth bound computation in
+   *   the Goal-HSVI variant. Unused in reward HSVI. Defaults to 0.1.
+   * @param max_vi_iterations Maximum iterations for bound initialization
+   *   value iteration. Defaults to 1000.
+   * @param vi_convergence_factor Convergence factor for initialization VI.
+   *   The VI threshold is epsilon * vi_convergence_factor. Defaults to 0.01.
+   * @param prob_epsilon Near-zero probability threshold below which
+   *   transition probabilities are ignored. Defaults to 1e-15.
+   * @param belief_hash_resolution Discretization factor for belief hashing.
+   *   Probabilities are multiplied by this value and rounded to integers
+   *   for hash computation. Defaults to 1000.0.
+   * @param callback Functor called at each exploration iteration. Returns
+   *   true to stop solving. Defaults to never stop.
+   * @param verbose Whether to log verbose messages. Defaults to false.
+   */
   HSVISolver(
       Domain &domain, double epsilon = 0.001, double discount = 0.95,
       std::size_t time_budget = 300000, std::size_t max_sample_depth = 100,
       bool use_closed_list = false, double depth_bound_eta = 0.1,
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
-      double prob_epsilon = 1e-15,
+      double prob_epsilon = 1e-15, double belief_hash_resolution = 1000.0,
       const CallbackFunctor &callback = [](const HSVISolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -167,6 +213,7 @@ protected:
   std::size_t _max_vi_iterations;
   double _vi_convergence_factor;
   double _prob_epsilon;
+  double _belief_hash_resolution;
   CallbackFunctor _callback;
   bool _verbose;
 
@@ -203,6 +250,21 @@ protected:
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
 };
 
+/**
+ * @brief Goal-HSVI solver for undiscounted cost Goal-POMDPs.
+ *
+ * From Horak, Bosansky, Chatterjee, "Goal-HSVI: Heuristic Search
+ * Value Iteration for Goal-POMDPs", IJCAI 2018.
+ *
+ * Goal-HSVI extends HSVI to handle undiscounted Goal-POMDPs with
+ * cost minimization. Bounds are swapped relative to reward HSVI:
+ * alpha-vectors form the upper bound and sawtooth interpolation
+ * forms the lower bound. Uses a bounded search depth T based on
+ * cost bounds and a closed list to avoid re-exploring beliefs.
+ *
+ * @tparam Tdomain Type of the domain class (must be PartiallyObservable)
+ * @tparam Texecution_policy Type of the execution policy
+ */
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class GoalHSVISolver : public HSVISolver<Tdomain, Texecution_policy> {
 public:
@@ -217,13 +279,48 @@ public:
   using typename Base::State;
   using typename Base::Value;
 
+  /**
+   * @brief Construct a new GoalHSVISolver.
+   *
+   * @param domain The domain instance to solve.
+   * @param goal_checker Functor (domain, state) -> bool returning true if
+   *   the physical state is a goal state.
+   * @param epsilon Convergence threshold for the gap
+   *   V_upper(b0) - V_lower(b0). Defaults to 0.001.
+   * @param discount Discount factor gamma. Typically 1.0 for undiscounted
+   *   Goal-POMDPs. Defaults to 1.0.
+   * @param time_budget Maximum solving time in milliseconds.
+   *   Defaults to 300000 (5 minutes).
+   * @param max_sample_depth Maximum exploration depth in belief space. Also
+   *   used as fallback when the depth bound cannot be computed.
+   *   Defaults to 100.
+   * @param use_closed_list Whether to skip beliefs already explored at the
+   *   same depth. Defaults to true.
+   * @param depth_bound_eta Parameter eta for depth bound computation:
+   *   T = ceil(C_max/c_min * (C_max - eta*eps) / ((1-eta)*eps)).
+   *   Defaults to 0.1.
+   * @param max_vi_iterations Maximum iterations for bound initialization
+   *   value iteration. Defaults to 1000.
+   * @param vi_convergence_factor Convergence factor for initialization VI.
+   *   Defaults to 0.01.
+   * @param prob_epsilon Near-zero probability threshold below which
+   *   transition probabilities are ignored. Defaults to 1e-15.
+   * @param belief_hash_resolution Discretization factor for belief hashing.
+   *   Defaults to 1000.0.
+   * @param callback Functor called at each exploration iteration. Returns
+   *   true to stop solving. Defaults to never stop.
+   * @param verbose Whether to log verbose messages. Defaults to false.
+   * @param dead_end_cost Cost assigned to non-goal terminal states (dead
+   *   ends). If nullopt, automatically computed from transition costs and
+   *   depth/discount. Defaults to nullopt.
+   */
   GoalHSVISolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
       double epsilon = 0.001, double discount = 1.0,
       std::size_t time_budget = 300000, std::size_t max_sample_depth = 100,
       bool use_closed_list = true, double depth_bound_eta = 0.1,
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
-      double prob_epsilon = 1e-15,
+      double prob_epsilon = 1e-15, double belief_hash_resolution = 1000.0,
       const CallbackFunctor &callback = [](const Base &,
                                            Domain &) { return false; },
       bool verbose = false, std::optional<double> dead_end_cost = std::nullopt);

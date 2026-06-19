@@ -14,7 +14,7 @@ void init_pydespot(py::module &m) {
   py_despot_solver
       .def(py::init<py::object &, py::object &, std::size_t, std::size_t,
                     double, double, double, std::size_t, double, std::size_t,
-                    std::size_t,
+                    std::size_t, double,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
@@ -29,6 +29,7 @@ void init_pydespot(py::module &m) {
            py::arg("time_budget") = 1000, py::arg("discount") = 0.95,
            py::arg("max_rollout_depth") = 90,
            py::arg("num_particles_belief_update") = 500,
+           py::arg("ess_threshold_ratio") = 2.0,
            py::arg("default_policy") = nullptr,
            py::arg("upper_bound_heuristic") = nullptr,
            py::arg("parallel") = false, py::arg("callback") = nullptr,

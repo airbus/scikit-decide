@@ -73,7 +73,9 @@ try:
                 [D_SSP.T_state], D_SSP.T_agent[Value[D_SSP.T_value]]
             ] = lambda s: Value(cost=1000.0),
             lp_infinity: float = 1e20,
+            lp_tolerance: float = 1e-15,
             default_dead_end_cost: float = 1000.0,
+            lp_callback_interval: int = 0,
             parallel: bool = False,
             callback: Callable[[IDual], bool] = lambda slv: False,
             verbose: bool = False,
@@ -90,9 +92,14 @@ try:
                 dead-end (non-goal terminal) states. Defaults to 1000.
             lp_infinity: Upper bound for LP variable bounds and constraint
                 lower bounds used with HiGHS. Defaults to 1e20.
+            lp_tolerance: Sparsity threshold for LP coefficients. Values
+                below this are treated as zero. Defaults to 1e-15.
             default_dead_end_cost: Default per-constraint dead-end cost
                 when no explicit dead_end_costs vector is provided (only
                 used in the constrained variant). Defaults to 1000.0.
+            lp_callback_interval: Fire callback every N simplex iterations
+                during each LP solve, reporting intermediate V(s) and
+                policy. 0 disables LP-level callbacks. Defaults to 0.
             parallel: If True, explore action transitions in parallel.
             callback: Called after each LP iteration. Returns True to stop.
             verbose: Enable verbose logging.
@@ -109,7 +116,9 @@ try:
                 heuristic=lambda d, s: heuristic(d, s),
                 terminal_value=lambda s: terminal_value(s),
                 lp_infinity=lp_infinity,
+                lp_tolerance=lp_tolerance,
                 default_dead_end_cost=default_dead_end_cost,
+                lp_callback_interval=lp_callback_interval,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -158,6 +167,9 @@ try:
             self,
         ) -> set[D_SSP.T_agent[D_SSP.T_observation]]:
             return self._solver.get_explored_states()
+
+        def get_callback_event(self) -> str:
+            return self._solver.get_callback_event()
 
     # =================================================================
 
@@ -211,7 +223,9 @@ try:
             ] = None,
             dead_end_costs: Optional[list[float]] = None,
             lp_infinity: float = 1e20,
+            lp_tolerance: float = 1e-15,
             default_dead_end_cost: float = 1000.0,
+            lp_callback_interval: int = 0,
             parallel: bool = False,
             callback: Callable[[CIDual], bool] = lambda slv: False,
             verbose: bool = False,
@@ -232,9 +246,14 @@ try:
                 default_dead_end_cost.
             lp_infinity: Upper bound for LP variable bounds and constraint
                 lower bounds used with HiGHS. Defaults to 1e20.
+            lp_tolerance: Sparsity threshold for LP coefficients. Values
+                below this are treated as zero. Defaults to 1e-15.
             default_dead_end_cost: Default per-constraint dead-end cost
                 when no explicit dead_end_costs is provided.
                 Defaults to 1000.0.
+            lp_callback_interval: Fire callback every N simplex iterations
+                during each LP solve, reporting intermediate V(s) and
+                policy. 0 disables LP-level callbacks. Defaults to 0.
             parallel: If True, explore action transitions in parallel.
             callback: Called after each LP iteration. Returns True to stop.
             verbose: Enable verbose logging.
@@ -286,7 +305,9 @@ try:
                 secondary_heuristic=sec_heur_func,
                 dead_end_costs=de_costs,
                 lp_infinity=lp_infinity,
+                lp_tolerance=lp_tolerance,
                 default_dead_end_cost=default_dead_end_cost,
+                lp_callback_interval=lp_callback_interval,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -331,6 +352,9 @@ try:
             self,
         ) -> set[D_CSSP.T_agent[D_CSSP.T_observation]]:
             return self._solver.get_explored_states()
+
+        def get_callback_event(self) -> str:
+            return self._solver.get_callback_event()
 
 except ImportError:
     print(

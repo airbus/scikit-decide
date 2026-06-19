@@ -33,6 +33,25 @@ public:
   typedef std::function<Predicate(Domain &, const State &)> GoalCheckerFunctor;
   typedef std::function<bool(const GPCISolver &, Domain &)> CallbackFunctor;
 
+  /**
+   * @brief Constructs a new GPCI (Goal-Probability and Cost Iteration) solver.
+   *
+   * GPCI is a dual-criterion solver for SSPs with dead ends
+   * (Teichteil-Koenigsbuch, AAAI 2012). It first enumerates all reachable
+   * states by BFS, then runs two value iteration phases: Phase 1 maximizes
+   * goal-reaching probability P*(s), and Phase 2 minimizes expected cost C*(s)
+   * conditioned on reaching the goal, restricted to probability-preserving
+   * actions.
+   *
+   * @param domain The domain instance to solve.
+   * @param goal_checker Functor testing whether a state is a goal.
+   * @param epsilon Maximum residual for convergence in both the probability
+   *   and cost iteration phases. Defaults to 0.001.
+   * @param callback Functor called at the end of each iteration sweep, taking
+   *   the solver and domain as arguments and returning true to stop.
+   *   Defaults to always returning false.
+   * @param verbose Whether to log verbose debug messages. Defaults to false.
+   */
   GPCISolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
       double epsilon = 0.001,
@@ -59,6 +78,14 @@ public:
 
   typename SetTypeDeducer<State>::Set get_explored_states() const;
   typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
+
+  template <typename Params>
+  static std::unique_ptr<GPCISolver> create_from_params(
+      Domain &domain,
+      std::function<Predicate(Domain &, const State &)> goal_checker,
+      std::function<Value(Domain &, const State &)> heuristic,
+      std::function<Value(const State &)> terminal_value, const Params &params,
+      bool verbose);
 
 private:
   typedef typename ExecutionPolicy::template atomic<double> atomic_double;

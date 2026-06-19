@@ -49,12 +49,45 @@ public:
 
   typedef std::function<bool(const SARSOPSolver &, Domain &)> CallbackFunctor;
 
+  /**
+   * @brief Construct a new SARSOPSolver.
+   *
+   * @param domain The domain instance to solve.
+   * @param epsilon Convergence threshold for the gap
+   *   V_upper(b0) - V_lower(b0). Defaults to 0.001.
+   * @param discount Discount factor gamma. Must be in (0, 1).
+   *   Defaults to 0.95.
+   * @param time_budget Maximum solving time in milliseconds.
+   *   Defaults to 300000 (5 minutes).
+   * @param max_beliefs Maximum number of belief tree nodes to explore.
+   *   Defaults to 100000.
+   * @param pruning_delta Delta parameter for alpha-vector dominance
+   *   pruning. Defaults to 1e-6.
+   * @param max_vi_iterations Maximum iterations for bound initialization
+   *   value iteration. Defaults to 1000.
+   * @param vi_convergence_factor Convergence factor for initialization VI.
+   *   The VI threshold is epsilon * vi_convergence_factor. Defaults to 0.01.
+   * @param max_sample_depth Maximum depth for belief tree sampling.
+   *   Defaults to 100.
+   * @param prob_epsilon Near-zero probability threshold below which
+   *   transition probabilities are ignored. Defaults to 1e-15.
+   * @param ub_improvement_epsilon Minimum upper-bound improvement required
+   *   to record an interior point. Defaults to 1e-10.
+   * @param pruning_interval Number of iterations between alpha-vector
+   *   pruning passes. Set to 0 to disable. Defaults to 10.
+   * @param logging_interval Number of iterations between verbose log
+   *   messages. Set to 0 to disable. Defaults to 50.
+   * @param callback Functor called at the end of each iteration. Returns
+   *   true to stop solving. Defaults to never stop.
+   * @param verbose Whether to log verbose messages. Defaults to false.
+   */
   SARSOPSolver(
       Domain &domain, double epsilon = 0.001, double discount = 0.95,
       std::size_t time_budget = 300000, std::size_t max_beliefs = 100000,
       double pruning_delta = 1e-6, std::size_t max_vi_iterations = 1000,
       double vi_convergence_factor = 0.01, std::size_t max_sample_depth = 100,
       double prob_epsilon = 1e-15, double ub_improvement_epsilon = 1e-10,
+      std::size_t pruning_interval = 10, std::size_t logging_interval = 50,
       const CallbackFunctor &callback = [](const SARSOPSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -144,6 +177,8 @@ private:
   std::size_t _max_sample_depth;
   double _prob_epsilon;
   double _ub_improvement_epsilon;
+  std::size_t _pruning_interval;
+  std::size_t _logging_interval;
   CallbackFunctor _callback;
   bool _verbose;
   ExecutionPolicy _execution_policy;

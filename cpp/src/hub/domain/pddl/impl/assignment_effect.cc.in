@@ -1,0 +1,4 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/assignment_effect.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/assignment_effect_impl.hh"
+
+template class skdecide::pddl::AssignmentEffect<skdecide::pddl::${Tderived}>;

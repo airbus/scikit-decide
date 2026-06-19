@@ -15,11 +15,10 @@
 #include "utils/template_instantiator.hh"
 #include "utils/impl/python_domain_proxy_call_impl.hh"
 
-#include <type_traits>
-
-#include "hub/solver/ilaostar/ilaostar.hh"
-#include "hub/solver/ldfs/ldfs.hh"
-#include "hub/solver/lrtdp/lrtdp.hh"
+#include "hub/solver/inner_solver/meta_inner_solver_proxy.hh"
+#include "hub/solver/inner_solver/impl/meta_inner_solver_proxy_impl.hh"
+#include "hub/solver/inner_solver/inner_solver_registry.hh"
+#include "hub/solver/inner_solver/impl/inner_solver_registry_impl.hh"
 
 #include "ssipp.hh"
 #include "impl/ssipp_impl.hh"
@@ -30,11 +29,6 @@ namespace skdecide {
 
 template <typename Texecution>
 using PySSiPPDomain = PythonDomainProxy<Texecution>;
-
-// Tag types for inner solver runtime selection
-struct LRTDPInnerSolver {};
-struct ILAOStarInnerSolver {};
-struct LDFSInnerSolver {};
 
 class PySSiPPSolver {
 private:
@@ -56,7 +50,7 @@ private:
     virtual py::dict get_policy() = 0;
   };
 
-  template <typename Texecution, typename TinnerSolverTag>
+  template <typename Texecution>
   class Implementation : public BaseImplementation {
   public:
     typedef PySSiPPDomain<Texecution> Domain;
@@ -64,12 +58,7 @@ private:
     typedef typename Domain::Action Action;
     typedef typename Domain::Value Value;
 
-    using SolverType = std::conditional_t<
-        std::is_same_v<TinnerSolverTag, LRTDPInnerSolver>,
-        SSiPPSolver<Domain, Texecution, LRTDPSolver>,
-        std::conditional_t<std::is_same_v<TinnerSolverTag, ILAOStarInnerSolver>,
-                           SSiPPSolver<Domain, Texecution, ILAOStarSolver>,
-                           SSiPPSolver<Domain, Texecution, LDFSSolver>>>;
+    using SolverType = SSiPPSolver<Domain, Texecution, MetaInnerSolverProxy>;
 
     Implementation(
         py::object &solver, py::object &domain,
@@ -78,7 +67,8 @@ private:
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
         std::size_t depth, double discount, double epsilon,
-        std::size_t max_iterations, const py::dict &inner_solver_params,
+        std::size_t max_iterations, const std::string &inner_solver,
+        const py::dict &inner_solver_params,
         const std::function<py::bool_(const py::object &)> &callback,
         bool verbose)
         : _goal_checker(goal_checker), _heuristic(heuristic),
@@ -87,62 +77,89 @@ private:
       _pysolver = std::make_unique<py::object>(solver);
       _domain = std::make_unique<Domain>(domain);
 
-      auto make_gc = [this]() {
-        return [this](Domain &d, const State &s) -> typename Domain::Predicate {
+      auto gc = [this](Domain &d,
+                       const State &s) -> typename Domain::Predicate {
+        try {
+          auto fgc = [this](const py::object &dd, const py::object &ss,
+                            [[maybe_unused]] const py::object &ii) {
+            return _goal_checker(dd, ss);
+          };
+          std::unique_ptr<py::object> r = d.call(nullptr, fgc, s.pyobj());
+          typename GilControl<Texecution>::Acquire acquire;
+          bool rr = r->template cast<bool>();
+          r.reset();
+          return rr;
+        } catch (const std::exception &e) {
+          Logger::error(
+              std::string("SKDECIDE exception when calling goal checker: ") +
+              e.what());
+          throw;
+        }
+      };
+
+      auto h = [this](Domain &d, const State &s) -> Value {
+        try {
+          auto fh = [this](const py::object &dd, const py::object &ss,
+                           [[maybe_unused]] const py::object &ii) {
+            return _heuristic(dd, ss);
+          };
+          return Value(d.call(nullptr, fh, s.pyobj()));
+        } catch (const std::exception &e) {
+          Logger::error(
+              std::string("SKDECIDE exception when calling heuristic: ") +
+              e.what());
+          throw;
+        }
+      };
+
+      auto cb = [this](const SolverType &, Domain &) -> bool {
+        if (_callback) {
           try {
-            auto fgc = [this](const py::object &dd, const py::object &ss,
-                              [[maybe_unused]] const py::object &ii) {
-              return _goal_checker(dd, ss);
-            };
-            std::unique_ptr<py::object> r = d.call(nullptr, fgc, s.pyobj());
-            typename GilControl<Texecution>::Acquire acquire;
-            bool rr = r->template cast<bool>();
-            r.reset();
-            return rr;
+            return _callback(*_pysolver);
           } catch (const std::exception &e) {
             Logger::error(
-                std::string("SKDECIDE exception when calling goal checker: ") +
+                std::string("SKDECIDE exception when calling callback: ") +
                 e.what());
             throw;
           }
-        };
+        }
+        return false;
       };
 
-      auto make_h = [this]() {
-        return [this](Domain &d, const State &s) -> Value {
-          try {
-            auto fh = [this](const py::object &dd, const py::object &ss,
-                             [[maybe_unused]] const py::object &ii) {
-              return _heuristic(dd, ss);
-            };
-            return Value(d.call(nullptr, fh, s.pyobj()));
-          } catch (const std::exception &e) {
-            Logger::error(
-                std::string("SKDECIDE exception when calling heuristic: ") +
-                e.what());
-            throw;
-          }
+      py::dict isp(inner_solver_params);
+      InnerSolverParams params;
+      for (auto &[k, v] : isp) {
+        std::string key = k.template cast<std::string>();
+        if (py::isinstance<py::bool_>(v))
+          params.set(key, v.template cast<bool>());
+        else if (py::isinstance<py::int_>(v))
+          params.set(key, v.template cast<std::size_t>());
+        else if (py::isinstance<py::float_>(v))
+          params.set(key, v.template cast<double>());
+        else if (py::isinstance<py::str>(v))
+          params.set(key, v.template cast<std::string>());
+      }
+
+      const auto &entry = find_inner_solver<Domain, Texecution>(inner_solver);
+
+      using SspFactory =
+          typename MetaInnerSolverProxy<Domain, Texecution>::SspFactory;
+      SspFactory ssp_factory =
+          [&entry, params, verbose](
+              Domain &dd,
+              std::function<typename Domain::Predicate(Domain &, const State &)>
+                  sub_gc,
+              std::function<Value(Domain &, const State &)> sub_h)
+          -> std::unique_ptr<MetaInnerSolverBase<Domain>> {
+        std::function<Value(const State &)> default_tv = [](const State &) {
+          return Value();
         };
+        return entry.create(dd, sub_gc, sub_h, default_tv, params, verbose);
       };
 
-      auto make_cb = [this]() {
-        return [this](const SolverType &, Domain &) -> bool {
-          if (_callback) {
-            try {
-              return _callback(*_pysolver);
-            } catch (const std::exception &e) {
-              Logger::error(
-                  std::string("SKDECIDE exception when calling callback: ") +
-                  e.what());
-              throw;
-            }
-          }
-          return false;
-        };
-      };
-
-      create_solver(inner_solver_params, make_gc(), make_h(), depth, discount,
-                    epsilon, max_iterations, make_cb(), verbose);
+      _solver = std::make_unique<SolverType>(*_domain, gc, h, depth, discount,
+                                             epsilon, max_iterations, cb,
+                                             verbose, std::move(ssp_factory));
 
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
@@ -247,67 +264,6 @@ private:
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
-
-    template <typename T>
-    static T dp(const py::dict &d, const char *key, T def) {
-      return d.contains(key) ? d[key].cast<T>() : def;
-    }
-
-    typedef typename SolverType::GoalCheckerFunctor GC;
-    typedef typename SolverType::HeuristicFunctor H;
-    typedef typename SolverType::CallbackFunctor CB;
-
-    void create_solver(const py::dict &p, GC gc, H h, std::size_t depth,
-                       double discount, double epsilon,
-                       std::size_t max_iterations, CB cb, bool verbose) {
-      if constexpr (std::is_same_v<TinnerSolverTag, LRTDPInnerSolver>) {
-        using IS = LRTDPSolver<Domain, Texecution>;
-        auto tv = [](const typename Domain::State &) -> Value {
-          return Value(0.0, false);
-        };
-        _solver = std::make_unique<SolverType>(
-            *_domain, gc, h, depth, discount, epsilon, max_iterations, cb,
-            verbose,
-            // LRTDP extra args forwarded to inner solver constructor
-            tv, dp<bool>(p, "use_labels", true),
-            dp<std::size_t>(p, "time_budget", 3600000),
-            dp<std::size_t>(p, "rollout_budget", 100000),
-            dp<std::size_t>(p, "max_depth", 1000),
-            dp<std::size_t>(p, "residual_moving_average_window", 100),
-            dp<double>(p, "epsilon", epsilon),
-            dp<double>(p, "discount", discount),
-            dp<bool>(p, "online_node_garbage", false),
-            typename IS::CallbackFunctor(
-                [](const IS &, Domain &, const std::size_t *) {
-                  return false;
-                }),
-            dp<bool>(p, "verbose", false));
-      } else if constexpr (std::is_same_v<TinnerSolverTag,
-                                          ILAOStarInnerSolver>) {
-        using IS = ILAOStarSolver<Domain, Texecution>;
-        _solver = std::make_unique<SolverType>(
-            *_domain, gc, h, depth, discount, epsilon, max_iterations, cb,
-            verbose, dp<double>(p, "discount", discount),
-            dp<double>(p, "epsilon", epsilon),
-            dp<bool>(p, "per_sweep_graph_update", false),
-            typename IS::CallbackFunctor(
-                [](const IS &, Domain &) { return false; }),
-            dp<bool>(p, "verbose", false));
-      } else if constexpr (std::is_same_v<TinnerSolverTag, LDFSInnerSolver>) {
-        using IS = LDFSSolver<Domain, Texecution>;
-        auto tv = [](const typename Domain::State &) -> Value {
-          return Value(0.0, false);
-        };
-        _solver = std::make_unique<SolverType>(
-            *_domain, gc, h, depth, discount, epsilon, max_iterations, cb,
-            verbose, tv, dp<double>(p, "discount", discount),
-            dp<double>(p, "epsilon", epsilon),
-            dp<std::size_t>(p, "max_depth", 0),
-            typename IS::CallbackFunctor(
-                [](const IS &, Domain &) { return false; }),
-            dp<bool>(p, "verbose", false));
-      }
-    }
   };
 
   struct ExecutionSelector {
@@ -320,27 +276,6 @@ private:
           Propagator::template PushType<ParallelExecution>::Forward(args...);
         } else {
           Propagator::template PushType<SequentialExecution>::Forward(args...);
-        }
-      }
-    };
-  };
-
-  struct InnerSolverSelector {
-    std::string _name;
-    InnerSolverSelector(const std::string &name) : _name(name) {}
-    template <typename Propagator> struct Select {
-      template <typename... Args>
-      Select(InnerSolverSelector &This, Args... args) {
-        if (This._name == "LRTDP") {
-          Propagator::template PushType<LRTDPInnerSolver>::Forward(args...);
-        } else if (This._name == "ILAOstar") {
-          Propagator::template PushType<ILAOStarInnerSolver>::Forward(args...);
-        } else if (This._name == "LDFS") {
-          Propagator::template PushType<LDFSInnerSolver>::Forward(args...);
-        } else {
-          throw std::runtime_error(
-              "Unknown inner solver for SSiPP: " + This._name +
-              ". Use LRTDP, ILAOstar, or LDFS.");
         }
       }
     };
@@ -370,16 +305,15 @@ public:
           &heuristic,
       std::size_t depth = 3, double discount = 1.0, double epsilon = 0.001,
       std::size_t max_iterations = 10000,
-      const py::dict &inner_solver_params = py::dict(),
-      const std::string &inner_solver = "LRTDP", bool parallel = false,
+      const std::string &inner_solver = "LRTDP",
+      const py::dict &inner_solver_params = py::dict(), bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
-                                 InnerSolverSelector(inner_solver),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, goal_checker, heuristic, depth, discount,
-                     epsilon, max_iterations, inner_solver_params, callback,
-                     verbose);
+                     epsilon, max_iterations, inner_solver, inner_solver_params,
+                     callback, verbose);
   }
 
   void close() { _implementation->close(); }

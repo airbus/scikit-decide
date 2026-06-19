@@ -1,0 +1,25 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/term.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/equality_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/function_expression.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/predicate_effect.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/predicate_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/variable.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/function.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/operator.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/predicate.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/quantified_effect.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/quantified_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/sequence_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/sequence_container_impl.hh"
+
+template class skdecide::pddl::SequenceContainer<skdecide::pddl::${Tderived},
+                                                 skdecide::pddl::${Tsymbol}>;
+
+#define D_${Tsymbol}
+#if defined D_Variable
+template const skdecide::pddl::SequenceContainer<skdecide::pddl::${Tderived},
+                                                 skdecide::pddl::${Tsymbol}>::SymbolPtr &
+    skdecide::pddl::SequenceContainer<
+        skdecide::pddl::${Tderived},
+        skdecide::pddl::${Tsymbol}>::append(const std::string &symbol);
+#endif

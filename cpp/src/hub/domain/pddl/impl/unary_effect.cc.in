@@ -1,0 +1,6 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/negation_effect.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/timed_effect.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/unary_effect.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/unary_effect_impl.hh"
+
+template class skdecide::pddl::UnaryEffect<skdecide::pddl::${Tderived}, skdecide::pddl::${Teff}>;

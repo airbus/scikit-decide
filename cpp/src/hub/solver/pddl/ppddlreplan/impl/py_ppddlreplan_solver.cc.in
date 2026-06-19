@@ -1,0 +1,19 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddlreplan/ffreplan.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddlreplan/impl/ffreplan_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddlreplan/ppddlreplan.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddlreplan/impl/ppddlreplan_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddlreplan/ff_inner_solver.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddlreplan/impl/ff_inner_solver_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/determinization/pddl_determinization_adapter.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/determinization/impl/pddl_determinization_adapter_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/determinization/pddl_domain_for_determinization.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/determinization/impl/pddl_domain_for_determinization_impl.hh"
+
+template class skdecide::pddl::FFReplanSolver<${Texecution}, ${Tstrategy}>;
+template class skdecide::pddl::PPDDLReplanSolver<${Texecution}, ${Tstrategy}>;
+template class skdecide::pddl::FFInnerSolver<${Texecution}>;
+template class skdecide::pddl::PddlEffectDeterminizationAdapter<${Tstrategy}, ${Texecution}>;

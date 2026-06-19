@@ -210,8 +210,7 @@ class TestFRET:
         with FRET(
             domain_factory=lambda: DeadEndChainDomain(),
             heuristic=lambda d, s: Value(cost=0),
-            inner_solver="LRTDP",
-            inner_solver_params={"rollout_budget": 1000},
+            inner_solver_factory=lambda: ("LRTDP", {"rollout_budget": 1000}),
             dead_end_cost=10000.0,
         ) as solver:
             solver.solve()
@@ -226,7 +225,7 @@ class TestFRET:
         with FRET(
             domain_factory=lambda: DeadEndChainDomain(),
             heuristic=lambda d, s: Value(cost=0),
-            inner_solver_params={"rollout_budget": 1000},
+            inner_solver_factory=lambda: ("LRTDP", {"rollout_budget": 1000}),
         ) as solver:
             solver.solve()
             assert solver.get_nb_traps_eliminated() >= 1
@@ -279,7 +278,7 @@ class TestFRET:
         with FRET(
             domain_factory=lambda: DeterministicGridDomain(),
             heuristic=h,
-            inner_solver=inner_solver,
+            inner_solver_factory=lambda name=inner_solver: (name, {}),
         ) as solver:
             solver.solve()
             assert solver._is_solution_defined_for(State(0, 0))
@@ -292,7 +291,7 @@ class TestFRET:
         with FRET(
             domain_factory=lambda: DeadEndChainDomain(),
             heuristic=lambda d, s: Value(cost=0),
-            inner_solver_params={"rollout_budget": 1000},
+            inner_solver_factory=lambda: ("LRTDP", {"rollout_budget": 1000}),
         ) as solver:
             solver.solve()
             assert solver.get_nb_fret_iterations() >= 2

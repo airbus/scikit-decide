@@ -8,7 +8,7 @@
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_container_proxy.hh"
 
-template class skdecide::BFWSSolver<skdecide::PythonDomainProxy<${Texecution}>,
-                                    skdecide::PythonContainerProxy<${Texecution}>,
-                                    ${Thashing_policy},
-                                    ${Texecution}>;
+template class skdecide::BFWSSolver<
+    skdecide::PythonDomainProxy<${Texecution}>,
+    skdecide::PythonContainerProxy<${Texecution}>, ${Thashing_policy},
+    ${Texecution}>;

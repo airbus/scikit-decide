@@ -39,14 +39,17 @@ SK_IDUAL_CLASS::IDualSolver(
     const TerminalValueFunctor &terminal_value,
     const SecondaryHeuristicFunctor &secondary_heuristic,
     const std::vector<double> &dead_end_costs, double epsilon,
-    double lp_infinity, double default_dead_end_cost,
-    const CallbackFunctor &callback, bool verbose)
+    double lp_infinity, double lp_tolerance, double default_dead_end_cost,
+    std::size_t lp_callback_interval, const CallbackFunctor &callback,
+    bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
       _terminal_value(terminal_value),
       _secondary_heuristic(secondary_heuristic), _epsilon(epsilon),
-      _lp_infinity(lp_infinity), _default_dead_end_cost(default_dead_end_cost),
-      _callback(callback), _verbose(verbose), _n_constraints(0),
-      _dead_end_costs(dead_end_costs), _nb_lp_iterations(0) {
+      _lp_infinity(lp_infinity), _lp_tolerance(lp_tolerance),
+      _default_dead_end_cost(default_dead_end_cost),
+      _lp_callback_interval(lp_callback_interval), _callback(callback),
+      _verbose(verbose), _n_constraints(0), _dead_end_costs(dead_end_costs),
+      _nb_lp_iterations(0) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm IDual");
   }
@@ -204,7 +207,7 @@ void SK_IDUAL_CLASS::add_sa_column(StateNode *sn, ActionNode *an,
   }
 
   // C9
-  if (std::abs(c9_coeff) > 1e-15) {
+  if (std::abs(c9_coeff) > _lp_tolerance) {
     coeff_map[_lp_c9_row] += c9_coeff;
   }
 
@@ -226,7 +229,7 @@ void SK_IDUAL_CLASS::add_sa_column(StateNode *sn, ActionNode *an,
         }
       }
       _lp_col_c11[j].push_back(cj);
-      if (std::abs(cj) > 1e-15) {
+      if (std::abs(cj) > _lp_tolerance) {
         coeff_map[_lp_c11_rows[j]] += cj;
       }
     }
@@ -235,7 +238,7 @@ void SK_IDUAL_CLASS::add_sa_column(StateNode *sn, ActionNode *an,
   std::vector<HighsInt> indices;
   std::vector<double> values;
   for (const auto &[row, val] : coeff_map) {
-    if (std::abs(val) > 1e-15) {
+    if (std::abs(val) > _lp_tolerance) {
       indices.push_back(row);
       values.push_back(val);
     }
@@ -560,6 +563,11 @@ void SK_IDUAL_CLASS::solve(const State &s) {
     _fringe_reachable.push_back(&root);
     _lp_initialized = false;
 
+    struct LPInterruptData {
+      std::size_t interval;
+      std::size_t last_interrupt_iter = 0;
+    };
+
     while (!_fringe_reachable.empty()) {
       auto to_expand = _fringe_reachable;
       expand_states(_fringe_reachable);
@@ -576,25 +584,73 @@ void SK_IDUAL_CLASS::solve(const State &s) {
         update_lp(s, newly_expanded);
       }
 
-      _highs->run();
-      if (_highs->getModelStatus() != HighsModelStatus::kOptimal) {
+      if (_lp_callback_interval > 0) {
+        LPInterruptData cb_data{_lp_callback_interval};
+        _highs->setCallback(
+            [](const int, const std::string &,
+               const HighsCallbackDataOut *data_out,
+               HighsCallbackDataIn *data_in, void *user_data) {
+              auto *d = static_cast<LPInterruptData *>(user_data);
+              auto iter =
+                  static_cast<std::size_t>(data_out->simplex_iteration_count);
+              if (iter - d->last_interrupt_iter >= d->interval) {
+                d->last_interrupt_iter = iter;
+                data_in->user_interrupt = 1;
+              }
+            },
+            &cb_data);
+        _highs->startCallback(kCallbackSimplexInterrupt);
+      }
+
+      bool user_stopped = false;
+      auto run_lp_with_callbacks = [this, &user_stopped]() -> bool {
+        while (true) {
+          _highs->run();
+          auto ms = _highs->getModelStatus();
+          if (ms == HighsModelStatus::kOptimal)
+            return true;
+
+          if (_lp_callback_interval == 0 ||
+              ms == HighsModelStatus::kInfeasible ||
+              ms == HighsModelStatus::kUnbounded ||
+              ms == HighsModelStatus::kSolveError) {
+            return false;
+          }
+
+          extract_solution();
+          _last_callback_event = LPCallbackEvent::LPProgress;
+          if (_callback(*this, _domain)) {
+            user_stopped = true;
+            return true;
+          }
+        }
+      };
+
+      if (!run_lp_with_callbacks() && !user_stopped) {
         _highs->clearSolver();
-        _highs->run();
+        if (!run_lp_with_callbacks() && !user_stopped) {
+          init_lp(s);
+          if (!run_lp_with_callbacks() && !user_stopped) {
+            throw std::runtime_error(
+                "IDual LP not optimal: " +
+                _highs->modelStatusToString(_highs->getModelStatus()));
+          }
+        }
       }
-      if (_highs->getModelStatus() != HighsModelStatus::kOptimal) {
-        // Accumulated numerical issues; rebuild LP from scratch.
-        init_lp(s);
-        _highs->run();
+
+      if (_lp_callback_interval > 0) {
+        _highs->stopCallback(kCallbackSimplexInterrupt);
       }
-      HighsModelStatus model_status = _highs->getModelStatus();
-      if (model_status != HighsModelStatus::kOptimal) {
-        throw std::runtime_error("IDual LP not optimal: " +
-                                 _highs->modelStatusToString(model_status));
+
+      if (user_stopped) {
+        Logger::info("IDual interrupted by callback during LP solve");
+        break;
       }
 
       extract_solution();
       _nb_lp_iterations++;
 
+      _last_callback_event = LPCallbackEvent::SolverIteration;
       if (_callback(*this, _domain)) {
         Logger::info("IDual interrupted by callback");
         break;
@@ -694,6 +750,26 @@ SK_IDUAL_CLASS::get_explored_states() const {
     explored.insert(sn.state);
   }
   return explored;
+}
+
+SK_IDUAL_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_IDUAL_CLASS> SK_IDUAL_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> goal_checker,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> terminal_value, const Params &params,
+    bool verbose) {
+  return std::make_unique<IDualSolver>(
+      domain, goal_checker, heuristic, terminal_value,
+      SecondaryHeuristicFunctor(nullptr), std::vector<double>{},
+      params.template get<double>("epsilon", 0.001),
+      params.template get<double>("lp_infinity", 1e20),
+      params.template get<double>("lp_tolerance", 1e-15),
+      params.template get<double>("default_dead_end_cost", 1000.0),
+      std::size_t(0),
+      CallbackFunctor([](const IDualSolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose));
 }
 
 } // namespace skdecide

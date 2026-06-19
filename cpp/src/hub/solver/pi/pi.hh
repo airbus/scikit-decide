@@ -73,6 +73,31 @@ public:
   typedef std::function<Action(Domain &, const State &)> InitialPolicyFunctor;
   typedef std::function<bool(const PISolver &, Domain &)> CallbackFunctor;
 
+  /**
+   * @brief Construct a Policy Iteration solver.
+   *
+   * @param domain The MDP domain to solve.
+   * @param heuristic Functor h(domain, state) -> Value used to initialize
+   *   V(s) = h(s).reward() during state enumeration (non-standard warm-start).
+   *   Defaults to Value(reward=0) = standard PI.
+   * @param terminal_value Functor f(state) -> Value assigning a fixed value to
+   *   terminal (absorbing) states. Use Value(reward=0) for goal-like terminals
+   *   and a large negative reward for dead-end-like terminals. Defaults to
+   *   Value(0.0, true).
+   * @param initial_policy Optional functor pi(domain, state) -> action to seed
+   *   the initial policy. When provided, each state's policy is initialized to
+   *   the returned action (falling back to the first applicable action if not
+   *   applicable). Defaults to nullptr (first applicable action).
+   * @param discount Discount factor gamma in [0, 1]. Defaults to 0.999.
+   * @param epsilon Maximum Bellman residual for policy evaluation convergence.
+   *   Defaults to 0.001.
+   * @param max_eval_sweeps Maximum Gauss-Seidel sweeps per policy evaluation
+   *   phase. 0 means unlimited (exact evaluation). A positive value yields
+   *   modified policy iteration, useful when discount=1.0. Defaults to 0.
+   * @param callback Functor called at the end of each evaluate/improve
+   *   iteration; return true to stop early. Defaults to never stop.
+   * @param verbose Whether to log progress messages. Defaults to false.
+   */
   PISolver(
       Domain &domain, const HeuristicFunctor &heuristic,
       const TerminalValueFunctor &terminal_value =
@@ -110,6 +135,14 @@ public:
    * @param dead_end_cost Cost value to assign to the dead-end state
    */
   void set_state_dead_end(const State &s, double dead_end_cost);
+
+  template <typename Params>
+  static std::unique_ptr<PISolver> create_from_params(
+      Domain &domain,
+      std::function<Predicate(Domain &, const State &)> goal_checker,
+      std::function<Value(Domain &, const State &)> heuristic,
+      std::function<Value(const State &)> terminal_value, const Params &params,
+      bool verbose);
 
 private:
   typedef typename ExecutionPolicy::template atomic<double> atomic_double;

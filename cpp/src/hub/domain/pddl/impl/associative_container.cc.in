@@ -1,0 +1,10 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/problem.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/class.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/function.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/derived_predicate.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/associative_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/associative_container_impl.hh"
+
+template class skdecide::pddl::AssociativeContainer<skdecide::pddl::${Tderived},
+                                                    skdecide::pddl::${Tsymbol}>;

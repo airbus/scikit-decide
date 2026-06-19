@@ -534,6 +534,37 @@ SK_LDFS_SOLVER_CLASS::policy() const {
 #define SK_IDASTAR_SOLVER_CLASS IDAstarSolver<Tdomain, Texecution_policy>
 
 SK_IDASTAR_SOLVER_TEMPLATE_DECL
+SK_IDASTAR_SOLVER_CLASS::IDAstarSolver(
+    Tdomain &domain,
+    const typename SK_IDASTAR_SOLVER_CLASS::GoalCheckerFunctor &goal_checker,
+    const typename SK_IDASTAR_SOLVER_CLASS::HeuristicFunctor &heuristic,
+    std::size_t max_depth,
+    const typename SK_IDASTAR_SOLVER_CLASS::CallbackFunctor &callback,
+    bool verbose)
+    : Base(
+          domain, goal_checker, heuristic,
+          [](const typename Tdomain::State &) {
+            return typename Tdomain::Value(0.0, false);
+          },
+          1.0, 0.0, max_depth, callback, verbose) {}
+
+SK_IDASTAR_SOLVER_TEMPLATE_DECL
+SK_IDASTAR_SOLVER_CLASS::IDAstarSolver(
+    Tdomain &domain,
+    const typename SK_IDASTAR_SOLVER_CLASS::GoalCheckerFunctor &goal_checker,
+    const typename SK_IDASTAR_SOLVER_CLASS::HeuristicFunctor &heuristic,
+    const typename SK_IDASTAR_SOLVER_CLASS::Base::TerminalValueFunctor &,
+    double, double, std::size_t max_depth,
+    const typename SK_IDASTAR_SOLVER_CLASS::CallbackFunctor &callback,
+    bool verbose)
+    : Base(
+          domain, goal_checker, heuristic,
+          [](const typename Tdomain::State &) {
+            return typename Tdomain::Value(0.0, false);
+          },
+          1.0, 0.0, max_depth, callback, verbose) {}
+
+SK_IDASTAR_SOLVER_TEMPLATE_DECL
 std::vector<typename Tdomain::Action>
 SK_IDASTAR_SOLVER_CLASS::get_plan(const typename Tdomain::State &s) const {
   typedef typename Tdomain::Action Action;
@@ -554,6 +585,23 @@ SK_IDASTAR_SOLVER_CLASS::get_plan(const typename Tdomain::State &s) const {
     si = this->_graph.find(next->state);
   }
   return plan;
+}
+
+SK_LDFS_SOLVER_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_LDFS_SOLVER_CLASS> SK_LDFS_SOLVER_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> goal_checker,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> terminal_value, const Params &params,
+    bool verbose) {
+  return std::make_unique<LDFSSolver>(
+      domain, goal_checker, heuristic, terminal_value,
+      params.template get<double>("discount", 1.0),
+      params.template get<double>("epsilon", 0.001),
+      params.template get<std::size_t>("max_depth", 0),
+      CallbackFunctor([](const LDFSSolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose));
 }
 
 } // namespace skdecide

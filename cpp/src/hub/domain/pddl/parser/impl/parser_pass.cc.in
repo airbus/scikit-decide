@@ -1,0 +1,10 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/parser/impl/parser_pass_impl.hh"
+
+template struct skdecide::pddl::parser::ParsePass<
+    skdecide::pddl::parser::${TgrammarTag},
+    skdecide::pddl::parser::${TcontrolTag}>;

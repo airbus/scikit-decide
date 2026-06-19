@@ -216,7 +216,7 @@ class TestSSiPP:
             domain_factory=lambda: DeterministicGridDomain(),
             heuristic=h,
             depth=3,
-            inner_solver=inner_solver,
+            inner_solver_factory=lambda name=inner_solver: (name, {}),
         ) as solver:
             solver.solve()
             actions, cost, final = rollout(dom, solver)
@@ -235,7 +235,7 @@ class TestSSiPP:
             domain_factory=lambda: StochasticGridDomain(),
             heuristic=h,
             depth=4,
-            inner_solver="LRTDP",
+            inner_solver_factory=lambda: ("LRTDP", {}),
         ) as solver:
             solver.solve()
             reached_goal = 0
@@ -330,7 +330,7 @@ class TestSSiPP:
             domain_factory=lambda: DeterministicGridDomain(),
             heuristic=h,
             depth=3,
-            inner_solver="LRTDP",
+            inner_solver_factory=lambda: ("LRTDP", {}),
         ) as ssipp:
             for _ in range(20):
                 ssipp.solve()
@@ -363,7 +363,7 @@ class TestSSiPP:
             domain_factory=lambda: StochasticGridDomain(),
             heuristic=h,
             depth=4,
-            inner_solver="LRTDP",
+            inner_solver_factory=lambda: ("LRTDP", {}),
         ) as ssipp:
             for _ in range(50):
                 ssipp.solve()

@@ -82,6 +82,7 @@ try:
             max_sample_depth: int = 100,
             max_vi_iterations: int = 1000,
             vi_convergence_factor: float = 0.01,
+            belief_hash_resolution: float = 1000.0,
             parallel: bool = False,
             callback: Callable[[HSVI], bool] = lambda slv: False,
             verbose: bool = False,
@@ -100,6 +101,9 @@ try:
                 Defaults to 1000.
             vi_convergence_factor: Convergence factor for initialization VI.
                 Defaults to 0.01.
+            belief_hash_resolution: Discretization factor for belief hashing.
+                Probabilities are multiplied by this value and rounded to
+                integers for hash computation. Defaults to 1000.0.
             parallel: Whether to use parallel C++ computation. Defaults to False.
             callback: Function called at each iteration. Return True to stop.
                 Defaults to never stop.
@@ -120,6 +124,7 @@ try:
                 depth_bound_eta=0.1,
                 max_vi_iterations=max_vi_iterations,
                 vi_convergence_factor=vi_convergence_factor,
+                belief_hash_resolution=belief_hash_resolution,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -246,6 +251,7 @@ try:
             depth_bound_eta: float = 0.1,
             max_vi_iterations: int = 1000,
             vi_convergence_factor: float = 0.01,
+            belief_hash_resolution: float = 1000.0,
             parallel: bool = False,
             callback: Callable[[GoalHSVI], bool] = lambda slv: False,
             verbose: bool = False,
@@ -270,6 +276,9 @@ try:
                 Defaults to 1000.
             vi_convergence_factor: Convergence factor for initialization VI.
                 Defaults to 0.01.
+            belief_hash_resolution: Discretization factor for belief hashing.
+                Probabilities are multiplied by this value and rounded to
+                integers for hash computation. Defaults to 1000.0.
             parallel: Whether to use parallel C++ computation. Defaults to False.
             callback: Function called at each iteration. Return True to stop.
                 Defaults to never stop.
@@ -296,6 +305,7 @@ try:
                 depth_bound_eta=depth_bound_eta,
                 max_vi_iterations=max_vi_iterations,
                 vi_convergence_factor=vi_convergence_factor,
+                belief_hash_resolution=belief_hash_resolution,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,

@@ -1,0 +1,8 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/equality_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/function_expression.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/predicate_effect.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/predicate_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/term_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/term_container_impl.hh"
+
+template class skdecide::pddl::TermContainer<skdecide::pddl::${Tderived}>;

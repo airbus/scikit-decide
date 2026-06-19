@@ -27,6 +27,14 @@ void init_pyfret(py::module &m);
 void init_pygpci(py::module &m);
 void init_pysarsop(py::module &m);
 void init_pydespot(py::module &m);
+void init_pyehc(py::module &m);
+void init_pyff(py::module &m);
+void init_pyppddlreplan(py::module &m);
+void init_pyppddldethindsight(py::module &m);
+void init_pysspreplan(py::module &m);
+void init_pysspdethindsight(py::module &m);
+void init_pysspplanmerger(py::module &m);
+void init_pyppddlplanmerger(py::module &m);
 void init_pyhsvi(py::module &m);
 void init_pypomcp(py::module &m);
 #ifdef HAS_HIGHS
@@ -34,6 +42,7 @@ void init_pymdplp(py::module &m);
 void init_pyidual(py::module &m);
 void init_pywitness(py::module &m);
 #endif
+void init_pypddl(py::module &m);
 
 PYBIND11_MODULE(__skdecide_hub_cpp, m) {
   skdecide::Globals::init();
@@ -55,6 +64,14 @@ PYBIND11_MODULE(__skdecide_hub_cpp, m) {
   init_pygpci(m);
   init_pysarsop(m);
   init_pydespot(m);
+  init_pyehc(m);
+  init_pyff(m);
+  init_pyppddlreplan(m);
+  init_pyppddldethindsight(m);
+  init_pysspreplan(m);
+  init_pysspdethindsight(m);
+  init_pysspplanmerger(m);
+  init_pyppddlplanmerger(m);
   init_pyhsvi(m);
   init_pypomcp(m);
 #ifdef HAS_HIGHS
@@ -62,4 +79,5 @@ PYBIND11_MODULE(__skdecide_hub_cpp, m) {
   init_pyidual(m);
   init_pywitness(m);
 #endif
+  init_pypddl(m);
 }

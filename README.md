@@ -53,18 +53,27 @@ This framework was initiated at [Airbus](https://www.airbus.com) AI Research and
   - Planning solvers from [unified-planning](https://github.com/aiplan4eu/unified-planning) library
   - RDDL solvers jax and gurobi-based based on pyRDDLGym-jax and pyRDDLGym-gurobi from [pyrddl-gym project](https://github.com/pyrddlgym-project)
   - Search solvers coded in scikit-decide library:
-    - A*
-    - AO*
-    - Improved-LAO*
-    - Learning Real-Time A*
-    - Best First Width Search
-    - Labeled RTDP
-    - Multi-Agent RTDP
-    - Iterated Width search (IW)
-    - Rollout IW (RIW)
-    - Partially-Observable Monte Carlo Planning (POMCP)
-    - Monte Carlo Tree Search Methods (MCTS)
-    - Multi-Agent Heuristic meta-solver (MAHD)
+    - A*, AO*, Improved-LAO*
+    - Value Iteration (VI), Policy Iteration (PI)
+    - Labeled RTDP, Learning Real-Time A*
+    - LDFS (Label-correcting Depth-First Search), Iterative Deepening A*
+    - SSiPP (Short-Sighted Planning), FRET (Find, Revise, Eliminate Traps)
+    - iDual (LP-based SSP solver), Goal Probability and Cost Iteration (GPCI)
+    - Best First Width Search, Iterated Width (IW), Rollout IW (RIW)
+    - Monte Carlo Tree Search (MCTS), POMCP
+    - DESPOT, SARSOP, Witness (POMDP solvers)
+    - RTDP-Bel (belief-space RTDP), HSVI / GoalHSVI
+    - SSPReplan, SSPDetHindsight, SSPPlanMerger (determinization approaches)
+    - Multi-Agent RTDP, Multi-Agent Heuristic meta-solver (MAHD)
+  - (Probabilistic) PDDL (PPDDL) solvers:
+    - FF planner
+    - FFReplan / PPDDLReplan (replanning with pluggable inner solvers)
+    - FFDetHindsight / PPDDLDetHindsight (determinization in hindsight)
+    - RFF / PPDDLPlanMerger (plan aggregation into a policy)
+  - PDDL heuristics (with their probabilistic extensions):
+    - Delete-Relaxation heuristics
+    - FF Heuristic
+  - PDDL+ parser with Probabilistic PDDL extensions
   - Evolution strategy: Cartesian Genetic Programming (CGP)
   - Scheduling solvers from [discrete-optimization](https://airbus.github.io/discrete-optimization),
     - itself wrapping [ortools](https://developers.google.com/optimization), [gurobi](https://www.gurobi.com/),

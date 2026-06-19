@@ -1,0 +1,4 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/aggregation_effect.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/aggregation_effect_impl.hh"
+
+template class skdecide::pddl::AggregationEffect<skdecide::pddl::${Tderived}>;

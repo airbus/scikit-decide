@@ -19,3 +19,9 @@
 [submodule "cpp/sdk/spdlog"]
 	path = cpp/sdk/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "cpp/sdk/PEGTL"]
+	path = cpp/sdk/PEGTL
+	url = https://github.com/taocpp/PEGTL.git
+[submodule "cpp/tests/data/pddl"]
+	path = cpp/tests/data/pddl
+	url = https://github.com/fteicht/pddl-instances.git

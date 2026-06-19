@@ -40,6 +40,7 @@ private:
     virtual py::int_ get_nb_lp_constraints() = 0;
     virtual py::int_ get_solving_time() = 0;
     virtual py::set get_explored_states() = 0;
+    virtual py::str get_callback_event() = 0;
   };
 
   template <typename Texecution>
@@ -56,7 +57,7 @@ private:
             &heuristic,
         const std::function<py::object(const py::object &)> &terminal_value,
         const std::string &variant_str, double discount, double epsilon,
-        double lp_infinity,
+        double lp_infinity, std::size_t lp_callback_interval,
         const std::function<py::bool_(const py::object &)> &callback,
         bool verbose)
         : _heuristic(heuristic), _terminal_value(terminal_value),
@@ -94,6 +95,7 @@ private:
             }
           },
           lp_variant_from_string(variant_str), discount, epsilon, lp_infinity,
+          lp_callback_interval,
           [this](const MDPLPSolver<Domain, Texecution> &, Domain &) -> bool {
             if (_callback) {
               try {
@@ -165,6 +167,18 @@ private:
       }
       return s;
     }
+    virtual py::str get_callback_event() {
+      using LPCallbackEvent =
+          typename MDPLPSolver<Domain, Texecution>::LPCallbackEvent;
+      switch (_solver->get_callback_event()) {
+      case LPCallbackEvent::SolverIteration:
+        return py::str("SolverIteration");
+      case LPCallbackEvent::LPProgress:
+        return py::str("LPProgress");
+      default:
+        return py::str("Unknown");
+      }
+    }
 
   private:
     std::unique_ptr<py::object> _pysolver;
@@ -217,13 +231,15 @@ public:
           &heuristic,
       const std::function<py::object(const py::object &)> &terminal_value,
       const std::string &variant = "dual", double discount = 0.99,
-      double epsilon = 0.001, double lp_infinity = 1e20, bool parallel = false,
+      double epsilon = 0.001, double lp_infinity = 1e20,
+      std::size_t lp_callback_interval = 0, bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, heuristic, terminal_value, variant,
-                     discount, epsilon, lp_infinity, callback, verbose);
+                     discount, epsilon, lp_infinity, lp_callback_interval,
+                     callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -253,6 +269,7 @@ public:
   py::set get_explored_states() {
     return _implementation->get_explored_states();
   }
+  py::str get_callback_event() { return _implementation->get_callback_event(); }
 };
 
 // =========================================================================
@@ -275,6 +292,7 @@ private:
     virtual py::int_ get_nb_lp_constraints() = 0;
     virtual py::int_ get_solving_time() = 0;
     virtual py::set get_explored_states() = 0;
+    virtual py::str get_callback_event() = 0;
   };
 
   template <typename Texecution>
@@ -293,6 +311,7 @@ private:
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
         const std::string &variant_str, double epsilon, double lp_infinity,
+        std::size_t lp_callback_interval,
         const std::function<py::bool_(const py::object &)> &callback,
         bool verbose)
         : _goal_checker(goal_checker), _heuristic(heuristic),
@@ -335,6 +354,7 @@ private:
             }
           },
           lp_variant_from_string(variant_str), epsilon, lp_infinity,
+          lp_callback_interval,
           [this](const SSPLPSolver<Domain, Texecution> &, Domain &) -> bool {
             if (_callback) {
               try {
@@ -406,6 +426,18 @@ private:
       }
       return s;
     }
+    virtual py::str get_callback_event() {
+      using LPCallbackEvent =
+          typename SSPLPSolver<Domain, Texecution>::LPCallbackEvent;
+      switch (_solver->get_callback_event()) {
+      case LPCallbackEvent::SolverIteration:
+        return py::str("SolverIteration");
+      case LPCallbackEvent::LPProgress:
+        return py::str("LPProgress");
+      default:
+        return py::str("Unknown");
+      }
+    }
 
   private:
     std::unique_ptr<py::object> _pysolver;
@@ -460,13 +492,14 @@ public:
       const std::function<py::object(const py::object &, const py::object &)>
           &heuristic,
       const std::string &variant = "dual", double epsilon = 0.001,
-      double lp_infinity = 1e20, bool parallel = false,
+      double lp_infinity = 1e20, std::size_t lp_callback_interval = 0,
+      bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, goal_checker, heuristic, variant, epsilon,
-                     lp_infinity, callback, verbose);
+                     lp_infinity, lp_callback_interval, callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -496,6 +529,7 @@ public:
   py::set get_explored_states() {
     return _implementation->get_explored_states();
   }
+  py::str get_callback_event() { return _implementation->get_callback_event(); }
 };
 
 } // namespace skdecide

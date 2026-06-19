@@ -1,0 +1,117 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/operator_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/operator_container_impl.hh"
+
+// === ActionContainer implementation ===
+
+template class skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>;
+
+template const skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::ActionPtr &
+skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::add_action(
+    const skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::ActionPtr &op);
+
+template const skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::ActionPtr &
+skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::add_action(
+    const std::string &op);
+
+template void
+skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::remove_action(
+    const skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::ActionPtr &op);
+
+template void
+skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::remove_action(
+    const std::string &op);
+
+template const skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::ActionPtr &
+skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::get_action(
+    const skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::ActionPtr &op) const;
+
+template const skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::ActionPtr &
+skdecide::pddl::ActionContainer<skdecide::pddl::${Tderived}>::get_action(
+    const std::string &op) const;
+
+// === DurativeActionContainer implementation ===
+
+template class skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>;
+
+template const skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::DurativeActionPtr &
+skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::
+    add_durative_action(const skdecide::pddl::DurativeActionContainer<
+                        skdecide::pddl::${Tderived}>::DurativeActionPtr &op);
+
+template const skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::DurativeActionPtr &
+skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::add_durative_action(const std::string &op);
+
+template void
+skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::
+    remove_durative_action(const skdecide::pddl::DurativeActionContainer<
+                           skdecide::pddl::${Tderived}>::DurativeActionPtr &op);
+
+template void skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::remove_durative_action(const std::string &op);
+
+template const skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::DurativeActionPtr &
+skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::
+    get_durative_action(
+        const skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::DurativeActionPtr &op) const;
+
+template const skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::DurativeActionPtr &
+skdecide::pddl::DurativeActionContainer<skdecide::pddl::${Tderived}>::get_durative_action(const std::string &op) const;
+
+// === EventContainer implementation ===
+
+template class skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>;
+
+template const skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::EventPtr &
+skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::add_event(
+    const skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::EventPtr
+        &op);
+
+template const skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::EventPtr &
+skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::add_event(
+    const std::string &op);
+
+template void
+skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::remove_event(
+    const skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::EventPtr
+        &op);
+
+template void
+skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::remove_event(
+    const std::string &op);
+
+template const skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::EventPtr &
+skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::get_event(
+    const skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::EventPtr
+        &op) const;
+
+template const skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::EventPtr &
+skdecide::pddl::EventContainer<skdecide::pddl::${Tderived}>::get_event(
+    const std::string &op) const;
+
+// === ProcessContainer implementation ===
+
+template class skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>;
+
+template const skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::ProcessPtr &
+skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::add_process(
+    const skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::ProcessPtr &op);
+
+template const skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::ProcessPtr &
+skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::add_process(
+    const std::string &op);
+
+template void
+skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::remove_process(
+    const skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::ProcessPtr &op);
+
+template void
+skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::remove_process(
+    const std::string &op);
+
+template const skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::ProcessPtr &
+skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::get_process(
+    const skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::ProcessPtr &op) const;
+
+template const skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::ProcessPtr &
+skdecide::pddl::ProcessContainer<skdecide::pddl::${Tderived}>::get_process(
+    const std::string &op) const;

@@ -69,6 +69,25 @@ public:
   typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const VISolver &, Domain &)> CallbackFunctor;
 
+  /**
+   * @brief Construct a Value Iteration solver.
+   *
+   * @param domain The MDP domain to solve.
+   * @param heuristic Functor h(domain, state) -> Value used to initialize
+   *   V(s) = h(s).reward() during state enumeration (non-standard warm-start).
+   *   When admissible, preserves correctness and accelerates convergence.
+   * @param terminal_value Functor f(state) -> Value assigning a fixed value to
+   *   terminal (absorbing) states. Use Value(reward=0) for goal-like terminals
+   *   and a large negative reward for dead-end-like terminals. Defaults to
+   *   Value(0.0, true).
+   * @param discount Discount factor gamma in [0, 1]. Defaults to 0.999.
+   * @param epsilon Maximum Bellman residual for convergence. Defaults to 0.001.
+   * @param max_sweeps Maximum number of Bellman sweeps. 0 means unlimited.
+   *   Useful when discount=1.0 to prevent divergence. Defaults to 0.
+   * @param callback Functor called at the end of each Bellman sweep; return
+   *   true to stop early. Defaults to never stop.
+   * @param verbose Whether to log progress messages. Defaults to false.
+   */
   VISolver(
       Domain &domain, const HeuristicFunctor &heuristic,
       const TerminalValueFunctor &terminal_value =
@@ -94,6 +113,14 @@ public:
   typename SetTypeDeducer<State>::Set get_converged_states() const;
   typename SetTypeDeducer<State>::Set get_states_updated_in_last_sweep() const;
   typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
+
+  template <typename Params>
+  static std::unique_ptr<VISolver> create_from_params(
+      Domain &domain,
+      std::function<Predicate(Domain &, const State &)> goal_checker,
+      std::function<Value(Domain &, const State &)> heuristic,
+      std::function<Value(const State &)> terminal_value, const Params &params,
+      bool verbose);
 
 private:
   typedef typename ExecutionPolicy::template atomic<double> atomic_double;

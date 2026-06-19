@@ -44,6 +44,7 @@ private:
     virtual py::int_ get_nb_alpha_vectors() = 0;
     virtual py::int_ get_nb_iterations() = 0;
     virtual py::int_ get_solving_time() = 0;
+    virtual py::str get_callback_event() = 0;
   };
 
   template <typename Texecution>
@@ -52,7 +53,7 @@ private:
     Implementation(
         py::object &solver, py::object &domain, double epsilon = 0.001,
         double discount = 0.95, std::size_t max_iterations = 100,
-        double lp_infinity = 1e20,
+        double lp_infinity = 1e20, double lp_tolerance = 1e-10,
         const std::function<py::bool_(const py::object &)> &callback = nullptr,
         bool verbose = false)
         : _callback(callback) {
@@ -62,6 +63,7 @@ private:
       _solver = std::make_unique<
           WitnessSolver<PyWitnessDomain<Texecution>, Texecution>>(
           *_domain, epsilon, discount, max_iterations, lp_infinity,
+          lp_tolerance,
           [this](
               const WitnessSolver<PyWitnessDomain<Texecution>, Texecution> &s,
               PyWitnessDomain<Texecution> &d) -> bool {
@@ -173,6 +175,20 @@ private:
 
     virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
 
+    virtual py::str get_callback_event() {
+      using LPCallbackEvent =
+          typename WitnessSolver<PyWitnessDomain<Texecution>,
+                                 Texecution>::LPCallbackEvent;
+      switch (_solver->get_callback_event()) {
+      case LPCallbackEvent::SolverIteration:
+        return py::str("SolverIteration");
+      case LPCallbackEvent::LPProgress:
+        return py::str("LPProgress");
+      default:
+        return py::str("Unknown");
+      }
+    }
+
   private:
     typedef WitnessSolver<PyWitnessDomain<Texecution>, Texecution> SolverType;
 
@@ -233,13 +249,14 @@ public:
   PyWitnessSolver(
       py::object &solver, py::object &domain, double epsilon = 0.001,
       double discount = 0.95, std::size_t max_iterations = 100,
-      double lp_infinity = 1e20, bool parallel = false,
+      double lp_infinity = 1e20, double lp_tolerance = 1e-10,
+      bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, epsilon, discount, max_iterations,
-                     lp_infinity, callback, verbose);
+                     lp_infinity, lp_tolerance, callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -278,6 +295,7 @@ public:
 
   py::int_ get_nb_iterations() { return _implementation->get_nb_iterations(); }
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
+  py::str get_callback_event() { return _implementation->get_callback_event(); }
 };
 
 } // namespace skdecide

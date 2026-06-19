@@ -30,11 +30,12 @@ namespace skdecide {
 SK_WITNESS_TEMPLATE_DECL
 SK_WITNESS_CLASS::WitnessSolver(Domain &domain, double epsilon, double discount,
                                 std::size_t max_iterations, double lp_infinity,
+                                double lp_tolerance,
                                 const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _epsilon(epsilon), _discount(discount),
       _max_iterations(max_iterations), _lp_infinity(lp_infinity),
-      _callback(callback), _verbose(verbose), _has_solution(false),
-      _nb_iterations(0), _solving_time(0) {
+      _lp_tolerance(lp_tolerance), _callback(callback), _verbose(verbose),
+      _has_solution(false), _nb_iterations(0), _solving_time(0) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm Witness");
   }
@@ -339,10 +340,11 @@ typename SK_WITNESS_CLASS::AlphaVector SK_WITNESS_CLASS::besttree(
 
     for (std::size_t ai = 0; ai < num_alphas; ++ai) {
       double val = dot_product_dense(b_dense, back_vecs[ai][op]);
-      if (val > best_val + 1e-12) {
+      if (val > best_val + _lp_tolerance * 1e-2) {
         best_val = val;
         best_idx = ai;
-      } else if (std::abs(val - best_val) <= 1e-12 && ai < best_idx) {
+      } else if (std::abs(val - best_val) <= _lp_tolerance * 1e-2 &&
+                 ai < best_idx) {
         best_idx = ai;
       }
     }
@@ -432,7 +434,7 @@ std::vector<double> SK_WITNESS_CLASS::findb(
         for (std::size_t s = 0; s < ns; ++s) {
           beta[s] =
               back_vecs[alpha_idx][op][s] - back_vecs[current_choice][op][s];
-          if (std::abs(beta[s]) > 1e-12)
+          if (std::abs(beta[s]) > _lp_tolerance * 1e-2)
             all_zero = false;
           sigma[s] = region_q.values[s] + _discount * beta[s];
         }
@@ -461,7 +463,7 @@ std::vector<double> SK_WITNESS_CLASS::findb(
           for (std::size_t s = 0; s < ns; ++s) {
             obj += beta[s] * sol[s];
           }
-          if (obj > 1e-10) {
+          if (obj > _lp_tolerance) {
             return std::vector<double>(sol.begin(), sol.begin() + ns);
           }
         }
@@ -589,7 +591,7 @@ SK_WITNESS_CLASS::purge(const std::vector<AlphaVector> &v) const {
     bool dominated = true;
     if (highs.getModelStatus() == HighsModelStatus::kOptimal) {
       double delta = highs.getSolution().col_value[ns];
-      if (delta > -1e-10) {
+      if (delta > -_lp_tolerance) {
         dominated = false;
       }
     } else if (highs.getModelStatus() == HighsModelStatus::kUnbounded) {

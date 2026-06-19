@@ -1,0 +1,46 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/operator_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/operator_container_impl.hh"
+
+// === OperatorContainer implementation ===
+
+template class skdecide::pddl::OperatorContainer<skdecide::pddl::${Tderived},
+                                                 skdecide::pddl::${Toperator}>;
+
+template const skdecide::pddl::OperatorContainer<
+    skdecide::pddl::${Tderived}, skdecide::pddl::${Toperator}>::OperatorPtr &
+skdecide::pddl::OperatorContainer<skdecide::pddl::${Tderived},
+                                  skdecide::pddl::${Toperator}>::
+    add_operator(const skdecide::pddl::OperatorContainer<
+                 skdecide::pddl::${Tderived},
+                 skdecide::pddl::${Toperator}>::OperatorPtr &op);
+
+template const skdecide::pddl::OperatorContainer<
+    skdecide::pddl::${Tderived}, skdecide::pddl::${Toperator}>::OperatorPtr &
+skdecide::pddl::OperatorContainer<
+    skdecide::pddl::${Tderived},
+    skdecide::pddl::${Toperator}>::add_operator(const std::string &op);
+
+template void skdecide::pddl::OperatorContainer<skdecide::pddl::${Tderived},
+                                                skdecide::pddl::${Toperator}>::
+    remove_operator(const skdecide::pddl::OperatorContainer<
+                    skdecide::pddl::${Tderived},
+                    skdecide::pddl::${Toperator}>::OperatorPtr &op);
+
+template void skdecide::pddl::OperatorContainer<
+    skdecide::pddl::${Tderived},
+    skdecide::pddl::${Toperator}>::remove_operator(const std::string &op);
+
+template const skdecide::pddl::OperatorContainer<
+    skdecide::pddl::${Tderived}, skdecide::pddl::${Toperator}>::OperatorPtr &
+skdecide::pddl::OperatorContainer<skdecide::pddl::${Tderived},
+                                  skdecide::pddl::${Toperator}>::
+    get_operator(const skdecide::pddl::OperatorContainer<
+                 skdecide::pddl::${Tderived},
+                 skdecide::pddl::${Toperator}>::OperatorPtr &op) const;
+
+template const skdecide::pddl::OperatorContainer<
+    skdecide::pddl::${Tderived}, skdecide::pddl::${Toperator}>::OperatorPtr &
+skdecide::pddl::OperatorContainer<
+    skdecide::pddl::${Tderived},
+    skdecide::pddl::${Toperator}>::get_operator(const std::string &op) const;

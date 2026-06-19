@@ -72,6 +72,7 @@ try:
             discount: float = 0.95,
             max_rollout_depth: int = 90,
             num_particles_belief_update: int = 500,
+            ess_threshold_ratio: float = 2.0,
             default_policy: Optional[Callable[[Domain, object], Value]] = None,
             upper_bound_heuristic: Optional[Callable[[Domain, object], Value]] = None,
             parallel: bool = False,
@@ -102,6 +103,9 @@ try:
                 Defaults to 90.
             num_particles_belief_update: Number of particles for belief
                 update via particle filter. Defaults to 500.
+            ess_threshold_ratio: Effective sample size threshold for
+                resampling. Resampling occurs when ESS < N / ratio.
+                Defaults to 2.0.
             default_policy: Optional function (domain, state) -> Value
                 providing a lower bound via a default policy. If None,
                 random rollouts are used. Defaults to None.
@@ -136,6 +140,7 @@ try:
                 discount=discount,
                 max_rollout_depth=max_rollout_depth,
                 num_particles_belief_update=num_particles_belief_update,
+                ess_threshold_ratio=ess_threshold_ratio,
                 default_policy=default_policy,
                 upper_bound_heuristic=upper_bound_heuristic,
                 parallel=parallel,

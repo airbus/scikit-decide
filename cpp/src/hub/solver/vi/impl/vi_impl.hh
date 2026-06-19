@@ -382,6 +382,23 @@ SK_VI_SOLVER_CLASS::policy() const {
   return p;
 }
 
+SK_VI_SOLVER_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_VI_SOLVER_CLASS> SK_VI_SOLVER_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> /*goal_checker*/,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> terminal_value, const Params &params,
+    bool verbose) {
+  return std::make_unique<VISolver>(
+      domain, heuristic, terminal_value,
+      params.template get<double>("discount", 1.0),
+      params.template get<double>("epsilon", 0.001),
+      params.template get<std::size_t>("max_sweeps", 0),
+      CallbackFunctor([](const VISolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose));
+}
+
 } // namespace skdecide
 
 #endif // SKDECIDE_VI_IMPL_HH

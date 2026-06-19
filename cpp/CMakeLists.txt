@@ -17,16 +17,20 @@ SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-IF (NOT WIN32 AND NOT CYGWIN)
+IF(NOT WIN32 AND NOT CYGWIN)
     SET(CMAKE_CXX_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS}")
-ENDIF ()
+ENDIF()
 
-IF ((CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") AND (MSVC_VERSION GREATER_EQUAL 1928))
+IF((CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") AND(MSVC_VERSION GREATER_EQUAL 1928))
     ADD_COMPILE_OPTIONS($<$<COMPILE_LANGUAGE:CXX>:/Zc:lambda>)
-ENDIF ()
+    ADD_COMPILE_OPTIONS($<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>)
+    ADD_COMPILE_OPTIONS($<$<COMPILE_LANGUAGE:CXX>:/bigobj>)
+ENDIF()
 
 SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 INCLUDE(GenerateTemplateInstantiationFiles)
+INCLUDE(RegisterInnerSolver)
+INCLUDE(RegisterPddlInnerSolver)
 
 SET(LIBS "")
 SET(INTERFACES "")
@@ -35,8 +39,9 @@ SET(INCLUDE_DIRS "")
 SET(MULTITHREADING_FRAMEWORK "OpenMP" CACHE STRING "Multi-threading framework to use (either OpenMP or TBB)")
 IF (MULTITHREADING_FRAMEWORK STREQUAL "OpenMP")
     FIND_PACKAGE(OpenMP)
-    IF (OpenMP_CXX_FOUND)
-        MESSAGE ("Using OpenMP multi-threading support")
+
+    IF(OpenMP_CXX_FOUND)
+        MESSAGE("Using OpenMP multi-threading support")
         SET(HAS_OPENMP True)
         LIST(APPEND LIBS "OpenMP::OpenMP_CXX")
     ELSE ()
@@ -70,6 +75,12 @@ SET(JSON_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/sdk/json/single_include/nlohmann)
 ADD_SUBDIRECTORY(sdk/json)
 LIST(APPEND INCLUDE_DIRS "${JSON_INCLUDE_DIR}")
 
+SET(PEGTL_BUILD_TESTS OFF CACHE BOOL "disable PEGTL tests")
+SET(PEGTL_BUILD_EXAMPLES OFF CACHE BOOL "disable PEGTL examples")
+SET(PEGTL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/sdk/PEGTL/include/tao)
+ADD_SUBDIRECTORY(sdk/PEGTL)
+LIST(APPEND INCLUDE_DIRS "${PEGTL_INCLUDE_DIR}")
+
 SET(SPDLOG_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/sdk/spdlog/include)
 ADD_SUBDIRECTORY(sdk/spdlog)
 LIST(APPEND INCLUDE_DIRS "${SPDLOG_INCLUDE_DIR}")
@@ -95,6 +106,23 @@ SET(BUILD_EXAMPLES OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(highs)
 SET(HAS_HIGHS TRUE)
 MESSAGE(STATUS "HiGHS built from source (static linking)")
+
+# Clingo ASP solver (for PDDL grounding, built from source as static)
+FetchContent_Declare(
+    clingo
+    GIT_REPOSITORY https://github.com/potassco/clingo.git
+    GIT_TAG        v5.8.0
+    GIT_SHALLOW    TRUE
+)
+SET(CLINGO_BUILD_APPS OFF CACHE INTERNAL "")
+SET(CLINGO_BUILD_TESTS OFF CACHE INTERNAL "")
+SET(CLINGO_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+SET(CLINGO_BUILD_WITH_PYTHON OFF CACHE INTERNAL "")
+SET(CLINGO_BUILD_WITH_LUA OFF CACHE INTERNAL "")
+SET(CLINGO_BUILD_SHARED OFF CACHE INTERNAL "")
+SET(CLINGO_BUILD_STATIC ON CACHE INTERNAL "")
+FetchContent_MakeAvailable(clingo)
+MESSAGE(STATUS "Clingo built from source (static linking)")
 
 CMAKE_POLICY(SET CMP0077 NEW)
 SET(NNG_STATIC_LIB ON CACHE INTERNAL "")
@@ -130,7 +158,7 @@ LIST(APPEND INCLUDE_DIRS "${PROJECT_BINARY_DIR}/src")
 ADD_SUBDIRECTORY(src)
 
 # TESTS
-IF (BUILD_TESTS AND NOT ONLY_PYTHON)
-    ENABLE_TESTING()  # leave it outside the 'tests' directory so ctest can find the CTestTestFile.cmake in the top build directory
+IF(BUILD_TESTS AND NOT ONLY_PYTHON)
+    ENABLE_TESTING() # leave it outside the 'tests' directory so ctest can find the CTestTestFile.cmake in the top build directory
     ADD_SUBDIRECTORY(tests)
 ENDIF()

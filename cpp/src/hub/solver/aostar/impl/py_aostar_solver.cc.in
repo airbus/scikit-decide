@@ -7,5 +7,5 @@
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/aostar/impl/aostar_impl.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
 
-template class skdecide::AOStarSolver<skdecide::PythonDomainProxy<${Texecution}>,
-                                      ${Texecution}>;
+template class skdecide::AOStarSolver<
+    skdecide::PythonDomainProxy<${Texecution}>, ${Texecution}>;

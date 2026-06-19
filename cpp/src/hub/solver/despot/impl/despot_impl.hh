@@ -27,22 +27,21 @@ namespace skdecide {
 // --- Constructor ---
 
 SK_DESPOT_TEMPLATE_DECL
-SK_DESPOT_CLASS::DespotSolver(Domain &domain, std::size_t num_scenarios,
-                              std::size_t max_depth,
-                              double regularization_constant,
-                              double gap_reduction_rate, double target_gap,
-                              std::size_t time_budget, double discount,
-                              std::size_t max_rollout_depth,
-                              std::size_t num_particles_belief_update,
-                              const DefaultPolicyFunctor &default_policy,
-                              const UpperBoundFunctor &upper_bound_heuristic,
-                              const CallbackFunctor &callback, bool verbose)
+SK_DESPOT_CLASS::DespotSolver(
+    Domain &domain, std::size_t num_scenarios, std::size_t max_depth,
+    double regularization_constant, double gap_reduction_rate,
+    double target_gap, std::size_t time_budget, double discount,
+    std::size_t max_rollout_depth, std::size_t num_particles_belief_update,
+    double ess_threshold_ratio, const DefaultPolicyFunctor &default_policy,
+    const UpperBoundFunctor &upper_bound_heuristic,
+    const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _num_scenarios(num_scenarios), _max_depth(max_depth),
       _regularization_constant(regularization_constant),
       _gap_reduction_rate(gap_reduction_rate), _target_gap(target_gap),
       _time_budget(time_budget), _discount(discount),
       _max_rollout_depth(max_rollout_depth),
       _num_particles_belief(num_particles_belief_update),
+      _ess_threshold_ratio(ess_threshold_ratio),
       _default_policy(default_policy),
       _upper_bound_heuristic(upper_bound_heuristic), _callback(callback),
       _verbose(verbose), _rng(std::random_device{}()) {
@@ -741,7 +740,7 @@ void SK_DESPOT_CLASS::update_belief_particles(const Observation &obs) {
     }
     ess = 1.0 / ess;
 
-    if (ess < _belief_particles.size() / 2.0) {
+    if (ess < _belief_particles.size() / _ess_threshold_ratio) {
       std::vector<double> weights;
       for (const auto &p : _belief_particles) {
         weights.push_back(p.second);

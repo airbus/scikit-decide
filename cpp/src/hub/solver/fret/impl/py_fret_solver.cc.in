@@ -5,9 +5,11 @@
 
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/fret/fret.hh"
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/fret/impl/fret_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/inner_solver/meta_inner_solver_proxy.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/inner_solver/impl/meta_inner_solver_proxy_impl.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
 
 template class skdecide::FRETSolver<
     skdecide::PythonDomainProxy<skdecide::${Texecution}>,
     skdecide::${Texecution},
-    skdecide::${TinnerSolver}>;
+    skdecide::MetaInnerSolverProxy>;

@@ -71,6 +71,7 @@ try:
             discount: float = 0.95,
             max_iterations: int = 100,
             lp_infinity: float = 1e20,
+            lp_tolerance: float = 1e-10,
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[Witness], bool] = lambda slv: False,
@@ -88,6 +89,8 @@ try:
                 Defaults to 100.
             lp_infinity: Upper bound used for LP variable bounds with
                 HiGHS. Defaults to 1e20.
+            lp_tolerance: Numerical tolerance for LP feasibility checks
+                and alpha-vector comparisons. Defaults to 1e-10.
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy.
                 Defaults to None.
@@ -111,6 +114,7 @@ try:
                 discount=discount,
                 max_iterations=max_iterations,
                 lp_infinity=lp_infinity,
+                lp_tolerance=lp_tolerance,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -207,6 +211,9 @@ try:
         def get_solving_time(self) -> int:
             """Get the solving time in milliseconds."""
             return self._solver.get_solving_time()
+
+        def get_callback_event(self) -> str:
+            return self._solver.get_callback_event()
 
 except ImportError:
     print(

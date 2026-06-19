@@ -1,0 +1,8 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/object.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/type.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/variable.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/type_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/type_container_impl.hh"
+
+template class skdecide::pddl::TypeContainer<skdecide::pddl::${Tderived}>;

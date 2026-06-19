@@ -20,6 +20,7 @@
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
 #include "utils/logging.hh"
+#include "hub/solver/inner_solver/inner_solver_traits.hh"
 
 namespace skdecide {
 
@@ -217,6 +218,14 @@ public:
    */
   typename MapTypeDeducer<State, std::pair<Action, Value>>::Map get_policy();
 
+  template <typename Params>
+  static std::unique_ptr<LRTDPSolver> create_from_params(
+      Domain &domain,
+      std::function<Predicate(Domain &, const State &)> goal_checker,
+      std::function<Value(Domain &, const State &)> heuristic,
+      std::function<Value(const State &)> terminal_value, const Params &params,
+      bool verbose);
+
 protected:
   typedef typename ExecutionPolicy::template atomic<std::size_t> atomic_size_t;
   typedef typename ExecutionPolicy::template atomic<double> atomic_double;
@@ -296,19 +305,6 @@ protected:
                                       const double &node_record_value);
 };
 
-template <typename Tdomain> struct has_get_next_state_lrtdp {
-  typedef char yes[1];
-  typedef char no[2];
-
-  template <typename D>
-  static yes &test(decltype(std::declval<D &>().get_next_state(
-      std::declval<const typename D::State &>(),
-      std::declval<const typename D::Action &>())) *);
-  template <typename> static no &test(...);
-
-  static const bool value = sizeof(test<Tdomain>(nullptr)) == sizeof(yes);
-};
-
 /**
  * @brief LRTA* solver for deterministic planning problems.
  *
@@ -323,7 +319,7 @@ template <typename Tdomain> struct has_get_next_state_lrtdp {
  */
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class LRTAstarSolver : public LRTDPSolver<Tdomain, Texecution_policy> {
-  static_assert(has_get_next_state_lrtdp<Tdomain>::value,
+  static_assert(has_get_next_state<Tdomain>::value,
                 "LRTAstarSolver requires a deterministic domain providing "
                 "get_next_state(state, action)");
 

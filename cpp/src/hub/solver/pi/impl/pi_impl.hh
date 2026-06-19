@@ -448,6 +448,23 @@ void SK_PI_SOLVER_CLASS::set_state_dead_end(const State &s,
   }
 }
 
+SK_PI_SOLVER_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_PI_SOLVER_CLASS> SK_PI_SOLVER_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> /*goal_checker*/,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> terminal_value, const Params &params,
+    bool verbose) {
+  return std::make_unique<PISolver>(
+      domain, heuristic, terminal_value, InitialPolicyFunctor(nullptr),
+      params.template get<double>("discount", 0.999),
+      params.template get<double>("epsilon", 0.001),
+      params.template get<std::size_t>("max_eval_sweeps", 0),
+      CallbackFunctor([](const PISolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose));
+}
+
 } // namespace skdecide
 
 #endif // SKDECIDE_PI_IMPL_HH
