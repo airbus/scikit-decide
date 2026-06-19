@@ -6711,6 +6711,7 @@ all = [
     { name = "up-fast-downward" },
     { name = "up-pyperplan" },
     { name = "up-tamer", marker = "python_full_version < '3.12' and platform_machine == 'x86_64'" },
+    { name = "z3-solver" },
 ]
 domains = [
     { name = "cartopy" },
@@ -6732,6 +6733,9 @@ domains = [
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "setuptools", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
     { name = "unified-planning" },
+]
+pddl = [
+    { name = "z3-solver" },
 ]
 shared = [
     { name = "gymnasium" },
@@ -6784,6 +6788,7 @@ test = [
     { name = "pytest" },
     { name = "pytest-cases" },
     { name = "pytest-cov" },
+    { name = "pytest-timeout" },
     { name = "tqdm" },
 ]
 
@@ -6817,7 +6822,7 @@ requires-dist = [
     { name = "ray", extras = ["rllib"], marker = "extra == 'solvers'", specifier = ">=2.9.0,<2.38" },
     { name = "rddlrepository", marker = "extra == 'domains'", specifier = ">=2.1" },
     { name = "sb3-contrib", marker = "extra == 'solvers'", specifier = ">=2.3" },
-    { name = "scikit-decide", extras = ["domains", "solvers"], marker = "extra == 'all'" },
+    { name = "scikit-decide", extras = ["domains", "pddl", "solvers"], marker = "extra == 'all'" },
     { name = "scikit-decide", extras = ["shared"], marker = "extra == 'domains'" },
     { name = "scikit-decide", extras = ["shared"], marker = "extra == 'solvers'" },
     { name = "scipy", marker = "extra == 'shared'", specifier = ">=1.9.2" },
@@ -6832,8 +6837,9 @@ requires-dist = [
     { name = "up-fast-downward", marker = "extra == 'solvers'", specifier = ">=0.4.1" },
     { name = "up-pyperplan", marker = "extra == 'solvers'", specifier = ">=1.1.0" },
     { name = "up-tamer", marker = "python_full_version < '3.12' and platform_machine == 'x86_64' and extra == 'solvers'", specifier = ">=1.1.2" },
+    { name = "z3-solver", marker = "extra == 'pddl'" },
 ]
-provides-extras = ["shared", "domains", "solvers", "all"]
+provides-extras = ["shared", "domains", "solvers", "pddl", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -6850,6 +6856,7 @@ test = [
     { name = "pytest", specifier = ">=6.2.2,<8.4" },
     { name = "pytest-cases", specifier = ">=3.8" },
     { name = "pytest-cov", specifier = ">=2.11.1" },
+    { name = "pytest-timeout", specifier = ">=2.2" },
     { name = "tqdm", specifier = ">=4.66.3" },
 ]
 
@@ -8604,6 +8611,21 @@ wheels = [
     { url = "https://files.pythonhosted.org/e1/19/3774d162f6732d1cfb0b47b4140a942a35ca82bb19b6db1f80e9e7bdc8f8/yarl-1.23.0-cp314-cp314t-win_amd64.whl", hash = "sha256:4503053d296bc6e4cbd1fad61cf3b6e33b939886c4f249ba7c78b602214fabe2" },
     { url = "https://files.pythonhosted.org/51/47/3fa2286c3cb162c71cdb34c4224d5745a1ceceb391b2bd9b19b668a8d724/yarl-1.23.0-cp314-cp314t-win_arm64.whl", hash = "sha256:44bb7bef4ea409384e3f8bc36c063d77ea1b8d4a5b2706956c0d6695f07dcc25" },
     { url = "https://files.pythonhosted.org/69/68/c8739671f5699c7dc470580a4f821ef37c32c4cb0b047ce223a7f115757f/yarl-1.23.0-py3-none-any.whl", hash = "sha256:a2df6afe50dea8ae15fa34c9f824a3ee958d785fd5d089063d960bae1daa0a3f" },
+]
+
+[[package]]
+name = "z3-solver"
+version = "4.16.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/93/3b/2b714c40ef2ecf6d8aa080056b9c24a77fe4ca2c83abd83e9c93d34212ac/z3_solver-4.16.0.0.tar.gz", hash = "sha256:263d9ad668966e832c2b246ba0389298a599637793da2dc01cc5e4ef4b0b6c78" }
+wheels = [
+    { url = "https://files.pythonhosted.org/2d/5d/9b277a80333db6b85fedd0f5082e311efcbaec47f2c44c57d38953c2d4d9/z3_solver-4.16.0.0-py3-none-macosx_15_0_arm64.whl", hash = "sha256:cc52843cfdd3d3f2cd24bedc62e71c18af8c8b7b23fb05e639ab60b01b5f8f2f" },
+    { url = "https://files.pythonhosted.org/1c/c4/fc99aa544930fb7bfcd88947c2788f318acaf1b9704a7a914445e204436a/z3_solver-4.16.0.0-py3-none-macosx_15_0_x86_64.whl", hash = "sha256:e292df40951523e4ecfbc8dee549d93dee00a3fe4ee4833270d19876b713e210" },
+    { url = "https://files.pythonhosted.org/f6/e6/98741b086b6e01630a55db1fbda596949f738204aac14ef35e64a9526ccb/z3_solver-4.16.0.0-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:afae2551f795670f0522cfce82132d129c408a2694adff71eb01ba0f2ece44f9" },
+    { url = "https://files.pythonhosted.org/e7/2e/295d467c7c796c01337bff790dbedc28cf279f9d365ed64aa9f8ca6b2ba1/z3_solver-4.16.0.0-py3-none-manylinux_2_38_aarch64.whl", hash = "sha256:358648c3b5ef82b9ec9a25711cf4fc498c7881f03a9f4a2ea6ffa9304ca65d94" },
+    { url = "https://files.pythonhosted.org/34/df/29816ce4de24cca3acb007412f9c6fba603e55fcc27ce8c2aade0939057a/z3_solver-4.16.0.0-py3-none-win32.whl", hash = "sha256:cc64c4d41fbebe419fccddb044979c3d95b41214547db65eecdaa67fafef7fe0" },
+    { url = "https://files.pythonhosted.org/86/20/cef4f4d70845df24572d005d19995f92b7f527eb2ffb63a3f5f938a0de2e/z3_solver-4.16.0.0-py3-none-win_amd64.whl", hash = "sha256:eb5df383cb6a3d6b7767dbdca348ac71f6f41e82f76c9ac42002a1f55e35f462" },
+    { url = "https://files.pythonhosted.org/e1/18/7dc1051093abfd6db56ce9addb63c624bfa31946ccb9cfc9be5e75237a26/z3_solver-4.16.0.0-py3-none-win_arm64.whl", hash = "sha256:28729eae2c89112e37697acce4d4517f5e44c6c54d36fed9cf914b06f380cbd6" },
 ]
 
 [[package]]
