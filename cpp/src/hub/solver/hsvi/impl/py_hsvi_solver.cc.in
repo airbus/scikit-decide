@@ -1,0 +1,17 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/hsvi/hsvi.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/hsvi/impl/hsvi_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
+
+template class skdecide::HSVISolver<skdecide::PythonDomainProxy<${Texecution},
+                                                                 skdecide::SingleAgent,
+                                                                 skdecide::PartiallyObservable>,
+                                    ${Texecution}>;
+
+template class skdecide::GoalHSVISolver<skdecide::PythonDomainProxy<${Texecution},
+                                                                     skdecide::SingleAgent,
+                                                                     skdecide::PartiallyObservable>,
+                                        ${Texecution}>;

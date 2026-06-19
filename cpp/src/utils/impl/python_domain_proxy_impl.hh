@@ -891,6 +891,234 @@ SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::get_values() const {
   }
 }
 
+// === ObservationDistributionValue implementation ===
+
+#define SK_PY_OBS_DISTRIBUTION_VALUE_TEMPLATE_DECL                             \
+  template <typename Texecution, typename Tagent, typename Tobservability,     \
+            typename Tcontrollability, typename Tmemory>
+
+#define SK_PY_OBS_DISTRIBUTION_VALUE_CLASS                                     \
+  PythonDomainProxy<                                                           \
+      Texecution, Tagent, Tobservability, Tcontrollability,                    \
+      Tmemory>::ObservationDistribution::ObservationDistributionValue
+
+#define SK_PY_OBS_DISTRIBUTION_VALUE_TYPE                                      \
+  typename PythonDomainProxy<                                                  \
+      Texecution, Tagent, Tobservability, Tcontrollability,                    \
+      Tmemory>::ObservationDistribution::ObservationDistributionValue
+
+SK_PY_OBS_DISTRIBUTION_VALUE_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUE_CLASS::ObservationDistributionValue() {}
+
+SK_PY_OBS_DISTRIBUTION_VALUE_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUE_CLASS::ObservationDistributionValue(
+    const py::object &o) {
+  typename GilControl<Texecution>::Acquire acquire;
+  try {
+    if (!py::isinstance<py::tuple>(o)) {
+      throw std::invalid_argument(
+          "SKDECIDE exception: python observation distribution returned value "
+          "should be an iterable over tuple objects");
+    }
+    py::tuple t = o.cast<py::tuple>();
+    _observation = Observation(t[0]);
+    _probability = t[1].cast<double>();
+  } catch (const py::error_already_set *e) {
+    Logger::error(std::string("SKDECIDE exception when importing observation "
+                              "distribution value data: ") +
+                  std::string(e->what()));
+    std::runtime_error err(e->what());
+    delete e;
+    throw err;
+  }
+}
+
+SK_PY_OBS_DISTRIBUTION_VALUE_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUE_CLASS::ObservationDistributionValue(
+    const ObservationDistributionValue &other) {
+  this->_observation = other._observation;
+  this->_probability = other._probability;
+}
+
+SK_PY_OBS_DISTRIBUTION_VALUE_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUE_TYPE &
+SK_PY_OBS_DISTRIBUTION_VALUE_CLASS::operator=(
+    const ObservationDistributionValue &other) {
+  this->_observation = other._observation;
+  this->_probability = other._probability;
+  return *this;
+}
+
+SK_PY_OBS_DISTRIBUTION_VALUE_TEMPLATE_DECL
+const SK_PY_OBS_DISTRIBUTION_VALUE_TYPE::Observation &
+SK_PY_OBS_DISTRIBUTION_VALUE_CLASS::observation() const {
+  return _observation;
+}
+
+SK_PY_OBS_DISTRIBUTION_VALUE_TEMPLATE_DECL
+const double &SK_PY_OBS_DISTRIBUTION_VALUE_CLASS::probability() const {
+  return _probability;
+}
+
+// === ObservationDistributionValues implementation ===
+
+#define SK_PY_OBS_DISTRIBUTION_VALUES_TEMPLATE_DECL                            \
+  template <typename Texecution, typename Tagent, typename Tobservability,     \
+            typename Tcontrollability, typename Tmemory>
+
+#define SK_PY_OBS_DISTRIBUTION_VALUES_CLASS                                    \
+  PythonDomainProxy<                                                           \
+      Texecution, Tagent, Tobservability, Tcontrollability,                    \
+      Tmemory>::ObservationDistribution::ObservationDistributionValues
+
+#define SK_PY_OBS_DISTRIBUTION_VALUES_TYPE                                     \
+  typename PythonDomainProxy<                                                  \
+      Texecution, Tagent, Tobservability, Tcontrollability,                    \
+      Tmemory>::ObservationDistribution::ObservationDistributionValues
+
+SK_PY_OBS_DISTRIBUTION_VALUES_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUES_CLASS::ObservationDistributionValues()
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<ObservationDistributionValues>() {}
+
+SK_PY_OBS_DISTRIBUTION_VALUES_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUES_CLASS::ObservationDistributionValues(
+    std::unique_ptr<py::object> &&observation_distribution)
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<ObservationDistributionValues>(
+          std::move(observation_distribution)) {}
+
+SK_PY_OBS_DISTRIBUTION_VALUES_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUES_CLASS::ObservationDistributionValues(
+    const py::object &observation_distribution)
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<ObservationDistributionValues>(
+          observation_distribution) {}
+
+SK_PY_OBS_DISTRIBUTION_VALUES_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUES_CLASS::ObservationDistributionValues(
+    const ObservationDistributionValues &other)
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<ObservationDistributionValues>(other) {}
+
+SK_PY_OBS_DISTRIBUTION_VALUES_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUES_TYPE &
+SK_PY_OBS_DISTRIBUTION_VALUES_CLASS::operator=(
+    const ObservationDistributionValues &other) {
+  static_cast<PyObj<ObservationDistributionValues> &>(*this) = other;
+  return *this;
+}
+
+SK_PY_OBS_DISTRIBUTION_VALUES_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUES_CLASS::~ObservationDistributionValues() {}
+
+SK_PY_OBS_DISTRIBUTION_VALUES_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUES_TYPE::PyIter
+SK_PY_OBS_DISTRIBUTION_VALUES_CLASS::begin() const {
+  typename GilControl<Texecution>::Acquire acquire;
+  return PyIter(this->_pyobj->begin());
+}
+
+SK_PY_OBS_DISTRIBUTION_VALUES_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUES_TYPE::PyIter
+SK_PY_OBS_DISTRIBUTION_VALUES_CLASS::end() const {
+  typename GilControl<Texecution>::Acquire acquire;
+  return PyIter(this->_pyobj->end());
+}
+
+// === ObservationDistribution implementation ===
+
+#define SK_PY_OBS_DISTRIBUTION_TEMPLATE_DECL                                   \
+  template <typename Texecution, typename Tagent, typename Tobservability,     \
+            typename Tcontrollability, typename Tmemory>
+
+#define SK_PY_OBS_DISTRIBUTION_CLASS                                           \
+  PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability,      \
+                    Tmemory>::ObservationDistribution
+
+#define SK_PY_OBS_DISTRIBUTION_TYPE                                            \
+  typename PythonDomainProxy<Texecution, Tagent, Tobservability,               \
+                             Tcontrollability,                                 \
+                             Tmemory>::ObservationDistribution
+
+SK_PY_OBS_DISTRIBUTION_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_CLASS::ObservationDistribution()
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<ObservationDistribution>() {
+  construct();
+}
+
+SK_PY_OBS_DISTRIBUTION_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_CLASS::ObservationDistribution(
+    std::unique_ptr<py::object> &&observation_distribution)
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<ObservationDistribution>(
+          std::move(observation_distribution)) {
+  construct();
+}
+
+SK_PY_OBS_DISTRIBUTION_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_CLASS::ObservationDistribution(
+    const py::object &observation_distribution)
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<ObservationDistribution>(
+          observation_distribution) {
+  construct();
+}
+
+SK_PY_OBS_DISTRIBUTION_TEMPLATE_DECL
+void SK_PY_OBS_DISTRIBUTION_CLASS::construct() {
+  typename GilControl<Texecution>::Acquire acquire;
+  try {
+    if (this->_pyobj->is_none()) {
+      this->_pyobj =
+          std::make_unique<py::object>(skdecide::Globals::skdecide().attr(
+              "DiscreteDistribution")(py::list()));
+    }
+  } catch (const py::error_already_set *e) {
+    Logger::error(std::string("SKDECIDE exception when importing observation "
+                              "distribution data: ") +
+                  std::string(e->what()));
+    std::runtime_error err(e->what());
+    delete e;
+    throw err;
+  }
+}
+
+SK_PY_OBS_DISTRIBUTION_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_CLASS::ObservationDistribution(
+    const ObservationDistribution &other)
+    : SK_PY_DOMAIN_PROXY_CLASS::PyObj<ObservationDistribution>(other) {}
+
+SK_PY_OBS_DISTRIBUTION_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_TYPE &
+SK_PY_OBS_DISTRIBUTION_CLASS::operator=(const ObservationDistribution &other) {
+  static_cast<PyObj<ObservationDistribution> &>(*this) = other;
+  return *this;
+}
+
+SK_PY_OBS_DISTRIBUTION_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_CLASS::~ObservationDistribution() {}
+
+SK_PY_OBS_DISTRIBUTION_TEMPLATE_DECL
+SK_PY_OBS_DISTRIBUTION_VALUES_TYPE
+SK_PY_OBS_DISTRIBUTION_CLASS::get_values() const {
+  typename GilControl<Texecution>::Acquire acquire;
+  try {
+    if (!py::hasattr(*(this->_pyobj), "get_values")) {
+      throw std::invalid_argument(
+          "SKDECIDE exception: python observation distribution object must "
+          "implement get_values()");
+    }
+    return ObservationDistributionValues(this->_pyobj->attr("get_values")());
+  } catch (const py::error_already_set *e) {
+    Logger::error(std::string("SKDECIDE exception when getting observation's "
+                              "distribution values: ") +
+                  std::string(e->what()));
+    std::runtime_error err(e->what());
+    delete e;
+    throw err;
+  } catch (const std::exception &e) {
+    Logger::error(std::string("SKDECIDE exception when getting observation's "
+                              "distribution values: ") +
+                  std::string(e.what()));
+    throw;
+  }
+}
+
 // === PythonDomainProxy::Implementation<SequentialExecution> implementation ===
 
 #define SK_PY_DOMAIN_PROXY_SEQ_IMPL_TEMPLATE_DECL                              \
@@ -1033,6 +1261,21 @@ SK_PY_DOMAIN_PROXY_SEQ_IMPL_CLASS::get_transition_value(
   try {
     return Value(_domain->attr("get_transition_value")(m.pyobj(), e.pyobj(),
                                                        sp.pyobj()));
+  } catch (const py::error_already_set *ex) {
+    std::runtime_error err(ex->what());
+    delete ex;
+    throw err;
+  }
+}
+
+SK_PY_DOMAIN_PROXY_SEQ_IMPL_TEMPLATE_DECL
+SK_PY_DOMAIN_PROXY_TYPE::ObservationDistribution
+SK_PY_DOMAIN_PROXY_SEQ_IMPL_CLASS::get_observation_distribution(
+    const Memory &m, const Event &e,
+    [[maybe_unused]] const std::size_t *thread_id) {
+  try {
+    return ObservationDistribution(
+        _domain->attr("get_observation_distribution")(m.pyobj(), e.pyobj()));
   } catch (const py::error_already_set *ex) {
     std::runtime_error err(ex->what());
     delete ex;
@@ -1198,6 +1441,14 @@ SK_PY_DOMAIN_PROXY_PAR_IMPL_CLASS::get_transition_value(
     const std::size_t *thread_id) {
   return Value(launch(thread_id, "get_transition_value", m.pyobj(), e.pyobj(),
                       sp.pyobj()));
+}
+
+SK_PY_DOMAIN_PROXY_PAR_IMPL_TEMPLATE_DECL
+SK_PY_DOMAIN_PROXY_TYPE::ObservationDistribution
+SK_PY_DOMAIN_PROXY_PAR_IMPL_CLASS::get_observation_distribution(
+    const Memory &m, const Event &e, const std::size_t *thread_id) {
+  return ObservationDistribution(
+      launch(thread_id, "get_observation_distribution", m.pyobj(), e.pyobj()));
 }
 
 SK_PY_DOMAIN_PROXY_PAR_IMPL_TEMPLATE_DECL
@@ -1388,6 +1639,21 @@ SK_PY_DOMAIN_PROXY_CLASS::get_transition_value(const Memory &m, const Event &e,
     Logger::error(
         std::string("SKDECIDE exception when getting value of transition (") +
         m.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex.what());
+    throw;
+  }
+}
+
+SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
+SK_PY_DOMAIN_PROXY_TYPE::ObservationDistribution
+SK_PY_DOMAIN_PROXY_CLASS::get_observation_distribution(
+    const Memory &m, const Event &e, const std::size_t *thread_id) {
+  try {
+    return _implementation->get_observation_distribution(m, e, thread_id);
+  } catch (const std::exception &ex) {
+    typename GilControl<Texecution>::Acquire acquire;
+    Logger::error(std::string("SKDECIDE exception when getting observation "
+                              "distribution from memory ") +
+                  m.print() + " and action " + e.print() + ": " + ex.what());
     throw;
   }
 }

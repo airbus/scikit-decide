@@ -118,8 +118,8 @@ class GridDomain(D):
 
 @pytest.fixture(
     params=[
-        {"entry": "LazyAstar", "config": {"verbose": False}, "optimal": True},
-        {"entry": "LRTAstar", "config": {"verbose": False}, "optimal": False},
+        {"entry": "pAstar", "config": {"verbose": False}, "optimal": True},
+        {"entry": "pLRTAstar", "config": {"verbose": False}, "optimal": False},
         {"entry": "RayRLlib", "config": {"train_iterations": 1}, "optimal": False},
         {
             "entry": "StableBaseline",

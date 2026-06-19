@@ -59,6 +59,9 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability,
                               const std::size_t *thread_id = nullptr);
   Value get_transition_value(const Memory &m, const Event &e, const State &sp,
                              const std::size_t *thread_id = nullptr);
+  ObservationDistribution
+  get_observation_distribution(const Memory &m, const Event &e,
+                               const std::size_t *thread_id = nullptr);
   bool is_goal(const State &s, const std::size_t *thread_id = nullptr);
   bool is_terminal(const State &s, const std::size_t *thread_id = nullptr);
 
@@ -121,6 +124,9 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability,
                               const std::size_t *thread_id = nullptr);
   Value get_transition_value(const Memory &m, const Event &e, const State &sp,
                              const std::size_t *thread_id = nullptr);
+  ObservationDistribution
+  get_observation_distribution(const Memory &m, const Event &e,
+                               const std::size_t *thread_id = nullptr);
   bool is_goal(const State &s, const std::size_t *thread_id = nullptr);
   bool is_terminal(const State &s, const std::size_t *thread_id = nullptr);
 

@@ -3,3 +3,4 @@
 # LICENSE file in the root directory of this source tree.
 
 from .lrtdp import LRTDP as LRTDP
+from .lrtdp import LRTAstar as LRTAstar

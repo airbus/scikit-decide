@@ -64,3 +64,4 @@ template class PDP::Outcome<PDP::TransitionOutcome, PDP::State>;
 template class PDP::Outcome<PDP::EnvironmentOutcome, PDP::Observation>;
 
 template class PDPB::PyIter<PDP::NextStateDistribution::DistributionValue>;
+template class PDPB::PyIter<PDP::ObservationDistribution::ObservationDistributionValue>;

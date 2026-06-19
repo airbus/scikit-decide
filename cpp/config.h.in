@@ -1,2 +1,3 @@
 #cmakedefine HAS_EXECUTION
 #cmakedefine HAS_OPENMP
+#cmakedefine HAS_HIGHS

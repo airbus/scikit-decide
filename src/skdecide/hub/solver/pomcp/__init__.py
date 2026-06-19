@@ -3,3 +3,4 @@
 # LICENSE file in the root directory of this source tree.
 
 from .pomcp import POMCP as POMCP
+from .pomcp import pPOMCP as pPOMCP

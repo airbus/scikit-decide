@@ -60,6 +60,10 @@ public:
    * @param discount Value function's discount factor
    * @param epsilon Maximum Bellman error (residual) allowed to decide that a
    * state is solved
+   * @param per_sweep_graph_update When true, recompute the best solution graph
+   * after each value iteration sweep (matching the paper's Table 7 step 3).
+   * When false (default), run value iteration to full convergence before
+   * recomputing the graph.
    * @param callback Functor called at the beginning of each policy update
    * depth-first search, taking as arguments the solver and the domain, and
    * returning true if the solver must be stopped
@@ -69,7 +73,7 @@ public:
   ILAOStarSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
       const HeuristicFunctor &heuristic, double discount = 1.0,
-      double epsilon = 0.001,
+      double epsilon = 0.001, bool per_sweep_graph_update = false,
       const CallbackFunctor &callback = [](const ILAOStarSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -171,6 +175,7 @@ private:
   HeuristicFunctor _heuristic;
   atomic_double _discount;
   atomic_double _epsilon;
+  bool _per_sweep_graph_update;
   CallbackFunctor _callback;
   bool _verbose;
   ExecutionPolicy _execution_policy;
@@ -213,7 +218,8 @@ private:
   void depth_first_search(StateNode &s);
   void compute_best_solution_graph(StateNode &s);
   double update(StateNode &s);
-  void value_iteration();
+  std::pair<double, bool> value_iteration_sweep();
+  bool value_iteration();
   bool update_reachability(StateNode &s);
   void compute_reachability();
   double update_mfpt(StateNode &s);

@@ -22,13 +22,15 @@ namespace skdecide {
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 SK_LRTDP_SOLVER_CLASS::LRTDPSolver(
     Domain &domain, const GoalCheckerFunctor &goal_checker,
-    const HeuristicFunctor &heuristic, bool use_labels, std::size_t time_budget,
-    std::size_t rollout_budget, std::size_t max_depth,
+    const HeuristicFunctor &heuristic,
+    const TerminalValueFunctor &terminal_value, bool use_labels,
+    std::size_t time_budget, std::size_t rollout_budget, std::size_t max_depth,
     std::size_t residual_moving_average_window, double epsilon, double discount,
     bool online_node_garbage, const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _use_labels(use_labels), _time_budget(time_budget),
-      _rollout_budget(rollout_budget), _max_depth(max_depth),
+      _terminal_value(terminal_value), _use_labels(use_labels),
+      _time_budget(time_budget), _rollout_budget(rollout_budget),
+      _max_depth(max_depth),
       _residual_moving_average_window(residual_moving_average_window),
       _epsilon(epsilon), _discount(discount),
       _online_node_garbage(online_node_garbage), _callback(callback),
@@ -292,6 +294,12 @@ void SK_LRTDP_SOLVER_CLASS::expand(StateNode *s, const std::size_t *thread_id) {
           next_node.goal = true;
           next_node.solved = true;
           next_node.best_value = 0.0;
+        } else if (_domain.is_terminal(next_node.state, thread_id)) {
+          if (_verbose)
+            Logger::debug("Found terminal state " + next_node.state.print() +
+                          ExecutionPolicy::print_thread());
+          next_node.solved = true;
+          next_node.best_value = _terminal_value(next_node.state).cost();
         } else {
           next_node.best_value =
               _heuristic(_domain, next_node.state, thread_id).cost();
@@ -583,6 +591,79 @@ SK_LRTDP_SOLVER_CLASS::StateNode::Key::operator()(const StateNode &sn) const {
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 SK_LRTDP_SOLVER_CLASS::ActionNode::ActionNode(const Action &a)
     : action(a), value(std::numeric_limits<double>::infinity()) {}
+
+// --- State set accessors ---
+
+SK_LRTDP_SOLVER_TEMPLATE_DECL
+typename SetTypeDeducer<typename SK_LRTDP_SOLVER_CLASS::State>::Set
+SK_LRTDP_SOLVER_CLASS::get_explored_states() const {
+  typename SetTypeDeducer<State>::Set explored;
+  for (const auto &sn : _graph) {
+    explored.insert(sn.state);
+  }
+  return explored;
+}
+
+SK_LRTDP_SOLVER_TEMPLATE_DECL
+typename SetTypeDeducer<typename SK_LRTDP_SOLVER_CLASS::State>::Set
+SK_LRTDP_SOLVER_CLASS::get_solved_states() const {
+  typename SetTypeDeducer<State>::Set solved;
+  for (const auto &sn : _graph) {
+    if (sn.solved) {
+      solved.insert(sn.state);
+    }
+  }
+  return solved;
+}
+
+// === LRTAstarSolver implementation ===
+
+#define SK_LRTASTAR_SOLVER_TEMPLATE_DECL                                       \
+  template <typename Tdomain, typename Texecution_policy>
+
+#define SK_LRTASTAR_SOLVER_CLASS LRTAstarSolver<Tdomain, Texecution_policy>
+
+SK_LRTASTAR_SOLVER_TEMPLATE_DECL
+SK_LRTASTAR_SOLVER_CLASS::LRTAstarSolver(
+    Tdomain &domain, const GoalCheckerFunctor &goal_checker,
+    const HeuristicFunctor &heuristic, std::size_t time_budget,
+    std::size_t rollout_budget, std::size_t max_depth,
+    const CallbackFunctor &callback, bool verbose)
+    : Base(
+          domain, goal_checker, heuristic,
+          [](const State &) { return Value(0.0, false); }, false, time_budget,
+          rollout_budget, max_depth, 100, 0.0, 1.0, false, callback, verbose) {}
+
+SK_LRTASTAR_SOLVER_TEMPLATE_DECL
+SK_LRTASTAR_SOLVER_CLASS::LRTAstarSolver(
+    Tdomain &domain, const GoalCheckerFunctor &goal_checker,
+    const HeuristicFunctor &heuristic,
+    const typename Base::TerminalValueFunctor &, bool, std::size_t time_budget,
+    std::size_t rollout_budget, std::size_t max_depth, std::size_t, double,
+    double, bool, const CallbackFunctor &callback, bool verbose)
+    : Base(
+          domain, goal_checker, heuristic,
+          [](const State &) { return Value(0.0, false); }, false, time_budget,
+          rollout_budget, max_depth, 100, 0.0, 1.0, false, callback, verbose) {}
+
+SK_LRTASTAR_SOLVER_TEMPLATE_DECL
+std::vector<typename Tdomain::Action>
+SK_LRTASTAR_SOLVER_CLASS::get_plan(const State &s) const {
+  std::vector<Action> plan;
+  auto si = this->_graph.find(s);
+  while (si != this->_graph.end() && si->best_action != nullptr) {
+    plan.push_back(si->best_action->action);
+    if (si->best_action->outcomes.empty()) {
+      break;
+    }
+    auto *next = std::get<2>(si->best_action->outcomes.front());
+    if (next->goal) {
+      break;
+    }
+    si = this->_graph.find(next->state);
+  }
+  return plan;
+}
 
 } // namespace skdecide
 

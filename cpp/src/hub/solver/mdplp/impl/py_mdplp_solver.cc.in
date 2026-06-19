@@ -1,0 +1,16 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mdplp/mdplp.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mdplp/impl/mdplp_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
+
+template class skdecide::MDPLPSolver<
+    skdecide::PythonDomainProxy<skdecide::${Texecution}>,
+    skdecide::${Texecution}>;
+
+template class skdecide::SSPLPSolver<
+    skdecide::PythonDomainProxy<skdecide::${Texecution}>,
+    skdecide::${Texecution}>;

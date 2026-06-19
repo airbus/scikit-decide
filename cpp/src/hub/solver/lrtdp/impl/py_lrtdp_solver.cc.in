@@ -9,3 +9,5 @@
 
 template class skdecide::LRTDPSolver<skdecide::PythonDomainProxy<${Texecution}>,
                                      ${Texecution}>;
+template class skdecide::LRTAstarSolver<skdecide::PythonDomainProxy<${Texecution}>,
+                                        ${Texecution}>;

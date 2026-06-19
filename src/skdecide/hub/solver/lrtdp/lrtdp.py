@@ -16,6 +16,7 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
 from skdecide import Domain, Solver
 from skdecide.builders.domain import (
     Actions,
+    DeterministicTransitions,
     FullyObservable,
     Goals,
     Markovian,
@@ -33,6 +34,7 @@ from skdecide.builders.solver import (
 from skdecide.core import Value
 
 try:
+    from skdecide.hub.__skdecide_hub_cpp import _LRTAstarSolver_ as lrtastar_solver
     from skdecide.hub.__skdecide_hub_cpp import _LRTDPSolver_ as lrtdp_solver
 
     # TODO: remove Markovian req?
@@ -76,6 +78,9 @@ try:
             heuristic: Callable[
                 [T_domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
+            terminal_value: Callable[[D.T_state], Value[D.T_value]] = lambda s: Value(
+                cost=0
+            ),
             use_labels: bool = True,
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
@@ -157,6 +162,7 @@ try:
                     if not parallel
                     else (lambda d, s, i=None: d.call(i, 0, s))
                 ),
+                terminal_value=terminal_value,
                 use_labels=use_labels,
                 time_budget=time_budget,
                 rollout_budget=rollout_budget,
@@ -318,6 +324,123 @@ try:
                 Mapping from states to pairs of action and best Q-value
             """
             return self._solver.get_policy()
+
+        def get_explored_states(self) -> set[D.T_agent[D.T_observation]]:
+            """Get all states in the search graph"""
+            return self._solver.get_explored_states()
+
+        def get_solved_states(self) -> set[D.T_agent[D.T_observation]]:
+            """Get states labeled as solved"""
+            return self._solver.get_solved_states()
+
+    class D_LRTAstar(
+        Domain,
+        SingleAgent,
+        Sequential,
+        DeterministicTransitions,
+        Actions,
+        Goals,
+        Markovian,
+        FullyObservable,
+        PositiveCosts,
+    ):
+        pass
+
+    class LRTAstar(LRTDP):
+        """LRTA* solver for deterministic planning problems.
+
+        From the LRTDP paper (Bonet & Geffner, ICAPS 2003): "RTDP
+        corresponds to a generalization of Korf's LRTA* to
+        non-deterministic settings." LRTA* is LRTDP without labels
+        (use_labels=false) on deterministic domains.
+
+        Uses cost minimization with goals, same as LRTDP.
+        """
+
+        T_domain = D_LRTAstar
+
+        def __init__(
+            self,
+            domain_factory: Callable[[], Domain],
+            heuristic: Callable[
+                [Domain, D_LRTAstar.T_state],
+                D_LRTAstar.T_agent[Value[D_LRTAstar.T_value]],
+            ] = lambda d, s: Value(cost=0),
+            time_budget: int = 3600000,
+            rollout_budget: int = 100000,
+            max_depth: int = 1000,
+            parallel: bool = False,
+            shared_memory_proxy=None,
+            callback: Callable[[LRTDP, Optional[int]], bool] = lambda slv,
+            i=None: False,
+            verbose: bool = False,
+        ) -> None:
+            """Construct an LRTA* solver instance.
+
+            # Parameters
+            domain_factory: The lambda function to create a domain instance.
+            heuristic: Function h(domain, state) -> Value used to initialize
+                V(s) = h(s).cost for newly discovered states. An admissible
+                heuristic (h(s) <= V*(s)) is required for optimality.
+                Defaults to Value(cost=0).
+            time_budget: Maximum solving time in milliseconds. Defaults to 3600000.
+            rollout_budget: Maximum number of rollouts. Defaults to 100000.
+            max_depth: Maximum depth of each trial. Defaults to 1000.
+            parallel: Parallelize trials. Defaults to False.
+            shared_memory_proxy: The optional shared memory proxy. Defaults to None.
+            callback: Function called at the end of each trial. Defaults to never stop.
+            verbose: Whether verbose messages should be logged. Defaults to False.
+            """
+            Solver.__init__(self, domain_factory=domain_factory)
+            ParallelSolver.__init__(
+                self,
+                parallel=parallel,
+                shared_memory_proxy=shared_memory_proxy,
+            )
+            self._lambdas = [heuristic]
+            self._continuous_planning = True
+            self._ipc_notify = True
+
+            self._solver = lrtastar_solver(
+                solver=self,
+                domain=self.get_domain(),
+                goal_checker=(
+                    (lambda d, s, i=None: d.is_goal(s))
+                    if not parallel
+                    else (lambda d, s, i=None: d.is_goal(s, i))
+                ),
+                heuristic=(
+                    (lambda d, s, i=None: heuristic(d, s))
+                    if not parallel
+                    else (lambda d, s, i=None: d.call(i, 0, s))
+                ),
+                time_budget=time_budget,
+                rollout_budget=rollout_budget,
+                max_depth=max_depth,
+                parallel=parallel,
+                callback=callback,
+                verbose=verbose,
+            )
+
+        def get_plan(
+            self,
+            from_memory=None,
+        ):
+            """Get the solution plan (sequence of actions to goal).
+
+            Since the domain is deterministic, the greedy policy defines a
+            unique action sequence. Calls the C++ LRTAstarSolver::get_plan().
+
+            # Parameters
+            from_memory: State from which to extract the plan. If None, uses
+                the domain's initial state.
+
+            Returns an empty list if no solution is defined.
+            """
+            if from_memory is None:
+                domain = self._domain_factory()
+                from_memory = domain.reset()
+            return self._solver.get_plan(from_memory)
 
 except ImportError:
     print(

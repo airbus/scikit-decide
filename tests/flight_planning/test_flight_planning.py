@@ -1,6 +1,6 @@
 import pytest
 
-from skdecide.hub.solver.lazy_astar import LazyAstar
+from skdecide.hub.solver.p_astar import Astar
 
 
 def test_aircraft_state():
@@ -106,9 +106,7 @@ def test_flight_planning():
 
     domain = domain_factory()
 
-    solver = LazyAstar(
-        domain_factory=domain_factory, heuristic=lambda d, s: d.heuristic(s)
-    )
+    solver = Astar(domain_factory=domain_factory, heuristic=lambda d, s: d.heuristic(s))
     solver.solve()
 
     assert solver.check_domain(domain)

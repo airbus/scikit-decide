@@ -13,7 +13,7 @@ from skdecide.hub.domain.graph_domain.graph_domain_builders import (
     FullSpaceExploration,
 )
 from skdecide.hub.domain.maze import Maze
-from skdecide.hub.solver.lazy_astar.lazy_astar import LazyAstar
+from skdecide.hub.solver.p_astar import Astar
 
 
 def example_maze():
@@ -30,13 +30,13 @@ def solve_with_astar_full_space_explo():
         domain_maze.get_initial_state()
     )
     t = time.perf_counter()
-    solver = LazyAstar(domain_factory=lambda: domain_maze)
+    solver = Astar(domain_factory=lambda: domain_maze)
     solver.solve()
     print(solver.get_plan())
     t1 = time.perf_counter()
     print(t1 - t, " sec to solve original maze")
     t = time.perf_counter()
-    solver = LazyAstar(domain_factory=lambda: graph_maze)
+    solver = Astar(domain_factory=lambda: graph_maze)
     solver.solve(from_memory=domain_maze.get_initial_state())
     print(solver.get_plan())
     t2 = time.perf_counter()
@@ -48,13 +48,13 @@ def solve_with_astar_dfs():
     dfs_explorator = DFSExploration(domain=domain_maze)
     graph_maze = dfs_explorator.build_graph_domain(domain_maze.get_initial_state())
     t = time.perf_counter()
-    solver = LazyAstar(domain_factory=lambda: domain_maze)
+    solver = Astar(domain_factory=lambda: domain_maze)
     solver.solve()
     print(solver.get_plan())
     t1 = time.perf_counter()
     print(t1 - t, " sec to solve original maze")
     t = time.perf_counter()
-    solver = LazyAstar(domain_factory=lambda: graph_maze)
+    solver = Astar(domain_factory=lambda: graph_maze)
     solver.solve(from_memory=domain_maze.get_initial_state())
     print(solver.get_plan())
     t2 = time.perf_counter()

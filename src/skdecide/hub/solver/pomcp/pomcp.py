@@ -2,9 +2,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Original code by Patrik Haslum, based on POMCP from:
-# Silver, D., & Veness, J. (2010). Monte-Carlo Planning in Large POMDPs.
-# In Advances in neural information processing systems (pp. 2164–2172).
 from __future__ import annotations
 
 import math
@@ -16,34 +13,256 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     IntegerHyperparameter,
 )
 
-from skdecide import DiscreteDistribution, Domain, Memory, Solver
+from skdecide import DiscreteDistribution, Distribution, Domain, Memory, Solver
 from skdecide.builders.domain import (
     Actions,
     EnumerableTransitions,
     Goals,
+    Markovian,
+    PartiallyObservable,
+    PositiveCosts,
+    Rewards,
     Sequential,
     SingleAgent,
     UncertainInitialized,
+    UncertainTransitions,
 )
-from skdecide.builders.solver import DeterministicPolicies
+from skdecide.builders.solver import (
+    DeterministicPolicies,
+    FromAnyState,
+    ParallelSolver,
+    Utilities,
+)
+
+# --- C++ POMCP solver (primary) ---
+
+try:
+    from skdecide.hub.__skdecide_hub_cpp import _POMCPSolver_ as pomcp_solver
+
+    class D(
+        Domain,
+        SingleAgent,
+        Sequential,
+        UncertainTransitions,
+        Actions,
+        Markovian,
+        PartiallyObservable,
+        Rewards,
+        UncertainInitialized,
+    ):
+        pass
+
+    class POMCP(ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState):
+        """POMCP solver for POMDPs (online, reward maximization).
+
+        From: Silver & Veness, "Monte-Carlo Planning in Large POMDPs",
+        NIPS 2010.
+
+        POMCP applies UCT to a history tree with particle-based belief
+        tracking. Planning happens online at each step: the solver samples
+        particles from the current belief, runs Monte Carlo simulations
+        through the history tree, and selects actions via UCB1.
+
+        The default interface works with observations. The solver internally
+        maintains and updates the current belief using a particle filter.
+        """
+
+        T_domain = D
+
+        def __init__(
+            self,
+            domain_factory: Callable[[], Domain],
+            exploration_constant: float = 1.0 / math.sqrt(2.0),
+            discount: float = 0.95,
+            num_simulations: int = 1000,
+            max_depth: int = 100,
+            epsilon: float = 0.001,
+            time_budget: int = 0,
+            num_particles_belief_update: int = 500,
+            parallel: bool = False,
+            shared_memory_proxy=None,
+            callback: Callable[[POMCP], bool] = lambda slv: False,
+            verbose: bool = False,
+        ) -> None:
+            """Construct a POMCP solver instance.
+
+            # Parameters
+            domain_factory: Lambda function to create a domain instance.
+            exploration_constant: UCB1 exploration constant (c in the paper).
+                Defaults to 1/sqrt(2).
+            discount: Discount factor gamma. Must be in (0, 1].
+                Defaults to 0.95.
+            num_simulations: Number of Monte Carlo simulations per planning
+                step. Defaults to 1000.
+            max_depth: Maximum search/rollout depth. Defaults to 100.
+            epsilon: Discount-depth cutoff threshold. A simulation stops when
+                gamma^depth < epsilon. Defaults to 0.001.
+            time_budget: Maximum planning time per step in milliseconds.
+                0 means no time limit. Defaults to 0.
+            num_particles_belief_update: Number of particles for belief
+                update via particle filter. Defaults to 500.
+            parallel: Parallelize domain calls. Defaults to False.
+            shared_memory_proxy: Optional shared memory proxy.
+                Defaults to None.
+            callback: Function called at each simulation iteration, taking
+                the solver as argument, returning True to stop.
+                Defaults to never stop.
+            verbose: Whether to log verbose messages. Defaults to False.
+            """
+            Solver.__init__(self, domain_factory=domain_factory)
+            ParallelSolver.__init__(
+                self,
+                parallel=parallel,
+                shared_memory_proxy=shared_memory_proxy,
+            )
+            self._ipc_notify = True
+
+            self._solver = pomcp_solver(
+                solver=self,
+                domain=self.get_domain(),
+                exploration_constant=exploration_constant,
+                discount=discount,
+                num_simulations=num_simulations,
+                max_depth=max_depth,
+                epsilon=epsilon,
+                time_budget=time_budget,
+                num_particles_belief_update=num_particles_belief_update,
+                parallel=parallel,
+                callback=callback,
+                verbose=verbose,
+            )
+
+        def close(self):
+            """Joins the parallel domains' processes."""
+            if self._parallel:
+                self._solver.close()
+            ParallelSolver.close(self)
+
+        def _solve(self, from_memory=None) -> None:
+            if from_memory is None:
+                from_memory = self._domain_factory().get_initial_state_distribution()
+            self._solve_from(from_memory)
+
+        def _solve_from(self, initial_belief: Distribution[D.T_state]) -> None:
+            """Initialize POMCP with an initial belief distribution.
+
+            For POMCP (an online solver), this only initializes the belief
+            particles. Actual planning happens online in _get_next_action().
+
+            # Parameters
+            initial_belief: Distribution over physical states representing
+                the initial belief.
+            """
+            self._solver.solve(initial_belief)
+
+        def _is_solution_defined_for(
+            self, observation: D.T_agent[D.T_observation]
+        ) -> bool:
+            return self._solver.is_solution_defined_for(observation)
+
+        def _get_next_action(
+            self,
+            observation: D.T_agent[D.T_observation],
+            domain: Optional[Domain] = None,
+        ) -> D.T_agent[D.T_concurrency[D.T_event]]:
+            """Get the best action given an observation.
+
+            The solver updates its belief via particle filter, prunes the
+            history tree to the subtree under (last_action, observation),
+            then runs Monte Carlo simulations from the current belief.
+            """
+            action = self._solver.get_next_action(observation)
+            if action is None:
+                print(
+                    "\x1b[3;33;40m"
+                    + "No best action found for observation "
+                    + str(observation)
+                    + ", applying random action"
+                    + "\x1b[0m"
+                )
+                return self.call_domain_method("get_action_space").sample()
+            else:
+                return action
+
+        def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
+            return self._solver.get_utility(observation)
+
+        def get_next_action_from_belief(
+            self, belief: Distribution[D.T_state]
+        ) -> D.T_agent[D.T_concurrency[D.T_event]]:
+            """Get the best action for an explicit belief state."""
+            action = self._solver.get_next_action_from_belief(belief)
+            if action is None:
+                print(
+                    "\x1b[3;33;40m"
+                    + "No best action found for belief, applying random action"
+                    + "\x1b[0m"
+                )
+                return self.call_domain_method("get_action_space").sample()
+            return action
+
+        def get_utility_from_belief(self, belief: Distribution[D.T_state]) -> D.T_value:
+            """Get the best value for an explicit belief state."""
+            return self._solver.get_utility_from_belief(belief)
+
+        def is_solution_defined_for_from_belief(
+            self, belief: Distribution[D.T_state]
+        ) -> bool:
+            """Check if a solution is defined for an explicit belief state."""
+            return self._solver.is_solution_defined_for_from_belief(belief)
+
+        def reset_belief(self) -> None:
+            """Reset the tracked belief to the initial belief from solve()."""
+            self._solver.reset_belief()
+
+        def get_nb_tree_nodes(self) -> int:
+            """Get the number of nodes in the last history tree."""
+            return self._solver.get_nb_tree_nodes()
+
+        def get_solving_time(self) -> int:
+            """Get the last planning time in milliseconds."""
+            return self._solver.get_solving_time()
+
+except ImportError:
+    print(
+        "Scikit-decide C++ hub library not found. Please check it is installed "
+        'in "skdecide/hub".'
+    )
+    raise
 
 
-class D(
+# --- Pure Python POMCP solver (renamed from original POMCP) ---
+
+# Original code by Patrik Haslum, based on POMCP from:
+# Silver, D., & Veness, J. (2010). Monte-Carlo Planning in Large POMDPs.
+# In Advances in neural information processing systems (pp. 2164–2172).
+
+
+class Dp(
     Domain,
     SingleAgent,
     Sequential,
     EnumerableTransitions,
     Actions,
     Goals,
+    PartiallyObservable,
+    PositiveCosts,
     UncertainInitialized,
 ):
     pass
 
 
-class POMCP(Solver, DeterministicPolicies):
-    """Partially-Observable Monte Carlo Planning solver."""
+class pPOMCP(Solver, DeterministicPolicies):
+    """Partially-Observable Monte Carlo Planning solver (pure Python, cost minimization, goal-based).
 
-    T_domain = D
+    Pure Python implementation by Patrik Haslum, based on POMCP from:
+    Silver, D., & Veness, J. (2010). Monte-Carlo Planning in Large POMDPs.
+    In Advances in neural information processing systems (pp. 2164-2172).
+
+    For the C++ implementation (reward maximization, observation-based), use POMCP.
+    """
+
+    T_domain = Dp
 
     hyperparameters = [
         IntegerHyperparameter(name="max_iterations"),
@@ -57,7 +276,7 @@ class POMCP(Solver, DeterministicPolicies):
         max_iterations=5000,
         max_depth=50,
         n_samples=5000,
-        callback: Callable[[POMCP], bool] = lambda solver: False,
+        callback: Callable[[pPOMCP], bool] = lambda solver: False,
     ) -> None:
         """
 
@@ -97,8 +316,8 @@ class POMCP(Solver, DeterministicPolicies):
         # No further solving code required here since everything is computed online
 
     def _get_next_action(
-        self, observation: D.T_agent[D.T_observation], domain: Optional[Domain] = None
-    ) -> D.T_agent[D.T_concurrency[D.T_event]]:
+        self, observation: Dp.T_agent[Dp.T_observation], domain: Optional[Domain] = None
+    ) -> Dp.T_agent[Dp.T_concurrency[Dp.T_event]]:
         # Get the next action from the solver's current policy:
         # this corresponds to the top-level Search procedure in the POMCP paper
 
@@ -134,14 +353,14 @@ class POMCP(Solver, DeterministicPolicies):
 
         return action
 
-    def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
+    def _is_policy_defined_for(self, observation: Dp.T_agent[Dp.T_observation]) -> bool:
         return True
 
     def _filter_belief_state(self, belief, action, obs):
         prob = [0] * len(belief)
         for i, state in enumerate(belief):
             d = self._domain.get_observation_distribution(state, action)
-            prob[i] = get_probability(d, obs)
+            prob[i] = _get_probability(d, obs)
         new_belief = random.choices(belief, weights=prob, k=len(belief))
         return new_belief
 
@@ -254,7 +473,7 @@ class POMCP(Solver, DeterministicPolicies):
         return sel
 
 
-def get_probability(distribution, element, n=100):
+def _get_probability(distribution, element, n=100):
     """Utility function to get the probability of a specific element from a scikit-decide distribution
     (based on sampling if this distribution is not a DiscreteDistribution)."""
 

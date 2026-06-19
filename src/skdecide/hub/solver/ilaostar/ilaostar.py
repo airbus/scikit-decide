@@ -69,6 +69,7 @@ try:
             ] = lambda d, s: Value(cost=0),
             discount: float = 1.0,
             epsilon: float = 0.001,
+            per_sweep_graph_update: bool = False,
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[ILAOstar], bool] = lambda slv: False,
@@ -85,6 +86,10 @@ try:
             discount (float, optional): Value function's discount factor. Defaults to 1.0.
             epsilon (float, optional): Maximum Bellman error (residual) allowed to decide that
                 the value function of the root state of the search has converged. Defaults to 0.001.
+            per_sweep_graph_update (bool, optional): When True, recompute the best solution graph
+                after each value iteration sweep, matching the paper's Table 7 step 3. When False,
+                run value iteration to full convergence before recomputing the graph.
+                Defaults to False.
             parallel (bool, optional): Parallelize the generation of state-action transitions and the update
                 of state attributes (e.g. Bellman residuals) on different processes using duplicated domains (True)
                 or not (False). Defaults to False.
@@ -115,6 +120,7 @@ try:
                 ),
                 discount=discount,
                 epsilon=epsilon,
+                per_sweep_graph_update=per_sweep_graph_update,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,

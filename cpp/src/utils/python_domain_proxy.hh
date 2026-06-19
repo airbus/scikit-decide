@@ -374,6 +374,64 @@ public:
     void construct();
   };
 
+  class ObservationDistribution : public PyObj<ObservationDistribution> {
+  public:
+    static constexpr char class_name[] = "observation distribution";
+
+    ObservationDistribution();
+    ObservationDistribution(
+        std::unique_ptr<py::object> &&observation_distribution);
+    ObservationDistribution(const py::object &observation_distribution);
+    ObservationDistribution(const ObservationDistribution &other);
+    ObservationDistribution &operator=(const ObservationDistribution &other);
+    virtual ~ObservationDistribution();
+
+    class ObservationDistributionValue {
+    public:
+      typedef typename PythonDomainProxy<Texecution, Tagent, Tobservability,
+                                         Tcontrollability, Tmemory>::Observation
+          Observation;
+      static constexpr char class_name[] = "observation distribution value";
+      Observation _observation;
+      double _probability;
+
+      ObservationDistributionValue();
+      ObservationDistributionValue(const py::object &o);
+      ObservationDistributionValue(const ObservationDistributionValue &other);
+      ObservationDistributionValue &
+      operator=(const ObservationDistributionValue &other);
+
+      const Observation &observation() const;
+      const double &probability() const;
+    };
+
+    class ObservationDistributionValues
+        : public PyObj<ObservationDistributionValues> {
+    public:
+      typedef typename PythonDomainProxyBase<Texecution>::template PyIter<
+          ObservationDistributionValue>
+          PyIter;
+      static constexpr char class_name[] = "observation distribution values";
+
+      ObservationDistributionValues();
+      ObservationDistributionValues(
+          std::unique_ptr<py::object> &&observation_distribution);
+      ObservationDistributionValues(const py::object &observation_distribution);
+      ObservationDistributionValues(const ObservationDistributionValues &other);
+      ObservationDistributionValues &
+      operator=(const ObservationDistributionValues &other);
+      virtual ~ObservationDistributionValues();
+
+      PyIter begin() const;
+      PyIter end() const;
+    };
+
+    ObservationDistributionValues get_values() const;
+
+  private:
+    void construct();
+  };
+
   PythonDomainProxy(const py::object &domain);
   ~PythonDomainProxy();
 
@@ -405,6 +463,9 @@ public:
                               const std::size_t *thread_id = nullptr);
   Value get_transition_value(const Memory &m, const Event &e, const State &sp,
                              const std::size_t *thread_id = nullptr);
+  ObservationDistribution
+  get_observation_distribution(const Memory &m, const Event &e,
+                               const std::size_t *thread_id = nullptr);
   bool is_goal(const State &s, const std::size_t *thread_id = nullptr);
   bool is_terminal(const State &s, const std::size_t *thread_id = nullptr);
 

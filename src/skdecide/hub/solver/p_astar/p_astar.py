@@ -42,7 +42,7 @@ class D(
     pass
 
 
-class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
+class Astar(Solver, DeterministicPolicies, Utilities, FromAnyState):
     """Lazy A* solver."""
 
     T_domain = D
@@ -66,7 +66,7 @@ class LazyAstar(Solver, DeterministicPolicies, Utilities, FromAnyState):
         weight: float = 1.0,
         verbose: bool = False,
         render: bool = False,
-        callback: Callable[[LazyAstar], bool] = lambda solver: False,
+        callback: Callable[[Astar], bool] = lambda solver: False,
     ) -> None:
         """
 

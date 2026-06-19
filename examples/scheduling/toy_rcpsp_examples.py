@@ -435,7 +435,7 @@ def run_example():
     solver = None
     # UNCOMMENT BELOW TO USE ASTAR
     # domain.set_inplace_environment(False)
-    # solver = lazy_astar.LazyAstar(heuristic=None, verbose=True)
+    # solver = p_astar.Astar(heuristic=None, verbose=True)
     # solver.solve(domain_factory=lambda: domain, from_memory=state)
     states, actions, values = rollout(
         domain=domain,
@@ -450,14 +450,14 @@ def run_example():
 
 
 def run_astar():
-    from skdecide.hub.solver.lazy_astar import LazyAstar
+    from skdecide.hub.solver.p_astar import Astar
 
     domain = MyExampleRCPSPDomain()
     # domain = MyExampleSRCPSPDomain()
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
     print("Initial state : ", state)
-    solver = LazyAstar(domain_factory=lambda: domain, heuristic=None, verbose=True)
+    solver = Astar(domain_factory=lambda: domain, heuristic=None, verbose=True)
     solver.solve(from_memory=state)
     states, actions, values = rollout(
         domain=domain,

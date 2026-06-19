@@ -441,7 +441,7 @@ class FlightPlanningDomain(DeterministicPlanningDomain, UnrestrictedActions):
             fuel_loop (bool, optional):
                 Boolean to create a fuel loop to optimize the fuel loaded for the flight. Defaults to False
             fuel_loop_solver_cls (type[Solver], optional):
-                Solver class used in the fuel loop. Defaults to LazyAstar.
+                Solver class used in the fuel loop. Defaults to Astar (pAstar).
             fuel_loop_solver_kwargs (dict[str, Any], optional):
                 Kwargs to initialize the solver used in the fuel loop.
             graph_width (str, optional):

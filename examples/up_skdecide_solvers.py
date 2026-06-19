@@ -13,7 +13,7 @@ from unified_planning.shortcuts import (
 )
 
 from skdecide.hub.domain.up import UPDomain
-from skdecide.hub.solver.lazy_astar import LazyAstar
+from skdecide.hub.solver.p_astar import Astar
 from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.utils import rollout
 
@@ -134,8 +134,8 @@ domain = domain_factory()
 
 ## Step 3: solving the UP problem with scikit-decide's Python A* engine
 
-if LazyAstar.check_domain(domain):
-    with LazyAstar(domain_factory=domain_factory) as solver:
+if Astar.check_domain(domain):
+    with Astar(domain_factory=domain_factory) as solver:
         solver.solve()
         rollout(
             domain,
