@@ -4,6 +4,7 @@
  */
 #include <pybind11/pybind11.h>
 
+#include "config.h"
 #include "utils/python_globals.hh"
 
 namespace py = pybind11;
@@ -17,6 +18,22 @@ void init_pylrtdp(py::module &m);
 void init_pymartdp(py::module &m);
 void init_pymcts(py::module &m);
 void init_pyriw(py::module &m);
+void init_pyvi(py::module &m);
+void init_pypi(py::module &m);
+void init_pyldfs(py::module &m);
+void init_pyrtdp_bel(py::module &m);
+void init_pyssipp(py::module &m);
+void init_pyfret(py::module &m);
+void init_pygpci(py::module &m);
+void init_pysarsop(py::module &m);
+void init_pydespot(py::module &m);
+void init_pyhsvi(py::module &m);
+void init_pypomcp(py::module &m);
+#ifdef HAS_HIGHS
+void init_pymdplp(py::module &m);
+void init_pyidual(py::module &m);
+void init_pywitness(py::module &m);
+#endif
 
 PYBIND11_MODULE(__skdecide_hub_cpp, m) {
   skdecide::Globals::init();
@@ -29,4 +46,20 @@ PYBIND11_MODULE(__skdecide_hub_cpp, m) {
   init_pymartdp(m);
   init_pymcts(m);
   init_pyriw(m);
+  init_pyvi(m);
+  init_pypi(m);
+  init_pyldfs(m);
+  init_pyrtdp_bel(m);
+  init_pyssipp(m);
+  init_pyfret(m);
+  init_pygpci(m);
+  init_pysarsop(m);
+  init_pydespot(m);
+  init_pyhsvi(m);
+  init_pypomcp(m);
+#ifdef HAS_HIGHS
+  init_pymdplp(m);
+  init_pyidual(m);
+  init_pywitness(m);
+#endif
 }

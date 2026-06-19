@@ -17,13 +17,15 @@ void init_pyilaostar(py::module &m) {
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
-                    double, double, bool,
+                    double, double, bool, bool,
                     const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
            py::arg("heuristic"), py::arg("discount") = 1.0,
-           py::arg("epsilon") = 0.001, py::arg("parallel") = false,
-           py::arg("callback") = nullptr, py::arg("verbose") = false)
+           py::arg("epsilon") = 0.001,
+           py::arg("per_sweep_graph_update") = false,
+           py::arg("parallel") = false, py::arg("callback") = nullptr,
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyILAOStarSolver::close)
       .def("clear", &skdecide::PyILAOStarSolver::clear)
       .def("solve", &skdecide::PyILAOStarSolver::solve, py::arg("state"))

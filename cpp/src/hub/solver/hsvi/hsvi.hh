@@ -1,0 +1,274 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+#ifndef SKDECIDE_HSVI_HH
+#define SKDECIDE_HSVI_HH
+
+#include <chrono>
+#include <cmath>
+#include <functional>
+#include <limits>
+#include <memory>
+#include <numeric>
+#include <optional>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+#include "utils/execution.hh"
+#include "utils/logging.hh"
+
+namespace skdecide {
+
+template <typename Tdomain, typename Texecution_policy = SequentialExecution>
+class HSVISolver {
+public:
+  typedef Tdomain Domain;
+  typedef typename Domain::State State;
+  typedef typename Domain::Action Action;
+  typedef typename Domain::Observation Observation;
+  typedef typename Domain::Value Value;
+  typedef Texecution_policy ExecutionPolicy;
+
+  typedef std::unordered_map<std::size_t, double> Belief;
+
+  typedef std::function<bool(const HSVISolver &, Domain &)> CallbackFunctor;
+  typedef std::function<bool(Domain &, const State &)> GoalCheckerFunctor;
+
+  HSVISolver(
+      Domain &domain, double epsilon = 0.001, double discount = 0.95,
+      std::size_t time_budget = 300000, std::size_t max_sample_depth = 100,
+      bool use_closed_list = false, double depth_bound_eta = 0.1,
+      std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
+      double prob_epsilon = 1e-15,
+      const CallbackFunctor &callback = [](const HSVISolver &,
+                                           Domain &) { return false; },
+      bool verbose = false);
+
+  virtual ~HSVISolver() = default;
+
+  virtual void clear();
+
+  void solve(const std::vector<std::pair<State, double>> &initial_distribution);
+
+  const Action &get_best_action(const Observation &obs);
+  Value get_best_value(const Observation &obs);
+  bool is_solution_defined_for(const Observation &obs);
+  void reset_belief();
+
+  const Action &get_best_action_from_belief(const Belief &b) const;
+  Value get_best_value_from_belief(const Belief &b) const;
+  bool is_solution_defined_for_from_belief(const Belief &b) const;
+
+  std::size_t get_nb_alpha_vectors() const;
+  std::size_t get_nb_bound_points() const;
+  std::size_t get_solving_time() const;
+  double get_gap() const;
+
+  std::size_t get_state_index(const State &s);
+  const std::unordered_map<std::size_t, State> &get_index_to_state() const;
+
+protected:
+  struct AlphaVector {
+    std::vector<double> values;
+    Action action;
+    std::size_t id;
+
+    AlphaVector() : id(0) {}
+    AlphaVector(std::size_t num_states, const Action &a, std::size_t vid)
+        : values(num_states, 0.0), action(a), id(vid) {}
+  };
+
+  struct BoundPoint {
+    Belief belief;
+    double value;
+  };
+
+  virtual double _better(double a, double b) const { return std::max(a, b); }
+
+  virtual double _worse(double a, double b) const { return std::min(a, b); }
+
+  virtual double _best_init() const {
+    return -std::numeric_limits<double>::infinity();
+  }
+
+  virtual double _worst_init() const {
+    return std::numeric_limits<double>::infinity();
+  }
+
+  virtual bool _is_better(double a, double b) const { return a > b; }
+
+  virtual double _get_value(const Value &v) const { return v.reward(); }
+
+  virtual void make_value_obj(double v, Value &out) const { out.reward(v); }
+
+  virtual double convergence_threshold(std::size_t depth) const {
+    return _epsilon * std::pow(_discount, -static_cast<double>(depth));
+  }
+
+  virtual double get_terminal_state_value(std::size_t /*si*/) const {
+    return 0.0;
+  }
+
+  virtual void compute_depth_bound() { _depth_bound = _max_sample_depth; }
+
+  virtual void on_states_enumerated() {}
+  virtual void on_model_cached() {}
+
+  void enumerate_states(const Belief &b0);
+  void pre_cache_model();
+  virtual void initialize_alpha_bound();
+  virtual void initialize_point_bound();
+
+  void create_blind_policy_alphas();
+
+  void explore(const Belief &b, std::size_t depth,
+               std::unordered_set<std::size_t> &closed_list);
+
+  void alpha_backup(const Belief &b);
+  void point_update(const Belief &b);
+
+  double evaluate_alpha(const Belief &b) const;
+  double evaluate_sawtooth(const Belief &b) const;
+  double evaluate_sawtooth_corner(const Belief &b) const;
+
+  virtual double evaluate_upper(const Belief &b) const {
+    return evaluate_sawtooth(b);
+  }
+
+  virtual double evaluate_lower(const Belief &b) const {
+    return evaluate_alpha(b);
+  }
+
+  double dot_product(const AlphaVector &alpha, const Belief &b) const;
+  std::size_t best_alpha_index(const Belief &b) const;
+
+  Belief compute_posterior(const Belief &b, std::size_t action_idx,
+                           std::size_t obs_hash) const;
+
+  double compute_obs_probability(const Belief &b, std::size_t action_idx,
+                                 std::size_t obs_hash) const;
+
+  std::size_t belief_hash(const Belief &b) const;
+
+  void update_current_belief(const Observation &obs);
+
+  std::size_t elapsed_ms() const;
+
+  Domain &_domain;
+  double _epsilon;
+  double _discount;
+  std::size_t _time_budget;
+  std::size_t _max_sample_depth;
+  bool _use_closed_list;
+  double _depth_bound_eta;
+  std::size_t _max_vi_iterations;
+  double _vi_convergence_factor;
+  double _prob_epsilon;
+  CallbackFunctor _callback;
+  bool _verbose;
+
+  ExecutionPolicy _execution_policy;
+
+  std::vector<State> _states;
+  std::unordered_map<std::size_t, std::size_t> _state_hash_to_idx;
+  std::unordered_map<std::size_t, State> _index_to_state;
+  std::vector<Action> _actions;
+  std::unordered_map<std::size_t, std::size_t> _action_hash_to_idx;
+  std::vector<std::vector<std::vector<std::pair<double, std::size_t>>>>
+      _transitions;
+  std::vector<std::vector<std::unordered_map<std::size_t, double>>> _obs_prob;
+  std::vector<std::vector<double>> _values;
+  std::unordered_map<std::size_t, Observation> _obs_objects;
+  std::vector<std::vector<std::size_t>> _action_obs_hashes;
+  std::vector<std::size_t> _state_idx_to_hash;
+  std::vector<bool> _is_terminal_cache;
+
+  std::vector<AlphaVector> _alpha_vectors;
+  std::size_t _next_alpha_id = 0;
+
+  std::vector<double> _mdp_values;
+  std::vector<BoundPoint> _bound_points;
+
+  Belief _initial_belief;
+  Belief _current_belief;
+  Action _last_action;
+  bool _has_last_action = false;
+
+  std::size_t _depth_bound = 0;
+  double _gap = std::numeric_limits<double>::infinity();
+
+  std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+};
+
+template <typename Tdomain, typename Texecution_policy = SequentialExecution>
+class GoalHSVISolver : public HSVISolver<Tdomain, Texecution_policy> {
+public:
+  using Base = HSVISolver<Tdomain, Texecution_policy>;
+  using typename Base::Action;
+  using typename Base::Belief;
+  using typename Base::CallbackFunctor;
+  using typename Base::Domain;
+  using typename Base::ExecutionPolicy;
+  using typename Base::GoalCheckerFunctor;
+  using typename Base::Observation;
+  using typename Base::State;
+  using typename Base::Value;
+
+  GoalHSVISolver(
+      Domain &domain, const GoalCheckerFunctor &goal_checker,
+      double epsilon = 0.001, double discount = 1.0,
+      std::size_t time_budget = 300000, std::size_t max_sample_depth = 100,
+      bool use_closed_list = true, double depth_bound_eta = 0.1,
+      std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
+      double prob_epsilon = 1e-15,
+      const CallbackFunctor &callback = [](const Base &,
+                                           Domain &) { return false; },
+      bool verbose = false, std::optional<double> dead_end_cost = std::nullopt);
+
+  void clear() override;
+
+protected:
+  double _better(double a, double b) const override { return std::min(a, b); }
+  double _worse(double a, double b) const override { return std::max(a, b); }
+  double _best_init() const override {
+    return std::numeric_limits<double>::infinity();
+  }
+  double _worst_init() const override {
+    return -std::numeric_limits<double>::infinity();
+  }
+  bool _is_better(double a, double b) const override { return a < b; }
+  double _get_value(const Value &v) const override { return v.cost(); }
+  void make_value_obj(double v, Value &out) const override { out.cost(v); }
+
+  double evaluate_upper(const Belief &b) const override {
+    return this->evaluate_alpha(b);
+  }
+  double evaluate_lower(const Belief &b) const override {
+    return this->evaluate_sawtooth(b);
+  }
+
+  double convergence_threshold(std::size_t /*depth*/) const override {
+    return this->_epsilon;
+  }
+
+  double get_terminal_state_value(std::size_t si) const override;
+
+  void initialize_alpha_bound() override;
+  void initialize_point_bound() override;
+  void compute_depth_bound() override;
+  void on_states_enumerated() override;
+  void on_model_cached() override;
+
+private:
+  GoalCheckerFunctor _goal_checker;
+  std::optional<double> _user_dead_end_cost;
+  std::vector<bool> _is_goal_cache;
+  double _dead_end_cost = 0.0;
+};
+
+} // namespace skdecide
+
+#endif // SKDECIDE_HSVI_HH

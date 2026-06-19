@@ -1,0 +1,12 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/sarsop/sarsop.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/sarsop/impl/sarsop_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
+
+template class skdecide::SARSOPSolver<
+    skdecide::PythonDomainProxy<${Texecution}, skdecide::SingleAgent,
+                                skdecide::PartiallyObservable>,
+    ${Texecution}>;

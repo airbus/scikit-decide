@@ -26,7 +26,7 @@ from skdecide.hub.domain.plado import (
 )
 from skdecide.hub.domain.plado.llg_encoder import decode_llg
 from skdecide.hub.domain.plado.plado import BasePladoDomain
-from skdecide.hub.solver.lazy_astar import LazyAstar
+from skdecide.hub.solver.p_astar import Astar
 from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.autoregressive.ppo.autoregressive_ppo import (
@@ -485,8 +485,8 @@ def test_plado_state_sample_pddl(plado_pddl_domain_factory):
 def test_plado_domain_planning(plado_native_domain_factory):
     domain_factory = plado_native_domain_factory
 
-    assert LazyAstar.check_domain(domain_factory())
-    with LazyAstar(
+    assert Astar.check_domain(domain_factory())
+    with Astar(
         domain_factory=domain_factory,
     ) as solver:
         solver.solve()

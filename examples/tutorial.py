@@ -15,7 +15,7 @@ from typing import *
 
 from skdecide import *
 from skdecide.builders.domain import *
-from skdecide.hub.solver.lazy_astar import LazyAstar
+from skdecide.hub.solver.p_astar import Astar
 from skdecide.hub.space.gym import EnumSpace, ListSpace
 from skdecide.utils import rollout
 
@@ -162,10 +162,10 @@ Pick a solver (lazy A*) and solve the maze optimally.
 
 # %%
 # Check solver compatibility with the domain
-assert LazyAstar.check_domain(domain)
+assert Astar.check_domain(domain)
 
 # Compute solution and visualize it
-with LazyAstar(
+with Astar(
     domain_factory=lambda: MyDomain(State(1, 1), State(19, 19), maze_str)
 ) as solver:
     solver.solve()

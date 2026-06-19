@@ -53,6 +53,7 @@ private:
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
         double discount = 1.0, double epsilon = 0.001,
+        bool per_sweep_graph_update = false,
         const std::function<py::bool_(const py::object &)> &callback = nullptr,
         bool verbose = false)
         : _goal_checker(goal_checker), _heuristic(heuristic),
@@ -103,7 +104,7 @@ private:
               throw;
             }
           },
-          discount, epsilon,
+          discount, epsilon, per_sweep_graph_update,
           [this](const skdecide::ILAOStarSolver<PyILAOStarDomain<Texecution>,
                                                 Texecution> &s,
                  PyILAOStarDomain<Texecution> &d) -> bool {
@@ -270,14 +271,15 @@ public:
           &goal_checker,
       const std::function<py::object(const py::object &, const py::object &)>
           &heuristic,
-      double discount = 1.0, double epsilon = 0.001, bool parallel = false,
+      double discount = 1.0, double epsilon = 0.001,
+      bool per_sweep_graph_update = false, bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, goal_checker, heuristic, discount, epsilon,
-                     callback, verbose);
+                     per_sweep_graph_update, callback, verbose);
   }
 
   void close() { _implementation->close(); }

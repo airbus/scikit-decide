@@ -328,8 +328,8 @@ if __name__ == "__main__":
     try_solvers = [
         # Lazy A* (classical planning)
         {
-            "name": "Lazy A* (classical planning)",
-            "entry": "LazyAstar",
+            "name": "Python A* (classical planning)",
+            "entry": "pAstar",
             "config": {
                 "domain_factory": lambda: MyDomain(),
                 "heuristic": lambda d, s: Value(

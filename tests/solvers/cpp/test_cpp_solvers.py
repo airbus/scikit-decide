@@ -534,3 +534,110 @@ def test_solver_cpp_with_cb(parallel, solver_cpp, shared_memory, caplog):
     assert "End of iteration #1" in caplog.text
     if "parallel" not in solver_args or not solver_args["parallel"]:
         assert "End of iteration #4" not in caplog.text
+
+
+# === LRTDP enhancements & LRTAstar tests ===
+
+
+def test_lrtdp_terminal_value():
+    """terminal_value parameter should be accepted without error."""
+    from skdecide.hub.solver.lrtdp import LRTDP
+
+    with LRTDP(
+        domain_factory=lambda: GridDomain(),
+        heuristic=lambda d, s: Value(
+            cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
+        ),
+        terminal_value=lambda s: Value(cost=42.0),
+        use_labels=True,
+        discount=1.0,
+        epsilon=0.001,
+    ) as solver:
+        solver.solve()
+        assert solver.get_utility(State(x=0, y=0, s=0)) is not None
+
+
+def test_lrtdp_explored_states():
+    """get_explored_states should return a non-empty set including the initial state."""
+    from skdecide.hub.solver.lrtdp import LRTDP
+
+    with LRTDP(
+        domain_factory=lambda: GridDomain(),
+        heuristic=lambda d, s: Value(
+            cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
+        ),
+        use_labels=True,
+        discount=1.0,
+        epsilon=0.001,
+    ) as solver:
+        solver.solve()
+        explored = solver.get_explored_states()
+
+    assert len(explored) > 0
+    assert State(x=0, y=0, s=0) in explored
+
+
+def test_lrtdp_solved_states():
+    """get_solved_states should include the initial state after convergence."""
+    from skdecide.hub.solver.lrtdp import LRTDP
+
+    with LRTDP(
+        domain_factory=lambda: GridDomain(),
+        heuristic=lambda d, s: Value(
+            cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
+        ),
+        use_labels=True,
+        discount=1.0,
+        epsilon=0.001,
+    ) as solver:
+        solver.solve()
+        solved = solver.get_solved_states()
+
+    assert State(x=0, y=0, s=0) in solved
+
+
+def test_lrtastar_solves_deterministic():
+    """LRTAstar should find a path on the deterministic grid.
+
+    LRTAstar (RTDP without labels) is not guaranteed to find the optimal
+    solution in bounded time, so we only check that a valid plan is found.
+    """
+    from skdecide.hub.solver.lrtdp import LRTAstar
+
+    dom = GridDomain()
+
+    with LRTAstar(
+        domain_factory=lambda: GridDomain(),
+        heuristic=lambda d, s: Value(
+            cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
+        ),
+    ) as solver:
+        solver.solve()
+        plan, cost = get_plan(dom, solver)
+
+    assert len(plan) > 0
+    assert cost > 0
+
+
+def test_lrtastar_get_plan():
+    """LRTAstar.get_plan() should return a non-empty action sequence."""
+    from skdecide.hub.solver.lrtdp import LRTAstar
+
+    with LRTAstar(
+        domain_factory=lambda: GridDomain(),
+        heuristic=lambda d, s: Value(
+            cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
+        ),
+    ) as solver:
+        solver.solve()
+        plan = solver.get_plan()
+
+    assert len(plan) > 0
+
+
+def test_lrtastar_domain_check():
+    """LRTAstar should accept the deterministic GridDomain."""
+    from skdecide.hub.solver.lrtdp import LRTAstar
+
+    dom = GridDomain()
+    assert LRTAstar.check_domain(dom)

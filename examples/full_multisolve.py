@@ -224,8 +224,8 @@ if __name__ == "__main__":
         },
         # Lazy A* (classical planning)
         {
-            "name": "Lazy A* (classical planning)",
-            "entry": "LazyAstar",
+            "name": "Python A* (classical planning)",
+            "entry": "pAstar",
             "config": {"heuristic": lambda d, s: d.heuristic(s), "verbose": False},
         },
         # A* (planning)

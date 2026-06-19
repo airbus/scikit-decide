@@ -22,14 +22,13 @@ namespace skdecide {
 #define SK_ILAOSTAR_SOLVER_CLASS ILAOStarSolver<Tdomain, Texecution_policy>
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
-SK_ILAOSTAR_SOLVER_CLASS::ILAOStarSolver(Domain &domain,
-                                         const GoalCheckerFunctor &goal_checker,
-                                         const HeuristicFunctor &heuristic,
-                                         double discount, double epsilon,
-                                         const CallbackFunctor &callback,
-                                         bool verbose)
+SK_ILAOSTAR_SOLVER_CLASS::ILAOStarSolver(
+    Domain &domain, const GoalCheckerFunctor &goal_checker,
+    const HeuristicFunctor &heuristic, double discount, double epsilon,
+    bool per_sweep_graph_update, const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _discount(discount), _epsilon(epsilon), _callback(callback),
+      _discount(discount), _epsilon(epsilon),
+      _per_sweep_graph_update(per_sweep_graph_update), _callback(callback),
       _verbose(verbose) {
 
   if (verbose) {
@@ -72,24 +71,49 @@ void SK_ILAOSTAR_SOLVER_CLASS::solve(const State &s) {
         depth_first_search(root_node);
       }
 
-      // compute best solution graph for value iteration
+      // Step 3 convergence test (Table 7, Hansen & Zilberstein 2001):
+      // recompute best solution graph, check for unexpanded tips
+      // (go back to DFS if found), then loop VI + graph recomputation
+      // until the graph stabilizes.
       compute_best_solution_graph(root_node);
-      // perform value iteration on the best solution graph
-      value_iteration();
-      // recompute best solution graph after value iteration updates
-      compute_best_solution_graph(root_node);
-      // compute unexpanded tip node reachability from every state in best
-      // policy
       compute_reachability();
-      // compute mean first passage time to goal states from states in best
-      // policy
-      compute_mfpt();
-      // update solved bits; note that Hansen and Zilberstein compute only the
-      // initial state solve status but we do it for every state of the best
-      // policy (thus the computation above of tip node reachability for every
-      // state of the best policy) in order to prematurely identify solved
-      // states and speed-up the search
-      update_solved_bits();
+      if (root_node.reach_tip_node) {
+        continue;
+      }
+      bool converged = false;
+      while (!converged) {
+        bool best_action_changed;
+        double sweep_residual;
+
+        if (_per_sweep_graph_update) {
+          auto result = value_iteration_sweep();
+          sweep_residual = result.first;
+          best_action_changed = result.second;
+        } else {
+          best_action_changed = value_iteration();
+          sweep_residual = 0;
+        }
+
+        if (best_action_changed) {
+          compute_best_solution_graph(root_node);
+          compute_reachability();
+          if (root_node.reach_tip_node) {
+            break;
+          }
+        }
+
+        converged = !best_action_changed && (sweep_residual <= _epsilon);
+      }
+
+      if (!root_node.reach_tip_node) {
+        compute_mfpt();
+        // update solved bits; note that Hansen and Zilberstein compute only
+        // the initial state solve status but we do it for every state of the
+        // best policy (thus the computation above of tip node reachability
+        // for every state of the best policy) in order to prematurely
+        // identify solved states and speed-up the search
+        update_solved_bits();
+      }
 
       if (_verbose) {
         std::string graph_str = "{";
@@ -369,22 +393,40 @@ double SK_ILAOSTAR_SOLVER_CLASS::update(StateNode &s) {
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
-void SK_ILAOSTAR_SOLVER_CLASS::value_iteration() {
+std::pair<double, bool> SK_ILAOSTAR_SOLVER_CLASS::value_iteration_sweep() {
+  atomic_double residual = 0;
+  atomic_bool best_action_changed = false;
+
+  std::for_each(ExecutionPolicy::policy, _best_solution_graph.begin(),
+                _best_solution_graph.end(),
+                [this, &residual, &best_action_changed](auto &s) {
+                  ActionNode *old_best_action = s->best_action;
+                  residual = std::max((double)residual, update(*s));
+                  if (s->best_action != old_best_action) {
+                    best_action_changed = true;
+                  }
+                });
+
+  return {(double)residual, (bool)best_action_changed};
+}
+
+SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
+bool SK_ILAOSTAR_SOLVER_CLASS::value_iteration() {
   if (_verbose)
     Logger::debug("Running value iteration");
-  atomic_double residual = std::numeric_limits<double>::infinity();
+  bool any_action_changed = false;
+  double residual = std::numeric_limits<double>::infinity();
 
   while (residual > _epsilon) {
-    residual = 0;
-    std::for_each(ExecutionPolicy::policy, _best_solution_graph.begin(),
-                  _best_solution_graph.end(), [this, &residual](auto &s) {
-                    residual = std::max((double)residual, update(*s));
-                  });
+    auto result = value_iteration_sweep();
+    residual = result.first;
+    any_action_changed = any_action_changed || result.second;
   }
 
   if (_verbose)
     Logger::debug("Value iteration converged with residual " +
                   StringConverter::from(residual));
+  return any_action_changed;
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL

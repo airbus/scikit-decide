@@ -78,7 +78,7 @@ def test_up_bridge_domain_planning():
     from unified_planning.shortcuts import Fluent, InstantaneousAction, Not
 
     from skdecide.hub.domain.up import UPDomain
-    from skdecide.hub.solver.lazy_astar import LazyAstar
+    from skdecide.hub.solver.p_astar import Astar
 
     x = Fluent("x")
     y = Fluent("y")
@@ -116,7 +116,7 @@ def test_up_bridge_domain_planning():
     domain_factory = lambda: UPDomain(problem, state_encoding="native")
     domain = domain_factory()
 
-    with LazyAstar(
+    with Astar(
         domain_factory=domain_factory,
     ) as solver:
         solver.solve()
@@ -127,7 +127,7 @@ def test_up_bridge_domain_planning():
             p.append(solver.get_next_action(s, domain=domain))
             s = domain.get_next_state(s, p[-1])
             step += 1
-    assert LazyAstar.check_domain(domain)
+    assert Astar.check_domain(domain)
     assert step == 2
     assert p[0].up_action == b
     assert p[1].up_action == c

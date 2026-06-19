@@ -25,7 +25,7 @@ template <typename Texecution>
 using PyLRTDPDomain = PythonDomainProxy<Texecution>;
 
 class PyLRTDPSolver {
-private:
+protected:
   class BaseImplementation {
   public:
     virtual ~BaseImplementation() {}
@@ -39,10 +39,16 @@ private:
     virtual py::int_ get_nb_rollouts() = 0;
     virtual py::float_ get_residual_moving_average() = 0;
     virtual py::int_ get_solving_time() = 0;
+    virtual py::set get_explored_states() = 0;
+    virtual py::set get_solved_states() = 0;
     virtual py::dict get_policy() = 0;
+    virtual py::list get_plan(const py::object &s) {
+      throw std::runtime_error("get_plan is only available on LRTAstar");
+    }
   };
 
-  template <typename Texecution>
+  template <typename Texecution,
+            template <typename, typename> class TSolver = LRTDPSolver>
   class Implementation : public BaseImplementation {
   public:
     Implementation(
@@ -54,93 +60,113 @@ private:
         const std::function<py::object(py::object &, const py::object &,
                                        const py::object &)>
             &heuristic, // last arg used for optional thread_id
+        const std::function<py::object(const py::object &)> &terminal_value,
         bool use_labels = true, std::size_t time_budget = 3600000,
         std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
         std::size_t residual_moving_average_window = 100,
         double epsilon = 0.001, double discount = 1.0,
         bool online_node_garbage = false,
         const std::function<py::bool_(const py::object &, const py::object &)>
-            &callback = nullptr,
+            &callback = nullptr, // last arg used for optional thread_id
         bool verbose = false)
         : _goal_checker(goal_checker), _heuristic(heuristic),
-          _callback(callback) {
+          _terminal_value(terminal_value), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
       check_domain(domain);
       _domain = std::make_unique<PyLRTDPDomain<Texecution>>(domain);
-      _solver = std::make_unique<
-          skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>>(
-          *_domain,
-          [this](PyLRTDPDomain<Texecution> &d,
-                 const typename PyLRTDPDomain<Texecution>::State &s,
-                 const std::size_t *thread_id) ->
-          typename PyLRTDPDomain<Texecution>::Predicate {
-            try {
-              std::unique_ptr<py::object> r =
-                  d.call(thread_id, _goal_checker, s.pyobj());
-              typename skdecide::GilControl<Texecution>::Acquire acquire;
-              bool rr = r->template cast<bool>();
-              r.reset();
-              return rr;
-            } catch (const std::exception &e) {
-              Logger::error(
-                  std::string(
-                      "SKDECIDE exception when calling goal checker: ") +
-                  e.what());
-              throw;
-            }
-          },
-          [this](PyLRTDPDomain<Texecution> &d,
-                 const typename PyLRTDPDomain<Texecution>::State &s,
-                 const std::size_t *thread_id) ->
-          typename PyLRTDPDomain<Texecution>::Value {
-            try {
-              return typename PyLRTDPDomain<Texecution>::Value(
-                  d.call(thread_id, _heuristic, s.pyobj()));
-            } catch (const std::exception &e) {
-              Logger::error(
-                  std::string("SKDECIDE exception when calling heuristic: ") +
-                  e.what());
-              throw;
-            }
-          },
-          use_labels, time_budget, rollout_budget, max_depth,
-          residual_moving_average_window, epsilon, discount,
-          online_node_garbage,
-          [this](const skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>,
-                                             Texecution> &s,
-                 PyLRTDPDomain<Texecution> &d,
-                 const std::size_t *thread_id) -> bool {
-            // we don't make use of the C++ solver object 's' from Python
-            // but we rather use its Python wrapper 'solver'
-            if (_callback) {
-              std::unique_ptr<py::bool_> r;
-              typename skdecide::GilControl<Texecution>::Acquire acquire;
-              try {
-                if (thread_id) {
-                  r = std::make_unique<py::bool_>(
-                      _callback(*_pysolver, py::int_(*thread_id)));
-                } else {
-                  r = std::make_unique<py::bool_>(
-                      _callback(*_pysolver, py::none()));
+      _solver =
+          std::make_unique<TSolver<PyLRTDPDomain<Texecution>, Texecution>>(
+              *_domain,
+              [this](PyLRTDPDomain<Texecution> &d,
+                     const typename PyLRTDPDomain<Texecution>::State &s,
+                     const std::size_t *thread_id) ->
+              typename PyLRTDPDomain<Texecution>::Predicate {
+                try {
+                  std::unique_ptr<py::object> r =
+                      d.call(thread_id, _goal_checker, s.pyobj());
+                  typename skdecide::GilControl<Texecution>::Acquire acquire;
+                  bool rr = r->template cast<bool>();
+                  r.reset();
+                  return rr;
+                } catch (const std::exception &e) {
+                  Logger::error(
+                      std::string(
+                          "SKDECIDE exception when calling goal checker: ") +
+                      e.what());
+                  throw;
                 }
-                bool rr = r->template cast<bool>();
-                r.reset();
-                return rr;
-              } catch (const py::error_already_set *e) {
-                Logger::error(std::string("SKDECIDE exception when calling "
-                                          "callback function: ") +
-                              e->what());
-                std::runtime_error err(e->what());
-                r.reset();
-                delete e;
-                throw err;
-              }
-            } else {
-              return false;
-            }
-          },
-          verbose);
+              },
+              [this](PyLRTDPDomain<Texecution> &d,
+                     const typename PyLRTDPDomain<Texecution>::State &s,
+                     const std::size_t *thread_id) ->
+              typename PyLRTDPDomain<Texecution>::Value {
+                try {
+                  return typename PyLRTDPDomain<Texecution>::Value(
+                      d.call(thread_id, _heuristic, s.pyobj()));
+                } catch (const std::exception &e) {
+                  Logger::error(
+                      std::string(
+                          "SKDECIDE exception when calling heuristic: ") +
+                      e.what());
+                  throw;
+                }
+              },
+              [this](const typename PyLRTDPDomain<Texecution>::State &s) ->
+              typename PyLRTDPDomain<Texecution>::Value {
+                if (_terminal_value) {
+                  try {
+                    typename skdecide::GilControl<Texecution>::Acquire acquire;
+                    return typename PyLRTDPDomain<Texecution>::Value(
+                        _terminal_value(s.pyobj()));
+                  } catch (const std::exception &e) {
+                    Logger::error(
+                        std::string("SKDECIDE exception when calling terminal "
+                                    "value: ") +
+                        e.what());
+                    throw;
+                  }
+                } else {
+                  return typename PyLRTDPDomain<Texecution>::Value(0.0, false);
+                }
+              },
+              use_labels, time_budget, rollout_budget, max_depth,
+              residual_moving_average_window, epsilon, discount,
+              online_node_garbage,
+              [this](const skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>,
+                                                 Texecution> &s,
+                     PyLRTDPDomain<Texecution> &d,
+                     const std::size_t *thread_id) -> bool {
+                // we don't make use of the C++ solver object 's' from Python
+                // but we rather use its Python wrapper 'solver'
+                if (_callback) {
+                  std::unique_ptr<py::bool_> r;
+                  typename skdecide::GilControl<Texecution>::Acquire acquire;
+                  try {
+                    if (thread_id) {
+                      r = std::make_unique<py::bool_>(
+                          _callback(*_pysolver, py::int_(*thread_id)));
+                    } else {
+                      r = std::make_unique<py::bool_>(
+                          _callback(*_pysolver, py::none()));
+                    }
+                    bool rr = r->template cast<bool>();
+                    r.reset();
+                    return rr;
+                  } catch (const py::error_already_set *e) {
+                    Logger::error(std::string("SKDECIDE exception when calling "
+                                              "callback function: ") +
+                                  e->what());
+                    std::runtime_error err(e->what());
+                    r.reset();
+                    delete e;
+                    throw err;
+                  }
+                } else {
+                  return false;
+                }
+              },
+              verbose);
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
       _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(
@@ -168,7 +194,6 @@ private:
     }
 
     virtual void close() { _domain->close(); }
-
     virtual void clear() { _solver->clear(); }
 
     virtual void solve(const py::object &s) {
@@ -212,6 +237,24 @@ private:
 
     virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
 
+    virtual py::set get_explored_states() {
+      py::set s;
+      auto &&es = _solver->get_explored_states();
+      for (auto &e : es) {
+        s.add(e.pyobj());
+      }
+      return s;
+    }
+
+    virtual py::set get_solved_states() {
+      py::set s;
+      auto &&ss = _solver->get_solved_states();
+      for (auto &e : ss) {
+        s.add(e.pyobj());
+      }
+      return s;
+    }
+
     virtual py::dict get_policy() {
       py::dict d;
       auto &&p = _solver->get_policy();
@@ -222,12 +265,25 @@ private:
       return d;
     }
 
+    virtual py::list get_plan(const py::object &s) override {
+      if constexpr (!std::is_same_v<
+                        TSolver<PyLRTDPDomain<Texecution>, Texecution>,
+                        LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>>) {
+        py::list result;
+        auto &&plan = _solver->get_plan(s);
+        for (auto &a : plan) {
+          result.append(a.pyobj());
+        }
+        return result;
+      } else {
+        throw std::runtime_error("get_plan is only available on LRTAstar");
+      }
+    }
+
   private:
     std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<PyLRTDPDomain<Texecution>> _domain;
-    std::unique_ptr<
-        skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>>
-        _solver;
+    std::unique_ptr<TSolver<PyLRTDPDomain<Texecution>, Texecution>> _solver;
 
     std::function<py::object(py::object &, const py::object &,
                              const py::object &)>
@@ -235,6 +291,7 @@ private:
     std::function<py::object(py::object &, const py::object &,
                              const py::object &)>
         _heuristic; // last arg used for optional thread_id
+    std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &, const py::object &)>
         _callback; // last arg used for optional thread_id
 
@@ -244,9 +301,7 @@ private:
 
   struct ExecutionSelector {
     bool _parallel;
-
     ExecutionSelector(bool parallel) : _parallel(parallel) {}
-
     template <typename Propagator> struct Select {
       template <typename... Args>
       Select(ExecutionSelector &This, Args... args) {
@@ -261,10 +316,8 @@ private:
 
   struct SolverInstantiator {
     std::unique_ptr<BaseImplementation> &_implementation;
-
     SolverInstantiator(std::unique_ptr<BaseImplementation> &implementation)
         : _implementation(implementation) {}
-
     template <typename... TypeInstantiations> struct Instantiate {
       template <typename... Args>
       Instantiate(SolverInstantiator &This, Args... args) {
@@ -275,6 +328,8 @@ private:
   };
 
   std::unique_ptr<BaseImplementation> _implementation;
+
+  PyLRTDPSolver() = default;
 
 public:
   PyLRTDPSolver(
@@ -288,6 +343,8 @@ public:
                                      const py::object & // last arg used for
                                                         // optional thread_id
                                      )> &heuristic,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
       bool use_labels = true, std::size_t time_budget = 3600000,
       std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
       std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
@@ -301,16 +358,14 @@ public:
 
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
-        .instantiate(solver, domain, goal_checker, heuristic, use_labels,
-                     time_budget, rollout_budget, max_depth,
+        .instantiate(solver, domain, goal_checker, heuristic, terminal_value,
+                     use_labels, time_budget, rollout_budget, max_depth,
                      residual_moving_average_window, epsilon, discount,
                      online_node_garbage, callback, verbose);
   }
 
   void close() { _implementation->close(); }
-
   void clear() { _implementation->clear(); }
-
   void solve(const py::object &s) { _implementation->solve(s); }
 
   py::bool_ is_solution_defined_for(const py::object &s) {
@@ -337,7 +392,51 @@ public:
 
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
 
+  py::set get_explored_states() {
+    return _implementation->get_explored_states();
+  }
+
+  py::set get_solved_states() { return _implementation->get_solved_states(); }
+
   py::dict get_policy() { return _implementation->get_policy(); }
+};
+
+class PyLRTAstarSolver : public PyLRTDPSolver {
+  struct LRTAstarInstantiator {
+    std::unique_ptr<BaseImplementation> &_implementation;
+    LRTAstarInstantiator(std::unique_ptr<BaseImplementation> &impl)
+        : _implementation(impl) {}
+    template <typename... TypeInstantiations> struct Instantiate {
+      template <typename... Args>
+      Instantiate(LRTAstarInstantiator &This, Args... args) {
+        This._implementation = std::make_unique<
+            Implementation<TypeInstantiations..., LRTAstarSolver>>(args...);
+      }
+    };
+  };
+
+public:
+  PyLRTAstarSolver(
+      py::object &solver, py::object &domain,
+      const std::function<py::object(py::object &, const py::object &,
+                                     const py::object &)> &goal_checker,
+      const std::function<py::object(py::object &, const py::object &,
+                                     const py::object &)> &heuristic,
+      std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
+      std::size_t max_depth = 1000, bool parallel = false,
+      const std::function<py::bool_(const py::object &, const py::object &)>
+          &callback = nullptr,
+      bool verbose = false) {
+    TemplateInstantiator::select(ExecutionSelector(parallel),
+                                 LRTAstarInstantiator(_implementation))
+        .instantiate(solver, domain, goal_checker, heuristic, nullptr, false,
+                     time_budget, rollout_budget, max_depth, 100, 0.0, 1.0,
+                     false, callback, verbose);
+  }
+
+  py::list get_plan(const py::object &s) {
+    return _implementation->get_plan(s);
+  }
 };
 
 } // namespace skdecide

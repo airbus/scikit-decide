@@ -80,6 +80,22 @@ LIST(APPEND LIBS spdlog::spdlog)
 FIND_PACKAGE(Boost)
 LIST(APPEND INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
 
+# HiGHS LP solver (for LP-based solvers, built from source as static)
+INCLUDE(FetchContent)
+FetchContent_Declare(
+    highs
+    GIT_REPOSITORY https://github.com/ERGO-Code/HiGHS.git
+    GIT_TAG        v1.10.0
+    GIT_SHALLOW    TRUE
+)
+SET(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
+SET(HIGHS_BUILD_CXX ON CACHE INTERNAL "")
+SET(BUILD_TESTING OFF CACHE INTERNAL "")
+SET(BUILD_EXAMPLES OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(highs)
+SET(HAS_HIGHS TRUE)
+MESSAGE(STATUS "HiGHS built from source (static linking)")
+
 CMAKE_POLICY(SET CMP0077 NEW)
 SET(NNG_STATIC_LIB ON CACHE INTERNAL "")
 SET(NNG_TESTS OFF CACHE INTERNAL "")

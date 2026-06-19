@@ -1,0 +1,39 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/idual/idual.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/idual/impl/idual_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/idual/py_idual.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
+
+// Unconstrained: class + SFINAE member get_best_action
+template class skdecide::IDualSolver<
+    skdecide::PythonDomainProxy<skdecide::${Texecution}>,
+    skdecide::${Texecution}>;
+
+template const skdecide::PythonDomainProxy<skdecide::${Texecution}>::Action &
+skdecide::IDualSolver<
+    skdecide::PythonDomainProxy<skdecide::${Texecution}>,
+    skdecide::${Texecution}>::
+    get_best_action<
+        skdecide::PythonDomainProxy<skdecide::${Texecution}>, 0>(
+        const skdecide::PythonDomainProxy<skdecide::${Texecution}>::State &)
+        const;
+
+// Constrained: class + SFINAE member get_action_distribution
+template class skdecide::IDualSolver<
+    skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>,
+    skdecide::${Texecution}>;
+
+template std::vector<std::pair<
+    skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>::Action,
+    double>>
+skdecide::IDualSolver<
+    skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>,
+    skdecide::${Texecution}>::
+    get_action_distribution<
+        skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>, 0>(
+        const skdecide::PyConstrainedIDualDomain<
+            skdecide::${Texecution}>::State &) const;

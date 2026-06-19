@@ -18,7 +18,7 @@ from skdecide.builders.domain import (
 from skdecide.builders.solver import DeterministicPolicies, Policies
 from skdecide.core import autocast
 from skdecide.hub.domain.maze import Maze
-from skdecide.hub.solver.lazy_astar import LazyAstar
+from skdecide.hub.solver.p_astar import Astar
 from skdecide.hub.space.gym import DiscreteSpace, ListSpace
 from skdecide.utils import (
     ReplayOutOfActionMethod,
@@ -48,14 +48,14 @@ def test_load_registered_domain():
 
 def test_get_registered_solvers():
     domains = get_registered_solvers()
-    assert "LazyAstar" in domains
+    assert "pAstar" in domains
 
 
 def test_load_registered_solver():
     solver_class = load_registered_solver("NotExistingSolver")
     assert solver_class is None
-    lazyastar_class = load_registered_solver("LazyAstar")
-    assert lazyastar_class is LazyAstar
+    pastar_class = load_registered_solver("pAstar")
+    assert pastar_class is Astar
 
 
 class MyCallback(RolloutCallback):

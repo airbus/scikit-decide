@@ -50,7 +50,7 @@ from skdecide.hub.solver.do_solver.sgs_policies import (
     BasePolicyMethod,
     PolicyMethodParams,
 )
-from skdecide.hub.solver.lazy_astar import LazyAstar
+from skdecide.hub.solver.p_astar import Astar
 
 logger = logging.getLogger(__name__)
 
@@ -751,15 +751,15 @@ def test_do_mskill(domain_multiskill, do_solver_multiskill):
 @pytest.mark.parametrize(
     "solver_str",
     [
-        ("LazyAstar"),
+        ("Astar"),
     ],
 )
 def test_planning_algos(domain, solver_str):
     domain.set_inplace_environment(False)
     state = domain.get_initial_state()
     print("Initial state : ", state)
-    if solver_str == "LazyAstar":
-        solver = LazyAstar(domain_factory=lambda: domain, heuristic=None, verbose=False)
+    if solver_str == "Astar":
+        solver = Astar(domain_factory=lambda: domain, heuristic=None, verbose=False)
     solver.solve(from_memory=state)
     states, actions, values = rollout(
         domain=domain,

@@ -47,6 +47,7 @@ public:
       GoalCheckerFunctor;
   typedef std::function<Value(Domain &, const State &, const std::size_t *)>
       HeuristicFunctor;
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const LRTDPSolver &, Domain &,
                              const std::size_t *)>
       CallbackFunctor;
@@ -61,6 +62,8 @@ public:
    * @param heuristic Functor taking as arguments the domain, a state object and
    * the thread ID from which it is called, and returning the heuristic estimate
    * from the state to the goal
+   * @param terminal_value Functor taking a state and returning its terminal
+   * value (for non-goal terminal states). Defaults to cost=0.
    * @param use_labels Boolean indicating whether labels must be used (true) or
    * not (false, in which case the algorithm is equivalent to the standard RTDP)
    * @param time_budget Maximum solving time in milliseconds
@@ -69,8 +72,7 @@ public:
    * @param max_depth Maximum depth of each LRTDP trial (rollout)
    * @param residual_moving_average_window Number of latest computed residual
    * values to memorize in order to compute the average Bellman error (residual)
-   * at the root state of the search (deactivated when use_labels
-   * is true)
+   * at the root state of the search (deactivated when use_labels is true)
    * @param epsilon Maximum Bellman error (residual) allowed to decide that a
    * state is solved, or to decide when no label is used that the value
    * function of the root state of the search has converged (in the latter case:
@@ -89,9 +91,11 @@ public:
    */
   LRTDPSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
-      const HeuristicFunctor &heuristic, bool use_labels = true,
-      std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
-      std::size_t max_depth = 1000,
+      const HeuristicFunctor &heuristic,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, false); },
+      bool use_labels = true, std::size_t time_budget = 3600000,
+      std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
       std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
       double discount = 1.0, bool online_node_garbage = false,
       const CallbackFunctor &callback =
@@ -187,6 +191,22 @@ public:
   std::size_t get_solving_time();
 
   /**
+   * @brief Get the set of states present in the search graph (i.e. the graph's
+   * state nodes minus the nodes' encapsulation and their children)
+   *
+   * @return SetTypeDeducer<State>::Set Set of states present in the search
+   * graph
+   */
+  typename SetTypeDeducer<State>::Set get_explored_states() const;
+
+  /**
+   * @brief Get the set of states labeled as solved (converged)
+   *
+   * @return SetTypeDeducer<State>::Set Set of solved states
+   */
+  typename SetTypeDeducer<State>::Set get_solved_states() const;
+
+  /**
    * @brief Get the (partial) solution policy defined for the states for which
    * the Q-value has been updated at least once (which is optimal if the
    * algorithm has converged and labels are used); warning: only defined over
@@ -197,7 +217,7 @@ public:
    */
   typename MapTypeDeducer<State, std::pair<Action, Value>>::Map get_policy();
 
-private:
+protected:
   typedef typename ExecutionPolicy::template atomic<std::size_t> atomic_size_t;
   typedef typename ExecutionPolicy::template atomic<double> atomic_double;
   typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
@@ -205,6 +225,7 @@ private:
   Domain &_domain;
   GoalCheckerFunctor _goal_checker;
   HeuristicFunctor _heuristic;
+  TerminalValueFunctor _terminal_value;
   bool _use_labels;
   atomic_size_t _time_budget;
   atomic_size_t _rollout_budget;
@@ -273,6 +294,66 @@ private:
                        std::unordered_set<StateNode *> &child_subgraph);
   void update_residual_moving_average(const StateNode &node,
                                       const double &node_record_value);
+};
+
+template <typename Tdomain> struct has_get_next_state_lrtdp {
+  typedef char yes[1];
+  typedef char no[2];
+
+  template <typename D>
+  static yes &test(decltype(std::declval<D &>().get_next_state(
+      std::declval<const typename D::State &>(),
+      std::declval<const typename D::Action &>())) *);
+  template <typename> static no &test(...);
+
+  static const bool value = sizeof(test<Tdomain>(nullptr)) == sizeof(yes);
+};
+
+/**
+ * @brief LRTA* solver for deterministic planning problems.
+ *
+ * From the LRTDP paper (Bonet & Geffner, ICAPS 2003): "RTDP corresponds
+ * to a generalization of Korf's LRTA* to non-deterministic settings."
+ * LRTA* is LRTDP without labels (use_labels=false) on deterministic domains.
+ *
+ * Compared to LRTDP, this specialization:
+ * - Forces use_labels=false (no solved labeling)
+ * - Removes terminal_value, discount, epsilon (irrelevant for deterministic)
+ * - Requires DeterministicTransitions (static_assert on get_next_state)
+ */
+template <typename Tdomain, typename Texecution_policy = SequentialExecution>
+class LRTAstarSolver : public LRTDPSolver<Tdomain, Texecution_policy> {
+  static_assert(has_get_next_state_lrtdp<Tdomain>::value,
+                "LRTAstarSolver requires a deterministic domain providing "
+                "get_next_state(state, action)");
+
+  typedef LRTDPSolver<Tdomain, Texecution_policy> Base;
+
+public:
+  typedef typename Tdomain::State State;
+  typedef typename Tdomain::Action Action;
+  typedef typename Tdomain::Value Value;
+  typedef typename Base::GoalCheckerFunctor GoalCheckerFunctor;
+  typedef typename Base::HeuristicFunctor HeuristicFunctor;
+  typedef typename Base::CallbackFunctor CallbackFunctor;
+
+  LRTAstarSolver(
+      Tdomain &domain, const GoalCheckerFunctor &goal_checker,
+      const HeuristicFunctor &heuristic, std::size_t time_budget = 3600000,
+      std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
+      const CallbackFunctor &callback =
+          [](const Base &, Tdomain &, const std::size_t *) { return false; },
+      bool verbose = false);
+
+  // Overload accepting the full LRTDP signature (for pybind compatibility).
+  LRTAstarSolver(Tdomain &domain, const GoalCheckerFunctor &goal_checker,
+                 const HeuristicFunctor &heuristic,
+                 const typename Base::TerminalValueFunctor &, bool,
+                 std::size_t time_budget, std::size_t rollout_budget,
+                 std::size_t max_depth, std::size_t, double, double, bool,
+                 const CallbackFunctor &callback, bool verbose);
+
+  std::vector<Action> get_plan(const State &s) const;
 };
 
 } // namespace skdecide
