@@ -300,7 +300,10 @@ class PipeParallelDomain(ParallelDomain):
         for i in range(len(self._job_results)):
             self._initializations[i].value = False
             self._waiting_jobs[i].send(None)
-            self._processes[i].join()
+            self._processes[i].join(timeout=10)
+            if self._processes[i].is_alive():
+                self._processes[i].terminate()
+                self._processes[i].join(timeout=5)
             self._processes[i].close()
             self._waiting_jobs[i].close()
             self._processes[i] = None
@@ -620,7 +623,10 @@ class ShmParallelDomain(ParallelDomain):
             with self._conditions[i]:
                 self._activations[i].value = True
                 self._conditions[i].notify_all()
-            self._processes[i].join()
+            self._processes[i].join(timeout=10)
+            if self._processes[i].is_alive():
+                self._processes[i].terminate()
+                self._processes[i].join(timeout=5)
             self._processes[i].close()
             self._processes[i] = None
             self.close_ipc_connection(i)

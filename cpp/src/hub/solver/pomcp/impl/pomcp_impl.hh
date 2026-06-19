@@ -25,11 +25,13 @@ SK_POMCP_CLASS::POMCPSolver(Domain &domain, double exploration_constant,
                             std::size_t max_depth, double epsilon,
                             std::size_t time_budget,
                             std::size_t num_particles_belief_update,
+                            double ess_threshold_ratio,
                             const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _exploration_constant(exploration_constant),
       _discount(discount), _num_simulations(num_simulations),
       _max_depth(max_depth), _epsilon(epsilon), _time_budget(time_budget),
-      _num_particles_belief(num_particles_belief_update), _callback(callback),
+      _num_particles_belief(num_particles_belief_update),
+      _ess_threshold_ratio(ess_threshold_ratio), _callback(callback),
       _verbose(verbose), _rng(std::random_device{}()) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm POMCP");
@@ -459,7 +461,7 @@ void SK_POMCP_CLASS::update_belief_particles(const Observation &obs) {
     }
     ess = 1.0 / ess;
 
-    if (ess < _belief_particles.size() / 2.0) {
+    if (ess < _belief_particles.size() / _ess_threshold_ratio) {
       std::vector<double> weights;
       for (const auto &p : _belief_particles) {
         weights.push_back(p.second);

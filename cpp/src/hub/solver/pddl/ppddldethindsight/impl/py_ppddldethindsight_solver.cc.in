@@ -1,0 +1,25 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddldethindsight/ppddldethindsight.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddldethindsight/impl/ppddldethindsight_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddldethindsight/ffdethindsight.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddldethindsight/impl/ffdethindsight_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/sspdethindsight/sspdethindsight.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/sspdethindsight/impl/sspdethindsight_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/determinization/pddl_determinization_adapter.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/determinization/impl/pddl_determinization_adapter_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/determinization/pddl_domain_for_determinization.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/determinization/impl/pddl_domain_for_determinization_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddlreplan/ff_inner_solver.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/pddl/ppddlreplan/impl/ff_inner_solver_impl.hh"
+
+template class skdecide::SSPDetHindsightSolver<
+    skdecide::pddl::PddlDomainForDeterminization,
+    ${Texecution},
+    skdecide::pddl::PddlEffectDeterminizationAdapter<
+        skdecide::RandomOutcomeStrategy, ${Texecution}>>;
+
+template class skdecide::pddl::PPDDLDetHindsightSolver<${Texecution}>;
+template class skdecide::pddl::FFDetHindsightSolver<${Texecution}>;

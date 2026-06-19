@@ -560,6 +560,24 @@ SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 SK_ILAOSTAR_SOLVER_CLASS::ActionNode::ActionNode(const Action &a)
     : action(a), value(std::numeric_limits<double>::infinity()) {}
 
+SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_ILAOSTAR_SOLVER_CLASS>
+SK_ILAOSTAR_SOLVER_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> goal_checker,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> /*terminal_value*/,
+    const Params &params, bool verbose) {
+  return std::make_unique<ILAOStarSolver>(
+      domain, goal_checker, heuristic,
+      params.template get<double>("discount", 1.0),
+      params.template get<double>("epsilon", 0.001),
+      params.template get<bool>("per_sweep_graph_update", false),
+      CallbackFunctor([](const ILAOStarSolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose));
+}
+
 } // namespace skdecide
 
 #endif // SKDECIDE_ILAOSTAR_IMPL_HH

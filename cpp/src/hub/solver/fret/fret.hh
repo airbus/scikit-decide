@@ -69,6 +69,28 @@ public:
       Domain &, GoalCheckerFunctor, HeuristicFunctor)>
       InnerSolverFactory;
 
+  /**
+   * @brief Constructs a new FRET solver instance.
+   *
+   * @param domain The domain instance to solve.
+   * @param goal_checker Functor testing whether a state is a goal.
+   * @param heuristic Functor returning the heuristic cost estimate for
+   *   a state, used to initialize V(s) in the inner solver.
+   * @param discount Value function's discount factor. Defaults to 1.0.
+   * @param epsilon Greedy action tolerance and convergence threshold.
+   *   An action is considered greedy if its Q-value is within epsilon of
+   *   the best. Also used as the Bellman residual threshold in the inner
+   *   solver. Defaults to 0.001.
+   * @param dead_end_cost Cost assigned to states identified as permanent
+   *   traps (dead ends) during trap elimination. Defaults to 10000.0.
+   * @param callback Functor called after each FRET iteration (find-revise
+   *   + trap elimination), taking the solver and domain as arguments and
+   *   returning true to stop. Defaults to always returning false.
+   * @param verbose Whether to log verbose debug messages. Defaults to false.
+   * @param inner_solver_args Additional arguments forwarded to the inner
+   *   solver constructor. The inner solver must define TerminalValueFunctor
+   *   (e.g. LRTDPSolver, LDFSSolver, or VISolver).
+   */
   template <typename... InnerSolverArgs>
   FRETSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
@@ -93,6 +115,14 @@ public:
   typename SetTypeDeducer<State>::Set get_explored_states() const;
   typename SetTypeDeducer<State>::Set get_dead_end_states() const;
   std::vector<typename SetTypeDeducer<State>::Set> get_trapped_sccs() const;
+
+  template <typename Params>
+  static std::unique_ptr<FRETSolver> create_from_params(
+      Domain &domain,
+      std::function<Predicate(Domain &, const State &)> goal_checker,
+      std::function<Value(Domain &, const State &)> heuristic,
+      std::function<Value(const State &)> terminal_value, const Params &params,
+      bool verbose);
 
 private:
   Domain &_domain;

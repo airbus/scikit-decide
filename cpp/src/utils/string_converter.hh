@@ -6,6 +6,7 @@
 #define SKDECIDE_STRING_CONVERTER_HH
 
 #include <sstream>
+#include <algorithm>
 
 namespace skdecide {
 
@@ -20,6 +21,20 @@ struct StringConverter {
     std::istringstream iss(s);
     iss.exceptions(std::istringstream::failbit);
     iss >> t;
+  }
+
+  static std::string tolower(const std::string &s) {
+    std::string ls = s;
+    std::transform(ls.begin(), ls.end(), ls.begin(),
+                   [](const auto &c) { return std::tolower(c); });
+    return ls;
+  }
+
+  static std::string toupper(const std::string &s) {
+    std::string us = s;
+    std::transform(us.begin(), us.end(), us.begin(),
+                   [](const auto &c) { return std::toupper(c); });
+    return us;
   }
 };
 

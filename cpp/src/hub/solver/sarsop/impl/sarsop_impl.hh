@@ -29,21 +29,21 @@ namespace skdecide {
 // --- Constructor ---
 
 SK_SARSOP_TEMPLATE_DECL
-SK_SARSOP_CLASS::SARSOPSolver(Domain &domain, double epsilon, double discount,
-                              std::size_t time_budget, std::size_t max_beliefs,
-                              double pruning_delta,
-                              std::size_t max_vi_iterations,
-                              double vi_convergence_factor,
-                              std::size_t max_sample_depth, double prob_epsilon,
-                              double ub_improvement_epsilon,
-                              const CallbackFunctor &callback, bool verbose)
+SK_SARSOP_CLASS::SARSOPSolver(
+    Domain &domain, double epsilon, double discount, std::size_t time_budget,
+    std::size_t max_beliefs, double pruning_delta,
+    std::size_t max_vi_iterations, double vi_convergence_factor,
+    std::size_t max_sample_depth, double prob_epsilon,
+    double ub_improvement_epsilon, std::size_t pruning_interval,
+    std::size_t logging_interval, const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _epsilon(epsilon), _discount(discount),
       _time_budget(time_budget), _max_beliefs(max_beliefs),
       _pruning_delta(pruning_delta), _max_vi_iterations(max_vi_iterations),
       _vi_convergence_factor(vi_convergence_factor),
       _max_sample_depth(max_sample_depth), _prob_epsilon(prob_epsilon),
-      _ub_improvement_epsilon(ub_improvement_epsilon), _callback(callback),
-      _verbose(verbose), _next_alpha_id(0), _nb_beliefs(0),
+      _ub_improvement_epsilon(ub_improvement_epsilon),
+      _pruning_interval(pruning_interval), _logging_interval(logging_interval),
+      _callback(callback), _verbose(verbose), _next_alpha_id(0), _nb_beliefs(0),
       _has_solution(false) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm SARSOP");
@@ -881,7 +881,7 @@ void SK_SARSOP_CLASS::solve(
     backup(path);
 
     // Prune periodically
-    if (iteration % 10 == 0) {
+    if (_pruning_interval > 0 && iteration % _pruning_interval == 0) {
       prune();
     }
 
@@ -893,7 +893,8 @@ void SK_SARSOP_CLASS::solve(
 
     ++iteration;
 
-    if (_verbose && iteration % 50 == 0) {
+    if (_verbose && _logging_interval > 0 &&
+        iteration % _logging_interval == 0) {
       Logger::debug(
           "SARSOP: iteration " + std::to_string(iteration) +
           ", gap = " + std::to_string(_root->upper_bound - _root->lower_bound) +

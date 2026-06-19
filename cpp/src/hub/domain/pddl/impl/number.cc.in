@@ -1,0 +1,6 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/number.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/number_impl.hh"
+
+template struct skdecide::pddl::Number::Impl<${Tnumber}>;
+
+template skdecide::pddl::Number::Number(const ${Tnumber} & n);

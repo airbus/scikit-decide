@@ -1,0 +1,30 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/function.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/function_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/function_container_impl.hh"
+
+template class skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>;
+
+template const skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::FunctionPtr &
+skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::add_function(
+    const skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::FunctionPtr &function);
+
+template const skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::FunctionPtr &
+skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::add_function(
+    const std::string &function);
+
+template void
+skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::remove_function(
+    const skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::FunctionPtr &function);
+
+template void
+skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::remove_function(
+    const std::string &function);
+
+template const skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::FunctionPtr &
+skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::get_function(
+    const skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::FunctionPtr &function) const;
+
+template const skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::FunctionPtr &
+skdecide::pddl::FunctionContainer<skdecide::pddl::${Tderived}>::get_function(
+    const std::string &function) const;

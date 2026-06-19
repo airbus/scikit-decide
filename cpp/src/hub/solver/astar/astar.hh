@@ -179,6 +179,14 @@ public:
   typename MapTypeDeducer<State, std::pair<Action, Value>>::Map
   get_policy() const;
 
+  template <typename Params>
+  static std::unique_ptr<AStarSolver> create_from_params(
+      Domain &domain,
+      std::function<Predicate(Domain &, const State &)> goal_checker,
+      std::function<Value(Domain &, const State &)> heuristic,
+      std::function<Value(const State &)> terminal_value, const Params &params,
+      bool verbose);
+
 private:
   Domain &_domain;
   GoalCheckerFunctor _goal_checker;

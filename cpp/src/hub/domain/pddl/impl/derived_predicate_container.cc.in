@@ -1,0 +1,35 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/derived_predicate_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/derived_predicate_container_impl.hh"
+
+template class skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>;
+
+template const skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::DerivedPredicatePtr &
+skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::
+    add_derived_predicate(const skdecide::pddl::DerivedPredicateContainer<
+                          skdecide::pddl::${Tderived}>::
+                              DerivedPredicatePtr &derived_predicate);
+
+template const skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::DerivedPredicatePtr
+    &skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::
+        add_derived_predicate(const std::string &derived_predicate);
+
+template void
+skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::
+    remove_derived_predicate(
+        const skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::DerivedPredicatePtr &derived_predicate);
+
+template void
+    skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::
+        remove_derived_predicate(const std::string &derived_predicate);
+
+template const skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::DerivedPredicatePtr &
+skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::
+    get_derived_predicate(const skdecide::pddl::DerivedPredicateContainer<
+                          skdecide::pddl::${Tderived}>::
+                              DerivedPredicatePtr &derived_predicate) const;
+
+template const skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::DerivedPredicatePtr
+    &skdecide::pddl::DerivedPredicateContainer<skdecide::pddl::${Tderived}>::
+        get_derived_predicate(const std::string &derived_predicate)
+    const;

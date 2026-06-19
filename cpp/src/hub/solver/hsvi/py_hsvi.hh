@@ -71,6 +71,7 @@ protected:
         std::size_t max_sample_depth, bool use_closed_list,
         double depth_bound_eta, std::size_t max_vi_iterations,
         double vi_convergence_factor, double prob_epsilon,
+        double belief_hash_resolution,
         const std::function<py::bool_(const py::object &)> &callback,
         bool verbose, std::optional<double> dead_end_cost = std::nullopt)
         : _callback(callback) {
@@ -100,7 +101,7 @@ protected:
         _solver = std::make_unique<SolverType>(
             *_domain, gc, epsilon, discount, time_budget, max_sample_depth,
             use_closed_list, depth_bound_eta, max_vi_iterations,
-            vi_convergence_factor, prob_epsilon,
+            vi_convergence_factor, prob_epsilon, belief_hash_resolution,
             [this](const BaseSolverType &s,
                    PyHSVIDomain<Texecution> &d) -> bool {
               if (_callback) {
@@ -124,7 +125,7 @@ protected:
         _solver = std::make_unique<SolverType>(
             *_domain, epsilon, discount, time_budget, max_sample_depth,
             use_closed_list, depth_bound_eta, max_vi_iterations,
-            vi_convergence_factor, prob_epsilon,
+            vi_convergence_factor, prob_epsilon, belief_hash_resolution,
             [this](const BaseSolverType &s,
                    PyHSVIDomain<Texecution> &d) -> bool {
               if (_callback) {
@@ -349,7 +350,7 @@ public:
       std::size_t max_sample_depth = 100, bool use_closed_list = false,
       double depth_bound_eta = 0.1, std::size_t max_vi_iterations = 1000,
       double vi_convergence_factor = 0.01, double prob_epsilon = 1e-15,
-      bool parallel = false,
+      double belief_hash_resolution = 1000.0, bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
@@ -359,7 +360,8 @@ public:
                          const py::object &, const py::object &)> *>(nullptr),
                      epsilon, discount, time_budget, max_sample_depth,
                      use_closed_list, depth_bound_eta, max_vi_iterations,
-                     vi_convergence_factor, prob_epsilon, callback, verbose);
+                     vi_convergence_factor, prob_epsilon,
+                     belief_hash_resolution, callback, verbose);
   }
 };
 
@@ -386,7 +388,8 @@ public:
       std::size_t time_budget = 300000, std::size_t max_sample_depth = 100,
       bool use_closed_list = true, double depth_bound_eta = 0.1,
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
-      double prob_epsilon = 1e-15, bool parallel = false,
+      double prob_epsilon = 1e-15, double belief_hash_resolution = 1000.0,
+      bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false,
       std::optional<double> dead_end_cost = std::nullopt) {
@@ -395,7 +398,8 @@ public:
         .instantiate(solver, domain, &goal_checker, epsilon, discount,
                      time_budget, max_sample_depth, use_closed_list,
                      depth_bound_eta, max_vi_iterations, vi_convergence_factor,
-                     prob_epsilon, callback, verbose, dead_end_cost);
+                     prob_epsilon, belief_hash_resolution, callback, verbose,
+                     dead_end_cost);
   }
 };
 

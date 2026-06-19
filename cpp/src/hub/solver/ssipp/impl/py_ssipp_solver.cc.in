@@ -5,9 +5,11 @@
 
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/ssipp/ssipp.hh"
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/ssipp/impl/ssipp_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/inner_solver/meta_inner_solver_proxy.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/inner_solver/impl/meta_inner_solver_proxy_impl.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
 
 template class skdecide::SSiPPSolver<
     skdecide::PythonDomainProxy<skdecide::${Texecution}>,
     skdecide::${Texecution},
-    skdecide::${TinnerSolver}>;
+    skdecide::MetaInnerSolverProxy>;

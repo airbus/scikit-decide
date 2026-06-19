@@ -16,11 +16,10 @@
 #include "utils/template_instantiator.hh"
 #include "utils/impl/python_domain_proxy_call_impl.hh"
 
-#include <type_traits>
-
-#include "hub/solver/ldfs/ldfs.hh"
-#include "hub/solver/lrtdp/lrtdp.hh"
-#include "hub/solver/vi/vi.hh"
+#include "hub/solver/inner_solver/meta_inner_solver_proxy.hh"
+#include "hub/solver/inner_solver/impl/meta_inner_solver_proxy_impl.hh"
+#include "hub/solver/inner_solver/inner_solver_registry.hh"
+#include "hub/solver/inner_solver/impl/inner_solver_registry_impl.hh"
 
 #include "fret.hh"
 #include "impl/fret_impl.hh"
@@ -31,10 +30,6 @@ namespace skdecide {
 
 template <typename Texecution>
 using PyFRETDomain = PythonDomainProxy<Texecution>;
-
-struct FRETLRTDPInnerSolver {};
-struct FRETLDFSInnerSolver {};
-struct FRETVIInnerSolver {};
 
 class PyFRETSolver {
 private:
@@ -57,7 +52,7 @@ private:
     virtual py::dict get_policy() = 0;
   };
 
-  template <typename Texecution, typename TinnerSolverTag>
+  template <typename Texecution>
   class Implementation : public BaseImplementation {
   public:
     typedef PyFRETDomain<Texecution> Domain;
@@ -65,12 +60,7 @@ private:
     typedef typename Domain::Action Action;
     typedef typename Domain::Value Value;
 
-    using SolverType = std::conditional_t<
-        std::is_same_v<TinnerSolverTag, FRETLRTDPInnerSolver>,
-        FRETSolver<Domain, Texecution, LRTDPSolver>,
-        std::conditional_t<std::is_same_v<TinnerSolverTag, FRETLDFSInnerSolver>,
-                           FRETSolver<Domain, Texecution, LDFSSolver>,
-                           FRETSolver<Domain, Texecution, VISolver>>>;
+    using SolverType = FRETSolver<Domain, Texecution, MetaInnerSolverProxy>;
 
     Implementation(
         py::object &solver, py::object &domain,
@@ -79,7 +69,7 @@ private:
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
         double discount, double epsilon, double dead_end_cost,
-        const py::dict &inner_solver_params,
+        const std::string &inner_solver, const py::dict &inner_solver_params,
         const std::function<py::bool_(const py::object &)> &callback,
         bool verbose)
         : _goal_checker(goal_checker), _heuristic(heuristic),
@@ -88,62 +78,94 @@ private:
       _pysolver = std::make_unique<py::object>(solver);
       _domain = std::make_unique<Domain>(domain);
 
-      auto make_gc = [this]() {
-        return [this](Domain &d, const State &s) -> typename Domain::Predicate {
+      auto gc = [this](Domain &d,
+                       const State &s) -> typename Domain::Predicate {
+        try {
+          auto fgc = [this](const py::object &dd, const py::object &ss,
+                            [[maybe_unused]] const py::object &ii) {
+            return _goal_checker(dd, ss);
+          };
+          std::unique_ptr<py::object> r = d.call(nullptr, fgc, s.pyobj());
+          typename GilControl<Texecution>::Acquire acquire;
+          bool rr = r->template cast<bool>();
+          r.reset();
+          return rr;
+        } catch (const std::exception &e) {
+          Logger::error(
+              std::string("SKDECIDE exception when calling goal checker: ") +
+              e.what());
+          throw;
+        }
+      };
+
+      auto h = [this](Domain &d, const State &s) -> Value {
+        try {
+          auto fh = [this](const py::object &dd, const py::object &ss,
+                           [[maybe_unused]] const py::object &ii) {
+            return _heuristic(dd, ss);
+          };
+          return Value(d.call(nullptr, fh, s.pyobj()));
+        } catch (const std::exception &e) {
+          Logger::error(
+              std::string("SKDECIDE exception when calling heuristic: ") +
+              e.what());
+          throw;
+        }
+      };
+
+      auto cb = [this](const SolverType &, Domain &) -> bool {
+        if (_callback) {
           try {
-            auto fgc = [this](const py::object &dd, const py::object &ss,
-                              [[maybe_unused]] const py::object &ii) {
-              return _goal_checker(dd, ss);
-            };
-            std::unique_ptr<py::object> r = d.call(nullptr, fgc, s.pyobj());
-            typename GilControl<Texecution>::Acquire acquire;
-            bool rr = r->template cast<bool>();
-            r.reset();
-            return rr;
+            return _callback(*_pysolver);
           } catch (const std::exception &e) {
             Logger::error(
-                std::string("SKDECIDE exception when calling goal checker: ") +
+                std::string("SKDECIDE exception when calling callback: ") +
                 e.what());
             throw;
           }
-        };
+        }
+        return false;
       };
 
-      auto make_h = [this]() {
-        return [this](Domain &d, const State &s) -> Value {
-          try {
-            auto fh = [this](const py::object &dd, const py::object &ss,
-                             [[maybe_unused]] const py::object &ii) {
-              return _heuristic(dd, ss);
-            };
-            return Value(d.call(nullptr, fh, s.pyobj()));
-          } catch (const std::exception &e) {
-            Logger::error(
-                std::string("SKDECIDE exception when calling heuristic: ") +
-                e.what());
-            throw;
-          }
-        };
+      py::dict isp(inner_solver_params);
+      InnerSolverParams params;
+      for (auto &[k, v] : isp) {
+        std::string key = k.template cast<std::string>();
+        if (py::isinstance<py::bool_>(v))
+          params.set(key, v.template cast<bool>());
+        else if (py::isinstance<py::int_>(v))
+          params.set(key, v.template cast<std::size_t>());
+        else if (py::isinstance<py::float_>(v))
+          params.set(key, v.template cast<double>());
+        else if (py::isinstance<py::str>(v))
+          params.set(key, v.template cast<std::string>());
+      }
+
+      const auto &entry = find_inner_solver<Domain, Texecution>(inner_solver);
+      if (!entry.supports_terminal_value) {
+        throw std::runtime_error(
+            std::string("Inner solver '") + inner_solver +
+            "' is not compatible with FRET (requires terminal_value support).");
+      }
+
+      using FretFactory =
+          typename MetaInnerSolverProxy<Domain, Texecution>::FretFactory;
+      FretFactory fret_factory =
+          [&entry, params, verbose](
+              Domain &dd,
+              std::function<typename Domain::Predicate(Domain &, const State &)>
+                  sub_gc,
+              std::function<Value(Domain &, const State &)> sub_h,
+              std::function<Value(const State &)> sub_tv)
+          -> std::unique_ptr<MetaInnerSolverBase<Domain>> {
+        return entry.create(dd, sub_gc, sub_h, sub_tv, params, verbose);
       };
 
-      auto make_cb = [this]() {
-        return [this](const SolverType &, Domain &) -> bool {
-          if (_callback) {
-            try {
-              return _callback(*_pysolver);
-            } catch (const std::exception &e) {
-              Logger::error(
-                  std::string("SKDECIDE exception when calling callback: ") +
-                  e.what());
-              throw;
-            }
-          }
-          return false;
-        };
-      };
+      auto dummy_tv = [](const State &) -> Value { return Value(0.0, false); };
 
-      create_solver(inner_solver_params, make_gc(), make_h(), discount, epsilon,
-                    dead_end_cost, make_cb(), verbose);
+      _solver = std::make_unique<SolverType>(*_domain, gc, h, discount, epsilon,
+                                             dead_end_cost, cb, verbose,
+                                             dummy_tv, std::move(fret_factory));
 
       _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(
           std::cout, py::module::import("sys").attr("stdout"));
@@ -258,76 +280,6 @@ private:
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
-
-    template <typename T>
-    static T dp(const py::dict &d, const char *key, T def) {
-      return d.contains(key) ? d[key].cast<T>() : def;
-    }
-
-    typedef typename SolverType::GoalCheckerFunctor GC;
-    typedef typename SolverType::HeuristicFunctor H;
-    typedef typename SolverType::CallbackFunctor CB;
-
-    void create_solver(const py::dict &p, GC gc, H h, double discount,
-                       double epsilon, double dead_end_cost, CB cb,
-                       bool verbose) {
-      if (p.contains("terminal_value")) {
-        Logger::warn(
-            "FRET overrides the inner solver's terminal_value to manage "
-            "dead-end costs internally. The user-provided terminal_value "
-            "in inner_solver_params will be ignored.");
-      }
-
-      if constexpr (std::is_same_v<TinnerSolverTag, FRETLRTDPInnerSolver>) {
-        using IS = LRTDPSolver<Domain, Texecution>;
-        auto tv = [](const typename Domain::State &) -> Value {
-          return Value(0.0, false);
-        };
-        _solver = std::make_unique<SolverType>(
-            *_domain, gc, h, discount, epsilon, dead_end_cost, cb, verbose, tv,
-            dp<bool>(p, "use_labels", true),
-            dp<std::size_t>(p, "time_budget", 3600000),
-            dp<std::size_t>(p, "rollout_budget", 100000),
-            dp<std::size_t>(p, "max_depth", 1000),
-            dp<std::size_t>(p, "residual_moving_average_window", 100),
-            dp<double>(p, "epsilon", epsilon),
-            dp<double>(p, "discount", discount),
-            dp<bool>(p, "online_node_garbage", false),
-            typename IS::CallbackFunctor(
-                [](const IS &, Domain &, const std::size_t *) {
-                  return false;
-                }),
-            dp<bool>(p, "verbose", false));
-      } else if constexpr (std::is_same_v<TinnerSolverTag,
-                                          FRETLDFSInnerSolver>) {
-        using IS = LDFSSolver<Domain, Texecution>;
-        auto tv = [](const typename Domain::State &) -> Value {
-          return Value(0.0, false);
-        };
-        _solver = std::make_unique<SolverType>(
-            *_domain, gc, h, discount, epsilon, dead_end_cost, cb, verbose, tv,
-            dp<double>(p, "discount", discount),
-            dp<double>(p, "epsilon", epsilon),
-            dp<std::size_t>(p, "max_depth", 0),
-            typename IS::CallbackFunctor(
-                [](const IS &, Domain &) { return false; }),
-            dp<bool>(p, "verbose", false));
-      } else if constexpr (std::is_same_v<TinnerSolverTag, FRETVIInnerSolver>) {
-        using IS = VISolver<Domain, Texecution>;
-        auto tv = [](const typename Domain::State &) -> Value {
-          return Value(0.0, false);
-        };
-        // VI has NO goal_checker parameter — it uses domain.is_terminal()
-        _solver = std::make_unique<SolverType>(
-            *_domain, gc, h, discount, epsilon, dead_end_cost, cb, verbose, tv,
-            dp<double>(p, "discount", discount),
-            dp<double>(p, "epsilon", epsilon),
-            dp<std::size_t>(p, "max_sweeps", 0),
-            typename IS::CallbackFunctor(
-                [](const IS &, Domain &) { return false; }),
-            dp<bool>(p, "verbose", false));
-      }
-    }
   };
 
   struct ExecutionSelector {
@@ -340,28 +292,6 @@ private:
           Propagator::template PushType<ParallelExecution>::Forward(args...);
         } else {
           Propagator::template PushType<SequentialExecution>::Forward(args...);
-        }
-      }
-    };
-  };
-
-  struct InnerSolverSelector {
-    std::string _name;
-    InnerSolverSelector(const std::string &name) : _name(name) {}
-    template <typename Propagator> struct Select {
-      template <typename... Args>
-      Select(InnerSolverSelector &This, Args... args) {
-        if (This._name == "LRTDP") {
-          Propagator::template PushType<FRETLRTDPInnerSolver>::Forward(args...);
-        } else if (This._name == "LDFS") {
-          Propagator::template PushType<FRETLDFSInnerSolver>::Forward(args...);
-        } else if (This._name == "VI") {
-          Propagator::template PushType<FRETVIInnerSolver>::Forward(args...);
-        } else {
-          throw std::runtime_error(
-              "Unknown inner solver for FRET: " + This._name +
-              ". Use LRTDP, LDFS, or VI (ILAOstar is not supported "
-              "because it lacks terminal_value).");
         }
       }
     };
@@ -390,16 +320,15 @@ public:
       const std::function<py::object(const py::object &, const py::object &)>
           &heuristic,
       double discount = 1.0, double epsilon = 0.001,
-      double dead_end_cost = 10000.0,
-      const py::dict &inner_solver_params = py::dict(),
-      const std::string &inner_solver = "LRTDP", bool parallel = false,
+      double dead_end_cost = 10000.0, const std::string &inner_solver = "LRTDP",
+      const py::dict &inner_solver_params = py::dict(), bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
-                                 InnerSolverSelector(inner_solver),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, goal_checker, heuristic, discount, epsilon,
-                     dead_end_cost, inner_solver_params, callback, verbose);
+                     dead_end_cost, inner_solver, inner_solver_params, callback,
+                     verbose);
   }
 
   void close() { _implementation->close(); }

@@ -18,13 +18,14 @@ void init_pyidual(py::module &m) {
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &)> &,
-                    double, double, bool,
+                    double, double, double, std::size_t, bool,
                     const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
            py::arg("heuristic"), py::arg("terminal_value"),
-           py::arg("lp_infinity") = 1e20,
+           py::arg("lp_infinity") = 1e20, py::arg("lp_tolerance") = 1e-15,
            py::arg("default_dead_end_cost") = 1000.0,
+           py::arg("lp_callback_interval") = std::size_t(0),
            py::arg("parallel") = false, py::arg("callback") = nullptr,
            py::arg("verbose") = false)
       .def("close", &skdecide::PyIDualSolver::close)
@@ -41,8 +42,8 @@ void init_pyidual(py::module &m) {
       .def("get_nb_lp_iterations",
            &skdecide::PyIDualSolver::get_nb_lp_iterations)
       .def("get_solving_time", &skdecide::PyIDualSolver::get_solving_time)
-      .def("get_explored_states",
-           &skdecide::PyIDualSolver::get_explored_states);
+      .def("get_explored_states", &skdecide::PyIDualSolver::get_explored_states)
+      .def("get_callback_event", &skdecide::PyIDualSolver::get_callback_event);
 
   // --- CIDualSolver (constrained SSP, stochastic policy) ---
   py::class_<skdecide::PyCIDualSolver> py_cidual_solver(m, "_CIDualSolver_");
@@ -55,14 +56,15 @@ void init_pyidual(py::module &m) {
                     const std::function<py::object(const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &, int)> &,
-                    py::list, double, double, bool,
+                    py::list, double, double, double, std::size_t, bool,
                     const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
            py::arg("heuristic"), py::arg("terminal_value"),
            py::arg("secondary_heuristic"), py::arg("dead_end_costs"),
-           py::arg("lp_infinity") = 1e20,
+           py::arg("lp_infinity") = 1e20, py::arg("lp_tolerance") = 1e-15,
            py::arg("default_dead_end_cost") = 1000.0,
+           py::arg("lp_callback_interval") = std::size_t(0),
            py::arg("parallel") = false, py::arg("callback") = nullptr,
            py::arg("verbose") = false)
       .def("close", &skdecide::PyCIDualSolver::close)
@@ -80,5 +82,6 @@ void init_pyidual(py::module &m) {
            &skdecide::PyCIDualSolver::get_nb_lp_iterations)
       .def("get_solving_time", &skdecide::PyCIDualSolver::get_solving_time)
       .def("get_explored_states",
-           &skdecide::PyCIDualSolver::get_explored_states);
+           &skdecide::PyCIDualSolver::get_explored_states)
+      .def("get_callback_event", &skdecide::PyCIDualSolver::get_callback_event);
 }

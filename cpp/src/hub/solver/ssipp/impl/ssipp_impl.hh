@@ -11,16 +11,13 @@
 
 #include <algorithm>
 #include <limits>
-#include <type_traits>
+#include <random>
 
-#include "hub/solver/ilaostar/ilaostar.hh"
-#include "hub/solver/ilaostar/impl/ilaostar_impl.hh"
-#include "hub/solver/ldfs/ldfs.hh"
-#include "hub/solver/ldfs/impl/ldfs_impl.hh"
-#include "hub/solver/lrtdp/lrtdp.hh"
-#include "hub/solver/lrtdp/impl/lrtdp_impl.hh"
 #include "utils/logging.hh"
 #include "utils/string_converter.hh"
+
+#include "hub/solver/inner_solver/inner_solver_registry.hh"
+#include "hub/solver/inner_solver/meta_inner_solver.hh"
 
 namespace skdecide {
 
@@ -47,39 +44,16 @@ SK_SSIPP_CLASS::SSiPPSolver(Domain &domain,
   auto captured_args =
       std::make_tuple(std::forward<InnerSolverArgs>(inner_solver_args)...);
 
-  if constexpr (std::is_same_v<InnerSolver,
-                               LRTDPSolver<Tdomain, Texecution_policy>>) {
-    _inner_solver_factory = [captured_args = std::move(captured_args)](
-                                Domain &d, GoalCheckerFunctor sub_gc,
-                                HeuristicFunctor sub_h) mutable {
-      auto wrapped_gc = [sub_gc](Domain &dd, const State &st,
-                                 const std::size_t *) -> Predicate {
-        return sub_gc(dd, st);
-      };
-      auto wrapped_h = [sub_h](Domain &dd, const State &st,
-                               const std::size_t *) -> Value {
-        return sub_h(dd, st);
-      };
-      return std::apply(
-          [&](auto &&...args) {
-            return std::make_unique<InnerSolver>(
-                d, wrapped_gc, wrapped_h,
-                std::forward<decltype(args)>(args)...);
-          },
-          captured_args);
-    };
-  } else {
-    _inner_solver_factory = [captured_args = std::move(captured_args)](
-                                Domain &d, GoalCheckerFunctor sub_gc,
-                                HeuristicFunctor sub_h) mutable {
-      return std::apply(
-          [&](auto &&...args) {
-            return std::make_unique<InnerSolver>(
-                d, sub_gc, sub_h, std::forward<decltype(args)>(args)...);
-          },
-          captured_args);
-    };
-  }
+  _inner_solver_factory = [captured_args = std::move(captured_args)](
+                              Domain &d, GoalCheckerFunctor sub_gc,
+                              HeuristicFunctor sub_h) mutable {
+    return std::apply(
+        [&](auto &&...args) {
+          return std::make_unique<InnerSolver>(
+              d, sub_gc, sub_h, std::forward<decltype(args)>(args)...);
+        },
+        captured_args);
+  };
 
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm SSiPP");
@@ -395,6 +369,40 @@ SK_SSIPP_TEMPLATE_DECL
 typename SetTypeDeducer<typename SK_SSIPP_CLASS::State>::Set
 SK_SSIPP_CLASS::get_boundary_states() const {
   return _boundary_states;
+}
+
+SK_SSIPP_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_SSIPP_CLASS> SK_SSIPP_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> goal_checker,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> /*terminal_value*/,
+    const Params &params, bool verbose) {
+  std::string inner_name =
+      params.template get<std::string>("inner_solver", std::string("LRTDP"));
+
+  auto ssp_factory =
+      [inner_name, params, verbose](
+          Domain &dd, std::function<Predicate(Domain &, const State &)> sub_gc,
+          std::function<Value(Domain &, const State &)> sub_h)
+      -> std::unique_ptr<MetaInnerSolverBase<Domain>> {
+    const auto &inner_entry =
+        find_inner_solver<Domain, ExecutionPolicy>(inner_name);
+    std::function<Value(const State &)> default_tv = [](const State &) {
+      return Value();
+    };
+    return inner_entry.create(dd, sub_gc, sub_h, default_tv, params, verbose);
+  };
+
+  return std::make_unique<SSiPPSolver>(
+      domain, goal_checker, heuristic,
+      params.template get<std::size_t>("depth", 3),
+      params.template get<double>("discount", 1.0),
+      params.template get<double>("epsilon", 0.001),
+      params.template get<std::size_t>("max_iterations", 10000),
+      CallbackFunctor([](const SSiPPSolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose), std::move(ssp_factory));
 }
 
 } // namespace skdecide

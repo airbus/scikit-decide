@@ -42,6 +42,11 @@ public:
   typedef typename Domain::Predicate Predicate;
   typedef Texecution_policy ExecutionPolicy;
 
+  enum class LPCallbackEvent {
+    SolverIteration,
+    LPProgress,
+  };
+
   typedef std::function<Predicate(Domain &, const State &)> GoalCheckerFunctor;
   typedef std::function<Value(Domain &, const State &)> HeuristicFunctor;
   typedef std::function<Value(const State &)> TerminalValueFunctor;
@@ -49,6 +54,46 @@ public:
   typedef std::function<double(Domain &, const State &, std::size_t)>
       SecondaryHeuristicFunctor;
 
+  /**
+   * @brief Constructs a new i-dual solver for (constrained) SSPs.
+   *
+   * The i-dual algorithm performs heuristic search in dual space by
+   * incrementally expanding the state space from the initial state and
+   * solving growing dual linear programs (LPs) via HiGHS. Fringe states
+   * receive heuristic terminal costs. Supports both unconstrained SSPs
+   * and constrained SSPs (CSSPs) with secondary cost bounds.
+   *
+   * Based on: Trevizan et al., "Heuristic Search in Dual Space for
+   * Constrained Stochastic Shortest Path Problems", ICAPS 2016.
+   *
+   * @param domain The domain instance to solve.
+   * @param goal_checker Functor testing whether a state is a goal. Goal
+   *   states are absorbing with zero cost.
+   * @param heuristic Functor returning an admissible heuristic cost estimate
+   *   for the primary objective.
+   * @param terminal_value Functor returning the value assigned to non-goal
+   *   terminal (dead-end) states. Defaults to Value(1000.0, false).
+   * @param secondary_heuristic Optional functor (domain, state,
+   * constraint_index) returning an admissible heuristic for secondary cost
+   * constraints. Only used for constrained SSPs. Defaults to nullptr.
+   * @param dead_end_costs Per-constraint dead-end costs. Empty vector uses
+   *   default_dead_end_cost for all constraints. Defaults to empty.
+   * @param epsilon Convergence threshold: the LP is re-solved until the
+   *   value change is below epsilon. Defaults to 0.001.
+   * @param lp_infinity Upper bound for LP variable bounds and constraint
+   *   coefficients used with HiGHS. Defaults to 1e20.
+   * @param lp_tolerance Sparsity threshold for LP coefficients; values
+   *   below this magnitude are treated as zero. Defaults to 1e-15.
+   * @param default_dead_end_cost Default dead-end penalty per constraint
+   *   when dead_end_costs is empty. Defaults to 1000.0.
+   * @param lp_callback_interval Fire the callback every N simplex iterations
+   *   during each LP solve for intermediate progress. 0 disables LP-level
+   *   callbacks. Defaults to 0.
+   * @param callback Functor called after each i-dual iteration (LP solve +
+   *   expansion), taking the solver and domain as arguments and returning
+   *   true to stop. Defaults to always returning false.
+   * @param verbose Whether to log verbose debug messages. Defaults to false.
+   */
   IDualSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
       const HeuristicFunctor &heuristic,
@@ -56,7 +101,9 @@ public:
           [](const State &) { return Value(1000.0, false); },
       const SecondaryHeuristicFunctor &secondary_heuristic = nullptr,
       const std::vector<double> &dead_end_costs = {}, double epsilon = 0.001,
-      double lp_infinity = 1e20, double default_dead_end_cost = 1000.0,
+      double lp_infinity = 1e20, double lp_tolerance = 1e-15,
+      double default_dead_end_cost = 1000.0,
+      std::size_t lp_callback_interval = 0,
       const CallbackFunctor &callback = [](const IDualSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -80,6 +127,15 @@ public:
   std::size_t get_nb_lp_iterations() const;
   std::size_t get_solving_time() const;
   typename SetTypeDeducer<State>::Set get_explored_states() const;
+  LPCallbackEvent get_callback_event() const { return _last_callback_event; }
+
+  template <typename Params>
+  static std::unique_ptr<IDualSolver> create_from_params(
+      Domain &domain,
+      std::function<Predicate(Domain &, const State &)> goal_checker,
+      std::function<Value(Domain &, const State &)> heuristic,
+      std::function<Value(const State &)> terminal_value, const Params &params,
+      bool verbose);
 
 private:
   Domain &_domain;
@@ -89,9 +145,12 @@ private:
   SecondaryHeuristicFunctor _secondary_heuristic;
   double _epsilon;
   double _lp_infinity;
+  double _lp_tolerance;
   double _default_dead_end_cost;
+  std::size_t _lp_callback_interval;
   CallbackFunctor _callback;
   bool _verbose;
+  LPCallbackEvent _last_callback_event = LPCallbackEvent::SolverIteration;
 
   std::size_t _n_constraints;
   std::vector<double> _cost_bounds;

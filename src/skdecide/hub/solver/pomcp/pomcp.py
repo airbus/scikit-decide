@@ -79,6 +79,7 @@ try:
             epsilon: float = 0.001,
             time_budget: int = 0,
             num_particles_belief_update: int = 500,
+            ess_threshold_ratio: float = 2.0,
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[POMCP], bool] = lambda slv: False,
@@ -101,6 +102,9 @@ try:
                 0 means no time limit. Defaults to 0.
             num_particles_belief_update: Number of particles for belief
                 update via particle filter. Defaults to 500.
+            ess_threshold_ratio: Effective sample size threshold for
+                resampling. Resampling occurs when ESS < N / ratio.
+                Defaults to 2.0.
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy.
                 Defaults to None.
@@ -127,6 +131,7 @@ try:
                 epsilon=epsilon,
                 time_budget=time_budget,
                 num_particles_belief_update=num_particles_belief_update,
+                ess_threshold_ratio=ess_threshold_ratio,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -278,15 +283,17 @@ class pPOMCP(Solver, DeterministicPolicies):
         n_samples=5000,
         callback: Callable[[pPOMCP], bool] = lambda solver: False,
     ) -> None:
-        """
+        """Construct a pPOMCP solver instance (pure Python, cost minimization).
 
         # Parameters
-        domain_factory
-        max_iterations
-        max_depth
-        n_samples
-        callback: function called at each solver iteration. If returning true, the solve process stops.
-
+        domain_factory: Lambda function to create a domain instance.
+        max_iterations: Maximum number of UCT iterations per planning step.
+            Defaults to 5000.
+        max_depth: Maximum search and rollout depth. Defaults to 50.
+        n_samples: Number of state samples drawn from the initial state
+            distribution to form the initial belief. Defaults to 5000.
+        callback: Function called at each solver iteration. If returning
+            True, the solve process stops. Defaults to never stop.
         """
         self.callback = callback
         Solver.__init__(self, domain_factory=domain_factory)

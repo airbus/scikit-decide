@@ -1,0 +1,7 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/constraint_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/negation_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/timed_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/unary_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/unary_formula_impl.hh"
+
+template class skdecide::pddl::UnaryFormula<skdecide::pddl::${Tderived}>;

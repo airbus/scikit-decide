@@ -7,5 +7,5 @@
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/ilaostar/impl/ilaostar_impl.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
 
-template class skdecide::ILAOStarSolver<skdecide::PythonDomainProxy<${Texecution}>,
-                                       ${Texecution}>;
+template class skdecide::ILAOStarSolver<
+    skdecide::PythonDomainProxy<${Texecution}>, ${Texecution}>;

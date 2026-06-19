@@ -14,14 +14,16 @@ void init_pymdplp(py::module &m) {
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &)> &,
-                    const std::string &, double, double, double, bool,
-                    const std::function<py::bool_(const py::object &)> &,
+                    const std::string &, double, double, double, std::size_t,
+                    bool, const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("heuristic"),
            py::arg("terminal_value"), py::arg("variant") = "dual",
            py::arg("discount") = 0.99, py::arg("epsilon") = 0.001,
-           py::arg("lp_infinity") = 1e20, py::arg("parallel") = false,
-           py::arg("callback") = nullptr, py::arg("verbose") = false)
+           py::arg("lp_infinity") = 1e20,
+           py::arg("lp_callback_interval") = std::size_t(0),
+           py::arg("parallel") = false, py::arg("callback") = nullptr,
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyMDPLPSolver::close)
       .def("clear", &skdecide::PyMDPLPSolver::clear)
       .def("solve", &skdecide::PyMDPLPSolver::solve, py::arg("state"))
@@ -36,8 +38,8 @@ void init_pymdplp(py::module &m) {
       .def("get_nb_lp_constraints",
            &skdecide::PyMDPLPSolver::get_nb_lp_constraints)
       .def("get_solving_time", &skdecide::PyMDPLPSolver::get_solving_time)
-      .def("get_explored_states",
-           &skdecide::PyMDPLPSolver::get_explored_states);
+      .def("get_explored_states", &skdecide::PyMDPLPSolver::get_explored_states)
+      .def("get_callback_event", &skdecide::PyMDPLPSolver::get_callback_event);
 
   // --- SSPLPSolver (undiscounted SSP with goals) ---
   py::class_<skdecide::PySSPLPSolver> py_ssplp_solver(m, "_SSPLPSolver_");
@@ -47,12 +49,13 @@ void init_pymdplp(py::module &m) {
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
-                    const std::string &, double, double, bool,
+                    const std::string &, double, double, std::size_t, bool,
                     const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
            py::arg("heuristic"), py::arg("variant") = "dual",
            py::arg("epsilon") = 0.001, py::arg("lp_infinity") = 1e20,
+           py::arg("lp_callback_interval") = std::size_t(0),
            py::arg("parallel") = false, py::arg("callback") = nullptr,
            py::arg("verbose") = false)
       .def("close", &skdecide::PySSPLPSolver::close)
@@ -69,6 +72,6 @@ void init_pymdplp(py::module &m) {
       .def("get_nb_lp_constraints",
            &skdecide::PySSPLPSolver::get_nb_lp_constraints)
       .def("get_solving_time", &skdecide::PySSPLPSolver::get_solving_time)
-      .def("get_explored_states",
-           &skdecide::PySSPLPSolver::get_explored_states);
+      .def("get_explored_states", &skdecide::PySSPLPSolver::get_explored_states)
+      .def("get_callback_event", &skdecide::PySSPLPSolver::get_callback_event);
 }

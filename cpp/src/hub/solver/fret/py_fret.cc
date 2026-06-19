@@ -15,16 +15,17 @@ void init_pyfret(py::module &m) {
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
-                    double, double, double, const py::dict &,
-                    const std::string &, bool,
+                    double, double, double, const std::string &,
+                    const py::dict &, bool,
                     const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
            py::arg("heuristic"), py::arg("discount") = 1.0,
            py::arg("epsilon") = 0.001, py::arg("dead_end_cost") = 10000.0,
+           py::arg("inner_solver") = "LRTDP",
            py::arg("inner_solver_params") = py::dict(),
-           py::arg("inner_solver") = "LRTDP", py::arg("parallel") = false,
-           py::arg("callback") = nullptr, py::arg("verbose") = false)
+           py::arg("parallel") = false, py::arg("callback") = nullptr,
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyFRETSolver::close)
       .def("clear", &skdecide::PyFRETSolver::clear)
       .def("solve", &skdecide::PyFRETSolver::solve, py::arg("state"))

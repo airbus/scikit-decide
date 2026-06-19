@@ -96,6 +96,38 @@ public:
           is_expanded(false), is_default(false), parent(nullptr) {}
   };
 
+  /**
+   * @brief Construct a new DespotSolver.
+   *
+   * @param domain The domain instance to solve.
+   * @param num_scenarios Number of determinized scenarios (K) sampled from the
+   *   belief. Defaults to 500.
+   * @param max_depth Maximum search depth in the DESPOT tree. Defaults to 90.
+   * @param regularization_constant Regularization constant (lambda) for RWDU
+   *   pruning. 0 disables regularization. Defaults to 0.0.
+   * @param gap_reduction_rate Rate at which the target gap shrinks each
+   *   iteration (xi). Defaults to 0.95.
+   * @param target_gap Convergence threshold for the gap between upper and
+   *   lower bounds (epsilon_0). Defaults to 0.0.
+   * @param time_budget Maximum planning time per step in milliseconds.
+   *   Defaults to 1000.
+   * @param discount Discount factor gamma. Must be in (0, 1). Defaults to 0.95.
+   * @param max_rollout_depth Maximum depth for default policy rollouts.
+   *   Defaults to 90.
+   * @param num_particles_belief_update Number of particles for belief update
+   *   via particle filter. Defaults to 500.
+   * @param ess_threshold_ratio Effective sample size threshold ratio for
+   *   resampling. Resampling occurs when ESS < N / ratio. Defaults to 2.0.
+   * @param default_policy Optional functor (domain, state, thread_id) -> Value
+   *   providing a lower bound via a default policy rollout. If nullptr, random
+   *   rollouts are used. Defaults to nullptr.
+   * @param upper_bound_heuristic Optional functor (domain, state, thread_id)
+   *   -> Value providing an upper bound heuristic per state. If nullptr,
+   *   R_max/(1-gamma) is used. Defaults to nullptr.
+   * @param callback Functor called at the end of each iteration. Returns true
+   *   to stop planning. Defaults to never stop.
+   * @param verbose Whether to log verbose messages. Defaults to false.
+   */
   DespotSolver(
       Domain &domain, std::size_t num_scenarios = 500,
       std::size_t max_depth = 90, double regularization_constant = 0.0,
@@ -103,6 +135,7 @@ public:
       std::size_t time_budget = 1000, double discount = 0.95,
       std::size_t max_rollout_depth = 90,
       std::size_t num_particles_belief_update = 500,
+      double ess_threshold_ratio = 2.0,
       const DefaultPolicyFunctor &default_policy = nullptr,
       const UpperBoundFunctor &upper_bound_heuristic = nullptr,
       const CallbackFunctor &callback =
@@ -165,6 +198,7 @@ private:
   double _discount;
   std::size_t _max_rollout_depth;
   std::size_t _num_particles_belief;
+  double _ess_threshold_ratio;
   DefaultPolicyFunctor _default_policy;
   UpperBoundFunctor _upper_bound_heuristic;
   CallbackFunctor _callback;

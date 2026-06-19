@@ -55,6 +55,7 @@ private:
         std::size_t max_depth = 100, double epsilon = 0.001,
         std::size_t time_budget = 0,
         std::size_t num_particles_belief_update = 500,
+        double ess_threshold_ratio = 2.0,
         const std::function<py::bool_(const py::object &)> &callback = nullptr,
         bool verbose = false)
         : _callback(callback) {
@@ -66,6 +67,7 @@ private:
           std::make_unique<POMCPSolver<PyPOMCPDomain<Texecution>, Texecution>>(
               *_domain, exploration_constant, discount, num_simulations,
               max_depth, epsilon, time_budget, num_particles_belief_update,
+              ess_threshold_ratio,
               [this](
                   const POMCPSolver<PyPOMCPDomain<Texecution>, Texecution> &s,
                   PyPOMCPDomain<Texecution> &d) -> bool {
@@ -255,14 +257,16 @@ public:
       double discount = 0.95, std::size_t num_simulations = 1000,
       std::size_t max_depth = 100, double epsilon = 0.001,
       std::size_t time_budget = 0,
-      std::size_t num_particles_belief_update = 500, bool parallel = false,
+      std::size_t num_particles_belief_update = 500,
+      double ess_threshold_ratio = 2.0, bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, exploration_constant, discount,
                      num_simulations, max_depth, epsilon, time_budget,
-                     num_particles_belief_update, callback, verbose);
+                     num_particles_belief_update, ess_threshold_ratio, callback,
+                     verbose);
   }
 
   void close() { _implementation->close(); }

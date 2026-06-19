@@ -15,17 +15,17 @@ void init_pyssipp(py::module &m) {
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
-                    std::size_t, double, double, std::size_t, const py::dict &,
-                    const std::string &, bool,
+                    std::size_t, double, double, std::size_t,
+                    const std::string &, const py::dict &, bool,
                     const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
            py::arg("heuristic"), py::arg("depth") = 3,
            py::arg("discount") = 1.0, py::arg("epsilon") = 0.001,
-           py::arg("max_iterations") = 10000,
+           py::arg("max_iterations") = 10000, py::arg("inner_solver") = "LRTDP",
            py::arg("inner_solver_params") = py::dict(),
-           py::arg("inner_solver") = "LRTDP", py::arg("parallel") = false,
-           py::arg("callback") = nullptr, py::arg("verbose") = false)
+           py::arg("parallel") = false, py::arg("callback") = nullptr,
+           py::arg("verbose") = false)
       .def("close", &skdecide::PySSiPPSolver::close)
       .def("clear", &skdecide::PySSiPPSolver::clear)
       .def("solve", &skdecide::PySSiPPSolver::solve, py::arg("state"))

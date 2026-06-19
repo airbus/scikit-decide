@@ -39,12 +39,14 @@ SK_MDPLP_TEMPLATE_DECL
 SK_MDPLP_CLASS::MDPLPSolver(Domain &domain, const HeuristicFunctor &heuristic,
                             const TerminalValueFunctor &terminal_value,
                             LPVariant variant, double discount, double epsilon,
-                            double lp_infinity, const CallbackFunctor &callback,
-                            bool verbose)
+                            double lp_infinity,
+                            std::size_t lp_callback_interval,
+                            const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _heuristic(heuristic), _terminal_value(terminal_value),
       _variant(variant), _discount(discount), _epsilon(epsilon),
-      _lp_infinity(lp_infinity), _callback(callback), _verbose(verbose),
-      _nb_lp_variables(0), _nb_lp_constraints(0) {
+      _lp_infinity(lp_infinity), _lp_callback_interval(lp_callback_interval),
+      _callback(callback), _verbose(verbose), _nb_lp_variables(0),
+      _nb_lp_constraints(0) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm MDPLP");
   }
@@ -234,11 +236,58 @@ void SK_MDPLP_CLASS::solve_primal_lp() {
                   " constraints");
   }
 
-  highs.run();
-  HighsModelStatus model_status = highs.getModelStatus();
-  if (model_status != HighsModelStatus::kOptimal) {
-    throw std::runtime_error("MDPLP primal LP not optimal: " +
-                             highs.modelStatusToString(model_status));
+  if (_lp_callback_interval > 0) {
+    struct LPInterruptData {
+      std::size_t interval;
+      std::size_t last_interrupt_iter = 0;
+    };
+    LPInterruptData cb_data{_lp_callback_interval};
+
+    highs.setCallback(
+        [](const int, const std::string &, const HighsCallbackDataOut *data_out,
+           HighsCallbackDataIn *data_in, void *user_data) {
+          auto *d = static_cast<LPInterruptData *>(user_data);
+          auto iter =
+              static_cast<std::size_t>(data_out->simplex_iteration_count);
+          if (iter - d->last_interrupt_iter >= d->interval) {
+            d->last_interrupt_iter = iter;
+            data_in->user_interrupt = 1;
+          }
+        },
+        &cb_data);
+    highs.startCallback(kCallbackSimplexInterrupt);
+
+    while (true) {
+      highs.run();
+      auto ms = highs.getModelStatus();
+      if (ms == HighsModelStatus::kOptimal)
+        break;
+
+      if (ms == HighsModelStatus::kInfeasible ||
+          ms == HighsModelStatus::kUnbounded ||
+          ms == HighsModelStatus::kSolveError) {
+        throw std::runtime_error("MDPLP primal LP failed: " +
+                                 highs.modelStatusToString(ms));
+      }
+
+      const auto &col_value = highs.getSolution().col_value;
+      if (!col_value.empty()) {
+        for (auto *sn : _non_terminal_states) {
+          sn->best_value = col_value[index_to_col.at(sn->index)];
+        }
+        extract_policy_from_values();
+        _last_callback_event = LPCallbackEvent::LPProgress;
+        if (_callback(*this, _domain))
+          break;
+      }
+    }
+  } else {
+    highs.run();
+    HighsModelStatus model_status = highs.getModelStatus();
+    if (model_status != HighsModelStatus::kOptimal) {
+      throw std::runtime_error("MDPLP primal LP not optimal: " +
+                               highs.modelStatusToString(model_status));
+    }
   }
 
   const std::vector<double> &solution = highs.getSolution().col_value;
@@ -331,11 +380,58 @@ void SK_MDPLP_CLASS::solve_dual_lp(const State &s0) {
                   " constraints");
   }
 
-  highs.run();
-  HighsModelStatus dual_model_status = highs.getModelStatus();
-  if (dual_model_status != HighsModelStatus::kOptimal) {
-    throw std::runtime_error("MDPLP dual LP not optimal: " +
-                             highs.modelStatusToString(dual_model_status));
+  if (_lp_callback_interval > 0) {
+    struct LPInterruptData {
+      std::size_t interval;
+      std::size_t last_interrupt_iter = 0;
+    };
+    LPInterruptData cb_data{_lp_callback_interval};
+
+    highs.setCallback(
+        [](const int, const std::string &, const HighsCallbackDataOut *data_out,
+           HighsCallbackDataIn *data_in, void *user_data) {
+          auto *d = static_cast<LPInterruptData *>(user_data);
+          auto iter =
+              static_cast<std::size_t>(data_out->simplex_iteration_count);
+          if (iter - d->last_interrupt_iter >= d->interval) {
+            d->last_interrupt_iter = iter;
+            data_in->user_interrupt = 1;
+          }
+        },
+        &cb_data);
+    highs.startCallback(kCallbackSimplexInterrupt);
+
+    while (true) {
+      highs.run();
+      auto ms = highs.getModelStatus();
+      if (ms == HighsModelStatus::kOptimal)
+        break;
+
+      if (ms == HighsModelStatus::kInfeasible ||
+          ms == HighsModelStatus::kUnbounded ||
+          ms == HighsModelStatus::kSolveError) {
+        throw std::runtime_error("MDPLP dual LP failed: " +
+                                 highs.modelStatusToString(ms));
+      }
+
+      const auto &row_dual = highs.getSolution().row_dual;
+      if (!row_dual.empty()) {
+        for (std::size_t i = 0; i < _non_terminal_states.size(); ++i) {
+          _non_terminal_states[i]->best_value = row_dual[i];
+        }
+        extract_policy_from_values();
+        _last_callback_event = LPCallbackEvent::LPProgress;
+        if (_callback(*this, _domain))
+          break;
+      }
+    }
+  } else {
+    highs.run();
+    HighsModelStatus dual_model_status = highs.getModelStatus();
+    if (dual_model_status != HighsModelStatus::kOptimal) {
+      throw std::runtime_error("MDPLP dual LP not optimal: " +
+                               highs.modelStatusToString(dual_model_status));
+    }
   }
 
   // V*(s) = row dual of flow conservation constraint (LP strong duality)
@@ -395,6 +491,9 @@ void SK_MDPLP_CLASS::solve(const State &s) {
       solve_dual_lp(s);
       break;
     }
+
+    _last_callback_event = LPCallbackEvent::SolverIteration;
+    _callback(*this, _domain);
 
     Logger::info("MDPLP finished in " +
                  StringConverter::from((double)get_solving_time() / 1e3) +
@@ -497,12 +596,13 @@ SK_SSPLP_CLASS::SSPLPSolver(Domain &domain,
                             const GoalCheckerFunctor &goal_checker,
                             const HeuristicFunctor &heuristic,
                             LPVariant variant, double epsilon,
-                            double lp_infinity, const CallbackFunctor &callback,
-                            bool verbose)
+                            double lp_infinity,
+                            std::size_t lp_callback_interval,
+                            const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
       _variant(variant), _epsilon(epsilon), _lp_infinity(lp_infinity),
-      _callback(callback), _verbose(verbose), _nb_lp_variables(0),
-      _nb_lp_constraints(0) {
+      _lp_callback_interval(lp_callback_interval), _callback(callback),
+      _verbose(verbose), _nb_lp_variables(0), _nb_lp_constraints(0) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm SSPLP");
   }
@@ -686,11 +786,58 @@ void SK_SSPLP_CLASS::solve_primal_lp() {
                   " constraints");
   }
 
-  highs.run();
-  HighsModelStatus model_status = highs.getModelStatus();
-  if (model_status != HighsModelStatus::kOptimal) {
-    throw std::runtime_error("SSPLP primal LP not optimal: " +
-                             highs.modelStatusToString(model_status));
+  if (_lp_callback_interval > 0) {
+    struct LPInterruptData {
+      std::size_t interval;
+      std::size_t last_interrupt_iter = 0;
+    };
+    LPInterruptData cb_data{_lp_callback_interval};
+
+    highs.setCallback(
+        [](const int, const std::string &, const HighsCallbackDataOut *data_out,
+           HighsCallbackDataIn *data_in, void *user_data) {
+          auto *d = static_cast<LPInterruptData *>(user_data);
+          auto iter =
+              static_cast<std::size_t>(data_out->simplex_iteration_count);
+          if (iter - d->last_interrupt_iter >= d->interval) {
+            d->last_interrupt_iter = iter;
+            data_in->user_interrupt = 1;
+          }
+        },
+        &cb_data);
+    highs.startCallback(kCallbackSimplexInterrupt);
+
+    while (true) {
+      highs.run();
+      auto ms = highs.getModelStatus();
+      if (ms == HighsModelStatus::kOptimal)
+        break;
+
+      if (ms == HighsModelStatus::kInfeasible ||
+          ms == HighsModelStatus::kUnbounded ||
+          ms == HighsModelStatus::kSolveError) {
+        throw std::runtime_error("SSPLP primal LP failed: " +
+                                 highs.modelStatusToString(ms));
+      }
+
+      const auto &col_value = highs.getSolution().col_value;
+      if (!col_value.empty()) {
+        for (auto *sn : _non_goal_states) {
+          sn->best_value = col_value[index_to_col.at(sn->index)];
+        }
+        extract_policy_from_values();
+        _last_callback_event = LPCallbackEvent::LPProgress;
+        if (_callback(*this, _domain))
+          break;
+      }
+    }
+  } else {
+    highs.run();
+    HighsModelStatus model_status = highs.getModelStatus();
+    if (model_status != HighsModelStatus::kOptimal) {
+      throw std::runtime_error("SSPLP primal LP not optimal: " +
+                               highs.modelStatusToString(model_status));
+    }
   }
 
   const std::vector<double> &solution = highs.getSolution().col_value;
@@ -778,11 +925,58 @@ void SK_SSPLP_CLASS::solve_dual_lp(const State &s0) {
                   " constraints");
   }
 
-  highs.run();
-  HighsModelStatus dual_model_status = highs.getModelStatus();
-  if (dual_model_status != HighsModelStatus::kOptimal) {
-    throw std::runtime_error("SSPLP dual LP not optimal: " +
-                             highs.modelStatusToString(dual_model_status));
+  if (_lp_callback_interval > 0) {
+    struct LPInterruptData {
+      std::size_t interval;
+      std::size_t last_interrupt_iter = 0;
+    };
+    LPInterruptData cb_data{_lp_callback_interval};
+
+    highs.setCallback(
+        [](const int, const std::string &, const HighsCallbackDataOut *data_out,
+           HighsCallbackDataIn *data_in, void *user_data) {
+          auto *d = static_cast<LPInterruptData *>(user_data);
+          auto iter =
+              static_cast<std::size_t>(data_out->simplex_iteration_count);
+          if (iter - d->last_interrupt_iter >= d->interval) {
+            d->last_interrupt_iter = iter;
+            data_in->user_interrupt = 1;
+          }
+        },
+        &cb_data);
+    highs.startCallback(kCallbackSimplexInterrupt);
+
+    while (true) {
+      highs.run();
+      auto ms = highs.getModelStatus();
+      if (ms == HighsModelStatus::kOptimal)
+        break;
+
+      if (ms == HighsModelStatus::kInfeasible ||
+          ms == HighsModelStatus::kUnbounded ||
+          ms == HighsModelStatus::kSolveError) {
+        throw std::runtime_error("SSPLP dual LP failed: " +
+                                 highs.modelStatusToString(ms));
+      }
+
+      const auto &row_dual = highs.getSolution().row_dual;
+      if (!row_dual.empty()) {
+        for (std::size_t i = 0; i < _non_goal_states.size(); ++i) {
+          _non_goal_states[i]->best_value = row_dual[i];
+        }
+        extract_policy_from_values();
+        _last_callback_event = LPCallbackEvent::LPProgress;
+        if (_callback(*this, _domain))
+          break;
+      }
+    }
+  } else {
+    highs.run();
+    HighsModelStatus dual_model_status = highs.getModelStatus();
+    if (dual_model_status != HighsModelStatus::kOptimal) {
+      throw std::runtime_error("SSPLP dual LP not optimal: " +
+                               highs.modelStatusToString(dual_model_status));
+    }
   }
 
   // V*(s) = row dual of flow conservation constraint (LP strong duality)
@@ -837,6 +1031,9 @@ void SK_SSPLP_CLASS::solve(const State &s) {
       solve_dual_lp(s);
       break;
     }
+
+    _last_callback_event = LPCallbackEvent::SolverIteration;
+    _callback(*this, _domain);
 
     Logger::info("SSPLP finished in " +
                  StringConverter::from((double)get_solving_time() / 1e3) +
@@ -910,6 +1107,39 @@ SK_SSPLP_CLASS::get_explored_states() const {
     explored.insert(sn.state);
   }
   return explored;
+}
+
+SK_MDPLP_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_MDPLP_CLASS> SK_MDPLP_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> /*goal_checker*/,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> terminal_value, const Params &params,
+    bool verbose) {
+  return std::make_unique<MDPLPSolver>(
+      domain, heuristic, terminal_value, LPVariant::Dual,
+      params.template get<double>("discount", 0.99),
+      params.template get<double>("epsilon", 0.001),
+      params.template get<double>("lp_infinity", 1e20), std::size_t(0),
+      CallbackFunctor([](const MDPLPSolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose));
+}
+
+SK_SSPLP_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_SSPLP_CLASS> SK_SSPLP_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> goal_checker,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> /*terminal_value*/,
+    const Params &params, bool verbose) {
+  return std::make_unique<SSPLPSolver>(
+      domain, goal_checker, heuristic, LPVariant::Dual,
+      params.template get<double>("epsilon", 0.001),
+      params.template get<double>("lp_infinity", 1e20), std::size_t(0),
+      CallbackFunctor([](const SSPLPSolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose));
 }
 
 } // namespace skdecide

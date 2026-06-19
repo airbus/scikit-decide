@@ -54,6 +54,28 @@ public:
       Domain &, GoalCheckerFunctor, HeuristicFunctor)>
       InnerSolverFactory;
 
+  /**
+   * @brief Constructs a new SSiPP solver instance.
+   *
+   * @param domain The domain instance to solve.
+   * @param goal_checker Functor testing whether a state is a goal.
+   * @param heuristic Functor returning the heuristic cost estimate for
+   *   a state, used to initialize the global value function V(s).
+   * @param depth Short-sighted BFS depth t. Controls the horizon of each
+   *   sub-SSP: larger values explore more states per iteration but increase
+   *   per-iteration cost. Defaults to 3.
+   * @param discount Value function's discount factor. Defaults to 1.0.
+   * @param epsilon Bellman residual threshold for inner solver convergence.
+   *   Defaults to 0.001.
+   * @param max_iterations Maximum number of sub-SSP solve iterations per
+   *   call to solve(). Defaults to 10000.
+   * @param callback Functor called after each sub-SSP solve, taking the
+   *   solver and domain as arguments and returning true to stop.
+   *   Defaults to always returning false.
+   * @param verbose Whether to log verbose debug messages. Defaults to false.
+   * @param inner_solver_args Additional arguments forwarded to the inner
+   *   solver constructor (e.g. LRTDP or ILAOstar-specific parameters).
+   */
   template <typename... InnerSolverArgs>
   SSiPPSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
@@ -79,6 +101,14 @@ public:
   typename SetTypeDeducer<State>::Set get_explored_states() const;
   typename SetTypeDeducer<State>::Set get_current_subssp_states() const;
   typename SetTypeDeducer<State>::Set get_boundary_states() const;
+
+  template <typename Params>
+  static std::unique_ptr<SSiPPSolver> create_from_params(
+      Domain &domain,
+      std::function<Predicate(Domain &, const State &)> goal_checker,
+      std::function<Value(Domain &, const State &)> heuristic,
+      std::function<Value(const State &)> terminal_value, const Params &params,
+      bool verbose);
 
 private:
   Domain &_domain;

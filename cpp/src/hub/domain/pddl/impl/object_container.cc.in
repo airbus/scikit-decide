@@ -1,0 +1,31 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/object.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/problem.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/object_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/object_container_impl.hh"
+
+template class skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>;
+
+template const skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::ObjectPtr &
+skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::add_object(
+    const skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::ObjectPtr &object);
+
+template const skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::ObjectPtr &
+skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::add_object(
+    const std::string &object);
+
+template void
+skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::remove_object(
+    const skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::ObjectPtr &object);
+
+template void
+skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::remove_object(
+    const std::string &object);
+
+template const skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::ObjectPtr &
+    skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::get_object(
+        const skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::ObjectPtr &object) const;
+
+template const skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::ObjectPtr &
+    skdecide::pddl::ObjectContainer<skdecide::pddl::${Tderived}>::get_object(
+        const std::string &object) const;

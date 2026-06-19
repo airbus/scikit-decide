@@ -13,7 +13,8 @@ void init_pyhsvi(py::module &m) {
   py_hsvi_solver
       .def(py::init<py::object &, py::object &, double, double, std::size_t,
                     std::size_t, bool, double, std::size_t, double, double,
-                    bool, const std::function<py::bool_(const py::object &)> &,
+                    double, bool,
+                    const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("epsilon") = 0.001,
            py::arg("discount") = 0.95, py::arg("time_budget") = 300000,
@@ -21,8 +22,10 @@ void init_pyhsvi(py::module &m) {
            py::arg("use_closed_list") = false, py::arg("depth_bound_eta") = 0.1,
            py::arg("max_vi_iterations") = 1000,
            py::arg("vi_convergence_factor") = 0.01,
-           py::arg("prob_epsilon") = 1e-15, py::arg("parallel") = false,
-           py::arg("callback") = nullptr, py::arg("verbose") = false)
+           py::arg("prob_epsilon") = 1e-15,
+           py::arg("belief_hash_resolution") = 1000.0,
+           py::arg("parallel") = false, py::arg("callback") = nullptr,
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyHSVISolver::close)
       .def("clear", &skdecide::PyHSVISolver::clear)
       .def("solve", &skdecide::PyHSVISolver::solve, py::arg("distribution"))
@@ -55,7 +58,7 @@ void init_pyhsvi(py::module &m) {
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
                     double, double, std::size_t, std::size_t, bool, double,
-                    std::size_t, double, double, bool,
+                    std::size_t, double, double, double, bool,
                     const std::function<py::bool_(const py::object &)> &, bool,
                     std::optional<double>>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
@@ -64,9 +67,10 @@ void init_pyhsvi(py::module &m) {
            py::arg("use_closed_list") = true, py::arg("depth_bound_eta") = 0.1,
            py::arg("max_vi_iterations") = 1000,
            py::arg("vi_convergence_factor") = 0.01,
-           py::arg("prob_epsilon") = 1e-15, py::arg("parallel") = false,
-           py::arg("callback") = nullptr, py::arg("verbose") = false,
-           py::arg("dead_end_cost") = py::none())
+           py::arg("prob_epsilon") = 1e-15,
+           py::arg("belief_hash_resolution") = 1000.0,
+           py::arg("parallel") = false, py::arg("callback") = nullptr,
+           py::arg("verbose") = false, py::arg("dead_end_cost") = py::none())
       .def("close", &skdecide::PyGoalHSVISolver::close)
       .def("clear", &skdecide::PyGoalHSVISolver::clear)
       .def("solve", &skdecide::PyGoalHSVISolver::solve, py::arg("distribution"))

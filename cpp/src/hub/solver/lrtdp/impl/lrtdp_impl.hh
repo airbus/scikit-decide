@@ -665,6 +665,38 @@ SK_LRTASTAR_SOLVER_CLASS::get_plan(const State &s) const {
   return plan;
 }
 
+SK_LRTDP_SOLVER_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_LRTDP_SOLVER_CLASS>
+SK_LRTDP_SOLVER_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> goal_checker,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> terminal_value, const Params &params,
+    bool verbose) {
+  auto wrapped_gc = [goal_checker](Domain &d, const State &s,
+                                   const std::size_t *) {
+    return goal_checker(d, s);
+  };
+  auto wrapped_h = [heuristic](Domain &d, const State &s, const std::size_t *) {
+    return heuristic(d, s);
+  };
+  return std::make_unique<LRTDPSolver>(
+      domain, wrapped_gc, wrapped_h, terminal_value,
+      params.template get<bool>("use_labels", true),
+      params.template get<std::size_t>("time_budget", 3600000),
+      params.template get<std::size_t>("rollout_budget", 100000),
+      params.template get<std::size_t>("max_depth", 1000),
+      params.template get<std::size_t>("residual_moving_average_window", 100),
+      params.template get<double>("epsilon", 0.001),
+      params.template get<double>("discount", 1.0),
+      params.template get<bool>("online_node_garbage", false),
+      CallbackFunctor([](const LRTDPSolver &, Domain &, const std::size_t *) {
+        return false;
+      }),
+      params.template get<bool>("verbose", verbose));
+}
+
 } // namespace skdecide
 
 #endif // SKDECIDE_LRTDP_IMPL_HH

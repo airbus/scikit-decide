@@ -20,6 +20,20 @@
 
 namespace skdecide {
 
+/**
+ * @brief POMCP solver for POMDPs (online, reward maximization).
+ *
+ * From Silver & Veness, "Monte-Carlo Planning in Large POMDPs",
+ * NIPS 2010.
+ *
+ * POMCP applies UCT to a history tree with particle-based belief
+ * tracking. Planning happens online at each step: the solver samples
+ * particles from the current belief, runs Monte Carlo simulations
+ * through the history tree, and selects actions via UCB1.
+ *
+ * @tparam Tdomain Type of the domain class (must be PartiallyObservable)
+ * @tparam Texecution_policy Type of the execution policy
+ */
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class POMCPSolver {
 public:
@@ -61,12 +75,37 @@ public:
     ActionNode(const Action &a, HistoryNode *p) : action(a), parent(p) {}
   };
 
+  /**
+   * @brief Construct a new POMCPSolver.
+   *
+   * @param domain The domain instance to solve.
+   * @param exploration_constant UCB1 exploration constant (c). Controls
+   *   the exploration-exploitation trade-off. Defaults to 1/sqrt(2).
+   * @param discount Discount factor gamma. Must be in (0, 1].
+   *   Defaults to 0.95.
+   * @param num_simulations Number of Monte Carlo simulations per planning
+   *   step. Defaults to 1000.
+   * @param max_depth Maximum search and rollout depth. Defaults to 100.
+   * @param epsilon Discount-depth cutoff threshold. A simulation stops
+   *   when gamma^depth < epsilon. Defaults to 0.001.
+   * @param time_budget Maximum planning time per step in milliseconds.
+   *   0 means no time limit (only num_simulations is used).
+   *   Defaults to 0.
+   * @param num_particles_belief_update Number of particles for belief
+   *   update via particle filter. Defaults to 500.
+   * @param ess_threshold_ratio Effective sample size threshold ratio for
+   *   resampling. Resampling occurs when ESS < N / ratio. Defaults to 2.0.
+   * @param callback Functor called at each simulation iteration. Returns
+   *   true to stop planning. Defaults to never stop.
+   * @param verbose Whether to log verbose messages. Defaults to false.
+   */
   POMCPSolver(
       Domain &domain, double exploration_constant = 1.0 / std::sqrt(2.0),
       double discount = 0.95, std::size_t num_simulations = 1000,
       std::size_t max_depth = 100, double epsilon = 0.001,
       std::size_t time_budget = 0,
       std::size_t num_particles_belief_update = 500,
+      double ess_threshold_ratio = 2.0,
       const CallbackFunctor &callback = [](const POMCPSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -122,6 +161,7 @@ private:
   double _epsilon;
   std::size_t _time_budget;
   std::size_t _num_particles_belief;
+  double _ess_threshold_ratio;
   CallbackFunctor _callback;
   bool _verbose;
 

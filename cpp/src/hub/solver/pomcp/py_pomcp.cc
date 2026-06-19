@@ -13,7 +13,7 @@ void init_pypomcp(py::module &m) {
   py::class_<skdecide::PyPOMCPSolver> py_pomcp_solver(m, "_POMCPSolver_");
   py_pomcp_solver
       .def(py::init<py::object &, py::object &, double, double, std::size_t,
-                    std::size_t, double, std::size_t, std::size_t, bool,
+                    std::size_t, double, std::size_t, std::size_t, double, bool,
                     const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"),
@@ -22,8 +22,8 @@ void init_pypomcp(py::module &m) {
            py::arg("max_depth") = 100, py::arg("epsilon") = 0.001,
            py::arg("time_budget") = 0,
            py::arg("num_particles_belief_update") = 500,
-           py::arg("parallel") = false, py::arg("callback") = nullptr,
-           py::arg("verbose") = false)
+           py::arg("ess_threshold_ratio") = 2.0, py::arg("parallel") = false,
+           py::arg("callback") = nullptr, py::arg("verbose") = false)
       .def("close", &skdecide::PyPOMCPSolver::close)
       .def("clear", &skdecide::PyPOMCPSolver::clear)
       .def("solve", &skdecide::PyPOMCPSolver::solve, py::arg("distribution"))

@@ -617,7 +617,7 @@ jobs:
           # launch alone plado tests (error with rllib), but only if not all skipped
           sh -c 'pytest -vv tests/domains/python/test_plado_domain.py ; ret=$?; [ $ret = 5 ] && exit 0 || exit $ret'
           pytest -vv --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling --ignore tests/domains/python/test_plado_domain.py
-          pytest -vv tests/*/cpp
+          pytest -vv --timeout=300 tests/*/cpp
 
   test-macos:
     needs: [build-macos, setup]
@@ -720,7 +720,7 @@ jobs:
           pytest -vv tests/scheduling
           pytest -vv --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling --ignore tests/domains/python/test_pyrddlgym_domains.py --ignore tests/solvers/python/test_pyrddlgym_solvers.py
           pytest -vv tests/domains/python/test_pyrddlgym_domains.py tests/solvers/python/test_pyrddlgym_solvers.py
-          pytest -vv tests/*/cpp
+          pytest -vv --timeout=300 tests/*/cpp
 
   test-ubuntu:
     needs: [build-ubuntu, setup]
@@ -826,7 +826,7 @@ jobs:
           pytest -vv tests/solvers/python/test_optuna_rayrllib.py
           pytest -vv tests/scheduling
           pytest -vv --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
-          pytest -vv tests/*/cpp
+          pytest -vv --timeout=300 tests/*/cpp
 
       - name: Test python block codes from guide
         run: |

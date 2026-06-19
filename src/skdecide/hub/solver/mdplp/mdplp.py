@@ -66,6 +66,7 @@ try:
             discount: float = 0.99,
             epsilon: float = 0.001,
             lp_infinity: float = 1e20,
+            lp_callback_interval: int = 0,
             parallel: bool = False,
             callback: Callable[[MDPLP], bool] = lambda slv: False,
             verbose: bool = False,
@@ -84,6 +85,9 @@ try:
             epsilon: Convergence threshold. Defaults to 0.001.
             lp_infinity: Upper bound for LP variable bounds and constraint
                 lower bounds used with HiGHS. Defaults to 1e20.
+            lp_callback_interval: Fire callback every N simplex iterations
+                during the LP solve, reporting intermediate V(s) and policy.
+                0 disables LP-level callbacks. Defaults to 0.
             parallel: If True, explore action transitions in parallel
                 during state enumeration.
             callback: Called after solving. Returns True to stop.
@@ -117,6 +121,7 @@ try:
                 discount=discount,
                 epsilon=epsilon,
                 lp_infinity=lp_infinity,
+                lp_callback_interval=lp_callback_interval,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -165,6 +170,9 @@ try:
         def get_explored_states(self) -> set[D.T_agent[D.T_observation]]:
             return self._solver.get_explored_states()
 
+        def get_callback_event(self) -> str:
+            return self._solver.get_callback_event()
+
     class D_SSP(
         Domain,
         SingleAgent,
@@ -203,6 +211,7 @@ try:
             variant: str = "dual",
             epsilon: float = 0.001,
             lp_infinity: float = 1e20,
+            lp_callback_interval: int = 0,
             parallel: bool = False,
             callback: Callable[[SSPLP], bool] = lambda slv: False,
             verbose: bool = False,
@@ -219,6 +228,9 @@ try:
             epsilon: Convergence threshold. Defaults to 0.001.
             lp_infinity: Upper bound for LP variable bounds and constraint
                 lower bounds used with HiGHS. Defaults to 1e20.
+            lp_callback_interval: Fire callback every N simplex iterations
+                during the LP solve, reporting intermediate V(s) and policy.
+                0 disables LP-level callbacks. Defaults to 0.
             parallel: If True, explore action transitions in parallel
                 during state enumeration.
             callback: Called after solving. Returns True to stop.
@@ -244,6 +256,7 @@ try:
                 variant=variant,
                 epsilon=epsilon,
                 lp_infinity=lp_infinity,
+                lp_callback_interval=lp_callback_interval,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -293,6 +306,9 @@ try:
 
         def get_explored_states(self) -> set[D_SSP.T_agent[D_SSP.T_observation]]:
             return self._solver.get_explored_states()
+
+        def get_callback_event(self) -> str:
+            return self._solver.get_callback_event()
 
 except ImportError:
     print(

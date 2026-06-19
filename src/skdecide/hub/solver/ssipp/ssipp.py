@@ -77,8 +77,7 @@ try:
                 [Domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
             depth: int = 3,
-            inner_solver: str = "LRTDP",
-            inner_solver_params: Optional[dict] = None,
+            inner_solver_factory: Optional[Callable[[], tuple[str, dict]]] = None,
             discount: float = 1.0,
             epsilon: float = 0.001,
             max_iterations: int = 10000,
@@ -95,12 +94,10 @@ try:
                 heuristic cost estimate. Defaults to Value(cost=0).
             depth: Short-sighted depth t. Larger values explore more states
                 per sub-SSP but take longer. Defaults to 3.
-            inner_solver: Inner optimal solver to use for sub-SSPs. One of
-                "LRTDP", "ILAOstar", or "LDFS". Defaults to "LRTDP".
-            inner_solver_params: Optional dict of extra parameters forwarded
-                to the inner solver's constructor. Keys and value types
-                depend on the chosen inner_solver. Refer to the inner
-                solver's own documentation for available parameters.
+            inner_solver_factory: Callable returning a (name, params) tuple
+                specifying the inner solver and its parameters. Available
+                inner solvers: "LRTDP", "ILAOstar", "LDFS", "VI".
+                Defaults to ``lambda: ("LRTDP", {})``.
             discount: Value function's discount factor. Defaults to 1.0.
             epsilon: Bellman residual threshold for convergence.
                 Defaults to 0.001.
@@ -111,12 +108,9 @@ try:
             callback: Called after each sub-SSP solve. Returns True to stop.
             verbose: Enable verbose logging. Defaults to False.
             """
-            _supported = ("LRTDP", "ILAOstar", "LDFS")
-            if inner_solver not in _supported:
-                raise ValueError(
-                    f"SSiPP inner_solver must be one of {_supported}, "
-                    f"got '{inner_solver}'."
-                )
+            if inner_solver_factory is None:
+                inner_solver_factory = lambda: ("LRTDP", {})
+            inner_solver, inner_solver_params = inner_solver_factory()
 
             Solver.__init__(self, domain_factory=domain_factory)
             ParallelSolver.__init__(
@@ -140,8 +134,8 @@ try:
                 discount=discount,
                 epsilon=epsilon,
                 max_iterations=max_iterations,
-                inner_solver_params=inner_solver_params or {},
                 inner_solver=inner_solver,
+                inner_solver_params=inner_solver_params,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,

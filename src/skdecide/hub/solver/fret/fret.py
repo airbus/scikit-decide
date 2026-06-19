@@ -71,8 +71,7 @@ try:
             heuristic: Callable[
                 [Domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
-            inner_solver: str = "LRTDP",
-            inner_solver_params: Optional[dict] = None,
+            inner_solver_factory: Optional[Callable[[], tuple[str, dict]]] = None,
             discount: float = 1.0,
             epsilon: float = 0.001,
             dead_end_cost: float = 10000.0,
@@ -87,33 +86,26 @@ try:
             domain_factory: Lambda returning a domain instance.
             heuristic: Function h(domain, state) -> Value returning the
                 heuristic cost estimate. Defaults to Value(cost=0).
-            inner_solver: Inner optimal solver for Find-and-Revise. One of
-                "LRTDP", "LDFS", or "VI". Defaults to "LRTDP". ILAOstar
-                is not supported because it lacks terminal_value, which
-                FRET needs to propagate dead-end costs.
-            inner_solver_params: Optional dict of extra parameters
-                forwarded to the inner solver's constructor. Keys and
-                value types depend on the chosen inner_solver.
+            inner_solver_factory: Callable returning a (name, params) tuple
+                specifying the inner solver and its parameters. Available
+                inner solvers: "LRTDP", "LDFS", "VI". ILAOstar is not
+                supported because it lacks terminal_value, which FRET
+                needs to propagate dead-end costs.
+                Defaults to ``lambda: ("LRTDP", {})``.
             discount: Value function's discount factor. Defaults to 1.0.
             epsilon: Greedy action tolerance and convergence threshold.
                 Defaults to 0.001.
             dead_end_cost: Cost assigned to permanent trap (dead-end)
                 states. Defaults to 10000.0.
-
             parallel: Parallelize the inner solver. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy.
             callback: Called after each FRET iteration. Returns True
                 to stop.
             verbose: Enable verbose logging. Defaults to False.
             """
-            _supported = ("LRTDP", "LDFS", "VI")
-            if inner_solver not in _supported:
-                raise ValueError(
-                    f"FRET inner_solver must be one of {_supported}, "
-                    f"got '{inner_solver}'. ILAOstar is not supported "
-                    f"because it lacks terminal_value, which FRET needs "
-                    f"to propagate dead-end costs."
-                )
+            if inner_solver_factory is None:
+                inner_solver_factory = lambda: ("LRTDP", {})
+            inner_solver, inner_solver_params = inner_solver_factory()
 
             Solver.__init__(self, domain_factory=domain_factory)
             ParallelSolver.__init__(
@@ -136,8 +128,8 @@ try:
                 discount=discount,
                 epsilon=epsilon,
                 dead_end_cost=dead_end_cost,
-                inner_solver_params=inner_solver_params or {},
                 inner_solver=inner_solver,
+                inner_solver_params=inner_solver_params,
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,

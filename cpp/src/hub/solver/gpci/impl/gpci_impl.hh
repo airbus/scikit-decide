@@ -415,6 +415,20 @@ SK_GPCI_SOLVER_CLASS::policy() const {
   return p;
 }
 
+SK_GPCI_SOLVER_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_GPCI_SOLVER_CLASS> SK_GPCI_SOLVER_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> goal_checker,
+    std::function<Value(Domain &, const State &)> /*heuristic*/,
+    std::function<Value(const State &)> /*terminal_value*/,
+    const Params &params, bool verbose) {
+  return std::make_unique<GPCISolver>(
+      domain, goal_checker, params.template get<double>("epsilon", 0.001),
+      CallbackFunctor([](const GPCISolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose));
+}
+
 } // namespace skdecide
 
 #endif // SKDECIDE_GPCI_IMPL_HH

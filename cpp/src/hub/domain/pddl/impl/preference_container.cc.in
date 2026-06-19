@@ -1,0 +1,6 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/problem.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/preference_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/preference_container_impl.hh"
+
+template class skdecide::pddl::PreferenceContainer<skdecide::pddl::${Tderived}>;

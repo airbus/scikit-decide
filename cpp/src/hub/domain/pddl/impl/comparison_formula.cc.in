@@ -1,0 +1,4 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/comparison_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/comparison_formula_impl.hh"
+
+template class skdecide::pddl::ComparisonFormula<skdecide::pddl::${Tderived}>;

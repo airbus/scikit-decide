@@ -1,0 +1,6 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/constraint_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/imply_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/binary_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/binary_formula_impl.hh"
+
+template class skdecide::pddl::BinaryFormula<skdecide::pddl::${Tderived}>;

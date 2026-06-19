@@ -56,6 +56,7 @@ private:
         std::size_t time_budget = 1000, double discount = 0.95,
         std::size_t max_rollout_depth = 90,
         std::size_t num_particles_belief_update = 500,
+        double ess_threshold_ratio = 2.0,
         const std::function<py::object(const py::object &, const py::object &)>
             &default_policy = nullptr,
         const std::function<py::object(const py::object &, const py::object &)>
@@ -112,8 +113,8 @@ private:
           DespotSolver<PyDespotDomain<Texecution>, Texecution>>(
           *_domain, num_scenarios, max_depth, regularization_constant,
           gap_reduction_rate, target_gap, time_budget, discount,
-          max_rollout_depth, num_particles_belief_update, default_policy_cpp,
-          upper_bound_cpp,
+          max_rollout_depth, num_particles_belief_update, ess_threshold_ratio,
+          default_policy_cpp, upper_bound_cpp,
           [this](const DespotSolver<PyDespotDomain<Texecution>, Texecution> &s,
                  PyDespotDomain<Texecution> &d,
                  const std::size_t *thread_id) -> bool {
@@ -321,6 +322,7 @@ public:
       std::size_t time_budget = 1000, double discount = 0.95,
       std::size_t max_rollout_depth = 90,
       std::size_t num_particles_belief_update = 500,
+      double ess_threshold_ratio = 2.0,
       const std::function<py::object(const py::object &, const py::object &)>
           &default_policy = nullptr,
       const std::function<py::object(const py::object &, const py::object &)>
@@ -334,8 +336,8 @@ public:
         .instantiate(solver, domain, num_scenarios, max_depth,
                      regularization_constant, gap_reduction_rate, target_gap,
                      time_budget, discount, max_rollout_depth,
-                     num_particles_belief_update, default_policy,
-                     upper_bound_heuristic, callback, verbose);
+                     num_particles_belief_update, ess_threshold_ratio,
+                     default_policy, upper_bound_heuristic, callback, verbose);
   }
 
   void close() { _implementation->close(); }

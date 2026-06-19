@@ -62,6 +62,7 @@ private:
         std::size_t max_vi_iterations = 1000,
         double vi_convergence_factor = 0.01, std::size_t max_sample_depth = 100,
         double prob_epsilon = 1e-15, double ub_improvement_epsilon = 1e-10,
+        std::size_t pruning_interval = 10, std::size_t logging_interval = 50,
         const std::function<py::bool_(const py::object &)> &callback = nullptr,
         bool verbose = false)
         : _callback(callback) {
@@ -72,7 +73,8 @@ private:
           SARSOPSolver<PySARSOPDomain<Texecution>, Texecution>>(
           *_domain, epsilon, discount, time_budget, max_beliefs, pruning_delta,
           max_vi_iterations, vi_convergence_factor, max_sample_depth,
-          prob_epsilon, ub_improvement_epsilon,
+          prob_epsilon, ub_improvement_epsilon, pruning_interval,
+          logging_interval,
           [this](const SARSOPSolver<PySARSOPDomain<Texecution>, Texecution> &s,
                  PySARSOPDomain<Texecution> &d) -> bool {
             if (_callback) {
@@ -255,7 +257,8 @@ public:
       std::size_t max_beliefs = 100000, double pruning_delta = 1e-6,
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
       std::size_t max_sample_depth = 100, double prob_epsilon = 1e-15,
-      double ub_improvement_epsilon = 1e-10, bool parallel = false,
+      double ub_improvement_epsilon = 1e-10, std::size_t pruning_interval = 10,
+      std::size_t logging_interval = 50, bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
@@ -263,7 +266,8 @@ public:
         .instantiate(solver, domain, epsilon, discount, time_budget,
                      max_beliefs, pruning_delta, max_vi_iterations,
                      vi_convergence_factor, max_sample_depth, prob_epsilon,
-                     ub_improvement_epsilon, callback, verbose);
+                     ub_improvement_epsilon, pruning_interval, logging_interval,
+                     callback, verbose);
   }
 
   void close() { _implementation->close(); }

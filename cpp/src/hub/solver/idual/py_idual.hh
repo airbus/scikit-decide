@@ -80,6 +80,7 @@ private:
     virtual py::int_ get_nb_lp_iterations() = 0;
     virtual py::int_ get_solving_time() = 0;
     virtual py::set get_explored_states() = 0;
+    virtual py::str get_callback_event() = 0;
   };
 
   template <typename Texecution>
@@ -98,7 +99,8 @@ private:
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
         const std::function<py::object(const py::object &)> &terminal_value,
-        double lp_infinity, double default_dead_end_cost,
+        double lp_infinity, double lp_tolerance, double default_dead_end_cost,
+        std::size_t lp_callback_interval,
         const std::function<py::bool_(const py::object &)> &callback,
         bool verbose)
         : _goal_checker(goal_checker), _heuristic(heuristic),
@@ -152,8 +154,8 @@ private:
               throw;
             }
           },
-          nullptr, std::vector<double>{}, 0.001, lp_infinity,
-          default_dead_end_cost,
+          nullptr, std::vector<double>{}, 0.001, lp_infinity, lp_tolerance,
+          default_dead_end_cost, lp_callback_interval,
           [this](const IDualSolver<Domain, Texecution> &, Domain &) -> bool {
             if (_callback) {
               try {
@@ -223,6 +225,18 @@ private:
       }
       return result;
     }
+    virtual py::str get_callback_event() {
+      using LPCallbackEvent =
+          typename IDualSolver<Domain, Texecution>::LPCallbackEvent;
+      switch (_solver->get_callback_event()) {
+      case LPCallbackEvent::SolverIteration:
+        return py::str("SolverIteration");
+      case LPCallbackEvent::LPProgress:
+        return py::str("LPProgress");
+      default:
+        return py::str("Unknown");
+      }
+    }
 
   private:
     std::unique_ptr<py::object> _pysolver;
@@ -278,14 +292,16 @@ public:
       const std::function<py::object(const py::object &, const py::object &)>
           &heuristic,
       const std::function<py::object(const py::object &)> &terminal_value,
-      double lp_infinity = 1e20, double default_dead_end_cost = 1000.0,
-      bool parallel = false,
+      double lp_infinity = 1e20, double lp_tolerance = 1e-15,
+      double default_dead_end_cost = 1000.0,
+      std::size_t lp_callback_interval = 0, bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, goal_checker, heuristic, terminal_value,
-                     lp_infinity, default_dead_end_cost, callback, verbose);
+                     lp_infinity, lp_tolerance, default_dead_end_cost,
+                     lp_callback_interval, callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -310,6 +326,7 @@ public:
   py::set get_explored_states() {
     return _implementation->get_explored_states();
   }
+  py::str get_callback_event() { return _implementation->get_callback_event(); }
 };
 
 // =========================================================================
@@ -331,6 +348,7 @@ private:
     virtual py::int_ get_nb_lp_iterations() = 0;
     virtual py::int_ get_solving_time() = 0;
     virtual py::set get_explored_states() = 0;
+    virtual py::str get_callback_event() = 0;
   };
 
   template <typename Texecution>
@@ -351,8 +369,8 @@ private:
         const std::function<py::object(const py::object &)> &terminal_value,
         const std::function<py::object(const py::object &, const py::object &,
                                        int)> &secondary_heuristic,
-        py::list dead_end_costs_list, double lp_infinity,
-        double default_dead_end_cost,
+        py::list dead_end_costs_list, double lp_infinity, double lp_tolerance,
+        double default_dead_end_cost, std::size_t lp_callback_interval,
         const std::function<py::bool_(const py::object &)> &callback,
         bool verbose)
         : _goal_checker(goal_checker), _heuristic(heuristic),
@@ -434,7 +452,8 @@ private:
               throw;
             }
           },
-          sec_heur, dead_end_costs, 0.001, lp_infinity, default_dead_end_cost,
+          sec_heur, dead_end_costs, 0.001, lp_infinity, lp_tolerance,
+          default_dead_end_cost, lp_callback_interval,
           [this](const IDualSolver<Domain, Texecution> &, Domain &) -> bool {
             if (_callback) {
               try {
@@ -509,6 +528,18 @@ private:
       }
       return result;
     }
+    virtual py::str get_callback_event() {
+      using LPCallbackEvent =
+          typename IDualSolver<Domain, Texecution>::LPCallbackEvent;
+      switch (_solver->get_callback_event()) {
+      case LPCallbackEvent::SolverIteration:
+        return py::str("SolverIteration");
+      case LPCallbackEvent::LPProgress:
+        return py::str("LPProgress");
+      default:
+        return py::str("Unknown");
+      }
+    }
 
   private:
     std::unique_ptr<py::object> _pysolver;
@@ -570,14 +601,16 @@ public:
       const std::function<py::object(const py::object &, const py::object &,
                                      int)> &secondary_heuristic,
       py::list dead_end_costs, double lp_infinity = 1e20,
-      double default_dead_end_cost = 1000.0, bool parallel = false,
+      double lp_tolerance = 1e-15, double default_dead_end_cost = 1000.0,
+      std::size_t lp_callback_interval = 0, bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, goal_checker, heuristic, terminal_value,
                      secondary_heuristic, dead_end_costs, lp_infinity,
-                     default_dead_end_cost, callback, verbose);
+                     lp_tolerance, default_dead_end_cost, lp_callback_interval,
+                     callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -602,6 +635,7 @@ public:
   py::set get_explored_states() {
     return _implementation->get_explored_states();
   }
+  py::str get_callback_event() { return _implementation->get_callback_event(); }
 };
 
 } // namespace skdecide

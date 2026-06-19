@@ -1,0 +1,9 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/function.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/operator.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/predicate.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/quantified_effect.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/quantified_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/variable_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/variable_container_impl.hh"
+
+template class skdecide::pddl::VariableContainer<skdecide::pddl::${Tderived}>;

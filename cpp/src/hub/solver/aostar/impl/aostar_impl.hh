@@ -350,6 +350,24 @@ bool SK_AOSTAR_SOLVER_CLASS::StateNodeCompare::operator()(StateNode *&a,
                           // priority_queue => cost optimization
 }
 
+SK_AOSTAR_SOLVER_TEMPLATE_DECL
+template <typename Params>
+std::unique_ptr<SK_AOSTAR_SOLVER_CLASS>
+SK_AOSTAR_SOLVER_CLASS::create_from_params(
+    Domain &domain,
+    std::function<Predicate(Domain &, const State &)> goal_checker,
+    std::function<Value(Domain &, const State &)> heuristic,
+    std::function<Value(const State &)> /*terminal_value*/,
+    const Params &params, bool verbose) {
+  return std::make_unique<AOStarSolver>(
+      domain, goal_checker, heuristic,
+      params.template get<double>("discount", 1.0),
+      params.template get<std::size_t>("max_tip_expansions", 1),
+      params.template get<bool>("detect_cycles", false),
+      CallbackFunctor([](const AOStarSolver &, Domain &) { return false; }),
+      params.template get<bool>("verbose", verbose));
+}
+
 } // namespace skdecide
 
 #endif // SKDECIDE_AOSTAR_IMPL_HH

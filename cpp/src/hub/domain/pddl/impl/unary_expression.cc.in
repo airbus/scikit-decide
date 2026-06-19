@@ -1,0 +1,6 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/minus_expression.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/optimization_expression.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/unary_expression.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/unary_expression_impl.hh"
+
+template class skdecide::pddl::UnaryExpression<skdecide::pddl::${Tderived}>;

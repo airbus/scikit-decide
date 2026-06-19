@@ -18,6 +18,7 @@
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
 #include "utils/logging.hh"
+#include "hub/solver/inner_solver/inner_solver_traits.hh"
 
 namespace skdecide {
 
@@ -64,6 +65,30 @@ public:
   typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const LDFSSolver &, Domain &)> CallbackFunctor;
 
+  /**
+   * @brief Constructs a new LDFS solver instance.
+   *
+   * @param domain The domain instance to solve.
+   * @param goal_checker Functor testing whether a state is a goal. Goal
+   *   states are absorbing with V(s) = 0.
+   * @param heuristic Functor returning the heuristic cost estimate for a
+   *   state, used to initialize V(s) for newly discovered states. An
+   *   admissible heuristic (h(s) <= V*(s)) accelerates convergence.
+   * @param terminal_value Functor assigning a fixed value to non-goal
+   *   terminal (absorbing) states. Use Value(0.0) for benign terminals
+   *   and Value(large_cost) for dead ends. Defaults to Value(0.0, false).
+   * @param discount Value function's discount factor. Defaults to 1.0.
+   * @param epsilon Maximum Bellman error allowed to label a state as solved
+   *   during the check_solved procedure. Defaults to 0.001.
+   * @param max_depth Maximum DFS depth per driver iteration. 0 means
+   *   unlimited. When reached, the DFS backtracks as if the state were
+   *   unsolved; the driver loop retries, preserving correctness.
+   *   Defaults to 0 (unlimited).
+   * @param callback Functor called at the end of each LDFS pass, taking
+   *   the solver and domain as arguments and returning true to stop.
+   *   Defaults to always returning false.
+   * @param verbose Whether to log verbose debug messages. Defaults to false.
+   */
   LDFSSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
       const HeuristicFunctor &heuristic,
@@ -90,6 +115,14 @@ public:
   std::vector<typename SetTypeDeducer<State>::Set>
   get_strongly_connected_components() const;
   typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
+
+  template <typename Params>
+  static std::unique_ptr<LDFSSolver> create_from_params(
+      Domain &domain,
+      std::function<Predicate(Domain &, const State &)> goal_checker,
+      std::function<Value(Domain &, const State &)> heuristic,
+      std::function<Value(const State &)> terminal_value, const Params &params,
+      bool verbose);
 
 protected:
   typedef typename ExecutionPolicy::template atomic<double> atomic_double;
@@ -155,19 +188,6 @@ protected:
   bool _last_rv;
 };
 
-template <typename Tdomain> struct has_get_next_state {
-  typedef char yes[1];
-  typedef char no[2];
-
-  template <typename D>
-  static yes &test(decltype(std::declval<D &>().get_next_state(
-      std::declval<const typename D::State &>(),
-      std::declval<const typename D::Action &>())) *);
-  template <typename> static no &test(...);
-
-  static const bool value = sizeof(test<Tdomain>(nullptr)) == sizeof(yes);
-};
-
 /**
  * @brief IDA* solver for deterministic planning problems.
  *
@@ -200,28 +220,54 @@ public:
   typedef typename Base::HeuristicFunctor HeuristicFunctor;
   typedef typename Base::CallbackFunctor CallbackFunctor;
 
+  /**
+   * @brief Constructs a new IDA* solver instance.
+   *
+   * This is the primary constructor exposing only the parameters relevant to
+   * deterministic search. Parameters irrelevant for deterministic planning
+   * (terminal_value, discount, epsilon) are fixed internally.
+   *
+   * @param domain The deterministic domain instance to solve.
+   * @param goal_checker Functor testing whether a state is a goal.
+   * @param heuristic Functor returning the heuristic cost estimate for a
+   *   state. Must be admissible (h(s) <= V*(s)) for optimality.
+   * @param max_depth Maximum DFS depth per iteration. 0 means unlimited.
+   *   Defaults to 0.
+   * @param callback Functor called at the end of each IDA* iteration,
+   *   taking the solver and domain as arguments and returning true to stop.
+   *   Defaults to always returning false.
+   * @param verbose Whether to log verbose debug messages. Defaults to false.
+   */
   IDAstarSolver(
       Tdomain &domain, const GoalCheckerFunctor &goal_checker,
       const HeuristicFunctor &heuristic, std::size_t max_depth = 0,
       const CallbackFunctor &callback = [](const Base &,
                                            Tdomain &) { return false; },
-      bool verbose = false)
-      : Base(
-            domain, goal_checker, heuristic,
-            [](const State &) { return Value(0.0, false); }, 1.0, 0.0,
-            max_depth, callback, verbose) {}
+      bool verbose = false);
 
-  // Overload accepting the full LDFS signature (for pybind compatibility).
-  // terminal_value, discount, epsilon are ignored.
+  /**
+   * @brief Constructs an IDA* solver with the full LDFS parameter signature.
+   *
+   * This constructor accepts the same signature as LDFSSolver for
+   * compatibility with meta-solvers (e.g. SSiPP, FRET) that construct
+   * inner solvers generically. The terminal_value, discount, and epsilon
+   * parameters are accepted but ignored since IDA* fixes them internally.
+   *
+   * @param domain The deterministic domain instance to solve.
+   * @param goal_checker Functor testing whether a state is a goal.
+   * @param heuristic Functor returning the heuristic cost estimate.
+   * @param terminal_value Ignored (accepted for LDFS signature compatibility).
+   * @param discount Ignored (always 1.0 for IDA*).
+   * @param epsilon Ignored (always 0 for exact deterministic search).
+   * @param max_depth Maximum DFS depth per iteration. 0 means unlimited.
+   * @param callback Functor called at the end of each IDA* iteration.
+   * @param verbose Whether to log verbose debug messages.
+   */
   IDAstarSolver(Tdomain &domain, const GoalCheckerFunctor &goal_checker,
                 const HeuristicFunctor &heuristic,
                 const typename Base::TerminalValueFunctor &, double, double,
                 std::size_t max_depth, const CallbackFunctor &callback,
-                bool verbose)
-      : Base(
-            domain, goal_checker, heuristic,
-            [](const State &) { return Value(0.0, false); }, 1.0, 0.0,
-            max_depth, callback, verbose) {}
+                bool verbose);
 
   std::vector<Action> get_plan(const State &s) const;
 };

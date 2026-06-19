@@ -166,6 +166,14 @@ public:
    */
   typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
 
+  template <typename Params>
+  static std::unique_ptr<ILAOStarSolver> create_from_params(
+      Domain &domain,
+      std::function<Predicate(Domain &, const State &)> goal_checker,
+      std::function<Value(Domain &, const State &)> heuristic,
+      std::function<Value(const State &)> terminal_value, const Params &params,
+      bool verbose);
+
 private:
   typedef typename ExecutionPolicy::template atomic<double> atomic_double;
   typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;

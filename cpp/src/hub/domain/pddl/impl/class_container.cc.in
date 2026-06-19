@@ -1,0 +1,33 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/class.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/class_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/class_container_impl.hh"
+
+template class skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>;
+
+template const skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr &
+skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::add_class(
+    const skdecide::pddl::AssociativeContainer<
+        skdecide::pddl::${Tderived}, skdecide::pddl::Class>::SymbolPtr &cls);
+
+template const skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr &
+skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::add_class(
+    const std::string &cls);
+
+template void
+skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::remove_class(
+    const AssociativeContainer<skdecide::pddl::${Tderived},
+                               skdecide::pddl::Class>::SymbolPtr &cls);
+
+template void
+skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::remove_class(
+    const std::string &cls);
+
+template const skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr &
+skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::get_class(
+    const AssociativeContainer<skdecide::pddl::${Tderived},
+                               skdecide::pddl::Class>::SymbolPtr &cls) const;
+
+template const skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr &
+skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::get_class(
+    const std::string &cls) const;

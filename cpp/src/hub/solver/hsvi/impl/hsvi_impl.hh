@@ -28,13 +28,16 @@ SK_HSVI_CLASS::HSVISolver(Domain &domain, double epsilon, double discount,
                           bool use_closed_list, double depth_bound_eta,
                           std::size_t max_vi_iterations,
                           double vi_convergence_factor, double prob_epsilon,
+                          double belief_hash_resolution,
                           const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _epsilon(epsilon), _discount(discount),
       _time_budget(time_budget), _max_sample_depth(max_sample_depth),
       _use_closed_list(use_closed_list), _depth_bound_eta(depth_bound_eta),
       _max_vi_iterations(max_vi_iterations),
       _vi_convergence_factor(vi_convergence_factor),
-      _prob_epsilon(prob_epsilon), _callback(callback), _verbose(verbose) {}
+      _prob_epsilon(prob_epsilon),
+      _belief_hash_resolution(belief_hash_resolution), _callback(callback),
+      _verbose(verbose) {}
 
 SK_HSVI_TEMPLATE_DECL
 void SK_HSVI_CLASS::clear() {
@@ -805,7 +808,8 @@ SK_HSVI_TEMPLATE_DECL
 std::size_t SK_HSVI_CLASS::belief_hash(const Belief &b) const {
   std::size_t seed = 0;
   for (const auto &p : b) {
-    std::size_t disc = static_cast<std::size_t>(std::ceil(p.second * 1000.0));
+    std::size_t disc =
+        static_cast<std::size_t>(std::ceil(p.second * _belief_hash_resolution));
     seed ^= p.first * 2654435761UL + disc;
   }
   return seed;
@@ -935,11 +939,12 @@ SK_GOAL_HSVI_CLASS::GoalHSVISolver(
     double discount, std::size_t time_budget, std::size_t max_sample_depth,
     bool use_closed_list, double depth_bound_eta, std::size_t max_vi_iterations,
     double vi_convergence_factor, double prob_epsilon,
-    const CallbackFunctor &callback, bool verbose,
-    std::optional<double> dead_end_cost)
+    double belief_hash_resolution, const CallbackFunctor &callback,
+    bool verbose, std::optional<double> dead_end_cost)
     : Base(domain, epsilon, discount, time_budget, max_sample_depth,
            use_closed_list, depth_bound_eta, max_vi_iterations,
-           vi_convergence_factor, prob_epsilon, callback, verbose),
+           vi_convergence_factor, prob_epsilon, belief_hash_resolution,
+           callback, verbose),
       _goal_checker(goal_checker), _user_dead_end_cost(dead_end_cost) {}
 
 SK_GOAL_HSVI_TEMPLATE_DECL

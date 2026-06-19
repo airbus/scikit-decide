@@ -1,0 +1,27 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/predicate.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/predicate_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/predicate_container_impl.hh"
+
+template class skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>;
+
+template const skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::PredicatePtr &
+skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::add_predicate(
+    const skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::PredicatePtr &predicate);
+
+template const skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::PredicatePtr &
+skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::add_predicate(
+    const std::string &predicate);
+
+template void skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::
+    remove_predicate(const skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::PredicatePtr &predicate);
+
+template void skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::remove_predicate(const std::string &predicate);
+
+template const skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::PredicatePtr &
+skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::get_predicate(
+    const skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::PredicatePtr &predicate) const;
+
+template const skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::PredicatePtr &
+skdecide::pddl::PredicateContainer<skdecide::pddl::${Tderived}>::get_predicate(
+    const std::string &predicate) const;

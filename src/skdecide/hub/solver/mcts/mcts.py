@@ -190,10 +190,10 @@ try:
                 fake number of visit counts). Defaults to None (no heuristic in use).
             state_expansion_rate (float, optional): Value $rs$ used when the expander is `MCTS.Expander.PARTIAL`
                 such that the probability of discovering new applicable actions in a given state node with already $na$ discovered
-                applicable actions is equal to $e^{-rs \cdot na}$. Defaults to 0.1.
+                applicable actions is equal to $e^{-rs \\cdot na}$. Defaults to 0.1.
             action_expansion_rate (float, optional):  Value $ra$ used when the expander is `MCTS.Expander.PARTIAL`
                 such that the probability of discovering new state outcomes in a given action node with already $ns$ discovered
-                state outcomes is equal to $e^{-ra \cdot ns}$. Defaults to 0.1.
+                state outcomes is equal to $e^{-ra \\cdot ns}$. Defaults to 0.1.
             transition_mode (MCTS.TransitionMode, optional): Transition mode enum (one of `MCTS.TransitionMode.STEP`,
                 `MCTS.TransitionMode.SAMPLE` or `MCTS.TransitionMode.DISTRIBUTION` to progress the
                 trajectories with, respectively, the 'step' or 'sample' or 'get_next_state_distribution' method of the domain
@@ -538,10 +538,10 @@ try:
                 compound heuristic actions returned by the `MAHD` algorithm. Defaults to 0.1.
             state_expansion_rate (float, optional): Value $rs$ used when the expander is `MCTS.Expander.PARTIAL`
                 such that the probability of discovering new applicable actions in a given state node with already $na$ discovered
-                applicable actions is equal to $e^{-rs \cdot na}$. Defaults to 0.1.
+                applicable actions is equal to $e^{-rs \\cdot na}$. Defaults to 0.1.
             action_expansion_rate (float, optional):  Value $ra$ used when the expander is `MCTS.Expander.PARTIAL`
                 such that the probability of discovering new state outcomes in a given action node with already $ns$ discovered
-                state outcomes is equal to $e^{-ra \cdot ns}$. Defaults to 0.1.
+                state outcomes is equal to $e^{-ra \\cdot ns}$. Defaults to 0.1.
             transition_mode (MCTS.TransitionMode, optional): Transition mode enum (one of `MCTS.TransitionMode.STEP`,
                 `MCTS.TransitionMode.SAMPLE` or `MCTS.TransitionMode.DISTRIBUTION` to progress the
                 trajectories with, respectively, the 'step' or 'sample' or 'get_next_state_distribution' method of the domain

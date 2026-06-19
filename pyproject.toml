@@ -83,9 +83,12 @@ solvers = [
     "flax>=0.10.6; (sys_platform == 'linux' or sys_platform == 'win32') and python_version >= '3.12'",
     "openevolve>=0.2.11",
 ]
+pddl = [
+    "z3-solver",
+]
 all = [
     # self-reference allowed by pip since 21.2 (https://github.com/pypa/pip/issues/11296)
-    "scikit-decide[domains, solvers]",
+    "scikit-decide[domains, solvers, pddl]",
 ]
 
 [project.entry-points."skdecide.domains"]
@@ -111,6 +114,9 @@ MSRCPSPCalendar = "skdecide.hub.domain.rcpsp:MSRCPSPCalendar [domains]"
 RDDLDomain = "skdecide.hub.domain.rddl:RDDLDomain [domains]"
 RDDLDomainRL = "skdecide.hub.domain.rddl:RDDLDomainRL [domains]"
 RDDLDomainSimplifiedSpaces = "skdecide.hub.domain.rddl:RDDLDomainSimplifiedSpaces [domains]"
+PDDLDomain = "skdecide.hub.domain.pddl:PDDLDomain [domains]"
+PPDDLDomain = "skdecide.hub.domain.pddl:PPDDLDomain [domains]"
+TPDDLDomain = "skdecide.hub.domain.pddl:TPDDLDomain [pddl]"
 
 [project.entry-points."skdecide.solvers"]
 AOstar = "skdecide.hub.solver.aostar:AOstar [solvers]"
@@ -155,6 +161,17 @@ CIDual = "skdecide.hub.solver.idual:CIDual [solvers]"
 GPCI = "skdecide.hub.solver.gpci:GPCI [solvers]"
 SARSOP = "skdecide.hub.solver.sarsop:SARSOP [solvers]"
 DESPOT = "skdecide.hub.solver.despot:DESPOT [solvers]"
+EHC = "skdecide.hub.solver.ehc:EHC [solvers]"
+FF = "skdecide.hub.solver.pddl.ff:FF [solvers]"
+FFReplan = "skdecide.hub.solver.pddl.ppddlreplan:FFReplan [solvers]"
+PPDDLReplan = "skdecide.hub.solver.pddl.ppddlreplan:PPDDLReplan [solvers]"
+FFDetHindsight = "skdecide.hub.solver.pddl.ppddldethindsight:FFDetHindsight [solvers]"
+PPDDLDetHindsight = "skdecide.hub.solver.pddl.ppddldethindsight:PPDDLDetHindsight [solvers]"
+SSPReplan = "skdecide.hub.solver.sspreplan:SSPReplan [solvers]"
+SSPDetHindsight = "skdecide.hub.solver.sspdethindsight:SSPDetHindsight [solvers]"
+RFF = "skdecide.hub.solver.pddl.ppddlplanmerger:RFF [solvers]"
+PPDDLPlanMerger = "skdecide.hub.solver.pddl.ppddlplanmerger:PPDDLPlanMerger [solvers]"
+SSPPlanMerger = "skdecide.hub.solver.sspplanmerger:SSPPlanMerger [solvers]"
 Witness = "skdecide.hub.solver.witness:Witness [solvers]"
 HSVI = "skdecide.hub.solver.hsvi:HSVI [solvers]"
 GoalHSVI = "skdecide.hub.solver.hsvi:GoalHSVI [solvers]"
@@ -168,6 +185,7 @@ dev = [
 test = [
     "pytest>=6.2.2,<8.4", # pytest 8.4 not yet compatible with pytest-cases
     "pytest-cov>=2.11.1",
+    "pytest-timeout>=2.2",
     "tqdm>=4.66.3",
     "nbmake>=1.0",
     "docopt>=0.6.2",
