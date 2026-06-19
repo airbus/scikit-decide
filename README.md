@@ -73,7 +73,9 @@ This framework was initiated at [Airbus](https://www.airbus.com) AI Research and
   - PDDL heuristics (with their probabilistic extensions):
     - Delete-Relaxation heuristics
     - FF Heuristic
-  - PDDL+ parser with Probabilistic PDDL extensions
+  - PDDL+ parser and simulators with Probabilistic PDDL extensions
+    - Lifted applicable action filtering using Clingo
+    - Z3-based event synchronization in python using [z3-solver](https://pypi.org/project/z3-solver/)
   - Evolution strategy: Cartesian Genetic Programming (CGP)
   - Scheduling solvers from [discrete-optimization](https://airbus.github.io/discrete-optimization),
     - itself wrapping [ortools](https://developers.google.com/optimization), [gurobi](https://www.gurobi.com/),
