@@ -114,6 +114,7 @@ void SK_DESPOT_CLASS::solve(
 
 SK_DESPOT_TEMPLATE_DECL
 void SK_DESPOT_CLASS::plan_from_belief(const Belief &b) {
+  Logger::info("Running DESPOT solver");
   _start_time = std::chrono::high_resolution_clock::now();
 
   // Build probability vector for sampling scenarios
@@ -174,6 +175,11 @@ void SK_DESPOT_CLASS::plan_from_belief(const Belief &b) {
 
   _gap_cache = root->upper_bound - root->lower_bound;
   _current_tree = std::move(root);
+
+  Logger::info("DESPOT finished in " +
+               StringConverter::from((double)elapsed_ms() / 1e3) +
+               " seconds with " + StringConverter::from(_nb_tree_nodes) +
+               " tree nodes.");
 }
 
 // --- BuildDESPOT: Algorithm 1 ---
@@ -185,8 +191,13 @@ void SK_DESPOT_CLASS::build_despot(VNode *root) {
   std::size_t iteration = 0;
 
   while (elapsed_ms() < _time_budget) {
-    // Explore: find leaf to expand
-    VNode *leaf = explore(root);
+    // Explore: find leaf to expand (skip trajectory building for performance)
+    VNode *leaf = explore(root, nullptr);
+
+    // Save the leaf for on-demand trajectory reconstruction
+    _execution_policy.protect([this, leaf]() { _last_explored_leaf = leaf; },
+                              _trajectory_mutex);
+
     if (!leaf)
       break;
 
@@ -227,7 +238,9 @@ void SK_DESPOT_CLASS::build_despot(VNode *root) {
 // --- Explore: Algorithm 2 — Forward heuristic search ---
 
 SK_DESPOT_TEMPLATE_DECL
-typename SK_DESPOT_CLASS::VNode *SK_DESPOT_CLASS::explore(VNode *v) {
+typename SK_DESPOT_CLASS::VNode *
+SK_DESPOT_CLASS::explore(VNode *v,
+                         std::vector<std::pair<State, Action>> *trajectory) {
   if (v->scenarios.empty())
     return nullptr;
 
@@ -267,6 +280,12 @@ typename SK_DESPOT_CLASS::VNode *SK_DESPOT_CLASS::explore(VNode *v) {
   if (!best_q)
     return nullptr;
 
+  // Record trajectory step: representative state and selected action
+  if (trajectory && !v->scenarios.empty()) {
+    trajectory->push_back(
+        std::make_pair(v->scenarios[0].state, best_q->action));
+  }
+
   // Find observation child with highest weighted excess uncertainty
   VNode *best_child = nullptr;
   double best_eu = -std::numeric_limits<double>::infinity();
@@ -286,7 +305,7 @@ typename SK_DESPOT_CLASS::VNode *SK_DESPOT_CLASS::explore(VNode *v) {
   }
 
   if (best_child)
-    return explore(best_child);
+    return explore(best_child, trajectory);
 
   return nullptr;
 }
@@ -885,6 +904,39 @@ SK_DESPOT_CLASS::get_explored_beliefs() const {
   }
 
   return beliefs;
+}
+
+SK_DESPOT_TEMPLATE_DECL
+std::vector<std::pair<typename SK_DESPOT_CLASS::State,
+                      typename SK_DESPOT_CLASS::Action>>
+SK_DESPOT_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<State, Action>> trajectory;
+  const_cast<DespotSolver *>(this)->_execution_policy.protect(
+      [&]() {
+        // Reconstruct trajectory from leaf to root on-demand
+        if (!_last_explored_leaf)
+          return;
+
+        // Walk from leaf to root collecting (state, action) pairs
+        std::vector<std::pair<State, Action>> path_reversed;
+        VNode *v = _last_explored_leaf;
+
+        while (v && v->parent) {
+          QNode *q = v->parent;
+          VNode *parent_v = q->parent;
+          if (parent_v && !parent_v->scenarios.empty()) {
+            // Use representative state from parent node
+            path_reversed.push_back(
+                std::make_pair(parent_v->scenarios[0].state, q->action));
+          }
+          v = parent_v;
+        }
+
+        // Reverse to get root-to-leaf order
+        trajectory.assign(path_reversed.rbegin(), path_reversed.rend());
+      },
+      const_cast<typename ExecutionPolicy::Mutex &>(_trajectory_mutex));
+  return trajectory;
 }
 
 } // namespace skdecide

@@ -175,9 +175,28 @@ public:
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
 
+  /**
+   * @brief Get the ordered list of (state, action) pairs visited during
+   * the last DESPOT tree construction.
+   *
+   * Returns the trajectory (path) explored during the most recent explore()
+   * call from the root node. Each element is a pair of (state, action)
+   * where the state is a representative state from the scenarios at that node
+   * and the action is the action selected at that node. The trajectory begins
+   * with a root state and ends at the deepest node reached before exploration
+   * terminated.
+   *
+   * Note: DESPOT maintains K scenarios per node. This method returns the first
+   * scenario's state as a representative at each level of the explored path.
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<std::pair<State, Action>> get_last_trajectory() const;
+
 private:
   void build_despot(VNode *root);
-  VNode *explore(VNode *v);
+  VNode *explore(VNode *v,
+                 std::vector<std::pair<State, Action>> *trajectory = nullptr);
   void backup(VNode *v);
   void prune(VNode *v);
   void make_default(VNode *v);
@@ -233,6 +252,10 @@ private:
   double _gap_cache = 0.0;
   std::size_t _nb_tree_nodes = 0;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+
+  // Trajectory tracking (lazy computation on-demand)
+  VNode *_last_explored_leaf;
+  typename ExecutionPolicy::Mutex _trajectory_mutex;
 };
 
 } // namespace skdecide

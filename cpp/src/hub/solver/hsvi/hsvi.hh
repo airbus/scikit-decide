@@ -119,6 +119,24 @@ public:
   get_state_hash_to_idx() const;
   const std::vector<State> &get_states() const;
 
+  /**
+   * @brief Get the ordered list of (belief, action) pairs visited during
+   * the last HSVI exploration.
+   *
+   * Returns the trajectory (path) explored during the most recent explore()
+   * call. Each element is a pair of (belief, action) where the belief is
+   * represented as a std::unordered_map<std::size_t, double> mapping state
+   * indices to probabilities, and action is the greedy action (optimistic,
+   * via upper bound) selected at that belief. The trajectory begins with the
+   * root belief and ends at the deepest belief explored.
+   *
+   * Note: HSVI operates on continuous belief spaces via heuristic search.
+   * Beliefs are returned as mappings from state indices to probabilities.
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<std::pair<Belief, Action>> get_last_trajectory() const;
+
   struct AlphaVector {
     std::vector<double> values;
     Action action;
@@ -176,7 +194,8 @@ protected:
   void create_blind_policy_alphas();
 
   void explore(const Belief &b, std::size_t depth,
-               std::unordered_set<std::size_t> &closed_list);
+               std::unordered_set<std::size_t> &closed_list,
+               std::vector<Belief> *belief_path = nullptr);
 
   void alpha_backup(const Belief &b);
   void point_update(const Belief &b);
@@ -253,6 +272,10 @@ protected:
   double _gap = std::numeric_limits<double>::infinity();
 
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+
+  // Trajectory tracking (lazy computation on-demand)
+  std::vector<Belief> _last_belief_path;
+  typename ExecutionPolicy::Mutex _trajectory_mutex;
 };
 
 /**
@@ -353,7 +376,7 @@ protected:
   }
 
   double convergence_threshold(std::size_t /*depth*/) const override {
-    return this->_epsilon;
+    return this->_depth_bound_eta * this->_epsilon;
   }
 
   double get_terminal_state_value(std::size_t si) const override;

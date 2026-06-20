@@ -11,6 +11,9 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "utils/logging.hh"
+#include "utils/string_converter.hh"
+
 #define SK_HSVI_TEMPLATE_DECL                                                  \
   template <typename Tdomain, typename Texecution_policy>
 
@@ -347,6 +350,7 @@ void SK_HSVI_CLASS::initialize_point_bound() {
 SK_HSVI_TEMPLATE_DECL
 void SK_HSVI_CLASS::solve(
     const std::vector<std::pair<State, double>> &initial_distribution) {
+  Logger::info("Running HSVI solver");
   _start_time = std::chrono::high_resolution_clock::now();
 
   _initial_belief.clear();
@@ -404,7 +408,15 @@ void SK_HSVI_CLASS::solve(
     }
 
     std::unordered_set<std::size_t> closed_list;
-    explore(_initial_belief, 0, closed_list);
+    std::vector<Belief> current_belief_path;
+    explore(_initial_belief, 0, closed_list, &current_belief_path);
+
+    // Save the belief path for on-demand trajectory reconstruction
+    _execution_policy.protect(
+        [this, &current_belief_path]() {
+          _last_belief_path = current_belief_path;
+        },
+        _trajectory_mutex);
 
     ++iteration;
 
@@ -419,11 +431,19 @@ void SK_HSVI_CLASS::solve(
                    ", points = " + std::to_string(_bound_points.size()));
     }
   }
+
+  Logger::info(
+      "HSVI finished in " + StringConverter::from((double)elapsed_ms() / 1e3) +
+      " seconds with " + StringConverter::from(iteration) + " iterations, " +
+      StringConverter::from(_alpha_vectors.size()) + " alpha-vectors, " +
+      StringConverter::from(_bound_points.size()) +
+      " points, final gap = " + StringConverter::from(_gap));
 }
 
 SK_HSVI_TEMPLATE_DECL
 void SK_HSVI_CLASS::explore(const Belief &b, std::size_t depth,
-                            std::unordered_set<std::size_t> &closed_list) {
+                            std::unordered_set<std::size_t> &closed_list,
+                            std::vector<Belief> *belief_path) {
   if (elapsed_ms() >= _time_budget)
     return;
 
@@ -485,6 +505,11 @@ void SK_HSVI_CLASS::explore(const Belief &b, std::size_t depth,
     }
   }
 
+  // Record belief path (skip action for performance - reconstruct on-demand)
+  if (belief_path) {
+    belief_path->push_back(b);
+  }
+
   std::size_t best_oh = 0;
   double best_score = -std::numeric_limits<double>::infinity();
   bool found_obs = false;
@@ -516,7 +541,7 @@ void SK_HSVI_CLASS::explore(const Belief &b, std::size_t depth,
   }
 
   if (found_obs) {
-    explore(best_posterior, depth + 1, closed_list);
+    explore(best_posterior, depth + 1, closed_list, belief_path);
   }
 
   alpha_backup(b);
@@ -1165,6 +1190,56 @@ void SK_GOAL_HSVI_CLASS::compute_depth_bound() {
   } else {
     this->_depth_bound = this->_max_sample_depth;
   }
+}
+
+SK_HSVI_TEMPLATE_DECL
+std::vector<
+    std::pair<typename SK_HSVI_CLASS::Belief, typename SK_HSVI_CLASS::Action>>
+SK_HSVI_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<Belief, Action>> trajectory;
+  const_cast<HSVISolver *>(this)->_execution_policy.protect(
+      [&]() {
+        // Reconstruct trajectory from belief path on-demand
+        trajectory.clear();
+        trajectory.reserve(_last_belief_path.size());
+
+        for (const auto &b : _last_belief_path) {
+          // Find best action for this belief by evaluating Q-values
+          std::size_t na = _actions.size();
+          std::size_t best_ai = 0;
+          double best_q = _best_init();
+
+          for (std::size_t ai = 0; ai < na; ++ai) {
+            double q = 0.0;
+            for (const auto &p : b) {
+              auto it = _state_hash_to_idx.find(p.first);
+              if (it != _state_hash_to_idx.end()) {
+                q += p.second * _values[it->second][ai];
+              }
+            }
+
+            for (std::size_t oh : _action_obs_hashes[ai]) {
+              double obs_p = compute_obs_probability(b, ai, oh);
+              if (obs_p <= _prob_epsilon)
+                continue;
+              Belief posterior = compute_posterior(b, ai, oh);
+              if (posterior.empty())
+                continue;
+              double future = evaluate_sawtooth(posterior);
+              q += _discount * obs_p * future;
+            }
+
+            if (_is_better(q, best_q)) {
+              best_q = q;
+              best_ai = ai;
+            }
+          }
+
+          trajectory.push_back(std::make_pair(b, _actions[best_ai]));
+        }
+      },
+      const_cast<typename ExecutionPolicy::Mutex &>(_trajectory_mutex));
+  return trajectory;
 }
 
 } // namespace skdecide

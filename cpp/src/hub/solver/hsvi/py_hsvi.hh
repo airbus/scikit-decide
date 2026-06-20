@@ -52,6 +52,7 @@ protected:
     virtual py::int_ get_solving_time() = 0;
     virtual py::float_ get_gap() = 0;
     virtual py::list get_alpha_vectors() = 0;
+    virtual py::list get_last_trajectory() = 0;
   };
 
   template <typename Texecution, typename SolverTag = HSVITag>
@@ -274,6 +275,30 @@ protected:
       return result;
     }
 
+    virtual py::list get_last_trajectory() {
+      py::list l;
+      auto &&trajectory = _solver->get_last_trajectory();
+      const auto &index_to_state = _solver->get_index_to_state();
+
+      for (const auto &e : trajectory) {
+        // Convert belief (map of state_hash->prob) to Python format
+        py::list belief_values;
+        for (const auto &[state_hash, prob] : e.first) {
+          auto state_it = index_to_state.find(state_hash);
+          if (state_it != index_to_state.end()) {
+            belief_values.append(
+                py::make_tuple(state_it->second.pyobj(), prob));
+          }
+        }
+        // Create a simple dict representation for the belief
+        py::dict belief_dict;
+        belief_dict["state_probs"] = belief_values;
+
+        l.append(py::make_tuple(belief_dict, e.second.pyobj()));
+      }
+      return l;
+    }
+
   private:
     typename BaseSolverType::Belief
     distribution_to_belief(const py::object &d) {
@@ -360,6 +385,10 @@ public:
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
   py::float_ get_gap() { return _implementation->get_gap(); }
   py::list get_alpha_vectors() { return _implementation->get_alpha_vectors(); }
+
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
+  }
 };
 
 class PyHSVISolver : public PyHSVISolverBase {

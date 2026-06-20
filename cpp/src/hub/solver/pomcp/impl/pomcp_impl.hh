@@ -12,6 +12,9 @@
 
 #include <boost/range/irange.hpp>
 
+#include "utils/logging.hh"
+#include "utils/string_converter.hh"
+
 namespace skdecide {
 
 #define SK_POMCP_TEMPLATE_DECL                                                 \
@@ -87,6 +90,7 @@ void SK_POMCP_CLASS::solve(
 
 SK_POMCP_TEMPLATE_DECL
 void SK_POMCP_CLASS::search(HistoryNode *root) {
+  Logger::info("Running POMCP solver");
   _start_time = std::chrono::high_resolution_clock::now();
 
   if (root->particles.empty()) {
@@ -108,6 +112,7 @@ void SK_POMCP_CLASS::search(HistoryNode *root) {
             _gen_mutex);
 
         std::size_t sim_count = 0;
+        std::vector<std::pair<Observation, Action>> current_trajectory;
         do {
           State s;
           _execution_policy.protect(
@@ -118,7 +123,16 @@ void SK_POMCP_CLASS::search(HistoryNode *root) {
               },
               root->mutex);
 
-          simulate(s, root, 0, &thread_id);
+          current_trajectory.clear();
+          simulate(s, root, 0, &thread_id, current_trajectory);
+
+          // Save the last trajectory (from the last simulation)
+          _execution_policy.protect(
+              [this, &current_trajectory]() {
+                _last_trajectory = current_trajectory;
+              },
+              _trajectory_mutex);
+
           sim_count++;
         } while (!_callback(*this, _domain) &&
                  (_time_budget == 0 || elapsed_ms() < _time_budget) &&
@@ -141,14 +155,20 @@ void SK_POMCP_CLASS::search(HistoryNode *root) {
         "POMCP: search done in " + std::to_string(elapsed_ms()) +
         "ms, tree nodes: " + std::to_string((std::size_t)_nb_tree_nodes));
   }
+
+  Logger::info(
+      "POMCP finished in " + StringConverter::from((double)elapsed_ms() / 1e3) +
+      " seconds with " + StringConverter::from((std::size_t)_nb_tree_nodes) +
+      " tree nodes.");
 }
 
 // --- Simulate: Algorithm 1 from the paper ---
 
 SK_POMCP_TEMPLATE_DECL
-double SK_POMCP_CLASS::simulate(const State &s, HistoryNode *h,
-                                std::size_t depth,
-                                const std::size_t *thread_id) {
+double SK_POMCP_CLASS::simulate(
+    const State &s, HistoryNode *h, std::size_t depth,
+    const std::size_t *thread_id,
+    std::vector<std::pair<Observation, Action>> &trajectory) {
   if (std::pow(_discount, static_cast<double>(depth)) < _epsilon)
     return 0.0;
   if (depth >= _max_depth)
@@ -191,6 +211,9 @@ double SK_POMCP_CLASS::simulate(const State &s, HistoryNode *h,
 
   SimulationResult result = simulate_transition(s, an->action, thread_id);
 
+  // Record the observation-action pair in the trajectory
+  trajectory.push_back(std::make_pair(result.observation, an->action));
+
   double R;
   if (result.terminal) {
     R = result.reward;
@@ -213,8 +236,8 @@ double SK_POMCP_CLASS::simulate(const State &s, HistoryNode *h,
         },
         an->mutex);
 
-    R = result.reward +
-        _discount * simulate(result.next_state, child, depth + 1, thread_id);
+    R = result.reward + _discount * simulate(result.next_state, child,
+                                             depth + 1, thread_id, trajectory);
   }
 
   _execution_policy.protect(
@@ -648,6 +671,17 @@ SK_POMCP_CLASS::get_index_to_state() const {
 SK_POMCP_TEMPLATE_DECL
 std::size_t SK_POMCP_CLASS::elapsed_ms() const {
   return const_cast<POMCPSolver *>(this)->get_solving_time();
+}
+
+SK_POMCP_TEMPLATE_DECL
+std::vector<std::pair<typename SK_POMCP_CLASS::Observation,
+                      typename SK_POMCP_CLASS::Action>>
+SK_POMCP_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<Observation, Action>> trajectory;
+  const_cast<POMCPSolver *>(this)->_execution_policy.protect(
+      [&]() { trajectory = _last_trajectory; },
+      const_cast<typename ExecutionPolicy::Mutex &>(_trajectory_mutex));
+  return trajectory;
 }
 
 } // namespace skdecide

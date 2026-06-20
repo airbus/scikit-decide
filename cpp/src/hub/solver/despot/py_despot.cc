@@ -58,5 +58,7 @@ void init_pydespot(py::module &m) {
       .def("get_solving_time", &skdecide::PyDespotSolver::get_solving_time)
       .def("get_gap", &skdecide::PyDespotSolver::get_gap)
       .def("get_explored_beliefs",
-           &skdecide::PyDespotSolver::get_explored_beliefs);
+           &skdecide::PyDespotSolver::get_explored_beliefs)
+      .def("get_last_trajectory",
+           &skdecide::PyDespotSolver::get_last_trajectory);
 }

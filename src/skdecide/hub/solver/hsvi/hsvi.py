@@ -73,6 +73,15 @@ try:
 
         T_domain = D_reward
 
+        class BeliefDict(TypedDict):
+            """Type for belief dictionaries returned by get_last_trajectory().
+
+            Fields:
+            - state_probs: list of (state, probability) tuples representing the belief distribution
+            """
+
+            state_probs: list[tuple[D_reward.T_state, float]]
+
         class AlphaVectorDict(TypedDict):
             """Type for alpha vector dictionaries returned by get_alpha_vectors().
 
@@ -246,6 +255,33 @@ try:
             """
             return self._solver.get_alpha_vectors()
 
+        def get_last_trajectory(
+            self,
+        ) -> list[
+            tuple[
+                "HSVI.BeliefDict",
+                D_reward.T_agent[D_reward.T_concurrency[D_reward.T_event]],
+            ]
+        ]:
+            """Get the ordered list of (belief, action) pairs visited during
+            the last HSVI exploration.
+
+            Returns the trajectory (path) explored during the most recent explore()
+            call. Each element is a tuple of (belief_dict, action) where belief_dict
+            contains 'state_probs': a list of (state, probability) tuples, and action
+            is the greedy action (optimistic, via upper bound) selected at that belief.
+
+            Note: HSVI operates on continuous belief spaces via heuristic search.
+            Beliefs are returned as dictionaries with state-probability mappings.
+
+            # Returns
+            list[tuple[HSVI.BeliefDict, object]]: List of (belief, action) pairs
+                visited during the last exploration. Returns an empty list if solve()
+                has not been called yet.
+            """
+
+            return self._solver.get_last_trajectory()
+
     class GoalHSVI(
         ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState
     ):
@@ -266,6 +302,15 @@ try:
         """
 
         T_domain = D_cost
+
+        class BeliefDict(TypedDict):
+            """Type for belief dictionaries returned by get_last_trajectory().
+
+            Fields:
+            - state_probs: list of (state, probability) tuples representing the belief distribution
+            """
+
+            state_probs: list[tuple[D_cost.T_state, float]]
 
         class AlphaVectorDict(TypedDict):
             """Type for alpha vector dictionaries returned by get_alpha_vectors().
@@ -456,6 +501,34 @@ try:
             The policy chooses the action of the minimizing alpha-vector.
             """
             return self._solver.get_alpha_vectors()
+
+        def get_last_trajectory(
+            self,
+        ) -> list[
+            tuple[
+                "GoalHSVI.BeliefDict",
+                D_cost.T_agent[D_cost.T_concurrency[D_cost.T_event]],
+            ]
+        ]:
+            """Get the ordered list of (belief, action) pairs visited during
+            the last Goal-HSVI exploration.
+
+            Returns the trajectory (path) explored during the most recent explore()
+            call. Each element is a tuple of (belief_dict, action) where belief_dict
+            contains 'state_probs': a list of (state, probability) tuples, and action
+            is the greedy action (pessimistic in cost minimization, via upper bound)
+            selected at that belief.
+
+            Note: Goal-HSVI operates on continuous belief spaces with bounded depth search.
+            Beliefs are returned as dictionaries with state-probability mappings.
+
+            # Returns
+            list[tuple[GoalHSVI.BeliefDict, object]]: List of (belief, action) pairs
+                visited during the last exploration. Returns an empty list if solve()
+                has not been called yet.
+            """
+
+            return self._solver.get_last_trajectory()
 
 except ImportError:
     print(

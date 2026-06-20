@@ -833,6 +833,7 @@ void SK_SARSOP_CLASS::prune() {
 SK_SARSOP_TEMPLATE_DECL
 void SK_SARSOP_CLASS::solve(
     const std::vector<std::pair<State, double>> &initial_distribution) {
+  Logger::info("Running SARSOP solver");
   _start_time = std::chrono::high_resolution_clock::now();
   clear();
 
@@ -890,6 +891,11 @@ void SK_SARSOP_CLASS::solve(
     }
 
     auto path = sample();
+
+    // Save the sampled path for on-demand trajectory reconstruction
+    _execution_policy.protect([this, &path]() { _last_sampled_path = path; },
+                              _trajectory_mutex);
+
     backup(path);
 
     // Prune periodically
@@ -923,12 +929,12 @@ void SK_SARSOP_CLASS::solve(
   _last_action.reset();
   _has_solution = true;
 
-  if (_verbose)
-    Logger::debug("SARSOP: solved in " + std::to_string(elapsed_ms()) + "ms, " +
-                  std::to_string(iteration) + " iterations, " +
-                  std::to_string(_alpha_vectors.size()) + " alpha-vectors, " +
-                  std::to_string(_nb_beliefs) + " beliefs, final gap = " +
-                  std::to_string(_root->upper_bound - _root->lower_bound));
+  Logger::info("SARSOP finished in " +
+               std::to_string((double)elapsed_ms() / 1e3) + " seconds with " +
+               std::to_string(iteration) + " iterations, " +
+               std::to_string(_alpha_vectors.size()) + " alpha-vectors, " +
+               std::to_string(_nb_beliefs) + " beliefs, final gap = " +
+               std::to_string(_root->upper_bound - _root->lower_bound));
 }
 
 // --- Observation-based interface ---
@@ -1043,6 +1049,40 @@ SK_SARSOP_TEMPLATE_DECL
 const std::vector<typename SK_SARSOP_CLASS::AlphaVector> &
 SK_SARSOP_CLASS::get_alpha_vectors() const {
   return _alpha_vectors;
+}
+
+SK_SARSOP_TEMPLATE_DECL
+std::vector<std::pair<typename SK_SARSOP_CLASS::Belief,
+                      typename SK_SARSOP_CLASS::Action>>
+SK_SARSOP_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<Belief, Action>> trajectory;
+  const_cast<SARSOPSolver *>(this)->_execution_policy.protect(
+      [&]() {
+        // Reconstruct trajectory from the last sampled path on-demand
+        trajectory.clear();
+        for (std::size_t i = 0; i < _last_sampled_path.size(); ++i) {
+          auto *node = _last_sampled_path[i];
+          // Find best action at this node (action with highest Q_upper)
+          Action best_action;
+          if (!node->action_edges.empty()) {
+            double best_q = -std::numeric_limits<double>::infinity();
+            for (const auto &ae : node->action_edges) {
+              if (ae.q_upper > best_q) {
+                best_q = ae.q_upper;
+                best_action = ae.action;
+              }
+            }
+            trajectory.push_back(std::make_pair(node->belief, best_action));
+          } else if (i == 0) {
+            // Root node before expansion - use default action if available
+            if (!_actions.empty()) {
+              trajectory.push_back(std::make_pair(node->belief, _actions[0]));
+            }
+          }
+        }
+      },
+      const_cast<typename ExecutionPolicy::Mutex &>(_trajectory_mutex));
+  return trajectory;
 }
 
 } // namespace skdecide

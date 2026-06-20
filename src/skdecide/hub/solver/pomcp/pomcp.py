@@ -82,7 +82,7 @@ try:
             ess_threshold_ratio: float = 2.0,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[POMCP], bool] = lambda slv: False,
+            callback: Callable[[POMCP, Domain], bool] = lambda slv, dom: False,
             verbose: bool = False,
         ) -> None:
             """Construct a POMCP solver instance.
@@ -109,7 +109,7 @@ try:
             shared_memory_proxy: Optional shared memory proxy.
                 Defaults to None.
             callback: Function called at each simulation iteration, taking
-                the solver as argument, returning True to stop.
+                the solver and domain as arguments, returning True to stop.
                 Defaults to never stop.
             verbose: Whether to log verbose messages. Defaults to False.
             """
@@ -229,6 +229,32 @@ try:
         def get_solving_time(self) -> int:
             """Get the last planning time in milliseconds."""
             return self._solver.get_solving_time()
+
+        def get_last_trajectory(
+            self,
+        ) -> list[tuple[D.T_observation, D.T_agent[D.T_concurrency[D.T_event]]]]:
+            """Get the ordered list of (observation, action) pairs visited during
+            the last POMCP simulation.
+
+            Returns the trajectory (path) explored during the most recent simulation
+            from the root history node. Each element is a tuple of (observation,
+            action) where the observation is the observation made in that history
+            state and the action is the action selected via UCB1. The trajectory
+            begins with the root observation and ends at the deepest history node
+            reached before the simulation terminated (due to terminal state, depth
+            limit, or discount cutoff).
+
+            Note: POMCP operates in observation/history space, not state space,
+            so the trajectory reflects the observable history, not the underlying
+            states.
+
+            # Returns
+            list[tuple[D.T_observation, D.T_agent[D.T_concurrency[D.T_event]]]]: List of
+                (observation, action) pairs visited during the last simulation.
+                Returns an empty list if solve() has not been called yet.
+            """
+
+            return self._solver.get_last_trajectory()
 
 except ImportError:
     print(

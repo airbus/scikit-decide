@@ -274,6 +274,29 @@ try:
             """
             return self._solver.get_alpha_vectors()
 
+        def get_last_trajectory(
+            self,
+        ) -> list[tuple[dict, D.T_agent[D.T_concurrency[D.T_event]]]]:
+            """Get the ordered list of (belief, action) pairs visited during
+            the last SARSOP belief tree sampling.
+
+            Returns the trajectory (path) sampled during the most recent sample()
+            call. Each element is a tuple of (belief_dict, action) where belief_dict
+            contains 'state_probs': a list of (state, probability) tuples, and action
+            is the greedy action selected at that belief.
+
+            Note: SARSOP operates on continuous belief spaces represented via
+            point-based approximations. Beliefs are returned as dictionaries with
+            state-probability mappings.
+
+            # Returns
+            list[tuple[dict, D.T_agent[D.T_concurrency[D.T_event]]]]: List of (belief, action) pairs
+                visited during the last sampling. Returns an empty list if solve()
+                has not been called yet.
+            """
+
+            return self._solver.get_last_trajectory()
+
 except ImportError:
     print(
         "Scikit-decide C++ hub library not found. Please check it is installed "

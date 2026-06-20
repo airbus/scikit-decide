@@ -313,3 +313,31 @@ class TestSARSOP:
             # And we should still get actions
             action = solver.sample_action(obs)
             assert action is not None
+
+    def test_get_last_trajectory(self):
+        """get_last_trajectory should return the sampled path from the last iteration."""
+        from skdecide.hub.solver.sarsop import SARSOP
+
+        with SARSOP(
+            domain_factory=TigerPOMDP,
+            epsilon=0.5,
+            discount=0.95,
+            time_budget=30000,
+        ) as solver:
+            solver.solve()
+            trajectory = solver.get_last_trajectory()
+            # Should have at least the root belief
+            assert len(trajectory) > 0
+            # Each element should be a (belief_dict, action) pair
+            for belief_dict, action in trajectory:
+                assert isinstance(belief_dict, dict)
+                assert "state_probs" in belief_dict
+                assert isinstance(action, TigerAction)
+            # Beliefs should be valid probability distributions
+            for belief_dict, _ in trajectory:
+                state_probs = belief_dict["state_probs"]
+                assert isinstance(state_probs, list)
+                total_prob = sum(prob for state, prob in state_probs)
+                assert abs(total_prob - 1.0) < 1e-6, (
+                    f"Belief probabilities sum to {total_prob}, not 1.0"
+                )

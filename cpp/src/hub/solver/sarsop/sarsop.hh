@@ -135,6 +135,25 @@ public:
   get_state_hash_to_idx() const;
   const std::vector<State> &get_states() const;
 
+  /**
+   * @brief Get the ordered list of (belief, action) pairs visited during
+   * the last SARSOP belief tree sampling.
+   *
+   * Returns the trajectory (path) sampled during the most recent sample()
+   * call. Each element is a pair of (belief, action) where the belief is
+   * represented as a std::unordered_map<std::size_t, double> mapping state
+   * indices to probabilities, and action is the greedy action selected at
+   * that belief. The trajectory begins with the root belief and ends at
+   * the deepest belief sampled.
+   *
+   * Note: SARSOP operates on continuous belief spaces represented via
+   * point-based approximations. Beliefs are returned as mappings from
+   * state indices (obtained via get_state_index()) to probabilities.
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<std::pair<Belief, Action>> get_last_trajectory() const;
+
 private:
   struct BeliefTreeNode {
     Belief belief;
@@ -224,6 +243,10 @@ private:
 
   // Timing
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+
+  // Trajectory tracking (lazy computation on-demand)
+  std::vector<BeliefTreeNode *> _last_sampled_path;
+  typename ExecutionPolicy::Mutex _trajectory_mutex;
 
   // State enumeration
   void enumerate_states(const Belief &b0);

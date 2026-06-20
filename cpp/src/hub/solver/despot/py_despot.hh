@@ -45,6 +45,7 @@ private:
     virtual py::int_ get_solving_time() = 0;
     virtual py::float_ get_gap() = 0;
     virtual py::list get_explored_beliefs() = 0;
+    virtual py::list get_last_trajectory() = 0;
   };
 
   template <typename Texecution>
@@ -286,6 +287,15 @@ private:
       return result;
     }
 
+    virtual py::list get_last_trajectory() {
+      py::list l;
+      auto &&trajectory = _solver->get_last_trajectory();
+      for (const auto &e : trajectory) {
+        l.append(py::make_tuple(e.first.pyobj(), e.second.pyobj()));
+      }
+      return l;
+    }
+
   private:
     typedef DespotSolver<PyDespotDomain<Texecution>, Texecution> SolverType;
 
@@ -407,6 +417,10 @@ public:
   py::float_ get_gap() { return _implementation->get_gap(); }
   py::list get_explored_beliefs() {
     return _implementation->get_explored_beliefs();
+  }
+
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
   }
 };
 

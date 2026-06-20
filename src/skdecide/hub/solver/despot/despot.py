@@ -281,6 +281,29 @@ try:
             """
             return self._solver.get_explored_beliefs()
 
+        def get_last_trajectory(
+            self,
+        ) -> list[tuple[D.T_state, D.T_agent[D.T_concurrency[D.T_event]]]]:
+            """Get the ordered list of (state, action) pairs visited during
+            the last DESPOT tree construction.
+
+            Returns the trajectory (path) explored during the most recent explore()
+            call from the root node. Each element is a tuple of (state, action)
+            where the state is a representative state from the scenarios at that node
+            and the action is the action selected at that node. The trajectory begins
+            with a root state and ends at the deepest node reached before exploration
+            terminated.
+
+            Note: DESPOT maintains K scenarios per node. This method returns the first
+            scenario's state as a representative at each level of the explored path.
+
+            # Returns
+            list[tuple[D.T_state, D.T_agent[D.T_event]]]: List of (state, action)
+                pairs visited during the last exploration. Returns an empty list
+                if solve() has not been called yet.
+            """
+            return self._solver.get_last_trajectory()
+
 except ImportError:
     print(
         "Scikit-decide C++ hub library not found. Please check it is installed "

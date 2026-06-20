@@ -323,3 +323,44 @@ class TestPOMCP:
             solver.solve()
             action = solver.sample_action(obs)
             assert action is not None
+
+    def test_get_last_trajectory(self):
+        """get_last_trajectory() should return (observation, action) pairs from the last simulation."""
+        from skdecide.hub.solver.pomcp import POMCP
+
+        trajectories_seen = []
+
+        def callback(solver, domain):
+            trajectory = solver.get_last_trajectory()
+            # Each element should be an (observation, action) tuple
+            if len(trajectory) > 0:
+                assert all(isinstance(oa, tuple) and len(oa) == 2 for oa in trajectory)
+                # Observations should be TigerObservation
+                for obs, act in trajectory:
+                    assert isinstance(obs, TigerObservation)
+                    assert isinstance(act, TigerAction)
+            # Store trajectory length as proxy for comparison
+            trajectories_seen.append(len(trajectory))
+            # Stop after 3 simulations
+            return len(trajectories_seen) >= 3
+
+        with POMCP(
+            domain_factory=TigerPOMDP,
+            num_simulations=100,
+            max_depth=5,
+            discount=0.95,
+            callback=callback,
+        ) as solver:
+            solver.solve()
+            # POMCP is an online solver - planning happens during get_next_action()
+            # We need to call it to trigger search and invoke the callback
+            domain = solver.get_domain()
+            obs = domain.reset()
+            solver.sample_action(obs)
+
+        # Should have 3 trajectories (one per simulation before callback stopped it)
+        assert len(trajectories_seen) == 3
+
+        # Most trajectories should be non-empty (some may be empty if root is terminal)
+        non_empty = [t for t in trajectories_seen if t > 0]
+        assert len(non_empty) >= 2, "Most trajectories should be non-empty"
