@@ -517,4 +517,4 @@ class TestGPCI:
         assert len(policy) > 0
         for state, (action, cost) in policy.items():
             assert isinstance(action, Action)
-            assert isinstance(cost, float)
+            assert isinstance(cost, Value)
