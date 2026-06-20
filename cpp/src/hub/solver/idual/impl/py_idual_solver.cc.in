@@ -22,6 +22,16 @@ skdecide::IDualSolver<
         const skdecide::PythonDomainProxy<skdecide::${Texecution}>::State &)
         const;
 
+template skdecide::MapTypeDeducer<
+    skdecide::PythonDomainProxy<skdecide::${Texecution}>::State,
+    std::pair<skdecide::PythonDomainProxy<skdecide::${Texecution}>::Action,
+              skdecide::PythonDomainProxy<skdecide::${Texecution}>::Value>>::Map
+skdecide::IDualSolver<
+    skdecide::PythonDomainProxy<skdecide::${Texecution}>,
+    skdecide::${Texecution}>::
+    get_policy<
+        skdecide::PythonDomainProxy<skdecide::${Texecution}>, 0>() const;
+
 // Constrained: class + SFINAE member get_action_distribution
 template class skdecide::IDualSolver<
     skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>,
@@ -37,3 +47,13 @@ skdecide::IDualSolver<
         skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>, 0>(
         const skdecide::PyConstrainedIDualDomain<
             skdecide::${Texecution}>::State &) const;
+
+template skdecide::MapTypeDeducer<
+    skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>::State,
+    std::pair<std::vector<std::pair<skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>::Action, double>>,
+              skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>::Value>>::Map
+skdecide::IDualSolver<
+    skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>,
+    skdecide::${Texecution}>::
+    get_policy<
+        skdecide::PyConstrainedIDualDomain<skdecide::${Texecution}>, 0>() const;

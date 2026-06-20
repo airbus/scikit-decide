@@ -753,6 +753,47 @@ SK_IDUAL_CLASS::get_explored_states() const {
 }
 
 SK_IDUAL_TEMPLATE_DECL
+template <typename D, std::enable_if_t<!has_get_constraints<D>::value, int>>
+typename MapTypeDeducer<typename SK_IDUAL_CLASS::State,
+                        std::pair<typename SK_IDUAL_CLASS::Action,
+                                  typename SK_IDUAL_CLASS::Value>>::Map
+SK_IDUAL_CLASS::get_policy() const {
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map policy;
+  for (const auto &sn : _graph) {
+    if (sn.best_action != nullptr) {
+      Value value;
+      value.cost(sn.best_value);
+      policy.insert({sn.state, {sn.best_action->action, value}});
+    }
+  }
+  return policy;
+}
+
+SK_IDUAL_TEMPLATE_DECL
+template <typename D, std::enable_if_t<has_get_constraints<D>::value, int>>
+typename MapTypeDeducer<
+    typename SK_IDUAL_CLASS::State,
+    std::pair<std::vector<std::pair<typename SK_IDUAL_CLASS::Action, double>>,
+              typename SK_IDUAL_CLASS::Value>>::Map
+SK_IDUAL_CLASS::get_policy() const {
+  typename MapTypeDeducer<
+      State, std::pair<std::vector<std::pair<Action, double>>, Value>>::Map
+      policy;
+  for (const auto &sn : _graph) {
+    if (!sn.action_probabilities.empty()) {
+      std::vector<std::pair<Action, double>> dist;
+      for (const auto &[an, prob] : sn.action_probabilities) {
+        dist.push_back({an->action, prob});
+      }
+      Value value;
+      value.cost(sn.best_value);
+      policy.insert({sn.state, {dist, value}});
+    }
+  }
+  return policy;
+}
+
+SK_IDUAL_TEMPLATE_DECL
 template <typename Params>
 std::unique_ptr<SK_IDUAL_CLASS> SK_IDUAL_CLASS::create_from_params(
     Domain &domain,
