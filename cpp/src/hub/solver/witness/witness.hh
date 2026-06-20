@@ -113,8 +113,10 @@ public:
 
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
+  const std::unordered_map<std::size_t, std::size_t> &
+  get_state_hash_to_idx() const;
+  const std::vector<State> &get_states() const;
 
-private:
   struct AlphaVector {
     std::vector<double> values;
     std::size_t action_idx;
@@ -125,6 +127,10 @@ private:
         : values(num_states, 0.0), action_idx(a_idx) {}
   };
 
+  const std::vector<AlphaVector> &get_alpha_vectors() const;
+  const std::vector<Action> &get_action_list() const;
+
+private:
   Domain &_domain;
   double _epsilon;
   double _discount;

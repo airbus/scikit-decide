@@ -56,5 +56,7 @@ void init_pydespot(py::module &m) {
            py::arg("belief"))
       .def("get_nb_tree_nodes", &skdecide::PyDespotSolver::get_nb_tree_nodes)
       .def("get_solving_time", &skdecide::PyDespotSolver::get_solving_time)
-      .def("get_gap", &skdecide::PyDespotSolver::get_gap);
+      .def("get_gap", &skdecide::PyDespotSolver::get_gap)
+      .def("get_explored_beliefs",
+           &skdecide::PyDespotSolver::get_explored_beliefs);
 }

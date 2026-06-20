@@ -49,7 +49,8 @@ void init_pyhsvi(py::module &m) {
            &skdecide::PyHSVISolver::get_nb_alpha_vectors)
       .def("get_nb_bound_points", &skdecide::PyHSVISolver::get_nb_bound_points)
       .def("get_solving_time", &skdecide::PyHSVISolver::get_solving_time)
-      .def("get_gap", &skdecide::PyHSVISolver::get_gap);
+      .def("get_gap", &skdecide::PyHSVISolver::get_gap)
+      .def("get_alpha_vectors", &skdecide::PyHSVISolver::get_alpha_vectors);
 
   py::class_<skdecide::PyGoalHSVISolver> py_goal_hsvi_solver(
       m, "_GoalHSVISolver_");
@@ -96,5 +97,6 @@ void init_pyhsvi(py::module &m) {
       .def("get_nb_bound_points",
            &skdecide::PyGoalHSVISolver::get_nb_bound_points)
       .def("get_solving_time", &skdecide::PyGoalHSVISolver::get_solving_time)
-      .def("get_gap", &skdecide::PyGoalHSVISolver::get_gap);
+      .def("get_gap", &skdecide::PyGoalHSVISolver::get_gap)
+      .def("get_alpha_vectors", &skdecide::PyGoalHSVISolver::get_alpha_vectors);
 }

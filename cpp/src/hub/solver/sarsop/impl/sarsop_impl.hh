@@ -90,6 +90,18 @@ SK_SARSOP_CLASS::get_index_to_state() const {
   return _index_to_state;
 }
 
+SK_SARSOP_TEMPLATE_DECL
+const std::unordered_map<std::size_t, std::size_t> &
+SK_SARSOP_CLASS::get_state_hash_to_idx() const {
+  return _state_hash_to_idx;
+}
+
+SK_SARSOP_TEMPLATE_DECL
+const std::vector<typename SK_SARSOP_CLASS::State> &
+SK_SARSOP_CLASS::get_states() const {
+  return _states;
+}
+
 // --- Timing ---
 
 SK_SARSOP_TEMPLATE_DECL
@@ -1025,6 +1037,12 @@ double SK_SARSOP_CLASS::get_gap() const {
     return _root->upper_bound - _root->lower_bound;
   }
   return std::numeric_limits<double>::infinity();
+}
+
+SK_SARSOP_TEMPLATE_DECL
+const std::vector<typename SK_SARSOP_CLASS::AlphaVector> &
+SK_SARSOP_CLASS::get_alpha_vectors() const {
+  return _alpha_vectors;
 }
 
 } // namespace skdecide

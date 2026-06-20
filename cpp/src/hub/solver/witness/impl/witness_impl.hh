@@ -80,6 +80,18 @@ SK_WITNESS_CLASS::get_index_to_state() const {
 }
 
 SK_WITNESS_TEMPLATE_DECL
+const std::unordered_map<std::size_t, std::size_t> &
+SK_WITNESS_CLASS::get_state_hash_to_idx() const {
+  return _state_hash_to_idx;
+}
+
+SK_WITNESS_TEMPLATE_DECL
+const std::vector<typename SK_WITNESS_CLASS::State> &
+SK_WITNESS_CLASS::get_states() const {
+  return _states;
+}
+
+SK_WITNESS_TEMPLATE_DECL
 std::size_t SK_WITNESS_CLASS::elapsed_ms() const {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
              std::chrono::high_resolution_clock::now() - _start_time)
@@ -867,6 +879,18 @@ std::size_t SK_WITNESS_CLASS::get_nb_iterations() const {
 
 SK_WITNESS_TEMPLATE_DECL
 std::size_t SK_WITNESS_CLASS::get_solving_time() const { return _solving_time; }
+
+SK_WITNESS_TEMPLATE_DECL
+const std::vector<typename SK_WITNESS_CLASS::AlphaVector> &
+SK_WITNESS_CLASS::get_alpha_vectors() const {
+  return _alpha_vectors;
+}
+
+SK_WITNESS_TEMPLATE_DECL
+const std::vector<typename SK_WITNESS_CLASS::Action> &
+SK_WITNESS_CLASS::get_action_list() const {
+  return _actions;
+}
 
 } // namespace skdecide
 

@@ -43,6 +43,6 @@ void init_pywitness(py::module &m) {
            &skdecide::PyWitnessSolver::get_nb_alpha_vectors)
       .def("get_nb_iterations", &skdecide::PyWitnessSolver::get_nb_iterations)
       .def("get_solving_time", &skdecide::PyWitnessSolver::get_solving_time)
-      .def("get_callback_event",
-           &skdecide::PyWitnessSolver::get_callback_event);
+      .def("get_callback_event", &skdecide::PyWitnessSolver::get_callback_event)
+      .def("get_alpha_vectors", &skdecide::PyWitnessSolver::get_alpha_vectors);
 }

@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <limits>
 #include <numeric>
+#include <queue>
 #include <stdexcept>
 
 #include "utils/logging.hh"
@@ -833,6 +834,58 @@ std::size_t SK_DESPOT_CLASS::get_solving_time() const { return elapsed_ms(); }
 
 SK_DESPOT_TEMPLATE_DECL
 double SK_DESPOT_CLASS::get_gap() const { return _gap_cache; }
+
+SK_DESPOT_TEMPLATE_DECL
+std::vector<typename SK_DESPOT_CLASS::BeliefNode>
+SK_DESPOT_CLASS::get_explored_beliefs() const {
+  std::vector<BeliefNode> beliefs;
+
+  if (!_current_tree) {
+    return beliefs;
+  }
+
+  // BFS traversal of the tree
+  std::queue<VNode *> queue;
+  queue.push(_current_tree.get());
+
+  while (!queue.empty()) {
+    VNode *v = queue.front();
+    queue.pop();
+
+    BeliefNode node;
+
+    // Extract particles (states only)
+    for (const auto &scenario : v->scenarios) {
+      node.particles.push_back(scenario.state);
+    }
+
+    node.lower_bound = v->lower_bound;
+    node.upper_bound = v->upper_bound;
+    node.default_value = v->default_value;
+    node.depth = v->depth;
+
+    // Find best action (action with highest lower bound)
+    if (v->is_expanded && !v->children.empty()) {
+      auto best_child = std::max_element(
+          v->children.begin(), v->children.end(),
+          [](const std::unique_ptr<QNode> &a, const std::unique_ptr<QNode> &b) {
+            return a->lower_bound < b->lower_bound;
+          });
+      node.best_action = (*best_child)->action;
+    }
+
+    beliefs.push_back(std::move(node));
+
+    // Add children to queue
+    for (const auto &qchild : v->children) {
+      for (const auto &[obs_hash, vchild] : qchild->children) {
+        queue.push(vchild.get());
+      }
+    }
+  }
+
+  return beliefs;
+}
 
 } // namespace skdecide
 

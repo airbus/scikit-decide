@@ -54,5 +54,6 @@ void init_pysarsop(py::module &m) {
       .def("get_solving_time", &skdecide::PySARSOPSolver::get_solving_time)
       .def("get_lower_bound", &skdecide::PySARSOPSolver::get_lower_bound)
       .def("get_upper_bound", &skdecide::PySARSOPSolver::get_upper_bound)
-      .def("get_gap", &skdecide::PySARSOPSolver::get_gap);
+      .def("get_gap", &skdecide::PySARSOPSolver::get_gap)
+      .def("get_alpha_vectors", &skdecide::PySARSOPSolver::get_alpha_vectors);
 }

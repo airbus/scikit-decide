@@ -115,8 +115,10 @@ public:
 
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
+  const std::unordered_map<std::size_t, std::size_t> &
+  get_state_hash_to_idx() const;
+  const std::vector<State> &get_states() const;
 
-protected:
   struct AlphaVector {
     std::vector<double> values;
     Action action;
@@ -127,6 +129,9 @@ protected:
         : values(num_states, 0.0), action(a), id(vid) {}
   };
 
+  const std::vector<AlphaVector> &get_alpha_vectors() const;
+
+protected:
   struct BoundPoint {
     Belief belief;
     double value;

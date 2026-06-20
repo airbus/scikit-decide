@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional
+from typing import Optional, TypedDict
 
 from skdecide import Distribution, Domain, Solver, Value
 from skdecide.builders.domain import (
@@ -59,6 +59,25 @@ try:
         """
 
         T_domain = D
+
+        class BeliefNodeDict(TypedDict):
+            """Type for belief node dictionaries returned by get_explored_beliefs().
+
+            Fields:
+            - particles: list of states representing the belief via particle filter
+            - lower_bound: lower bound on the value at this belief
+            - upper_bound: upper bound on the value at this belief
+            - default_value: value from default policy rollouts
+            - depth: depth of this node in the DESPOT tree
+            - best_action: action with highest lower bound (None if not expanded)
+            """
+
+            particles: list
+            lower_bound: float
+            upper_bound: float
+            default_value: float
+            depth: int
+            best_action: object
 
         def __init__(
             self,
@@ -244,6 +263,23 @@ try:
         def get_gap(self) -> float:
             """Get the gap between upper and lower bounds at the root."""
             return self._solver.get_gap()
+
+        def get_explored_beliefs(self) -> list[BeliefNodeDict]:
+            """Get the explored belief nodes from the last DESPOT tree.
+
+            Returns a list of dictionaries, each containing:
+            - 'particles': list of states (D.T_state) representing the belief
+            - 'lower_bound': lower bound on value at this belief
+            - 'upper_bound': upper bound on value at this belief
+            - 'default_value': value from default policy rollouts
+            - 'depth': depth in the tree
+            - 'best_action': action with highest lower bound, or None if not expanded
+
+            The tree is built during the last call to get_next_action() or
+            get_next_action_from_belief(). Returns an empty list if no tree
+            has been built yet (before the first action query).
+            """
+            return self._solver.get_explored_beliefs()
 
 except ImportError:
     print(

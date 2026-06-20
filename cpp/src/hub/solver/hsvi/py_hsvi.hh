@@ -51,6 +51,7 @@ protected:
     virtual py::int_ get_nb_bound_points() = 0;
     virtual py::int_ get_solving_time() = 0;
     virtual py::float_ get_gap() = 0;
+    virtual py::list get_alpha_vectors() = 0;
   };
 
   template <typename Texecution, typename SolverTag = HSVITag>
@@ -241,6 +242,38 @@ protected:
 
     virtual py::float_ get_gap() { return _solver->get_gap(); }
 
+    virtual py::list get_alpha_vectors() {
+      py::list result;
+      const auto &alphas = _solver->get_alpha_vectors();
+      const auto &index_to_state = _solver->get_index_to_state();
+      const auto &state_hash_to_idx = _solver->get_state_hash_to_idx();
+
+      for (const auto &alpha : alphas) {
+        py::dict alpha_dict;
+        py::dict values_dict;
+
+        // Map each enumerated state to its value in the alpha vector
+        for (const auto &[hash, state] : index_to_state) {
+          auto idx_it = state_hash_to_idx.find(hash);
+          if (idx_it != state_hash_to_idx.end()) {
+            std::size_t idx = idx_it->second;
+            if (idx < alpha.values.size()) {
+              typename PyHSVIDomain<Texecution>::Value val(alpha.values[idx],
+                                                           true);
+              values_dict[state.pyobj()] = val.pyobj();
+            }
+          }
+        }
+
+        alpha_dict["values"] = values_dict;
+        alpha_dict["action"] = alpha.action.pyobj();
+        alpha_dict["id"] = alpha.id;
+        result.append(alpha_dict);
+      }
+
+      return result;
+    }
+
   private:
     typename BaseSolverType::Belief
     distribution_to_belief(const py::object &d) {
@@ -326,6 +359,7 @@ public:
 
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
   py::float_ get_gap() { return _implementation->get_gap(); }
+  py::list get_alpha_vectors() { return _implementation->get_alpha_vectors(); }
 };
 
 class PyHSVISolver : public PyHSVISolverBase {

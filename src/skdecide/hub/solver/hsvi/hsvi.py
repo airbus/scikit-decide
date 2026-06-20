@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional
+from typing import Optional, TypedDict
 
-from skdecide import Distribution, Domain, Solver
+from skdecide import Distribution, Domain, Solver, Value
 from skdecide.builders.domain import (
     Actions,
     EnumerableTransitions,
@@ -72,6 +72,19 @@ try:
         """
 
         T_domain = D_reward
+
+        class AlphaVectorDict(TypedDict):
+            """Type for alpha vector dictionaries returned by get_alpha_vectors().
+
+            Fields:
+            - values: dict mapping states (D.T_state) to Value[D.T_value]
+            - action: action object (D.T_agent[D.T_concurrency[D.T_event]])
+            - id: unique identifier for this alpha-vector
+            """
+
+            values: dict[D_reward.T_state, Value[D_reward.T_value]]
+            action: D_reward.T_agent[D_reward.T_concurrency[D_reward.T_event]]
+            id: int
 
         def __init__(
             self,
@@ -219,6 +232,20 @@ try:
             """Get the current gap V_upper(b0) - V_lower(b0)."""
             return self._solver.get_gap()
 
+        def get_alpha_vectors(self) -> list[AlphaVectorDict]:
+            """Get the alpha-vectors representing the lower bound.
+
+            Returns a list of dictionaries, each containing:
+            - 'values': dict[D.T_state, Value[D.T_value]] - state to Value mapping
+            - 'action': D.T_agent[D.T_concurrency[D.T_event]] - associated action
+            - 'id': int - unique identifier for this alpha-vector
+
+            The lower bound at any belief b is: V_lower(b) = max_alpha (alpha · b),
+            where alpha · b = sum(b[s] * alpha['values'][s].reward for all states s).
+            The policy chooses the action of the maximizing alpha-vector.
+            """
+            return self._solver.get_alpha_vectors()
+
     class GoalHSVI(
         ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState
     ):
@@ -239,6 +266,19 @@ try:
         """
 
         T_domain = D_cost
+
+        class AlphaVectorDict(TypedDict):
+            """Type for alpha vector dictionaries returned by get_alpha_vectors().
+
+            Fields:
+            - values: dict mapping states (D.T_state) to Value[D.T_value]
+            - action: action object (D.T_agent[D.T_concurrency[D.T_event]])
+            - id: unique identifier for this alpha-vector
+            """
+
+            values: dict[D_cost.T_state, Value[D_cost.T_value]]
+            action: D_cost.T_agent[D_cost.T_concurrency[D_cost.T_event]]
+            id: int
 
         def __init__(
             self,
@@ -400,6 +440,22 @@ try:
         def get_gap(self) -> float:
             """Get the current gap V_upper(b0) - V_lower(b0)."""
             return self._solver.get_gap()
+
+        def get_alpha_vectors(self) -> list[AlphaVectorDict]:
+            """Get the alpha-vectors representing the upper bound.
+
+            Returns a list of dictionaries, each containing:
+            - 'values': dict[D.T_state, Value[D.T_value]] - state to Value mapping
+            - 'action': D.T_agent[D.T_concurrency[D.T_event]] - associated action
+            - 'id': int - unique identifier for this alpha-vector
+
+            Note: In Goal-HSVI (cost minimization), alpha-vectors form the UPPER bound,
+            unlike vanilla HSVI where they form the lower bound. The upper bound at any
+            belief b is: V_upper(b) = min_alpha (alpha · b), where
+            alpha · b = sum(b[s] * alpha['values'][s].cost for all states s).
+            The policy chooses the action of the minimizing alpha-vector.
+            """
+            return self._solver.get_alpha_vectors()
 
 except ImportError:
     print(

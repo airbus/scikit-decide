@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional
+from typing import Optional, TypedDict
 
-from skdecide import Distribution, Domain, Solver
+from skdecide import Distribution, Domain, Solver, Value
 from skdecide.builders.domain import (
     Actions,
     EnumerableTransitions,
@@ -59,6 +59,19 @@ try:
         """
 
         T_domain = D
+
+        class AlphaVectorDict(TypedDict):
+            """Type for alpha vector dictionaries returned by get_alpha_vectors().
+
+            Fields:
+            - values: dict mapping states (D.T_state) to Value[D.T_value]
+            - action: action object (D.T_agent[D.T_concurrency[D.T_event]])
+            - id: unique identifier for this alpha-vector
+            """
+
+            values: dict[D.T_state, Value[D.T_value]]
+            action: D.T_agent[D.T_concurrency[D.T_event]]
+            id: int
 
         def __init__(
             self,
@@ -247,6 +260,19 @@ try:
         def get_gap(self) -> float:
             """Get the gap V_upper(b0) - V_lower(b0)."""
             return self._solver.get_gap()
+
+        def get_alpha_vectors(self) -> list[AlphaVectorDict]:
+            """Get the alpha-vectors representing the policy.
+
+            Returns a list of dictionaries, each containing:
+            - 'values': dict[D.T_state, Value[D.T_value]] - state to Value mapping
+            - 'action': D.T_agent[D.T_concurrency[D.T_event]] - associated action
+            - 'id': int - unique identifier for this alpha-vector
+
+            The policy at any belief b is: choose the action of the alpha-vector
+            that maximizes sum(b[s] * alpha['values'][s].reward for all states s).
+            """
+            return self._solver.get_alpha_vectors()
 
 except ImportError:
     print(

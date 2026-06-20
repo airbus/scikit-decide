@@ -161,6 +161,17 @@ public:
   std::size_t get_solving_time() const;
   double get_gap() const;
 
+  struct BeliefNode {
+    std::vector<State> particles;
+    double lower_bound;
+    double upper_bound;
+    double default_value;
+    int depth;
+    std::optional<Action> best_action;
+  };
+
+  std::vector<BeliefNode> get_explored_beliefs() const;
+
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
 

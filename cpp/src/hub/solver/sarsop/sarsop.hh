@@ -49,6 +49,16 @@ public:
 
   typedef std::function<bool(const SARSOPSolver &, Domain &)> CallbackFunctor;
 
+  struct AlphaVector {
+    std::vector<double> values;
+    Action action;
+    std::size_t id;
+
+    AlphaVector() : id(0) {}
+    AlphaVector(std::size_t num_states, const Action &a, std::size_t vid)
+        : values(num_states, 0.0), action(a), id(vid) {}
+  };
+
   /**
    * @brief Construct a new SARSOPSolver.
    *
@@ -115,21 +125,17 @@ public:
   double get_initial_upper_bound() const;
   double get_gap() const;
 
+  // Policy representation
+  const std::vector<AlphaVector> &get_alpha_vectors() const;
+
   // For pybind layer
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
+  const std::unordered_map<std::size_t, std::size_t> &
+  get_state_hash_to_idx() const;
+  const std::vector<State> &get_states() const;
 
 private:
-  struct AlphaVector {
-    std::vector<double> values;
-    Action action;
-    std::size_t id;
-
-    AlphaVector() : id(0) {}
-    AlphaVector(std::size_t num_states, const Action &a, std::size_t vid)
-        : values(num_states, 0.0), action(a), id(vid) {}
-  };
-
   struct BeliefTreeNode {
     Belief belief;
     double lower_bound;

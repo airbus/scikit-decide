@@ -44,6 +44,7 @@ private:
     virtual py::int_ get_nb_tree_nodes() = 0;
     virtual py::int_ get_solving_time() = 0;
     virtual py::float_ get_gap() = 0;
+    virtual py::list get_explored_beliefs() = 0;
   };
 
   template <typename Texecution>
@@ -254,6 +255,37 @@ private:
 
     virtual py::float_ get_gap() { return _solver->get_gap(); }
 
+    virtual py::list get_explored_beliefs() {
+      py::list result;
+      const auto &beliefs = _solver->get_explored_beliefs();
+
+      for (const auto &belief : beliefs) {
+        py::dict belief_dict;
+
+        // Convert particles to Python list
+        py::list particles;
+        for (const auto &state : belief.particles) {
+          particles.append(state.pyobj());
+        }
+
+        belief_dict["particles"] = particles;
+        belief_dict["lower_bound"] = belief.lower_bound;
+        belief_dict["upper_bound"] = belief.upper_bound;
+        belief_dict["default_value"] = belief.default_value;
+        belief_dict["depth"] = belief.depth;
+
+        if (belief.best_action.has_value()) {
+          belief_dict["best_action"] = belief.best_action.value().pyobj();
+        } else {
+          belief_dict["best_action"] = py::none();
+        }
+
+        result.append(belief_dict);
+      }
+
+      return result;
+    }
+
   private:
     typedef DespotSolver<PyDespotDomain<Texecution>, Texecution> SolverType;
 
@@ -373,6 +405,9 @@ public:
   py::int_ get_nb_tree_nodes() { return _implementation->get_nb_tree_nodes(); }
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
   py::float_ get_gap() { return _implementation->get_gap(); }
+  py::list get_explored_beliefs() {
+    return _implementation->get_explored_beliefs();
+  }
 };
 
 } // namespace skdecide

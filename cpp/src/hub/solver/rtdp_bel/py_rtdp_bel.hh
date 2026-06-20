@@ -275,8 +275,8 @@ private:
           }
         }
         py::frozenset key(belief_set);
-        result[key] =
-            py::make_tuple(entry.second.first.pyobj(), entry.second.second);
+        result[key] = py::make_tuple(entry.second.first.pyobj(),
+                                     entry.second.second.pyobj());
       }
       return result;
     }
