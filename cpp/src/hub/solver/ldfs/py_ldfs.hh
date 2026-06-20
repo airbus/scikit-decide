@@ -45,6 +45,7 @@ protected:
     }
     virtual py::list get_strongly_connected_components() = 0;
     virtual py::dict get_policy() = 0;
+    virtual py::list get_last_trajectory() = 0;
   };
 
   template <typename Texecution,
@@ -270,6 +271,15 @@ protected:
       return d;
     }
 
+    virtual py::list get_last_trajectory() override {
+      py::list traj;
+      auto &&lt = _solver->get_last_trajectory();
+      for (auto &s : lt) {
+        traj.append(s.pyobj());
+      }
+      return traj;
+    }
+
   private:
     std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<PyLDFSDomain<Texecution>> _domain;
@@ -372,6 +382,10 @@ public:
   }
 
   py::dict get_policy() { return _implementation->get_policy(); }
+
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
+  }
 };
 
 class PyIDAstarSolver : public PyLDFSSolver {

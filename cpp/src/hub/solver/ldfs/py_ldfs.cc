@@ -42,7 +42,8 @@ void init_pyldfs(py::module &m) {
       .def("get_solved_states", &skdecide::PyLDFSSolver::get_solved_states)
       .def("get_strongly_connected_components",
            &skdecide::PyLDFSSolver::get_strongly_connected_components)
-      .def("get_policy", &skdecide::PyLDFSSolver::get_policy);
+      .def("get_policy", &skdecide::PyLDFSSolver::get_policy)
+      .def("get_last_trajectory", &skdecide::PyLDFSSolver::get_last_trajectory);
 
   py::class_<skdecide::PyIDAstarSolver, skdecide::PyLDFSSolver>
       py_idastar_solver(m, "_IDAstarSolver_");

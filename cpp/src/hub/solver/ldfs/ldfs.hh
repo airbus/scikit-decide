@@ -115,6 +115,7 @@ public:
   std::vector<typename SetTypeDeducer<State>::Set>
   get_strongly_connected_components() const;
   typename MapTypeDeducer<State, std::pair<Action, Value>>::Map policy() const;
+  std::vector<State> get_last_trajectory() const;
 
   template <typename Params>
   static std::unique_ptr<LDFSSolver> create_from_params(
@@ -179,6 +180,7 @@ protected:
   std::size_t _tarjan_index;
   std::stack<StateNode *> _tarjan_stack;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+  std::vector<StateNode *> _last_trajectory;
 
   void expand(StateNode &s);
   double q_value(ActionNode &a);

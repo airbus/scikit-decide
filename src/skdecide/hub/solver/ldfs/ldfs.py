@@ -222,6 +222,23 @@ try:
             """Get the (partial) solution policy"""
             return self._solver.get_policy()
 
+        def get_last_trajectory(self) -> list[D.T_agent[D.T_observation]]:
+            """Get the ordered list of states visited during the last LDFS iteration.
+
+            Returns the trajectory (path) explored during the most recent depth-first
+            descent from the root state. The trajectory begins with the root state and
+            ends at the deepest state reached before backtracking.
+
+            This is useful for:
+            - Debugging algorithm behavior (which path was explored?)
+            - Custom heuristic updates based on trajectory
+            - Visualizing/logging the search process
+            - Analyzing convergence patterns in the callback
+
+            Returns an empty list if solve() has not been called yet.
+            """
+            return self._solver.get_last_trajectory()
+
     class D_IDAstar(
         Domain,
         SingleAgent,

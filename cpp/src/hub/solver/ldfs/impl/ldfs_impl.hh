@@ -88,10 +88,24 @@ void SK_LDFS_SOLVER_CLASS::solve(const State &s) {
       root.best_value = _heuristic(_domain, s).cost();
     }
 
-    while (!root.solved && !_callback(*this, _domain)) {
+    // Initialize trajectory with the root state for callback visibility
+    _last_trajectory.clear();
+    _last_trajectory.push_back(&root);
+
+    while (!root.solved) {
       _tarjan_index = 0;
       ldfs_mdp(root);
       clear_active_flags();
+      // IMPORTANT: Callback must be called AFTER ldfs_mdp(), not in the while
+      // condition. Each ldfs_mdp() call creates a fresh local
+      // current_trajectory starting with [root], and only updates
+      // _last_trajectory when a leaf is reached during that traversal. If the
+      // callback were in the while condition, it would see stale data from the
+      // previous iteration, not the trajectory just explored by the current
+      // ldfs_mdp() call.
+      if (_callback(*this, _domain)) {
+        break;
+      }
     }
 
     Logger::info(
@@ -207,6 +221,9 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
   typedef typename std::list<std::tuple<double, double, StateNode *>>::iterator
       OutcomeIter;
 
+  // Track the current path during DFS
+  std::vector<StateNode *> current_trajectory;
+
   struct DFSFrame {
     StateNode *node;
     ActionIter action_it;
@@ -223,6 +240,7 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
 
   std::stack<DFSFrame> dfs_stack;
   dfs_stack.push(DFSFrame(&root));
+  current_trajectory.push_back(&root);
 
   while (!dfs_stack.empty()) {
     DFSFrame &f = dfs_stack.top();
@@ -239,14 +257,26 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
         }
         s->solved = true;
         _last_rv = true;
+        // Leaf node reached (terminal/goal) - save trajectory before
+        // backtracking
+        _last_trajectory = current_trajectory;
         dfs_stack.pop();
+        if (!current_trajectory.empty()) {
+          current_trajectory.pop_back();
+        }
         continue;
       }
 
       // "if s is ACTIVE then return false"
       if (s->active) {
         _last_rv = false;
+        // Leaf node reached (cycle detected) - save trajectory before
+        // backtracking
+        _last_trajectory = current_trajectory;
         dfs_stack.pop();
+        if (!current_trajectory.empty()) {
+          current_trajectory.pop_back();
+        }
         continue;
       }
 
@@ -298,6 +328,7 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
           // "flag := LDFS(s', ...) & flag" — push child frame
           f.child_returned = sp;
           dfs_stack.push(DFSFrame(sp));
+          current_trajectory.push_back(sp);
           pushed_child = true;
           break;
         } else if (sp->active) {
@@ -415,6 +446,9 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
 
     // "return flag"
     dfs_stack.pop();
+    if (!current_trajectory.empty()) {
+      current_trajectory.pop_back();
+    }
   }
 }
 
@@ -526,6 +560,17 @@ SK_LDFS_SOLVER_CLASS::policy() const {
     }
   }
   return p;
+}
+
+SK_LDFS_SOLVER_TEMPLATE_DECL
+std::vector<typename SK_LDFS_SOLVER_CLASS::State>
+SK_LDFS_SOLVER_CLASS::get_last_trajectory() const {
+  std::vector<State> trajectory;
+  trajectory.reserve(_last_trajectory.size());
+  for (const auto *sn : _last_trajectory) {
+    trajectory.push_back(sn->state);
+  }
+  return trajectory;
 }
 
 // --- IDAstarSolver::get_plan ---
