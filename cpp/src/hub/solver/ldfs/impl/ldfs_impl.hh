@@ -512,15 +512,17 @@ SK_LDFS_SOLVER_CLASS::get_strongly_connected_components() const {
 }
 
 SK_LDFS_SOLVER_TEMPLATE_DECL
-typename MapTypeDeducer<
-    typename SK_LDFS_SOLVER_CLASS::State,
-    std::pair<typename SK_LDFS_SOLVER_CLASS::Action, double>>::Map
+typename MapTypeDeducer<typename SK_LDFS_SOLVER_CLASS::State,
+                        std::pair<typename SK_LDFS_SOLVER_CLASS::Action,
+                                  typename SK_LDFS_SOLVER_CLASS::Value>>::Map
 SK_LDFS_SOLVER_CLASS::policy() const {
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
   for (const auto &sn : _graph) {
     if (sn.best_action != nullptr) {
-      p.insert(std::make_pair(sn.state, std::make_pair(sn.best_action->action,
-                                                       (double)sn.best_value)));
+      Value val;
+      val.cost(sn.best_value);
+      p.insert(std::make_pair(sn.state,
+                              std::make_pair(sn.best_action->action, val)));
     }
   }
   return p;

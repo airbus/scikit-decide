@@ -77,7 +77,7 @@ public:
   std::size_t get_solving_time() const;
 
   typename SetTypeDeducer<State>::Set get_explored_states() const;
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map policy() const;
 
   template <typename Params>
   static std::unique_ptr<GPCISolver> create_from_params(

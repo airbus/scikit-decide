@@ -247,7 +247,7 @@ private:
       auto &&p = _solver->get_policy();
       for (auto &e : p) {
         d[e.first.pyobj()] =
-            py::make_tuple(e.second.first.pyobj(), e.second.second);
+            py::make_tuple(e.second.first.pyobj(), e.second.second.pyobj());
       }
       return d;
     }

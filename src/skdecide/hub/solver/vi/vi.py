@@ -212,7 +212,7 @@ try:
             self,
         ) -> dict[
             D.T_agent[D.T_observation],
-            tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the full solution policy"""
             return self._solver.get_policy()

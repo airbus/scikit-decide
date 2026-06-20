@@ -112,7 +112,7 @@ public:
   typename SetTypeDeducer<State>::Set get_explored_states() const;
   typename SetTypeDeducer<State>::Set get_converged_states() const;
   typename SetTypeDeducer<State>::Set get_states_updated_in_last_sweep() const;
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map policy() const;
 
   template <typename Params>
   static std::unique_ptr<VISolver> create_from_params(

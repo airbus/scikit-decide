@@ -434,7 +434,7 @@ try:
             self,
         ) -> dict[
             D.T_agent[D.T_observation],
-            tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the best value according to the execution action selector has been updated
@@ -445,7 +445,7 @@ try:
                 when node garbage was set to True in the MCTS instance's constructor
 
             # Returns
-            dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], float], ]:
+            dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
                 Mapping from states to pairs of action and best value according to the
                 execution action selector
             """

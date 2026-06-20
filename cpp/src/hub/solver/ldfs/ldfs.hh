@@ -114,7 +114,7 @@ public:
   typename SetTypeDeducer<State>::Set get_solved_states() const;
   std::vector<typename SetTypeDeducer<State>::Set>
   get_strongly_connected_components() const;
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map policy() const;
 
   template <typename Params>
   static std::unique_ptr<LDFSSolver> create_from_params(

@@ -207,16 +207,37 @@ std::size_t SK_ILAOSTAR_SOLVER_CLASS::get_solving_time() const {
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 typename ::skdecide::MapTypeDeducer<
     typename SK_ILAOSTAR_SOLVER_CLASS::State,
-    std::pair<typename SK_ILAOSTAR_SOLVER_CLASS::Action, double>>::Map
+    std::pair<typename SK_ILAOSTAR_SOLVER_CLASS::Action,
+              typename SK_ILAOSTAR_SOLVER_CLASS::Value>>::Map
 SK_ILAOSTAR_SOLVER_CLASS::policy() const {
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
   for (auto &n : _graph) {
     if (n.best_action != nullptr) {
-      p.insert(std::make_pair(n.state, std::make_pair(n.best_action->action,
-                                                      (double)n.best_value)));
+      Value val;
+      val.cost(n.best_value);
+      p.insert(
+          std::make_pair(n.state, std::make_pair(n.best_action->action, val)));
     }
   }
   return p;
+}
+
+SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
+typename ::skdecide::MapTypeDeducer<
+    typename SK_ILAOSTAR_SOLVER_CLASS::State,
+    std::pair<typename SK_ILAOSTAR_SOLVER_CLASS::Action,
+              typename SK_ILAOSTAR_SOLVER_CLASS::Value>>::Map
+SK_ILAOSTAR_SOLVER_CLASS::get_best_solution_graph() const {
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map bsg;
+  for (auto &n : _best_solution_graph) {
+    if (n->best_action != nullptr) {
+      Value val;
+      val.cost(n->best_value);
+      bsg.insert(std::make_pair(n->state,
+                                std::make_pair(n->best_action->action, val)));
+    }
+  }
+  return bsg;
 }
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
