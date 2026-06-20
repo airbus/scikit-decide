@@ -347,6 +347,29 @@ std::size_t SK_SSIPP_CLASS::get_solving_time() const {
           .count());
 }
 
+// --- Policy accessor ---
+
+SK_SSIPP_TEMPLATE_DECL
+typename MapTypeDeducer<typename SK_SSIPP_CLASS::State,
+                        std::pair<typename SK_SSIPP_CLASS::Action,
+                                  typename SK_SSIPP_CLASS::Value>>::Map
+SK_SSIPP_CLASS::get_policy() {
+  Logger::info("get_policy() ENTRY: _nb_sub_ssps=" +
+               StringConverter::from(_nb_sub_ssps) +
+               ", _policy.size()=" + StringConverter::from(_policy.size()) +
+               ", this=" + StringConverter::from((void *)this));
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map result;
+  for (const auto &entry : _policy) {
+    result[entry.first] =
+        std::make_pair(entry.second, get_best_value(entry.first));
+  }
+  Logger::info(
+      "get_policy() EXIT: _nb_sub_ssps=" + StringConverter::from(_nb_sub_ssps) +
+      ", result.size()=" + StringConverter::from(result.size()) +
+      ", this=" + StringConverter::from((void *)this));
+  return result;
+}
+
 // --- State set accessors ---
 
 SK_SSIPP_TEMPLATE_DECL

@@ -238,15 +238,10 @@ private:
 
     virtual py::dict get_policy() {
       py::dict d;
-      auto &&vf = _solver->get_explored_states();
-      for (const auto &s : vf) {
-        if (_solver->is_solution_defined_for(s)) {
-          try {
-            d[s.pyobj()] = py::make_tuple(_solver->get_best_action(s).pyobj(),
-                                          _solver->get_best_value(s).pyobj());
-          } catch (...) {
-          }
-        }
+      auto &&policy = _solver->get_policy();
+      for (const auto &entry : policy) {
+        d[entry.first.pyobj()] = py::make_tuple(entry.second.first.pyobj(),
+                                                entry.second.second.pyobj());
       }
       return d;
     }

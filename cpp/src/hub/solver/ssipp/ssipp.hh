@@ -10,6 +10,7 @@
 #include <memory>
 #include <queue>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "utils/associative_container_deducer.hh"
@@ -101,6 +102,8 @@ public:
   typename SetTypeDeducer<State>::Set get_explored_states() const;
   typename SetTypeDeducer<State>::Set get_current_subssp_states() const;
   typename SetTypeDeducer<State>::Set get_boundary_states() const;
+
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map get_policy();
 
   template <typename Params>
   static std::unique_ptr<SSiPPSolver> create_from_params(
