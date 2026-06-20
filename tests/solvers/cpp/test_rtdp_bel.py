@@ -395,7 +395,7 @@ class TestRTDPBel:
             assert isinstance(val, tuple)
             assert len(val) == 2
             action, value = val
-            assert isinstance(value, float)
+            assert isinstance(value, Value)
             # Each frozenset element should be (state, probability)
             for entry in key:
                 assert isinstance(entry, tuple)

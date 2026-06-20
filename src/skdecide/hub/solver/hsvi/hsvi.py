@@ -189,7 +189,7 @@ try:
 
         def get_utility_from_belief(
             self, belief: Distribution[D_reward.T_state]
-        ) -> D_reward.T_value:
+        ) -> Value[D_reward.T_value]:
             """Get the best value for an explicit belief state."""
             return self._solver.get_utility_from_belief(belief)
 
@@ -371,7 +371,7 @@ try:
 
         def get_utility_from_belief(
             self, belief: Distribution[D_cost.T_state]
-        ) -> D_cost.T_value:
+        ) -> Value[D_cost.T_value]:
             """Get the best value for an explicit belief state."""
             return self._solver.get_utility_from_belief(belief)
 

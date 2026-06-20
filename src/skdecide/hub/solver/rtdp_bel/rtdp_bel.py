@@ -209,7 +209,9 @@ try:
             else:
                 return action
 
-        def get_utility_from_belief(self, belief: Distribution[D.T_state]) -> D.T_value:
+        def get_utility_from_belief(
+            self, belief: Distribution[D.T_state]
+        ) -> Value[D.T_value]:
             """Get the best value for an explicit belief state."""
             return self._solver.get_utility_from_belief(belief)
 
@@ -246,7 +248,7 @@ try:
             self,
         ) -> dict[
             frozenset[tuple[D.T_state, float]],
-            tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], Value[D.T_value]],
         ]:
             """Get the full belief-space policy as a dictionary.
 

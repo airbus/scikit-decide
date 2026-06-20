@@ -262,7 +262,7 @@ public:
    * @brief Get the full explored belief-space policy as a map from
    * discretized beliefs to (action, value) pairs.
    */
-  std::unordered_map<DiscretizedBelief, std::pair<Action, double>,
+  std::unordered_map<DiscretizedBelief, std::pair<Action, Value>,
                      DiscretizedBeliefHash, DiscretizedBeliefEqual>
   get_belief_policy() const;
 };

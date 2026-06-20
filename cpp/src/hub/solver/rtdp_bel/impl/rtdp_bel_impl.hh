@@ -646,19 +646,21 @@ std::size_t SK_RTDP_BEL_CLASS::get_discretization() const {
 
 SK_RTDP_BEL_TEMPLATE_DECL
 std::unordered_map<typename SK_RTDP_BEL_CLASS::DiscretizedBelief,
-                   std::pair<typename SK_RTDP_BEL_CLASS::Action, double>,
+                   std::pair<typename SK_RTDP_BEL_CLASS::Action,
+                             typename SK_RTDP_BEL_CLASS::Value>,
                    typename SK_RTDP_BEL_CLASS::DiscretizedBeliefHash,
                    typename SK_RTDP_BEL_CLASS::DiscretizedBeliefEqual>
 SK_RTDP_BEL_CLASS::get_belief_policy() const {
-  std::unordered_map<DiscretizedBelief, std::pair<Action, double>,
+  std::unordered_map<DiscretizedBelief, std::pair<Action, Value>,
                      DiscretizedBeliefHash, DiscretizedBeliefEqual>
       p;
   for (const auto &entry : _belief_graph) {
     const BeliefNode &bn = *(entry.second);
     if (bn.best_action != nullptr) {
-      p.insert(
-          std::make_pair(bn.discretized, std::make_pair(bn.best_action->action,
-                                                        bn.best_value)));
+      Value val;
+      val.cost(bn.best_value);
+      p.insert(std::make_pair(bn.discretized,
+                              std::make_pair(bn.best_action->action, val)));
     }
   }
   return p;
