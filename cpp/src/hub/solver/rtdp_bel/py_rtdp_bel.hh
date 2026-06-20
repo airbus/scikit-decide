@@ -260,7 +260,9 @@ private:
       py::list result;
       auto &&trajectory = _solver->get_last_trajectory();
       const auto &idx_map = _solver->get_index_to_state();
-      for (const auto &belief : trajectory) {
+      for (const auto &ba : trajectory) {
+        const auto &belief = ba.first;
+        const auto &action = ba.second;
         py::dict belief_dict;
         for (const auto &bp : belief) {
           auto it = idx_map.find(bp.first);
@@ -268,7 +270,7 @@ private:
             belief_dict[it->second.pyobj()] = bp.second;
           }
         }
-        result.append(belief_dict);
+        result.append(py::make_tuple(belief_dict, action.pyobj()));
       }
       return result;
     }

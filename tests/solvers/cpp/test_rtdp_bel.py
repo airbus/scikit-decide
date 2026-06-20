@@ -273,18 +273,19 @@ class TestRTDPBel:
         assert v.cost < 1.0  # optimal cost is 0
 
     def test_get_last_trajectory(self):
-        """get_last_trajectory() should return belief trajectories from the last trial."""
+        """get_last_trajectory() should return (belief, action) pairs from the last trial."""
         from skdecide.hub.solver.rtdp_bel import RTDPBel
 
         trajectories_seen = []
 
         def callback(solver, domain):
             trajectory = solver.get_last_trajectory()
-            # Each element in trajectory is a dict mapping states to probabilities
-            # Store trajectory as tuple of frozen belief dicts for comparison
+            # Each element should be a (belief, action) tuple
+            assert all(isinstance(ba, tuple) and len(ba) == 2 for ba in trajectory)
+            # Store trajectory as tuple of (frozen belief dict, action) for comparison
             traj_tuple = tuple(
-                frozenset((str(s), p) for s, p in belief.items())
-                for belief in trajectory
+                (frozenset((str(s), p) for s, p in belief.items()), action)
+                for belief, action in trajectory
             )
             trajectories_seen.append(traj_tuple)
             # Stop after 3 iterations
@@ -304,17 +305,26 @@ class TestRTDPBel:
 
         # All trajectories should be non-empty
         for traj in trajectories_seen:
-            assert len(traj) > 0, "Each trajectory should have at least one belief"
+            assert len(traj) > 0, (
+                "Each trajectory should have at least one (belief, action)"
+            )
 
         # Each belief in each trajectory should be a valid belief (probabilities sum to ~1)
+        # and each action should be valid
         for traj in trajectories_seen:
-            for belief_frozen in traj:
+            for belief_frozen, action in traj:
                 belief_dict = dict(belief_frozen)
                 # Convert back to numeric probabilities
                 total_prob = sum(float(p) for _, p in belief_dict.items())
                 assert 0.9 < total_prob <= 1.1, (
                     f"Belief probabilities should sum to ~1, got {total_prob}"
                 )
+                # Action should be one of the valid Tiger actions
+                assert action in [
+                    TigerAction.listen,
+                    TigerAction.open_left,
+                    TigerAction.open_right,
+                ]
 
     def test_observation_based_rollout(self):
         """Test the observation-based interaction: solve, then interact

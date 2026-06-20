@@ -244,18 +244,24 @@ try:
             """Get the solving time in milliseconds."""
             return self._solver.get_solving_time()
 
-        def get_last_trajectory(self) -> list[dict[D.T_state, float]]:
-            """Get the ordered list of beliefs visited during the last RTDP-Bel trial.
+        def get_last_trajectory(
+            self,
+        ) -> list[tuple[dict[D.T_state, float], D.T_agent[D.T_concurrency[D.T_event]]]]:
+            """Get the ordered list of (belief, action) pairs visited during the last RTDP-Bel trial.
 
             Returns the trajectory (path) explored during the most recent trial from
-            the root belief. The trajectory begins with the root belief and ends at the
-            deepest belief reached before the trial terminated (due to goal, depth limit,
-            or time limit).
+            the root belief. Each element is a tuple of (belief, action) where the belief
+            is represented as a dictionary mapping states to probabilities, and the action
+            is the best action selected in that belief during the trial. The trajectory
+            begins with the root belief and ends at the deepest belief reached before the
+            trial terminated (due to goal, depth limit, or time limit).
 
-            Each belief is represented as a dictionary mapping states to probabilities.
+            The last element's action is the action selected in the final belief (or a
+            default-constructed action if the final belief is a goal).
 
             This is useful for:
-            - Debugging algorithm behavior (which beliefs were explored?)
+            - Replaying trajectories from the initial belief
+            - Debugging algorithm behavior (which beliefs and actions were explored?)
             - Visualizing/logging the search process through belief space
             - Analyzing convergence patterns in the callback
 

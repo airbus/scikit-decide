@@ -269,8 +269,8 @@ protected:
     virtual py::list get_last_trajectory() {
       py::list result;
       auto &&trajectory = _solver->get_last_trajectory();
-      for (auto &s : trajectory) {
-        result.append(s.pyobj());
+      for (auto &sa : trajectory) {
+        result.append(py::make_tuple(sa.first.pyobj(), sa.second.pyobj()));
       }
       return result;
     }

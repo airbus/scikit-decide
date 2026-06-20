@@ -226,15 +226,17 @@ class TestLRTAstar:
         assert LRTAstar.check_domain(dom)
 
     def test_get_last_trajectory(self):
-        """get_last_trajectory() should return the trajectory from the last trial."""
+        """get_last_trajectory() should return (state, action) pairs from the last trial."""
         from skdecide.hub.solver.lrtdp import LRTDP
 
         trajectories_seen = []
 
         def callback(solver, domain):
             trajectory = solver.get_last_trajectory()
-            # Store trajectory as tuple of state tuples for comparison
-            traj_tuple = tuple(s for s in trajectory)
+            # Each element should be a (state, action) tuple
+            assert all(isinstance(sa, tuple) and len(sa) == 2 for sa in trajectory)
+            # Store trajectory as tuple of (state, action) tuples for comparison
+            traj_tuple = tuple((s, a) for s, a in trajectory)
             trajectories_seen.append(traj_tuple)
             # Stop after 3 iterations
             return len(trajectories_seen) >= 3
@@ -259,7 +261,10 @@ class TestLRTAstar:
 
         # All trajectories should start with the initial state
         for traj in trajectories_seen:
-            assert traj[0] == State(x=0, y=0, s=0)
+            state, action = traj[0]
+            assert state == State(x=0, y=0, s=0)
+            # Action should be one of the valid Action enum values
+            assert action in [Action.up, Action.down, Action.left, Action.right]
 
         # Trajectories should change between iterations (LRTDP explores randomly)
         # At least some should be different

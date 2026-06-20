@@ -690,12 +690,14 @@ std::size_t SK_RTDP_BEL_CLASS::get_solving_time() const {
 }
 
 SK_RTDP_BEL_TEMPLATE_DECL
-std::vector<typename SK_RTDP_BEL_CLASS::Belief>
+std::vector<std::pair<typename SK_RTDP_BEL_CLASS::Belief,
+                      typename SK_RTDP_BEL_CLASS::Action>>
 SK_RTDP_BEL_CLASS::get_last_trajectory() const {
-  std::vector<Belief> trajectory;
+  std::vector<std::pair<Belief, Action>> trajectory;
   trajectory.reserve(_last_trajectory.size());
   for (const auto *bn : _last_trajectory) {
-    trajectory.push_back(bn->belief);
+    Action action = bn->best_action ? bn->best_action->action : Action();
+    trajectory.push_back(std::make_pair(bn->belief, action));
   }
   return trajectory;
 }

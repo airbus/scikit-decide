@@ -333,16 +333,25 @@ try:
             """Get states labeled as solved"""
             return self._solver.get_solved_states()
 
-        def get_last_trajectory(self) -> list[D.T_agent[D.T_observation]]:
-            """Get the ordered list of states visited during the last LRTDP trial.
+        def get_last_trajectory(
+            self,
+        ) -> list[
+            tuple[D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]]]
+        ]:
+            """Get the ordered list of (state, action) pairs visited during the last LRTDP trial.
 
             Returns the trajectory (path) explored during the most recent trial from
-            the root state. The trajectory begins with the root state and ends at the
-            deepest state reached before the trial terminated (due to goal, solved state,
-            depth limit, or time limit).
+            the root state. Each element is a tuple of (state, action) where the action
+            is the best action selected in that state during the trial. The trajectory
+            begins with the root state and ends at the deepest state reached before the
+            trial terminated (due to goal, solved state, depth limit, or time limit).
+
+            The last element's action is the action selected in the final state (or a
+            default-constructed action if the final state is terminal/goal).
 
             This is useful for:
-            - Debugging algorithm behavior (which states were explored?)
+            - Replaying trajectories from the initial state
+            - Debugging algorithm behavior (which states and actions were explored?)
             - Custom heuristic updates based on trajectory
             - Visualizing/logging the search process
             - Analyzing convergence patterns in the callback

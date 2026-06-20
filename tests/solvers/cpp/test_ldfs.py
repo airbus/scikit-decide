@@ -312,7 +312,7 @@ class TestLDFSDeterministic:
         assert call_count[0] > 0
 
     def test_last_trajectory_nonempty(self):
-        """get_last_trajectory() should return a non-empty list after solving."""
+        """get_last_trajectory() should return (state, action) pairs after solving."""
         from skdecide.hub.solver.ldfs import LDFS
 
         with LDFS(
@@ -325,10 +325,19 @@ class TestLDFSDeterministic:
             traj = solver.get_last_trajectory()
 
         assert len(traj) > 0
-        assert traj[0] == State(0, 0)  # Always starts from initial state
+        # Each element should be a (state, action) tuple
+        assert all(isinstance(sa, tuple) and len(sa) == 2 for sa in traj)
+        state, action = traj[0]
+        assert state == State(0, 0)  # Always starts from initial state
+        assert action in [
+            Action.up,
+            Action.down,
+            Action.left,
+            Action.right,
+        ]  # Valid action
 
     def test_last_trajectory_in_callback(self):
-        """Trajectory should be accessible from callback."""
+        """Trajectory should be accessible from callback and contain (state, action) pairs."""
         from skdecide.hub.solver.ldfs import LDFS
 
         trajectories = []
@@ -349,7 +358,10 @@ class TestLDFSDeterministic:
         assert len(trajectories) > 0
         for traj in trajectories:
             assert len(traj) > 0
-            assert traj[0] == State(0, 0)
+            # Each element should be a (state, action) tuple
+            assert all(isinstance(sa, tuple) and len(sa) == 2 for sa in traj)
+            state, action = traj[0]
+            assert state == State(0, 0)
 
     def test_last_trajectory_updates_across_iterations(self):
         """Trajectory should update across multiple LDFS iterations, not freeze."""

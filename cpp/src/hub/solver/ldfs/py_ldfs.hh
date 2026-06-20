@@ -274,8 +274,8 @@ protected:
     virtual py::list get_last_trajectory() override {
       py::list traj;
       auto &&lt = _solver->get_last_trajectory();
-      for (auto &s : lt) {
-        traj.append(s.pyobj());
+      for (auto &sa : lt) {
+        traj.append(py::make_tuple(sa.first.pyobj(), sa.second.pyobj()));
       }
       return traj;
     }

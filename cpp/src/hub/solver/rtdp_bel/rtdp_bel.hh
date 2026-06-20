@@ -173,7 +173,7 @@ public:
    *
    * Returns an empty list if solve() has not been called yet.
    */
-  std::vector<Belief> get_last_trajectory() const;
+  std::vector<std::pair<Belief, Action>> get_last_trajectory() const;
 
 private:
   typedef typename ExecutionPolicy::template atomic<double> atomic_double;

@@ -622,12 +622,14 @@ SK_LRTDP_SOLVER_CLASS::get_solved_states() const {
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
-std::vector<typename SK_LRTDP_SOLVER_CLASS::State>
+std::vector<std::pair<typename SK_LRTDP_SOLVER_CLASS::State,
+                      typename SK_LRTDP_SOLVER_CLASS::Action>>
 SK_LRTDP_SOLVER_CLASS::get_last_trajectory() const {
-  std::vector<State> trajectory;
+  std::vector<std::pair<State, Action>> trajectory;
   trajectory.reserve(_last_trajectory.size());
   for (const auto *sn : _last_trajectory) {
-    trajectory.push_back(sn->state);
+    Action action = sn->best_action ? sn->best_action->action : Action();
+    trajectory.push_back(std::make_pair(sn->state, action));
   }
   return trajectory;
 }
