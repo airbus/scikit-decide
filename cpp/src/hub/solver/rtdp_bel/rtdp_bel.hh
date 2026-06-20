@@ -157,6 +157,24 @@ public:
   std::size_t get_nb_rollouts() const;
   std::size_t get_solving_time() const;
 
+  /**
+   * @brief Get the ordered list of beliefs visited during the last RTDP-Bel
+   * trial.
+   *
+   * Returns the trajectory (path) explored during the most recent trial from
+   * the root belief. The trajectory begins with the root belief and ends at the
+   * deepest belief reached before the trial terminated (due to goal, depth
+   * limit, or time limit).
+   *
+   * This is useful for:
+   * - Debugging algorithm behavior (which beliefs were explored?)
+   * - Visualizing/logging the search process through belief space
+   * - Analyzing convergence patterns in the callback
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<Belief> get_last_trajectory() const;
+
 private:
   typedef typename ExecutionPolicy::template atomic<double> atomic_double;
   typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
@@ -222,6 +240,7 @@ private:
   BeliefGraph _belief_graph;
   typename ExecutionPolicy::template atomic<std::size_t> _nb_rollouts;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+  std::vector<BeliefNode *> _last_trajectory;
 
   // Belief tracking for observation-based interaction
   BeliefNode *_initial_belief_node;

@@ -244,6 +244,25 @@ try:
             """Get the solving time in milliseconds."""
             return self._solver.get_solving_time()
 
+        def get_last_trajectory(self) -> list[dict[D.T_state, float]]:
+            """Get the ordered list of beliefs visited during the last RTDP-Bel trial.
+
+            Returns the trajectory (path) explored during the most recent trial from
+            the root belief. The trajectory begins with the root belief and ends at the
+            deepest belief reached before the trial terminated (due to goal, depth limit,
+            or time limit).
+
+            Each belief is represented as a dictionary mapping states to probabilities.
+
+            This is useful for:
+            - Debugging algorithm behavior (which beliefs were explored?)
+            - Visualizing/logging the search process through belief space
+            - Analyzing convergence patterns in the callback
+
+            Returns an empty list if solve() has not been called yet.
+            """
+            return self._solver.get_last_trajectory()
+
         def get_belief_policy(
             self,
         ) -> dict[

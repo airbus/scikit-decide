@@ -42,6 +42,7 @@ protected:
     virtual py::set get_explored_states() = 0;
     virtual py::set get_solved_states() = 0;
     virtual py::dict get_policy() = 0;
+    virtual py::list get_last_trajectory() = 0;
     virtual py::list get_plan(const py::object &s) {
       throw std::runtime_error("get_plan is only available on LRTAstar");
     }
@@ -265,6 +266,15 @@ protected:
       return d;
     }
 
+    virtual py::list get_last_trajectory() {
+      py::list result;
+      auto &&trajectory = _solver->get_last_trajectory();
+      for (auto &s : trajectory) {
+        result.append(s.pyobj());
+      }
+      return result;
+    }
+
     virtual py::list get_plan(const py::object &s) override {
       if constexpr (!std::is_same_v<
                         TSolver<PyLRTDPDomain<Texecution>, Texecution>,
@@ -399,6 +409,10 @@ public:
   py::set get_solved_states() { return _implementation->get_solved_states(); }
 
   py::dict get_policy() { return _implementation->get_policy(); }
+
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
+  }
 };
 
 class PyLRTAstarSolver : public PyLRTDPSolver {

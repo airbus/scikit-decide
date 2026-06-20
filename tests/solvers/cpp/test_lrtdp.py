@@ -224,3 +224,44 @@ class TestLRTAstar:
 
         dom = GridDomain()
         assert LRTAstar.check_domain(dom)
+
+    def test_get_last_trajectory(self):
+        """get_last_trajectory() should return the trajectory from the last trial."""
+        from skdecide.hub.solver.lrtdp import LRTDP
+
+        trajectories_seen = []
+
+        def callback(solver, domain):
+            trajectory = solver.get_last_trajectory()
+            # Store trajectory as tuple of state tuples for comparison
+            traj_tuple = tuple(s for s in trajectory)
+            trajectories_seen.append(traj_tuple)
+            # Stop after 3 iterations
+            return len(trajectories_seen) >= 3
+
+        with LRTDP(
+            domain_factory=lambda: GridDomain(),
+            heuristic=lambda d, s: Value(
+                cost=sqrt((d.num_cols - 1 - s.x) ** 2 + (d.num_rows - 1 - s.y) ** 2)
+            ),
+            use_labels=True,
+            max_depth=10,
+            callback=callback,
+        ) as solver:
+            solver.solve()
+
+        # Should have 3 trajectories (one per iteration before callback stopped it)
+        assert len(trajectories_seen) == 3
+
+        # All trajectories should be non-empty
+        for traj in trajectories_seen:
+            assert len(traj) > 0
+
+        # All trajectories should start with the initial state
+        for traj in trajectories_seen:
+            assert traj[0] == State(x=0, y=0, s=0)
+
+        # Trajectories should change between iterations (LRTDP explores randomly)
+        # At least some should be different
+        unique_trajectories = set(trajectories_seen)
+        assert len(unique_trajectories) > 1, "Trajectories should vary between trials"

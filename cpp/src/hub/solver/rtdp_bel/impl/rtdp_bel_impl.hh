@@ -398,6 +398,7 @@ void SK_RTDP_BEL_CLASS::update(BeliefNode *bn, const std::size_t *thread_id) {
 SK_RTDP_BEL_TEMPLATE_DECL
 void SK_RTDP_BEL_CLASS::trial(BeliefNode *bn, const std::size_t *thread_id) {
   BeliefNode *current = bn;
+  std::vector<BeliefNode *> current_trajectory;
   std::size_t depth = 0;
 
   State s = sample_state_from_belief(current->belief, thread_id);
@@ -405,6 +406,7 @@ void SK_RTDP_BEL_CLASS::trial(BeliefNode *bn, const std::size_t *thread_id) {
   while (!current->goal && !current->solved && depth < _max_depth &&
          get_solving_time() < _time_budget) {
     depth++;
+    current_trajectory.push_back(current);
 
     _execution_policy.protect(
         [this, &current, &thread_id]() { update(current, thread_id); },
@@ -458,6 +460,9 @@ void SK_RTDP_BEL_CLASS::trial(BeliefNode *bn, const std::size_t *thread_id) {
     current = next;
     s = sp;
   }
+
+  // Save the trajectory after the trial completes
+  _last_trajectory = current_trajectory;
 }
 
 // --- solve ---
@@ -682,6 +687,17 @@ std::size_t SK_RTDP_BEL_CLASS::get_solving_time() const {
       std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::high_resolution_clock::now() - _start_time)
           .count());
+}
+
+SK_RTDP_BEL_TEMPLATE_DECL
+std::vector<typename SK_RTDP_BEL_CLASS::Belief>
+SK_RTDP_BEL_CLASS::get_last_trajectory() const {
+  std::vector<Belief> trajectory;
+  trajectory.reserve(_last_trajectory.size());
+  for (const auto *bn : _last_trajectory) {
+    trajectory.push_back(bn->belief);
+  }
+  return trajectory;
 }
 
 } // namespace skdecide

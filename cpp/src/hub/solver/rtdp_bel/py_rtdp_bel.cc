@@ -46,6 +46,8 @@ void init_pyrtdp_bel(py::module &m) {
            &skdecide::PyRTDPBelSolver::get_explored_beliefs)
       .def("get_nb_rollouts", &skdecide::PyRTDPBelSolver::get_nb_rollouts)
       .def("get_solving_time", &skdecide::PyRTDPBelSolver::get_solving_time)
+      .def("get_last_trajectory",
+           &skdecide::PyRTDPBelSolver::get_last_trajectory)
       .def("get_belief_policy", &skdecide::PyRTDPBelSolver::get_belief_policy)
       .def("get_next_action_from_belief",
            &skdecide::PyRTDPBelSolver::get_next_action_from_belief,

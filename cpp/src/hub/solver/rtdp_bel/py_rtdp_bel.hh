@@ -44,6 +44,7 @@ private:
     virtual py::list get_explored_beliefs() = 0;
     virtual py::int_ get_nb_rollouts() = 0;
     virtual py::int_ get_solving_time() = 0;
+    virtual py::list get_last_trajectory() = 0;
     // Belief-state policy accessor
     virtual py::dict get_belief_policy() = 0;
     // Belief-state query interface
@@ -255,6 +256,23 @@ private:
 
     virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
 
+    virtual py::list get_last_trajectory() {
+      py::list result;
+      auto &&trajectory = _solver->get_last_trajectory();
+      const auto &idx_map = _solver->get_index_to_state();
+      for (const auto &belief : trajectory) {
+        py::dict belief_dict;
+        for (const auto &bp : belief) {
+          auto it = idx_map.find(bp.first);
+          if (it != idx_map.end()) {
+            belief_dict[it->second.pyobj()] = bp.second;
+          }
+        }
+        result.append(belief_dict);
+      }
+      return result;
+    }
+
     virtual py::dict get_belief_policy() {
       py::dict result;
       auto &&p = _solver->get_belief_policy();
@@ -435,6 +453,9 @@ public:
 
   py::int_ get_nb_rollouts() { return _implementation->get_nb_rollouts(); }
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
+  }
   py::dict get_belief_policy() { return _implementation->get_belief_policy(); }
 
   py::object get_next_action_from_belief(const py::object &d) {

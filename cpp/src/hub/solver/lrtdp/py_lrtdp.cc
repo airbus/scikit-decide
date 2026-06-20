@@ -57,7 +57,9 @@ void init_pylrtdp(py::module &m) {
       .def("get_solving_time", &skdecide::PyLRTDPSolver::get_solving_time)
       .def("get_explored_states", &skdecide::PyLRTDPSolver::get_explored_states)
       .def("get_solved_states", &skdecide::PyLRTDPSolver::get_solved_states)
-      .def("get_policy", &skdecide::PyLRTDPSolver::get_policy);
+      .def("get_policy", &skdecide::PyLRTDPSolver::get_policy)
+      .def("get_last_trajectory",
+           &skdecide::PyLRTDPSolver::get_last_trajectory);
 
   py::class_<skdecide::PyLRTAstarSolver, skdecide::PyLRTDPSolver>
       py_lrtastar_solver(m, "_LRTAstarSolver_");

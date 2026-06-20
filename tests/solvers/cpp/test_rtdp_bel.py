@@ -272,6 +272,50 @@ class TestRTDPBel:
         assert action == TigerAction.open_right
         assert v.cost < 1.0  # optimal cost is 0
 
+    def test_get_last_trajectory(self):
+        """get_last_trajectory() should return belief trajectories from the last trial."""
+        from skdecide.hub.solver.rtdp_bel import RTDPBel
+
+        trajectories_seen = []
+
+        def callback(solver, domain):
+            trajectory = solver.get_last_trajectory()
+            # Each element in trajectory is a dict mapping states to probabilities
+            # Store trajectory as tuple of frozen belief dicts for comparison
+            traj_tuple = tuple(
+                frozenset((str(s), p) for s, p in belief.items())
+                for belief in trajectory
+            )
+            trajectories_seen.append(traj_tuple)
+            # Stop after 3 iterations
+            return len(trajectories_seen) >= 3
+
+        with RTDPBel(
+            domain_factory=lambda: TigerDomain(),
+            heuristic=lambda d, s: Value(cost=0),
+            discretization=10,
+            max_depth=10,
+            callback=callback,
+        ) as solver:
+            solver.solve()
+
+        # Should have 3 trajectories (one per iteration before callback stopped it)
+        assert len(trajectories_seen) == 3
+
+        # All trajectories should be non-empty
+        for traj in trajectories_seen:
+            assert len(traj) > 0, "Each trajectory should have at least one belief"
+
+        # Each belief in each trajectory should be a valid belief (probabilities sum to ~1)
+        for traj in trajectories_seen:
+            for belief_frozen in traj:
+                belief_dict = dict(belief_frozen)
+                # Convert back to numeric probabilities
+                total_prob = sum(float(p) for _, p in belief_dict.items())
+                assert 0.9 < total_prob <= 1.1, (
+                    f"Belief probabilities should sum to ~1, got {total_prob}"
+                )
+
     def test_observation_based_rollout(self):
         """Test the observation-based interaction: solve, then interact
         through observations. The solver should track beliefs internally

@@ -480,6 +480,7 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(StateNode *s,
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 void SK_LRTDP_SOLVER_CLASS::trial(StateNode *s, const std::size_t *thread_id) {
   std::stack<StateNode *> visited;
+  std::vector<StateNode *> current_trajectory;
   StateNode *cs = s;
   std::size_t depth = 0;
   bool found_goal = false;
@@ -488,6 +489,7 @@ void SK_LRTDP_SOLVER_CLASS::trial(StateNode *s, const std::size_t *thread_id) {
          (get_solving_time() < _time_budget) && (depth < _max_depth)) {
     depth++;
     visited.push(cs);
+    current_trajectory.push_back(cs);
     _execution_policy.protect(
         [this, &cs, &found_goal, &thread_id]() {
           if (cs->goal) {
@@ -502,6 +504,9 @@ void SK_LRTDP_SOLVER_CLASS::trial(StateNode *s, const std::size_t *thread_id) {
         },
         cs->mutex);
   }
+
+  // Save the trajectory after the trial completes
+  _last_trajectory = current_trajectory;
 
   while (_use_labels && !visited.empty() &&
          (get_solving_time() < _time_budget)) {
@@ -614,6 +619,17 @@ SK_LRTDP_SOLVER_CLASS::get_solved_states() const {
     }
   }
   return solved;
+}
+
+SK_LRTDP_SOLVER_TEMPLATE_DECL
+std::vector<typename SK_LRTDP_SOLVER_CLASS::State>
+SK_LRTDP_SOLVER_CLASS::get_last_trajectory() const {
+  std::vector<State> trajectory;
+  trajectory.reserve(_last_trajectory.size());
+  for (const auto *sn : _last_trajectory) {
+    trajectory.push_back(sn->state);
+  }
+  return trajectory;
 }
 
 // === LRTAstarSolver implementation ===

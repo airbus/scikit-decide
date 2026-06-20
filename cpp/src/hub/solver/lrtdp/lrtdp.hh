@@ -218,6 +218,24 @@ public:
    */
   typename MapTypeDeducer<State, std::pair<Action, Value>>::Map get_policy();
 
+  /**
+   * @brief Get the ordered list of states visited during the last LRTDP trial.
+   *
+   * Returns the trajectory (path) explored during the most recent trial from
+   * the root state. The trajectory begins with the root state and ends at the
+   * deepest state reached before the trial terminated (due to goal, solved
+   * state, depth limit, or time limit).
+   *
+   * This is useful for:
+   * - Debugging algorithm behavior (which states were explored?)
+   * - Custom heuristic updates based on trajectory
+   * - Visualizing/logging the search process
+   * - Analyzing convergence patterns in the callback
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<State> get_last_trajectory() const;
+
   template <typename Params>
   static std::unique_ptr<LRTDPSolver> create_from_params(
       Domain &domain,
@@ -288,6 +306,7 @@ protected:
   StateNode *_current_state;
   atomic_size_t _nb_rollouts;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+  std::vector<StateNode *> _last_trajectory;
 
   void expand(StateNode *s, const std::size_t *thread_id);
   double q_value(ActionNode *a);

@@ -333,6 +333,24 @@ try:
             """Get states labeled as solved"""
             return self._solver.get_solved_states()
 
+        def get_last_trajectory(self) -> list[D.T_agent[D.T_observation]]:
+            """Get the ordered list of states visited during the last LRTDP trial.
+
+            Returns the trajectory (path) explored during the most recent trial from
+            the root state. The trajectory begins with the root state and ends at the
+            deepest state reached before the trial terminated (due to goal, solved state,
+            depth limit, or time limit).
+
+            This is useful for:
+            - Debugging algorithm behavior (which states were explored?)
+            - Custom heuristic updates based on trajectory
+            - Visualizing/logging the search process
+            - Analyzing convergence patterns in the callback
+
+            Returns an empty list if solve() has not been called yet.
+            """
+            return self._solver.get_last_trajectory()
+
     class D_LRTAstar(
         Domain,
         SingleAgent,
