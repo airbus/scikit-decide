@@ -636,7 +636,7 @@ private:
 
   StateNode *_last_leaf_node;
   StateNode *_last_root_node;
-  typename ExecutionPolicy::Mutex _trajectory_mutex;
+  mutable typename ExecutionPolicy::Mutex _trajectory_mutex;
 
   void compute_reachable_subgraph(StateNode *node,
                                   std::unordered_set<StateNode *> &subgraph);
