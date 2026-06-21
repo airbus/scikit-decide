@@ -390,11 +390,12 @@ class TestLDFSDeterministic:
 
         # Verify trajectories are not all identical (frozen)
         # At least one trajectory should differ from the first
-        first_traj_tuple = tuple((s.x, s.y) for s in trajectories[0])
+        # Each trajectory element is a (state, action) tuple
+        first_traj_tuple = tuple((s.x, s.y) for s, a in trajectories[0])
         found_different = False
 
         for i, traj in enumerate(trajectories[1:], 1):
-            traj_tuple = tuple((s.x, s.y) for s in traj)
+            traj_tuple = tuple((s.x, s.y) for s, a in traj)
             if traj_tuple != first_traj_tuple:
                 found_different = True
                 break
