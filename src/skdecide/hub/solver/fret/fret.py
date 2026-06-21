@@ -55,6 +55,30 @@ try:
         convergence, (2) Eliminate-Traps — detect traps via Tarjan SCC on
         the greedy graph and adjust values. Converges to V* even in the
         presence of dead ends and 0-cost cycles.
+
+        # Example
+
+        ```python
+        from skdecide.hub.solver.fret import FRET
+
+        # For domains with dead ends or 0-cost cycles
+        solver = FRET(
+            domain_factory=lambda: MyDomain(),
+            inner_solver_factory=lambda: ("VI", {
+                "epsilon": 1e-6,      # Strict convergence for inner solver
+                "max_sweeps": 1000
+            }),
+            epsilon=0.01,             # FRET's trap elimination threshold
+            discount=1.0,
+            verbose=True
+        )
+        solver.solve()
+        ```
+
+        # Reference
+
+        Kolobov, Mausam, Weld, Geffner. "Heuristic Search for Generalized
+        Stochastic Shortest Path MDPs", ICAPS 2011.
         """
 
         T_domain = D
@@ -91,10 +115,27 @@ try:
                 inner solvers: "LRTDP", "LDFS", "VI". ILAOstar is not
                 supported because it lacks terminal_value, which FRET
                 needs to propagate dead-end costs.
-                Defaults to ``lambda: ("LRTDP", {})``.
+
+                **IMPORTANT**: The inner solver's epsilon parameter controls
+                convergence of the Find-and-Revise step and must be set
+                much stricter than FRET's epsilon to avoid premature
+                termination. Recommended: ``epsilon=1e-6`` for VI or
+                ``use_labels=False`` with ``rollout_budget=10000`` for LRTDP.
+
+                Example for VI (recommended):
+                    ``lambda: ("VI", {"epsilon": 1e-6, "max_sweeps": 1000})``
+
+                Example for LRTDP:
+                    ``lambda: ("LRTDP", {"use_labels": False,
+                                         "rollout_budget": 10000,
+                                         "epsilon": 0.01})``
+
+                Defaults to ``lambda: ("LRTDP", {})`` which may cause
+                poor performance due to early termination.
             discount: Value function's discount factor. Defaults to 1.0.
-            epsilon: Greedy action tolerance and convergence threshold.
-                Defaults to 0.001.
+            epsilon: FRET's greedy action tolerance and convergence threshold
+                for trap elimination. This is distinct from the inner solver's
+                epsilon. Defaults to 0.001.
             dead_end_cost: Cost assigned to permanent trap (dead-end)
                 states. Defaults to 10000.0.
             parallel: Parallelize the inner solver. Defaults to False.
@@ -102,9 +143,21 @@ try:
             callback: Called after each FRET iteration. Returns True
                 to stop.
             verbose: Enable verbose logging. Defaults to False.
+
+            # Notes
+            FRET solves Generalized Stochastic Shortest Path (GSSP) MDPs,
+            which allow 0-reward cycles and dead-end states. It iteratively
+            runs an inner solver (Find-and-Revise) then eliminates traps
+            until convergence. The inner solver must converge to a proper
+            fixed point each iteration, requiring strict epsilon values.
             """
             if inner_solver_factory is None:
-                inner_solver_factory = lambda: ("LRTDP", {})
+                # Default to VI with strict epsilon to ensure proper convergence
+                # in Find-and-Revise step (see docstring for details)
+                inner_solver_factory = lambda: (
+                    "VI",
+                    {"epsilon": 1e-6, "max_sweeps": 1000},
+                )
             inner_solver, inner_solver_params = inner_solver_factory()
 
             Solver.__init__(self, domain_factory=domain_factory)

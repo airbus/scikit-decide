@@ -27,6 +27,15 @@ namespace skdecide {
  * and adjust values. Converges to V* even in the presence of dead ends
  * and 0-cost cycles.
  *
+ * IMPORTANT: The inner solver is warm-started with FRET's current value
+ * function estimate from the previous iteration. This means the inner solver
+ * must use a VERY STRICT epsilon (e.g., 1e-6 for VI) to avoid premature
+ * convergence after just 1-2 iterations. If the inner solver exits too early,
+ * FRET will require many iterations and find many spurious "traps" that are
+ * actually just unexplored regions. The greedy graph construction uses
+ * deterministic tie-breaking (sorting successors by hash) to ensure consistent
+ * behavior when multiple actions have equal Q-values.
+ *
  * @tparam Tdomain Domain type
  * @tparam Texecution_policy Execution policy
  * @tparam TinnerSolver Inner SSP solver template
