@@ -13,7 +13,7 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     IntegerHyperparameter,
 )
 
-from skdecide import DiscreteDistribution, Distribution, Domain, Memory, Solver
+from skdecide import DiscreteDistribution, Distribution, Domain, Memory, Solver, Value
 from skdecide.builders.domain import (
     Actions,
     EnumerableTransitions,

@@ -192,7 +192,7 @@ typename SK_RTDP_BEL_CLASS::Belief SK_RTDP_BEL_CLASS::compute_posterior_belief(
     const State &s = it->second;
     auto next_dist =
         _domain.get_next_state_distribution(s, a, thread_id).get_values();
-    if (next_dist.empty()) {
+    if (next_dist.begin() == next_dist.end()) {
       // Action has no transitions: state stays in place (self-loop)
       // This is a reasonable assumption for belief update
       b_a[p.first] += p.second;
@@ -374,7 +374,7 @@ SK_RTDP_BEL_CLASS::greedy_action(BeliefNode *bn, const std::size_t *thread_id) {
           auto next_dist =
               _domain.get_next_state_distribution(s, a->action, thread_id)
                   .get_values();
-          if (next_dist.empty()) {
+          if (next_dist.begin() == next_dist.end()) {
             // Action has no transitions: treat as terminal state
             immediate_cost += bp.second * _terminal_value(s).cost();
           } else {

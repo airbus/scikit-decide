@@ -154,7 +154,7 @@ void SK_LDFS_SOLVER_CLASS::expand(StateNode &s) {
             _domain.get_next_state_distribution(s.state, a).get_values();
 
         // If action has no transitions, treat as terminal state
-        if (next_states.empty()) {
+        if (next_states.begin() == next_states.end()) {
           // Create a self-loop with terminal value as the cost
           // This ensures the action's Q-value reflects the terminal state value
           an.outcomes.push_back(

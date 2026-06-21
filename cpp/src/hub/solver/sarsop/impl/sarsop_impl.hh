@@ -221,7 +221,7 @@ void SK_SARSOP_CLASS::pre_cache_model() {
           auto next_dist =
               _domain.get_next_state_distribution(s, _actions[ai]).get_values();
 
-          if (next_dist.empty()) {
+          if (next_dist.begin() == next_dist.end()) {
             // Action has no transitions: use terminal value
             _rewards[si][ai] = _terminal_value(s).reward();
             continue;

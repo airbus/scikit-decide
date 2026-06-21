@@ -591,7 +591,7 @@ double SK_DESPOT_CLASS::upper_bound_state(const State &s,
   for (auto action : actions) {
     auto next_dist =
         _domain.get_next_state_distribution(s, action, thread_id).get_values();
-    if (next_dist.empty()) {
+    if (next_dist.begin() == next_dist.end()) {
       // Action has no transitions: use terminal value
       max_reward = std::max(max_reward, std::abs(_terminal_value(s).reward()));
       continue;

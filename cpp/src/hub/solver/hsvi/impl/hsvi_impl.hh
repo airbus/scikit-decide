@@ -106,7 +106,7 @@ void SK_HSVI_CLASS::enumerate_states(const Belief &b0) {
 
           // If action has no transitions, skip enumeration
           // (terminal states will be handled separately)
-          if (next_dist.empty())
+          if (next_dist.begin() == next_dist.end())
             return;
 
           for (auto ns_item : next_dist) {
@@ -176,7 +176,7 @@ void SK_HSVI_CLASS::pre_cache_model() {
               _domain.get_next_state_distribution(s, _actions[ai]).get_values();
 
           // If action has no transitions, use terminal value
-          if (next_dist.empty()) {
+          if (next_dist.begin() == next_dist.end()) {
             _values[si][ai] = _get_value(_terminal_value(s));
             continue;
           }
@@ -689,7 +689,7 @@ SK_HSVI_TEMPLATE_DECL
 double SK_HSVI_CLASS::evaluate_sawtooth_corner(const Belief &b) const {
   // For reward maximization lower bound: take maximum over belief support
   // (optimistic = high reward)
-  double v = _worst_init();
+  double v = _best_init();
   for (const auto &p : b) {
     auto it = _state_hash_to_idx.find(p.first);
     if (it != _state_hash_to_idx.end()) {
