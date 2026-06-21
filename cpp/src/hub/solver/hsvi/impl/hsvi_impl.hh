@@ -1132,7 +1132,8 @@ void SK_GOAL_HSVI_CLASS::initialize_alpha_bound() {
           }
           if (worst_v == this->_worst_init())
             worst_v = _dead_end_cost;
-          new_values[si] = worst_v;
+          // Cap to prevent numerical overflow in undiscounted problems
+          new_values[si] = std::min(worst_v, _dead_end_cost);
           double change = std::abs(new_values[si] - unif_values[si]);
           this->_execution_policy.protect([&max_change, change] {
             max_change = std::max(max_change, change);
