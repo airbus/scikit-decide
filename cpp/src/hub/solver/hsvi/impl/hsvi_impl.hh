@@ -393,11 +393,20 @@ void SK_HSVI_CLASS::solve(
                  std::to_string(ub) + "], gap = " + std::to_string(ub - lb));
   }
 
+  if (_verbose) {
+    Logger::info("HSVI: about to enter main loop");
+  }
+
   std::size_t iteration = 0;
   while (true) {
     double ub = evaluate_upper(_initial_belief);
     double lb = evaluate_lower(_initial_belief);
     _gap = ub - lb;
+    if (_verbose) {
+      Logger::info("HSVI: loop top, iter=" + std::to_string(iteration) +
+                   ", bounds [" + std::to_string(lb) + ", " +
+                   std::to_string(ub) + "], gap = " + std::to_string(_gap));
+    }
 
     if (_gap <= _epsilon) {
       if (_verbose)
@@ -421,7 +430,17 @@ void SK_HSVI_CLASS::solve(
 
     std::unordered_set<std::size_t> closed_list;
     std::vector<Belief> current_belief_path;
+    if (_verbose) {
+      Logger::info("HSVI: starting iteration " + std::to_string(iteration + 1));
+    }
     explore(_initial_belief, 0, closed_list, &current_belief_path);
+    if (_verbose && iteration == 0) {
+      double ub_mid = evaluate_upper(_initial_belief);
+      double lb_mid = evaluate_lower(_initial_belief);
+      Logger::info("HSVI: after explore (iteration 0), bounds [" +
+                   std::to_string(lb_mid) + ", " + std::to_string(ub_mid) +
+                   "], gap = " + std::to_string(ub_mid - lb_mid));
+    }
 
     // Save the belief path for on-demand trajectory reconstruction
     _execution_policy.protect(
@@ -432,7 +451,18 @@ void SK_HSVI_CLASS::solve(
 
     ++iteration;
 
-    if (_verbose && (iteration % 10 == 0)) {
+    // Always log after first iteration for debugging
+    if (_verbose && iteration == 1) {
+      double ub_after = evaluate_upper(_initial_belief);
+      double lb_after = evaluate_lower(_initial_belief);
+      Logger::info("HSVI: after iteration 1, bounds [" +
+                   std::to_string(lb_after) + ", " + std::to_string(ub_after) +
+                   "], gap = " + std::to_string(ub_after - lb_after) +
+                   ", alphas = " + std::to_string(_alpha_vectors.size()) +
+                   ", points = " + std::to_string(_bound_points.size()));
+    }
+
+    if (_verbose && (iteration % 10 == 0 || iteration == 1)) {
       ub = evaluate_upper(_initial_belief);
       lb = evaluate_lower(_initial_belief);
       _gap = ub - lb;
@@ -1073,14 +1103,12 @@ void SK_GOAL_HSVI_CLASS::initialize_alpha_bound() {
   std::vector<std::size_t> state_indices(ns);
   std::iota(state_indices.begin(), state_indices.end(), 0);
 
-  // Uniform policy upper bound alpha-vector
-  std::vector<double> unif_values(ns, 0.0);
+  // Upper bound for cost minimization: start pessimistic (high cost)
+  std::vector<double> unif_values(ns, _dead_end_cost);
 
   for (std::size_t si = 0; si < ns; ++si) {
     if (this->_is_terminal_cache[si]) {
       unif_values[si] = get_terminal_state_value(si);
-    } else {
-      unif_values[si] = _dead_end_cost;
     }
   }
 
@@ -1094,15 +1122,17 @@ void SK_GOAL_HSVI_CLASS::initialize_alpha_bound() {
             new_values[si] = get_terminal_state_value(si);
             return;
           }
-          double sum = 0.0;
+          double worst_v = this->_worst_init();
           for (std::size_t ai = 0; ai < na; ++ai) {
             double v = this->_values[si][ai];
             for (const auto &tr : this->_transitions[si][ai]) {
               v += this->_discount * tr.first * unif_values[tr.second];
             }
-            sum += v;
+            worst_v = this->_worse(worst_v, v);
           }
-          new_values[si] = sum / static_cast<double>(na);
+          if (worst_v == this->_worst_init())
+            worst_v = _dead_end_cost;
+          new_values[si] = worst_v;
           double change = std::abs(new_values[si] - unif_values[si]);
           this->_execution_policy.protect([&max_change, change] {
             max_change = std::max(max_change, change);
