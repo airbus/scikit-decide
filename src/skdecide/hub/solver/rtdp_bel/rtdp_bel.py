@@ -85,6 +85,9 @@ try:
             heuristic: Callable[
                 [Domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
+            terminal_value: Callable[
+                [D.T_state], D.T_agent[Value[D.T_value]]
+            ] = lambda s: Value(cost=0),
             discretization: int = 10,
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
@@ -105,6 +108,10 @@ try:
                 heuristic cost estimate for a physical state. The belief
                 heuristic is computed as h(b) = sum_s b(s)*h(s).
                 Defaults to Value(cost=0).
+            terminal_value: Function t(state) -> Value returning the value
+                for terminal non-goal states (dead-ends). If None, defaults
+                to Value(cost=0). For domains where terminal states are always
+                goals, this can be left as None.
             discretization: Discretization parameter D for belief hashing.
                 d(b(s)) = ceil(D * b(s)). Higher D = finer discretization
                 but more memory. Defaults to 10.
@@ -137,6 +144,9 @@ try:
                     (lambda d, s: heuristic(d, s))
                     if not parallel
                     else (lambda d, s: d.call(None, 0, s))
+                ),
+                terminal_value=(
+                    (lambda s: terminal_value(s)) if terminal_value else None
                 ),
                 discretization=discretization,
                 time_budget=time_budget,

@@ -16,17 +16,19 @@ void init_pyrtdp_bel(py::module &m) {
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
+                    const std::function<py::object(const py::object &)> &,
                     std::size_t, std::size_t, std::size_t, std::size_t, double,
                     double, bool,
                     const std::function<py::bool_(const py::object &,
                                                   const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("goal_checker"),
-           py::arg("heuristic"), py::arg("discretization") = 10,
-           py::arg("time_budget") = 3600000, py::arg("rollout_budget") = 100000,
-           py::arg("max_depth") = 1000, py::arg("epsilon") = 0.001,
-           py::arg("discount") = 1.0, py::arg("parallel") = false,
-           py::arg("callback") = nullptr, py::arg("verbose") = false)
+           py::arg("heuristic"), py::arg("terminal_value") = nullptr,
+           py::arg("discretization") = 10, py::arg("time_budget") = 3600000,
+           py::arg("rollout_budget") = 100000, py::arg("max_depth") = 1000,
+           py::arg("epsilon") = 0.001, py::arg("discount") = 1.0,
+           py::arg("parallel") = false, py::arg("callback") = nullptr,
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyRTDPBelSolver::close)
       .def("clear", &skdecide::PyRTDPBelSolver::clear)
       .def("solve", &skdecide::PyRTDPBelSolver::solve, py::arg("distribution"))

@@ -49,6 +49,7 @@ public:
 
   typedef std::unordered_map<std::size_t, double> Belief;
 
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const POMCPSolver &, Domain &)> CallbackFunctor;
 
   struct ActionNode;
@@ -95,6 +96,8 @@ public:
    *   update via particle filter. Defaults to 500.
    * @param ess_threshold_ratio Effective sample size threshold ratio for
    *   resampling. Resampling occurs when ESS < N / ratio. Defaults to 2.0.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for terminal states without further transitions). Defaults to 0.0.
    * @param callback Functor called at each simulation iteration. Returns
    *   true to stop planning. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
@@ -106,6 +109,8 @@ public:
       std::size_t time_budget = 0,
       std::size_t num_particles_belief_update = 500,
       double ess_threshold_ratio = 2.0,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, false); },
       const CallbackFunctor &callback = [](const POMCPSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -183,6 +188,7 @@ private:
   std::size_t _time_budget;
   std::size_t _num_particles_belief;
   double _ess_threshold_ratio;
+  TerminalValueFunctor _terminal_value;
   CallbackFunctor _callback;
   bool _verbose;
 

@@ -82,6 +82,9 @@ try:
             ess_threshold_ratio: float = 2.0,
             parallel: bool = False,
             shared_memory_proxy=None,
+            terminal_value: Callable[[D.T_state], Value[D.T_value]] = lambda s: Value(
+                reward=0
+            ),
             callback: Callable[[POMCP, Domain], bool] = lambda slv, dom: False,
             verbose: bool = False,
         ) -> None:
@@ -108,6 +111,8 @@ try:
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy.
                 Defaults to None.
+            terminal_value: Optional function (state) -> value for terminal
+                states. Defaults to 0.0.
             callback: Function called at each simulation iteration, taking
                 the solver and domain as arguments, returning True to stop.
                 Defaults to never stop.
@@ -133,6 +138,7 @@ try:
                 num_particles_belief_update=num_particles_belief_update,
                 ess_threshold_ratio=ess_threshold_ratio,
                 parallel=parallel,
+                terminal_value=terminal_value,
                 callback=callback,
                 verbose=verbose,
             )

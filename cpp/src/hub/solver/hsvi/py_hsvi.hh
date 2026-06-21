@@ -74,9 +74,10 @@ protected:
         double depth_bound_eta, std::size_t max_vi_iterations,
         double vi_convergence_factor, double prob_epsilon,
         double belief_hash_resolution,
+        const std::function<py::object(const py::object &)> &terminal_value,
         const std::function<py::bool_(const py::object &)> &callback,
         bool verbose, std::optional<double> dead_end_cost = std::nullopt)
-        : _callback(callback) {
+        : _terminal_value(terminal_value), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
       _domain = std::make_unique<PyHSVIDomain<Texecution>>(domain);
@@ -100,10 +101,30 @@ protected:
           return rr;
         };
 
+        typename BaseSolverType::TerminalValueFunctor tv =
+            [this](const typename PyHSVIDomain<Texecution>::State &s) ->
+            typename PyHSVIDomain<Texecution>::Value {
+              if (_terminal_value) {
+                typename GilControl<Texecution>::Acquire acquire;
+                try {
+                  py::object r = _terminal_value(s.pyobj());
+                  return typename PyHSVIDomain<Texecution>::Value(r);
+                } catch (const py::error_already_set *e) {
+                  Logger::error(std::string("SKDECIDE exception when calling "
+                                            "terminal_value: ") +
+                                e->what());
+                  std::runtime_error err(e->what());
+                  delete e;
+                  throw err;
+                }
+              }
+              return typename PyHSVIDomain<Texecution>::Value(0.0, false);
+            };
+
         _solver = std::make_unique<SolverType>(
             *_domain, gc, epsilon, discount, time_budget, max_sample_depth,
             use_closed_list, depth_bound_eta, max_vi_iterations,
-            vi_convergence_factor, prob_epsilon, belief_hash_resolution,
+            vi_convergence_factor, prob_epsilon, belief_hash_resolution, tv,
             [this](const BaseSolverType &s,
                    PyHSVIDomain<Texecution> &d) -> bool {
               if (_callback) {
@@ -124,10 +145,30 @@ protected:
             },
             verbose, dead_end_cost);
       } else {
+        typename BaseSolverType::TerminalValueFunctor tv =
+            [this](const typename PyHSVIDomain<Texecution>::State &s) ->
+            typename PyHSVIDomain<Texecution>::Value {
+              if (_terminal_value) {
+                typename GilControl<Texecution>::Acquire acquire;
+                try {
+                  py::object r = _terminal_value(s.pyobj());
+                  return typename PyHSVIDomain<Texecution>::Value(r);
+                } catch (const py::error_already_set *e) {
+                  Logger::error(std::string("SKDECIDE exception when calling "
+                                            "terminal_value: ") +
+                                e->what());
+                  std::runtime_error err(e->what());
+                  delete e;
+                  throw err;
+                }
+              }
+              return typename PyHSVIDomain<Texecution>::Value(0.0, false);
+            };
+
         _solver = std::make_unique<SolverType>(
             *_domain, epsilon, discount, time_budget, max_sample_depth,
             use_closed_list, depth_bound_eta, max_vi_iterations,
-            vi_convergence_factor, prob_epsilon, belief_hash_resolution,
+            vi_convergence_factor, prob_epsilon, belief_hash_resolution, tv,
             [this](const BaseSolverType &s,
                    PyHSVIDomain<Texecution> &d) -> bool {
               if (_callback) {
@@ -318,6 +359,7 @@ protected:
     std::unique_ptr<PyHSVIDomain<Texecution>> _domain;
     std::unique_ptr<SolverType> _solver;
 
+    std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &)> _callback;
     std::function<py::object(const py::object &, const py::object &)>
         _goal_checker;
@@ -414,6 +456,8 @@ public:
       double depth_bound_eta = 0.1, std::size_t max_vi_iterations = 1000,
       double vi_convergence_factor = 0.01, double prob_epsilon = 1e-15,
       double belief_hash_resolution = 1000.0, bool parallel = false,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
@@ -424,7 +468,7 @@ public:
                      epsilon, discount, time_budget, max_sample_depth,
                      use_closed_list, depth_bound_eta, max_vi_iterations,
                      vi_convergence_factor, prob_epsilon,
-                     belief_hash_resolution, callback, verbose);
+                     belief_hash_resolution, terminal_value, callback, verbose);
   }
 };
 
@@ -453,6 +497,8 @@ public:
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
       double prob_epsilon = 1e-15, double belief_hash_resolution = 1000.0,
       bool parallel = false,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false,
       std::optional<double> dead_end_cost = std::nullopt) {
@@ -461,8 +507,8 @@ public:
         .instantiate(solver, domain, &goal_checker, epsilon, discount,
                      time_budget, max_sample_depth, use_closed_list,
                      depth_bound_eta, max_vi_iterations, vi_convergence_factor,
-                     prob_epsilon, belief_hash_resolution, callback, verbose,
-                     dead_end_cost);
+                     prob_epsilon, belief_hash_resolution, terminal_value,
+                     callback, verbose, dead_end_cost);
   }
 };
 

@@ -66,17 +66,18 @@ SK_RTDP_BEL_CLASS::ActionNode::ActionNode(const Action &a)
 SK_RTDP_BEL_TEMPLATE_DECL
 SK_RTDP_BEL_CLASS::RTDPBelSolver(
     Domain &domain, const GoalCheckerFunctor &goal_checker,
-    const HeuristicFunctor &heuristic, std::size_t discretization,
+    const HeuristicFunctor &heuristic,
+    const TerminalValueFunctor &terminal_value, std::size_t discretization,
     std::size_t time_budget, std::size_t rollout_budget, std::size_t max_depth,
     double epsilon, double discount, const CallbackFunctor &callback,
     bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _discretization(discretization), _time_budget(time_budget),
-      _rollout_budget(rollout_budget), _max_depth(max_depth), _epsilon(epsilon),
-      _discount(discount), _callback(callback), _verbose(verbose),
-      _nb_rollouts(0), _initial_belief_node(nullptr),
-      _current_belief_node(nullptr), _last_action(nullptr),
-      _next_state_index(0) {
+      _terminal_value(terminal_value), _discretization(discretization),
+      _time_budget(time_budget), _rollout_budget(rollout_budget),
+      _max_depth(max_depth), _epsilon(epsilon), _discount(discount),
+      _callback(callback), _verbose(verbose), _nb_rollouts(0),
+      _initial_belief_node(nullptr), _current_belief_node(nullptr),
+      _last_action(nullptr), _next_state_index(0) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm RTDP-Bel");
   }
@@ -354,18 +355,25 @@ SK_RTDP_BEL_CLASS::greedy_action(BeliefNode *bn, const std::size_t *thread_id) {
     for (const auto &bp : bn->belief) {
       auto it = _index_to_state.find(bp.first);
       if (it != _index_to_state.end()) {
-        if (!a->outcomes.empty()) {
+        const State &s = it->second;
+
+        // Check if this state is a terminal state (non-goal)
+        if (_domain.is_terminal(s, thread_id) &&
+            !_goal_checker(_domain, s, thread_id)) {
+          // Terminal non-goal state: use terminal_value directly
+          // (no transitions expected, or should be penalized)
+          immediate_cost += bp.second * _terminal_value(s).cost();
+        } else {
+          // Normal state or goal state: compute expected immediate cost
           auto next_dist =
-              _domain
-                  .get_next_state_distribution(it->second, a->action, thread_id)
+              _domain.get_next_state_distribution(s, a->action, thread_id)
                   .get_values();
           for (auto ns : next_dist) {
-            immediate_cost += bp.second * ns.probability() *
-                              _domain
-                                  .get_transition_value(it->second, a->action,
-                                                        ns.state(), thread_id)
-                                  .cost();
-            break;
+            immediate_cost +=
+                bp.second * ns.probability() *
+                _domain
+                    .get_transition_value(s, a->action, ns.state(), thread_id)
+                    .cost();
           }
         }
       }

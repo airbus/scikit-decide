@@ -63,6 +63,8 @@ private:
             &goal_checker,
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
+        const std::function<py::object(const py::object &)> &terminal_value =
+            nullptr,
         std::size_t discretization = 10, std::size_t time_budget = 3600000,
         std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
         double epsilon = 0.001, double discount = 1.0,
@@ -70,7 +72,7 @@ private:
             &callback = nullptr,
         bool verbose = false)
         : _goal_checker(goal_checker), _heuristic(heuristic),
-          _callback(callback) {
+          _terminal_value(terminal_value), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
       _domain = std::make_unique<PyRTDPBelDomain<Texecution>>(domain);
@@ -115,6 +117,23 @@ private:
                   e.what());
               throw;
             }
+          },
+          [this](const typename PyRTDPBelDomain<Texecution>::State &s) ->
+          typename PyRTDPBelDomain<Texecution>::Value {
+            if (_terminal_value) {
+              try {
+                typename GilControl<Texecution>::Acquire acquire;
+                py::object r = _terminal_value(s.pyobj());
+                return typename PyRTDPBelDomain<Texecution>::Value(r);
+              } catch (const std::exception &e) {
+                Logger::error(std::string("SKDECIDE exception when calling "
+                                          "terminal_value: ") +
+                              e.what());
+                throw;
+              }
+            }
+            // Default: cost=0 for terminal states
+            return typename PyRTDPBelDomain<Texecution>::Value(0.0, false);
           },
           discretization, time_budget, rollout_budget, max_depth, epsilon,
           discount,
@@ -367,6 +386,7 @@ private:
         _goal_checker;
     std::function<py::object(const py::object &, const py::object &)>
         _heuristic;
+    std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &, const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
@@ -410,6 +430,8 @@ public:
           &goal_checker,
       const std::function<py::object(const py::object &, const py::object &)>
           &heuristic,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
       std::size_t discretization = 10, std::size_t time_budget = 3600000,
       std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
       double epsilon = 0.001, double discount = 1.0, bool parallel = false,
@@ -418,9 +440,9 @@ public:
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
-        .instantiate(solver, domain, goal_checker, heuristic, discretization,
-                     time_budget, rollout_budget, max_depth, epsilon, discount,
-                     callback, verbose);
+        .instantiate(solver, domain, goal_checker, heuristic, terminal_value,
+                     discretization, time_budget, rollout_budget, max_depth,
+                     epsilon, discount, callback, verbose);
   }
 
   void close() { _implementation->close(); }

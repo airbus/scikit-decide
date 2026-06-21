@@ -61,6 +61,7 @@ public:
       GoalCheckerFunctor;
   typedef std::function<Value(Domain &, const State &, const std::size_t *)>
       HeuristicFunctor;
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const RTDPBelSolver &, Domain &,
                              const std::size_t *)>
       CallbackFunctor;
@@ -72,6 +73,8 @@ public:
    * @param goal_checker Functor returning true if a physical state is a goal
    * @param heuristic Functor returning the heuristic cost for a physical state
    *   (belief heuristic is h(b) = Σ_s b(s)*h(s))
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for non-goal terminal states). Defaults to cost=0.
    * @param discretization Discretization parameter D for belief hashing
    * @param time_budget Maximum solving time in milliseconds
    * @param rollout_budget Maximum number of trials
@@ -83,10 +86,12 @@ public:
    */
   RTDPBelSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
-      const HeuristicFunctor &heuristic, std::size_t discretization = 10,
-      std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
-      std::size_t max_depth = 1000, double epsilon = 0.001,
-      double discount = 1.0,
+      const HeuristicFunctor &heuristic,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, false); },
+      std::size_t discretization = 10, std::size_t time_budget = 3600000,
+      std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
+      double epsilon = 0.001, double discount = 1.0,
       const CallbackFunctor &callback =
           [](const RTDPBelSolver &, Domain &, const std::size_t *) {
             return false;
@@ -222,6 +227,7 @@ private:
   Domain &_domain;
   GoalCheckerFunctor _goal_checker;
   HeuristicFunctor _heuristic;
+  TerminalValueFunctor _terminal_value;
   std::size_t _discretization;
   std::size_t _time_budget;
   std::size_t _rollout_budget;

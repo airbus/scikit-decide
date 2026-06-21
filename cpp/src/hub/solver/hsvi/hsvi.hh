@@ -51,6 +51,7 @@ public:
 
   typedef std::unordered_map<std::size_t, double> Belief;
 
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const HSVISolver &, Domain &)> CallbackFunctor;
   typedef std::function<bool(Domain &, const State &)> GoalCheckerFunctor;
 
@@ -79,6 +80,8 @@ public:
    * @param belief_hash_resolution Discretization factor for belief hashing.
    *   Probabilities are multiplied by this value and rounded to integers
    *   for hash computation. Defaults to 1000.0.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for terminal states). Defaults to 0.0.
    * @param callback Functor called at each exploration iteration. Returns
    *   true to stop solving. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
@@ -89,6 +92,8 @@ public:
       bool use_closed_list = false, double depth_bound_eta = 0.1,
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
       double prob_epsilon = 1e-15, double belief_hash_resolution = 1000.0,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, false); },
       const CallbackFunctor &callback = [](const HSVISolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -177,8 +182,8 @@ protected:
     return _epsilon * std::pow(_discount, -static_cast<double>(depth));
   }
 
-  virtual double get_terminal_state_value(std::size_t /*si*/) const {
-    return 0.0;
+  virtual double get_terminal_state_value(std::size_t si) const {
+    return _get_value(_terminal_value(_states[si]));
   }
 
   virtual void compute_depth_bound() { _depth_bound = _max_sample_depth; }
@@ -202,7 +207,7 @@ protected:
 
   double evaluate_alpha(const Belief &b) const;
   double evaluate_sawtooth(const Belief &b) const;
-  double evaluate_sawtooth_corner(const Belief &b) const;
+  virtual double evaluate_sawtooth_corner(const Belief &b) const;
 
   virtual double evaluate_upper(const Belief &b) const {
     return evaluate_sawtooth(b);
@@ -238,6 +243,7 @@ protected:
   double _vi_convergence_factor;
   double _prob_epsilon;
   double _belief_hash_resolution;
+  TerminalValueFunctor _terminal_value;
   CallbackFunctor _callback;
   bool _verbose;
 
@@ -338,9 +344,13 @@ public:
    * @param callback Functor called at each exploration iteration. Returns
    *   true to stop solving. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for terminal states). Overrides goal/dead-end logic if provided.
+   *   Defaults to nullptr (use goal_checker + dead_end_cost logic).
    * @param dead_end_cost Cost assigned to non-goal terminal states (dead
    *   ends). If nullopt, automatically computed from transition costs and
-   *   depth/discount. Defaults to nullopt.
+   *   depth/discount. Ignored if terminal_value is provided. Defaults to
+   * nullopt.
    */
   GoalHSVISolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
@@ -349,6 +359,7 @@ public:
       bool use_closed_list = true, double depth_bound_eta = 0.1,
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
       double prob_epsilon = 1e-15, double belief_hash_resolution = 1000.0,
+      const typename Base::TerminalValueFunctor &terminal_value = nullptr,
       const CallbackFunctor &callback = [](const Base &,
                                            Domain &) { return false; },
       bool verbose = false, std::optional<double> dead_end_cost = std::nullopt);
@@ -375,11 +386,20 @@ protected:
     return this->evaluate_sawtooth(b);
   }
 
+  double evaluate_sawtooth_corner(const Belief &b) const override;
+
   double convergence_threshold(std::size_t /*depth*/) const override {
     return this->_depth_bound_eta * this->_epsilon;
   }
 
-  double get_terminal_state_value(std::size_t si) const override;
+  double get_terminal_state_value(std::size_t si) const override {
+    // If a custom terminal_value functor was provided, use it
+    if (_use_custom_terminal_value) {
+      return Base::get_terminal_state_value(si);
+    }
+    // Otherwise, use goal-based logic
+    return _is_goal_cache[si] ? 0.0 : _dead_end_cost;
+  }
 
   void initialize_alpha_bound() override;
   void initialize_point_bound() override;
@@ -392,6 +412,7 @@ private:
   std::optional<double> _user_dead_end_cost;
   std::vector<bool> _is_goal_cache;
   double _dead_end_cost = 0.0;
+  bool _use_custom_terminal_value = false;
 };
 
 } // namespace skdecide

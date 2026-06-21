@@ -29,13 +29,15 @@ SK_POMCP_CLASS::POMCPSolver(Domain &domain, double exploration_constant,
                             std::size_t time_budget,
                             std::size_t num_particles_belief_update,
                             double ess_threshold_ratio,
+                            const TerminalValueFunctor &terminal_value,
                             const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _exploration_constant(exploration_constant),
       _discount(discount), _num_simulations(num_simulations),
       _max_depth(max_depth), _epsilon(epsilon), _time_budget(time_budget),
       _num_particles_belief(num_particles_belief_update),
-      _ess_threshold_ratio(ess_threshold_ratio), _callback(callback),
-      _verbose(verbose), _rng(std::random_device{}()) {
+      _ess_threshold_ratio(ess_threshold_ratio),
+      _terminal_value(terminal_value), _callback(callback), _verbose(verbose),
+      _rng(std::random_device{}()) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm POMCP");
   }
@@ -174,7 +176,7 @@ double SK_POMCP_CLASS::simulate(
   if (depth >= _max_depth)
     return 0.0;
   if (_domain.is_terminal(s, thread_id))
-    return 0.0;
+    return _terminal_value(s).reward();
 
   bool is_leaf = false;
   _execution_policy.protect(
@@ -264,7 +266,7 @@ double SK_POMCP_CLASS::rollout(const State &s, std::size_t depth,
   if (depth >= _max_depth)
     return 0.0;
   if (_domain.is_terminal(s, thread_id))
-    return 0.0;
+    return _terminal_value(s).reward();
 
   auto actions = _domain.get_applicable_actions(s, thread_id);
   std::vector<Action> action_vec;
@@ -272,7 +274,7 @@ double SK_POMCP_CLASS::rollout(const State &s, std::size_t depth,
     action_vec.push_back(a);
   }
   if (action_vec.empty())
-    return 0.0;
+    return _terminal_value(s).reward();
 
   std::size_t action_idx;
   _execution_policy.protect(
@@ -294,7 +296,7 @@ double SK_POMCP_CLASS::rollout(const State &s, std::size_t depth,
     t_probs.push_back(ns_item.probability());
   }
   if (t_states.empty())
-    return 0.0;
+    return _terminal_value(s).reward();
 
   std::size_t ns_idx;
   _execution_policy.protect(
@@ -311,7 +313,7 @@ double SK_POMCP_CLASS::rollout(const State &s, std::size_t depth,
   bool terminal = _domain.is_terminal(next_state, thread_id);
 
   if (terminal)
-    return reward;
+    return reward + _terminal_value(next_state).reward();
 
   return reward + _discount * rollout(next_state, depth + 1, thread_id);
 }

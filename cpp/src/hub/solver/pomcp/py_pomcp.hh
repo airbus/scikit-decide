@@ -57,10 +57,12 @@ private:
         std::size_t time_budget = 0,
         std::size_t num_particles_belief_update = 500,
         double ess_threshold_ratio = 2.0,
+        const std::function<py::object(const py::object &)> &terminal_value =
+            nullptr,
         const std::function<py::bool_(const py::object &, const py::object &)>
             &callback = nullptr,
         bool verbose = false)
-        : _callback(callback) {
+        : _terminal_value(terminal_value), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
       _pydomain = std::make_unique<py::object>(domain);
@@ -71,6 +73,24 @@ private:
               *_domain, exploration_constant, discount, num_simulations,
               max_depth, epsilon, time_budget, num_particles_belief_update,
               ess_threshold_ratio,
+              [this](const typename PyPOMCPDomain<Texecution>::State &s) ->
+              typename PyPOMCPDomain<Texecution>::Value {
+                if (_terminal_value) {
+                  typename GilControl<Texecution>::Acquire acquire;
+                  try {
+                    py::object r = _terminal_value(s.pyobj());
+                    return typename PyPOMCPDomain<Texecution>::Value(r);
+                  } catch (const py::error_already_set *e) {
+                    Logger::error(std::string("SKDECIDE exception when calling "
+                                              "terminal_value: ") +
+                                  e->what());
+                    std::runtime_error err(e->what());
+                    delete e;
+                    throw err;
+                  }
+                }
+                return typename PyPOMCPDomain<Texecution>::Value(0.0, false);
+              },
               [this](
                   const POMCPSolver<PyPOMCPDomain<Texecution>, Texecution> &s,
                   PyPOMCPDomain<Texecution> &d) -> bool {
@@ -233,6 +253,7 @@ private:
     std::unique_ptr<PyPOMCPDomain<Texecution>> _domain;
     std::unique_ptr<POMCPSolver<PyPOMCPDomain<Texecution>, Texecution>> _solver;
 
+    std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &, const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
@@ -278,6 +299,8 @@ public:
       std::size_t time_budget = 0,
       std::size_t num_particles_belief_update = 500,
       double ess_threshold_ratio = 2.0, bool parallel = false,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
       const std::function<py::bool_(const py::object &, const py::object &)>
           &callback = nullptr,
       bool verbose = false) {
@@ -285,8 +308,8 @@ public:
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, exploration_constant, discount,
                      num_simulations, max_depth, epsilon, time_budget,
-                     num_particles_belief_update, ess_threshold_ratio, callback,
-                     verbose);
+                     num_particles_belief_update, ess_threshold_ratio,
+                     terminal_value, callback, verbose);
   }
 
   void close() { _implementation->close(); }

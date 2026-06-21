@@ -14,6 +14,7 @@ void init_pypomcp(py::module &m) {
   py_pomcp_solver
       .def(py::init<py::object &, py::object &, double, double, std::size_t,
                     std::size_t, double, std::size_t, std::size_t, double, bool,
+                    const std::function<py::object(const py::object &)> &,
                     const std::function<py::bool_(const py::object &,
                                                   const py::object &)> &,
                     bool>(),
@@ -24,7 +25,8 @@ void init_pypomcp(py::module &m) {
            py::arg("time_budget") = 0,
            py::arg("num_particles_belief_update") = 500,
            py::arg("ess_threshold_ratio") = 2.0, py::arg("parallel") = false,
-           py::arg("callback") = nullptr, py::arg("verbose") = false)
+           py::arg("terminal_value") = nullptr, py::arg("callback") = nullptr,
+           py::arg("verbose") = false)
       .def("close", &skdecide::PyPOMCPSolver::close)
       .def("clear", &skdecide::PyPOMCPSolver::clear)
       .def("solve", &skdecide::PyPOMCPSolver::solve, py::arg("distribution"))

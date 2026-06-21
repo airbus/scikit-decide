@@ -106,6 +106,9 @@ try:
             vi_convergence_factor: float = 0.01,
             belief_hash_resolution: float = 1000.0,
             parallel: bool = False,
+            terminal_value: Callable[
+                [D_reward.T_state], Value[D_reward.T_value]
+            ] = lambda s: Value(reward=0),
             callback: Callable[[HSVI], bool] = lambda slv: False,
             verbose: bool = False,
         ) -> None:
@@ -127,6 +130,8 @@ try:
                 Probabilities are multiplied by this value and rounded to
                 integers for hash computation. Defaults to 1000.0.
             parallel: Whether to use parallel C++ computation. Defaults to False.
+            terminal_value: Optional function (state) -> value for terminal
+                states. Defaults to 0.0.
             callback: Function called at each iteration. Return True to stop.
                 Defaults to never stop.
             verbose: Whether to log progress messages. Defaults to False.
@@ -148,6 +153,7 @@ try:
                 vi_convergence_factor=vi_convergence_factor,
                 belief_hash_resolution=belief_hash_resolution,
                 parallel=parallel,
+                terminal_value=terminal_value,
                 callback=callback,
                 verbose=verbose,
             )
@@ -338,6 +344,9 @@ try:
             vi_convergence_factor: float = 0.01,
             belief_hash_resolution: float = 1000.0,
             parallel: bool = False,
+            terminal_value: Callable[
+                [D_cost.T_state], Value[D_cost.T_value]
+            ] = lambda s: Value(cost=0),
             callback: Callable[[GoalHSVI], bool] = lambda slv: False,
             verbose: bool = False,
             dead_end_cost: Optional[float] = None,
@@ -365,6 +374,9 @@ try:
                 Probabilities are multiplied by this value and rounded to
                 integers for hash computation. Defaults to 1000.0.
             parallel: Whether to use parallel C++ computation. Defaults to False.
+            terminal_value: Optional function (state) -> value for terminal
+                states. Overrides goal_checker + dead_end_cost logic if provided.
+                Defaults to None (use goal_checker + dead_end_cost logic).
             callback: Function called at each iteration. Return True to stop.
                 Defaults to never stop.
             verbose: Whether to log progress messages. Defaults to False.
@@ -372,6 +384,7 @@ try:
                 If None (default), automatically computed as
                 max_transition_cost * max_sample_depth (undiscounted) or
                 max_transition_cost / (1 - discount) (discounted).
+                Ignored if terminal_value is provided.
             """
             Solver.__init__(self, domain_factory=domain_factory)
             ParallelSolver.__init__(self, parallel=parallel)
@@ -392,6 +405,7 @@ try:
                 vi_convergence_factor=vi_convergence_factor,
                 belief_hash_resolution=belief_hash_resolution,
                 parallel=parallel,
+                terminal_value=terminal_value,
                 callback=callback,
                 verbose=verbose,
                 dead_end_cost=dead_end_cost,

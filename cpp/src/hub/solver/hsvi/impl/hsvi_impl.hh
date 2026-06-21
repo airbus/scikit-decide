@@ -26,21 +26,22 @@ namespace skdecide {
 // =============================================================================
 
 SK_HSVI_TEMPLATE_DECL
-SK_HSVI_CLASS::HSVISolver(Domain &domain, double epsilon, double discount,
-                          std::size_t time_budget, std::size_t max_sample_depth,
-                          bool use_closed_list, double depth_bound_eta,
-                          std::size_t max_vi_iterations,
-                          double vi_convergence_factor, double prob_epsilon,
-                          double belief_hash_resolution,
-                          const CallbackFunctor &callback, bool verbose)
+SK_HSVI_CLASS::HSVISolver(
+    typename SK_HSVI_CLASS::Domain &domain, double epsilon, double discount,
+    std::size_t time_budget, std::size_t max_sample_depth, bool use_closed_list,
+    double depth_bound_eta, std::size_t max_vi_iterations,
+    double vi_convergence_factor, double prob_epsilon,
+    double belief_hash_resolution,
+    const typename SK_HSVI_CLASS::TerminalValueFunctor &terminal_value,
+    const typename SK_HSVI_CLASS::CallbackFunctor &callback, bool verbose)
     : _domain(domain), _epsilon(epsilon), _discount(discount),
       _time_budget(time_budget), _max_sample_depth(max_sample_depth),
       _use_closed_list(use_closed_list), _depth_bound_eta(depth_bound_eta),
       _max_vi_iterations(max_vi_iterations),
       _vi_convergence_factor(vi_convergence_factor),
       _prob_epsilon(prob_epsilon),
-      _belief_hash_resolution(belief_hash_resolution), _callback(callback),
-      _verbose(verbose) {}
+      _belief_hash_resolution(belief_hash_resolution),
+      _terminal_value(terminal_value), _callback(callback), _verbose(verbose) {}
 
 SK_HSVI_TEMPLATE_DECL
 void SK_HSVI_CLASS::clear() {
@@ -675,11 +676,13 @@ double SK_HSVI_CLASS::evaluate_alpha(const Belief &b) const {
 
 SK_HSVI_TEMPLATE_DECL
 double SK_HSVI_CLASS::evaluate_sawtooth_corner(const Belief &b) const {
-  double v = 0.0;
+  // For reward maximization lower bound: take maximum over belief support
+  // (optimistic = high reward)
+  double v = _worst_init();
   for (const auto &p : b) {
     auto it = _state_hash_to_idx.find(p.first);
     if (it != _state_hash_to_idx.end()) {
-      v += p.second * _mdp_values[it->second];
+      v = _better(v, _mdp_values[it->second]);
     }
   }
   return v;
@@ -982,13 +985,16 @@ SK_GOAL_HSVI_CLASS::GoalHSVISolver(
     double discount, std::size_t time_budget, std::size_t max_sample_depth,
     bool use_closed_list, double depth_bound_eta, std::size_t max_vi_iterations,
     double vi_convergence_factor, double prob_epsilon,
-    double belief_hash_resolution, const CallbackFunctor &callback,
-    bool verbose, std::optional<double> dead_end_cost)
+    double belief_hash_resolution,
+    const typename Base::TerminalValueFunctor &terminal_value,
+    const CallbackFunctor &callback, bool verbose,
+    std::optional<double> dead_end_cost)
     : Base(domain, epsilon, discount, time_budget, max_sample_depth,
            use_closed_list, depth_bound_eta, max_vi_iterations,
            vi_convergence_factor, prob_epsilon, belief_hash_resolution,
-           callback, verbose),
-      _goal_checker(goal_checker), _user_dead_end_cost(dead_end_cost) {}
+           terminal_value, callback, verbose),
+      _goal_checker(goal_checker), _user_dead_end_cost(dead_end_cost),
+      _use_custom_terminal_value(terminal_value != nullptr) {}
 
 SK_GOAL_HSVI_TEMPLATE_DECL
 void SK_GOAL_HSVI_CLASS::clear() {
@@ -1035,8 +1041,17 @@ void SK_GOAL_HSVI_CLASS::on_model_cached() {
 }
 
 SK_GOAL_HSVI_TEMPLATE_DECL
-double SK_GOAL_HSVI_CLASS::get_terminal_state_value(std::size_t si) const {
-  return _is_goal_cache[si] ? 0.0 : _dead_end_cost;
+double SK_GOAL_HSVI_CLASS::evaluate_sawtooth_corner(const Belief &b) const {
+  // For cost minimization lower bound: take minimum over belief support
+  // (optimistic = low cost)
+  double v = this->_best_init();
+  for (const auto &p : b) {
+    auto it = this->_state_hash_to_idx.find(p.first);
+    if (it != this->_state_hash_to_idx.end()) {
+      v = this->_better(v, this->_mdp_values[it->second]);
+    }
+  }
+  return v;
 }
 
 SK_GOAL_HSVI_TEMPLATE_DECL
