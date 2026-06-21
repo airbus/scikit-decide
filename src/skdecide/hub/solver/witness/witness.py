@@ -83,6 +83,7 @@ try:
             max_iterations: int = 100,
             lp_infinity: float = 1e20,
             lp_tolerance: float = 1e-10,
+            terminal_value: Callable[[object], Value] = lambda s: Value(reward=0),
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[Witness], bool] = lambda slv: False,
@@ -102,6 +103,9 @@ try:
                 HiGHS. Defaults to 1e20.
             lp_tolerance: Numerical tolerance for LP feasibility checks
                 and alpha-vector comparisons. Defaults to 1e-10.
+            terminal_value: Function (state) -> Value returning the
+                value for terminal non-goal states.
+                Defaults to lambda s: Value(reward=0).
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy.
                 Defaults to None.
@@ -126,6 +130,7 @@ try:
                 max_iterations=max_iterations,
                 lp_infinity=lp_infinity,
                 lp_tolerance=lp_tolerance,
+                terminal_value=lambda s: terminal_value(s),
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,

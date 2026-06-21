@@ -192,10 +192,16 @@ typename SK_RTDP_BEL_CLASS::Belief SK_RTDP_BEL_CLASS::compute_posterior_belief(
     const State &s = it->second;
     auto next_dist =
         _domain.get_next_state_distribution(s, a, thread_id).get_values();
-    for (auto ns : next_dist) {
-      std::size_t ns_idx =
-          const_cast<RTDPBelSolver *>(this)->get_state_index(ns.state());
-      b_a[ns_idx] += p.second * ns.probability();
+    if (next_dist.empty()) {
+      // Action has no transitions: state stays in place (self-loop)
+      // This is a reasonable assumption for belief update
+      b_a[p.first] += p.second;
+    } else {
+      for (auto ns : next_dist) {
+        std::size_t ns_idx =
+            const_cast<RTDPBelSolver *>(this)->get_state_index(ns.state());
+        b_a[ns_idx] += p.second * ns.probability();
+      }
     }
   }
 
@@ -368,12 +374,17 @@ SK_RTDP_BEL_CLASS::greedy_action(BeliefNode *bn, const std::size_t *thread_id) {
           auto next_dist =
               _domain.get_next_state_distribution(s, a->action, thread_id)
                   .get_values();
-          for (auto ns : next_dist) {
-            immediate_cost +=
-                bp.second * ns.probability() *
-                _domain
-                    .get_transition_value(s, a->action, ns.state(), thread_id)
-                    .cost();
+          if (next_dist.empty()) {
+            // Action has no transitions: treat as terminal state
+            immediate_cost += bp.second * _terminal_value(s).cost();
+          } else {
+            for (auto ns : next_dist) {
+              immediate_cost +=
+                  bp.second * ns.probability() *
+                  _domain
+                      .get_transition_value(s, a->action, ns.state(), thread_id)
+                      .cost();
+            }
           }
         }
       }

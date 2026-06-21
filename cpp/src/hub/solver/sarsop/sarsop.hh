@@ -47,6 +47,7 @@ public:
 
   typedef std::unordered_map<std::size_t, double> Belief;
 
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const SARSOPSolver &, Domain &)> CallbackFunctor;
 
   struct AlphaVector {
@@ -87,6 +88,8 @@ public:
    *   pruning passes. Set to 0 to disable. Defaults to 10.
    * @param logging_interval Number of iterations between verbose log
    *   messages. Set to 0 to disable. Defaults to 50.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for non-goal terminal states). Defaults to reward=0.
    * @param callback Functor called at the end of each iteration. Returns
    *   true to stop solving. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
@@ -98,6 +101,8 @@ public:
       double vi_convergence_factor = 0.01, std::size_t max_sample_depth = 100,
       double prob_epsilon = 1e-15, double ub_improvement_epsilon = 1e-10,
       std::size_t pruning_interval = 10, std::size_t logging_interval = 50,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, true); },
       const CallbackFunctor &callback = [](const SARSOPSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -204,6 +209,7 @@ private:
   double _ub_improvement_epsilon;
   std::size_t _pruning_interval;
   std::size_t _logging_interval;
+  TerminalValueFunctor _terminal_value;
   CallbackFunctor _callback;
   bool _verbose;
   ExecutionPolicy _execution_policy;

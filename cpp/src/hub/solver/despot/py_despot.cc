@@ -19,7 +19,7 @@ void init_pydespot(py::module &m) {
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
-                    bool,
+                    const std::function<py::object(const py::object &)> &, bool,
                     const std::function<py::bool_(const py::object &,
                                                   const py::object &)> &,
                     bool>(),
@@ -32,8 +32,8 @@ void init_pydespot(py::module &m) {
            py::arg("ess_threshold_ratio") = 2.0,
            py::arg("default_policy") = nullptr,
            py::arg("upper_bound_heuristic") = nullptr,
-           py::arg("parallel") = false, py::arg("callback") = nullptr,
-           py::arg("verbose") = false)
+           py::arg("terminal_value") = nullptr, py::arg("parallel") = false,
+           py::arg("callback") = nullptr, py::arg("verbose") = false)
       .def("close", &skdecide::PyDespotSolver::close)
       .def("clear", &skdecide::PyDespotSolver::clear)
       .def("solve", &skdecide::PyDespotSolver::solve, py::arg("distribution"))

@@ -66,18 +66,43 @@ private:
         double vi_convergence_factor = 0.01, std::size_t max_sample_depth = 100,
         double prob_epsilon = 1e-15, double ub_improvement_epsilon = 1e-10,
         std::size_t pruning_interval = 10, std::size_t logging_interval = 50,
+        const std::function<py::object(const py::object &)> &terminal_value =
+            nullptr,
         const std::function<py::bool_(const py::object &)> &callback = nullptr,
         bool verbose = false)
-        : _callback(callback) {
+        : _terminal_value(terminal_value), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
       _domain = std::make_unique<PySARSOPDomain<Texecution>>(domain);
+
+      // Wrap Python terminal_value functor
+      typename SARSOPSolver<PySARSOPDomain<Texecution>,
+                            Texecution>::TerminalValueFunctor
+          terminal_value_cpp =
+              [this](const typename PySARSOPDomain<Texecution>::State &s) ->
+          typename PySARSOPDomain<Texecution>::Value {
+            if (_terminal_value) {
+              try {
+                typename GilControl<Texecution>::Acquire acquire;
+                py::object r = _terminal_value(s.pyobj());
+                return typename PySARSOPDomain<Texecution>::Value(r);
+              } catch (const std::exception &e) {
+                Logger::error(std::string("SKDECIDE exception when calling "
+                                          "terminal_value: ") +
+                              e.what());
+                throw;
+              }
+            }
+            // Default: reward=0 for terminal states
+            return typename PySARSOPDomain<Texecution>::Value(0.0, true);
+          };
+
       _solver = std::make_unique<
           SARSOPSolver<PySARSOPDomain<Texecution>, Texecution>>(
           *_domain, epsilon, discount, time_budget, max_beliefs, pruning_delta,
           max_vi_iterations, vi_convergence_factor, max_sample_depth,
           prob_epsilon, ub_improvement_epsilon, pruning_interval,
-          logging_interval,
+          logging_interval, terminal_value_cpp,
           [this](const SARSOPSolver<PySARSOPDomain<Texecution>, Texecution> &s,
                  PySARSOPDomain<Texecution> &d) -> bool {
             if (_callback) {
@@ -273,6 +298,7 @@ private:
     std::unique_ptr<SARSOPSolver<PySARSOPDomain<Texecution>, Texecution>>
         _solver;
 
+    std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
@@ -317,7 +343,10 @@ public:
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
       std::size_t max_sample_depth = 100, double prob_epsilon = 1e-15,
       double ub_improvement_epsilon = 1e-10, std::size_t pruning_interval = 10,
-      std::size_t logging_interval = 50, bool parallel = false,
+      std::size_t logging_interval = 50,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
+      bool parallel = false,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
@@ -326,7 +355,7 @@ public:
                      max_beliefs, pruning_delta, max_vi_iterations,
                      vi_convergence_factor, max_sample_depth, prob_epsilon,
                      ub_improvement_epsilon, pruning_interval, logging_interval,
-                     callback, verbose);
+                     terminal_value, callback, verbose);
   }
 
   void close() { _implementation->close(); }

@@ -88,6 +88,7 @@ try:
             ub_improvement_epsilon: float = 1e-10,
             pruning_interval: int = 10,
             logging_interval: int = 50,
+            terminal_value: Callable[[object], Value] = lambda s: Value(reward=0),
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[SARSOP], bool] = lambda slv: False,
@@ -120,6 +121,9 @@ try:
                 pruning passes. Set to 0 to disable. Defaults to 10.
             logging_interval: Number of iterations between verbose log
                 messages. Set to 0 to disable. Defaults to 50.
+            terminal_value: Function (state) -> Value returning the
+                value for terminal non-goal states.
+                Defaults to lambda s: Value(reward=0).
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy. Defaults to None.
             callback: Function called at end of each iteration, taking the
@@ -150,6 +154,7 @@ try:
                 ub_improvement_epsilon=ub_improvement_epsilon,
                 pruning_interval=pruning_interval,
                 logging_interval=logging_interval,
+                terminal_value=lambda s: terminal_value(s),
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,

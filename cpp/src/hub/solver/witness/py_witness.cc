@@ -11,14 +11,15 @@ void init_pywitness(py::module &m) {
   py::class_<skdecide::PyWitnessSolver> py_witness_solver(m, "_WitnessSolver_");
   py_witness_solver
       .def(py::init<py::object &, py::object &, double, double, std::size_t,
-                    double, double, bool,
+                    double, double,
+                    const std::function<py::object(const py::object &)> &, bool,
                     const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("epsilon") = 0.001,
            py::arg("discount") = 0.95, py::arg("max_iterations") = 100,
            py::arg("lp_infinity") = 1e20, py::arg("lp_tolerance") = 1e-10,
-           py::arg("parallel") = false, py::arg("callback") = nullptr,
-           py::arg("verbose") = false)
+           py::arg("terminal_value") = nullptr, py::arg("parallel") = false,
+           py::arg("callback") = nullptr, py::arg("verbose") = false)
       .def("close", &skdecide::PyWitnessSolver::close)
       .def("clear", &skdecide::PyWitnessSolver::clear)
       .def("solve", &skdecide::PyWitnessSolver::solve, py::arg("distribution"))

@@ -104,6 +104,11 @@ void SK_HSVI_CLASS::enumerate_states(const Belief &b0) {
             }
           });
 
+          // If action has no transitions, skip enumeration
+          // (terminal states will be handled separately)
+          if (next_dist.empty())
+            return;
+
           for (auto ns_item : next_dist) {
             _execution_policy.protect([this, &ns_item, &frontier, &visited] {
               std::size_t nsh = typename State::Hash()(ns_item.state());
@@ -169,6 +174,12 @@ void SK_HSVI_CLASS::pre_cache_model() {
         for (std::size_t ai = 0; ai < na; ++ai) {
           auto next_dist =
               _domain.get_next_state_distribution(s, _actions[ai]).get_values();
+
+          // If action has no transitions, use terminal value
+          if (next_dist.empty()) {
+            _values[si][ai] = _get_value(_terminal_value(s));
+            continue;
+          }
 
           double weighted_value = 0.0;
 

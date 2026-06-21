@@ -50,6 +50,7 @@ public:
       DefaultPolicyFunctor;
   typedef std::function<Value(Domain &, const State &, const std::size_t *)>
       UpperBoundFunctor;
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const DespotSolver &, Domain &,
                              const std::size_t *)>
       CallbackFunctor;
@@ -124,6 +125,8 @@ public:
    * @param upper_bound_heuristic Optional functor (domain, state, thread_id)
    *   -> Value providing an upper bound heuristic per state. If nullptr,
    *   R_max/(1-gamma) is used. Defaults to nullptr.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for non-goal terminal states). Defaults to reward=0.
    * @param callback Functor called at the end of each iteration. Returns true
    *   to stop planning. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
@@ -138,6 +141,8 @@ public:
       double ess_threshold_ratio = 2.0,
       const DefaultPolicyFunctor &default_policy = nullptr,
       const UpperBoundFunctor &upper_bound_heuristic = nullptr,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, true); },
       const CallbackFunctor &callback =
           [](const DespotSolver &, Domain &, const std::size_t *) {
             return false;
@@ -231,6 +236,7 @@ private:
   double _ess_threshold_ratio;
   DefaultPolicyFunctor _default_policy;
   UpperBoundFunctor _upper_bound_heuristic;
+  TerminalValueFunctor _terminal_value;
   CallbackFunctor _callback;
   bool _verbose;
 

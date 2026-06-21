@@ -94,6 +94,7 @@ try:
             ess_threshold_ratio: float = 2.0,
             default_policy: Optional[Callable[[Domain, object], Value]] = None,
             upper_bound_heuristic: Optional[Callable[[Domain, object], Value]] = None,
+            terminal_value: Callable[[object], Value] = lambda s: Value(reward=0),
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[DESPOT, Optional[int]], bool] = lambda slv,
@@ -131,6 +132,9 @@ try:
             upper_bound_heuristic: Optional function (domain, state) -> Value
                 providing an upper bound heuristic. If None, R_max/(1-gamma)
                 is used. Defaults to None.
+            terminal_value: Function (state) -> Value returning the
+                value for terminal non-goal states.
+                Defaults to lambda s: Value(reward=0).
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy.
                 Defaults to None.
@@ -162,6 +166,7 @@ try:
                 ess_threshold_ratio=ess_threshold_ratio,
                 default_policy=default_policy,
                 upper_bound_heuristic=upper_bound_heuristic,
+                terminal_value=lambda s: terminal_value(s),
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,

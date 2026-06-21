@@ -35,7 +35,8 @@ SK_SARSOP_CLASS::SARSOPSolver(
     std::size_t max_vi_iterations, double vi_convergence_factor,
     std::size_t max_sample_depth, double prob_epsilon,
     double ub_improvement_epsilon, std::size_t pruning_interval,
-    std::size_t logging_interval, const CallbackFunctor &callback, bool verbose)
+    std::size_t logging_interval, const TerminalValueFunctor &terminal_value,
+    const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _epsilon(epsilon), _discount(discount),
       _time_budget(time_budget), _max_beliefs(max_beliefs),
       _pruning_delta(pruning_delta), _max_vi_iterations(max_vi_iterations),
@@ -43,8 +44,8 @@ SK_SARSOP_CLASS::SARSOPSolver(
       _max_sample_depth(max_sample_depth), _prob_epsilon(prob_epsilon),
       _ub_improvement_epsilon(ub_improvement_epsilon),
       _pruning_interval(pruning_interval), _logging_interval(logging_interval),
-      _callback(callback), _verbose(verbose), _next_alpha_id(0), _nb_beliefs(0),
-      _has_solution(false) {
+      _terminal_value(terminal_value), _callback(callback), _verbose(verbose),
+      _next_alpha_id(0), _nb_beliefs(0), _has_solution(false) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm SARSOP");
   }
@@ -208,12 +209,23 @@ void SK_SARSOP_CLASS::pre_cache_model() {
       ExecutionPolicy::policy, state_indices.begin(), state_indices.end(),
       [this, na, &action_obs_sets](std::size_t si) {
         const State &s = _states[si];
-        if (_domain.is_terminal(s))
+        if (_domain.is_terminal(s)) {
+          // Terminal state: set reward to terminal value for all actions
+          for (std::size_t ai = 0; ai < na; ++ai) {
+            _rewards[si][ai] = _terminal_value(s).reward();
+          }
           return;
+        }
 
         for (std::size_t ai = 0; ai < na; ++ai) {
           auto next_dist =
               _domain.get_next_state_distribution(s, _actions[ai]).get_values();
+
+          if (next_dist.empty()) {
+            // Action has no transitions: use terminal value
+            _rewards[si][ai] = _terminal_value(s).reward();
+            continue;
+          }
 
           double weighted_reward = 0.0;
           for (auto ns_item : next_dist) {

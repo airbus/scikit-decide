@@ -35,7 +35,8 @@ SK_DESPOT_CLASS::DespotSolver(
     std::size_t max_rollout_depth, std::size_t num_particles_belief_update,
     double ess_threshold_ratio, const DefaultPolicyFunctor &default_policy,
     const UpperBoundFunctor &upper_bound_heuristic,
-    const CallbackFunctor &callback, bool verbose)
+    const TerminalValueFunctor &terminal_value, const CallbackFunctor &callback,
+    bool verbose)
     : _domain(domain), _num_scenarios(num_scenarios), _max_depth(max_depth),
       _regularization_constant(regularization_constant),
       _gap_reduction_rate(gap_reduction_rate), _target_gap(target_gap),
@@ -44,8 +45,9 @@ SK_DESPOT_CLASS::DespotSolver(
       _num_particles_belief(num_particles_belief_update),
       _ess_threshold_ratio(ess_threshold_ratio),
       _default_policy(default_policy),
-      _upper_bound_heuristic(upper_bound_heuristic), _callback(callback),
-      _verbose(verbose), _rng(std::random_device{}()) {
+      _upper_bound_heuristic(upper_bound_heuristic),
+      _terminal_value(terminal_value), _callback(callback), _verbose(verbose),
+      _rng(std::random_device{}()) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm DESPOT");
   }
@@ -508,8 +510,11 @@ double SK_DESPOT_CLASS::default_rollout(const State &s, int start_depth,
   double gamma_power = 1.0;
 
   for (std::size_t d = start_depth; d < _max_rollout_depth; ++d) {
-    if (_domain.is_terminal(current, thread_id))
+    if (_domain.is_terminal(current, thread_id)) {
+      // Add terminal value for terminal states
+      total_reward += gamma_power * _terminal_value(current).reward();
       break;
+    }
 
     auto actions =
         _domain.get_applicable_actions(current, thread_id).get_elements();
@@ -519,8 +524,11 @@ double SK_DESPOT_CLASS::default_rollout(const State &s, int start_depth,
     for (auto a : actions) {
       action_vec.push_back(a);
     }
-    if (action_vec.empty())
+    if (action_vec.empty()) {
+      // State has no actions but is not marked terminal: treat as terminal
+      total_reward += gamma_power * _terminal_value(current).reward();
       break;
+    }
 
     std::uniform_int_distribution<std::size_t> action_dist(
         0, action_vec.size() - 1);
@@ -538,8 +546,12 @@ double SK_DESPOT_CLASS::default_rollout(const State &s, int start_depth,
       probs.push_back(ns_item.probability());
     }
 
-    if (states.empty())
+    if (states.empty()) {
+      // Action has no transitions but state is not marked terminal: treat as
+      // terminal
+      total_reward += gamma_power * _terminal_value(current).reward();
       break;
+    }
 
     std::discrete_distribution<std::size_t> dist(probs.begin(), probs.end());
     std::size_t idx = dist(local_rng);
@@ -566,6 +578,11 @@ double SK_DESPOT_CLASS::upper_bound_state(const State &s,
     return _upper_bound_heuristic(_domain, s, thread_id).reward();
   }
 
+  // Check if terminal state
+  if (_domain.is_terminal(s, thread_id)) {
+    return _terminal_value(s).reward();
+  }
+
   // Uninformed upper bound: R_max / (1 - gamma)
   // Estimate R_max from a few sampled transitions
   auto actions = _domain.get_applicable_actions(s, thread_id).get_elements();
@@ -574,6 +591,11 @@ double SK_DESPOT_CLASS::upper_bound_state(const State &s,
   for (auto action : actions) {
     auto next_dist =
         _domain.get_next_state_distribution(s, action, thread_id).get_values();
+    if (next_dist.empty()) {
+      // Action has no transitions: use terminal value
+      max_reward = std::max(max_reward, std::abs(_terminal_value(s).reward()));
+      continue;
+    }
     for (auto ns_item : next_dist) {
       double r =
           _domain.get_transition_value(s, action, ns_item.state(), thread_id)

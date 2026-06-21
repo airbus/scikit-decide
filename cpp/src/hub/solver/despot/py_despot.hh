@@ -63,12 +63,14 @@ private:
             &default_policy = nullptr,
         const std::function<py::object(const py::object &, const py::object &)>
             &upper_bound_heuristic = nullptr,
+        const std::function<py::object(const py::object &)> &terminal_value =
+            nullptr,
         const std::function<py::bool_(const py::object &, const py::object &)>
             &callback = nullptr,
         bool verbose = false)
         : _default_policy_py(default_policy),
           _upper_bound_heuristic_py(upper_bound_heuristic),
-          _callback(callback) {
+          _terminal_value(terminal_value), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
       _domain = std::make_unique<PyDespotDomain<Texecution>>(domain);
@@ -111,12 +113,34 @@ private:
             };
       }
 
+      // Wrap Python terminal_value functor
+      typename DespotSolver<PyDespotDomain<Texecution>,
+                            Texecution>::TerminalValueFunctor
+          terminal_value_cpp =
+              [this](const typename PyDespotDomain<Texecution>::State &s) ->
+          typename PyDespotDomain<Texecution>::Value {
+            if (_terminal_value) {
+              try {
+                typename GilControl<Texecution>::Acquire acquire;
+                py::object r = _terminal_value(s.pyobj());
+                return typename PyDespotDomain<Texecution>::Value(r);
+              } catch (const std::exception &e) {
+                Logger::error(std::string("SKDECIDE exception when calling "
+                                          "terminal_value: ") +
+                              e.what());
+                throw;
+              }
+            }
+            // Default: reward=0 for terminal states
+            return typename PyDespotDomain<Texecution>::Value(0.0, true);
+          };
+
       _solver = std::make_unique<
           DespotSolver<PyDespotDomain<Texecution>, Texecution>>(
           *_domain, num_scenarios, max_depth, regularization_constant,
           gap_reduction_rate, target_gap, time_budget, discount,
           max_rollout_depth, num_particles_belief_update, ess_threshold_ratio,
-          default_policy_cpp, upper_bound_cpp,
+          default_policy_cpp, upper_bound_cpp, terminal_value_cpp,
           [this](const DespotSolver<PyDespotDomain<Texecution>, Texecution> &s,
                  PyDespotDomain<Texecution> &d,
                  const std::size_t *thread_id) -> bool {
@@ -320,6 +344,7 @@ private:
         _default_policy_py;
     std::function<py::object(const py::object &, const py::object &)>
         _upper_bound_heuristic_py;
+    std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &, const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
@@ -369,6 +394,8 @@ public:
           &default_policy = nullptr,
       const std::function<py::object(const py::object &, const py::object &)>
           &upper_bound_heuristic = nullptr,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
       bool parallel = false,
       const std::function<py::bool_(const py::object &, const py::object &)>
           &callback = nullptr,
@@ -379,7 +406,8 @@ public:
                      regularization_constant, gap_reduction_rate, target_gap,
                      time_budget, discount, max_rollout_depth,
                      num_particles_belief_update, ess_threshold_ratio,
-                     default_policy, upper_bound_heuristic, callback, verbose);
+                     default_policy, upper_bound_heuristic, terminal_value,
+                     callback, verbose);
   }
 
   void close() { _implementation->close(); }

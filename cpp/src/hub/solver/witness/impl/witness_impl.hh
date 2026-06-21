@@ -31,11 +31,13 @@ SK_WITNESS_TEMPLATE_DECL
 SK_WITNESS_CLASS::WitnessSolver(Domain &domain, double epsilon, double discount,
                                 std::size_t max_iterations, double lp_infinity,
                                 double lp_tolerance,
+                                const TerminalValueFunctor &terminal_value,
                                 const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _epsilon(epsilon), _discount(discount),
       _max_iterations(max_iterations), _lp_infinity(lp_infinity),
-      _lp_tolerance(lp_tolerance), _callback(callback), _verbose(verbose),
-      _has_solution(false), _nb_iterations(0), _solving_time(0) {
+      _lp_tolerance(lp_tolerance), _terminal_value(terminal_value),
+      _callback(callback), _verbose(verbose), _has_solution(false),
+      _nb_iterations(0), _solving_time(0) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm Witness");
   }
@@ -178,12 +180,23 @@ void SK_WITNESS_CLASS::pre_cache_model() {
 
   for (std::size_t si = 0; si < ns; ++si) {
     const State &s = _states[si];
-    if (_domain.is_terminal(s))
+    if (_domain.is_terminal(s)) {
+      // Terminal state: set reward to terminal value for all actions
+      for (std::size_t ai = 0; ai < na; ++ai) {
+        _rewards[si][ai] = _terminal_value(s).reward();
+      }
       continue;
+    }
 
     for (std::size_t ai = 0; ai < na; ++ai) {
       auto next_dist =
           _domain.get_next_state_distribution(s, _actions[ai]).get_values();
+
+      if (next_dist.empty()) {
+        // Action has no transitions: use terminal value
+        _rewards[si][ai] = _terminal_value(s).reward();
+        continue;
+      }
 
       double weighted_reward = 0.0;
       for (auto ns_item : next_dist) {
