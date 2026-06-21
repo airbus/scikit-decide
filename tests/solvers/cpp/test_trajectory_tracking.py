@@ -14,8 +14,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import NamedTuple
 
-import pytest
-
 from skdecide import (
     DeterministicPlanningDomain,
     GoalPOMDPDomain,
@@ -181,7 +179,6 @@ class GridPOMDP(D_POMDP):
 class TestMCTSTrajectory:
     """Test MCTS get_last_trajectory()."""
 
-    @pytest.mark.skip(reason="MCTS trajectory tracking not implemented in C++ yet")
     def test_mcts_trajectory_changes(self):
         """MCTS trajectories should change between rollouts."""
         from skdecide.hub.solver.mcts import MCTS

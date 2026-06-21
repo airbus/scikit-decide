@@ -144,5 +144,6 @@ void init_pymcts(py::module &m) {
            &skdecide::PyMCTSSolver::get_residual_moving_average)
       .def("get_solving_time", &skdecide::PyMCTSSolver::get_solving_time)
       .def("get_policy", &skdecide::PyMCTSSolver::get_policy)
-      .def("get_action_prefix", &skdecide::PyMCTSSolver::get_action_prefix);
+      .def("get_action_prefix", &skdecide::PyMCTSSolver::get_action_prefix)
+      .def("get_last_trajectory", &skdecide::PyMCTSSolver::get_last_trajectory);
 }

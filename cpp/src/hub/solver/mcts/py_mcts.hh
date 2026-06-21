@@ -88,6 +88,7 @@ private:
     virtual py::int_ get_solving_time() = 0;
     virtual py::dict get_policy() = 0;
     virtual py::list get_action_prefix() = 0;
+    virtual py::list get_last_trajectory() = 0;
   };
 
   template <typename Texecution,
@@ -357,6 +358,15 @@ private:
       const auto &ll = _solver->action_prefix();
       for (const auto &e : ll) {
         l.append(e);
+      }
+      return l;
+    }
+
+    virtual py::list get_last_trajectory() {
+      py::list l;
+      const auto &trajectory = _solver->get_last_trajectory();
+      for (const auto &sa : trajectory) {
+        l.append(py::make_tuple(sa.first.pyobj(), sa.second.pyobj()));
       }
       return l;
     }
@@ -774,6 +784,10 @@ public:
   py::dict get_policy() { return _implementation->get_policy(); }
 
   py::list get_action_prefix() { return _implementation->get_action_prefix(); }
+
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
+  }
 };
 
 } // namespace skdecide

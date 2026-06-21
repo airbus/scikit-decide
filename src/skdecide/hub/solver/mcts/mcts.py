@@ -465,6 +465,37 @@ try:
             """
             return self._solver.get_action_prefix()
 
+        def get_last_trajectory(
+            self,
+        ) -> list[
+            tuple[D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]]]
+        ]:
+            """Get the ordered list of (state, action) pairs visited during the
+            last MCTS rollout.
+
+            Returns the trajectory (path) explored during the most recent rollout
+            from the root state. Each element is a tuple of (state, action) where
+            the action is the action selected in that state during the tree policy
+            phase and rollout. The trajectory begins with the root state and ends
+            at the deepest state reached before backpropagation.
+
+            The last element's action is the action selected in the final state (or
+            a default-constructed action if the final state is terminal).
+
+            This is useful for:
+            - Replaying trajectories from the initial state
+            - Debugging algorithm behavior (which states and actions were explored?)
+            - Custom heuristic updates based on trajectory
+            - Visualizing/logging the search process
+
+            Returns an empty list if solve() has not been called yet.
+
+            # Returns
+            list[tuple[D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]]]]:
+                List of (state, action) pairs visited during the last rollout.
+            """
+            return self._solver.get_last_trajectory()
+
     class HMCTS(MCTS):
         """MCTS solver to use with the multi-agent hierarchical `MAHD` solver
         as the multi-agent compound solver"""
