@@ -373,7 +373,7 @@ protected:
     return std::numeric_limits<double>::infinity();
   }
   double _worst_init() const override {
-    return -std::numeric_limits<double>::infinity();
+    return 0.0; // Best possible cost in goal problems is 0 (already at goal)
   }
   bool _is_better(double a, double b) const override { return a < b; }
   double _get_value(const Value &v) const override { return v.cost(); }

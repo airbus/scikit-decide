@@ -344,9 +344,9 @@ try:
             vi_convergence_factor: float = 0.01,
             belief_hash_resolution: float = 1000.0,
             parallel: bool = False,
-            terminal_value: Callable[
-                [D_cost.T_state], Value[D_cost.T_value]
-            ] = lambda s: Value(cost=0),
+            terminal_value: Optional[
+                Callable[[D_cost.T_state], Value[D_cost.T_value]]
+            ] = None,
             callback: Callable[[GoalHSVI], bool] = lambda slv: False,
             verbose: bool = False,
             dead_end_cost: Optional[float] = None,

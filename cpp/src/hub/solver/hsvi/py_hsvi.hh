@@ -300,8 +300,14 @@ protected:
           if (idx_it != state_hash_to_idx.end()) {
             std::size_t idx = idx_it->second;
             if (idx < alpha.values.size()) {
+              // Second parameter: true = reward, false = cost
+              // For reward-maximizing HSVI (HSVITag), alpha values are rewards
+              // For cost-minimizing Goal-HSVI (GoalHSVITag), alpha values are
+              // costs
+              constexpr bool is_reward =
+                  !std::is_same_v<SolverTag, GoalHSVITag>;
               typename PyHSVIDomain<Texecution>::Value val(alpha.values[idx],
-                                                           true);
+                                                           is_reward);
               values_dict[state.pyobj()] = val.pyobj();
             }
           }
