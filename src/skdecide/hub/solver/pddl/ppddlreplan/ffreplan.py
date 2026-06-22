@@ -18,7 +18,7 @@ from skdecide.builders.domain import (
     Simulation,
     SingleAgent,
 )
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import DeterministicPolicies, FromAnyState, Utilities
 
 try:
     from skdecide.hub.__skdecide_hub_cpp import (
@@ -39,7 +39,7 @@ try:
     ):
         pass
 
-    class FFReplan(Solver, DeterministicPolicies, Utilities):
+    class FFReplan(Solver, DeterministicPolicies, Utilities, FromAnyState):
         """FF-Replan from Yoon, Fern & Givan (ICAPS 2007): reactive replanning
         for probabilistic PDDL (PPDDL) domains.
 
@@ -100,25 +100,31 @@ try:
             self._callback = callback
             self._verbose = verbose
 
-        def _solve(self) -> None:
-            domain = self._domain_factory()
-            if not hasattr(domain, "_task"):
-                raise TypeError(
-                    "FFReplan solver requires a PPDDLDomain (with _task attribute)"
+        def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+            """Run the FF-Replan algorithm from a given PDDL state.
+
+            # Parameters
+            memory: PDDL state from which to start replanning.
+            """
+            if not hasattr(self, "_cpp_solver"):
+                domain = self._domain_factory()
+                if not hasattr(domain, "_task"):
+                    raise TypeError(
+                        "FFReplan solver requires a PPDDLDomain (with _task attribute)"
+                    )
+                self._task = domain._task
+                self._cpp_solver = CppFFReplanSolver(
+                    self,
+                    self._task,
+                    self._determinization,
+                    self._parallel,
+                    self._dead_end_cost,
+                    self._max_replans,
+                    self._max_steps,
+                    self._callback,
+                    self._verbose,
                 )
-            self._task = domain._task
-            self._cpp_solver = CppFFReplanSolver(
-                self,
-                self._task,
-                self._determinization,
-                self._parallel,
-                self._dead_end_cost,
-                self._max_replans,
-                self._max_steps,
-                self._callback,
-                self._verbose,
-            )
-            self._cpp_solver.solve(self._task.initial_state())
+            self._cpp_solver.solve(memory.to_cpp())
 
         def _is_solution_defined_for(
             self, observation: D.T_agent[D.T_observation]
