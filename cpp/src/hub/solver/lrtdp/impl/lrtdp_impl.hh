@@ -257,6 +257,46 @@ void SK_LRTDP_SOLVER_CLASS::expand(StateNode *s, const std::size_t *thread_id) {
   auto applicable_actions =
       _domain.get_applicable_actions(s->state, thread_id).get_elements();
 
+  // Dead-end state: no applicable actions
+  if (applicable_actions.empty()) {
+    if (_verbose)
+      Logger::debug("State " + s->state.print() +
+                    " has no applicable actions (dead-end)" +
+                    ExecutionPolicy::print_thread());
+
+    // Check if it's a goal (goals with no actions are solved with value 0)
+    if (_goal_checker(_domain, s->state, thread_id)) {
+      s->goal = true;
+      s->solved = true;
+      s->best_value = 0.0;
+      if (_verbose)
+        Logger::debug("Dead-end state " + s->state.print() + " is a GOAL" +
+                      ExecutionPolicy::print_thread());
+    }
+    // Check if domain marks it as terminal (non-goal)
+    else if (_domain.is_terminal(s->state, thread_id)) {
+      s->solved = true;
+      s->best_value = _terminal_value(s->state).cost();
+      if (_verbose)
+        Logger::debug("Dead-end state " + s->state.print() +
+                      " is domain-TERMINAL with value " +
+                      StringConverter::from(s->best_value) +
+                      ExecutionPolicy::print_thread());
+    }
+    // Otherwise it's a dead-end that domain doesn't mark as terminal:
+    // This is a failure state that should be avoided → assign INFINITE cost
+    else {
+      s->solved = true; // Dead-ends are "solved" (no better policy exists)
+      s->best_value = std::numeric_limits<double>::infinity();
+      if (_verbose)
+        Logger::debug(
+            "Dead-end state " + s->state.print() +
+            " (not marked terminal by domain) assigned INFINITE cost" +
+            ExecutionPolicy::print_thread());
+    }
+    return; // Don't expand further
+  }
+
   for (auto a : applicable_actions) {
     if (_verbose)
       Logger::debug("Current expanded action: " + a.print() +
@@ -389,6 +429,18 @@ SK_LRTDP_SOLVER_TEMPLATE_DECL
 double SK_LRTDP_SOLVER_CLASS::residual(StateNode *s,
                                        const std::size_t *thread_id) {
   s->best_action = greedy_action(s, thread_id);
+
+  // Dead-end state: no applicable actions
+  if (s->best_action == nullptr) {
+    if (_verbose)
+      Logger::debug("State " + s->state.print() +
+                    " is a DEAD-END (no applicable actions)" +
+                    ExecutionPolicy::print_thread());
+    // Dead-end states are considered converged (infinite residual would prevent
+    // labeling) The terminal_value should have been set during expansion
+    return 0.0; // Residual is 0 since value is stable (terminal)
+  }
+
   double res = std::fabs(s->best_value - s->best_action->value);
   if (_verbose)
     Logger::debug("State " + s->state.print() + " has residual " +
@@ -411,21 +463,22 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(StateNode *s,
   bool rv = true;
   std::stack<StateNode *> open;
   std::stack<StateNode *> closed;
+  // Paper's Algorithm 3: check if state is IN(s', open ∪ closed)
+  // We track this with a single "visited" set for efficiency
   std::unordered_set<StateNode *> visited;
-  std::size_t depth = 0;
 
   if (!(s->solved)) {
     open.push(s);
-    visited.insert(s);
+    visited.insert(s); // Mark as visited when added to open
   }
 
-  while (!open.empty() && (get_solving_time() < _time_budget) &&
-         (depth < _max_depth)) {
-    depth++;
+  // Note: Paper's Algorithm 3 has NO depth limit in CHECKSOLVED
+  // The DFS must explore the entire greedy envelope to determine if solved
+  while (!open.empty() && (get_solving_time() < _time_budget)) {
     StateNode *cs = open.top();
     open.pop();
     closed.push(cs);
-    visited.insert(cs);
+    // Note: cs already in visited (added when pushed to open)
 
     _execution_policy.protect(
         [this, &cs, &rv, &open, &visited, &thread_id]() {
@@ -436,10 +489,24 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(StateNode *s,
 
           ActionNode *a = cs->best_action; // best action updated when calling
                                            // residual(cs, thread_id)
+
+          // Dead-end state: no applicable actions, don't expand children
+          if (a == nullptr) {
+            // Dead-end non-goal states should not be labeled as solved
+            // (they were labeled in greedy_action if they are goals/terminals)
+            if (!cs->solved) {
+              rv = false; // Can't label parent states as solved if they reach
+                          // an unsolved dead-end
+            }
+            return;
+          }
+
           for (const auto &o : a->outcomes) {
             StateNode *ns = std::get<2>(o);
+            // Paper: if ¬s'.SOLVED ∧ ¬IN(s', open ∪ closed)
             if (!(ns->solved) && (visited.find(ns) == visited.end())) {
               open.push(ns);
+              visited.insert(ns); // Mark as visited when added to open
             }
           }
         },
