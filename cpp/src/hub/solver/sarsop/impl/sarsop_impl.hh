@@ -720,6 +720,25 @@ SK_SARSOP_CLASS::sample() {
 // --- SARSOP core: backup ---
 
 SK_SARSOP_TEMPLATE_DECL
+std::size_t SK_SARSOP_CLASS::fallback_alpha_index_for_empty_posterior() const {
+  // Reward-max: worst LB = alpha with minimum total value. Using it for
+  // observations unreachable from the backup belief ensures the new alpha
+  // doesn't exceed V* for states outside the belief support.
+  std::size_t worst_idx = 0;
+  double worst_score = std::numeric_limits<double>::infinity();
+  for (std::size_t i = 0; i < _alpha_vectors.size(); ++i) {
+    double score = 0.0;
+    for (double v : _alpha_vectors[i].values)
+      score += v;
+    if (score < worst_score) {
+      worst_score = score;
+      worst_idx = i;
+    }
+  }
+  return worst_idx;
+}
+
+SK_SARSOP_TEMPLATE_DECL
 typename SK_SARSOP_CLASS::AlphaVector
 SK_SARSOP_CLASS::backup_belief(BeliefTreeNode *node) {
   std::size_t ns = _states.size();
@@ -728,17 +747,30 @@ SK_SARSOP_CLASS::backup_belief(BeliefTreeNode *node) {
   double best_q = -std::numeric_limits<double>::infinity();
   AlphaVector best_alpha;
 
+  std::size_t fallback_idx = fallback_alpha_index_for_empty_posterior();
+  const AlphaVector &fallback_alpha = _alpha_vectors[fallback_idx];
+
   for (std::size_t ai = 0; ai < na; ++ai) {
     AlphaVector g_a(ns, _actions[ai], _next_alpha_id);
 
-    // Start with R(s,a)
+    // Phase 1: immediate rewards + total fallback contribution.
+    // The fallback alpha covers all observations (including those unreachable
+    // from the backup belief). Since sum_oh Z(s',a,oh) = 1 for any s', the
+    // total contribution is discount * sum_s' T(s,a,s') * fallback[s'].
+    // This keeps g_a globally admissible for states outside the belief support.
     for (std::size_t si = 0; si < ns; ++si) {
       g_a.values[si] = _rewards[si][ai];
+      for (const auto &tr : _transitions[si][ai]) {
+        g_a.values[si] +=
+            _discount * tr.first * fallback_alpha.values[tr.second];
+      }
     }
 
-    // For each observation, add gamma * g_{a,o}(s)
+    // Phase 2: for observations reachable from the backup belief, replace the
+    // fallback contribution with the belief-optimal alpha. The net adjustment
+    // per state si and observation oh is:
+    //   discount * sum_s' T(s,a,s') * Z(o|s',a) * (best[s'] - fallback[s'])
     for (std::size_t oh : _action_obs_hashes[ai]) {
-      // Find best alpha for posterior belief tau(b,a,o)
       Belief posterior = compute_posterior(node->belief, ai, oh);
       if (posterior.empty())
         continue;
@@ -746,16 +778,17 @@ SK_SARSOP_CLASS::backup_belief(BeliefTreeNode *node) {
       std::size_t best_idx = best_alpha_index(posterior);
       const AlphaVector &alpha_ao = _alpha_vectors[best_idx];
 
-      // g_{a,o}(s) = sum_{s'} T(s,a,s') * Z(o|s',a) * alpha_{a,o}(s')
       for (std::size_t si = 0; si < ns; ++si) {
-        double contrib = 0.0;
+        double adjustment = 0.0;
         for (const auto &tr : _transitions[si][ai]) {
           auto obs_it = _obs_prob[tr.second][ai].find(oh);
           double z =
               (obs_it != _obs_prob[tr.second][ai].end()) ? obs_it->second : 0.0;
-          contrib += tr.first * z * alpha_ao.values[tr.second];
+          adjustment +=
+              tr.first * z *
+              (alpha_ao.values[tr.second] - fallback_alpha.values[tr.second]);
         }
-        g_a.values[si] += _discount * contrib;
+        g_a.values[si] += _discount * adjustment;
       }
     }
 

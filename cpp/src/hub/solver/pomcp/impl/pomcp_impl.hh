@@ -313,7 +313,7 @@ double SK_POMCP_CLASS::rollout(const State &s, std::size_t depth,
   bool terminal = _domain.is_terminal(next_state, thread_id);
 
   if (terminal)
-    return reward + _terminal_value(next_state).reward();
+    return reward + _discount * _terminal_value(next_state).reward();
 
   return reward + _discount * rollout(next_state, depth + 1, thread_id);
 }
@@ -595,9 +595,10 @@ SK_POMCP_CLASS::get_best_action(const Observation &obs) {
 SK_POMCP_TEMPLATE_DECL
 typename SK_POMCP_CLASS::Value
 SK_POMCP_CLASS::get_best_value(const Observation &obs) {
-  update_belief_particles(obs);
-  Belief b = particles_to_belief();
-  plan_from_belief(b);
+  // Do not re-plan: get_best_action() already searched and cached
+  // _best_value_cache for this observation. Re-planning would overwrite the
+  // result with an independent search from a new tree, producing an
+  // inconsistent value.
   return Value(_best_value_cache, true);
 }
 

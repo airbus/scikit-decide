@@ -284,6 +284,12 @@ private:
 
   // SARSOP core
   std::vector<BeliefTreeNode *> sample();
+  // Returns the index of the alpha with minimum total value, used as fallback
+  // for observations with empty posteriors from the backup belief. This keeps
+  // the new alpha globally admissible (LB <= V*) for states outside the belief
+  // support, where skipping the observation would otherwise over-inflate
+  // g_a(s).
+  std::size_t fallback_alpha_index_for_empty_posterior() const;
   AlphaVector backup_belief(BeliefTreeNode *node);
   void backup(const std::vector<BeliefTreeNode *> &path);
   void prune();
