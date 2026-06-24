@@ -113,27 +113,37 @@ private:
             };
       }
 
-      // Wrap Python terminal_value functor
-      typename DespotSolver<PyDespotDomain<Texecution>,
-                            Texecution>::TerminalValueFunctor
-          terminal_value_cpp =
-              [this](const typename PyDespotDomain<Texecution>::State &s) ->
-          typename PyDespotDomain<Texecution>::Value {
-            if (_terminal_value) {
-              try {
-                typename GilControl<Texecution>::Acquire acquire;
-                py::object r = _terminal_value(s.pyobj());
-                return typename PyDespotDomain<Texecution>::Value(r);
-              } catch (const std::exception &e) {
-                Logger::error(std::string("SKDECIDE exception when calling "
-                                          "terminal_value: ") +
-                              e.what());
-                throw;
-              }
-            }
-            // Default: reward=0 for terminal states
-            return typename PyDespotDomain<Texecution>::Value(0.0, true);
-          };
+      // Wrap Python terminal_value functor. When Python passes None use the
+      // C++ default (reward=0); DespotSolver calls _terminal_value
+      // unconditionally so we always provide a valid functor, never nullptr.
+      typename DespotSolver<
+          PyDespotDomain<Texecution>,
+          Texecution>::TerminalValueFunctor terminal_value_cpp =
+          _terminal_value
+              ? typename DespotSolver<PyDespotDomain<Texecution>, Texecution>::
+                    TerminalValueFunctor(
+                        [this](
+                            const typename PyDespotDomain<Texecution>::State &s)
+                            -> typename PyDespotDomain<Texecution>::Value {
+                          try {
+                            typename GilControl<Texecution>::Acquire acquire;
+                            py::object r = _terminal_value(s.pyobj());
+                            return
+                                typename PyDespotDomain<Texecution>::Value(r);
+                          } catch (const std::exception &e) {
+                            Logger::error(
+                                std::string("SKDECIDE exception when calling "
+                                            "terminal_value: ") +
+                                e.what());
+                            throw;
+                          }
+                        })
+              : typename DespotSolver<PyDespotDomain<Texecution>, Texecution>::
+                    TerminalValueFunctor(
+                        [](const typename PyDespotDomain<Texecution>::State &) {
+                          return typename PyDespotDomain<Texecution>::Value(
+                              0.0, true);
+                        });
 
       _solver = std::make_unique<
           DespotSolver<PyDespotDomain<Texecution>, Texecution>>(

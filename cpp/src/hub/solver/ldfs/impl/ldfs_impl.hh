@@ -55,9 +55,10 @@ SK_LDFS_SOLVER_CLASS::LDFSSolver(Domain &domain,
                                  std::size_t max_depth,
                                  const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _terminal_value(terminal_value), _discount(discount), _epsilon(epsilon),
-      _max_depth(max_depth), _callback(callback), _verbose(verbose),
-      _nb_tip_states(0), _tarjan_index(0) {
+      _terminal_value(terminal_value),
+      _use_terminal_value(terminal_value != nullptr), _discount(discount),
+      _epsilon(epsilon), _max_depth(max_depth), _callback(callback),
+      _verbose(verbose), _nb_tip_states(0), _tarjan_index(0) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm LDFS");
   }
@@ -157,10 +158,10 @@ void SK_LDFS_SOLVER_CLASS::expand(StateNode &s) {
         if (next_states.begin() == next_states.end()) {
           // Create a self-loop with terminal value as the cost
           // This ensures the action's Q-value reflects the terminal state value
+          double tv = _use_terminal_value ? _terminal_value(s.state).cost()
+                                          : _heuristic(_domain, s.state).cost();
           an.outcomes.push_back(
-              std::make_tuple(1.0,                             // probability
-                              _terminal_value(s.state).cost(), // immediate cost
-                              &s)); // next state (self-loop)
+              std::make_tuple(1.0, tv, &s)); // probability, cost, self-loop
           return;
         }
 
@@ -190,7 +191,10 @@ void SK_LDFS_SOLVER_CLASS::expand(StateNode &s) {
                               next_node.state.print() +
                               ExecutionPolicy::print_thread());
               next_node.terminal = true;
-              next_node.best_value = _terminal_value(next_node.state).cost();
+              next_node.best_value =
+                  _use_terminal_value
+                      ? _terminal_value(next_node.state).cost()
+                      : _heuristic(_domain, next_node.state).cost();
             } else {
               next_node.best_value =
                   _heuristic(_domain, next_node.state).cost();
@@ -264,7 +268,9 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
         if (s->goal) {
           s->best_value = 0.0;
         } else if (s->terminal) {
-          s->best_value = _terminal_value(s->state).cost();
+          s->best_value = _use_terminal_value
+                              ? _terminal_value(s->state).cost()
+                              : _heuristic(_domain, s->state).cost();
         }
         s->solved = true;
         _last_rv = true;

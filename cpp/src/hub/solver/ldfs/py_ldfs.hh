@@ -110,24 +110,28 @@ protected:
               throw;
             }
           },
-          [this](const typename PyLDFSDomain<Texecution>::State &s) ->
-          typename PyLDFSDomain<Texecution>::Value {
-            if (_terminal_value) {
-              try {
-                typename skdecide::GilControl<Texecution>::Acquire acquire;
-                return typename PyLDFSDomain<Texecution>::Value(
-                    _terminal_value(s.pyobj()));
-              } catch (const std::exception &e) {
-                Logger::error(
-                    std::string("SKDECIDE exception when calling terminal "
-                                "value: ") +
-                    e.what());
-                throw;
-              }
-            } else {
-              return typename PyLDFSDomain<Texecution>::Value(0.0, false);
-            }
-          },
+          // Pass nullptr when Python's terminal_value is None, otherwise wrap
+          // it
+          _terminal_value
+              ? typename TSolver<PyLDFSDomain<Texecution>, Texecution>::
+                    TerminalValueFunctor(
+                        [this](
+                            const typename PyLDFSDomain<Texecution>::State &s)
+                            -> typename PyLDFSDomain<Texecution>::Value {
+                          try {
+                            typename skdecide::GilControl<Texecution>::Acquire
+                                acquire;
+                            return typename PyLDFSDomain<Texecution>::Value(
+                                _terminal_value(s.pyobj()));
+                          } catch (const std::exception &e) {
+                            Logger::error(
+                                std::string("SKDECIDE exception when calling "
+                                            "terminal value: ") +
+                                e.what());
+                            throw;
+                          }
+                        })
+              : nullptr,
           discount, epsilon, max_depth,
           [this](const skdecide::LDFSSolver<PyLDFSDomain<Texecution>,
                                             Texecution> &s,

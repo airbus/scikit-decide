@@ -83,9 +83,7 @@ try:
             heuristic: Callable[
                 [Domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
-            terminal_value: Callable[[D.T_state], Value[D.T_value]] = lambda s: Value(
-                cost=0
-            ),
+            terminal_value: Optional[Callable[[D.T_state], Value[D.T_value]]] = None,
             discount: float = 1.0,
             epsilon: float = 0.001,
             max_depth: int = 0,
@@ -103,9 +101,24 @@ try:
                 heuristic (h(s) <= V*(s)) accelerates convergence.
                 Defaults to Value(cost=0).
             terminal_value: Function f(state) -> Value assigning a fixed value to
-                terminal (absorbing) states. Use Value(cost=0) for goal-like
-                terminals and Value(cost=large_penalty) for dead-end-like
-                terminals. Defaults to Value(cost=0).
+                non-goal terminal (absorbing) states. Use Value(cost=large_penalty)
+                for dead ends.
+
+                When None (DEFAULT — recommended for standard SSPs):
+                  - Goal states: value = 0
+                  - Dead-end states: value = heuristic(domain, s), e.g. a large
+                    finite value like 1e9. Dead-ends are then naturally avoided
+                    because greedy actions leading to them get high Q-values.
+                  - CRITICAL: never use a fixed infinity for dead-ends in SSPs —
+                    any non-zero probability of reaching one propagates infinity
+                    through Bellman updates and prevents convergence.
+
+                When a callable is provided (for unavoidable dead-ends):
+                  - Dead-end states: value = terminal_value(s)
+                  - Still use finite values (e.g. 1e6) to avoid infinity
+                    propagation.
+
+                Defaults to None.
             discount: Value function's discount factor. Defaults to 0.999.
             epsilon: Maximum Bellman error allowed to label a state as solved.
                 Defaults to 0.001.

@@ -94,7 +94,7 @@ try:
             ess_threshold_ratio: float = 2.0,
             default_policy: Optional[Callable[[Domain, object], Value]] = None,
             upper_bound_heuristic: Optional[Callable[[Domain, object], Value]] = None,
-            terminal_value: Callable[[object], Value] = lambda s: Value(reward=0),
+            terminal_value: Optional[Callable[[object], Value]] = None,
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[DESPOT, Optional[int]], bool] = lambda slv,
@@ -134,7 +134,7 @@ try:
                 is used. Defaults to None.
             terminal_value: Function (state) -> Value returning the
                 value for terminal non-goal states.
-                Defaults to lambda s: Value(reward=0).
+                Defaults to None (C++ uses Value(reward=0) for all terminals).
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy.
                 Defaults to None.
@@ -166,7 +166,9 @@ try:
                 ess_threshold_ratio=ess_threshold_ratio,
                 default_policy=default_policy,
                 upper_bound_heuristic=upper_bound_heuristic,
-                terminal_value=lambda s: terminal_value(s),
+                terminal_value=(
+                    None if terminal_value is None else lambda s: terminal_value(s)
+                ),
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
