@@ -377,17 +377,23 @@ double SK_LRTDP_SOLVER_CLASS::q_value(ActionNode *a) {
         "SKDECIDE exception: q_value called with nullptr action");
   }
 
-  a->value = 0;
+  // Accumulate into a plain double to avoid MSVC issues with
+  // std::atomic<double> in arithmetic expressions (no operator+ defined;
+  // implicit conversion to double may not be applied by MSVC template
+  // deduction).
+  double new_value = 0.0;
   for (const auto &o : a->outcomes) {
-    a->value = a->value +
-               (std::get<0>(o) *
-                (std::get<1>(o) + (_discount * std::get<2>(o)->best_value)));
+    new_value +=
+        std::get<0>(o) *
+        (std::get<1>(o) +
+         (_discount * static_cast<double>(std::get<2>(o)->best_value)));
   }
+  a->value = new_value;
   if (_verbose)
     Logger::debug("Updated Q-value of action " + a->action.print() +
                   " with value " + StringConverter::from(a->value) +
                   ExecutionPolicy::print_thread());
-  return a->value;
+  return new_value;
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
@@ -403,7 +409,7 @@ SK_LRTDP_SOLVER_CLASS::greedy_action(StateNode *s,
 
   for (auto &a : s->actions) {
     if (q_value(a.get()) < best_value) {
-      best_value = a->value;
+      best_value = static_cast<double>(a->value);
       best_action = a.get();
     }
   }
@@ -487,8 +493,12 @@ double SK_LRTDP_SOLVER_CLASS::residual(StateNode *s,
 
   // States where all actions lead to dead-ends (infinite Q-values)
   // Both the value and best action value converge to infinity
-  if (!std::isfinite(s->best_action->value)) {
-    if (!std::isfinite(s->best_value)) {
+  // Explicit casts to double required: MSVC's std::isfinite/std::fabs are
+  // function templates that deduce _Ty = std::atomic<double> and try to
+  // pass by value, which triggers the deleted copy constructor.
+  // static_cast<double> forces operator double() before template deduction.
+  if (!std::isfinite(static_cast<double>(s->best_action->value))) {
+    if (!std::isfinite(static_cast<double>(s->best_value))) {
       // Both infinite: converged to dead-end state value
       return 0.0;
     }
@@ -497,7 +507,8 @@ double SK_LRTDP_SOLVER_CLASS::residual(StateNode *s,
     return std::numeric_limits<double>::infinity();
   }
 
-  double res = std::fabs(s->best_value - s->best_action->value);
+  double res = std::fabs(static_cast<double>(s->best_value) -
+                         static_cast<double>(s->best_action->value));
   if (_verbose)
     Logger::debug("State " + s->state.print() + " has residual " +
                   StringConverter::from(res) + ExecutionPolicy::print_thread());
@@ -690,19 +701,21 @@ SK_LRTDP_SOLVER_TEMPLATE_DECL
 void SK_LRTDP_SOLVER_CLASS::update_residual_moving_average(
     const StateNode &node, const double &node_record_value) {
   if (_residual_moving_average_window > 0) {
-    double current_residual = std::fabs(node_record_value - node.best_value);
+    double current_residual =
+        std::fabs(node_record_value - static_cast<double>(node.best_value));
     _execution_policy.protect(
         [this, &current_residual]() {
+          // Load atomic once to avoid MSVC issues with atomic arithmetic.
+          double ma = static_cast<double>(_residual_moving_average);
           if (_residuals.size() < _residual_moving_average_window) {
             _residual_moving_average =
-                ((double)((_residual_moving_average * _residuals.size()) +
-                          current_residual)) /
-                ((double)(_residuals.size() + 1));
+                ((ma * static_cast<double>(_residuals.size())) +
+                 current_residual) /
+                static_cast<double>(_residuals.size() + 1);
           } else {
             _residual_moving_average =
-                ((double)_residual_moving_average) +
-                ((current_residual - _residuals.front()) /
-                 ((double)_residual_moving_average_window));
+                ma + ((current_residual - _residuals.front()) /
+                      static_cast<double>(_residual_moving_average_window));
             _residuals.pop_front();
           }
           _residuals.push_back(current_residual);
