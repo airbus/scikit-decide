@@ -85,13 +85,11 @@ private:
           try {
             return _node_ordering(a_gscore, a_novelty, a_depth, b_gscore,
                                   b_novelty, b_depth);
-          } catch (const py::error_already_set *e) {
+          } catch (py::error_already_set &e) {
             Logger::error(
                 "SKDECIDE exception when calling custom node ordering: " +
-                std::string(e->what()));
-            std::runtime_error err(e->what());
-            delete e;
-            throw err;
+                std::string(e.what()));
+            throw std::runtime_error(e.what());
           }
         };
       }
@@ -141,7 +139,9 @@ private:
                     Logger::error(std::string("SKDECIDE exception when calling "
                                               "callback function: ") +
                                   e.what());
-                    throw;
+                    _callback_exception =
+                        std::make_exception_ptr(std::runtime_error(e.what()));
+                    return true;
                   }
                 } else {
                   return false;
@@ -188,8 +188,14 @@ private:
     virtual void clear() { _solver->clear(); }
 
     virtual void solve(const py::object &s) {
-      typename skdecide::GilControl<Texecution>::Release release;
-      _solver->solve(s);
+      _callback_exception = nullptr;
+      {
+        typename skdecide::GilControl<Texecution>::Release release;
+        _solver->solve(s);
+      }
+      if (_callback_exception) {
+        std::rethrow_exception(_callback_exception);
+      }
     }
 
     virtual py::bool_ is_solution_defined_for(const py::object &s) {
@@ -289,6 +295,8 @@ private:
                                        PyIWFeatureVector<Texecution>,
                                        Thashing_policy, Texecution>>
         _solver;
+
+    std::exception_ptr _callback_exception;
 
     std::function<py::object(const py::object &, const py::object &)>
         _state_features;

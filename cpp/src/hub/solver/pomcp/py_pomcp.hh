@@ -80,13 +80,11 @@ private:
                   try {
                     py::object r = _terminal_value(s.pyobj());
                     return typename PyPOMCPDomain<Texecution>::Value(r);
-                  } catch (const py::error_already_set *e) {
+                  } catch (py::error_already_set &e) {
                     Logger::error(std::string("SKDECIDE exception when calling "
                                               "terminal_value: ") +
-                                  e->what());
-                    std::runtime_error err(e->what());
-                    delete e;
-                    throw err;
+                                  e.what());
+                    throw std::runtime_error(e.what());
                   }
                 }
                 return typename PyPOMCPDomain<Texecution>::Value(0.0, false);
@@ -103,15 +101,15 @@ private:
                     bool rr = r->template cast<bool>();
                     r.reset();
                     return rr;
-                  } catch (const py::error_already_set *e) {
+                  } catch (py::error_already_set &e) {
                     Logger::error(
                         std::string(
                             "SKDECIDE exception when calling callback: ") +
-                        e->what());
-                    std::runtime_error err(e->what());
+                        e.what());
                     r.reset();
-                    delete e;
-                    throw err;
+                    _callback_exception =
+                        std::make_exception_ptr(std::runtime_error(e.what()));
+                    return true;
                   }
                 }
                 return false;
@@ -130,6 +128,7 @@ private:
     virtual void clear() { _solver->clear(); }
 
     virtual void solve(const py::object &distribution) {
+      _callback_exception = nullptr;
       std::vector<std::pair<typename PyPOMCPDomain<Texecution>::State, double>>
           dist;
       py::list values = distribution.attr("get_values")();
@@ -138,8 +137,13 @@ private:
         dist.emplace_back(typename PyPOMCPDomain<Texecution>::State(t[0]),
                           t[1].cast<double>());
       }
-      typename GilControl<Texecution>::Release release;
-      _solver->solve(dist);
+      {
+        typename GilControl<Texecution>::Release release;
+        _solver->solve(dist);
+      }
+      if (_callback_exception) {
+        std::rethrow_exception(_callback_exception);
+      }
     }
 
     virtual py::object get_next_action(const py::object &o) {
@@ -252,6 +256,8 @@ private:
     std::unique_ptr<py::object> _pydomain;
     std::unique_ptr<PyPOMCPDomain<Texecution>> _domain;
     std::unique_ptr<POMCPSolver<PyPOMCPDomain<Texecution>, Texecution>> _solver;
+
+    std::exception_ptr _callback_exception;
 
     std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &, const py::object &)> _callback;

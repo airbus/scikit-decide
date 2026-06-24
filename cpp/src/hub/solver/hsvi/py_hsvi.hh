@@ -109,13 +109,11 @@ protected:
                 try {
                   py::object r = _terminal_value(s.pyobj());
                   return typename PyHSVIDomain<Texecution>::Value(r);
-                } catch (const py::error_already_set *e) {
+                } catch (py::error_already_set &e) {
                   Logger::error(std::string("SKDECIDE exception when calling "
                                             "terminal_value: ") +
-                                e->what());
-                  std::runtime_error err(e->what());
-                  delete e;
-                  throw err;
+                                e.what());
+                  throw std::runtime_error(e.what());
                 }
               }
               return typename PyHSVIDomain<Texecution>::Value(0.0, false);
@@ -138,7 +136,9 @@ protected:
                       std::string(
                           "SKDECIDE exception when calling callback: ") +
                       e.what());
-                  throw;
+                  _callback_exception =
+                      std::make_exception_ptr(std::runtime_error(e.what()));
+                  return true;
                 }
               }
               return false;
@@ -153,13 +153,11 @@ protected:
                 try {
                   py::object r = _terminal_value(s.pyobj());
                   return typename PyHSVIDomain<Texecution>::Value(r);
-                } catch (const py::error_already_set *e) {
+                } catch (py::error_already_set &e) {
                   Logger::error(std::string("SKDECIDE exception when calling "
                                             "terminal_value: ") +
-                                e->what());
-                  std::runtime_error err(e->what());
-                  delete e;
-                  throw err;
+                                e.what());
+                  throw std::runtime_error(e.what());
                 }
               }
               return typename PyHSVIDomain<Texecution>::Value(0.0, false);
@@ -182,7 +180,9 @@ protected:
                       std::string(
                           "SKDECIDE exception when calling callback: ") +
                       e.what());
-                  throw;
+                  _callback_exception =
+                      std::make_exception_ptr(std::runtime_error(e.what()));
+                  return true;
                 }
               }
               return false;
@@ -202,6 +202,7 @@ protected:
     virtual void clear() { _solver->clear(); }
 
     virtual void solve(const py::object &distribution) {
+      _callback_exception = nullptr;
       std::vector<std::pair<typename PyHSVIDomain<Texecution>::State, double>>
           dist;
       py::list values = distribution.attr("get_values")();
@@ -210,8 +211,13 @@ protected:
         dist.emplace_back(typename PyHSVIDomain<Texecution>::State(t[0]),
                           t[1].cast<double>());
       }
-      typename GilControl<Texecution>::Release release;
-      _solver->solve(dist);
+      {
+        typename GilControl<Texecution>::Release release;
+        _solver->solve(dist);
+      }
+      if (_callback_exception) {
+        std::rethrow_exception(_callback_exception);
+      }
     }
 
     virtual py::object get_next_action(const py::object &o) {
@@ -364,6 +370,8 @@ protected:
     std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<PyHSVIDomain<Texecution>> _domain;
     std::unique_ptr<SolverType> _solver;
+
+    std::exception_ptr _callback_exception;
 
     std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &)> _callback;

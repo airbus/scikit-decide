@@ -153,14 +153,14 @@ private:
             bool rr = r->template cast<bool>();
             r.reset();
             return rr;
-          } catch (const py::error_already_set *e) {
+          } catch (py::error_already_set &e) {
             Logger::error(std::string("SKDECIDE exception when calling "
                                       "callback function: ") +
-                          e->what());
-            std::runtime_error err(e->what());
+                          e.what());
             r.reset();
-            delete e;
-            throw err;
+            _callback_exception =
+                std::make_exception_ptr(std::runtime_error(e.what()));
+            return true;
           }
         } else {
           return false;
@@ -303,8 +303,14 @@ private:
     virtual void clear() { _solver->clear(); }
 
     virtual void solve(const py::object &s) {
-      typename skdecide::GilControl<Texecution>::Release release;
-      _solver->solve(s);
+      _callback_exception = nullptr;
+      {
+        typename skdecide::GilControl<Texecution>::Release release;
+        _solver->solve(s);
+      }
+      if (_callback_exception) {
+        std::rethrow_exception(_callback_exception);
+      }
     }
 
     virtual py::bool_ is_solution_defined_for(const py::object &s) {
@@ -375,6 +381,8 @@ private:
     std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<PyMCTSDomain<Texecution>> _domain;
     std::unique_ptr<PyMCTSSolver> _solver;
+
+    std::exception_ptr _callback_exception;
 
     CustomPolicyFunctor _custom_policy;
     HeuristicFunctor _heuristic;
