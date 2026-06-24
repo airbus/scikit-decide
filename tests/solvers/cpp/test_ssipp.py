@@ -332,8 +332,7 @@ class TestSSiPP:
             depth=3,
             inner_solver_factory=lambda: ("LRTDP", {}),
         ) as ssipp:
-            for _ in range(20):
-                ssipp.solve()
+            ssipp.solve()
             v_ssipp = ssipp.get_utility(State(0, 0)).cost
 
         assert abs(v_ssipp - v_star) < 0.5, (
@@ -365,8 +364,7 @@ class TestSSiPP:
             depth=4,
             inner_solver_factory=lambda: ("LRTDP", {}),
         ) as ssipp:
-            for _ in range(50):
-                ssipp.solve()
+            ssipp.solve()
             v_ssipp = ssipp.get_utility(State(0, 0)).cost
 
         assert abs(v_ssipp - v_star) < 1.0, (
