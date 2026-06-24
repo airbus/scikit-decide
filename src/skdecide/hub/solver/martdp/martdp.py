@@ -167,6 +167,9 @@ try:
                 verbose=verbose,
             )
 
+        def _cleanup(self):
+            self._solver = None
+
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the MA-RTDP algorithm from a given root solving joint state
 

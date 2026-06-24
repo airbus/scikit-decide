@@ -162,6 +162,7 @@ try:
             if self._parallel:
                 self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve(self, from_memory=None) -> None:
             if from_memory is None:
@@ -415,6 +416,7 @@ try:
             if self._parallel:
                 self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve(self, from_memory=None) -> None:
             if from_memory is None:

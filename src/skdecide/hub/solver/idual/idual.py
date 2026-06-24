@@ -124,6 +124,13 @@ try:
                 verbose=verbose,
             )
 
+        def close(self):
+            """Joins the parallel domains' processes."""
+            if self._parallel:
+                self._solver.close()
+            ParallelSolver.close(self)
+            self._solver = None
+
         def _solve_from(self, memory: D_SSP.T_memory[D_SSP.T_state]) -> None:
             self._solver.solve(memory)
 
@@ -332,6 +339,13 @@ try:
                 callback=callback,
                 verbose=verbose,
             )
+
+        def close(self):
+            """Joins the parallel domains' processes."""
+            if self._parallel:
+                self._solver.close()
+            ParallelSolver.close(self)
+            self._solver = None
 
         def _get_next_action_distribution(
             self,

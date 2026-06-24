@@ -111,6 +111,7 @@ try:
             if self._parallel:
                 self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the A* algorithm from a given root solving state
