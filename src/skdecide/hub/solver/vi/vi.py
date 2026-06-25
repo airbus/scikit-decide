@@ -144,10 +144,11 @@ try:
 
         def close(self):
             """Joins the parallel domains' processes."""
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
+                self._solver = None
             ParallelSolver.close(self)
-            self._solver = None
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run Value Iteration from a given state

@@ -123,6 +123,7 @@ class TestILAOstar:
         ) as solver:
             solver.solve()
             bsg = solver.get_best_solution_graph()
+            bsg_size = solver.best_solution_graph_size()
 
         assert len(bsg) > 0
         # Every entry is a (action, Value) tuple
@@ -131,7 +132,7 @@ class TestILAOstar:
             assert isinstance(action, Action)
             assert isinstance(value, Value)
         # The dict cannot have more entries than the full best solution graph size
-        assert len(bsg) <= solver.best_solution_graph_size()
+        assert len(bsg) <= bsg_size
         # Initial state should be in the best solution graph with a best action
         assert State(x=0, y=0, s=0) in bsg
 
