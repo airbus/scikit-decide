@@ -138,8 +138,8 @@ try:
             if self._solver is not None:
                 if self._parallel:
                     self._solver.close()
-                self._solver = None
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the AO* algorithm from a given root solving state

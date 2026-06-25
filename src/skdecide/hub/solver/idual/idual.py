@@ -129,8 +129,8 @@ try:
             if self._solver is not None:
                 if self._parallel:
                     self._solver.close()
-                self._solver = None
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve_from(self, memory: D_SSP.T_memory[D_SSP.T_state]) -> None:
             self._solver.solve(memory)
@@ -346,8 +346,8 @@ try:
             if self._solver is not None:
                 if self._parallel:
                     self._solver.close()
-                self._solver = None
             ParallelSolver.close(self)
+            self._solver = None
 
         def _get_next_action_distribution(
             self,

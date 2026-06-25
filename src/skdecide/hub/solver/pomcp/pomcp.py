@@ -148,8 +148,8 @@ try:
             if self._solver is not None:
                 if self._parallel:
                     self._solver.close()
-                self._solver = None
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve(self, from_memory=None) -> None:
             if from_memory is None:
