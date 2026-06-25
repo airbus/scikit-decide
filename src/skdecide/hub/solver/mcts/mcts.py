@@ -309,8 +309,7 @@ try:
             results in the solver forever waiting for the domain processes to exit.
             """
             if self._solver is not None:
-                if self._parallel:
-                    self._solver.close()
+                self._solver.close()
             ParallelSolver.close(self)
             self._solver = None
 
