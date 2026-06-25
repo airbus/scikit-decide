@@ -308,9 +308,9 @@ private:
       // on Windows MSVC.
       _stderr_redirect.reset();
       _stdout_redirect.reset();
-      _callback = PyMCTSSolver::CallbackFunctor();
-      _heuristic = PyMCTSSolver::HeuristicFunctor();
-      _custom_policy = PyMCTSSolver::CustomPolicyFunctor();
+      _callback = skdecide::PyMCTSSolver::CallbackFunctor();
+      _heuristic = skdecide::PyMCTSSolver::HeuristicFunctor();
+      _custom_policy = skdecide::PyMCTSSolver::CustomPolicyFunctor();
       if (_solver) {
         _solver->clear(); // release all State/Action py::object graph nodes
       }
