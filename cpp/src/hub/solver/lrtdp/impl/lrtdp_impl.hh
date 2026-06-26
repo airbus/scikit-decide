@@ -650,8 +650,11 @@ void SK_LRTDP_SOLVER_CLASS::trial(StateNode *s, const std::size_t *thread_id) {
         cs->mutex);
   }
 
-  // Save the trajectory after the trial completes
-  _last_trajectory = current_trajectory;
+  // Save the trajectory after the trial completes (protected: multiple threads
+  // run trials concurrently and the callback may read _last_trajectory)
+  _execution_policy.protect(
+      [this, &current_trajectory]() { _last_trajectory = current_trajectory; },
+      _trajectory_mutex);
 
   while (_use_labels && !visited.empty() &&
          (get_solving_time() < _time_budget)) {
@@ -773,11 +776,15 @@ std::vector<std::pair<typename SK_LRTDP_SOLVER_CLASS::State,
                       typename SK_LRTDP_SOLVER_CLASS::Action>>
 SK_LRTDP_SOLVER_CLASS::get_last_trajectory() const {
   std::vector<std::pair<State, Action>> trajectory;
+  // _execution_policy is non-const but this method is const; use the mutable
+  // mutex directly (Mutex::lock/unlock are no-ops for SequentialExecution)
+  _trajectory_mutex.lock();
   trajectory.reserve(_last_trajectory.size());
   for (const auto *sn : _last_trajectory) {
     Action action = sn->best_action ? sn->best_action->action : Action();
     trajectory.push_back(std::make_pair(sn->state, action));
   }
+  _trajectory_mutex.unlock();
   return trajectory;
 }
 

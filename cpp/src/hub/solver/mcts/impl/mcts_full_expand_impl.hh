@@ -135,19 +135,20 @@ struct FullExpand<Tsolver>::ExpandActionImplementation::Impl<
       // Pick a random next state
       if (untried_outcomes.empty()) {
         // All next states already visited => pick a random next state using
-        // action.dist
+        // action.dist. Must hold action.parent->mutex while reading action.dist
+        // to prevent a data race with concurrent writes to action.dist (which
+        // are also done under action.parent->mutex in expand_action). The
+        // gen_mutex is nested inside to serialize RNG access across threads.
         std::size_t outcome_id = 0;
-
-        solver.execution_policy().protect(
-            [&outcome_id, &action, &solver]() {
-              outcome_id = action.dist(solver.gen());
-            },
-            solver.gen_mutex());
-
         typename Tsolver::StateNode *outcome = nullptr;
 
         solver.execution_policy().protect(
-            [&action, &outcome, &outcome_id]() {
+            [&outcome_id, &outcome, &action, &solver]() {
+              solver.execution_policy().protect(
+                  [&outcome_id, &action, &solver]() {
+                    outcome_id = action.dist(solver.gen());
+                  },
+                  solver.gen_mutex());
               outcome = action.dist_to_outcome[outcome_id]->first;
             },
             action.parent->mutex);

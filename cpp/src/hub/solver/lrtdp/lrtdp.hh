@@ -331,6 +331,7 @@ protected:
   atomic_size_t _nb_rollouts;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
   std::vector<StateNode *> _last_trajectory;
+  mutable typename ExecutionPolicy::Mutex _trajectory_mutex;
 
   void expand(StateNode *s, const std::size_t *thread_id);
   double q_value(ActionNode *a);

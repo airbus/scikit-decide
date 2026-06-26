@@ -298,24 +298,7 @@ private:
       return std::make_unique<TbackPropagator<PyMCTSSolver>>();
     }
 
-    virtual void close() {
-      // Explicitly release all Python-holding resources.
-      // close() is always called from Python code (GIL held), so releasing
-      // py::object fields here is safe.  Leaving this work to the
-      // compiler-generated ~Implementation() causes the pythonbuf destructor
-      // (from _stdout_redirect/_stderr_redirect) to invoke Python I/O from
-      // within an implicit destructor context, which triggers heap corruption
-      // on Windows MSVC.
-      _stderr_redirect.reset();
-      _stdout_redirect.reset();
-      _callback = skdecide::PyMCTSSolver::CallbackFunctor();
-      _heuristic = skdecide::PyMCTSSolver::HeuristicFunctor();
-      _custom_policy = skdecide::PyMCTSSolver::CustomPolicyFunctor();
-      if (_solver) {
-        _solver->clear(); // release all State/Action py::object graph nodes
-      }
-      _domain->close();
-    }
+    virtual void close() { _domain->close(); }
 
     virtual void clear() { _solver->clear(); }
 
