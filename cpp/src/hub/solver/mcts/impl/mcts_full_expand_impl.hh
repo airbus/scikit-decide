@@ -71,6 +71,9 @@ struct FullExpand<Tsolver>::ExpandActionImplementation::Impl<
 
         solver.execution_policy().protect(
             [&action, &next_node, &outcome_weights, &reward, &ns]() {
+              // Reserve before insert to prevent rehash, which would
+              // invalidate iterators already stored in dist_to_outcome.
+              action.outcomes.reserve(action.outcomes.size() + 1);
               auto ii = action.outcomes.insert(
                   std::make_pair(&next_node, std::make_pair(reward, 1)));
 
@@ -226,6 +229,9 @@ struct FullExpand<Tsolver>::ExpandActionImplementation::Impl<
 
       solver.execution_policy().protect(
           [&action, &next_node, &to]() {
+            // Reserve before insert to prevent rehash, which would
+            // invalidate iterators already stored in dist_to_outcome.
+            action.outcomes.reserve(action.outcomes.size() + 1);
             auto ii = action.outcomes.insert(std::make_pair(
                 &next_node, std::make_pair(to.transition_value().reward(), 1)));
             action.dist_to_outcome.push_back(ii.first);
