@@ -154,9 +154,6 @@ SK_MCTS_PARTIAL_EXPAND_CLASS::operator()(Tsolver &solver,
       std::pair<typename Tsolver::ActionNode::OutcomeMap::iterator, bool> ins;
       solver.execution_policy().protect(
           [&action_node, &ns, &to, &ins]() {
-            // Reserve before emplace to prevent rehash, which would
-            // invalidate iterators already stored in dist_to_outcome.
-            action_node->outcomes.reserve(action_node->outcomes.size() + 1);
             ins = action_node->outcomes.emplace(std::make_pair(
                 ns, std::make_pair(to.transition_value().reward(), 1)));
           },

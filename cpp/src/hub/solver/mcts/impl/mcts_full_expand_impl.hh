@@ -71,9 +71,6 @@ struct FullExpand<Tsolver>::ExpandActionImplementation::Impl<
 
         solver.execution_policy().protect(
             [&action, &next_node, &outcome_weights, &reward, &ns]() {
-              // Reserve before insert to prevent rehash, which would
-              // invalidate iterators already stored in dist_to_outcome.
-              action.outcomes.reserve(action.outcomes.size() + 1);
               auto ii = action.outcomes.insert(
                   std::make_pair(&next_node, std::make_pair(reward, 1)));
 
@@ -138,20 +135,19 @@ struct FullExpand<Tsolver>::ExpandActionImplementation::Impl<
       // Pick a random next state
       if (untried_outcomes.empty()) {
         // All next states already visited => pick a random next state using
-        // action.dist. Must hold action.parent->mutex while reading action.dist
-        // to prevent a data race with concurrent writes to action.dist (which
-        // are also done under action.parent->mutex in expand_action). The
-        // gen_mutex is nested inside to serialize RNG access across threads.
+        // action.dist
         std::size_t outcome_id = 0;
+
+        solver.execution_policy().protect(
+            [&outcome_id, &action, &solver]() {
+              outcome_id = action.dist(solver.gen());
+            },
+            solver.gen_mutex());
+
         typename Tsolver::StateNode *outcome = nullptr;
 
         solver.execution_policy().protect(
-            [&outcome_id, &outcome, &action, &solver]() {
-              solver.execution_policy().protect(
-                  [&outcome_id, &action, &solver]() {
-                    outcome_id = action.dist(solver.gen());
-                  },
-                  solver.gen_mutex());
+            [&action, &outcome, &outcome_id]() {
               outcome = action.dist_to_outcome[outcome_id]->first;
             },
             action.parent->mutex);
@@ -229,9 +225,6 @@ struct FullExpand<Tsolver>::ExpandActionImplementation::Impl<
 
       solver.execution_policy().protect(
           [&action, &next_node, &to]() {
-            // Reserve before insert to prevent rehash, which would
-            // invalidate iterators already stored in dist_to_outcome.
-            action.outcomes.reserve(action.outcomes.size() + 1);
             auto ii = action.outcomes.insert(std::make_pair(
                 &next_node, std::make_pair(to.transition_value().reward(), 1)));
             action.dist_to_outcome.push_back(ii.first);
