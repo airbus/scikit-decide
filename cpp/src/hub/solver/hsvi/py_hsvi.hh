@@ -32,6 +32,9 @@ struct HSVITag {};
 struct GoalHSVITag {};
 
 class PyHSVISolverBase {
+public:
+  virtual ~PyHSVISolverBase() = default;
+
 protected:
   class BaseImplementation {
   public:

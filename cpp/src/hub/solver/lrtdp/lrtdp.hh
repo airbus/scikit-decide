@@ -38,6 +38,8 @@ namespace skdecide {
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class LRTDPSolver {
 public:
+  virtual ~LRTDPSolver() = default;
+
   typedef Tdomain Domain;
   typedef typename Domain::State State;
   typedef typename Domain::Action Action;

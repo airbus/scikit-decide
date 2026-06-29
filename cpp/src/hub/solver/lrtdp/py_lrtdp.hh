@@ -25,6 +25,9 @@ template <typename Texecution>
 using PyLRTDPDomain = PythonDomainProxy<Texecution>;
 
 class PyLRTDPSolver {
+public:
+  virtual ~PyLRTDPSolver() = default;
+
 protected:
   class BaseImplementation {
   public:

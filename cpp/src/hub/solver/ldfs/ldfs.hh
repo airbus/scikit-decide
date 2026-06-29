@@ -53,6 +53,8 @@ namespace skdecide {
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class LDFSSolver {
 public:
+  virtual ~LDFSSolver() = default;
+
   typedef Tdomain Domain;
   typedef typename Domain::State State;
   typedef typename Domain::Action Action;

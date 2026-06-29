@@ -25,6 +25,9 @@ template <typename Texecution>
 using PyLDFSDomain = PythonDomainProxy<Texecution>;
 
 class PyLDFSSolver {
+public:
+  virtual ~PyLDFSSolver() = default;
+
 protected:
   class BaseImplementation {
   public:
