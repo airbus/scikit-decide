@@ -28,7 +28,8 @@ SK_LRTDP_SOLVER_CLASS::LRTDPSolver(
     std::size_t residual_moving_average_window, double epsilon, double discount,
     bool online_node_garbage, const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _terminal_value(terminal_value), _use_labels(use_labels),
+      _terminal_value(terminal_value),
+      _use_terminal_value(terminal_value != nullptr), _use_labels(use_labels),
       _time_budget(time_budget), _rollout_budget(rollout_budget),
       _max_depth(max_depth),
       _residual_moving_average_window(residual_moving_average_window),
@@ -257,6 +258,38 @@ void SK_LRTDP_SOLVER_CLASS::expand(StateNode *s, const std::size_t *thread_id) {
   auto applicable_actions =
       _domain.get_applicable_actions(s->state, thread_id).get_elements();
 
+  // Terminal state: no applicable actions
+  if (applicable_actions.empty()) {
+    if (_verbose)
+      Logger::debug("State " + s->state.print() +
+                    " has no applicable actions (terminal)" +
+                    ExecutionPolicy::print_thread());
+
+    // Terminal states (goals or non-goals)
+    if (_goal_checker(_domain, s->state, thread_id)) {
+      s->goal = true;
+      s->solved = true;
+      // Goals always have value 0 (cost-to-go from goal is zero)
+      s->best_value = 0.0;
+      if (_verbose)
+        Logger::debug("Terminal state " + s->state.print() + " is a GOAL" +
+                      ExecutionPolicy::print_thread());
+    } else {
+      // Non-goal terminal (dead-end): use terminal_value if provided, else
+      // heuristic Terminal states are always solved (value is fixed)
+      s->best_value = _use_terminal_value
+                          ? _terminal_value(s->state).cost()
+                          : _heuristic(_domain, s->state, thread_id).cost();
+      s->solved = true;
+      if (_verbose)
+        Logger::debug("Non-goal terminal state " + s->state.print() +
+                      " with terminal value " +
+                      StringConverter::from(s->best_value) +
+                      ExecutionPolicy::print_thread());
+    }
+    return; // Don't expand further
+  }
+
   for (auto a : applicable_actions) {
     if (_verbose)
       Logger::debug("Current expanded action: " + a.print() +
@@ -288,26 +321,44 @@ void SK_LRTDP_SOLVER_CLASS::expand(StateNode *s, const std::size_t *thread_id) {
 
       if (i.second) { // new node
         if (_goal_checker(_domain, next_node.state, thread_id)) {
+          // Goal state: value is always 0 (cost-to-go from goal is zero)
           if (_verbose)
             Logger::debug("Found goal state " + next_node.state.print() +
                           ExecutionPolicy::print_thread());
           next_node.goal = true;
           next_node.solved = true;
           next_node.best_value = 0.0;
-        } else if (_domain.is_terminal(next_node.state, thread_id)) {
-          if (_verbose)
-            Logger::debug("Found terminal state " + next_node.state.print() +
-                          ExecutionPolicy::print_thread());
-          next_node.solved = true;
-          next_node.best_value = _terminal_value(next_node.state).cost();
         } else {
-          next_node.best_value =
-              _heuristic(_domain, next_node.state, thread_id).cost();
-          if (_verbose)
-            Logger::debug("New state " + next_node.state.print() +
-                          " with heuristic value " +
-                          StringConverter::from(next_node.best_value) +
-                          ExecutionPolicy::print_thread());
+          // Check if terminal: either no actions OR domain marks it terminal
+          auto next_actions =
+              _domain.get_applicable_actions(next_node.state, thread_id)
+                  .get_elements();
+          bool is_terminal = next_actions.empty() ||
+                             _domain.is_terminal(next_node.state, thread_id);
+
+          if (is_terminal) {
+            // Non-goal terminal (dead-end): use terminal_value if provided,
+            // else heuristic Terminal states are always solved (value is fixed)
+            next_node.best_value =
+                _use_terminal_value
+                    ? _terminal_value(next_node.state).cost()
+                    : _heuristic(_domain, next_node.state, thread_id).cost();
+            next_node.solved = true;
+            if (_verbose)
+              Logger::debug("Found non-goal terminal state " +
+                            next_node.state.print() + " with value " +
+                            StringConverter::from(next_node.best_value) +
+                            ExecutionPolicy::print_thread());
+          } else {
+            // Non-terminal: use heuristic
+            next_node.best_value =
+                _heuristic(_domain, next_node.state, thread_id).cost();
+            if (_verbose)
+              Logger::debug("New state " + next_node.state.print() +
+                            " with heuristic value " +
+                            StringConverter::from(next_node.best_value) +
+                            ExecutionPolicy::print_thread());
+          }
         }
       }
     }
@@ -319,17 +370,30 @@ void SK_LRTDP_SOLVER_CLASS::expand(StateNode *s, const std::size_t *thread_id) {
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 double SK_LRTDP_SOLVER_CLASS::q_value(ActionNode *a) {
-  a->value = 0;
-  for (const auto &o : a->outcomes) {
-    a->value = a->value +
-               (std::get<0>(o) *
-                (std::get<1>(o) + (_discount * std::get<2>(o)->best_value)));
+  // Safety check: should never be called with nullptr
+  if (a == nullptr) {
+    Logger::error("SKDECIDE exception: q_value called with nullptr action");
+    throw std::runtime_error(
+        "SKDECIDE exception: q_value called with nullptr action");
   }
+
+  // Accumulate into a plain double to avoid MSVC issues with
+  // std::atomic<double> in arithmetic expressions (no operator+ defined;
+  // implicit conversion to double may not be applied by MSVC template
+  // deduction).
+  double new_value = 0.0;
+  for (const auto &o : a->outcomes) {
+    new_value +=
+        std::get<0>(o) *
+        (std::get<1>(o) +
+         (_discount * static_cast<double>(std::get<2>(o)->best_value)));
+  }
+  a->value = new_value;
   if (_verbose)
     Logger::debug("Updated Q-value of action " + a->action.print() +
                   " with value " + StringConverter::from(a->value) +
                   ExecutionPolicy::print_thread());
-  return a->value;
+  return new_value;
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
@@ -345,16 +409,21 @@ SK_LRTDP_SOLVER_CLASS::greedy_action(StateNode *s,
 
   for (auto &a : s->actions) {
     if (q_value(a.get()) < best_value) {
-      best_value = a->value;
+      best_value = static_cast<double>(a->value);
       best_action = a.get();
     }
   }
 
   if (_verbose) {
-    Logger::debug("Greedy action of state " + s->state.print() + ": " +
-                  best_action->action.print() + " with value " +
-                  StringConverter::from(best_value) +
-                  ExecutionPolicy::print_thread());
+    if (best_action != nullptr) {
+      Logger::debug("Greedy action of state " + s->state.print() + ": " +
+                    best_action->action.print() + " with value " +
+                    StringConverter::from(best_value) +
+                    ExecutionPolicy::print_thread());
+    } else {
+      Logger::debug("Greedy action of state " + s->state.print() +
+                    ": NONE (dead-end)" + ExecutionPolicy::print_thread());
+    }
   }
 
   return best_action;
@@ -366,12 +435,33 @@ void SK_LRTDP_SOLVER_CLASS::update(StateNode *s, const std::size_t *thread_id) {
     Logger::debug("Updating state " + s->state.print() +
                   ExecutionPolicy::print_thread());
   s->best_action = greedy_action(s, thread_id);
+
+  // Dead-end state: no best action (nullptr returned from greedy_action)
+  if (s->best_action == nullptr) {
+    // Value was already set in expand() to infinity (or terminal_value for
+    // goals/terminals) Don't update it here
+    if (_verbose)
+      Logger::debug("State " + s->state.print() +
+                    " has no actions (dead-end), keeping value " +
+                    StringConverter::from(s->best_value) +
+                    ExecutionPolicy::print_thread());
+    return;
+  }
+
   s->best_value = (double)s->best_action->value;
 }
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 typename SK_LRTDP_SOLVER_CLASS::StateNode *
 SK_LRTDP_SOLVER_CLASS::pick_next_state(ActionNode *a) {
+  // Safety check: should never be called with nullptr
+  if (a == nullptr) {
+    Logger::error(
+        "SKDECIDE exception: pick_next_state called with nullptr action");
+    throw std::runtime_error(
+        "SKDECIDE exception: pick_next_state called with nullptr action");
+  }
+
   StateNode *s = nullptr;
   _execution_policy.protect(
       [&a, &s, this]() {
@@ -389,7 +479,36 @@ SK_LRTDP_SOLVER_TEMPLATE_DECL
 double SK_LRTDP_SOLVER_CLASS::residual(StateNode *s,
                                        const std::size_t *thread_id) {
   s->best_action = greedy_action(s, thread_id);
-  double res = std::fabs(s->best_value - s->best_action->value);
+
+  // Dead-end state: no applicable actions
+  if (s->best_action == nullptr) {
+    if (_verbose)
+      Logger::debug("State " + s->state.print() +
+                    " is a DEAD-END (no applicable actions)" +
+                    ExecutionPolicy::print_thread());
+    // Dead-end states are considered converged (infinite residual would prevent
+    // labeling) The terminal_value should have been set during expansion
+    return 0.0; // Residual is 0 since value is stable (terminal)
+  }
+
+  // States where all actions lead to dead-ends (infinite Q-values)
+  // Both the value and best action value converge to infinity
+  // Explicit casts to double required: MSVC's std::isfinite/std::fabs are
+  // function templates that deduce _Ty = std::atomic<double> and try to
+  // pass by value, which triggers the deleted copy constructor.
+  // static_cast<double> forces operator double() before template deduction.
+  if (!std::isfinite(static_cast<double>(s->best_action->value))) {
+    if (!std::isfinite(static_cast<double>(s->best_value))) {
+      // Both infinite: converged to dead-end state value
+      return 0.0;
+    }
+    // Value still finite but best action is infinite: not converged yet
+    // This happens during initial exploration before value propagates
+    return std::numeric_limits<double>::infinity();
+  }
+
+  double res = std::fabs(static_cast<double>(s->best_value) -
+                         static_cast<double>(s->best_action->value));
   if (_verbose)
     Logger::debug("State " + s->state.print() + " has residual " +
                   StringConverter::from(res) + ExecutionPolicy::print_thread());
@@ -411,21 +530,22 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(StateNode *s,
   bool rv = true;
   std::stack<StateNode *> open;
   std::stack<StateNode *> closed;
+  // Paper's Algorithm 3: check if state is IN(s', open ∪ closed)
+  // We track this with a single "visited" set for efficiency
   std::unordered_set<StateNode *> visited;
-  std::size_t depth = 0;
 
   if (!(s->solved)) {
     open.push(s);
-    visited.insert(s);
+    visited.insert(s); // Mark as visited when added to open
   }
 
-  while (!open.empty() && (get_solving_time() < _time_budget) &&
-         (depth < _max_depth)) {
-    depth++;
+  // Note: Paper's Algorithm 3 has NO depth limit in CHECKSOLVED
+  // The DFS must explore the entire greedy envelope to determine if solved
+  while (!open.empty() && (get_solving_time() < _time_budget)) {
     StateNode *cs = open.top();
     open.pop();
     closed.push(cs);
-    visited.insert(cs);
+    // Note: cs already in visited (added when pushed to open)
 
     _execution_policy.protect(
         [this, &cs, &rv, &open, &visited, &thread_id]() {
@@ -436,10 +556,24 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(StateNode *s,
 
           ActionNode *a = cs->best_action; // best action updated when calling
                                            // residual(cs, thread_id)
+
+          // Dead-end state: no applicable actions, don't expand children
+          if (a == nullptr) {
+            // Dead-end non-goal states should not be labeled as solved
+            // (they were labeled in greedy_action if they are goals/terminals)
+            if (!cs->solved) {
+              rv = false; // Can't label parent states as solved if they reach
+                          // an unsolved dead-end
+            }
+            return;
+          }
+
           for (const auto &o : a->outcomes) {
             StateNode *ns = std::get<2>(o);
+            // Paper: if ¬s'.SOLVED ∧ ¬IN(s', open ∪ closed)
             if (!(ns->solved) && (visited.find(ns) == visited.end())) {
               open.push(ns);
+              visited.insert(ns); // Mark as visited when added to open
             }
           }
         },
@@ -480,6 +614,7 @@ bool SK_LRTDP_SOLVER_CLASS::check_solved(StateNode *s,
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 void SK_LRTDP_SOLVER_CLASS::trial(StateNode *s, const std::size_t *thread_id) {
   std::stack<StateNode *> visited;
+  std::vector<StateNode *> current_trajectory;
   StateNode *cs = s;
   std::size_t depth = 0;
   bool found_goal = false;
@@ -488,6 +623,7 @@ void SK_LRTDP_SOLVER_CLASS::trial(StateNode *s, const std::size_t *thread_id) {
          (get_solving_time() < _time_budget) && (depth < _max_depth)) {
     depth++;
     visited.push(cs);
+    current_trajectory.push_back(cs);
     _execution_policy.protect(
         [this, &cs, &found_goal, &thread_id]() {
           if (cs->goal) {
@@ -495,13 +631,30 @@ void SK_LRTDP_SOLVER_CLASS::trial(StateNode *s, const std::size_t *thread_id) {
               Logger::debug("Found goal state " + cs->state.print() +
                             ExecutionPolicy::print_thread());
             found_goal = true;
+            return; // Don't continue from goal state
           }
 
           update(cs, thread_id);
+
+          // Dead-end: no best action, can't pick next state
+          if (cs->best_action == nullptr) {
+            if (_verbose)
+              Logger::debug("Trial hit dead-end state " + cs->state.print() +
+                            ExecutionPolicy::print_thread());
+            found_goal = true; // Treat as terminal to stop trial
+            return;
+          }
+
           cs = pick_next_state(cs->best_action);
         },
         cs->mutex);
   }
+
+  // Save the trajectory after the trial completes (protected: multiple threads
+  // run trials concurrently and the callback may read _last_trajectory)
+  _execution_policy.protect(
+      [this, &current_trajectory]() { _last_trajectory = current_trajectory; },
+      _trajectory_mutex);
 
   while (_use_labels && !visited.empty() &&
          (get_solving_time() < _time_budget)) {
@@ -551,19 +704,21 @@ SK_LRTDP_SOLVER_TEMPLATE_DECL
 void SK_LRTDP_SOLVER_CLASS::update_residual_moving_average(
     const StateNode &node, const double &node_record_value) {
   if (_residual_moving_average_window > 0) {
-    double current_residual = std::fabs(node_record_value - node.best_value);
+    double current_residual =
+        std::fabs(node_record_value - static_cast<double>(node.best_value));
     _execution_policy.protect(
         [this, &current_residual]() {
+          // Load atomic once to avoid MSVC issues with atomic arithmetic.
+          double ma = static_cast<double>(_residual_moving_average);
           if (_residuals.size() < _residual_moving_average_window) {
             _residual_moving_average =
-                ((double)((_residual_moving_average * _residuals.size()) +
-                          current_residual)) /
-                ((double)(_residuals.size() + 1));
+                ((ma * static_cast<double>(_residuals.size())) +
+                 current_residual) /
+                static_cast<double>(_residuals.size() + 1);
           } else {
             _residual_moving_average =
-                ((double)_residual_moving_average) +
-                ((current_residual - _residuals.front()) /
-                 ((double)_residual_moving_average_window));
+                ma + ((current_residual - _residuals.front()) /
+                      static_cast<double>(_residual_moving_average_window));
             _residuals.pop_front();
           }
           _residuals.push_back(current_residual);
@@ -616,6 +771,23 @@ SK_LRTDP_SOLVER_CLASS::get_solved_states() const {
   return solved;
 }
 
+SK_LRTDP_SOLVER_TEMPLATE_DECL
+std::vector<std::pair<typename SK_LRTDP_SOLVER_CLASS::State,
+                      typename SK_LRTDP_SOLVER_CLASS::Action>>
+SK_LRTDP_SOLVER_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<State, Action>> trajectory;
+  // _execution_policy is non-const but this method is const; use the mutable
+  // mutex directly (Mutex::lock/unlock are no-ops for SequentialExecution)
+  _trajectory_mutex.lock();
+  trajectory.reserve(_last_trajectory.size());
+  for (const auto *sn : _last_trajectory) {
+    Action action = sn->best_action ? sn->best_action->action : Action();
+    trajectory.push_back(std::make_pair(sn->state, action));
+  }
+  _trajectory_mutex.unlock();
+  return trajectory;
+}
+
 // === LRTAstarSolver implementation ===
 
 #define SK_LRTASTAR_SOLVER_TEMPLATE_DECL                                       \
@@ -629,10 +801,11 @@ SK_LRTASTAR_SOLVER_CLASS::LRTAstarSolver(
     const HeuristicFunctor &heuristic, std::size_t time_budget,
     std::size_t rollout_budget, std::size_t max_depth,
     const CallbackFunctor &callback, bool verbose)
-    : Base(
-          domain, goal_checker, heuristic,
-          [](const State &) { return Value(0.0, false); }, false, time_budget,
-          rollout_budget, max_depth, 100, 0.0, 1.0, false, callback, verbose) {}
+    : Base(domain, goal_checker, heuristic,
+           nullptr, // terminal_value = nullptr (LRTAstar doesn't use
+                    // terminal_value)
+           false, time_budget, rollout_budget, max_depth, 100, 0.0, 1.0, false,
+           callback, verbose) {}
 
 SK_LRTASTAR_SOLVER_TEMPLATE_DECL
 SK_LRTASTAR_SOLVER_CLASS::LRTAstarSolver(
@@ -641,10 +814,11 @@ SK_LRTASTAR_SOLVER_CLASS::LRTAstarSolver(
     const typename Base::TerminalValueFunctor &, bool, std::size_t time_budget,
     std::size_t rollout_budget, std::size_t max_depth, std::size_t, double,
     double, bool, const CallbackFunctor &callback, bool verbose)
-    : Base(
-          domain, goal_checker, heuristic,
-          [](const State &) { return Value(0.0, false); }, false, time_budget,
-          rollout_budget, max_depth, 100, 0.0, 1.0, false, callback, verbose) {}
+    : Base(domain, goal_checker, heuristic,
+           nullptr, // terminal_value = nullptr (LRTAstar doesn't use
+                    // terminal_value)
+           false, time_budget, rollout_budget, max_depth, 100, 0.0, 1.0, false,
+           callback, verbose) {}
 
 SK_LRTASTAR_SOLVER_TEMPLATE_DECL
 std::vector<typename Tdomain::Action>

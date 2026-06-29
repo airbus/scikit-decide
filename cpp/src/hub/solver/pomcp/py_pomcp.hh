@@ -43,6 +43,7 @@ private:
     is_solution_defined_for_from_belief(const py::object &d) = 0;
     virtual py::int_ get_nb_tree_nodes() = 0;
     virtual py::int_ get_solving_time() = 0;
+    virtual py::list get_last_trajectory() = 0;
   };
 
   template <typename Texecution>
@@ -56,11 +57,15 @@ private:
         std::size_t time_budget = 0,
         std::size_t num_particles_belief_update = 500,
         double ess_threshold_ratio = 2.0,
-        const std::function<py::bool_(const py::object &)> &callback = nullptr,
+        const std::function<py::object(const py::object &)> &terminal_value =
+            nullptr,
+        const std::function<py::bool_(const py::object &, const py::object &)>
+            &callback = nullptr,
         bool verbose = false)
-        : _callback(callback) {
+        : _terminal_value(terminal_value), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
+      _pydomain = std::make_unique<py::object>(domain);
       _domain = std::make_unique<PyPOMCPDomain<Texecution>>(domain);
 
       _solver =
@@ -68,21 +73,43 @@ private:
               *_domain, exploration_constant, discount, num_simulations,
               max_depth, epsilon, time_budget, num_particles_belief_update,
               ess_threshold_ratio,
+              [this](const typename PyPOMCPDomain<Texecution>::State &s) ->
+              typename PyPOMCPDomain<Texecution>::Value {
+                if (_terminal_value) {
+                  typename GilControl<Texecution>::Acquire acquire;
+                  try {
+                    py::object r = _terminal_value(s.pyobj());
+                    return typename PyPOMCPDomain<Texecution>::Value(r);
+                  } catch (py::error_already_set &e) {
+                    Logger::error(std::string("SKDECIDE exception when calling "
+                                              "terminal_value: ") +
+                                  e.what());
+                    throw std::runtime_error(e.what());
+                  }
+                }
+                return typename PyPOMCPDomain<Texecution>::Value(0.0, false);
+              },
               [this](
                   const POMCPSolver<PyPOMCPDomain<Texecution>, Texecution> &s,
                   PyPOMCPDomain<Texecution> &d) -> bool {
                 if (_callback) {
+                  std::unique_ptr<py::bool_> r;
+                  typename GilControl<Texecution>::Acquire acquire;
                   try {
-                    typename GilControl<Texecution>::Acquire acquire;
-                    py::bool_ r = _callback(*_pysolver);
-                    bool rr = r.template cast<bool>();
+                    r = std::make_unique<py::bool_>(
+                        _callback(*_pysolver, *_pydomain));
+                    bool rr = r->template cast<bool>();
+                    r.reset();
                     return rr;
-                  } catch (const std::exception &e) {
+                  } catch (py::error_already_set &e) {
                     Logger::error(
                         std::string(
                             "SKDECIDE exception when calling callback: ") +
                         e.what());
-                    throw;
+                    r.reset();
+                    _callback_exception =
+                        std::make_exception_ptr(std::runtime_error(e.what()));
+                    return true;
                   }
                 }
                 return false;
@@ -101,6 +128,7 @@ private:
     virtual void clear() { _solver->clear(); }
 
     virtual void solve(const py::object &distribution) {
+      _callback_exception = nullptr;
       std::vector<std::pair<typename PyPOMCPDomain<Texecution>::State, double>>
           dist;
       py::list values = distribution.attr("get_values")();
@@ -109,8 +137,13 @@ private:
         dist.emplace_back(typename PyPOMCPDomain<Texecution>::State(t[0]),
                           t[1].cast<double>());
       }
-      typename GilControl<Texecution>::Release release;
-      _solver->solve(dist);
+      {
+        typename GilControl<Texecution>::Release release;
+        _solver->solve(dist);
+      }
+      if (_callback_exception) {
+        std::rethrow_exception(_callback_exception);
+      }
     }
 
     virtual py::object get_next_action(const py::object &o) {
@@ -195,6 +228,15 @@ private:
 
     virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
 
+    virtual py::list get_last_trajectory() {
+      py::list l;
+      auto &&trajectory = _solver->get_last_trajectory();
+      for (const auto &e : trajectory) {
+        l.append(py::make_tuple(e.first.pyobj(), e.second.pyobj()));
+      }
+      return l;
+    }
+
   private:
     typedef POMCPSolver<PyPOMCPDomain<Texecution>, Texecution> SolverType;
 
@@ -211,10 +253,14 @@ private:
     }
 
     std::unique_ptr<py::object> _pysolver;
+    std::unique_ptr<py::object> _pydomain;
     std::unique_ptr<PyPOMCPDomain<Texecution>> _domain;
     std::unique_ptr<POMCPSolver<PyPOMCPDomain<Texecution>, Texecution>> _solver;
 
-    std::function<py::bool_(const py::object &)> _callback;
+    std::exception_ptr _callback_exception;
+
+    std::function<py::object(const py::object &)> _terminal_value;
+    std::function<py::bool_(const py::object &, const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
     std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -259,14 +305,17 @@ public:
       std::size_t time_budget = 0,
       std::size_t num_particles_belief_update = 500,
       double ess_threshold_ratio = 2.0, bool parallel = false,
-      const std::function<py::bool_(const py::object &)> &callback = nullptr,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
+      const std::function<py::bool_(const py::object &, const py::object &)>
+          &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
         .instantiate(solver, domain, exploration_constant, discount,
                      num_simulations, max_depth, epsilon, time_budget,
-                     num_particles_belief_update, ess_threshold_ratio, callback,
-                     verbose);
+                     num_particles_belief_update, ess_threshold_ratio,
+                     terminal_value, callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -301,6 +350,10 @@ public:
 
   py::int_ get_nb_tree_nodes() { return _implementation->get_nb_tree_nodes(); }
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
+
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
+  }
 };
 
 } // namespace skdecide

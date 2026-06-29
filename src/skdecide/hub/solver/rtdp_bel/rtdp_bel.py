@@ -85,6 +85,9 @@ try:
             heuristic: Callable[
                 [Domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
+            terminal_value: Callable[
+                [D.T_state], D.T_agent[Value[D.T_value]]
+            ] = lambda s: Value(cost=0),
             discretization: int = 10,
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
@@ -105,6 +108,10 @@ try:
                 heuristic cost estimate for a physical state. The belief
                 heuristic is computed as h(b) = sum_s b(s)*h(s).
                 Defaults to Value(cost=0).
+            terminal_value: Function t(state) -> Value returning the value
+                for terminal non-goal states (dead-ends). If None, defaults
+                to Value(cost=0). For domains where terminal states are always
+                goals, this can be left as None.
             discretization: Discretization parameter D for belief hashing.
                 d(b(s)) = ceil(D * b(s)). Higher D = finer discretization
                 but more memory. Defaults to 10.
@@ -137,6 +144,9 @@ try:
                     (lambda d, s: heuristic(d, s))
                     if not parallel
                     else (lambda d, s: d.call(None, 0, s))
+                ),
+                terminal_value=(
+                    (lambda s: terminal_value(s)) if terminal_value else None
                 ),
                 discretization=discretization,
                 time_budget=time_budget,
@@ -209,7 +219,9 @@ try:
             else:
                 return action
 
-        def get_utility_from_belief(self, belief: Distribution[D.T_state]) -> D.T_value:
+        def get_utility_from_belief(
+            self, belief: Distribution[D.T_state]
+        ) -> Value[D.T_value]:
             """Get the best value for an explicit belief state."""
             return self._solver.get_utility_from_belief(belief)
 
@@ -242,11 +254,36 @@ try:
             """Get the solving time in milliseconds."""
             return self._solver.get_solving_time()
 
+        def get_last_trajectory(
+            self,
+        ) -> list[tuple[dict[D.T_state, float], D.T_agent[D.T_concurrency[D.T_event]]]]:
+            """Get the ordered list of (belief, action) pairs visited during the last RTDP-Bel trial.
+
+            Returns the trajectory (path) explored during the most recent trial from
+            the root belief. Each element is a tuple of (belief, action) where the belief
+            is represented as a dictionary mapping states to probabilities, and the action
+            is the best action selected in that belief during the trial. The trajectory
+            begins with the root belief and ends at the deepest belief reached before the
+            trial terminated (due to goal, depth limit, or time limit).
+
+            The last element's action is the action selected in the final belief (or a
+            default-constructed action if the final belief is a goal).
+
+            This is useful for:
+            - Replaying trajectories from the initial belief
+            - Debugging algorithm behavior (which beliefs and actions were explored?)
+            - Visualizing/logging the search process through belief space
+            - Analyzing convergence patterns in the callback
+
+            Returns an empty list if solve() has not been called yet.
+            """
+            return self._solver.get_last_trajectory()
+
         def get_belief_policy(
             self,
         ) -> dict[
             frozenset[tuple[D.T_state, float]],
-            tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], Value[D.T_value]],
         ]:
             """Get the full belief-space policy as a dictionary.
 

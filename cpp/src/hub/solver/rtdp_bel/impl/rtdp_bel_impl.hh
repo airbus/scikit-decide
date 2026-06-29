@@ -66,17 +66,18 @@ SK_RTDP_BEL_CLASS::ActionNode::ActionNode(const Action &a)
 SK_RTDP_BEL_TEMPLATE_DECL
 SK_RTDP_BEL_CLASS::RTDPBelSolver(
     Domain &domain, const GoalCheckerFunctor &goal_checker,
-    const HeuristicFunctor &heuristic, std::size_t discretization,
+    const HeuristicFunctor &heuristic,
+    const TerminalValueFunctor &terminal_value, std::size_t discretization,
     std::size_t time_budget, std::size_t rollout_budget, std::size_t max_depth,
     double epsilon, double discount, const CallbackFunctor &callback,
     bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _discretization(discretization), _time_budget(time_budget),
-      _rollout_budget(rollout_budget), _max_depth(max_depth), _epsilon(epsilon),
-      _discount(discount), _callback(callback), _verbose(verbose),
-      _nb_rollouts(0), _initial_belief_node(nullptr),
-      _current_belief_node(nullptr), _last_action(nullptr),
-      _next_state_index(0) {
+      _terminal_value(terminal_value), _discretization(discretization),
+      _time_budget(time_budget), _rollout_budget(rollout_budget),
+      _max_depth(max_depth), _epsilon(epsilon), _discount(discount),
+      _callback(callback), _verbose(verbose), _nb_rollouts(0),
+      _initial_belief_node(nullptr), _current_belief_node(nullptr),
+      _last_action(nullptr), _next_state_index(0) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm RTDP-Bel");
   }
@@ -191,10 +192,16 @@ typename SK_RTDP_BEL_CLASS::Belief SK_RTDP_BEL_CLASS::compute_posterior_belief(
     const State &s = it->second;
     auto next_dist =
         _domain.get_next_state_distribution(s, a, thread_id).get_values();
-    for (auto ns : next_dist) {
-      std::size_t ns_idx =
-          const_cast<RTDPBelSolver *>(this)->get_state_index(ns.state());
-      b_a[ns_idx] += p.second * ns.probability();
+    if (next_dist.begin() == next_dist.end()) {
+      // Action has no transitions: state stays in place (self-loop)
+      // This is a reasonable assumption for belief update
+      b_a[p.first] += p.second;
+    } else {
+      for (auto ns : next_dist) {
+        std::size_t ns_idx =
+            const_cast<RTDPBelSolver *>(this)->get_state_index(ns.state());
+        b_a[ns_idx] += p.second * ns.probability();
+      }
     }
   }
 
@@ -354,18 +361,30 @@ SK_RTDP_BEL_CLASS::greedy_action(BeliefNode *bn, const std::size_t *thread_id) {
     for (const auto &bp : bn->belief) {
       auto it = _index_to_state.find(bp.first);
       if (it != _index_to_state.end()) {
-        if (!a->outcomes.empty()) {
+        const State &s = it->second;
+
+        // Check if this state is a terminal state (non-goal)
+        if (_domain.is_terminal(s, thread_id) &&
+            !_goal_checker(_domain, s, thread_id)) {
+          // Terminal non-goal state: use terminal_value directly
+          // (no transitions expected, or should be penalized)
+          immediate_cost += bp.second * _terminal_value(s).cost();
+        } else {
+          // Normal state or goal state: compute expected immediate cost
           auto next_dist =
-              _domain
-                  .get_next_state_distribution(it->second, a->action, thread_id)
+              _domain.get_next_state_distribution(s, a->action, thread_id)
                   .get_values();
-          for (auto ns : next_dist) {
-            immediate_cost += bp.second * ns.probability() *
-                              _domain
-                                  .get_transition_value(it->second, a->action,
-                                                        ns.state(), thread_id)
-                                  .cost();
-            break;
+          if (next_dist.begin() == next_dist.end()) {
+            // Action has no transitions: treat as terminal state
+            immediate_cost += bp.second * _terminal_value(s).cost();
+          } else {
+            for (auto ns : next_dist) {
+              immediate_cost +=
+                  bp.second * ns.probability() *
+                  _domain
+                      .get_transition_value(s, a->action, ns.state(), thread_id)
+                      .cost();
+            }
           }
         }
       }
@@ -398,6 +417,7 @@ void SK_RTDP_BEL_CLASS::update(BeliefNode *bn, const std::size_t *thread_id) {
 SK_RTDP_BEL_TEMPLATE_DECL
 void SK_RTDP_BEL_CLASS::trial(BeliefNode *bn, const std::size_t *thread_id) {
   BeliefNode *current = bn;
+  std::vector<BeliefNode *> current_trajectory;
   std::size_t depth = 0;
 
   State s = sample_state_from_belief(current->belief, thread_id);
@@ -405,6 +425,7 @@ void SK_RTDP_BEL_CLASS::trial(BeliefNode *bn, const std::size_t *thread_id) {
   while (!current->goal && !current->solved && depth < _max_depth &&
          get_solving_time() < _time_budget) {
     depth++;
+    current_trajectory.push_back(current);
 
     _execution_policy.protect(
         [this, &current, &thread_id]() { update(current, thread_id); },
@@ -458,6 +479,9 @@ void SK_RTDP_BEL_CLASS::trial(BeliefNode *bn, const std::size_t *thread_id) {
     current = next;
     s = sp;
   }
+
+  // Save the trajectory after the trial completes
+  _last_trajectory = current_trajectory;
 }
 
 // --- solve ---
@@ -646,19 +670,21 @@ std::size_t SK_RTDP_BEL_CLASS::get_discretization() const {
 
 SK_RTDP_BEL_TEMPLATE_DECL
 std::unordered_map<typename SK_RTDP_BEL_CLASS::DiscretizedBelief,
-                   std::pair<typename SK_RTDP_BEL_CLASS::Action, double>,
+                   std::pair<typename SK_RTDP_BEL_CLASS::Action,
+                             typename SK_RTDP_BEL_CLASS::Value>,
                    typename SK_RTDP_BEL_CLASS::DiscretizedBeliefHash,
                    typename SK_RTDP_BEL_CLASS::DiscretizedBeliefEqual>
 SK_RTDP_BEL_CLASS::get_belief_policy() const {
-  std::unordered_map<DiscretizedBelief, std::pair<Action, double>,
+  std::unordered_map<DiscretizedBelief, std::pair<Action, Value>,
                      DiscretizedBeliefHash, DiscretizedBeliefEqual>
       p;
   for (const auto &entry : _belief_graph) {
     const BeliefNode &bn = *(entry.second);
     if (bn.best_action != nullptr) {
-      p.insert(
-          std::make_pair(bn.discretized, std::make_pair(bn.best_action->action,
-                                                        bn.best_value)));
+      Value val;
+      val.cost(bn.best_value);
+      p.insert(std::make_pair(bn.discretized,
+                              std::make_pair(bn.best_action->action, val)));
     }
   }
   return p;
@@ -680,6 +706,19 @@ std::size_t SK_RTDP_BEL_CLASS::get_solving_time() const {
       std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::high_resolution_clock::now() - _start_time)
           .count());
+}
+
+SK_RTDP_BEL_TEMPLATE_DECL
+std::vector<std::pair<typename SK_RTDP_BEL_CLASS::Belief,
+                      typename SK_RTDP_BEL_CLASS::Action>>
+SK_RTDP_BEL_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<Belief, Action>> trajectory;
+  trajectory.reserve(_last_trajectory.size());
+  for (const auto *bn : _last_trajectory) {
+    Action action = bn->best_action ? bn->best_action->action : Action();
+    trajectory.push_back(std::make_pair(bn->belief, action));
+  }
+  return trajectory;
 }
 
 } // namespace skdecide

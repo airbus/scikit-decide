@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional
+from typing import Optional, TypedDict
 
 from skdecide import Distribution, Domain, Solver, Value
 from skdecide.builders.domain import (
@@ -60,6 +60,25 @@ try:
 
         T_domain = D
 
+        class BeliefNodeDict(TypedDict):
+            """Type for belief node dictionaries returned by get_explored_beliefs().
+
+            Fields:
+            - particles: list of states representing the belief via particle filter
+            - lower_bound: lower bound on the value at this belief
+            - upper_bound: upper bound on the value at this belief
+            - default_value: value from default policy rollouts
+            - depth: depth of this node in the DESPOT tree
+            - best_action: action with highest lower bound (None if not expanded)
+            """
+
+            particles: list
+            lower_bound: float
+            upper_bound: float
+            default_value: float
+            depth: int
+            best_action: object
+
         def __init__(
             self,
             domain_factory: Callable[[], Domain],
@@ -75,6 +94,7 @@ try:
             ess_threshold_ratio: float = 2.0,
             default_policy: Optional[Callable[[Domain, object], Value]] = None,
             upper_bound_heuristic: Optional[Callable[[Domain, object], Value]] = None,
+            terminal_value: Optional[Callable[[object], Value]] = None,
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[DESPOT, Optional[int]], bool] = lambda slv,
@@ -112,6 +132,9 @@ try:
             upper_bound_heuristic: Optional function (domain, state) -> Value
                 providing an upper bound heuristic. If None, R_max/(1-gamma)
                 is used. Defaults to None.
+            terminal_value: Function (state) -> Value returning the
+                value for terminal non-goal states.
+                Defaults to None (C++ uses Value(reward=0) for all terminals).
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy.
                 Defaults to None.
@@ -143,6 +166,9 @@ try:
                 ess_threshold_ratio=ess_threshold_ratio,
                 default_policy=default_policy,
                 upper_bound_heuristic=upper_bound_heuristic,
+                terminal_value=(
+                    None if terminal_value is None else lambda s: terminal_value(s)
+                ),
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -150,9 +176,11 @@ try:
 
         def close(self):
             """Joins the parallel domains' processes."""
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve(self, from_memory=None) -> None:
             if from_memory is None:
@@ -217,7 +245,9 @@ try:
                 return self.call_domain_method("get_action_space").sample()
             return action
 
-        def get_utility_from_belief(self, belief: Distribution[D.T_state]) -> D.T_value:
+        def get_utility_from_belief(
+            self, belief: Distribution[D.T_state]
+        ) -> Value[D.T_value]:
             """Get the best value for an explicit belief state."""
             return self._solver.get_utility_from_belief(belief)
 
@@ -242,6 +272,46 @@ try:
         def get_gap(self) -> float:
             """Get the gap between upper and lower bounds at the root."""
             return self._solver.get_gap()
+
+        def get_explored_beliefs(self) -> list[BeliefNodeDict]:
+            """Get the explored belief nodes from the last DESPOT tree.
+
+            Returns a list of dictionaries, each containing:
+            - 'particles': list of states (D.T_state) representing the belief
+            - 'lower_bound': lower bound on value at this belief
+            - 'upper_bound': upper bound on value at this belief
+            - 'default_value': value from default policy rollouts
+            - 'depth': depth in the tree
+            - 'best_action': action with highest lower bound, or None if not expanded
+
+            The tree is built during the last call to get_next_action() or
+            get_next_action_from_belief(). Returns an empty list if no tree
+            has been built yet (before the first action query).
+            """
+            return self._solver.get_explored_beliefs()
+
+        def get_last_trajectory(
+            self,
+        ) -> list[tuple[D.T_state, D.T_agent[D.T_concurrency[D.T_event]]]]:
+            """Get the ordered list of (state, action) pairs visited during
+            the last DESPOT tree construction.
+
+            Returns the trajectory (path) explored during the most recent explore()
+            call from the root node. Each element is a tuple of (state, action)
+            where the state is a representative state from the scenarios at that node
+            and the action is the action selected at that node. The trajectory begins
+            with a root state and ends at the deepest node reached before exploration
+            terminated.
+
+            Note: DESPOT maintains K scenarios per node. This method returns the first
+            scenario's state as a representative at each level of the explored path.
+
+            # Returns
+            list[tuple[D.T_state, D.T_agent[D.T_event]]]: List of (state, action)
+                pairs visited during the last exploration. Returns an empty list
+                if solve() has not been called yet.
+            """
+            return self._solver.get_last_trajectory()
 
 except ImportError:
     print(

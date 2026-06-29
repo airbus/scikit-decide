@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional
+from typing import Optional, TypedDict
 
-from skdecide import Distribution, Domain, Solver
+from skdecide import Distribution, Domain, Solver, Value
 from skdecide.builders.domain import (
     Actions,
     EnumerableTransitions,
@@ -64,6 +64,17 @@ try:
 
         T_domain = D
 
+        class AlphaVectorDict(TypedDict):
+            """Type for alpha vector dictionaries returned by get_alpha_vectors().
+
+            Fields:
+            - values: dict mapping states (D.T_state) to Value[D.T_value]
+            - action: action object (D.T_agent[D.T_concurrency[D.T_event]])
+            """
+
+            values: dict[D.T_state, Value[D.T_value]]
+            action: D.T_agent[D.T_concurrency[D.T_event]]
+
         def __init__(
             self,
             domain_factory: Callable[[], Domain],
@@ -72,6 +83,7 @@ try:
             max_iterations: int = 100,
             lp_infinity: float = 1e20,
             lp_tolerance: float = 1e-10,
+            terminal_value: Callable[[object], Value] = lambda s: Value(reward=0),
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[Witness], bool] = lambda slv: False,
@@ -91,6 +103,9 @@ try:
                 HiGHS. Defaults to 1e20.
             lp_tolerance: Numerical tolerance for LP feasibility checks
                 and alpha-vector comparisons. Defaults to 1e-10.
+            terminal_value: Function (state) -> Value returning the
+                value for terminal non-goal states.
+                Defaults to lambda s: Value(reward=0).
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy.
                 Defaults to None.
@@ -115,6 +130,7 @@ try:
                 max_iterations=max_iterations,
                 lp_infinity=lp_infinity,
                 lp_tolerance=lp_tolerance,
+                terminal_value=lambda s: terminal_value(s),
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -122,9 +138,11 @@ try:
 
         def close(self):
             """Joins the parallel domains' processes."""
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve(self, from_memory=None) -> None:
             if from_memory is None:
@@ -186,7 +204,9 @@ try:
                 return self.call_domain_method("get_action_space").sample()
             return action
 
-        def get_utility_from_belief(self, belief: Distribution[D.T_state]) -> D.T_value:
+        def get_utility_from_belief(
+            self, belief: Distribution[D.T_state]
+        ) -> Value[D.T_value]:
             """Get the best value for an explicit belief state."""
             return self._solver.get_utility_from_belief(belief)
 
@@ -214,6 +234,18 @@ try:
 
         def get_callback_event(self) -> str:
             return self._solver.get_callback_event()
+
+        def get_alpha_vectors(self) -> list[AlphaVectorDict]:
+            """Get the alpha-vectors representing the policy.
+
+            Returns a list of dictionaries, each containing:
+            - 'values': dict[D.T_state, Value[D.T_value]] - state to Value mapping
+            - 'action': D.T_agent[D.T_concurrency[D.T_event]] - associated action
+
+            The policy at any belief b is: choose the action of the alpha-vector
+            that maximizes sum(b[s] * alpha['values'][s].reward for all states s).
+            """
+            return self._solver.get_alpha_vectors()
 
 except ImportError:
     print(

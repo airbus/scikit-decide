@@ -18,7 +18,7 @@ from skdecide.builders.domain import (
     Simulation,
     SingleAgent,
 )
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import DeterministicPolicies, FromAnyState, Utilities
 
 try:
     from skdecide.hub.__skdecide_hub_cpp import _RFFSolver_ as CppRFFSolver
@@ -37,7 +37,7 @@ try:
     ):
         pass
 
-    class RFF(Solver, DeterministicPolicies, Utilities):
+    class RFF(Solver, DeterministicPolicies, Utilities, FromAnyState):
         """RFF (Robust FF) from Teichteil-Königsbuch, Kuter & Infantes
         (AAMAS 2010): plan-merging solver for probabilistic PDDL domains.
 
@@ -123,30 +123,36 @@ try:
             self._callback = callback
             self._verbose = verbose
 
-        def _solve(self) -> None:
-            domain = self._domain_factory()
-            if not hasattr(domain, "_task"):
-                raise TypeError(
-                    "RFF solver requires a PPDDLDomain (with _task attribute)"
+        def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+            """Run the RFF algorithm from a given PDDL state.
+
+            # Parameters
+            memory: PDDL state from which to start plan merging.
+            """
+            if not hasattr(self, "_cpp_solver"):
+                domain = self._domain_factory()
+                if not hasattr(domain, "_task"):
+                    raise TypeError(
+                        "RFF solver requires a PPDDLDomain (with _task attribute)"
+                    )
+                self._task = domain._task
+                self._cpp_solver = CppRFFSolver(
+                    self,
+                    self._task,
+                    self._determinization,
+                    self._parallel,
+                    self._dead_end_cost,
+                    self._rho,
+                    self._mc_samples,
+                    self._max_iterations,
+                    self._max_steps,
+                    self._optimize_policy_graph,
+                    self._discount,
+                    self._epsilon,
+                    self._callback,
+                    self._verbose,
                 )
-            self._task = domain._task
-            self._cpp_solver = CppRFFSolver(
-                self,
-                self._task,
-                self._determinization,
-                self._parallel,
-                self._dead_end_cost,
-                self._rho,
-                self._mc_samples,
-                self._max_iterations,
-                self._max_steps,
-                self._optimize_policy_graph,
-                self._discount,
-                self._epsilon,
-                self._callback,
-                self._verbose,
-            )
-            self._cpp_solver.solve(self._task.initial_state())
+            self._cpp_solver.solve(memory.to_cpp())
 
         def _resolve_from(self, observation: D.T_agent[D.T_observation]) -> None:
             self._cpp_solver.resolve(observation.to_cpp())

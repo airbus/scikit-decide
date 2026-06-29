@@ -78,9 +78,7 @@ try:
             heuristic: Callable[
                 [T_domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
-            terminal_value: Callable[[D.T_state], Value[D.T_value]] = lambda s: Value(
-                cost=0
-            ),
+            terminal_value: Optional[Callable[[D.T_state], Value[D.T_value]]] = None,
             use_labels: bool = True,
             time_budget: int = 3600000,
             rollout_budget: int = 100000,
@@ -104,6 +102,27 @@ try:
                 Lambda function taking as arguments the domain and a state, and returning the heuristic
                 estimate from the state to the goal.
                 Defaults to (lambda d, s: Value(cost=0)).
+            terminal_value (Optional[Callable[[D.T_state], Value[D.T_value]]], optional):
+                Lambda function taking a terminal state and returning its value.
+                Only affects non-goal terminal states (dead-ends). Goals ALWAYS have value 0 regardless.
+
+                When None (DEFAULT - recommended for standard SSPs):
+                  - Goal states: value = 0 (cost-to-go is zero at goal)
+                  - Dead-end states: value = heuristic(s) (e.g., large finite value like 1e9)
+                  - This is the correct setting for Stochastic Shortest Path (SSP) problems
+                    where proper policies exist (every state can reach the goal with probability 1)
+                  - Dead-ends are naturally avoided because actions leading to them get high Q-values
+                  - CRITICAL: Never use infinity for dead-ends in SSPs, as ANY non-zero probability
+                    of reaching a dead-end propagates infinity through Bellman updates, preventing
+                    convergence. Use the heuristic with large finite values instead.
+
+                When defined (for problems with unavoidable dead-ends):
+                  - Dead-end states: value = terminal_value(s) (user-specified penalty)
+                  - Use this only when dead-ends are unavoidable and you need to compare risky paths
+                  - Still use finite values (e.g., 1e6) to avoid the infinity propagation issue
+                  - Example: time-limited problems where all paths have some failure probability
+
+                Defaults to None.
             use_labels (bool, optional): Boolean indicating whether labels must be used (True) or not
                 (False), in which case the algorithm is equivalent to the standard RTDP). Defaults to True.
             time_budget (int, optional): Maximum solving time in milliseconds. Defaults to 3600000.
@@ -184,9 +203,11 @@ try:
                 results in the solver forever waiting for the domain processes to exit.
 
             """
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the LRTDP algorithm from a given root solving state
@@ -332,6 +353,33 @@ try:
         def get_solved_states(self) -> set[D.T_agent[D.T_observation]]:
             """Get states labeled as solved"""
             return self._solver.get_solved_states()
+
+        def get_last_trajectory(
+            self,
+        ) -> list[
+            tuple[D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]]]
+        ]:
+            """Get the ordered list of (state, action) pairs visited during the last LRTDP trial.
+
+            Returns the trajectory (path) explored during the most recent trial from
+            the root state. Each element is a tuple of (state, action) where the action
+            is the best action selected in that state during the trial. The trajectory
+            begins with the root state and ends at the deepest state reached before the
+            trial terminated (due to goal, solved state, depth limit, or time limit).
+
+            The last element's action is the action selected in the final state (or a
+            default-constructed action if the final state is terminal/goal).
+
+            This is useful for:
+            - Replaying trajectories from the initial state
+            - Debugging algorithm behavior (which states and actions were explored?)
+            - Custom heuristic updates based on trajectory
+            - Visualizing/logging the search process
+            - Analyzing convergence patterns in the callback
+
+            Returns an empty list if solve() has not been called yet.
+            """
+            return self._solver.get_last_trajectory()
 
     class D_LRTAstar(
         Domain,

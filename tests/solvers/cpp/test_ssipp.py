@@ -332,8 +332,7 @@ class TestSSiPP:
             depth=3,
             inner_solver_factory=lambda: ("LRTDP", {}),
         ) as ssipp:
-            for _ in range(20):
-                ssipp.solve()
+            ssipp.solve()
             v_ssipp = ssipp.get_utility(State(0, 0)).cost
 
         assert abs(v_ssipp - v_star) < 0.5, (
@@ -365,8 +364,7 @@ class TestSSiPP:
             depth=4,
             inner_solver_factory=lambda: ("LRTDP", {}),
         ) as ssipp:
-            for _ in range(50):
-                ssipp.solve()
+            ssipp.solve()
             v_ssipp = ssipp.get_utility(State(0, 0)).cost
 
         assert abs(v_ssipp - v_star) < 1.0, (
@@ -386,3 +384,35 @@ class TestSSiPP:
         ) as solver:
             solver.solve()
             assert solver.get_solving_time() >= 0
+
+    def test_get_policy_no_recursive_solve(self):
+        """get_policy() should return accumulated policy without errors.
+
+        This is a regression test for a bug where get_policy() would iterate over
+        explored states and call is_solution_defined_for(), which triggered solve()
+        recursively for each state. The fix makes get_policy() directly return the
+        internal _policy map that's accumulated across sub-SSP iterations.
+        """
+        from skdecide.hub.solver.ssipp import SSiPP
+
+        goal = State(3, 3)
+        h = lambda d, s: Value(cost=abs(s.x - goal.x) + abs(s.y - goal.y))
+
+        with SSiPP(
+            domain_factory=lambda: DeterministicGridDomain(),
+            heuristic=h,
+            depth=3,
+        ) as solver:
+            solver.solve()
+
+            # Get the policy - this should complete without errors
+            policy = solver.get_policy()
+
+            # Verify policy is non-empty and contains the initial state
+            assert len(policy) > 0, "Policy should not be empty"
+            assert State(0, 0) in policy, "Policy should contain initial state"
+
+            # Verify policy entries have correct structure (action, value)
+            for state, (action, value) in list(policy.items())[:5]:  # Check first 5
+                assert action in Action, f"Action {action} should be valid"
+                assert value.cost >= 0, f"Value cost should be non-negative"

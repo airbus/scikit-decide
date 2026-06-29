@@ -19,7 +19,7 @@ void init_pydespot(py::module &m) {
                                                    const py::object &)> &,
                     const std::function<py::object(const py::object &,
                                                    const py::object &)> &,
-                    bool,
+                    const std::function<py::object(const py::object &)> &, bool,
                     const std::function<py::bool_(const py::object &,
                                                   const py::object &)> &,
                     bool>(),
@@ -32,8 +32,8 @@ void init_pydespot(py::module &m) {
            py::arg("ess_threshold_ratio") = 2.0,
            py::arg("default_policy") = nullptr,
            py::arg("upper_bound_heuristic") = nullptr,
-           py::arg("parallel") = false, py::arg("callback") = nullptr,
-           py::arg("verbose") = false)
+           py::arg("terminal_value") = nullptr, py::arg("parallel") = false,
+           py::arg("callback") = nullptr, py::arg("verbose") = false)
       .def("close", &skdecide::PyDespotSolver::close)
       .def("clear", &skdecide::PyDespotSolver::clear)
       .def("solve", &skdecide::PyDespotSolver::solve, py::arg("distribution"))
@@ -56,5 +56,9 @@ void init_pydespot(py::module &m) {
            py::arg("belief"))
       .def("get_nb_tree_nodes", &skdecide::PyDespotSolver::get_nb_tree_nodes)
       .def("get_solving_time", &skdecide::PyDespotSolver::get_solving_time)
-      .def("get_gap", &skdecide::PyDespotSolver::get_gap);
+      .def("get_gap", &skdecide::PyDespotSolver::get_gap)
+      .def("get_explored_beliefs",
+           &skdecide::PyDespotSolver::get_explored_beliefs)
+      .def("get_last_trajectory",
+           &skdecide::PyDespotSolver::get_last_trajectory);
 }

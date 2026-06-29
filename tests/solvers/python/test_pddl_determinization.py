@@ -250,3 +250,132 @@ def test_ppddlplanmerger_accessors(tireworld_factory):
     )
     # Verify accessor methods exist
     assert hasattr(solver, "get_solving_time")
+
+
+# ========== solve_from() Tests ==========
+
+
+@pytest.mark.timeout(30)
+def test_ffreplan_solve_from(tireworld_factory):
+    """Test FFReplan solve_from() can solve from an arbitrary state."""
+    domain = tireworld_factory()
+    solver = FFReplan(
+        domain_factory=tireworld_factory,
+        determinization="most_probable_outcome",
+        max_replans=10,
+        max_steps=100,
+        verbose=False,
+    )
+    # Get initial state
+    initial_state = domain.reset()
+    # Solve from initial state using solve_from
+    solver.solve_from(initial_state)
+    # Verify we can get an action from the solved state
+    action = solver.get_next_action(initial_state)
+    assert action is not None
+    # Verify we have a plan
+    plan = solver.get_plan()
+    assert len(plan) > 0
+
+
+@pytest.mark.timeout(30)
+def test_ppddlreplan_solve_from(tireworld_factory):
+    """Test PPDDLReplan solve_from() can solve from an arbitrary state."""
+    domain = tireworld_factory()
+    solver = PPDDLReplan(
+        domain_factory=tireworld_factory,
+        determinization="most_probable_outcome",
+        max_replans=10,
+        max_steps=100,
+        verbose=False,
+    )
+    # Get initial state
+    initial_state = domain.reset()
+    # Solve from initial state using solve_from
+    solver.solve_from(initial_state)
+    # Verify we can get an action from the solved state
+    action = solver.get_next_action(initial_state)
+    assert action is not None
+    # Verify we have a plan
+    plan = solver.get_plan()
+    assert len(plan) > 0
+
+
+@pytest.mark.timeout(30)
+def test_ffdethindsight_solve_from(tireworld_factory):
+    """Test FFDetHindsight solve_from() can solve from an arbitrary state."""
+    domain = tireworld_factory()
+    solver = FFDetHindsight(
+        domain_factory=tireworld_factory,
+        sample_width=5,
+        max_steps=100,
+        verbose=False,
+    )
+    # Get initial state
+    initial_state = domain.reset()
+    # Solve from initial state using solve_from
+    solver.solve_from(initial_state)
+    # Verify we can get an action from the solved state
+    action = solver.get_next_action(initial_state)
+    assert action is not None
+
+
+@pytest.mark.timeout(30)
+def test_ppddldethindsight_solve_from(tireworld_factory):
+    """Test PPDDLDetHindsight solve_from() can solve from an arbitrary state."""
+    domain = tireworld_factory()
+    solver = PPDDLDetHindsight(
+        domain_factory=tireworld_factory,
+        sample_width=5,
+        max_steps=100,
+        verbose=False,
+    )
+    # Get initial state
+    initial_state = domain.reset()
+    # Solve from initial state using solve_from
+    solver.solve_from(initial_state)
+    # Verify we can get an action from the solved state
+    action = solver.get_next_action(initial_state)
+    assert action is not None
+
+
+@pytest.mark.timeout(30)
+def test_rff_solve_from(tireworld_factory):
+    """Test RFF solve_from() can solve from an arbitrary state."""
+    domain = tireworld_factory()
+    solver = RFF(
+        domain_factory=tireworld_factory,
+        determinization="most_probable_outcome",
+        max_iterations=5,
+        mc_samples=10,
+        max_steps=100,
+        verbose=False,
+    )
+    # Get initial state
+    initial_state = domain.reset()
+    # Solve from initial state using solve_from
+    solver.solve_from(initial_state)
+    # Verify we can get an action from the solved state
+    action = solver.get_next_action(initial_state)
+    assert action is not None
+
+
+@pytest.mark.timeout(30)
+def test_ppddlplanmerger_solve_from(tireworld_factory):
+    """Test PPDDLPlanMerger solve_from() can solve from an arbitrary state."""
+    domain = tireworld_factory()
+    solver = PPDDLPlanMerger(
+        domain_factory=tireworld_factory,
+        determinization="most_probable_outcome",
+        max_iterations=5,
+        mc_samples=10,
+        max_steps=100,
+        verbose=False,
+    )
+    # Get initial state
+    initial_state = domain.reset()
+    # Solve from initial state using solve_from
+    solver.solve_from(initial_state)
+    # Verify we can get an action from the solved state
+    action = solver.get_next_action(initial_state)
+    assert action is not None

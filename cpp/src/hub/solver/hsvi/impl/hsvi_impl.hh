@@ -8,8 +8,10 @@
 #include <algorithm>
 #include <numeric>
 #include <queue>
-#include <sstream>
 #include <unordered_set>
+
+#include "utils/logging.hh"
+#include "utils/string_converter.hh"
 
 #define SK_HSVI_TEMPLATE_DECL                                                  \
   template <typename Tdomain, typename Texecution_policy>
@@ -23,21 +25,87 @@ namespace skdecide {
 // =============================================================================
 
 SK_HSVI_TEMPLATE_DECL
-SK_HSVI_CLASS::HSVISolver(Domain &domain, double epsilon, double discount,
-                          std::size_t time_budget, std::size_t max_sample_depth,
-                          bool use_closed_list, double depth_bound_eta,
-                          std::size_t max_vi_iterations,
-                          double vi_convergence_factor, double prob_epsilon,
-                          double belief_hash_resolution,
-                          const CallbackFunctor &callback, bool verbose)
+SK_HSVI_CLASS::HSVISolver(
+    typename SK_HSVI_CLASS::Domain &domain, double epsilon, double discount,
+    std::size_t time_budget, std::size_t max_sample_depth, bool use_closed_list,
+    double depth_bound_eta, std::size_t max_vi_iterations,
+    double vi_convergence_factor, double prob_epsilon,
+    double belief_hash_resolution,
+    const typename SK_HSVI_CLASS::TerminalValueFunctor &terminal_value,
+    const typename SK_HSVI_CLASS::CallbackFunctor &callback, bool verbose)
     : _domain(domain), _epsilon(epsilon), _discount(discount),
       _time_budget(time_budget), _max_sample_depth(max_sample_depth),
       _use_closed_list(use_closed_list), _depth_bound_eta(depth_bound_eta),
       _max_vi_iterations(max_vi_iterations),
       _vi_convergence_factor(vi_convergence_factor),
       _prob_epsilon(prob_epsilon),
-      _belief_hash_resolution(belief_hash_resolution), _callback(callback),
-      _verbose(verbose) {}
+      _belief_hash_resolution(belief_hash_resolution),
+      _terminal_value(terminal_value), _callback(callback), _verbose(verbose) {}
+
+SK_HSVI_TEMPLATE_DECL
+double SK_HSVI_CLASS::_better(double a, double b) const {
+  return std::max(a, b);
+}
+
+SK_HSVI_TEMPLATE_DECL
+double SK_HSVI_CLASS::_worse(double a, double b) const {
+  return std::min(a, b);
+}
+
+SK_HSVI_TEMPLATE_DECL
+double SK_HSVI_CLASS::_best_init() const {
+  return -std::numeric_limits<double>::infinity();
+}
+
+SK_HSVI_TEMPLATE_DECL
+double SK_HSVI_CLASS::_worst_init() const {
+  return std::numeric_limits<double>::infinity();
+}
+
+SK_HSVI_TEMPLATE_DECL
+bool SK_HSVI_CLASS::_is_better(double a, double b) const { return a > b; }
+
+SK_HSVI_TEMPLATE_DECL
+double SK_HSVI_CLASS::_get_value(const Value &v) const { return v.reward(); }
+
+SK_HSVI_TEMPLATE_DECL
+void SK_HSVI_CLASS::make_value_obj(double v, Value &out) const {
+  out.reward(v);
+}
+
+SK_HSVI_TEMPLATE_DECL
+double SK_HSVI_CLASS::convergence_threshold(std::size_t depth) const {
+  return _epsilon * std::pow(_discount, -static_cast<double>(depth));
+}
+
+SK_HSVI_TEMPLATE_DECL
+double SK_HSVI_CLASS::get_terminal_state_value(std::size_t si) const {
+  return _get_value(_terminal_value(_states[si]));
+}
+
+SK_HSVI_TEMPLATE_DECL
+void SK_HSVI_CLASS::compute_depth_bound() { _depth_bound = _max_sample_depth; }
+
+SK_HSVI_TEMPLATE_DECL
+void SK_HSVI_CLASS::on_states_enumerated() {}
+
+SK_HSVI_TEMPLATE_DECL
+void SK_HSVI_CLASS::on_model_cached() {}
+
+SK_HSVI_TEMPLATE_DECL
+double SK_HSVI_CLASS::evaluate_upper(const Belief &b) const {
+  return evaluate_sawtooth(b);
+}
+
+SK_HSVI_TEMPLATE_DECL
+double SK_HSVI_CLASS::evaluate_lower(const Belief &b) const {
+  return evaluate_alpha(b);
+}
+
+SK_HSVI_TEMPLATE_DECL
+void SK_HSVI_CLASS::apply_alpha_clamp(double &val, std::size_t si) const {
+  val = _worse(val, _mdp_values[si]);
+}
 
 SK_HSVI_TEMPLATE_DECL
 void SK_HSVI_CLASS::clear() {
@@ -99,6 +167,11 @@ void SK_HSVI_CLASS::enumerate_states(const Belief &b0) {
               _actions.push_back(a);
             }
           });
+
+          // If action has no transitions, skip enumeration
+          // (terminal states will be handled separately)
+          if (next_dist.begin() == next_dist.end())
+            return;
 
           for (auto ns_item : next_dist) {
             _execution_policy.protect([this, &ns_item, &frontier, &visited] {
@@ -165,6 +238,12 @@ void SK_HSVI_CLASS::pre_cache_model() {
         for (std::size_t ai = 0; ai < na; ++ai) {
           auto next_dist =
               _domain.get_next_state_distribution(s, _actions[ai]).get_values();
+
+          // If action has no transitions, use terminal value
+          if (next_dist.begin() == next_dist.end()) {
+            _values[si][ai] = _get_value(_terminal_value(s));
+            continue;
+          }
 
           double weighted_value = 0.0;
 
@@ -347,6 +426,7 @@ void SK_HSVI_CLASS::initialize_point_bound() {
 SK_HSVI_TEMPLATE_DECL
 void SK_HSVI_CLASS::solve(
     const std::vector<std::pair<State, double>> &initial_distribution) {
+  Logger::info("Running HSVI solver");
   _start_time = std::chrono::high_resolution_clock::now();
 
   _initial_belief.clear();
@@ -404,7 +484,15 @@ void SK_HSVI_CLASS::solve(
     }
 
     std::unordered_set<std::size_t> closed_list;
-    explore(_initial_belief, 0, closed_list);
+    std::vector<Belief> current_belief_path;
+    explore(_initial_belief, 0, closed_list, &current_belief_path);
+
+    // Save the belief path for on-demand trajectory reconstruction
+    _execution_policy.protect(
+        [this, &current_belief_path]() {
+          _last_belief_path = current_belief_path;
+        },
+        _trajectory_mutex);
 
     ++iteration;
 
@@ -413,17 +501,24 @@ void SK_HSVI_CLASS::solve(
       lb = evaluate_lower(_initial_belief);
       _gap = ub - lb;
       Logger::info("HSVI: iteration " + std::to_string(iteration) +
-                   ", bounds [" + std::to_string(lb) + ", " +
-                   std::to_string(ub) + "], gap = " + std::to_string(_gap) +
+                   ", gap = " + std::to_string(_gap) +
                    ", alphas = " + std::to_string(_alpha_vectors.size()) +
                    ", points = " + std::to_string(_bound_points.size()));
     }
   }
+
+  Logger::info(
+      "HSVI finished in " + StringConverter::from((double)elapsed_ms() / 1e3) +
+      " seconds with " + StringConverter::from(iteration) + " iterations, " +
+      StringConverter::from(_alpha_vectors.size()) + " alpha-vectors, " +
+      StringConverter::from(_bound_points.size()) +
+      " points, final gap = " + StringConverter::from(_gap));
 }
 
 SK_HSVI_TEMPLATE_DECL
 void SK_HSVI_CLASS::explore(const Belief &b, std::size_t depth,
-                            std::unordered_set<std::size_t> &closed_list) {
+                            std::unordered_set<std::size_t> &closed_list,
+                            std::vector<Belief> *belief_path) {
   if (elapsed_ms() >= _time_budget)
     return;
 
@@ -485,6 +580,11 @@ void SK_HSVI_CLASS::explore(const Belief &b, std::size_t depth,
     }
   }
 
+  // Record belief path (skip action for performance - reconstruct on-demand)
+  if (belief_path) {
+    belief_path->push_back(b);
+  }
+
   std::size_t best_oh = 0;
   double best_score = -std::numeric_limits<double>::infinity();
   bool found_obs = false;
@@ -516,7 +616,7 @@ void SK_HSVI_CLASS::explore(const Belief &b, std::size_t depth,
   }
 
   if (found_obs) {
-    explore(best_posterior, depth + 1, closed_list);
+    explore(best_posterior, depth + 1, closed_list, belief_path);
   }
 
   alpha_backup(b);
@@ -537,45 +637,67 @@ void SK_HSVI_CLASS::alpha_backup(const Belief &b) {
   std::vector<std::size_t> action_indices(na);
   std::iota(action_indices.begin(), action_indices.end(), 0);
 
-  std::for_each(ExecutionPolicy::policy, action_indices.begin(),
-                action_indices.end(),
-                [this, ns, &b, &candidates](std::size_t ai) {
-                  AlphaVector g_a(ns, _actions[ai], 0);
+  std::for_each(
+      ExecutionPolicy::policy, action_indices.begin(), action_indices.end(),
+      [this, ns, &b, &candidates](std::size_t ai) {
+        AlphaVector g_a(ns, _actions[ai], 0);
 
-                  for (std::size_t si = 0; si < ns; ++si) {
-                    g_a.values[si] = _values[si][ai];
-                  }
+        // Phase 1: immediate costs + total fallback contribution.
+        // The fallback alpha is used for all observations that are
+        // unreachable from b (empty posterior). Since
+        // sum_oh Z(s',a,oh) = 1 for any state s', the total
+        // contribution equals sum_{s'} T(si,a,s') * fallback[s'].
+        // This guarantees global admissibility for states whose
+        // observations are not represented in the backup belief.
+        std::size_t fallback_idx = fallback_alpha_index_for_empty_posterior();
+        const AlphaVector &fallback_alpha = _alpha_vectors[fallback_idx];
 
-                  for (std::size_t oh : _action_obs_hashes[ai]) {
-                    Belief posterior = compute_posterior(b, ai, oh);
-                    if (posterior.empty())
-                      continue;
+        for (std::size_t si = 0; si < ns; ++si) {
+          g_a.values[si] = _values[si][ai];
+          for (const auto &tr : _transitions[si][ai]) {
+            g_a.values[si] +=
+                _discount * tr.first * fallback_alpha.values[tr.second];
+          }
+        }
 
-                    std::size_t best_idx = best_alpha_index(posterior);
-                    const AlphaVector &alpha_ao = _alpha_vectors[best_idx];
+        // Phase 2: for observations reachable from b, replace the
+        // fallback contribution with the belief-optimal alpha.
+        // The net adjustment per state si and observation oh is:
+        //   (best[s'] - fallback[s']) * T(si,a,s') * Z(s',a,oh)
+        for (std::size_t oh : _action_obs_hashes[ai]) {
+          Belief posterior = compute_posterior(b, ai, oh);
+          if (posterior.empty())
+            continue;
 
-                    for (std::size_t si = 0; si < ns; ++si) {
-                      double contrib = 0.0;
-                      for (const auto &tr : _transitions[si][ai]) {
-                        auto obs_it = _obs_prob[tr.second][ai].find(oh);
-                        double z = (obs_it != _obs_prob[tr.second][ai].end())
-                                       ? obs_it->second
-                                       : 0.0;
-                        contrib += tr.first * z * alpha_ao.values[tr.second];
-                      }
-                      g_a.values[si] += _discount * contrib;
-                    }
-                  }
+          std::size_t best_idx = best_alpha_index(posterior);
+          const AlphaVector &alpha_ao = _alpha_vectors[best_idx];
 
-                  for (std::size_t si = 0; si < ns; ++si) {
-                    if (_is_terminal_cache[si]) {
-                      g_a.values[si] = get_terminal_state_value(si);
-                    }
-                  }
+          for (std::size_t si = 0; si < ns; ++si) {
+            double adjustment = 0.0;
+            for (const auto &tr : _transitions[si][ai]) {
+              auto obs_it = _obs_prob[tr.second][ai].find(oh);
+              double z = (obs_it != _obs_prob[tr.second][ai].end())
+                             ? obs_it->second
+                             : 0.0;
+              adjustment += tr.first * z *
+                            (alpha_ao.values[tr.second] -
+                             fallback_alpha.values[tr.second]);
+            }
+            g_a.values[si] += _discount * adjustment;
+          }
+        }
 
-                  double q_val = dot_product(g_a, b);
-                  candidates[ai] = {std::move(g_a), q_val};
-                });
+        for (std::size_t si = 0; si < ns; ++si) {
+          if (_is_terminal_cache[si]) {
+            g_a.values[si] = get_terminal_state_value(si);
+          } else {
+            apply_alpha_clamp(g_a.values[si], si);
+          }
+        }
+
+        double q_val = dot_product(g_a, b);
+        candidates[ai] = {std::move(g_a), q_val};
+      });
 
   double best_q = _best_init();
   std::size_t best_ai = 0;
@@ -650,14 +772,35 @@ double SK_HSVI_CLASS::evaluate_alpha(const Belief &b) const {
 
 SK_HSVI_TEMPLATE_DECL
 double SK_HSVI_CLASS::evaluate_sawtooth_corner(const Belief &b) const {
-  double v = 0.0;
+  // For reward maximization lower bound: take maximum over belief support
+  // (optimistic = high reward)
+  double v = _best_init();
   for (const auto &p : b) {
     auto it = _state_hash_to_idx.find(p.first);
     if (it != _state_hash_to_idx.end()) {
-      v += p.second * _mdp_values[it->second];
+      v = _better(v, _mdp_values[it->second]);
     }
   }
   return v;
+}
+
+SK_HSVI_TEMPLATE_DECL
+std::size_t SK_HSVI_CLASS::fallback_alpha_index_for_empty_posterior() const {
+  // Default (reward-max): worst LB = alpha with minimum total value.
+  // For states outside the backup belief's support, using the most pessimistic
+  // LB keeps the new alpha from exceeding the MDP upper bound there.
+  std::size_t worst_idx = 0;
+  double worst_score = std::numeric_limits<double>::infinity();
+  for (std::size_t i = 0; i < _alpha_vectors.size(); ++i) {
+    double score = 0.0;
+    for (double v : _alpha_vectors[i].values)
+      score += v;
+    if (score < worst_score) {
+      worst_score = score;
+      worst_idx = i;
+    }
+  }
+  return worst_idx;
 }
 
 SK_HSVI_TEMPLATE_DECL
@@ -900,6 +1043,12 @@ SK_HSVI_TEMPLATE_DECL
 double SK_HSVI_CLASS::get_gap() const { return _gap; }
 
 SK_HSVI_TEMPLATE_DECL
+const std::vector<typename SK_HSVI_CLASS::AlphaVector> &
+SK_HSVI_CLASS::get_alpha_vectors() const {
+  return _alpha_vectors;
+}
+
+SK_HSVI_TEMPLATE_DECL
 std::size_t SK_HSVI_CLASS::get_state_index(const State &s) {
   std::size_t sh = typename State::Hash()(s);
   auto it = _state_hash_to_idx.find(sh);
@@ -915,6 +1064,18 @@ SK_HSVI_TEMPLATE_DECL
 const std::unordered_map<std::size_t, typename SK_HSVI_CLASS::State> &
 SK_HSVI_CLASS::get_index_to_state() const {
   return _index_to_state;
+}
+
+SK_HSVI_TEMPLATE_DECL
+const std::unordered_map<std::size_t, std::size_t> &
+SK_HSVI_CLASS::get_state_hash_to_idx() const {
+  return _state_hash_to_idx;
+}
+
+SK_HSVI_TEMPLATE_DECL
+const std::vector<typename SK_HSVI_CLASS::State> &
+SK_HSVI_CLASS::get_states() const {
+  return _states;
 }
 
 SK_HSVI_TEMPLATE_DECL
@@ -939,13 +1100,72 @@ SK_GOAL_HSVI_CLASS::GoalHSVISolver(
     double discount, std::size_t time_budget, std::size_t max_sample_depth,
     bool use_closed_list, double depth_bound_eta, std::size_t max_vi_iterations,
     double vi_convergence_factor, double prob_epsilon,
-    double belief_hash_resolution, const CallbackFunctor &callback,
-    bool verbose, std::optional<double> dead_end_cost)
+    double belief_hash_resolution,
+    const typename Base::TerminalValueFunctor &terminal_value,
+    const CallbackFunctor &callback, bool verbose,
+    std::optional<double> dead_end_cost)
     : Base(domain, epsilon, discount, time_budget, max_sample_depth,
            use_closed_list, depth_bound_eta, max_vi_iterations,
            vi_convergence_factor, prob_epsilon, belief_hash_resolution,
-           callback, verbose),
-      _goal_checker(goal_checker), _user_dead_end_cost(dead_end_cost) {}
+           terminal_value, callback, verbose),
+      _goal_checker(goal_checker), _user_dead_end_cost(dead_end_cost),
+      _use_custom_terminal_value(terminal_value != nullptr) {}
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+double SK_GOAL_HSVI_CLASS::_better(double a, double b) const {
+  return std::min(a, b);
+}
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+double SK_GOAL_HSVI_CLASS::_worse(double a, double b) const {
+  return std::max(a, b);
+}
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+double SK_GOAL_HSVI_CLASS::_best_init() const {
+  return std::numeric_limits<double>::infinity();
+}
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+double SK_GOAL_HSVI_CLASS::_worst_init() const { return 0.0; }
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+bool SK_GOAL_HSVI_CLASS::_is_better(double a, double b) const { return a < b; }
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+double SK_GOAL_HSVI_CLASS::_get_value(const Value &v) const { return v.cost(); }
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+void SK_GOAL_HSVI_CLASS::make_value_obj(double v, Value &out) const {
+  out.cost(v);
+}
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+double SK_GOAL_HSVI_CLASS::evaluate_upper(const Belief &b) const {
+  return this->evaluate_alpha(b);
+}
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+double SK_GOAL_HSVI_CLASS::evaluate_lower(const Belief &b) const {
+  return this->evaluate_sawtooth(b);
+}
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+void SK_GOAL_HSVI_CLASS::apply_alpha_clamp(double & /*val*/,
+                                           std::size_t /*si*/) const {}
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+double SK_GOAL_HSVI_CLASS::convergence_threshold(std::size_t /*depth*/) const {
+  return this->_depth_bound_eta * this->_epsilon;
+}
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+double SK_GOAL_HSVI_CLASS::get_terminal_state_value(std::size_t si) const {
+  if (_use_custom_terminal_value) {
+    return Base::get_terminal_state_value(si);
+  }
+  return _is_goal_cache[si] ? 0.0 : _dead_end_cost;
+}
 
 SK_GOAL_HSVI_TEMPLATE_DECL
 void SK_GOAL_HSVI_CLASS::clear() {
@@ -992,8 +1212,37 @@ void SK_GOAL_HSVI_CLASS::on_model_cached() {
 }
 
 SK_GOAL_HSVI_TEMPLATE_DECL
-double SK_GOAL_HSVI_CLASS::get_terminal_state_value(std::size_t si) const {
-  return _is_goal_cache[si] ? 0.0 : _dead_end_cost;
+double SK_GOAL_HSVI_CLASS::evaluate_sawtooth_corner(const Belief &b) const {
+  // For cost minimization lower bound: take minimum over belief support
+  // (optimistic = low cost)
+  double v = this->_best_init();
+  for (const auto &p : b) {
+    auto it = this->_state_hash_to_idx.find(p.first);
+    if (it != this->_state_hash_to_idx.end()) {
+      v = this->_better(v, this->_mdp_values[it->second]);
+    }
+  }
+  return v;
+}
+
+SK_GOAL_HSVI_TEMPLATE_DECL
+std::size_t
+SK_GOAL_HSVI_CLASS::fallback_alpha_index_for_empty_posterior() const {
+  // Cost-min: worst UB = alpha with maximum total value (most conservative).
+  // Using it for observations unreachable from the backup belief ensures
+  // g_a[si] >= MDP[si] for all states, so UB admissibility is maintained.
+  std::size_t worst_idx = 0;
+  double worst_score = -std::numeric_limits<double>::infinity();
+  for (std::size_t i = 0; i < this->_alpha_vectors.size(); ++i) {
+    double score = 0.0;
+    for (double v : this->_alpha_vectors[i].values)
+      score += v;
+    if (score > worst_score) {
+      worst_score = score;
+      worst_idx = i;
+    }
+  }
+  return worst_idx;
 }
 
 SK_GOAL_HSVI_TEMPLATE_DECL
@@ -1004,14 +1253,12 @@ void SK_GOAL_HSVI_CLASS::initialize_alpha_bound() {
   std::vector<std::size_t> state_indices(ns);
   std::iota(state_indices.begin(), state_indices.end(), 0);
 
-  // Uniform policy upper bound alpha-vector
-  std::vector<double> unif_values(ns, 0.0);
+  // Upper bound for cost minimization: start pessimistic (high cost)
+  std::vector<double> unif_values(ns, _dead_end_cost);
 
   for (std::size_t si = 0; si < ns; ++si) {
     if (this->_is_terminal_cache[si]) {
       unif_values[si] = get_terminal_state_value(si);
-    } else {
-      unif_values[si] = _dead_end_cost;
     }
   }
 
@@ -1025,15 +1272,18 @@ void SK_GOAL_HSVI_CLASS::initialize_alpha_bound() {
             new_values[si] = get_terminal_state_value(si);
             return;
           }
-          double sum = 0.0;
+          double worst_v = this->_worst_init();
           for (std::size_t ai = 0; ai < na; ++ai) {
             double v = this->_values[si][ai];
             for (const auto &tr : this->_transitions[si][ai]) {
               v += this->_discount * tr.first * unif_values[tr.second];
             }
-            sum += v;
+            worst_v = this->_worse(worst_v, v);
           }
-          new_values[si] = sum / static_cast<double>(na);
+          if (worst_v == this->_worst_init())
+            worst_v = _dead_end_cost;
+          // Cap to prevent numerical overflow in undiscounted problems
+          new_values[si] = std::min(worst_v, _dead_end_cost);
           double change = std::abs(new_values[si] - unif_values[si]);
           this->_execution_policy.protect([&max_change, change] {
             max_change = std::max(max_change, change);
@@ -1147,6 +1397,56 @@ void SK_GOAL_HSVI_CLASS::compute_depth_bound() {
   } else {
     this->_depth_bound = this->_max_sample_depth;
   }
+}
+
+SK_HSVI_TEMPLATE_DECL
+std::vector<
+    std::pair<typename SK_HSVI_CLASS::Belief, typename SK_HSVI_CLASS::Action>>
+SK_HSVI_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<Belief, Action>> trajectory;
+  const_cast<HSVISolver *>(this)->_execution_policy.protect(
+      [&]() {
+        // Reconstruct trajectory from belief path on-demand
+        trajectory.clear();
+        trajectory.reserve(_last_belief_path.size());
+
+        for (const auto &b : _last_belief_path) {
+          // Find best action for this belief by evaluating Q-values
+          std::size_t na = _actions.size();
+          std::size_t best_ai = 0;
+          double best_q = _best_init();
+
+          for (std::size_t ai = 0; ai < na; ++ai) {
+            double q = 0.0;
+            for (const auto &p : b) {
+              auto it = _state_hash_to_idx.find(p.first);
+              if (it != _state_hash_to_idx.end()) {
+                q += p.second * _values[it->second][ai];
+              }
+            }
+
+            for (std::size_t oh : _action_obs_hashes[ai]) {
+              double obs_p = compute_obs_probability(b, ai, oh);
+              if (obs_p <= _prob_epsilon)
+                continue;
+              Belief posterior = compute_posterior(b, ai, oh);
+              if (posterior.empty())
+                continue;
+              double future = evaluate_sawtooth(posterior);
+              q += _discount * obs_p * future;
+            }
+
+            if (_is_better(q, best_q)) {
+              best_q = q;
+              best_ai = ai;
+            }
+          }
+
+          trajectory.push_back(std::make_pair(b, _actions[best_ai]));
+        }
+      },
+      const_cast<typename ExecutionPolicy::Mutex &>(_trajectory_mutex));
+  return trajectory;
 }
 
 } // namespace skdecide

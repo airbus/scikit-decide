@@ -44,6 +44,7 @@ private:
     virtual py::list get_explored_beliefs() = 0;
     virtual py::int_ get_nb_rollouts() = 0;
     virtual py::int_ get_solving_time() = 0;
+    virtual py::list get_last_trajectory() = 0;
     // Belief-state policy accessor
     virtual py::dict get_belief_policy() = 0;
     // Belief-state query interface
@@ -62,6 +63,8 @@ private:
             &goal_checker,
         const std::function<py::object(const py::object &, const py::object &)>
             &heuristic,
+        const std::function<py::object(const py::object &)> &terminal_value =
+            nullptr,
         std::size_t discretization = 10, std::size_t time_budget = 3600000,
         std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
         double epsilon = 0.001, double discount = 1.0,
@@ -69,7 +72,7 @@ private:
             &callback = nullptr,
         bool verbose = false)
         : _goal_checker(goal_checker), _heuristic(heuristic),
-          _callback(callback) {
+          _terminal_value(terminal_value), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
       _domain = std::make_unique<PyRTDPBelDomain<Texecution>>(domain);
@@ -114,6 +117,23 @@ private:
                   e.what());
               throw;
             }
+          },
+          [this](const typename PyRTDPBelDomain<Texecution>::State &s) ->
+          typename PyRTDPBelDomain<Texecution>::Value {
+            if (_terminal_value) {
+              try {
+                typename GilControl<Texecution>::Acquire acquire;
+                py::object r = _terminal_value(s.pyobj());
+                return typename PyRTDPBelDomain<Texecution>::Value(r);
+              } catch (const std::exception &e) {
+                Logger::error(std::string("SKDECIDE exception when calling "
+                                          "terminal_value: ") +
+                              e.what());
+                throw;
+              }
+            }
+            // Default: cost=0 for terminal states
+            return typename PyRTDPBelDomain<Texecution>::Value(0.0, false);
           },
           discretization, time_budget, rollout_budget, max_depth, epsilon,
           discount,
@@ -255,6 +275,25 @@ private:
 
     virtual py::int_ get_solving_time() { return _solver->get_solving_time(); }
 
+    virtual py::list get_last_trajectory() {
+      py::list result;
+      auto &&trajectory = _solver->get_last_trajectory();
+      const auto &idx_map = _solver->get_index_to_state();
+      for (const auto &ba : trajectory) {
+        const auto &belief = ba.first;
+        const auto &action = ba.second;
+        py::dict belief_dict;
+        for (const auto &bp : belief) {
+          auto it = idx_map.find(bp.first);
+          if (it != idx_map.end()) {
+            belief_dict[it->second.pyobj()] = bp.second;
+          }
+        }
+        result.append(py::make_tuple(belief_dict, action.pyobj()));
+      }
+      return result;
+    }
+
     virtual py::dict get_belief_policy() {
       py::dict result;
       auto &&p = _solver->get_belief_policy();
@@ -275,8 +314,8 @@ private:
           }
         }
         py::frozenset key(belief_set);
-        result[key] =
-            py::make_tuple(entry.second.first.pyobj(), entry.second.second);
+        result[key] = py::make_tuple(entry.second.first.pyobj(),
+                                     entry.second.second.pyobj());
       }
       return result;
     }
@@ -347,6 +386,7 @@ private:
         _goal_checker;
     std::function<py::object(const py::object &, const py::object &)>
         _heuristic;
+    std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &, const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
@@ -390,6 +430,8 @@ public:
           &goal_checker,
       const std::function<py::object(const py::object &, const py::object &)>
           &heuristic,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
       std::size_t discretization = 10, std::size_t time_budget = 3600000,
       std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
       double epsilon = 0.001, double discount = 1.0, bool parallel = false,
@@ -398,9 +440,9 @@ public:
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
                                  SolverInstantiator(_implementation))
-        .instantiate(solver, domain, goal_checker, heuristic, discretization,
-                     time_budget, rollout_budget, max_depth, epsilon, discount,
-                     callback, verbose);
+        .instantiate(solver, domain, goal_checker, heuristic, terminal_value,
+                     discretization, time_budget, rollout_budget, max_depth,
+                     epsilon, discount, callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -435,6 +477,9 @@ public:
 
   py::int_ get_nb_rollouts() { return _implementation->get_nb_rollouts(); }
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
+  }
   py::dict get_belief_policy() { return _implementation->get_belief_policy(); }
 
   py::object get_next_action_from_belief(const py::object &d) {

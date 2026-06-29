@@ -81,6 +81,7 @@ private:
     virtual py::int_ get_solving_time() = 0;
     virtual py::set get_explored_states() = 0;
     virtual py::str get_callback_event() = 0;
+    virtual py::dict get_policy() = 0;
   };
 
   template <typename Texecution>
@@ -238,6 +239,17 @@ private:
       }
     }
 
+    virtual py::dict get_policy() {
+      py::dict result;
+      auto &&policy = _solver->template get_policy<Domain>();
+      for (auto &[state, action_value_pair] : policy) {
+        py::tuple av = py::make_tuple(action_value_pair.first.pyobj(),
+                                      action_value_pair.second.pyobj());
+        result[state.pyobj()] = av;
+      }
+      return result;
+    }
+
   private:
     std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<Domain> _domain;
@@ -327,6 +339,7 @@ public:
     return _implementation->get_explored_states();
   }
   py::str get_callback_event() { return _implementation->get_callback_event(); }
+  py::dict get_policy() { return _implementation->get_policy(); }
 };
 
 // =========================================================================
@@ -349,6 +362,7 @@ private:
     virtual py::int_ get_solving_time() = 0;
     virtual py::set get_explored_states() = 0;
     virtual py::str get_callback_event() = 0;
+    virtual py::dict get_policy() = 0;
   };
 
   template <typename Texecution>
@@ -541,6 +555,21 @@ private:
       }
     }
 
+    virtual py::dict get_policy() {
+      py::dict result;
+      auto &&policy = _solver->template get_policy<Domain>();
+      for (auto &[state, dist_value_pair] : policy) {
+        py::list action_probs;
+        for (auto &[action, prob] : dist_value_pair.first) {
+          action_probs.append(py::make_tuple(action.pyobj(), prob));
+        }
+        py::tuple dv =
+            py::make_tuple(action_probs, dist_value_pair.second.pyobj());
+        result[state.pyobj()] = dv;
+      }
+      return result;
+    }
+
   private:
     std::unique_ptr<py::object> _pysolver;
     std::unique_ptr<py::object> _pydomain;
@@ -636,6 +665,7 @@ public:
     return _implementation->get_explored_states();
   }
   py::str get_callback_event() { return _implementation->get_callback_event(); }
+  py::dict get_policy() { return _implementation->get_policy(); }
 };
 
 } // namespace skdecide

@@ -122,7 +122,7 @@ public:
 
   typename SetTypeDeducer<State>::Set get_explored_states() const;
   typename SetTypeDeducer<State>::Set get_policy_changed_states() const;
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map policy() const;
 
   /**
    * @brief Mark a state as a dead-end with the given cost. The state's value

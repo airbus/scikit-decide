@@ -25,6 +25,9 @@ template <typename Texecution>
 using PyLDFSDomain = PythonDomainProxy<Texecution>;
 
 class PyLDFSSolver {
+public:
+  virtual ~PyLDFSSolver() = default;
+
 protected:
   class BaseImplementation {
   public:
@@ -45,6 +48,7 @@ protected:
     }
     virtual py::list get_strongly_connected_components() = 0;
     virtual py::dict get_policy() = 0;
+    virtual py::list get_last_trajectory() = 0;
   };
 
   template <typename Texecution,
@@ -109,24 +113,28 @@ protected:
               throw;
             }
           },
-          [this](const typename PyLDFSDomain<Texecution>::State &s) ->
-          typename PyLDFSDomain<Texecution>::Value {
-            if (_terminal_value) {
-              try {
-                typename skdecide::GilControl<Texecution>::Acquire acquire;
-                return typename PyLDFSDomain<Texecution>::Value(
-                    _terminal_value(s.pyobj()));
-              } catch (const std::exception &e) {
-                Logger::error(
-                    std::string("SKDECIDE exception when calling terminal "
-                                "value: ") +
-                    e.what());
-                throw;
-              }
-            } else {
-              return typename PyLDFSDomain<Texecution>::Value(0.0, false);
-            }
-          },
+          // Pass nullptr when Python's terminal_value is None, otherwise wrap
+          // it
+          _terminal_value
+              ? typename TSolver<PyLDFSDomain<Texecution>, Texecution>::
+                    TerminalValueFunctor(
+                        [this](
+                            const typename PyLDFSDomain<Texecution>::State &s)
+                            -> typename PyLDFSDomain<Texecution>::Value {
+                          try {
+                            typename skdecide::GilControl<Texecution>::Acquire
+                                acquire;
+                            return typename PyLDFSDomain<Texecution>::Value(
+                                _terminal_value(s.pyobj()));
+                          } catch (const std::exception &e) {
+                            Logger::error(
+                                std::string("SKDECIDE exception when calling "
+                                            "terminal value: ") +
+                                e.what());
+                            throw;
+                          }
+                        })
+              : nullptr,
           discount, epsilon, max_depth,
           [this](const skdecide::LDFSSolver<PyLDFSDomain<Texecution>,
                                             Texecution> &s,
@@ -265,9 +273,18 @@ protected:
       auto &&p = _solver->policy();
       for (auto &e : p) {
         d[e.first.pyobj()] =
-            py::make_tuple(e.second.first.pyobj(), e.second.second);
+            py::make_tuple(e.second.first.pyobj(), e.second.second.pyobj());
       }
       return d;
+    }
+
+    virtual py::list get_last_trajectory() override {
+      py::list traj;
+      auto &&lt = _solver->get_last_trajectory();
+      for (auto &sa : lt) {
+        traj.append(py::make_tuple(sa.first.pyobj(), sa.second.pyobj()));
+      }
+      return traj;
     }
 
   private:
@@ -372,6 +389,10 @@ public:
   }
 
   py::dict get_policy() { return _implementation->get_policy(); }
+
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
+  }
 };
 
 class PyIDAstarSolver : public PyLDFSSolver {

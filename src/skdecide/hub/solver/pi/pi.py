@@ -162,9 +162,11 @@ try:
 
         def close(self):
             """Joins the parallel domains' processes."""
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run Policy Iteration from a given state
@@ -226,7 +228,7 @@ try:
             self,
         ) -> dict[
             D.T_agent[D.T_observation],
-            tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the full solution policy"""
             return self._solver.get_policy()

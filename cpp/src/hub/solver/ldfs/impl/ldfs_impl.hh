@@ -55,9 +55,10 @@ SK_LDFS_SOLVER_CLASS::LDFSSolver(Domain &domain,
                                  std::size_t max_depth,
                                  const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
-      _terminal_value(terminal_value), _discount(discount), _epsilon(epsilon),
-      _max_depth(max_depth), _callback(callback), _verbose(verbose),
-      _nb_tip_states(0), _tarjan_index(0) {
+      _terminal_value(terminal_value),
+      _use_terminal_value(terminal_value != nullptr), _discount(discount),
+      _epsilon(epsilon), _max_depth(max_depth), _callback(callback),
+      _verbose(verbose), _nb_tip_states(0), _tarjan_index(0) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm LDFS");
   }
@@ -88,10 +89,24 @@ void SK_LDFS_SOLVER_CLASS::solve(const State &s) {
       root.best_value = _heuristic(_domain, s).cost();
     }
 
-    while (!root.solved && !_callback(*this, _domain)) {
+    // Initialize trajectory with the root state for callback visibility
+    _last_trajectory.clear();
+    _last_trajectory.push_back(&root);
+
+    while (!root.solved) {
       _tarjan_index = 0;
       ldfs_mdp(root);
       clear_active_flags();
+      // IMPORTANT: Callback must be called AFTER ldfs_mdp(), not in the while
+      // condition. Each ldfs_mdp() call creates a fresh local
+      // current_trajectory starting with [root], and only updates
+      // _last_trajectory when a leaf is reached during that traversal. If the
+      // callback were in the while condition, it would see stale data from the
+      // previous iteration, not the trajectory just explored by the current
+      // ldfs_mdp() call.
+      if (_callback(*this, _domain)) {
+        break;
+      }
     }
 
     Logger::info(
@@ -139,6 +154,17 @@ void SK_LDFS_SOLVER_CLASS::expand(StateNode &s) {
         auto next_states =
             _domain.get_next_state_distribution(s.state, a).get_values();
 
+        // If action has no transitions, treat as terminal state
+        if (next_states.begin() == next_states.end()) {
+          // Create a self-loop with terminal value as the cost
+          // This ensures the action's Q-value reflects the terminal state value
+          double tv = _use_terminal_value ? _terminal_value(s.state).cost()
+                                          : _heuristic(_domain, s.state).cost();
+          an.outcomes.push_back(
+              std::make_tuple(1.0, tv, &s)); // probability, cost, self-loop
+          return;
+        }
+
         for (auto ns : next_states) {
           if (_verbose)
             Logger::debug("Current next state expansion: " +
@@ -165,7 +191,10 @@ void SK_LDFS_SOLVER_CLASS::expand(StateNode &s) {
                               next_node.state.print() +
                               ExecutionPolicy::print_thread());
               next_node.terminal = true;
-              next_node.best_value = _terminal_value(next_node.state).cost();
+              next_node.best_value =
+                  _use_terminal_value
+                      ? _terminal_value(next_node.state).cost()
+                      : _heuristic(_domain, next_node.state).cost();
             } else {
               next_node.best_value =
                   _heuristic(_domain, next_node.state).cost();
@@ -207,6 +236,9 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
   typedef typename std::list<std::tuple<double, double, StateNode *>>::iterator
       OutcomeIter;
 
+  // Track the current path during DFS
+  std::vector<StateNode *> current_trajectory;
+
   struct DFSFrame {
     StateNode *node;
     ActionIter action_it;
@@ -223,6 +255,7 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
 
   std::stack<DFSFrame> dfs_stack;
   dfs_stack.push(DFSFrame(&root));
+  current_trajectory.push_back(&root);
 
   while (!dfs_stack.empty()) {
     DFSFrame &f = dfs_stack.top();
@@ -235,18 +268,32 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
         if (s->goal) {
           s->best_value = 0.0;
         } else if (s->terminal) {
-          s->best_value = _terminal_value(s->state).cost();
+          s->best_value = _use_terminal_value
+                              ? _terminal_value(s->state).cost()
+                              : _heuristic(_domain, s->state).cost();
         }
         s->solved = true;
         _last_rv = true;
+        // Leaf node reached (terminal/goal) - save trajectory before
+        // backtracking
+        _last_trajectory = current_trajectory;
         dfs_stack.pop();
+        if (!current_trajectory.empty()) {
+          current_trajectory.pop_back();
+        }
         continue;
       }
 
       // "if s is ACTIVE then return false"
       if (s->active) {
         _last_rv = false;
+        // Leaf node reached (cycle detected) - save trajectory before
+        // backtracking
+        _last_trajectory = current_trajectory;
         dfs_stack.pop();
+        if (!current_trajectory.empty()) {
+          current_trajectory.pop_back();
+        }
         continue;
       }
 
@@ -298,6 +345,7 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
           // "flag := LDFS(s', ...) & flag" — push child frame
           f.child_returned = sp;
           dfs_stack.push(DFSFrame(sp));
+          current_trajectory.push_back(sp);
           pushed_child = true;
           break;
         } else if (sp->active) {
@@ -415,6 +463,9 @@ void SK_LDFS_SOLVER_CLASS::ldfs_mdp(StateNode &root) {
 
     // "return flag"
     dfs_stack.pop();
+    if (!current_trajectory.empty()) {
+      current_trajectory.pop_back();
+    }
   }
 }
 
@@ -512,18 +563,33 @@ SK_LDFS_SOLVER_CLASS::get_strongly_connected_components() const {
 }
 
 SK_LDFS_SOLVER_TEMPLATE_DECL
-typename MapTypeDeducer<
-    typename SK_LDFS_SOLVER_CLASS::State,
-    std::pair<typename SK_LDFS_SOLVER_CLASS::Action, double>>::Map
+typename MapTypeDeducer<typename SK_LDFS_SOLVER_CLASS::State,
+                        std::pair<typename SK_LDFS_SOLVER_CLASS::Action,
+                                  typename SK_LDFS_SOLVER_CLASS::Value>>::Map
 SK_LDFS_SOLVER_CLASS::policy() const {
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map p;
   for (const auto &sn : _graph) {
     if (sn.best_action != nullptr) {
-      p.insert(std::make_pair(sn.state, std::make_pair(sn.best_action->action,
-                                                       (double)sn.best_value)));
+      Value val;
+      val.cost(sn.best_value);
+      p.insert(std::make_pair(sn.state,
+                              std::make_pair(sn.best_action->action, val)));
     }
   }
   return p;
+}
+
+SK_LDFS_SOLVER_TEMPLATE_DECL
+std::vector<std::pair<typename SK_LDFS_SOLVER_CLASS::State,
+                      typename SK_LDFS_SOLVER_CLASS::Action>>
+SK_LDFS_SOLVER_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<State, Action>> trajectory;
+  trajectory.reserve(_last_trajectory.size());
+  for (const auto *sn : _last_trajectory) {
+    Action action = sn->best_action ? sn->best_action->action : Action();
+    trajectory.push_back(std::make_pair(sn->state, action));
+  }
+  return trajectory;
 }
 
 // --- IDAstarSolver::get_plan ---

@@ -311,6 +311,100 @@ class TestLDFSDeterministic:
 
         assert call_count[0] > 0
 
+    def test_last_trajectory_nonempty(self):
+        """get_last_trajectory() should return (state, action) pairs after solving."""
+        from skdecide.hub.solver.ldfs import LDFS
+
+        with LDFS(
+            domain_factory=lambda: DeterministicGridDomain(4, 4),
+            heuristic=lambda d, s: Value(cost=abs(3 - s.x) + abs(3 - s.y)),
+            discount=1.0,
+            epsilon=0.001,
+        ) as solver:
+            solver.solve()
+            traj = solver.get_last_trajectory()
+
+        assert len(traj) > 0
+        # Each element should be a (state, action) tuple
+        assert all(isinstance(sa, tuple) and len(sa) == 2 for sa in traj)
+        state, action = traj[0]
+        assert state == State(0, 0)  # Always starts from initial state
+        assert action in [
+            Action.up,
+            Action.down,
+            Action.left,
+            Action.right,
+        ]  # Valid action
+
+    def test_last_trajectory_in_callback(self):
+        """Trajectory should be accessible from callback and contain (state, action) pairs."""
+        from skdecide.hub.solver.ldfs import LDFS
+
+        trajectories = []
+
+        def cb(slv):
+            trajectories.append(slv.get_last_trajectory())
+            return False
+
+        with LDFS(
+            domain_factory=lambda: DeterministicGridDomain(4, 4),
+            heuristic=lambda d, s: Value(cost=abs(3 - s.x) + abs(3 - s.y)),
+            discount=1.0,
+            epsilon=0.001,
+            callback=cb,
+        ) as solver:
+            solver.solve()
+
+        assert len(trajectories) > 0
+        for traj in trajectories:
+            assert len(traj) > 0
+            # Each element should be a (state, action) tuple
+            assert all(isinstance(sa, tuple) and len(sa) == 2 for sa in traj)
+            state, action = traj[0]
+            assert state == State(0, 0)
+
+    def test_last_trajectory_updates_across_iterations(self):
+        """Trajectory should update across multiple LDFS iterations, not freeze."""
+        from skdecide.hub.solver.ldfs import LDFS
+
+        trajectories = []
+
+        def cb(slv):
+            traj = slv.get_last_trajectory()
+            trajectories.append(traj[:])  # Store a copy
+            # Let it run to completion to witness trajectory changes
+            return False
+
+        # Use a larger grid and zero heuristic to force deep exploration
+        with LDFS(
+            domain_factory=lambda: DeterministicGridDomain(6, 6),
+            heuristic=lambda d, s: Value(cost=0),  # Zero heuristic forces exploration
+            discount=1.0,
+            epsilon=0.1,
+            callback=cb,
+        ) as solver:
+            solver.solve()
+
+        # Should have multiple iterations
+        assert len(trajectories) >= 2, "Need at least 2 iterations to test updates"
+
+        # Verify trajectories are not all identical (frozen)
+        # At least one trajectory should differ from the first
+        # Each trajectory element is a (state, action) tuple
+        first_traj_tuple = tuple((s.x, s.y) for s, a in trajectories[0])
+        found_different = False
+
+        for i, traj in enumerate(trajectories[1:], 1):
+            traj_tuple = tuple((s.x, s.y) for s, a in traj)
+            if traj_tuple != first_traj_tuple:
+                found_different = True
+                break
+
+        # The trajectory should change at some point during solving
+        assert found_different, (
+            f"Trajectory appears frozen - all {len(trajectories)} callbacks saw the same path: {trajectories[0]}"
+        )
+
 
 class TestLDFSStochastic:
     def test_converges(self):

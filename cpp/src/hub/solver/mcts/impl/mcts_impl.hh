@@ -90,7 +90,8 @@ SK_MCTS_SOLVER_CLASS::MCTSSolver(
       _action_selector_execution(std::move(action_selector_execution)),
       _rollout_policy(std::move(rollout_policy)),
       _back_propagator(std::move(back_propagator)), _current_state(nullptr),
-      _residual_moving_average(0) {
+      _residual_moving_average(0), _last_leaf_node(nullptr),
+      _last_root_node(nullptr) {
 
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm MCTS");
@@ -135,6 +136,16 @@ void SK_MCTS_SOLVER_CLASS::solve(const State &s) {
             (*_rollout_policy)(*this, &thread_id, *sn, depth);
             (*_back_propagator)(*this, &thread_id, *sn);
             update_residual_moving_average(root_node, root_node_record_value);
+
+            // Store leaf and root node pointers for on-demand trajectory
+            // reconstruction
+            _execution_policy->protect(
+                [this, sn, &root_node]() {
+                  _last_leaf_node = sn;
+                  _last_root_node = &root_node;
+                },
+                _trajectory_mutex);
+
             _nb_rollouts++;
           } while (!_callback(*this, _domain, &thread_id) &&
                    (get_solving_time() < _time_budget) &&
@@ -452,6 +463,61 @@ void SK_MCTS_SOLVER_CLASS::update_residual_moving_average(
         },
         _residuals_protect);
   }
+}
+
+SK_MCTS_SOLVER_TEMPLATE_DECL
+std::vector<std::pair<typename SK_MCTS_SOLVER_CLASS::State,
+                      typename SK_MCTS_SOLVER_CLASS::Action>>
+SK_MCTS_SOLVER_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<State, Action>> trajectory;
+
+  _execution_policy->protect(
+      [this, &trajectory]() {
+        // Reconstruct trajectory on-demand from stored leaf node
+        if (_last_leaf_node == nullptr || _last_root_node == nullptr) {
+          return; // Empty trajectory if solve() hasn't been called
+        }
+
+        StateNode *current = _last_leaf_node;
+        StateNode *root = _last_root_node;
+
+        // Walk backwards from leaf to root using parent pointers
+        while (current != nullptr && current != root) {
+          if (!current->parents.empty()) {
+            ActionNode *parent_action = *current->parents.begin();
+            if (parent_action && parent_action->parent) {
+              trajectory.push_back(std::make_pair(parent_action->parent->state,
+                                                  parent_action->action));
+              current = parent_action->parent;
+            } else {
+              break;
+            }
+          } else {
+            break;
+          }
+        }
+
+        // Add root state with its best action (most visited)
+        if (current == root && root->actions.size() > 0) {
+          ActionNode *best_action = nullptr;
+          for (const auto &action : root->actions) {
+            if (best_action == nullptr ||
+                action.visits_count > best_action->visits_count) {
+              best_action = &const_cast<ActionNode &>(action);
+            }
+          }
+          if (best_action) {
+            trajectory.push_back(
+                std::make_pair(root->state, best_action->action));
+          }
+        }
+
+        // Reverse to get root->leaf order
+        std::reverse(trajectory.begin(), trajectory.end());
+      },
+      _trajectory_mutex);
+
+  return trajectory;
 }
 
 } // namespace skdecide

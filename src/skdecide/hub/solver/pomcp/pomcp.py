@@ -13,7 +13,7 @@ from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     IntegerHyperparameter,
 )
 
-from skdecide import DiscreteDistribution, Distribution, Domain, Memory, Solver
+from skdecide import DiscreteDistribution, Distribution, Domain, Memory, Solver, Value
 from skdecide.builders.domain import (
     Actions,
     EnumerableTransitions,
@@ -82,7 +82,10 @@ try:
             ess_threshold_ratio: float = 2.0,
             parallel: bool = False,
             shared_memory_proxy=None,
-            callback: Callable[[POMCP], bool] = lambda slv: False,
+            terminal_value: Callable[[D.T_state], Value[D.T_value]] = lambda s: Value(
+                reward=0
+            ),
+            callback: Callable[[POMCP, Domain], bool] = lambda slv, dom: False,
             verbose: bool = False,
         ) -> None:
             """Construct a POMCP solver instance.
@@ -108,8 +111,10 @@ try:
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy.
                 Defaults to None.
+            terminal_value: Optional function (state) -> value for terminal
+                states. Defaults to 0.0.
             callback: Function called at each simulation iteration, taking
-                the solver as argument, returning True to stop.
+                the solver and domain as arguments, returning True to stop.
                 Defaults to never stop.
             verbose: Whether to log verbose messages. Defaults to False.
             """
@@ -133,15 +138,18 @@ try:
                 num_particles_belief_update=num_particles_belief_update,
                 ess_threshold_ratio=ess_threshold_ratio,
                 parallel=parallel,
+                terminal_value=terminal_value,
                 callback=callback,
                 verbose=verbose,
             )
 
         def close(self):
             """Joins the parallel domains' processes."""
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve(self, from_memory=None) -> None:
             if from_memory is None:
@@ -206,7 +214,9 @@ try:
                 return self.call_domain_method("get_action_space").sample()
             return action
 
-        def get_utility_from_belief(self, belief: Distribution[D.T_state]) -> D.T_value:
+        def get_utility_from_belief(
+            self, belief: Distribution[D.T_state]
+        ) -> Value[D.T_value]:
             """Get the best value for an explicit belief state."""
             return self._solver.get_utility_from_belief(belief)
 
@@ -227,6 +237,32 @@ try:
         def get_solving_time(self) -> int:
             """Get the last planning time in milliseconds."""
             return self._solver.get_solving_time()
+
+        def get_last_trajectory(
+            self,
+        ) -> list[tuple[D.T_observation, D.T_agent[D.T_concurrency[D.T_event]]]]:
+            """Get the ordered list of (observation, action) pairs visited during
+            the last POMCP simulation.
+
+            Returns the trajectory (path) explored during the most recent simulation
+            from the root history node. Each element is a tuple of (observation,
+            action) where the observation is the observation made in that history
+            state and the action is the action selected via UCB1. The trajectory
+            begins with the root observation and ends at the deepest history node
+            reached before the simulation terminated (due to terminal state, depth
+            limit, or discount cutoff).
+
+            Note: POMCP operates in observation/history space, not state space,
+            so the trajectory reflects the observable history, not the underlying
+            states.
+
+            # Returns
+            list[tuple[D.T_observation, D.T_agent[D.T_concurrency[D.T_event]]]]: List of
+                (observation, action) pairs visited during the last simulation.
+                Returns an empty list if solve() has not been called yet.
+            """
+
+            return self._solver.get_last_trajectory()
 
 except ImportError:
     print(

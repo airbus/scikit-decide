@@ -308,9 +308,10 @@ try:
             Not calling this method (or not using the 'with' context statement)
             results in the solver forever waiting for the domain processes to exit.
             """
-            if self._parallel:
+            if self._solver is not None:
                 self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the MCTS algorithm from a given root solving state
@@ -434,7 +435,7 @@ try:
             self,
         ) -> dict[
             D.T_agent[D.T_observation],
-            tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the best value according to the execution action selector has been updated
@@ -445,7 +446,7 @@ try:
                 when node garbage was set to True in the MCTS instance's constructor
 
             # Returns
-            dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], float], ]:
+            dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
                 Mapping from states to pairs of action and best value according to the
                 execution action selector
             """
@@ -464,6 +465,37 @@ try:
                 so far after each call to the `MCTS.get_next_action` method
             """
             return self._solver.get_action_prefix()
+
+        def get_last_trajectory(
+            self,
+        ) -> list[
+            tuple[D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]]]
+        ]:
+            """Get the ordered list of (state, action) pairs visited during the
+            last MCTS rollout.
+
+            Returns the trajectory (path) explored during the most recent rollout
+            from the root state. Each element is a tuple of (state, action) where
+            the action is the action selected in that state during the tree policy
+            phase and rollout. The trajectory begins with the root state and ends
+            at the deepest state reached before backpropagation.
+
+            The last element's action is the action selected in the final state (or
+            a default-constructed action if the final state is terminal).
+
+            This is useful for:
+            - Replaying trajectories from the initial state
+            - Debugging algorithm behavior (which states and actions were explored?)
+            - Custom heuristic updates based on trajectory
+            - Visualizing/logging the search process
+
+            Returns an empty list if solve() has not been called yet.
+
+            # Returns
+            list[tuple[D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]]]]:
+                List of (state, action) pairs visited during the last rollout.
+            """
+            return self._solver.get_last_trajectory()
 
     class HMCTS(MCTS):
         """MCTS solver to use with the multi-agent hierarchical `MAHD` solver

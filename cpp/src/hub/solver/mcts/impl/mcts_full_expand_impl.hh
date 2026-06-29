@@ -15,6 +15,7 @@ namespace skdecide {
 
 template <typename Tsolver>
 struct FullExpand<Tsolver>::ExpandActionImplementation {
+  virtual ~ExpandActionImplementation() = default;
   template <typename Ttransition_mode = typename Tsolver::TransitionMode,
             typename Enable = void>
   struct Impl {};

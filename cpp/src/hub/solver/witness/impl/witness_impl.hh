@@ -31,11 +31,13 @@ SK_WITNESS_TEMPLATE_DECL
 SK_WITNESS_CLASS::WitnessSolver(Domain &domain, double epsilon, double discount,
                                 std::size_t max_iterations, double lp_infinity,
                                 double lp_tolerance,
+                                const TerminalValueFunctor &terminal_value,
                                 const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _epsilon(epsilon), _discount(discount),
       _max_iterations(max_iterations), _lp_infinity(lp_infinity),
-      _lp_tolerance(lp_tolerance), _callback(callback), _verbose(verbose),
-      _has_solution(false), _nb_iterations(0), _solving_time(0) {
+      _lp_tolerance(lp_tolerance), _terminal_value(terminal_value),
+      _callback(callback), _verbose(verbose), _has_solution(false),
+      _nb_iterations(0), _solving_time(0) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm Witness");
   }
@@ -77,6 +79,18 @@ SK_WITNESS_TEMPLATE_DECL
 const std::unordered_map<std::size_t, typename SK_WITNESS_CLASS::State> &
 SK_WITNESS_CLASS::get_index_to_state() const {
   return _index_to_state;
+}
+
+SK_WITNESS_TEMPLATE_DECL
+const std::unordered_map<std::size_t, std::size_t> &
+SK_WITNESS_CLASS::get_state_hash_to_idx() const {
+  return _state_hash_to_idx;
+}
+
+SK_WITNESS_TEMPLATE_DECL
+const std::vector<typename SK_WITNESS_CLASS::State> &
+SK_WITNESS_CLASS::get_states() const {
+  return _states;
 }
 
 SK_WITNESS_TEMPLATE_DECL
@@ -166,12 +180,23 @@ void SK_WITNESS_CLASS::pre_cache_model() {
 
   for (std::size_t si = 0; si < ns; ++si) {
     const State &s = _states[si];
-    if (_domain.is_terminal(s))
+    if (_domain.is_terminal(s)) {
+      // Terminal state: set reward to terminal value for all actions
+      for (std::size_t ai = 0; ai < na; ++ai) {
+        _rewards[si][ai] = _terminal_value(s).reward();
+      }
       continue;
+    }
 
     for (std::size_t ai = 0; ai < na; ++ai) {
       auto next_dist =
           _domain.get_next_state_distribution(s, _actions[ai]).get_values();
+
+      if (next_dist.begin() == next_dist.end()) {
+        // Action has no transitions: use terminal value
+        _rewards[si][ai] = _terminal_value(s).reward();
+        continue;
+      }
 
       double weighted_reward = 0.0;
       for (auto ns_item : next_dist) {
@@ -867,6 +892,18 @@ std::size_t SK_WITNESS_CLASS::get_nb_iterations() const {
 
 SK_WITNESS_TEMPLATE_DECL
 std::size_t SK_WITNESS_CLASS::get_solving_time() const { return _solving_time; }
+
+SK_WITNESS_TEMPLATE_DECL
+const std::vector<typename SK_WITNESS_CLASS::AlphaVector> &
+SK_WITNESS_CLASS::get_alpha_vectors() const {
+  return _alpha_vectors;
+}
+
+SK_WITNESS_TEMPLATE_DECL
+const std::vector<typename SK_WITNESS_CLASS::Action> &
+SK_WITNESS_CLASS::get_action_list() const {
+  return _actions;
+}
 
 } // namespace skdecide
 

@@ -272,6 +272,60 @@ class TestRTDPBel:
         assert action == TigerAction.open_right
         assert v.cost < 1.0  # optimal cost is 0
 
+    def test_get_last_trajectory(self):
+        """get_last_trajectory() should return (belief, action) pairs from the last trial."""
+        from skdecide.hub.solver.rtdp_bel import RTDPBel
+
+        trajectories_seen = []
+
+        def callback(solver, domain):
+            trajectory = solver.get_last_trajectory()
+            # Each element should be a (belief, action) tuple
+            assert all(isinstance(ba, tuple) and len(ba) == 2 for ba in trajectory)
+            # Store trajectory as tuple of (frozen belief dict, action) for comparison
+            traj_tuple = tuple(
+                (frozenset((str(s), p) for s, p in belief.items()), action)
+                for belief, action in trajectory
+            )
+            trajectories_seen.append(traj_tuple)
+            # Stop after 3 iterations
+            return len(trajectories_seen) >= 3
+
+        with RTDPBel(
+            domain_factory=lambda: TigerDomain(),
+            heuristic=lambda d, s: Value(cost=0),
+            discretization=10,
+            max_depth=10,
+            callback=callback,
+        ) as solver:
+            solver.solve()
+
+        # Should have 3 trajectories (one per iteration before callback stopped it)
+        assert len(trajectories_seen) == 3
+
+        # All trajectories should be non-empty
+        for traj in trajectories_seen:
+            assert len(traj) > 0, (
+                "Each trajectory should have at least one (belief, action)"
+            )
+
+        # Each belief in each trajectory should be a valid belief (probabilities sum to ~1)
+        # and each action should be valid
+        for traj in trajectories_seen:
+            for belief_frozen, action in traj:
+                belief_dict = dict(belief_frozen)
+                # Convert back to numeric probabilities
+                total_prob = sum(float(p) for _, p in belief_dict.items())
+                assert 0.9 < total_prob <= 1.1, (
+                    f"Belief probabilities should sum to ~1, got {total_prob}"
+                )
+                # Action should be one of the valid Tiger actions
+                assert action in [
+                    TigerAction.listen,
+                    TigerAction.open_left,
+                    TigerAction.open_right,
+                ]
+
     def test_observation_based_rollout(self):
         """Test the observation-based interaction: solve, then interact
         through observations. The solver should track beliefs internally
@@ -395,7 +449,7 @@ class TestRTDPBel:
             assert isinstance(val, tuple)
             assert len(val) == 2
             action, value = val
-            assert isinstance(value, float)
+            assert isinstance(value, Value)
             # Each frozenset element should be (state, probability)
             for entry in key:
                 assert isinstance(entry, tuple)

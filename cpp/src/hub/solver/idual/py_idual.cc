@@ -43,7 +43,8 @@ void init_pyidual(py::module &m) {
            &skdecide::PyIDualSolver::get_nb_lp_iterations)
       .def("get_solving_time", &skdecide::PyIDualSolver::get_solving_time)
       .def("get_explored_states", &skdecide::PyIDualSolver::get_explored_states)
-      .def("get_callback_event", &skdecide::PyIDualSolver::get_callback_event);
+      .def("get_callback_event", &skdecide::PyIDualSolver::get_callback_event)
+      .def("get_policy", &skdecide::PyIDualSolver::get_policy);
 
   // --- CIDualSolver (constrained SSP, stochastic policy) ---
   py::class_<skdecide::PyCIDualSolver> py_cidual_solver(m, "_CIDualSolver_");
@@ -83,5 +84,6 @@ void init_pyidual(py::module &m) {
       .def("get_solving_time", &skdecide::PyCIDualSolver::get_solving_time)
       .def("get_explored_states",
            &skdecide::PyCIDualSolver::get_explored_states)
-      .def("get_callback_event", &skdecide::PyCIDualSolver::get_callback_event);
+      .def("get_callback_event", &skdecide::PyCIDualSolver::get_callback_event)
+      .def("get_policy", &skdecide::PyCIDualSolver::get_policy);
 }

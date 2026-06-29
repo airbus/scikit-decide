@@ -83,9 +83,7 @@ try:
             heuristic: Callable[
                 [Domain, D.T_state], D.T_agent[Value[D.T_value]]
             ] = lambda d, s: Value(cost=0),
-            terminal_value: Callable[[D.T_state], Value[D.T_value]] = lambda s: Value(
-                cost=0
-            ),
+            terminal_value: Optional[Callable[[D.T_state], Value[D.T_value]]] = None,
             discount: float = 1.0,
             epsilon: float = 0.001,
             max_depth: int = 0,
@@ -103,9 +101,24 @@ try:
                 heuristic (h(s) <= V*(s)) accelerates convergence.
                 Defaults to Value(cost=0).
             terminal_value: Function f(state) -> Value assigning a fixed value to
-                terminal (absorbing) states. Use Value(cost=0) for goal-like
-                terminals and Value(cost=large_penalty) for dead-end-like
-                terminals. Defaults to Value(cost=0).
+                non-goal terminal (absorbing) states. Use Value(cost=large_penalty)
+                for dead ends.
+
+                When None (DEFAULT — recommended for standard SSPs):
+                  - Goal states: value = 0
+                  - Dead-end states: value = heuristic(domain, s), e.g. a large
+                    finite value like 1e9. Dead-ends are then naturally avoided
+                    because greedy actions leading to them get high Q-values.
+                  - CRITICAL: never use a fixed infinity for dead-ends in SSPs —
+                    any non-zero probability of reaching one propagates infinity
+                    through Bellman updates and prevents convergence.
+
+                When a callable is provided (for unavoidable dead-ends):
+                  - Dead-end states: value = terminal_value(s)
+                  - Still use finite values (e.g. 1e6) to avoid infinity
+                    propagation.
+
+                Defaults to None.
             discount: Value function's discount factor. Defaults to 0.999.
             epsilon: Maximum Bellman error allowed to label a state as solved.
                 Defaults to 0.001.
@@ -149,9 +162,11 @@ try:
 
         def close(self):
             """Joins the parallel domains' processes."""
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             self._solver.solve(memory)
@@ -217,10 +232,37 @@ try:
             self,
         ) -> dict[
             D.T_agent[D.T_observation],
-            tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the (partial) solution policy"""
             return self._solver.get_policy()
+
+        def get_last_trajectory(
+            self,
+        ) -> list[
+            tuple[D.T_agent[D.T_observation], D.T_agent[D.T_concurrency[D.T_event]]]
+        ]:
+            """Get the ordered list of (state, action) pairs visited during the last LDFS iteration.
+
+            Returns the trajectory (path) explored during the most recent depth-first
+            descent from the root state. Each element is a tuple of (state, action) where
+            the action is the best action selected in that state during the iteration.
+            The trajectory begins with the root state and ends at the deepest state reached
+            before backtracking.
+
+            The last element's action is the action selected in the final state (or a
+            default-constructed action if the final state is terminal/goal).
+
+            This is useful for:
+            - Replaying trajectories from the initial state
+            - Debugging algorithm behavior (which path and actions were explored?)
+            - Custom heuristic updates based on trajectory
+            - Visualizing/logging the search process
+            - Analyzing convergence patterns in the callback
+
+            Returns an empty list if solve() has not been called yet.
+            """
+            return self._solver.get_last_trajectory()
 
     class D_IDAstar(
         Domain,

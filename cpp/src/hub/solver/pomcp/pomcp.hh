@@ -49,6 +49,7 @@ public:
 
   typedef std::unordered_map<std::size_t, double> Belief;
 
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const POMCPSolver &, Domain &)> CallbackFunctor;
 
   struct ActionNode;
@@ -95,6 +96,8 @@ public:
    *   update via particle filter. Defaults to 500.
    * @param ess_threshold_ratio Effective sample size threshold ratio for
    *   resampling. Resampling occurs when ESS < N / ratio. Defaults to 2.0.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for terminal states without further transitions). Defaults to 0.0.
    * @param callback Functor called at each simulation iteration. Returns
    *   true to stop planning. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
@@ -106,6 +109,8 @@ public:
       std::size_t time_budget = 0,
       std::size_t num_particles_belief_update = 500,
       double ess_threshold_ratio = 2.0,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, false); },
       const CallbackFunctor &callback = [](const POMCPSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -129,10 +134,31 @@ public:
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
 
+  /**
+   * @brief Get the ordered list of (observation, action) pairs visited during
+   * the last POMCP simulation.
+   *
+   * Returns the trajectory (path) explored during the most recent simulation
+   * from the root history node. Each element is a pair of (observation,
+   * action) where the observation is the observation made in that history
+   * state and the action is the action selected via UCB1. The trajectory
+   * begins with the root observation and ends at the deepest history node
+   * reached before the simulation terminated (due to terminal state, depth
+   * limit, or discount cutoff).
+   *
+   * Note: POMCP operates in observation/history space, not state space,
+   * so the trajectory reflects the observable history, not the underlying
+   * states.
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<std::pair<Observation, Action>> get_last_trajectory() const;
+
 private:
   void search(HistoryNode *root);
   double simulate(const State &s, HistoryNode *h, std::size_t depth,
-                  const std::size_t *thread_id);
+                  const std::size_t *thread_id,
+                  std::vector<std::pair<Observation, Action>> &trajectory);
   double rollout(const State &s, std::size_t depth,
                  const std::size_t *thread_id);
   ActionNode *select_action_ucb1(HistoryNode *h);
@@ -162,6 +188,7 @@ private:
   std::size_t _time_budget;
   std::size_t _num_particles_belief;
   double _ess_threshold_ratio;
+  TerminalValueFunctor _terminal_value;
   CallbackFunctor _callback;
   bool _verbose;
 
@@ -183,6 +210,9 @@ private:
   double _best_value_cache = 0.0;
   atomic_size_t _nb_tree_nodes = 0;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+
+  std::vector<std::pair<Observation, Action>> _last_trajectory;
+  typename ExecutionPolicy::Mutex _trajectory_mutex;
 };
 
 } // namespace skdecide

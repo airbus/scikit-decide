@@ -43,5 +43,7 @@ void init_pyilaostar(py::module &m) {
       .def("best_solution_graph_size",
            &skdecide::PyILAOStarSolver::best_solution_graph_size)
       .def("get_solving_time", &skdecide::PyILAOStarSolver::get_solving_time)
-      .def("get_policy", &skdecide::PyILAOStarSolver::get_policy);
+      .def("get_policy", &skdecide::PyILAOStarSolver::get_policy)
+      .def("get_best_solution_graph",
+           &skdecide::PyILAOStarSolver::get_best_solution_graph);
 }

@@ -51,6 +51,7 @@ public:
 
   typedef std::unordered_map<std::size_t, double> Belief;
 
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const HSVISolver &, Domain &)> CallbackFunctor;
   typedef std::function<bool(Domain &, const State &)> GoalCheckerFunctor;
 
@@ -79,6 +80,8 @@ public:
    * @param belief_hash_resolution Discretization factor for belief hashing.
    *   Probabilities are multiplied by this value and rounded to integers
    *   for hash computation. Defaults to 1000.0.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for terminal states). Defaults to 0.0.
    * @param callback Functor called at each exploration iteration. Returns
    *   true to stop solving. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
@@ -89,6 +92,8 @@ public:
       bool use_closed_list = false, double depth_bound_eta = 0.1,
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
       double prob_epsilon = 1e-15, double belief_hash_resolution = 1000.0,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, false); },
       const CallbackFunctor &callback = [](const HSVISolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -115,8 +120,28 @@ public:
 
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
+  const std::unordered_map<std::size_t, std::size_t> &
+  get_state_hash_to_idx() const;
+  const std::vector<State> &get_states() const;
 
-protected:
+  /**
+   * @brief Get the ordered list of (belief, action) pairs visited during
+   * the last HSVI exploration.
+   *
+   * Returns the trajectory (path) explored during the most recent explore()
+   * call. Each element is a pair of (belief, action) where the belief is
+   * represented as a std::unordered_map<std::size_t, double> mapping state
+   * indices to probabilities, and action is the greedy action (optimistic,
+   * via upper bound) selected at that belief. The trajectory begins with the
+   * root belief and ends at the deepest belief explored.
+   *
+   * Note: HSVI operates on continuous belief spaces via heuristic search.
+   * Beliefs are returned as mappings from state indices to probabilities.
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<std::pair<Belief, Action>> get_last_trajectory() const;
+
   struct AlphaVector {
     std::vector<double> values;
     Action action;
@@ -127,41 +152,26 @@ protected:
         : values(num_states, 0.0), action(a), id(vid) {}
   };
 
+  const std::vector<AlphaVector> &get_alpha_vectors() const;
+
+protected:
   struct BoundPoint {
     Belief belief;
     double value;
   };
 
-  virtual double _better(double a, double b) const { return std::max(a, b); }
-
-  virtual double _worse(double a, double b) const { return std::min(a, b); }
-
-  virtual double _best_init() const {
-    return -std::numeric_limits<double>::infinity();
-  }
-
-  virtual double _worst_init() const {
-    return std::numeric_limits<double>::infinity();
-  }
-
-  virtual bool _is_better(double a, double b) const { return a > b; }
-
-  virtual double _get_value(const Value &v) const { return v.reward(); }
-
-  virtual void make_value_obj(double v, Value &out) const { out.reward(v); }
-
-  virtual double convergence_threshold(std::size_t depth) const {
-    return _epsilon * std::pow(_discount, -static_cast<double>(depth));
-  }
-
-  virtual double get_terminal_state_value(std::size_t /*si*/) const {
-    return 0.0;
-  }
-
-  virtual void compute_depth_bound() { _depth_bound = _max_sample_depth; }
-
-  virtual void on_states_enumerated() {}
-  virtual void on_model_cached() {}
+  virtual double _better(double a, double b) const;
+  virtual double _worse(double a, double b) const;
+  virtual double _best_init() const;
+  virtual double _worst_init() const;
+  virtual bool _is_better(double a, double b) const;
+  virtual double _get_value(const Value &v) const;
+  virtual void make_value_obj(double v, Value &out) const;
+  virtual double convergence_threshold(std::size_t depth) const;
+  virtual double get_terminal_state_value(std::size_t si) const;
+  virtual void compute_depth_bound();
+  virtual void on_states_enumerated();
+  virtual void on_model_cached();
 
   void enumerate_states(const Belief &b0);
   void pre_cache_model();
@@ -171,22 +181,34 @@ protected:
   void create_blind_policy_alphas();
 
   void explore(const Belief &b, std::size_t depth,
-               std::unordered_set<std::size_t> &closed_list);
+               std::unordered_set<std::size_t> &closed_list,
+               std::vector<Belief> *belief_path = nullptr);
 
   void alpha_backup(const Belief &b);
   void point_update(const Belief &b);
 
   double evaluate_alpha(const Belief &b) const;
   double evaluate_sawtooth(const Belief &b) const;
-  double evaluate_sawtooth_corner(const Belief &b) const;
+  virtual double evaluate_sawtooth_corner(const Belief &b) const;
 
-  virtual double evaluate_upper(const Belief &b) const {
-    return evaluate_sawtooth(b);
-  }
+  virtual double evaluate_upper(const Belief &b) const;
+  virtual double evaluate_lower(const Belief &b) const;
 
-  virtual double evaluate_lower(const Belief &b) const {
-    return evaluate_alpha(b);
-  }
+  // Per-state clamping applied after the Bellman backup (safety net for
+  // numerical drift). With the two-phase backup that uses a fallback alpha for
+  // observations unreachable from the backup belief, bounds are naturally
+  // admissible and this clamp is redundant — but it is kept as a guard.
+  // GoalHSVI overrides to a no-op (backup is naturally >= LB there).
+  virtual void apply_alpha_clamp(double &val, std::size_t si) const;
+
+  // Return the index of the "worst" alpha to use as a fallback for
+  // observations that are unreachable from the backup belief (empty
+  // posterior). Using this alpha for those observations ensures the backup
+  // remains globally admissible at states outside the belief's support.
+  //
+  // Default (reward-max): worst LB = alpha with minimum total value.
+  // Ensures the new alpha doesn't exceed the UB at those states.
+  virtual std::size_t fallback_alpha_index_for_empty_posterior() const;
 
   double dot_product(const AlphaVector &alpha, const Belief &b) const;
   std::size_t best_alpha_index(const Belief &b) const;
@@ -214,6 +236,7 @@ protected:
   double _vi_convergence_factor;
   double _prob_epsilon;
   double _belief_hash_resolution;
+  TerminalValueFunctor _terminal_value;
   CallbackFunctor _callback;
   bool _verbose;
 
@@ -248,6 +271,10 @@ protected:
   double _gap = std::numeric_limits<double>::infinity();
 
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+
+  // Trajectory tracking (lazy computation on-demand)
+  std::vector<Belief> _last_belief_path;
+  typename ExecutionPolicy::Mutex _trajectory_mutex;
 };
 
 /**
@@ -310,9 +337,13 @@ public:
    * @param callback Functor called at each exploration iteration. Returns
    *   true to stop solving. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for terminal states). Overrides goal/dead-end logic if provided.
+   *   Defaults to nullptr (use goal_checker + dead_end_cost logic).
    * @param dead_end_cost Cost assigned to non-goal terminal states (dead
    *   ends). If nullopt, automatically computed from transition costs and
-   *   depth/discount. Defaults to nullopt.
+   *   depth/discount. Ignored if terminal_value is provided. Defaults to
+   * nullopt.
    */
   GoalHSVISolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
@@ -321,6 +352,7 @@ public:
       bool use_closed_list = true, double depth_bound_eta = 0.1,
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
       double prob_epsilon = 1e-15, double belief_hash_resolution = 1000.0,
+      const typename Base::TerminalValueFunctor &terminal_value = nullptr,
       const CallbackFunctor &callback = [](const Base &,
                                            Domain &) { return false; },
       bool verbose = false, std::optional<double> dead_end_cost = std::nullopt);
@@ -328,29 +360,30 @@ public:
   void clear() override;
 
 protected:
-  double _better(double a, double b) const override { return std::min(a, b); }
-  double _worse(double a, double b) const override { return std::max(a, b); }
-  double _best_init() const override {
-    return std::numeric_limits<double>::infinity();
-  }
-  double _worst_init() const override {
-    return -std::numeric_limits<double>::infinity();
-  }
-  bool _is_better(double a, double b) const override { return a < b; }
-  double _get_value(const Value &v) const override { return v.cost(); }
-  void make_value_obj(double v, Value &out) const override { out.cost(v); }
+  double _better(double a, double b) const override;
+  double _worse(double a, double b) const override;
+  double _best_init() const override;
+  double _worst_init() const override;
+  bool _is_better(double a, double b) const override;
+  double _get_value(const Value &v) const override;
+  void make_value_obj(double v, Value &out) const override;
+  double evaluate_upper(const Belief &b) const override;
+  double evaluate_lower(const Belief &b) const override;
 
-  double evaluate_upper(const Belief &b) const override {
-    return this->evaluate_alpha(b);
-  }
-  double evaluate_lower(const Belief &b) const override {
-    return this->evaluate_sawtooth(b);
-  }
+  // No per-state clamping for cost minimization. In GoalHSVI the alpha
+  // vectors are the UPPER bound; clamping them up to _mdp_values (the LB)
+  // collapses UB = LB → gap = 0 after one iteration. The two-phase backup
+  // (fallback alpha for empty-posterior observations) maintains admissibility
+  // naturally, so no clamping is needed.
+  void apply_alpha_clamp(double &val, std::size_t si) const override;
 
-  double convergence_threshold(std::size_t /*depth*/) const override {
-    return this->_epsilon;
-  }
+  // Worst UB alpha = the one with maximum total value. Using it as the
+  // fallback for observations unreachable from the backup belief ensures
+  // g_a[si] >= MDP[si] for all states, maintaining UB admissibility.
+  std::size_t fallback_alpha_index_for_empty_posterior() const override;
 
+  double evaluate_sawtooth_corner(const Belief &b) const override;
+  double convergence_threshold(std::size_t depth) const override;
   double get_terminal_state_value(std::size_t si) const override;
 
   void initialize_alpha_bound() override;
@@ -364,6 +397,7 @@ private:
   std::optional<double> _user_dead_end_cost;
   std::vector<bool> _is_goal_cache;
   double _dead_end_cost = 0.0;
+  bool _use_custom_terminal_value = false;
 };
 
 } // namespace skdecide

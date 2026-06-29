@@ -131,9 +131,11 @@ try:
             Not calling this method (or not using the 'with' context statement)
             results in the solver forever waiting for the domain processes to exit.
             """
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the ILAO* algorithm from a given root solving state
@@ -247,7 +249,7 @@ try:
             self,
         ) -> dict[
             D.T_agent[D.T_observation],
-            tuple[D.T_agent[D.T_concurrency[D.T_event]], float],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
         ]:
             """Get the (partial) solution policy defined for the states for which
                 the Q-value has been updated at least once (which is optimal for
@@ -261,6 +263,27 @@ try:
                 Mapping from states to pairs of action and best Q-value
             """
             return self._solver.get_policy()
+
+        def get_best_solution_graph(
+            self,
+        ) -> dict[
+            D.T_agent[D.T_observation],
+            tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value],
+        ]:
+            """Get the states in the current best solution graph along with their
+                best actions and Q-values. Only non-terminal states (those with a
+                defined best action) are included.
+
+            !!! tip
+                This method can be called from the callback function to monitor
+                the current best solution graph during solving.
+
+            # Returns
+            dict[ D.T_agent[D.T_observation], tuple[D.T_agent[D.T_concurrency[D.T_event]], D.T_value], ]:
+                Mapping from states in the best solution graph to pairs of best
+                action and best Q-value
+            """
+            return self._solver.get_best_solution_graph()
 
 except ImportError:
     print(

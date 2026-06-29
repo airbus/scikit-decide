@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <limits>
 #include <numeric>
+#include <queue>
 #include <stdexcept>
 
 #include "utils/logging.hh"
@@ -34,7 +35,8 @@ SK_DESPOT_CLASS::DespotSolver(
     std::size_t max_rollout_depth, std::size_t num_particles_belief_update,
     double ess_threshold_ratio, const DefaultPolicyFunctor &default_policy,
     const UpperBoundFunctor &upper_bound_heuristic,
-    const CallbackFunctor &callback, bool verbose)
+    const TerminalValueFunctor &terminal_value, const CallbackFunctor &callback,
+    bool verbose)
     : _domain(domain), _num_scenarios(num_scenarios), _max_depth(max_depth),
       _regularization_constant(regularization_constant),
       _gap_reduction_rate(gap_reduction_rate), _target_gap(target_gap),
@@ -43,8 +45,9 @@ SK_DESPOT_CLASS::DespotSolver(
       _num_particles_belief(num_particles_belief_update),
       _ess_threshold_ratio(ess_threshold_ratio),
       _default_policy(default_policy),
-      _upper_bound_heuristic(upper_bound_heuristic), _callback(callback),
-      _verbose(verbose), _rng(std::random_device{}()) {
+      _upper_bound_heuristic(upper_bound_heuristic),
+      _terminal_value(terminal_value), _callback(callback), _verbose(verbose),
+      _rng(std::random_device{}()) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm DESPOT");
   }
@@ -113,6 +116,7 @@ void SK_DESPOT_CLASS::solve(
 
 SK_DESPOT_TEMPLATE_DECL
 void SK_DESPOT_CLASS::plan_from_belief(const Belief &b) {
+  Logger::info("Running DESPOT solver");
   _start_time = std::chrono::high_resolution_clock::now();
 
   // Build probability vector for sampling scenarios
@@ -173,6 +177,11 @@ void SK_DESPOT_CLASS::plan_from_belief(const Belief &b) {
 
   _gap_cache = root->upper_bound - root->lower_bound;
   _current_tree = std::move(root);
+
+  Logger::info("DESPOT finished in " +
+               StringConverter::from((double)elapsed_ms() / 1e3) +
+               " seconds with " + StringConverter::from(_nb_tree_nodes) +
+               " tree nodes.");
 }
 
 // --- BuildDESPOT: Algorithm 1 ---
@@ -184,8 +193,13 @@ void SK_DESPOT_CLASS::build_despot(VNode *root) {
   std::size_t iteration = 0;
 
   while (elapsed_ms() < _time_budget) {
-    // Explore: find leaf to expand
-    VNode *leaf = explore(root);
+    // Explore: find leaf to expand (skip trajectory building for performance)
+    VNode *leaf = explore(root, nullptr);
+
+    // Save the leaf for on-demand trajectory reconstruction
+    _execution_policy.protect([this, leaf]() { _last_explored_leaf = leaf; },
+                              _trajectory_mutex);
+
     if (!leaf)
       break;
 
@@ -226,7 +240,9 @@ void SK_DESPOT_CLASS::build_despot(VNode *root) {
 // --- Explore: Algorithm 2 — Forward heuristic search ---
 
 SK_DESPOT_TEMPLATE_DECL
-typename SK_DESPOT_CLASS::VNode *SK_DESPOT_CLASS::explore(VNode *v) {
+typename SK_DESPOT_CLASS::VNode *
+SK_DESPOT_CLASS::explore(VNode *v,
+                         std::vector<std::pair<State, Action>> *trajectory) {
   if (v->scenarios.empty())
     return nullptr;
 
@@ -266,6 +282,12 @@ typename SK_DESPOT_CLASS::VNode *SK_DESPOT_CLASS::explore(VNode *v) {
   if (!best_q)
     return nullptr;
 
+  // Record trajectory step: representative state and selected action
+  if (trajectory && !v->scenarios.empty()) {
+    trajectory->push_back(
+        std::make_pair(v->scenarios[0].state, best_q->action));
+  }
+
   // Find observation child with highest weighted excess uncertainty
   VNode *best_child = nullptr;
   double best_eu = -std::numeric_limits<double>::infinity();
@@ -285,7 +307,7 @@ typename SK_DESPOT_CLASS::VNode *SK_DESPOT_CLASS::explore(VNode *v) {
   }
 
   if (best_child)
-    return explore(best_child);
+    return explore(best_child, trajectory);
 
   return nullptr;
 }
@@ -488,8 +510,11 @@ double SK_DESPOT_CLASS::default_rollout(const State &s, int start_depth,
   double gamma_power = 1.0;
 
   for (std::size_t d = start_depth; d < _max_rollout_depth; ++d) {
-    if (_domain.is_terminal(current, thread_id))
+    if (_domain.is_terminal(current, thread_id)) {
+      // Add terminal value for terminal states
+      total_reward += gamma_power * _terminal_value(current).reward();
       break;
+    }
 
     auto actions =
         _domain.get_applicable_actions(current, thread_id).get_elements();
@@ -499,8 +524,11 @@ double SK_DESPOT_CLASS::default_rollout(const State &s, int start_depth,
     for (auto a : actions) {
       action_vec.push_back(a);
     }
-    if (action_vec.empty())
+    if (action_vec.empty()) {
+      // State has no actions but is not marked terminal: treat as terminal
+      total_reward += gamma_power * _terminal_value(current).reward();
       break;
+    }
 
     std::uniform_int_distribution<std::size_t> action_dist(
         0, action_vec.size() - 1);
@@ -518,8 +546,12 @@ double SK_DESPOT_CLASS::default_rollout(const State &s, int start_depth,
       probs.push_back(ns_item.probability());
     }
 
-    if (states.empty())
+    if (states.empty()) {
+      // Action has no transitions but state is not marked terminal: treat as
+      // terminal
+      total_reward += gamma_power * _terminal_value(current).reward();
       break;
+    }
 
     std::discrete_distribution<std::size_t> dist(probs.begin(), probs.end());
     std::size_t idx = dist(local_rng);
@@ -546,6 +578,11 @@ double SK_DESPOT_CLASS::upper_bound_state(const State &s,
     return _upper_bound_heuristic(_domain, s, thread_id).reward();
   }
 
+  // Check if terminal state
+  if (_domain.is_terminal(s, thread_id)) {
+    return _terminal_value(s).reward();
+  }
+
   // Uninformed upper bound: R_max / (1 - gamma)
   // Estimate R_max from a few sampled transitions
   auto actions = _domain.get_applicable_actions(s, thread_id).get_elements();
@@ -554,6 +591,11 @@ double SK_DESPOT_CLASS::upper_bound_state(const State &s,
   for (auto action : actions) {
     auto next_dist =
         _domain.get_next_state_distribution(s, action, thread_id).get_values();
+    if (next_dist.begin() == next_dist.end()) {
+      // Action has no transitions: use terminal value
+      max_reward = std::max(max_reward, std::abs(_terminal_value(s).reward()));
+      continue;
+    }
     for (auto ns_item : next_dist) {
       double r =
           _domain.get_transition_value(s, action, ns_item.state(), thread_id)
@@ -833,6 +875,91 @@ std::size_t SK_DESPOT_CLASS::get_solving_time() const { return elapsed_ms(); }
 
 SK_DESPOT_TEMPLATE_DECL
 double SK_DESPOT_CLASS::get_gap() const { return _gap_cache; }
+
+SK_DESPOT_TEMPLATE_DECL
+std::vector<typename SK_DESPOT_CLASS::BeliefNode>
+SK_DESPOT_CLASS::get_explored_beliefs() const {
+  std::vector<BeliefNode> beliefs;
+
+  if (!_current_tree) {
+    return beliefs;
+  }
+
+  // BFS traversal of the tree
+  std::queue<VNode *> queue;
+  queue.push(_current_tree.get());
+
+  while (!queue.empty()) {
+    VNode *v = queue.front();
+    queue.pop();
+
+    BeliefNode node;
+
+    // Extract particles (states only)
+    for (const auto &scenario : v->scenarios) {
+      node.particles.push_back(scenario.state);
+    }
+
+    node.lower_bound = v->lower_bound;
+    node.upper_bound = v->upper_bound;
+    node.default_value = v->default_value;
+    node.depth = v->depth;
+
+    // Find best action (action with highest lower bound)
+    if (v->is_expanded && !v->children.empty()) {
+      auto best_child = std::max_element(
+          v->children.begin(), v->children.end(),
+          [](const std::unique_ptr<QNode> &a, const std::unique_ptr<QNode> &b) {
+            return a->lower_bound < b->lower_bound;
+          });
+      node.best_action = (*best_child)->action;
+    }
+
+    beliefs.push_back(std::move(node));
+
+    // Add children to queue
+    for (const auto &qchild : v->children) {
+      for (const auto &[obs_hash, vchild] : qchild->children) {
+        queue.push(vchild.get());
+      }
+    }
+  }
+
+  return beliefs;
+}
+
+SK_DESPOT_TEMPLATE_DECL
+std::vector<std::pair<typename SK_DESPOT_CLASS::State,
+                      typename SK_DESPOT_CLASS::Action>>
+SK_DESPOT_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<State, Action>> trajectory;
+  const_cast<DespotSolver *>(this)->_execution_policy.protect(
+      [&]() {
+        // Reconstruct trajectory from leaf to root on-demand
+        if (!_last_explored_leaf)
+          return;
+
+        // Walk from leaf to root collecting (state, action) pairs
+        std::vector<std::pair<State, Action>> path_reversed;
+        VNode *v = _last_explored_leaf;
+
+        while (v && v->parent) {
+          QNode *q = v->parent;
+          VNode *parent_v = q->parent;
+          if (parent_v && !parent_v->scenarios.empty()) {
+            // Use representative state from parent node
+            path_reversed.push_back(
+                std::make_pair(parent_v->scenarios[0].state, q->action));
+          }
+          v = parent_v;
+        }
+
+        // Reverse to get root-to-leaf order
+        trajectory.assign(path_reversed.rbegin(), path_reversed.rend());
+      },
+      const_cast<typename ExecutionPolicy::Mutex &>(_trajectory_mutex));
+  return trajectory;
+}
 
 } // namespace skdecide
 

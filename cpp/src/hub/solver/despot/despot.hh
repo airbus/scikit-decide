@@ -50,6 +50,7 @@ public:
       DefaultPolicyFunctor;
   typedef std::function<Value(Domain &, const State &, const std::size_t *)>
       UpperBoundFunctor;
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const DespotSolver &, Domain &,
                              const std::size_t *)>
       CallbackFunctor;
@@ -124,6 +125,8 @@ public:
    * @param upper_bound_heuristic Optional functor (domain, state, thread_id)
    *   -> Value providing an upper bound heuristic per state. If nullptr,
    *   R_max/(1-gamma) is used. Defaults to nullptr.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for non-goal terminal states). Defaults to reward=0.
    * @param callback Functor called at the end of each iteration. Returns true
    *   to stop planning. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
@@ -138,6 +141,8 @@ public:
       double ess_threshold_ratio = 2.0,
       const DefaultPolicyFunctor &default_policy = nullptr,
       const UpperBoundFunctor &upper_bound_heuristic = nullptr,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, true); },
       const CallbackFunctor &callback =
           [](const DespotSolver &, Domain &, const std::size_t *) {
             return false;
@@ -161,12 +166,42 @@ public:
   std::size_t get_solving_time() const;
   double get_gap() const;
 
+  struct BeliefNode {
+    std::vector<State> particles;
+    double lower_bound;
+    double upper_bound;
+    double default_value;
+    int depth;
+    std::optional<Action> best_action;
+  };
+
+  std::vector<BeliefNode> get_explored_beliefs() const;
+
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
 
+  /**
+   * @brief Get the ordered list of (state, action) pairs visited during
+   * the last DESPOT tree construction.
+   *
+   * Returns the trajectory (path) explored during the most recent explore()
+   * call from the root node. Each element is a pair of (state, action)
+   * where the state is a representative state from the scenarios at that node
+   * and the action is the action selected at that node. The trajectory begins
+   * with a root state and ends at the deepest node reached before exploration
+   * terminated.
+   *
+   * Note: DESPOT maintains K scenarios per node. This method returns the first
+   * scenario's state as a representative at each level of the explored path.
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<std::pair<State, Action>> get_last_trajectory() const;
+
 private:
   void build_despot(VNode *root);
-  VNode *explore(VNode *v);
+  VNode *explore(VNode *v,
+                 std::vector<std::pair<State, Action>> *trajectory = nullptr);
   void backup(VNode *v);
   void prune(VNode *v);
   void make_default(VNode *v);
@@ -201,6 +236,7 @@ private:
   double _ess_threshold_ratio;
   DefaultPolicyFunctor _default_policy;
   UpperBoundFunctor _upper_bound_heuristic;
+  TerminalValueFunctor _terminal_value;
   CallbackFunctor _callback;
   bool _verbose;
 
@@ -222,6 +258,10 @@ private:
   double _gap_cache = 0.0;
   std::size_t _nb_tree_nodes = 0;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+
+  // Trajectory tracking (lazy computation on-demand)
+  VNode *_last_explored_leaf;
+  typename ExecutionPolicy::Mutex _trajectory_mutex;
 };
 
 } // namespace skdecide

@@ -71,10 +71,8 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability,
        const Types &...args) {
     try {
       return std::make_unique<py::object>(func(*_domain, args..., py::none()));
-    } catch (const py::error_already_set *e) {
-      std::runtime_error err(e->what());
-      delete e;
-      throw err;
+    } catch (py::error_already_set &e) {
+      throw std::runtime_error(e.what());
     }
   }
 };
@@ -150,14 +148,12 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability,
         if (did >= 0) {
           conn = _connections[(std::size_t)did].get();
         }
-      } catch (const py::error_already_set *e) {
+      } catch (py::error_already_set &e) {
         Logger::error("SKDECIDE exception when asynchronously calling "
                       "anonymous domain method: " +
-                      std::string(e->what()));
-        std::runtime_error err(e->what());
+                      std::string(e.what()));
         id.reset();
-        delete e;
-        throw err;
+        throw std::runtime_error(e.what());
       }
     }
     if (conn) { // positive id returned (parallel execution, waiting for python
@@ -195,14 +191,12 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability,
           std::make_unique<py::object>(_domain->attr("get_result")(*id));
       id.reset();
       return r;
-    } catch (const py::error_already_set *e) {
+    } catch (py::error_already_set &e) {
       Logger::error("SKDECIDE exception when asynchronously calling the "
                     "domain's get_result() method: " +
-                    std::string(e->what()));
-      std::runtime_error err(e->what());
+                    std::string(e.what()));
       id.reset();
-      delete e;
-      throw err;
+      throw std::runtime_error(e.what());
     }
     id.reset();
     return std::make_unique<py::object>(py::none());

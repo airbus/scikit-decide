@@ -14,7 +14,8 @@ void init_pysarsop(py::module &m) {
   py_sarsop_solver
       .def(py::init<py::object &, py::object &, double, double, std::size_t,
                     std::size_t, double, std::size_t, double, std::size_t,
-                    double, double, std::size_t, std::size_t, bool,
+                    double, double, std::size_t, std::size_t,
+                    const std::function<py::object(const py::object &)> &, bool,
                     const std::function<py::bool_(const py::object &)> &,
                     bool>(),
            py::arg("solver"), py::arg("domain"), py::arg("epsilon") = 0.001,
@@ -25,8 +26,8 @@ void init_pysarsop(py::module &m) {
            py::arg("max_sample_depth") = 100, py::arg("prob_epsilon") = 1e-15,
            py::arg("ub_improvement_epsilon") = 1e-10,
            py::arg("pruning_interval") = 10, py::arg("logging_interval") = 50,
-           py::arg("parallel") = false, py::arg("callback") = nullptr,
-           py::arg("verbose") = false)
+           py::arg("terminal_value") = nullptr, py::arg("parallel") = false,
+           py::arg("callback") = nullptr, py::arg("verbose") = false)
       .def("close", &skdecide::PySARSOPSolver::close)
       .def("clear", &skdecide::PySARSOPSolver::clear)
       .def("solve", &skdecide::PySARSOPSolver::solve, py::arg("distribution"))
@@ -54,5 +55,8 @@ void init_pysarsop(py::module &m) {
       .def("get_solving_time", &skdecide::PySARSOPSolver::get_solving_time)
       .def("get_lower_bound", &skdecide::PySARSOPSolver::get_lower_bound)
       .def("get_upper_bound", &skdecide::PySARSOPSolver::get_upper_bound)
-      .def("get_gap", &skdecide::PySARSOPSolver::get_gap);
+      .def("get_gap", &skdecide::PySARSOPSolver::get_gap)
+      .def("get_alpha_vectors", &skdecide::PySARSOPSolver::get_alpha_vectors)
+      .def("get_last_trajectory",
+           &skdecide::PySARSOPSolver::get_last_trajectory);
 }

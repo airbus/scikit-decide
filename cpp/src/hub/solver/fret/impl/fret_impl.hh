@@ -131,14 +131,28 @@ void SK_FRET_CLASS::build_greedy_graph(InnerSolver &inner, GreedyGraph &graph) {
 
       if (qval <= v_s + _epsilon) {
         auto &adj = graph[s];
+        // Collect valid successors
+        std::vector<State> valid_successors;
         for (const auto &succ : successors) {
           if (succ.second > 0.0 &&
               _dead_end_states.find(succ.first) == _dead_end_states.end() &&
               (inner.is_solution_defined_for(succ.first) ||
                _goal_checker(_domain, succ.first) ||
                _domain.is_terminal(succ.first))) {
-            adj.push_back(succ.first);
+            valid_successors.push_back(succ.first);
           }
+        }
+        // Sort successors by hash for deterministic greedy graph construction.
+        // This ensures reproducible behavior when multiple actions have
+        // Q-values within epsilon of each other, preventing non-determinism
+        // from hash map iteration order.
+        std::sort(valid_successors.begin(), valid_successors.end(),
+                  [](const State &a, const State &b) {
+                    return
+                        typename State::Hash()(a) < typename State::Hash()(b);
+                  });
+        for (const auto &succ : valid_successors) {
+          adj.push_back(succ);
         }
       }
     }
@@ -314,63 +328,88 @@ bool SK_FRET_CLASS::eliminate_traps(InnerSolver &inner) {
     }
     _trapped_sccs.push_back(trap_set);
 
-    bool has_exit_action = false;
-    double best_exit_qval = std::numeric_limits<double>::infinity();
-
+    // Check if all states in SCC are terminal non-goal states.
+    // If so, they are absorbing dead ends and should be marked as permanent.
+    bool all_terminal = true;
     for (const auto &s : scc) {
-      auto actions = _domain.get_applicable_actions(s).get_elements();
-      for (auto a : actions) {
-        bool exits = false;
-        double qval = 0.0;
-        bool cost_added = false;
-
-        auto next_dist = _domain.get_next_state_distribution(s, a).get_values();
-        for (auto ns : next_dist) {
-          if (!cost_added) {
-            qval += _domain.get_transition_value(s, a, ns.state()).cost();
-            cost_added = true;
-          }
-          double ns_val;
-          if (inner.is_solution_defined_for(ns.state())) {
-            ns_val = inner.get_best_value(ns.state()).cost();
-          } else {
-            ns_val = get_value(ns.state());
-          }
-          qval += ns.probability() * _discount * ns_val;
-
-          if (scc_set.find(ns.state()) == scc_set.end()) {
-            exits = true;
-          }
-        }
-
-        if (exits) {
-          has_exit_action = true;
-          if (qval < best_exit_qval) {
-            best_exit_qval = qval;
-          }
-        }
+      if (!_domain.is_terminal(s) || _goal_checker(_domain, s)) {
+        all_terminal = false;
+        break;
       }
     }
 
-    if (!has_exit_action) {
-      // Permanent trap (dead end)
+    if (all_terminal) {
+      // All states are terminal non-goals → permanent dead end
       for (const auto &s : scc) {
         _value_function[s] = _dead_end_cost;
         _dead_end_states.insert(s);
       }
       if (_verbose) {
-        Logger::debug("FRET: permanent trap (dead end) with " +
+        Logger::debug("FRET: permanent trap (terminal dead end) with " +
                       StringConverter::from(scc.size()) + " states");
       }
     } else {
-      // Transient trap
+      // Check for exit actions to distinguish transient from permanent traps
+      bool has_exit_action = false;
+      double best_exit_qval = std::numeric_limits<double>::infinity();
+
       for (const auto &s : scc) {
-        _value_function[s] = best_exit_qval;
+        auto actions = _domain.get_applicable_actions(s).get_elements();
+        for (auto a : actions) {
+          bool exits = false;
+          double qval = 0.0;
+          bool cost_added = false;
+
+          auto next_dist =
+              _domain.get_next_state_distribution(s, a).get_values();
+          for (auto ns : next_dist) {
+            if (!cost_added) {
+              qval += _domain.get_transition_value(s, a, ns.state()).cost();
+              cost_added = true;
+            }
+            double ns_val;
+            if (inner.is_solution_defined_for(ns.state())) {
+              ns_val = inner.get_best_value(ns.state()).cost();
+            } else {
+              ns_val = get_value(ns.state());
+            }
+            qval += ns.probability() * _discount * ns_val;
+
+            if (scc_set.find(ns.state()) == scc_set.end()) {
+              exits = true;
+            }
+          }
+
+          if (exits) {
+            has_exit_action = true;
+            if (qval < best_exit_qval) {
+              best_exit_qval = qval;
+            }
+          }
+        }
       }
-      if (_verbose) {
-        Logger::debug(
-            "FRET: transient trap with " + StringConverter::from(scc.size()) +
-            " states, exit Q-value = " + StringConverter::from(best_exit_qval));
+
+      if (!has_exit_action) {
+        // Permanent trap (dead end)
+        for (const auto &s : scc) {
+          _value_function[s] = _dead_end_cost;
+          _dead_end_states.insert(s);
+        }
+        if (_verbose) {
+          Logger::debug("FRET: permanent trap (dead end) with " +
+                        StringConverter::from(scc.size()) + " states");
+        }
+      } else {
+        // Transient trap
+        for (const auto &s : scc) {
+          _value_function[s] = best_exit_qval;
+        }
+        if (_verbose) {
+          Logger::debug("FRET: transient trap with " +
+                        StringConverter::from(scc.size()) +
+                        " states, exit Q-value = " +
+                        StringConverter::from(best_exit_qval));
+        }
       }
     }
   }

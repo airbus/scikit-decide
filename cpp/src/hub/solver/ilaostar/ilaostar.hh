@@ -150,6 +150,17 @@ public:
   std::size_t best_solution_graph_size() const;
 
   /**
+   * @brief Get the states in the current best solution graph along with their
+   * best actions and Q-values. Only states with a defined best action are
+   * included (non-terminal states).
+   *
+   * @return Mapping from states in the best solution graph to pairs of best
+   * action and best Q-value
+   */
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map
+  get_best_solution_graph() const;
+
+  /**
    * @brief Get the solving time in milliseconds since the beginning of the
    * search from the root solving state
    *
@@ -164,7 +175,7 @@ public:
    *
    * @return Mapping from states to pairs of action and best Q-value
    */
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map policy() const;
 
   template <typename Params>
   static std::unique_ptr<ILAOStarSolver> create_from_params(

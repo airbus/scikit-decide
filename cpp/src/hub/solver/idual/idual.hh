@@ -129,6 +129,17 @@ public:
   typename SetTypeDeducer<State>::Set get_explored_states() const;
   LPCallbackEvent get_callback_event() const { return _last_callback_event; }
 
+  template <typename D = Domain,
+            std::enable_if_t<!has_get_constraints<D>::value, int> = 0>
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map
+  get_policy() const;
+
+  template <typename D = Domain,
+            std::enable_if_t<has_get_constraints<D>::value, int> = 0>
+  typename MapTypeDeducer<
+      State, std::pair<std::vector<std::pair<Action, double>>, Value>>::Map
+  get_policy() const;
+
   template <typename Params>
   static std::unique_ptr<IDualSolver> create_from_params(
       Domain &domain,

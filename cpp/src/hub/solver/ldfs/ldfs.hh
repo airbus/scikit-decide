@@ -53,6 +53,8 @@ namespace skdecide {
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class LDFSSolver {
 public:
+  virtual ~LDFSSolver() = default;
+
   typedef Tdomain Domain;
   typedef typename Domain::State State;
   typedef typename Domain::Action Action;
@@ -75,8 +77,12 @@ public:
    *   state, used to initialize V(s) for newly discovered states. An
    *   admissible heuristic (h(s) <= V*(s)) accelerates convergence.
    * @param terminal_value Functor assigning a fixed value to non-goal
-   *   terminal (absorbing) states. Use Value(0.0) for benign terminals
-   *   and Value(large_cost) for dead ends. Defaults to Value(0.0, false).
+   *   terminal (absorbing) states. Use Value(large_cost) for dead ends.
+   *   When nullptr (default, recommended for SSPs), dead-end states are
+   *   initialised with the heuristic estimate instead of a fixed value,
+   *   which prevents infinity propagation through Bellman updates and lets
+   *   LDFS naturally steer away from them. Pass a functor only when
+   *   dead-ends are unavoidable and you need explicit penalty values.
    * @param discount Value function's discount factor. Defaults to 1.0.
    * @param epsilon Maximum Bellman error allowed to label a state as solved
    *   during the check_solved procedure. Defaults to 0.001.
@@ -92,8 +98,7 @@ public:
   LDFSSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
       const HeuristicFunctor &heuristic,
-      const TerminalValueFunctor &terminal_value =
-          [](const State &) { return Value(0.0, false); },
+      const TerminalValueFunctor &terminal_value = nullptr,
       double discount = 1.0, double epsilon = 0.001, std::size_t max_depth = 0,
       const CallbackFunctor &callback = [](const LDFSSolver &,
                                            Domain &) { return false; },
@@ -114,7 +119,8 @@ public:
   typename SetTypeDeducer<State>::Set get_solved_states() const;
   std::vector<typename SetTypeDeducer<State>::Set>
   get_strongly_connected_components() const;
-  typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const;
+  typename MapTypeDeducer<State, std::pair<Action, Value>>::Map policy() const;
+  std::vector<std::pair<State, Action>> get_last_trajectory() const;
 
   template <typename Params>
   static std::unique_ptr<LDFSSolver> create_from_params(
@@ -135,6 +141,7 @@ protected:
   GoalCheckerFunctor _goal_checker;
   HeuristicFunctor _heuristic;
   TerminalValueFunctor _terminal_value;
+  bool _use_terminal_value;
   atomic_double _discount;
   atomic_double _epsilon;
   std::size_t _max_depth;
@@ -179,6 +186,7 @@ protected:
   std::size_t _tarjan_index;
   std::stack<StateNode *> _tarjan_stack;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+  std::vector<StateNode *> _last_trajectory;
 
   void expand(StateNode &s);
   double q_value(ActionNode &a);

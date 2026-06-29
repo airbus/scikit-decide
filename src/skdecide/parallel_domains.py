@@ -33,9 +33,7 @@ class ParallelDomain:
     ):
         self._domain_factory = domain_factory
         self._lambdas = lambdas
-        self._active_domains = mp.Array(
-            "b", [False for i in range(nb_domains)], lock=True
-        )
+        self._active_domains = [False] * nb_domains
         self._initializations = [
             mp.Value("b", False, lock=True) for i in range(nb_domains)
         ]
@@ -189,9 +187,7 @@ class ParallelDomain:
         # TODO: reopen the temp connection from _ipc_connections
 
 
-def _launch_domain_server_(
-    domain_factory, lambdas, i, job_results, conn, init, cond, ipc_conn, logger
-):
+def _launch_domain_server_(domain_factory, lambdas, conn, init, cond, ipc_conn, logger):
     domain = domain_factory()
 
     if ipc_conn is not None:
@@ -206,7 +202,6 @@ def _launch_domain_server_(
 
     while True:
         job = conn.recv()
-        job_results[i] = None
         if job is None:
             if ipc_conn is not None:
                 pusher.close()
@@ -218,10 +213,9 @@ def _launch_domain_server_(
                     r = getattr(domain, job[0])(*job[1])
                 else:  # job[0] is a lambda function
                     r = lambdas[job[0]](domain, *job[1])
-                job_results[i] = r
                 if ipc_conn is not None:
                     pusher.send(b"0")  # send success
-                conn.send("0")  # send success
+                conn.send(r)  # send result directly through the pipe
             except Exception as e:
                 logger.error(rf"/!\ Unable to perform job {job[0]}: {e}")
                 if ipc_conn is not None:
@@ -241,9 +235,7 @@ class PipeParallelDomain(ParallelDomain):
         self, domain_factory, lambdas=None, nb_domains=os.cpu_count(), ipc_notify=False
     ):
         super().__init__(domain_factory, lambdas, nb_domains, ipc_notify)
-        self._manager = mp.Manager()
         self._waiting_jobs = [None] * nb_domains
-        self._job_results = self._manager.list([None for i in range(nb_domains)])
         logger.info(rf"Using {nb_domains} parallel piped domains")
 
     def get_proc_connections(self):
@@ -263,14 +255,12 @@ class PipeParallelDomain(ParallelDomain):
                 logger.error(rf"/!\ Unable to launch job lambdas[{function}]: {e}")
 
     def get_result(self, i):
-        self._waiting_jobs[i].recv()
-        r = self._job_results[i]
-        self._job_results[i] = None
+        r = self._waiting_jobs[i].recv()
         self._active_domains[i] = False
         return r
 
     def _launch_processes(self):
-        for i in range(len(self._job_results)):
+        for i in range(len(self._processes)):
             self.open_ipc_connection(i)
             pparent, pchild = mp.Pipe()
             self._waiting_jobs[i] = pparent
@@ -279,8 +269,6 @@ class PipeParallelDomain(ParallelDomain):
                 args=[
                     self._domain_factory,
                     self._lambdas,
-                    i,
-                    self._job_results,
                     pchild,
                     self._initializations[i],
                     self._conditions[i],
@@ -290,14 +278,14 @@ class PipeParallelDomain(ParallelDomain):
             )
             self._processes[i].start()
         # Waits for all jobs to be launched and waiting each for requests
-        for i in range(len(self._job_results)):
+        for i in range(len(self._processes)):
             with self._conditions[i]:
                 self._conditions[i].wait_for(
                     lambda: bool(self._initializations[i].value) == True
                 )
 
     def close(self):
-        for i in range(len(self._job_results)):
+        for i in range(len(self._processes)):
             self._initializations[i].value = False
             self._waiting_jobs[i].send(None)
             self._processes[i].join(timeout=10)

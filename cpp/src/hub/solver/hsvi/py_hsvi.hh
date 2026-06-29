@@ -32,6 +32,9 @@ struct HSVITag {};
 struct GoalHSVITag {};
 
 class PyHSVISolverBase {
+public:
+  virtual ~PyHSVISolverBase() = default;
+
 protected:
   class BaseImplementation {
   public:
@@ -51,6 +54,8 @@ protected:
     virtual py::int_ get_nb_bound_points() = 0;
     virtual py::int_ get_solving_time() = 0;
     virtual py::float_ get_gap() = 0;
+    virtual py::list get_alpha_vectors() = 0;
+    virtual py::list get_last_trajectory() = 0;
   };
 
   template <typename Texecution, typename SolverTag = HSVITag>
@@ -72,9 +77,10 @@ protected:
         double depth_bound_eta, std::size_t max_vi_iterations,
         double vi_convergence_factor, double prob_epsilon,
         double belief_hash_resolution,
+        const std::function<py::object(const py::object &)> &terminal_value,
         const std::function<py::bool_(const py::object &)> &callback,
         bool verbose, std::optional<double> dead_end_cost = std::nullopt)
-        : _callback(callback) {
+        : _terminal_value(terminal_value), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
       _domain = std::make_unique<PyHSVIDomain<Texecution>>(domain);
@@ -98,10 +104,28 @@ protected:
           return rr;
         };
 
+        typename BaseSolverType::TerminalValueFunctor tv =
+            [this](const typename PyHSVIDomain<Texecution>::State &s) ->
+            typename PyHSVIDomain<Texecution>::Value {
+              if (_terminal_value) {
+                typename GilControl<Texecution>::Acquire acquire;
+                try {
+                  py::object r = _terminal_value(s.pyobj());
+                  return typename PyHSVIDomain<Texecution>::Value(r);
+                } catch (py::error_already_set &e) {
+                  Logger::error(std::string("SKDECIDE exception when calling "
+                                            "terminal_value: ") +
+                                e.what());
+                  throw std::runtime_error(e.what());
+                }
+              }
+              return typename PyHSVIDomain<Texecution>::Value(0.0, false);
+            };
+
         _solver = std::make_unique<SolverType>(
             *_domain, gc, epsilon, discount, time_budget, max_sample_depth,
             use_closed_list, depth_bound_eta, max_vi_iterations,
-            vi_convergence_factor, prob_epsilon, belief_hash_resolution,
+            vi_convergence_factor, prob_epsilon, belief_hash_resolution, tv,
             [this](const BaseSolverType &s,
                    PyHSVIDomain<Texecution> &d) -> bool {
               if (_callback) {
@@ -115,17 +139,37 @@ protected:
                       std::string(
                           "SKDECIDE exception when calling callback: ") +
                       e.what());
-                  throw;
+                  _callback_exception =
+                      std::make_exception_ptr(std::runtime_error(e.what()));
+                  return true;
                 }
               }
               return false;
             },
             verbose, dead_end_cost);
       } else {
+        typename BaseSolverType::TerminalValueFunctor tv =
+            [this](const typename PyHSVIDomain<Texecution>::State &s) ->
+            typename PyHSVIDomain<Texecution>::Value {
+              if (_terminal_value) {
+                typename GilControl<Texecution>::Acquire acquire;
+                try {
+                  py::object r = _terminal_value(s.pyobj());
+                  return typename PyHSVIDomain<Texecution>::Value(r);
+                } catch (py::error_already_set &e) {
+                  Logger::error(std::string("SKDECIDE exception when calling "
+                                            "terminal_value: ") +
+                                e.what());
+                  throw std::runtime_error(e.what());
+                }
+              }
+              return typename PyHSVIDomain<Texecution>::Value(0.0, false);
+            };
+
         _solver = std::make_unique<SolverType>(
             *_domain, epsilon, discount, time_budget, max_sample_depth,
             use_closed_list, depth_bound_eta, max_vi_iterations,
-            vi_convergence_factor, prob_epsilon, belief_hash_resolution,
+            vi_convergence_factor, prob_epsilon, belief_hash_resolution, tv,
             [this](const BaseSolverType &s,
                    PyHSVIDomain<Texecution> &d) -> bool {
               if (_callback) {
@@ -139,7 +183,9 @@ protected:
                       std::string(
                           "SKDECIDE exception when calling callback: ") +
                       e.what());
-                  throw;
+                  _callback_exception =
+                      std::make_exception_ptr(std::runtime_error(e.what()));
+                  return true;
                 }
               }
               return false;
@@ -159,6 +205,7 @@ protected:
     virtual void clear() { _solver->clear(); }
 
     virtual void solve(const py::object &distribution) {
+      _callback_exception = nullptr;
       std::vector<std::pair<typename PyHSVIDomain<Texecution>::State, double>>
           dist;
       py::list values = distribution.attr("get_values")();
@@ -167,8 +214,13 @@ protected:
         dist.emplace_back(typename PyHSVIDomain<Texecution>::State(t[0]),
                           t[1].cast<double>());
       }
-      typename GilControl<Texecution>::Release release;
-      _solver->solve(dist);
+      {
+        typename GilControl<Texecution>::Release release;
+        _solver->solve(dist);
+      }
+      if (_callback_exception) {
+        std::rethrow_exception(_callback_exception);
+      }
     }
 
     virtual py::object get_next_action(const py::object &o) {
@@ -241,6 +293,68 @@ protected:
 
     virtual py::float_ get_gap() { return _solver->get_gap(); }
 
+    virtual py::list get_alpha_vectors() {
+      py::list result;
+      const auto &alphas = _solver->get_alpha_vectors();
+      const auto &index_to_state = _solver->get_index_to_state();
+      const auto &state_hash_to_idx = _solver->get_state_hash_to_idx();
+
+      for (const auto &alpha : alphas) {
+        py::dict alpha_dict;
+        py::dict values_dict;
+
+        // Map each enumerated state to its value in the alpha vector
+        for (const auto &[hash, state] : index_to_state) {
+          auto idx_it = state_hash_to_idx.find(hash);
+          if (idx_it != state_hash_to_idx.end()) {
+            std::size_t idx = idx_it->second;
+            if (idx < alpha.values.size()) {
+              // Second parameter: true = reward, false = cost
+              // For reward-maximizing HSVI (HSVITag), alpha values are rewards
+              // For cost-minimizing Goal-HSVI (GoalHSVITag), alpha values are
+              // costs
+              constexpr bool is_reward =
+                  !std::is_same_v<SolverTag, GoalHSVITag>;
+              typename PyHSVIDomain<Texecution>::Value val(alpha.values[idx],
+                                                           is_reward);
+              values_dict[state.pyobj()] = val.pyobj();
+            }
+          }
+        }
+
+        alpha_dict["values"] = values_dict;
+        alpha_dict["action"] = alpha.action.pyobj();
+        alpha_dict["id"] = alpha.id;
+        result.append(alpha_dict);
+      }
+
+      return result;
+    }
+
+    virtual py::list get_last_trajectory() {
+      py::list l;
+      auto &&trajectory = _solver->get_last_trajectory();
+      const auto &index_to_state = _solver->get_index_to_state();
+
+      for (const auto &e : trajectory) {
+        // Convert belief (map of state_hash->prob) to Python format
+        py::list belief_values;
+        for (const auto &[state_hash, prob] : e.first) {
+          auto state_it = index_to_state.find(state_hash);
+          if (state_it != index_to_state.end()) {
+            belief_values.append(
+                py::make_tuple(state_it->second.pyobj(), prob));
+          }
+        }
+        // Create a simple dict representation for the belief
+        py::dict belief_dict;
+        belief_dict["state_probs"] = belief_values;
+
+        l.append(py::make_tuple(belief_dict, e.second.pyobj()));
+      }
+      return l;
+    }
+
   private:
     typename BaseSolverType::Belief
     distribution_to_belief(const py::object &d) {
@@ -260,6 +374,9 @@ protected:
     std::unique_ptr<PyHSVIDomain<Texecution>> _domain;
     std::unique_ptr<SolverType> _solver;
 
+    std::exception_ptr _callback_exception;
+
+    std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &)> _callback;
     std::function<py::object(const py::object &, const py::object &)>
         _goal_checker;
@@ -326,6 +443,11 @@ public:
 
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
   py::float_ get_gap() { return _implementation->get_gap(); }
+  py::list get_alpha_vectors() { return _implementation->get_alpha_vectors(); }
+
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
+  }
 };
 
 class PyHSVISolver : public PyHSVISolverBase {
@@ -351,6 +473,8 @@ public:
       double depth_bound_eta = 0.1, std::size_t max_vi_iterations = 1000,
       double vi_convergence_factor = 0.01, double prob_epsilon = 1e-15,
       double belief_hash_resolution = 1000.0, bool parallel = false,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false) {
     TemplateInstantiator::select(ExecutionSelector(parallel),
@@ -361,7 +485,7 @@ public:
                      epsilon, discount, time_budget, max_sample_depth,
                      use_closed_list, depth_bound_eta, max_vi_iterations,
                      vi_convergence_factor, prob_epsilon,
-                     belief_hash_resolution, callback, verbose);
+                     belief_hash_resolution, terminal_value, callback, verbose);
   }
 };
 
@@ -390,6 +514,8 @@ public:
       std::size_t max_vi_iterations = 1000, double vi_convergence_factor = 0.01,
       double prob_epsilon = 1e-15, double belief_hash_resolution = 1000.0,
       bool parallel = false,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
       const std::function<py::bool_(const py::object &)> &callback = nullptr,
       bool verbose = false,
       std::optional<double> dead_end_cost = std::nullopt) {
@@ -398,8 +524,8 @@ public:
         .instantiate(solver, domain, &goal_checker, epsilon, discount,
                      time_budget, max_sample_depth, use_closed_list,
                      depth_bound_eta, max_vi_iterations, vi_convergence_factor,
-                     prob_epsilon, belief_hash_resolution, callback, verbose,
-                     dead_end_cost);
+                     prob_epsilon, belief_hash_resolution, terminal_value,
+                     callback, verbose, dead_end_cost);
   }
 };
 

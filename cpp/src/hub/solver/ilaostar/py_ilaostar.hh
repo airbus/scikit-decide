@@ -40,6 +40,7 @@ private:
     virtual py::int_ best_solution_graph_size() = 0;
     virtual py::int_ get_solving_time() = 0;
     virtual py::dict get_policy() = 0;
+    virtual py::dict get_best_solution_graph() = 0;
   };
 
   template <typename Texecution>
@@ -207,7 +208,17 @@ private:
       auto &&p = _solver->policy();
       for (auto &e : p) {
         d[e.first.pyobj()] =
-            py::make_tuple(e.second.first.pyobj(), e.second.second);
+            py::make_tuple(e.second.first.pyobj(), e.second.second.pyobj());
+      }
+      return d;
+    }
+
+    virtual py::dict get_best_solution_graph() {
+      py::dict d;
+      auto &&bsg = _solver->get_best_solution_graph();
+      for (auto &e : bsg) {
+        d[e.first.pyobj()] =
+            py::make_tuple(e.second.first.pyobj(), e.second.second.pyobj());
       }
       return d;
     }
@@ -315,6 +326,10 @@ public:
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
 
   py::dict get_policy() { return _implementation->get_policy(); }
+
+  py::dict get_best_solution_graph() {
+    return _implementation->get_best_solution_graph();
+  }
 };
 
 } // namespace skdecide

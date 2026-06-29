@@ -15,6 +15,7 @@
 #include <list>
 #include <chrono>
 #include <random>
+#include <optional>
 
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
@@ -37,6 +38,8 @@ namespace skdecide {
 template <typename Tdomain, typename Texecution_policy = SequentialExecution>
 class LRTDPSolver {
 public:
+  virtual ~LRTDPSolver() = default;
+
   typedef Tdomain Domain;
   typedef typename Domain::State State;
   typedef typename Domain::Action Action;
@@ -63,8 +66,25 @@ public:
    * @param heuristic Functor taking as arguments the domain, a state object and
    * the thread ID from which it is called, and returning the heuristic estimate
    * from the state to the goal
-   * @param terminal_value Functor taking a state and returning its terminal
-   * value (for non-goal terminal states). Defaults to cost=0.
+   * @param terminal_value Functor taking a terminal state and returning its
+   * value. Only affects non-goal terminal states (dead-ends). Goals ALWAYS have
+   * value 0 regardless.
+   *
+   * When nullptr (DEFAULT - standard SSP behavior):
+   *   - Goal states: value = 0 (cost-to-go is zero at goal)
+   *   - Dead-end states: value = heuristic(s) (large finite value like 1e9)
+   *   - This allows proper SSP solving: dead-ends are avoided naturally because
+   *     actions leading to them get high (but finite) Q-values
+   *   - CRITICAL for SSPs: Using infinity for dead-ends causes Q-values to
+   * become infinite whenever there's ANY non-zero probability of reaching a
+   * dead-end, preventing convergence
+   *
+   * When provided (for problems with unavoidable dead-ends):
+   *   - Dead-end states: value = terminal_value(s) (user-specified penalty)
+   *   - Use this when dead-ends are unavoidable and you need to compare risky
+   * paths
+   *   - Still use finite values (e.g., 1e6) to avoid the infinity propagation
+   * issue
    * @param use_labels Boolean indicating whether labels must be used (true) or
    * not (false, in which case the algorithm is equivalent to the standard RTDP)
    * @param time_budget Maximum solving time in milliseconds
@@ -93,8 +113,7 @@ public:
   LRTDPSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
       const HeuristicFunctor &heuristic,
-      const TerminalValueFunctor &terminal_value =
-          [](const State &) { return Value(0.0, false); },
+      const TerminalValueFunctor &terminal_value = nullptr,
       bool use_labels = true, std::size_t time_budget = 3600000,
       std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
       std::size_t residual_moving_average_window = 100, double epsilon = 0.001,
@@ -218,6 +237,30 @@ public:
    */
   typename MapTypeDeducer<State, std::pair<Action, Value>>::Map get_policy();
 
+  /**
+   * @brief Get the ordered list of (state, action) pairs visited during the
+   * last LRTDP trial.
+   *
+   * Returns the trajectory (path) explored during the most recent trial from
+   * the root state. Each element is a pair of (state, action) where the action
+   * is the best action selected in that state during the trial. The trajectory
+   * begins with the root state and ends at the deepest state reached before the
+   * trial terminated (due to goal, solved state, depth limit, or time limit).
+   *
+   * The last element's action is the action selected in the final state (or a
+   * default-constructed action if the final state is terminal/goal).
+   *
+   * This is useful for:
+   * - Replaying trajectories from the initial state
+   * - Debugging algorithm behavior (which states and actions were explored?)
+   * - Custom heuristic updates based on trajectory
+   * - Visualizing/logging the search process
+   * - Analyzing convergence patterns in the callback
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<std::pair<State, Action>> get_last_trajectory() const;
+
   template <typename Params>
   static std::unique_ptr<LRTDPSolver> create_from_params(
       Domain &domain,
@@ -235,6 +278,7 @@ protected:
   GoalCheckerFunctor _goal_checker;
   HeuristicFunctor _heuristic;
   TerminalValueFunctor _terminal_value;
+  bool _use_terminal_value; // true if terminal_value was provided (not nullptr)
   bool _use_labels;
   atomic_size_t _time_budget;
   atomic_size_t _rollout_budget;
@@ -288,6 +332,8 @@ protected:
   StateNode *_current_state;
   atomic_size_t _nb_rollouts;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+  std::vector<StateNode *> _last_trajectory;
+  mutable typename ExecutionPolicy::Mutex _trajectory_mutex;
 
   void expand(StateNode *s, const std::size_t *thread_id);
   double q_value(ActionNode *a);

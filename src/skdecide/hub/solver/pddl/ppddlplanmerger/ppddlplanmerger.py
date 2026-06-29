@@ -18,7 +18,7 @@ from skdecide.builders.domain import (
     Simulation,
     SingleAgent,
 )
-from skdecide.builders.solver import DeterministicPolicies, Utilities
+from skdecide.builders.solver import DeterministicPolicies, FromAnyState, Utilities
 
 try:
     from skdecide.hub.__skdecide_hub_cpp import (
@@ -39,7 +39,7 @@ try:
     ):
         pass
 
-    class PPDDLPlanMerger(Solver, DeterministicPolicies, Utilities):
+    class PPDDLPlanMerger(Solver, DeterministicPolicies, Utilities, FromAnyState):
         """Plan-merging solver for probabilistic PDDL (PPDDL) domains
         with a pluggable inner deterministic solver.
 
@@ -138,33 +138,39 @@ try:
             self._callback = callback
             self._verbose = verbose
 
-        def _solve(self) -> None:
-            domain = self._domain_factory()
-            if not hasattr(domain, "_task"):
-                raise TypeError(
-                    "PPDDLPlanMerger solver requires a PPDDLDomain "
-                    "(with _task attribute)"
+        def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
+            """Run the PPDDL-PlanMerger algorithm from a given PDDL state.
+
+            # Parameters
+            memory: PDDL state from which to start plan merging.
+            """
+            if not hasattr(self, "_cpp_solver"):
+                domain = self._domain_factory()
+                if not hasattr(domain, "_task"):
+                    raise TypeError(
+                        "PPDDLPlanMerger solver requires a PPDDLDomain "
+                        "(with _task attribute)"
+                    )
+                self._task = domain._task
+                self._cpp_solver = CppPPDDLPlanMergerSolver(
+                    self,
+                    self._task,
+                    self._inner_solver_name,
+                    self._determinization,
+                    self._parallel,
+                    self._dead_end_cost,
+                    self._rho,
+                    self._mc_samples,
+                    self._max_iterations,
+                    self._max_steps,
+                    self._optimize_policy_graph,
+                    self._discount,
+                    self._epsilon,
+                    self._callback,
+                    self._verbose,
+                    self._inner_solver_params,
                 )
-            self._task = domain._task
-            self._cpp_solver = CppPPDDLPlanMergerSolver(
-                self,
-                self._task,
-                self._inner_solver_name,
-                self._determinization,
-                self._parallel,
-                self._dead_end_cost,
-                self._rho,
-                self._mc_samples,
-                self._max_iterations,
-                self._max_steps,
-                self._optimize_policy_graph,
-                self._discount,
-                self._epsilon,
-                self._callback,
-                self._verbose,
-                self._inner_solver_params,
-            )
-            self._cpp_solver.solve(self._task.initial_state())
+            self._cpp_solver.solve(memory.to_cpp())
 
         def _resolve_from(self, observation: D.T_agent[D.T_observation]) -> None:
             self._cpp_solver.resolve(observation.to_cpp())

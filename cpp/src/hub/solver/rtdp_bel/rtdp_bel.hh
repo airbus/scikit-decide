@@ -61,6 +61,7 @@ public:
       GoalCheckerFunctor;
   typedef std::function<Value(Domain &, const State &, const std::size_t *)>
       HeuristicFunctor;
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const RTDPBelSolver &, Domain &,
                              const std::size_t *)>
       CallbackFunctor;
@@ -72,6 +73,8 @@ public:
    * @param goal_checker Functor returning true if a physical state is a goal
    * @param heuristic Functor returning the heuristic cost for a physical state
    *   (belief heuristic is h(b) = Σ_s b(s)*h(s))
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for non-goal terminal states). Defaults to cost=0.
    * @param discretization Discretization parameter D for belief hashing
    * @param time_budget Maximum solving time in milliseconds
    * @param rollout_budget Maximum number of trials
@@ -83,10 +86,12 @@ public:
    */
   RTDPBelSolver(
       Domain &domain, const GoalCheckerFunctor &goal_checker,
-      const HeuristicFunctor &heuristic, std::size_t discretization = 10,
-      std::size_t time_budget = 3600000, std::size_t rollout_budget = 100000,
-      std::size_t max_depth = 1000, double epsilon = 0.001,
-      double discount = 1.0,
+      const HeuristicFunctor &heuristic,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, false); },
+      std::size_t discretization = 10, std::size_t time_budget = 3600000,
+      std::size_t rollout_budget = 100000, std::size_t max_depth = 1000,
+      double epsilon = 0.001, double discount = 1.0,
       const CallbackFunctor &callback =
           [](const RTDPBelSolver &, Domain &, const std::size_t *) {
             return false;
@@ -157,6 +162,24 @@ public:
   std::size_t get_nb_rollouts() const;
   std::size_t get_solving_time() const;
 
+  /**
+   * @brief Get the ordered list of beliefs visited during the last RTDP-Bel
+   * trial.
+   *
+   * Returns the trajectory (path) explored during the most recent trial from
+   * the root belief. The trajectory begins with the root belief and ends at the
+   * deepest belief reached before the trial terminated (due to goal, depth
+   * limit, or time limit).
+   *
+   * This is useful for:
+   * - Debugging algorithm behavior (which beliefs were explored?)
+   * - Visualizing/logging the search process through belief space
+   * - Analyzing convergence patterns in the callback
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<std::pair<Belief, Action>> get_last_trajectory() const;
+
 private:
   typedef typename ExecutionPolicy::template atomic<double> atomic_double;
   typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
@@ -204,6 +227,7 @@ private:
   Domain &_domain;
   GoalCheckerFunctor _goal_checker;
   HeuristicFunctor _heuristic;
+  TerminalValueFunctor _terminal_value;
   std::size_t _discretization;
   std::size_t _time_budget;
   std::size_t _rollout_budget;
@@ -222,6 +246,7 @@ private:
   BeliefGraph _belief_graph;
   typename ExecutionPolicy::template atomic<std::size_t> _nb_rollouts;
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+  std::vector<BeliefNode *> _last_trajectory;
 
   // Belief tracking for observation-based interaction
   BeliefNode *_initial_belief_node;
@@ -262,7 +287,7 @@ public:
    * @brief Get the full explored belief-space policy as a map from
    * discretized beliefs to (action, value) pairs.
    */
-  std::unordered_map<DiscretizedBelief, std::pair<Action, double>,
+  std::unordered_map<DiscretizedBelief, std::pair<Action, Value>,
                      DiscretizedBeliefHash, DiscretizedBeliefEqual>
   get_belief_policy() const;
 };

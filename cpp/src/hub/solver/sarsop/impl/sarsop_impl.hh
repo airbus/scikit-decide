@@ -35,7 +35,8 @@ SK_SARSOP_CLASS::SARSOPSolver(
     std::size_t max_vi_iterations, double vi_convergence_factor,
     std::size_t max_sample_depth, double prob_epsilon,
     double ub_improvement_epsilon, std::size_t pruning_interval,
-    std::size_t logging_interval, const CallbackFunctor &callback, bool verbose)
+    std::size_t logging_interval, const TerminalValueFunctor &terminal_value,
+    const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _epsilon(epsilon), _discount(discount),
       _time_budget(time_budget), _max_beliefs(max_beliefs),
       _pruning_delta(pruning_delta), _max_vi_iterations(max_vi_iterations),
@@ -43,8 +44,8 @@ SK_SARSOP_CLASS::SARSOPSolver(
       _max_sample_depth(max_sample_depth), _prob_epsilon(prob_epsilon),
       _ub_improvement_epsilon(ub_improvement_epsilon),
       _pruning_interval(pruning_interval), _logging_interval(logging_interval),
-      _callback(callback), _verbose(verbose), _next_alpha_id(0), _nb_beliefs(0),
-      _has_solution(false) {
+      _terminal_value(terminal_value), _callback(callback), _verbose(verbose),
+      _next_alpha_id(0), _nb_beliefs(0), _has_solution(false) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm SARSOP");
   }
@@ -88,6 +89,18 @@ SK_SARSOP_TEMPLATE_DECL
 const std::unordered_map<std::size_t, typename SK_SARSOP_CLASS::State> &
 SK_SARSOP_CLASS::get_index_to_state() const {
   return _index_to_state;
+}
+
+SK_SARSOP_TEMPLATE_DECL
+const std::unordered_map<std::size_t, std::size_t> &
+SK_SARSOP_CLASS::get_state_hash_to_idx() const {
+  return _state_hash_to_idx;
+}
+
+SK_SARSOP_TEMPLATE_DECL
+const std::vector<typename SK_SARSOP_CLASS::State> &
+SK_SARSOP_CLASS::get_states() const {
+  return _states;
 }
 
 // --- Timing ---
@@ -196,12 +209,23 @@ void SK_SARSOP_CLASS::pre_cache_model() {
       ExecutionPolicy::policy, state_indices.begin(), state_indices.end(),
       [this, na, &action_obs_sets](std::size_t si) {
         const State &s = _states[si];
-        if (_domain.is_terminal(s))
+        if (_domain.is_terminal(s)) {
+          // Terminal state: set reward to terminal value for all actions
+          for (std::size_t ai = 0; ai < na; ++ai) {
+            _rewards[si][ai] = _terminal_value(s).reward();
+          }
           return;
+        }
 
         for (std::size_t ai = 0; ai < na; ++ai) {
           auto next_dist =
               _domain.get_next_state_distribution(s, _actions[ai]).get_values();
+
+          if (next_dist.begin() == next_dist.end()) {
+            // Action has no transitions: use terminal value
+            _rewards[si][ai] = _terminal_value(s).reward();
+            continue;
+          }
 
           double weighted_reward = 0.0;
           for (auto ns_item : next_dist) {
@@ -696,6 +720,25 @@ SK_SARSOP_CLASS::sample() {
 // --- SARSOP core: backup ---
 
 SK_SARSOP_TEMPLATE_DECL
+std::size_t SK_SARSOP_CLASS::fallback_alpha_index_for_empty_posterior() const {
+  // Reward-max: worst LB = alpha with minimum total value. Using it for
+  // observations unreachable from the backup belief ensures the new alpha
+  // doesn't exceed V* for states outside the belief support.
+  std::size_t worst_idx = 0;
+  double worst_score = std::numeric_limits<double>::infinity();
+  for (std::size_t i = 0; i < _alpha_vectors.size(); ++i) {
+    double score = 0.0;
+    for (double v : _alpha_vectors[i].values)
+      score += v;
+    if (score < worst_score) {
+      worst_score = score;
+      worst_idx = i;
+    }
+  }
+  return worst_idx;
+}
+
+SK_SARSOP_TEMPLATE_DECL
 typename SK_SARSOP_CLASS::AlphaVector
 SK_SARSOP_CLASS::backup_belief(BeliefTreeNode *node) {
   std::size_t ns = _states.size();
@@ -704,17 +747,30 @@ SK_SARSOP_CLASS::backup_belief(BeliefTreeNode *node) {
   double best_q = -std::numeric_limits<double>::infinity();
   AlphaVector best_alpha;
 
+  std::size_t fallback_idx = fallback_alpha_index_for_empty_posterior();
+  const AlphaVector &fallback_alpha = _alpha_vectors[fallback_idx];
+
   for (std::size_t ai = 0; ai < na; ++ai) {
     AlphaVector g_a(ns, _actions[ai], _next_alpha_id);
 
-    // Start with R(s,a)
+    // Phase 1: immediate rewards + total fallback contribution.
+    // The fallback alpha covers all observations (including those unreachable
+    // from the backup belief). Since sum_oh Z(s',a,oh) = 1 for any s', the
+    // total contribution is discount * sum_s' T(s,a,s') * fallback[s'].
+    // This keeps g_a globally admissible for states outside the belief support.
     for (std::size_t si = 0; si < ns; ++si) {
       g_a.values[si] = _rewards[si][ai];
+      for (const auto &tr : _transitions[si][ai]) {
+        g_a.values[si] +=
+            _discount * tr.first * fallback_alpha.values[tr.second];
+      }
     }
 
-    // For each observation, add gamma * g_{a,o}(s)
+    // Phase 2: for observations reachable from the backup belief, replace the
+    // fallback contribution with the belief-optimal alpha. The net adjustment
+    // per state si and observation oh is:
+    //   discount * sum_s' T(s,a,s') * Z(o|s',a) * (best[s'] - fallback[s'])
     for (std::size_t oh : _action_obs_hashes[ai]) {
-      // Find best alpha for posterior belief tau(b,a,o)
       Belief posterior = compute_posterior(node->belief, ai, oh);
       if (posterior.empty())
         continue;
@@ -722,16 +778,17 @@ SK_SARSOP_CLASS::backup_belief(BeliefTreeNode *node) {
       std::size_t best_idx = best_alpha_index(posterior);
       const AlphaVector &alpha_ao = _alpha_vectors[best_idx];
 
-      // g_{a,o}(s) = sum_{s'} T(s,a,s') * Z(o|s',a) * alpha_{a,o}(s')
       for (std::size_t si = 0; si < ns; ++si) {
-        double contrib = 0.0;
+        double adjustment = 0.0;
         for (const auto &tr : _transitions[si][ai]) {
           auto obs_it = _obs_prob[tr.second][ai].find(oh);
           double z =
               (obs_it != _obs_prob[tr.second][ai].end()) ? obs_it->second : 0.0;
-          contrib += tr.first * z * alpha_ao.values[tr.second];
+          adjustment +=
+              tr.first * z *
+              (alpha_ao.values[tr.second] - fallback_alpha.values[tr.second]);
         }
-        g_a.values[si] += _discount * contrib;
+        g_a.values[si] += _discount * adjustment;
       }
     }
 
@@ -821,6 +878,7 @@ void SK_SARSOP_CLASS::prune() {
 SK_SARSOP_TEMPLATE_DECL
 void SK_SARSOP_CLASS::solve(
     const std::vector<std::pair<State, double>> &initial_distribution) {
+  Logger::info("Running SARSOP solver");
   _start_time = std::chrono::high_resolution_clock::now();
   clear();
 
@@ -878,6 +936,11 @@ void SK_SARSOP_CLASS::solve(
     }
 
     auto path = sample();
+
+    // Save the sampled path for on-demand trajectory reconstruction
+    _execution_policy.protect([this, &path]() { _last_sampled_path = path; },
+                              _trajectory_mutex);
+
     backup(path);
 
     // Prune periodically
@@ -911,12 +974,12 @@ void SK_SARSOP_CLASS::solve(
   _last_action.reset();
   _has_solution = true;
 
-  if (_verbose)
-    Logger::debug("SARSOP: solved in " + std::to_string(elapsed_ms()) + "ms, " +
-                  std::to_string(iteration) + " iterations, " +
-                  std::to_string(_alpha_vectors.size()) + " alpha-vectors, " +
-                  std::to_string(_nb_beliefs) + " beliefs, final gap = " +
-                  std::to_string(_root->upper_bound - _root->lower_bound));
+  Logger::info("SARSOP finished in " +
+               std::to_string((double)elapsed_ms() / 1e3) + " seconds with " +
+               std::to_string(iteration) + " iterations, " +
+               std::to_string(_alpha_vectors.size()) + " alpha-vectors, " +
+               std::to_string(_nb_beliefs) + " beliefs, final gap = " +
+               std::to_string(_root->upper_bound - _root->lower_bound));
 }
 
 // --- Observation-based interface ---
@@ -1025,6 +1088,46 @@ double SK_SARSOP_CLASS::get_gap() const {
     return _root->upper_bound - _root->lower_bound;
   }
   return std::numeric_limits<double>::infinity();
+}
+
+SK_SARSOP_TEMPLATE_DECL
+const std::vector<typename SK_SARSOP_CLASS::AlphaVector> &
+SK_SARSOP_CLASS::get_alpha_vectors() const {
+  return _alpha_vectors;
+}
+
+SK_SARSOP_TEMPLATE_DECL
+std::vector<std::pair<typename SK_SARSOP_CLASS::Belief,
+                      typename SK_SARSOP_CLASS::Action>>
+SK_SARSOP_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<Belief, Action>> trajectory;
+  const_cast<SARSOPSolver *>(this)->_execution_policy.protect(
+      [&]() {
+        // Reconstruct trajectory from the last sampled path on-demand
+        trajectory.clear();
+        for (std::size_t i = 0; i < _last_sampled_path.size(); ++i) {
+          auto *node = _last_sampled_path[i];
+          // Find best action at this node (action with highest Q_upper)
+          Action best_action;
+          if (!node->action_edges.empty()) {
+            double best_q = -std::numeric_limits<double>::infinity();
+            for (const auto &ae : node->action_edges) {
+              if (ae.q_upper > best_q) {
+                best_q = ae.q_upper;
+                best_action = ae.action;
+              }
+            }
+            trajectory.push_back(std::make_pair(node->belief, best_action));
+          } else if (i == 0) {
+            // Root node before expansion - use default action if available
+            if (!_actions.empty()) {
+              trajectory.push_back(std::make_pair(node->belief, _actions[0]));
+            }
+          }
+        }
+      },
+      const_cast<typename ExecutionPolicy::Mutex &>(_trajectory_mutex));
+  return trajectory;
 }
 
 } // namespace skdecide

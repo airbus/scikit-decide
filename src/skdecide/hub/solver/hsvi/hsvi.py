@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional
+from typing import Optional, TypedDict
 
-from skdecide import Distribution, Domain, Solver
+from skdecide import Distribution, Domain, Solver, Value
 from skdecide.builders.domain import (
     Actions,
     EnumerableTransitions,
@@ -73,6 +73,28 @@ try:
 
         T_domain = D_reward
 
+        class BeliefDict(TypedDict):
+            """Type for belief dictionaries returned by get_last_trajectory().
+
+            Fields:
+            - state_probs: list of (state, probability) tuples representing the belief distribution
+            """
+
+            state_probs: list[tuple[D_reward.T_state, float]]
+
+        class AlphaVectorDict(TypedDict):
+            """Type for alpha vector dictionaries returned by get_alpha_vectors().
+
+            Fields:
+            - values: dict mapping states (D.T_state) to Value[D.T_value]
+            - action: action object (D.T_agent[D.T_concurrency[D.T_event]])
+            - id: unique identifier for this alpha-vector
+            """
+
+            values: dict[D_reward.T_state, Value[D_reward.T_value]]
+            action: D_reward.T_agent[D_reward.T_concurrency[D_reward.T_event]]
+            id: int
+
         def __init__(
             self,
             domain_factory: Callable[[], Domain],
@@ -84,6 +106,9 @@ try:
             vi_convergence_factor: float = 0.01,
             belief_hash_resolution: float = 1000.0,
             parallel: bool = False,
+            terminal_value: Callable[
+                [D_reward.T_state], Value[D_reward.T_value]
+            ] = lambda s: Value(reward=0),
             callback: Callable[[HSVI], bool] = lambda slv: False,
             verbose: bool = False,
         ) -> None:
@@ -105,6 +130,8 @@ try:
                 Probabilities are multiplied by this value and rounded to
                 integers for hash computation. Defaults to 1000.0.
             parallel: Whether to use parallel C++ computation. Defaults to False.
+            terminal_value: Optional function (state) -> value for terminal
+                states. Defaults to 0.0.
             callback: Function called at each iteration. Return True to stop.
                 Defaults to never stop.
             verbose: Whether to log progress messages. Defaults to False.
@@ -126,14 +153,17 @@ try:
                 vi_convergence_factor=vi_convergence_factor,
                 belief_hash_resolution=belief_hash_resolution,
                 parallel=parallel,
+                terminal_value=terminal_value,
                 callback=callback,
                 verbose=verbose,
             )
 
         def close(self):
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve(self, from_memory=None) -> None:
             if from_memory is None:
@@ -189,7 +219,7 @@ try:
 
         def get_utility_from_belief(
             self, belief: Distribution[D_reward.T_state]
-        ) -> D_reward.T_value:
+        ) -> Value[D_reward.T_value]:
             """Get the best value for an explicit belief state."""
             return self._solver.get_utility_from_belief(belief)
 
@@ -219,6 +249,47 @@ try:
             """Get the current gap V_upper(b0) - V_lower(b0)."""
             return self._solver.get_gap()
 
+        def get_alpha_vectors(self) -> list[AlphaVectorDict]:
+            """Get the alpha-vectors representing the lower bound.
+
+            Returns a list of dictionaries, each containing:
+            - 'values': dict[D.T_state, Value[D.T_value]] - state to Value mapping
+            - 'action': D.T_agent[D.T_concurrency[D.T_event]] - associated action
+            - 'id': int - unique identifier for this alpha-vector
+
+            The lower bound at any belief b is: V_lower(b) = max_alpha (alpha · b),
+            where alpha · b = sum(b[s] * alpha['values'][s].reward for all states s).
+            The policy chooses the action of the maximizing alpha-vector.
+            """
+            return self._solver.get_alpha_vectors()
+
+        def get_last_trajectory(
+            self,
+        ) -> list[
+            tuple[
+                "HSVI.BeliefDict",
+                D_reward.T_agent[D_reward.T_concurrency[D_reward.T_event]],
+            ]
+        ]:
+            """Get the ordered list of (belief, action) pairs visited during
+            the last HSVI exploration.
+
+            Returns the trajectory (path) explored during the most recent explore()
+            call. Each element is a tuple of (belief_dict, action) where belief_dict
+            contains 'state_probs': a list of (state, probability) tuples, and action
+            is the greedy action (optimistic, via upper bound) selected at that belief.
+
+            Note: HSVI operates on continuous belief spaces via heuristic search.
+            Beliefs are returned as dictionaries with state-probability mappings.
+
+            # Returns
+            list[tuple[HSVI.BeliefDict, object]]: List of (belief, action) pairs
+                visited during the last exploration. Returns an empty list if solve()
+                has not been called yet.
+            """
+
+            return self._solver.get_last_trajectory()
+
     class GoalHSVI(
         ParallelSolver, Solver, DeterministicPolicies, Utilities, FromAnyState
     ):
@@ -240,6 +311,28 @@ try:
 
         T_domain = D_cost
 
+        class BeliefDict(TypedDict):
+            """Type for belief dictionaries returned by get_last_trajectory().
+
+            Fields:
+            - state_probs: list of (state, probability) tuples representing the belief distribution
+            """
+
+            state_probs: list[tuple[D_cost.T_state, float]]
+
+        class AlphaVectorDict(TypedDict):
+            """Type for alpha vector dictionaries returned by get_alpha_vectors().
+
+            Fields:
+            - values: dict mapping states (D.T_state) to Value[D.T_value]
+            - action: action object (D.T_agent[D.T_concurrency[D.T_event]])
+            - id: unique identifier for this alpha-vector
+            """
+
+            values: dict[D_cost.T_state, Value[D_cost.T_value]]
+            action: D_cost.T_agent[D_cost.T_concurrency[D_cost.T_event]]
+            id: int
+
         def __init__(
             self,
             domain_factory: Callable[[], Domain],
@@ -253,6 +346,9 @@ try:
             vi_convergence_factor: float = 0.01,
             belief_hash_resolution: float = 1000.0,
             parallel: bool = False,
+            terminal_value: Optional[
+                Callable[[D_cost.T_state], Value[D_cost.T_value]]
+            ] = None,
             callback: Callable[[GoalHSVI], bool] = lambda slv: False,
             verbose: bool = False,
             dead_end_cost: Optional[float] = None,
@@ -280,6 +376,9 @@ try:
                 Probabilities are multiplied by this value and rounded to
                 integers for hash computation. Defaults to 1000.0.
             parallel: Whether to use parallel C++ computation. Defaults to False.
+            terminal_value: Optional function (state) -> value for terminal
+                states. Overrides goal_checker + dead_end_cost logic if provided.
+                Defaults to None (use goal_checker + dead_end_cost logic).
             callback: Function called at each iteration. Return True to stop.
                 Defaults to never stop.
             verbose: Whether to log progress messages. Defaults to False.
@@ -287,6 +386,7 @@ try:
                 If None (default), automatically computed as
                 max_transition_cost * max_sample_depth (undiscounted) or
                 max_transition_cost / (1 - discount) (discounted).
+                Ignored if terminal_value is provided.
             """
             Solver.__init__(self, domain_factory=domain_factory)
             ParallelSolver.__init__(self, parallel=parallel)
@@ -307,15 +407,18 @@ try:
                 vi_convergence_factor=vi_convergence_factor,
                 belief_hash_resolution=belief_hash_resolution,
                 parallel=parallel,
+                terminal_value=terminal_value,
                 callback=callback,
                 verbose=verbose,
                 dead_end_cost=dead_end_cost,
             )
 
         def close(self):
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve(self, from_memory=None) -> None:
             if from_memory is None:
@@ -371,7 +474,7 @@ try:
 
         def get_utility_from_belief(
             self, belief: Distribution[D_cost.T_state]
-        ) -> D_cost.T_value:
+        ) -> Value[D_cost.T_value]:
             """Get the best value for an explicit belief state."""
             return self._solver.get_utility_from_belief(belief)
 
@@ -400,6 +503,50 @@ try:
         def get_gap(self) -> float:
             """Get the current gap V_upper(b0) - V_lower(b0)."""
             return self._solver.get_gap()
+
+        def get_alpha_vectors(self) -> list[AlphaVectorDict]:
+            """Get the alpha-vectors representing the upper bound.
+
+            Returns a list of dictionaries, each containing:
+            - 'values': dict[D.T_state, Value[D.T_value]] - state to Value mapping
+            - 'action': D.T_agent[D.T_concurrency[D.T_event]] - associated action
+            - 'id': int - unique identifier for this alpha-vector
+
+            Note: In Goal-HSVI (cost minimization), alpha-vectors form the UPPER bound,
+            unlike vanilla HSVI where they form the lower bound. The upper bound at any
+            belief b is: V_upper(b) = min_alpha (alpha · b), where
+            alpha · b = sum(b[s] * alpha['values'][s].cost for all states s).
+            The policy chooses the action of the minimizing alpha-vector.
+            """
+            return self._solver.get_alpha_vectors()
+
+        def get_last_trajectory(
+            self,
+        ) -> list[
+            tuple[
+                "GoalHSVI.BeliefDict",
+                D_cost.T_agent[D_cost.T_concurrency[D_cost.T_event]],
+            ]
+        ]:
+            """Get the ordered list of (belief, action) pairs visited during
+            the last Goal-HSVI exploration.
+
+            Returns the trajectory (path) explored during the most recent explore()
+            call. Each element is a tuple of (belief_dict, action) where belief_dict
+            contains 'state_probs': a list of (state, probability) tuples, and action
+            is the greedy action (pessimistic in cost minimization, via upper bound)
+            selected at that belief.
+
+            Note: Goal-HSVI operates on continuous belief spaces with bounded depth search.
+            Beliefs are returned as dictionaries with state-probability mappings.
+
+            # Returns
+            list[tuple[GoalHSVI.BeliefDict, object]]: List of (belief, action) pairs
+                visited during the last exploration. Returns an empty list if solve()
+                has not been called yet.
+            """
+
+            return self._solver.get_last_trajectory()
 
 except ImportError:
     print(

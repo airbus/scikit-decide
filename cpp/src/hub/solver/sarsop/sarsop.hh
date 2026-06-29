@@ -47,7 +47,18 @@ public:
 
   typedef std::unordered_map<std::size_t, double> Belief;
 
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const SARSOPSolver &, Domain &)> CallbackFunctor;
+
+  struct AlphaVector {
+    std::vector<double> values;
+    Action action;
+    std::size_t id;
+
+    AlphaVector() : id(0) {}
+    AlphaVector(std::size_t num_states, const Action &a, std::size_t vid)
+        : values(num_states, 0.0), action(a), id(vid) {}
+  };
 
   /**
    * @brief Construct a new SARSOPSolver.
@@ -77,6 +88,8 @@ public:
    *   pruning passes. Set to 0 to disable. Defaults to 10.
    * @param logging_interval Number of iterations between verbose log
    *   messages. Set to 0 to disable. Defaults to 50.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for non-goal terminal states). Defaults to reward=0.
    * @param callback Functor called at the end of each iteration. Returns
    *   true to stop solving. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
@@ -88,6 +101,8 @@ public:
       double vi_convergence_factor = 0.01, std::size_t max_sample_depth = 100,
       double prob_epsilon = 1e-15, double ub_improvement_epsilon = 1e-10,
       std::size_t pruning_interval = 10, std::size_t logging_interval = 50,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, true); },
       const CallbackFunctor &callback = [](const SARSOPSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -115,21 +130,36 @@ public:
   double get_initial_upper_bound() const;
   double get_gap() const;
 
+  // Policy representation
+  const std::vector<AlphaVector> &get_alpha_vectors() const;
+
   // For pybind layer
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
+  const std::unordered_map<std::size_t, std::size_t> &
+  get_state_hash_to_idx() const;
+  const std::vector<State> &get_states() const;
+
+  /**
+   * @brief Get the ordered list of (belief, action) pairs visited during
+   * the last SARSOP belief tree sampling.
+   *
+   * Returns the trajectory (path) sampled during the most recent sample()
+   * call. Each element is a pair of (belief, action) where the belief is
+   * represented as a std::unordered_map<std::size_t, double> mapping state
+   * indices to probabilities, and action is the greedy action selected at
+   * that belief. The trajectory begins with the root belief and ends at
+   * the deepest belief sampled.
+   *
+   * Note: SARSOP operates on continuous belief spaces represented via
+   * point-based approximations. Beliefs are returned as mappings from
+   * state indices (obtained via get_state_index()) to probabilities.
+   *
+   * Returns an empty list if solve() has not been called yet.
+   */
+  std::vector<std::pair<Belief, Action>> get_last_trajectory() const;
 
 private:
-  struct AlphaVector {
-    std::vector<double> values;
-    Action action;
-    std::size_t id;
-
-    AlphaVector() : id(0) {}
-    AlphaVector(std::size_t num_states, const Action &a, std::size_t vid)
-        : values(num_states, 0.0), action(a), id(vid) {}
-  };
-
   struct BeliefTreeNode {
     Belief belief;
     double lower_bound;
@@ -179,6 +209,7 @@ private:
   double _ub_improvement_epsilon;
   std::size_t _pruning_interval;
   std::size_t _logging_interval;
+  TerminalValueFunctor _terminal_value;
   CallbackFunctor _callback;
   bool _verbose;
   ExecutionPolicy _execution_policy;
@@ -219,6 +250,10 @@ private:
   // Timing
   std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
 
+  // Trajectory tracking (lazy computation on-demand)
+  std::vector<BeliefTreeNode *> _last_sampled_path;
+  typename ExecutionPolicy::Mutex _trajectory_mutex;
+
   // State enumeration
   void enumerate_states(const Belief &b0);
 
@@ -249,6 +284,12 @@ private:
 
   // SARSOP core
   std::vector<BeliefTreeNode *> sample();
+  // Returns the index of the alpha with minimum total value, used as fallback
+  // for observations with empty posteriors from the backup belief. This keeps
+  // the new alpha globally admissible (LB <= V*) for states outside the belief
+  // support, where skipping the observation would otherwise over-inflate
+  // g_a(s).
+  std::size_t fallback_alpha_index_for_empty_posterior() const;
   AlphaVector backup_belief(BeliefTreeNode *node);
   void backup(const std::vector<BeliefTreeNode *> &path);
   void prune();

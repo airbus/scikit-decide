@@ -44,6 +44,8 @@ private:
     virtual py::int_ get_nb_tree_nodes() = 0;
     virtual py::int_ get_solving_time() = 0;
     virtual py::float_ get_gap() = 0;
+    virtual py::list get_explored_beliefs() = 0;
+    virtual py::list get_last_trajectory() = 0;
   };
 
   template <typename Texecution>
@@ -61,12 +63,14 @@ private:
             &default_policy = nullptr,
         const std::function<py::object(const py::object &, const py::object &)>
             &upper_bound_heuristic = nullptr,
+        const std::function<py::object(const py::object &)> &terminal_value =
+            nullptr,
         const std::function<py::bool_(const py::object &, const py::object &)>
             &callback = nullptr,
         bool verbose = false)
         : _default_policy_py(default_policy),
           _upper_bound_heuristic_py(upper_bound_heuristic),
-          _callback(callback) {
+          _terminal_value(terminal_value), _callback(callback) {
 
       _pysolver = std::make_unique<py::object>(solver);
       _domain = std::make_unique<PyDespotDomain<Texecution>>(domain);
@@ -109,12 +113,44 @@ private:
             };
       }
 
+      // Wrap Python terminal_value functor. When Python passes None use the
+      // C++ default (reward=0); DespotSolver calls _terminal_value
+      // unconditionally so we always provide a valid functor, never nullptr.
+      typename DespotSolver<
+          PyDespotDomain<Texecution>,
+          Texecution>::TerminalValueFunctor terminal_value_cpp =
+          _terminal_value
+              ? typename DespotSolver<PyDespotDomain<Texecution>, Texecution>::
+                    TerminalValueFunctor(
+                        [this](
+                            const typename PyDespotDomain<Texecution>::State &s)
+                            -> typename PyDespotDomain<Texecution>::Value {
+                          try {
+                            typename GilControl<Texecution>::Acquire acquire;
+                            py::object r = _terminal_value(s.pyobj());
+                            return
+                                typename PyDespotDomain<Texecution>::Value(r);
+                          } catch (const std::exception &e) {
+                            Logger::error(
+                                std::string("SKDECIDE exception when calling "
+                                            "terminal_value: ") +
+                                e.what());
+                            throw;
+                          }
+                        })
+              : typename DespotSolver<PyDespotDomain<Texecution>, Texecution>::
+                    TerminalValueFunctor(
+                        [](const typename PyDespotDomain<Texecution>::State &) {
+                          return typename PyDespotDomain<Texecution>::Value(
+                              0.0, true);
+                        });
+
       _solver = std::make_unique<
           DespotSolver<PyDespotDomain<Texecution>, Texecution>>(
           *_domain, num_scenarios, max_depth, regularization_constant,
           gap_reduction_rate, target_gap, time_budget, discount,
           max_rollout_depth, num_particles_belief_update, ess_threshold_ratio,
-          default_policy_cpp, upper_bound_cpp,
+          default_policy_cpp, upper_bound_cpp, terminal_value_cpp,
           [this](const DespotSolver<PyDespotDomain<Texecution>, Texecution> &s,
                  PyDespotDomain<Texecution> &d,
                  const std::size_t *thread_id) -> bool {
@@ -132,14 +168,14 @@ private:
                 bool rr = r->template cast<bool>();
                 r.reset();
                 return rr;
-              } catch (const py::error_already_set *e) {
+              } catch (py::error_already_set &e) {
                 Logger::error(std::string("SKDECIDE exception when calling "
                                           "callback function: ") +
-                              e->what());
-                std::runtime_error err(e->what());
+                              e.what());
                 r.reset();
-                delete e;
-                throw err;
+                _callback_exception =
+                    std::make_exception_ptr(std::runtime_error(e.what()));
+                return true;
               }
             }
             return false;
@@ -158,6 +194,7 @@ private:
     virtual void clear() { _solver->clear(); }
 
     virtual void solve(const py::object &distribution) {
+      _callback_exception = nullptr;
       std::vector<std::pair<typename PyDespotDomain<Texecution>::State, double>>
           dist;
       py::list values = distribution.attr("get_values")();
@@ -166,8 +203,13 @@ private:
         dist.emplace_back(typename PyDespotDomain<Texecution>::State(t[0]),
                           t[1].cast<double>());
       }
-      typename GilControl<Texecution>::Release release;
-      _solver->solve(dist);
+      {
+        typename GilControl<Texecution>::Release release;
+        _solver->solve(dist);
+      }
+      if (_callback_exception) {
+        std::rethrow_exception(_callback_exception);
+      }
     }
 
     virtual py::object get_next_action(const py::object &o) {
@@ -254,6 +296,46 @@ private:
 
     virtual py::float_ get_gap() { return _solver->get_gap(); }
 
+    virtual py::list get_explored_beliefs() {
+      py::list result;
+      const auto &beliefs = _solver->get_explored_beliefs();
+
+      for (const auto &belief : beliefs) {
+        py::dict belief_dict;
+
+        // Convert particles to Python list
+        py::list particles;
+        for (const auto &state : belief.particles) {
+          particles.append(state.pyobj());
+        }
+
+        belief_dict["particles"] = particles;
+        belief_dict["lower_bound"] = belief.lower_bound;
+        belief_dict["upper_bound"] = belief.upper_bound;
+        belief_dict["default_value"] = belief.default_value;
+        belief_dict["depth"] = belief.depth;
+
+        if (belief.best_action.has_value()) {
+          belief_dict["best_action"] = belief.best_action.value().pyobj();
+        } else {
+          belief_dict["best_action"] = py::none();
+        }
+
+        result.append(belief_dict);
+      }
+
+      return result;
+    }
+
+    virtual py::list get_last_trajectory() {
+      py::list l;
+      auto &&trajectory = _solver->get_last_trajectory();
+      for (const auto &e : trajectory) {
+        l.append(py::make_tuple(e.first.pyobj(), e.second.pyobj()));
+      }
+      return l;
+    }
+
   private:
     typedef DespotSolver<PyDespotDomain<Texecution>, Texecution> SolverType;
 
@@ -274,10 +356,13 @@ private:
     std::unique_ptr<DespotSolver<PyDespotDomain<Texecution>, Texecution>>
         _solver;
 
+    std::exception_ptr _callback_exception;
+
     std::function<py::object(const py::object &, const py::object &)>
         _default_policy_py;
     std::function<py::object(const py::object &, const py::object &)>
         _upper_bound_heuristic_py;
+    std::function<py::object(const py::object &)> _terminal_value;
     std::function<py::bool_(const py::object &, const py::object &)> _callback;
 
     std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
@@ -327,6 +412,8 @@ public:
           &default_policy = nullptr,
       const std::function<py::object(const py::object &, const py::object &)>
           &upper_bound_heuristic = nullptr,
+      const std::function<py::object(const py::object &)> &terminal_value =
+          nullptr,
       bool parallel = false,
       const std::function<py::bool_(const py::object &, const py::object &)>
           &callback = nullptr,
@@ -337,7 +424,8 @@ public:
                      regularization_constant, gap_reduction_rate, target_gap,
                      time_budget, discount, max_rollout_depth,
                      num_particles_belief_update, ess_threshold_ratio,
-                     default_policy, upper_bound_heuristic, callback, verbose);
+                     default_policy, upper_bound_heuristic, terminal_value,
+                     callback, verbose);
   }
 
   void close() { _implementation->close(); }
@@ -373,6 +461,13 @@ public:
   py::int_ get_nb_tree_nodes() { return _implementation->get_nb_tree_nodes(); }
   py::int_ get_solving_time() { return _implementation->get_solving_time(); }
   py::float_ get_gap() { return _implementation->get_gap(); }
+  py::list get_explored_beliefs() {
+    return _implementation->get_explored_beliefs();
+  }
+
+  py::list get_last_trajectory() {
+    return _implementation->get_last_trajectory();
+  }
 };
 
 } // namespace skdecide

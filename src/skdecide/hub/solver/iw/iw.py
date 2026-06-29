@@ -123,9 +123,11 @@ try:
             Not calling this method (or not using the 'with' context statement)
             results in the solver forever waiting for the domain processes to exit.
             """
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
             """Run the IW algorithm from a given root solving state

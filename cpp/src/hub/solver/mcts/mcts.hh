@@ -553,6 +553,31 @@ public:
    */
   const std::list<Action> &action_prefix() const;
 
+  /**
+   * @brief Get the ordered list of (state, action) pairs visited during the
+   * last MCTS rollout.
+   *
+   * Returns the trajectory (path) explored during the most recent rollout from
+   * the root state. Each element is a pair of (state, action) where the action
+   * is the action selected in that state during the tree policy phase and
+   * rollout. The trajectory begins with the root state and ends at the deepest
+   * state reached before backpropagation.
+   *
+   * The last element's action is the action selected in the final state (or a
+   * default-constructed action if the final state is terminal).
+   *
+   * This is useful for:
+   * - Replaying trajectories from the initial state
+   * - Debugging algorithm behavior (which states and actions were explored?)
+   * - Custom heuristic updates based on trajectory
+   * - Visualizing/logging the search process
+   *
+   * Returns an empty list if solve() has not been called yet.
+   *
+   * Thread-safe: protected by internal mutex against concurrent rollouts.
+   */
+  std::vector<std::pair<State, Action>> get_last_trajectory() const;
+
   Domain &domain();
   std::size_t time_budget() const;
   std::size_t rollout_budget() const;
@@ -608,6 +633,10 @@ private:
 
   atomic_double _residual_moving_average;
   std::list<double> _residuals;
+
+  StateNode *_last_leaf_node;
+  StateNode *_last_root_node;
+  mutable typename ExecutionPolicy::Mutex _trajectory_mutex;
 
   void compute_reachable_subgraph(StateNode *node,
                                   std::unordered_set<StateNode *> &subgraph);

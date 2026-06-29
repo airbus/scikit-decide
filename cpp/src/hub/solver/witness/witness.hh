@@ -63,6 +63,7 @@ public:
     }
   };
 
+  typedef std::function<Value(const State &)> TerminalValueFunctor;
   typedef std::function<bool(const WitnessSolver &, Domain &)> CallbackFunctor;
 
   /**
@@ -79,6 +80,8 @@ public:
    *   HiGHS. Defaults to 1e20.
    * @param lp_tolerance Numerical tolerance for LP feasibility checks
    *   and alpha-vector comparisons. Defaults to 1e-10.
+   * @param terminal_value Functor taking a state and returning its terminal
+   *   value (for non-goal terminal states). Defaults to reward=0.
    * @param callback Functor called at the end of each value iteration
    *   step. Returns true to stop solving. Defaults to never stop.
    * @param verbose Whether to log verbose messages. Defaults to false.
@@ -87,6 +90,8 @@ public:
       Domain &domain, double epsilon = 0.001, double discount = 0.95,
       std::size_t max_iterations = 100, double lp_infinity = 1e20,
       double lp_tolerance = 1e-10,
+      const TerminalValueFunctor &terminal_value =
+          [](const State &) { return Value(0.0, true); },
       const CallbackFunctor &callback = [](const WitnessSolver &,
                                            Domain &) { return false; },
       bool verbose = false);
@@ -113,8 +118,10 @@ public:
 
   std::size_t get_state_index(const State &s);
   const std::unordered_map<std::size_t, State> &get_index_to_state() const;
+  const std::unordered_map<std::size_t, std::size_t> &
+  get_state_hash_to_idx() const;
+  const std::vector<State> &get_states() const;
 
-private:
   struct AlphaVector {
     std::vector<double> values;
     std::size_t action_idx;
@@ -125,12 +132,17 @@ private:
         : values(num_states, 0.0), action_idx(a_idx) {}
   };
 
+  const std::vector<AlphaVector> &get_alpha_vectors() const;
+  const std::vector<Action> &get_action_list() const;
+
+private:
   Domain &_domain;
   double _epsilon;
   double _discount;
   std::size_t _max_iterations;
   double _lp_infinity;
   double _lp_tolerance;
+  TerminalValueFunctor _terminal_value;
   CallbackFunctor _callback;
   bool _verbose;
   ExecutionPolicy _execution_policy;

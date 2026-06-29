@@ -124,6 +124,14 @@ try:
                 verbose=verbose,
             )
 
+        def close(self):
+            """Joins the parallel domains' processes."""
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
+            ParallelSolver.close(self)
+            self._solver = None
+
         def _solve_from(self, memory: D_SSP.T_memory[D_SSP.T_state]) -> None:
             self._solver.solve(memory)
 
@@ -170,6 +178,26 @@ try:
 
         def get_callback_event(self) -> str:
             return self._solver.get_callback_event()
+
+        def get_policy(
+            self,
+        ) -> dict[
+            D_SSP.T_agent[D_SSP.T_observation],
+            tuple[
+                D_SSP.T_agent[D_SSP.T_concurrency[D_SSP.T_event]], Value[D_SSP.T_value]
+            ],
+        ]:
+            """Get the complete policy as a dictionary mapping states to (action, value) pairs.
+
+            Returns a dictionary where:
+            - Keys are states (observations, since the domain is fully observable)
+            - Values are tuples of (action, value) where:
+              - action is the best action to take in that state
+              - value is the optimal cost-to-go from that state
+
+            Only includes states that were explored during solve().
+            """
+            return self._solver.get_policy()
 
     # =================================================================
 
@@ -313,6 +341,14 @@ try:
                 verbose=verbose,
             )
 
+        def close(self):
+            """Joins the parallel domains' processes."""
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
+            ParallelSolver.close(self)
+            self._solver = None
+
         def _get_next_action_distribution(
             self,
             observation: D_CSSP.T_agent[D_CSSP.T_observation],
@@ -355,6 +391,31 @@ try:
 
         def get_callback_event(self) -> str:
             return self._solver.get_callback_event()
+
+        def get_policy(
+            self,
+        ) -> dict[
+            D_CSSP.T_agent[D_CSSP.T_observation],
+            tuple[
+                list[
+                    tuple[D_CSSP.T_agent[D_CSSP.T_concurrency[D_CSSP.T_event]], float]
+                ],
+                Value[D_CSSP.T_value],
+            ],
+        ]:
+            """Get the complete stochastic policy as a dictionary.
+
+            Returns a dictionary where:
+            - Keys are states (observations, since the domain is fully observable)
+            - Values are tuples of (action_distribution, value) where:
+              - action_distribution is a list of (action, probability) pairs
+              - value is the optimal cost-to-go from that state
+
+            Only includes states that were explored during solve().
+            The action distribution is the stochastic policy satisfying the
+            secondary cost constraints.
+            """
+            return self._solver.get_policy()
 
 except ImportError:
     print(

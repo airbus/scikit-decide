@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional
+from typing import Optional, TypedDict
 
-from skdecide import Distribution, Domain, Solver
+from skdecide import Distribution, Domain, Solver, Value
 from skdecide.builders.domain import (
     Actions,
     EnumerableTransitions,
@@ -60,6 +60,19 @@ try:
 
         T_domain = D
 
+        class AlphaVectorDict(TypedDict):
+            """Type for alpha vector dictionaries returned by get_alpha_vectors().
+
+            Fields:
+            - values: dict mapping states (D.T_state) to Value[D.T_value]
+            - action: action object (D.T_agent[D.T_concurrency[D.T_event]])
+            - id: unique identifier for this alpha-vector
+            """
+
+            values: dict[D.T_state, Value[D.T_value]]
+            action: D.T_agent[D.T_concurrency[D.T_event]]
+            id: int
+
         def __init__(
             self,
             domain_factory: Callable[[], Domain],
@@ -75,6 +88,7 @@ try:
             ub_improvement_epsilon: float = 1e-10,
             pruning_interval: int = 10,
             logging_interval: int = 50,
+            terminal_value: Callable[[object], Value] = lambda s: Value(reward=0),
             parallel: bool = False,
             shared_memory_proxy=None,
             callback: Callable[[SARSOP], bool] = lambda slv: False,
@@ -107,6 +121,9 @@ try:
                 pruning passes. Set to 0 to disable. Defaults to 10.
             logging_interval: Number of iterations between verbose log
                 messages. Set to 0 to disable. Defaults to 50.
+            terminal_value: Function (state) -> Value returning the
+                value for terminal non-goal states.
+                Defaults to lambda s: Value(reward=0).
             parallel: Parallelize domain calls. Defaults to False.
             shared_memory_proxy: Optional shared memory proxy. Defaults to None.
             callback: Function called at end of each iteration, taking the
@@ -137,6 +154,7 @@ try:
                 ub_improvement_epsilon=ub_improvement_epsilon,
                 pruning_interval=pruning_interval,
                 logging_interval=logging_interval,
+                terminal_value=lambda s: terminal_value(s),
                 parallel=parallel,
                 callback=callback,
                 verbose=verbose,
@@ -144,9 +162,11 @@ try:
 
         def close(self):
             """Joins the parallel domains' processes."""
-            if self._parallel:
-                self._solver.close()
+            if self._solver is not None:
+                if self._parallel:
+                    self._solver.close()
             ParallelSolver.close(self)
+            self._solver = None
 
         def _solve(self, from_memory=None) -> None:
             if from_memory is None:
@@ -208,7 +228,9 @@ try:
                 return self.call_domain_method("get_action_space").sample()
             return action
 
-        def get_utility_from_belief(self, belief: Distribution[D.T_state]) -> D.T_value:
+        def get_utility_from_belief(
+            self, belief: Distribution[D.T_state]
+        ) -> Value[D.T_value]:
             """Get the best value for an explicit belief state."""
             return self._solver.get_utility_from_belief(belief)
 
@@ -245,6 +267,42 @@ try:
         def get_gap(self) -> float:
             """Get the gap V_upper(b0) - V_lower(b0)."""
             return self._solver.get_gap()
+
+        def get_alpha_vectors(self) -> list[AlphaVectorDict]:
+            """Get the alpha-vectors representing the policy.
+
+            Returns a list of dictionaries, each containing:
+            - 'values': dict[D.T_state, Value[D.T_value]] - state to Value mapping
+            - 'action': D.T_agent[D.T_concurrency[D.T_event]] - associated action
+            - 'id': int - unique identifier for this alpha-vector
+
+            The policy at any belief b is: choose the action of the alpha-vector
+            that maximizes sum(b[s] * alpha['values'][s].reward for all states s).
+            """
+            return self._solver.get_alpha_vectors()
+
+        def get_last_trajectory(
+            self,
+        ) -> list[tuple[dict, D.T_agent[D.T_concurrency[D.T_event]]]]:
+            """Get the ordered list of (belief, action) pairs visited during
+            the last SARSOP belief tree sampling.
+
+            Returns the trajectory (path) sampled during the most recent sample()
+            call. Each element is a tuple of (belief_dict, action) where belief_dict
+            contains 'state_probs': a list of (state, probability) tuples, and action
+            is the greedy action selected at that belief.
+
+            Note: SARSOP operates on continuous belief spaces represented via
+            point-based approximations. Beliefs are returned as dictionaries with
+            state-probability mappings.
+
+            # Returns
+            list[tuple[dict, D.T_agent[D.T_concurrency[D.T_event]]]]: List of (belief, action) pairs
+                visited during the last sampling. Returns an empty list if solve()
+                has not been called yet.
+            """
+
+            return self._solver.get_last_trajectory()
 
 except ImportError:
     print(

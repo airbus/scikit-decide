@@ -12,6 +12,9 @@
 
 #include <boost/range/irange.hpp>
 
+#include "utils/logging.hh"
+#include "utils/string_converter.hh"
+
 namespace skdecide {
 
 #define SK_POMCP_TEMPLATE_DECL                                                 \
@@ -26,13 +29,15 @@ SK_POMCP_CLASS::POMCPSolver(Domain &domain, double exploration_constant,
                             std::size_t time_budget,
                             std::size_t num_particles_belief_update,
                             double ess_threshold_ratio,
+                            const TerminalValueFunctor &terminal_value,
                             const CallbackFunctor &callback, bool verbose)
     : _domain(domain), _exploration_constant(exploration_constant),
       _discount(discount), _num_simulations(num_simulations),
       _max_depth(max_depth), _epsilon(epsilon), _time_budget(time_budget),
       _num_particles_belief(num_particles_belief_update),
-      _ess_threshold_ratio(ess_threshold_ratio), _callback(callback),
-      _verbose(verbose), _rng(std::random_device{}()) {
+      _ess_threshold_ratio(ess_threshold_ratio),
+      _terminal_value(terminal_value), _callback(callback), _verbose(verbose),
+      _rng(std::random_device{}()) {
   if (verbose) {
     Logger::check_level(logging::debug, "algorithm POMCP");
   }
@@ -87,6 +92,7 @@ void SK_POMCP_CLASS::solve(
 
 SK_POMCP_TEMPLATE_DECL
 void SK_POMCP_CLASS::search(HistoryNode *root) {
+  Logger::info("Running POMCP solver");
   _start_time = std::chrono::high_resolution_clock::now();
 
   if (root->particles.empty()) {
@@ -108,6 +114,7 @@ void SK_POMCP_CLASS::search(HistoryNode *root) {
             _gen_mutex);
 
         std::size_t sim_count = 0;
+        std::vector<std::pair<Observation, Action>> current_trajectory;
         do {
           State s;
           _execution_policy.protect(
@@ -118,7 +125,16 @@ void SK_POMCP_CLASS::search(HistoryNode *root) {
               },
               root->mutex);
 
-          simulate(s, root, 0, &thread_id);
+          current_trajectory.clear();
+          simulate(s, root, 0, &thread_id, current_trajectory);
+
+          // Save the last trajectory (from the last simulation)
+          _execution_policy.protect(
+              [this, &current_trajectory]() {
+                _last_trajectory = current_trajectory;
+              },
+              _trajectory_mutex);
+
           sim_count++;
         } while (!_callback(*this, _domain) &&
                  (_time_budget == 0 || elapsed_ms() < _time_budget) &&
@@ -141,20 +157,26 @@ void SK_POMCP_CLASS::search(HistoryNode *root) {
         "POMCP: search done in " + std::to_string(elapsed_ms()) +
         "ms, tree nodes: " + std::to_string((std::size_t)_nb_tree_nodes));
   }
+
+  Logger::info(
+      "POMCP finished in " + StringConverter::from((double)elapsed_ms() / 1e3) +
+      " seconds with " + StringConverter::from((std::size_t)_nb_tree_nodes) +
+      " tree nodes.");
 }
 
 // --- Simulate: Algorithm 1 from the paper ---
 
 SK_POMCP_TEMPLATE_DECL
-double SK_POMCP_CLASS::simulate(const State &s, HistoryNode *h,
-                                std::size_t depth,
-                                const std::size_t *thread_id) {
+double SK_POMCP_CLASS::simulate(
+    const State &s, HistoryNode *h, std::size_t depth,
+    const std::size_t *thread_id,
+    std::vector<std::pair<Observation, Action>> &trajectory) {
   if (std::pow(_discount, static_cast<double>(depth)) < _epsilon)
     return 0.0;
   if (depth >= _max_depth)
     return 0.0;
   if (_domain.is_terminal(s, thread_id))
-    return 0.0;
+    return _terminal_value(s).reward();
 
   bool is_leaf = false;
   _execution_policy.protect(
@@ -191,6 +213,9 @@ double SK_POMCP_CLASS::simulate(const State &s, HistoryNode *h,
 
   SimulationResult result = simulate_transition(s, an->action, thread_id);
 
+  // Record the observation-action pair in the trajectory
+  trajectory.push_back(std::make_pair(result.observation, an->action));
+
   double R;
   if (result.terminal) {
     R = result.reward;
@@ -213,8 +238,8 @@ double SK_POMCP_CLASS::simulate(const State &s, HistoryNode *h,
         },
         an->mutex);
 
-    R = result.reward +
-        _discount * simulate(result.next_state, child, depth + 1, thread_id);
+    R = result.reward + _discount * simulate(result.next_state, child,
+                                             depth + 1, thread_id, trajectory);
   }
 
   _execution_policy.protect(
@@ -241,7 +266,7 @@ double SK_POMCP_CLASS::rollout(const State &s, std::size_t depth,
   if (depth >= _max_depth)
     return 0.0;
   if (_domain.is_terminal(s, thread_id))
-    return 0.0;
+    return _terminal_value(s).reward();
 
   auto actions = _domain.get_applicable_actions(s, thread_id);
   std::vector<Action> action_vec;
@@ -249,7 +274,7 @@ double SK_POMCP_CLASS::rollout(const State &s, std::size_t depth,
     action_vec.push_back(a);
   }
   if (action_vec.empty())
-    return 0.0;
+    return _terminal_value(s).reward();
 
   std::size_t action_idx;
   _execution_policy.protect(
@@ -271,7 +296,7 @@ double SK_POMCP_CLASS::rollout(const State &s, std::size_t depth,
     t_probs.push_back(ns_item.probability());
   }
   if (t_states.empty())
-    return 0.0;
+    return _terminal_value(s).reward();
 
   std::size_t ns_idx;
   _execution_policy.protect(
@@ -288,7 +313,7 @@ double SK_POMCP_CLASS::rollout(const State &s, std::size_t depth,
   bool terminal = _domain.is_terminal(next_state, thread_id);
 
   if (terminal)
-    return reward;
+    return reward + _discount * _terminal_value(next_state).reward();
 
   return reward + _discount * rollout(next_state, depth + 1, thread_id);
 }
@@ -570,9 +595,10 @@ SK_POMCP_CLASS::get_best_action(const Observation &obs) {
 SK_POMCP_TEMPLATE_DECL
 typename SK_POMCP_CLASS::Value
 SK_POMCP_CLASS::get_best_value(const Observation &obs) {
-  update_belief_particles(obs);
-  Belief b = particles_to_belief();
-  plan_from_belief(b);
+  // Do not re-plan: get_best_action() already searched and cached
+  // _best_value_cache for this observation. Re-planning would overwrite the
+  // result with an independent search from a new tree, producing an
+  // inconsistent value.
   return Value(_best_value_cache, true);
 }
 
@@ -648,6 +674,17 @@ SK_POMCP_CLASS::get_index_to_state() const {
 SK_POMCP_TEMPLATE_DECL
 std::size_t SK_POMCP_CLASS::elapsed_ms() const {
   return const_cast<POMCPSolver *>(this)->get_solving_time();
+}
+
+SK_POMCP_TEMPLATE_DECL
+std::vector<std::pair<typename SK_POMCP_CLASS::Observation,
+                      typename SK_POMCP_CLASS::Action>>
+SK_POMCP_CLASS::get_last_trajectory() const {
+  std::vector<std::pair<Observation, Action>> trajectory;
+  const_cast<POMCPSolver *>(this)->_execution_policy.protect(
+      [&]() { trajectory = _last_trajectory; },
+      const_cast<typename ExecutionPolicy::Mutex &>(_trajectory_mutex));
+  return trajectory;
 }
 
 } // namespace skdecide

@@ -82,24 +82,35 @@ private:
               throw;
             }
           },
-          [this](const typename PyVIDomain<Texecution>::State &s) ->
-          typename PyVIDomain<Texecution>::Value {
-            if (_terminal_value) {
-              try {
-                typename skdecide::GilControl<Texecution>::Acquire acquire;
-                return typename PyVIDomain<Texecution>::Value(
-                    _terminal_value(s.pyobj()));
-              } catch (const std::exception &e) {
-                Logger::error(
-                    std::string(
-                        "SKDECIDE exception when calling terminal value: ") +
-                    e.what());
-                throw;
-              }
-            } else {
-              return typename PyVIDomain<Texecution>::Value(0.0, true);
-            }
-          },
+          // When Python passes None use the C++ default (reward=0); otherwise
+          // wrap the callable. VISolver calls _terminal_value unconditionally
+          // so we always provide a valid functor, never nullptr.
+          _terminal_value
+              ? typename skdecide::VISolver<PyVIDomain<Texecution>,
+                                            Texecution>::
+                    TerminalValueFunctor(
+                        [this](const typename PyVIDomain<Texecution>::State &s)
+                            -> typename PyVIDomain<Texecution>::Value {
+                          try {
+                            typename skdecide::GilControl<Texecution>::Acquire
+                                acquire;
+                            return typename PyVIDomain<Texecution>::Value(
+                                _terminal_value(s.pyobj()));
+                          } catch (const std::exception &e) {
+                            Logger::error(
+                                std::string("SKDECIDE exception when calling "
+                                            "terminal value: ") +
+                                e.what());
+                            throw;
+                          }
+                        })
+              : typename skdecide::VISolver<PyVIDomain<Texecution>,
+                                            Texecution>::
+                    TerminalValueFunctor(
+                        [](const typename PyVIDomain<Texecution>::State &) {
+                          return
+                              typename PyVIDomain<Texecution>::Value(0.0, true);
+                        }),
           discount, epsilon, max_sweeps,
           [this](
               const skdecide::VISolver<PyVIDomain<Texecution>, Texecution> &s,
@@ -219,7 +230,7 @@ private:
       auto &&p = _solver->policy();
       for (auto &e : p) {
         d[e.first.pyobj()] =
-            py::make_tuple(e.second.first.pyobj(), e.second.second);
+            py::make_tuple(e.second.first.pyobj(), e.second.second.pyobj());
       }
       return d;
     }
