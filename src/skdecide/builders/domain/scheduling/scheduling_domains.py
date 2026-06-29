@@ -85,6 +85,7 @@ from skdecide.builders.domain.scheduling.task import Task
 from skdecide.builders.domain.scheduling.task_duration import (
     DeterministicTaskDuration,
     SimulatedTaskDuration,
+    UncertainBoundedTaskDuration,
     UncertainUnivariateTaskDuration,
 )
 from skdecide.builders.domain.scheduling.task_progress import (
@@ -486,6 +487,11 @@ class SchedulingDomain(
             next_state.tasks_complete_details.push_front(
                 next_state.tasks_details[completed_task]
             )
+            # store task end if needed for time lag constraints, before deleting task_details entry
+            if completed_task in self.get_time_lags():
+                next_state.tasks_complete_end[completed_task] = (
+                    next_state.tasks_details[completed_task].end
+                )
             del next_state.tasks_details[completed_task]
             next_state.tasks_complete_progress.push_front(
                 next_state.tasks_progress[completed_task]
@@ -532,6 +538,11 @@ class SchedulingDomain(
                 next_state.tasks_complete_details.push_front(
                     next_state.tasks_details[completed_task]
                 )
+                # store task end if needed for time lag constraints, before deleting task_details entry
+                if completed_task in self.get_time_lags():
+                    next_state.tasks_complete_end[completed_task] = (
+                        next_state.tasks_details[completed_task].end
+                    )
                 del next_state.tasks_details[completed_task]
                 next_state.tasks_complete_progress.push_front(
                     next_state.tasks_progress[completed_task]
@@ -610,6 +621,11 @@ class SchedulingDomain(
                 next_state.tasks_complete_details.push_front(
                     next_state.tasks_details[task]
                 )
+                # store task end if needed for time lag constraints, before deleting task_details entry
+                if task in self.get_time_lags():
+                    next_state.tasks_complete_end[task] = next_state.tasks_details[
+                        task
+                    ].end
                 del next_state.tasks_details[task]
                 next_state.tasks_complete_progress.push_front(
                     next_state.tasks_progress[task]
@@ -641,6 +657,11 @@ class SchedulingDomain(
                     next_state.tasks_complete_details.push_front(
                         next_state.tasks_details[task]
                     )
+                    # store task end if needed for time lag constraints, before deleting task_details entry
+                    if task in self.get_time_lags():
+                        next_state.tasks_complete_end[task] = next_state.tasks_details[
+                            task
+                        ].end
                     del next_state.tasks_details[task]
                     next_state.tasks_complete_progress.push_front(
                         next_state.tasks_progress[task]
@@ -779,7 +800,18 @@ class SchedulingDomain(
             return False, resource_to_use
         b = self.check_if_skills_are_fulfilled(
             task=started_task, mode=action.mode, resource_used=resource_to_use
+        ) and (
+            (action.action != SchedulingActionEnum.START)
+            or (
+                self._check_time_windows_constraint_on_start(
+                    task=started_task, state=state
+                )
+                and self._check_time_lags_constraint_on_start(
+                    task=started_task, state=state
+                )
+            )
         )
+
         return b, resource_to_use
 
     def get_resource_used(
@@ -867,16 +899,72 @@ class SchedulingDomain(
         time it was started."""
         return self.update_start_tasks(state, action)
 
+    def _check_time_windows_constraint_on_start(self, task: int, state: State) -> bool:
+        return state.t >= self.get_time_window()[task].earliest_start
+
+    def _check_time_lags_constraint_on_start(self, task: int, state: State) -> bool:
+        time_lags = self.get_time_lags()
+        # time lag on start of current task
+        for previous_task, previous_task_time_lags in time_lags.items():
+            if task in previous_task_time_lags:
+                # check only minimum time lag to allow a start (already too late if max time lag is exceeded)
+                offset = previous_task_time_lags[task].minimum_time_lag
+                if offset is not None:
+                    if offset >= 0:
+                        # previous_task should have ended (kind of precedence constraint)
+                        if (previous_task not in state.tasks_complete) or (
+                            state.t < state.tasks_complete_end[previous_task] + offset
+                        ):
+                            return False
+                    else:  # negative offset
+                        # previous task can be still ongoing or even not yet started if duration small enough
+                        if previous_task in state.tasks_details:
+                            if previous_task in state.tasks_complete:
+                                # complete
+                                previous_task_end = state.tasks_complete_end[
+                                    previous_task
+                                ]
+                            else:
+                                # ongoing
+                                # estimated end (could be more if a pause occurs)
+                                previous_task_end = (
+                                    state.tasks_details[previous_task].start
+                                    + state.tasks_details[
+                                        previous_task
+                                    ].sampled_duration
+                                )
+                            if state.t < previous_task_end + offset:
+                                return False
+                        else:
+                            # not yet started => possible only if min_duration <= -offset
+                            if isinstance(self, UncertainBoundedTaskDuration):
+                                previous_task_min_duration = min(
+                                    self.get_task_duration_lower_bound(
+                                        task=previous_task, mode=mode
+                                    )
+                                    for mode in self.get_tasks_modes()[previous_task]
+                                )
+                                if previous_task_min_duration + offset > 0:
+                                    # even if previous_task was starting now, it will be too soon for the min time lag
+                                    return False
+
+        return True
+
     def get_possible_starting_tasks(self, state: State):
         mode_details = self.get_tasks_modes()
         possible_task_precedence = [
             (n, mode_details[n])
             for n in state.tasks_remaining
-            if all(
-                m in state.tasks_complete
-                for m in set(self.ancestors[n]).intersection(
-                    self.get_available_tasks(state)
+            if (
+                all(
+                    m in state.tasks_complete
+                    for m in set(self.ancestors[n]).intersection(
+                        self.get_available_tasks(state)
+                    )
                 )
+                # check also time windows and time lags constraints
+                and self._check_time_windows_constraint_on_start(task=n, state=state)
+                and self._check_time_lags_constraint_on_start(task=n, state=state)
             )
         ]
 

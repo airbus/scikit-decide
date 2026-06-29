@@ -132,6 +132,7 @@ class State:
     tasks_unsatisfiable: set[int]
     tasks_ongoing: set[int]
     tasks_complete: set[int]
+    tasks_complete_end: dict[int, int]
     tasks_paused: set[int]
     tasks_progress: dict[int, float]
     tasks_mode: dict[int, int]
@@ -165,6 +166,7 @@ class State:
         )
         self.tasks_ongoing = set()
         self.tasks_complete = set()
+        self.tasks_complete_end = {}
         self.tasks_paused = set()
         self.tasks_progress = {}
         self.tasks_mode = {}
@@ -184,6 +186,7 @@ class State:
         s.tasks_unsatisfiable = deepcopy(self.tasks_unsatisfiable)
         s.tasks_ongoing = deepcopy(self.tasks_ongoing)
         s.tasks_complete = deepcopy(self.tasks_complete)
+        s.tasks_complete_end = deepcopy(self.tasks_complete_end)
         s.tasks_paused = deepcopy(self.tasks_paused)
         s.tasks_progress = deepcopy(self.tasks_progress)
         s.tasks_mode = deepcopy(self.tasks_mode)
@@ -218,7 +221,7 @@ class State:
             if key == "tasks_details":
                 for key2 in sorted(self.tasks_details.keys()):
                     s += str(self.tasks_details[key2]) + "\t"
-            elif key.startswith("tasks_complete_"):
+            elif key.startswith("tasks_complete_") and key != "tasks_complete_end":
                 for node in getattr(self, key):
                     s += str(node.value) + "\t"
             else:
