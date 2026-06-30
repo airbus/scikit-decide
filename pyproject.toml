@@ -31,6 +31,7 @@ dependencies = [
     "pynng>=0.6.2",
     "pathos>=0.2.7",
     "discrete-optimization>=0.9.0",
+    "wrapt>=2.2.1",
 ]
 
 [project.urls]

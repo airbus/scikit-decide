@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
-import functools
 from typing import Optional
+
+import wrapt
 
 from skdecide.core import (
     D,
@@ -352,7 +353,7 @@ class UncertainTransitions(Simulation):
         """
         return self._is_transition_value_dependent_on_next_state()
 
-    @functools.lru_cache()
+    @wrapt.lru_cache()
     def _is_transition_value_dependent_on_next_state(self) -> bool:
         """Indicate whether _get_transition_value() requires the next_state parameter for its computation (cached).
 
@@ -407,6 +408,19 @@ class UncertainTransitions(Simulation):
         True if the state is terminal (False otherwise).
         """
         raise NotImplementedError
+
+    def __getstate__(self):
+        """Get state for pickle.
+
+        Solve issue when instance has cached methods called. (And thus unpickable cache created.)
+        See https://github.com/GrahamDumpleton/wrapt/issues/343
+
+        """
+        return {
+            key: value
+            for key, value in super().__getstate__().items()
+            if not key.startswith("_lru_cache_")
+        }
 
 
 class EnumerableTransitions(UncertainTransitions):

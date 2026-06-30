@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
-import functools
 from typing import Optional, Union
+
+import wrapt
 
 from skdecide.core import D, Memory
 
@@ -55,7 +56,7 @@ class FiniteHistory(History):
 
     T_memory = Memory
 
-    @functools.lru_cache()
+    @wrapt.lru_cache()
     def _get_memory_maxlen(self) -> int:
         """Get the (cached) memory max length.
 
@@ -82,6 +83,19 @@ class FiniteHistory(History):
         The memory max length.
         """
         raise NotImplementedError
+
+    def __getstate__(self):
+        """Get state for pickle.
+
+        Solve issue when instance has cached methods called. (And thus unpickable cache created.)
+        See https://github.com/GrahamDumpleton/wrapt/issues/343
+
+        """
+        return {
+            key: value
+            for key, value in super().__getstate__().items()
+            if not key.startswith("_lru_cache_")
+        }
 
 
 class Markovian(FiniteHistory):

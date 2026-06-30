@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
-import functools
 from typing import Union
+
+import wrapt
 
 from skdecide.core import D, Space, autocastable
 
@@ -33,7 +34,7 @@ class Goals:
         """
         return self._get_goals()
 
-    @functools.lru_cache()
+    @wrapt.lru_cache()
     def _get_goals(self) -> D.T_agent[Space[D.T_observation]]:
         """Get the (cached) domain goals space (finite or infinite set).
 
@@ -104,3 +105,16 @@ class Goals:
             return goals.contains(observation)
         else:  # StrDict
             return {k: goals[k].contains(v) for k, v in observation.items()}
+
+    def __getstate__(self):
+        """Get state for pickle.
+
+        Solve issue when instance has cached methods called. (And thus unpickable cache created.)
+        See https://github.com/GrahamDumpleton/wrapt/issues/343
+
+        """
+        return {
+            key: value
+            for key, value in super().__getstate__().items()
+            if not key.startswith("_lru_cache_")
+        }
