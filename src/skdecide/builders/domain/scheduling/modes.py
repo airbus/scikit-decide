@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Union
+from collections.abc import Collection
 
 __all__ = ["MultiMode", "SingleMode"]
 
@@ -83,11 +83,11 @@ class ConstantModeConsumption(VaryingModeConsumption):
 class MultiMode:
     """A domain must inherit this class if tasks can be done in 1 or more modes."""
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         """Return a set or dict of int = id of tasks"""
         raise NotImplementedError
 
-    def get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def get_tasks_ids(self) -> Collection[int]:
         return self._get_tasks_ids()
 
     def _get_tasks_modes(self) -> dict[int, dict[int, ModeConsumption]]:

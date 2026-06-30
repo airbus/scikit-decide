@@ -20,7 +20,6 @@ def load_domain(file_path):
     if not rcpsp_model.is_rcpsp_multimode():
         my_domain = RCPSP(
             resource_names=rcpsp_model.resources_list,
-            task_ids=sorted(rcpsp_model.mode_details.keys()),
             tasks_mode=rcpsp_model.mode_details,
             successors=rcpsp_model.successors,
             max_horizon=rcpsp_model.horizon,
@@ -33,7 +32,6 @@ def load_domain(file_path):
     else:
         my_domain = MRCPSP(
             resource_names=rcpsp_model.resources_list,
-            task_ids=sorted(rcpsp_model.mode_details.keys()),
             tasks_mode=rcpsp_model.mode_details,
             successors=rcpsp_model.successors,
             max_horizon=rcpsp_model.horizon,
@@ -79,7 +77,6 @@ def load_multiskill_domain(file_path):
         resource_unit_names=resource_unit_names,
         resource_type_names=resource_type_names,
         resource_skills=resource_skills,
-        task_ids=sorted(model_msrcpsp.mode_details.keys()),
         tasks_mode=model_msrcpsp.mode_details,
         successors=model_msrcpsp.successors,
         max_horizon=model_msrcpsp.horizon,

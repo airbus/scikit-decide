@@ -9,8 +9,11 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Optional, Union
 
+from discrete_optimization.generic_tasks_tools.generic_scheduling_impl import (
+    GenericSchedulingImplProblem,
+    GenericSchedulingImplSolution,
+)
 from discrete_optimization.generic_tools.callbacks.callback import Callback
-from discrete_optimization.generic_tools.do_problem import Problem
 from discrete_optimization.generic_tools.do_solver import SolverDO
 from discrete_optimization.generic_tools.hyperparameters.hyperparameter import (
     EnumHyperparameter,
@@ -29,7 +32,10 @@ from discrete_optimization.rcpsp_multiskill.problem import (
 from skdecide import Domain
 from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
 from skdecide.hub.solver.do_solver.sgs_policies import PolicyMethodParams, PolicyRCPSP
-from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
+from skdecide.hub.solver.do_solver.sk_to_do_binding import (
+    DOSchedulingProblem,
+    build_do_domain,
+)
 from skdecide.solvers import DeterministicPolicies, Solver
 
 
@@ -62,10 +68,52 @@ SolvingMethod.LNS_CP.__doc__ = (
 )
 
 
+def _import_solvers_map_and_co(
+    do_domain: DOSchedulingProblem,
+) -> tuple[
+    Callable[[DOSchedulingProblem], list[type[SolverDO]]],
+    dict[str, list[tuple[type[SolverDO], dict[str, Any]]]],
+    dict[type[SolverDO], tuple[str, dict[str, Any]]],
+]:
+    match do_domain:
+        case RcpspProblem():
+            from discrete_optimization.rcpsp.solvers_map import (
+                look_for_solver,
+                solvers,
+                solvers_map,
+            )
+        case MultiskillRcpspProblem():
+            from discrete_optimization.rcpsp_multiskill.solvers_map import (
+                look_for_solver,
+                solvers,
+                solvers_map,
+            )
+        case GenericSchedulingImplProblem():
+            from discrete_optimization.generic_tasks_tools.solvers_map import (
+                look_for_solver,
+                solvers,
+                solvers_map,
+            )
+        case _:
+            raise ValueError(
+                "do_domain should be either a RcpspProblem or a MultiskillRcpspProblem."
+            )
+    return look_for_solver, solvers, solvers_map
+
+
+def get_available_methods(
+    do_domain: DOSchedulingProblem,
+) -> list[tuple[type[SolverDO], tuple[str, dict[str, Any]]]]:
+    look_for_solver, solvers, solvers_map = _import_solvers_map_and_co(do_domain)
+    available: list[type[SolverDO]] = look_for_solver(do_domain)
+    smap = [(av, solvers_map[av]) for av in available]
+    return smap
+
+
 def build_solver(
     solving_method: Optional[SolvingMethod],
     solver_type: Optional[type[SolverDO]],
-    do_domain: Problem,
+    do_domain: DOSchedulingProblem,
 ) -> tuple[type[SolverDO], dict[str, Any]]:
     """Build the discrete-optimization solver for a given solving method
 
@@ -78,32 +126,15 @@ def build_solver(
     A class of do-solver, associated with some default parameters to be passed to its constructor and solve function
     (and potentially init_model function)
     """
-    if isinstance(do_domain, RcpspProblem):
-        from discrete_optimization.rcpsp.solvers_map import (
-            look_for_solver,
-            solvers,
-            solvers_map,
-        )
-
-        do_domain_cls = RcpspProblem
-    elif isinstance(do_domain, MultiskillRcpspProblem):
-        from discrete_optimization.rcpsp_multiskill.solvers_map import (
-            look_for_solver,
-            solvers,
-            solvers_map,
-        )
-
-        do_domain_cls = MultiskillRcpspProblem
-    else:
-        raise ValueError(
-            "do_domain should be either a RcpspProblem or a MultiskillRcpspProblem."
-        )
-    available = look_for_solver(do_domain)
+    look_for_solver, solvers, solvers_map = _import_solvers_map_and_co(do_domain)
+    available: list[type[SolverDO]] = look_for_solver(do_domain)
     if solver_type is not None:
         if solver_type in solvers_map:
             return solver_type, solvers_map[solver_type][1]
         else:
             return solver_type, {}
+    if solving_method is None:
+        solving_method = SolvingMethod.CP
     try:
         smap = [
             (solver_cls, solver_kwargs)
@@ -112,13 +143,13 @@ def build_solver(
         ]
     except KeyError:
         raise ValueError(
-            f"solving_method {solving_method} not available for {do_domain_cls}."
+            f"solving_method {solving_method} not available for {do_domain.__class__.__name__}."
         )
     if len(smap) > 0:
         return smap[0]
     else:
         raise ValueError(
-            f"solving_method {solving_method} not available for {do_domain_cls}."
+            f"solving_method {solving_method} not available for {do_domain.__class__.__name__}."
         )
 
 
@@ -131,9 +162,6 @@ def from_solution_to_policy(
 ) -> PolicyRCPSP:
     """Create a PolicyRCPSP object (a skdecide policy) from a scheduling solution
     from the discrete-optimization library."""
-    permutation_task = None
-    modes_dictionnary = None
-    schedule = None
     resource_allocation = None
     resource_allocation_priority = None
     if isinstance(solution, RcpspSolution):
@@ -161,7 +189,13 @@ def from_solution_to_policy(
             for task in solution.employee_usage
         }
         if isinstance(solution, VariantMultiskillRcpspSolution):
-            resource_allocation_priority = solution.priority_worker_per_task
+            if solution.priority_worker_per_task is not None:
+                resource_allocation_priority = {
+                    i: priority_worker
+                    for i, priority_worker in enumerate(
+                        solution.priority_worker_per_task
+                    )
+                }
             modes_dictionnary = {}
             # set modes for start and end (dummy) jobs
             modes_dictionnary[1] = 1
@@ -170,6 +204,24 @@ def from_solution_to_policy(
                 modes_dictionnary[i + 2] = solution.modes_vector[i]
         else:
             modes_dictionnary = solution.modes
+    elif isinstance(solution, GenericSchedulingImplSolution):
+        schedule = {
+            task: {"start_time": variable.start, "end_time": variable.end}
+            for task, variable in solution.raw_sol.task_variables.items()
+        }
+        permutation_task = sorted(
+            schedule, key=lambda task: (schedule[task]["start_time"], task)
+        )
+        modes_dictionnary = {
+            task: variable.mode
+            for task, variable in solution.raw_sol.task_variables.items()
+        }
+        resource_allocation = {
+            task: list(variable.allocated)
+            for task, variable in solution.raw_sol.task_variables.items()
+        }
+    else:
+        raise NotImplementedError()
 
     return PolicyRCPSP(
         domain=domain,
@@ -228,29 +280,20 @@ class DOSolver(Solver, DeterministicPolicies):
                 policy_method_params = PolicyMethodParams(**policy_method_params_kwargs)
         self.policy_method_params = policy_method_params
 
-    def get_available_methods(self, domain: SchedulingDomain):
-        do_domain = build_do_domain(domain)
-        if isinstance(do_domain, (MultiskillRcpspProblem)):
-            from discrete_optimization.rcpsp_multiskill.solvers_map import (
-                look_for_solver,
-                solvers_map,
-            )
+    def get_available_methods(
+        self,
+    ) -> list[tuple[type[SolverDO], tuple[str, dict[str, Any]]]]:
+        self._build_do_domain()
+        return get_available_methods(self.do_domain)
 
-            available = look_for_solver(do_domain)
-        elif isinstance(do_domain, RcpspProblem):
-            from discrete_optimization.rcpsp.solvers_map import (
-                look_for_solver,
-                solvers_map,
-            )
-
-            available = look_for_solver(do_domain)
-        smap = [(av, solvers_map[av]) for av in available]
-
-        return smap
+    def _build_do_domain(self) -> None:
+        if not hasattr(self, "domain"):
+            self.domain = self._domain_factory()
+        if not hasattr(self, "do_domain"):
+            self.do_domain = build_do_domain(self.domain)
 
     def _solve(self) -> None:
-        self.domain = self._domain_factory()
-        self.do_domain = build_do_domain(self.domain)
+        self._build_do_domain()
         solver_cls, solver_kwargs = build_solver(
             solving_method=self.method,
             solver_type=self.do_solver_type,

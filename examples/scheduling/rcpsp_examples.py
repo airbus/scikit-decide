@@ -68,6 +68,7 @@ def do_singlemode():
         ),
         do_solver_type=CpRcpspSolver,
     )
+    print(solver.get_available_methods())
     solver.solve()
     states, actions, values = rollout(
         domain=domain,
@@ -144,7 +145,7 @@ def do_multiskill():
         ),
         method=SolvingMethod.LNS_CP,
     )
-    solver.get_available_methods(domain)
+    solver.get_available_methods()
     solver.solve()
     states, actions, values = rollout(
         domain=domain,
