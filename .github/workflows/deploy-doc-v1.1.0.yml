@@ -37,7 +37,7 @@ jobs:
         with:
           name: ${{ env.doc-artifact-name }}
           path: ${{ env.doc-path }}
-          run_id: ${{ run-id-release }}
+          run_id: ${{ env.run-id-release }}
       - name: set doc-version-path
         id: set-doc-version-path
         run: |
