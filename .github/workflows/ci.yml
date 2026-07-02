@@ -246,17 +246,9 @@ jobs:
     strategy:
       matrix:
         python-version: ${{ fromJSON(needs.setup.outputs.python_version_build_per_os).macos }}
-        os: [ "macos-latest", "macos-15-intel" ]
-        arch: [ "arm64", "x86_64" ]
-        exclude:
-          - os: macos-15-intel
-            arch: arm64
-          - os: macos-latest
-            arch: x86_64
+        os: [ "macos-latest" ]
+        arch: [ "arm64" ]
         include:
-          - arch: x86_64
-            miniforge_url: "https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-x86_64.sh"
-            miniforge_sha: "c6ac073b80cedb313561bc11c2e61b0bd102b74df0363ed6c1e90303b322092a"
           - arch: arm64
             miniforge_url: "https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-arm64.sh"
             miniforge_sha: "dd832d8a65a861b5592b2cf1d55f26031f7c1491b30321754443931e7b1e6832"
