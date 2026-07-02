@@ -210,6 +210,7 @@ build-backend = "scikit_build_core.build"
 
 [tool.scikit-build]
 logging.level = "INFO"
+sdist.exclude = ["cpp/tests/data"]
 wheel.packages = ["src/skdecide"]
 wheel.install-dir = "skdecide/hub"
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
