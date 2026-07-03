@@ -104,6 +104,19 @@ SET(HIGHS_BUILD_CXX ON CACHE INTERNAL "")
 SET(BUILD_TESTING OFF CACHE INTERNAL "")
 SET(BUILD_EXAMPLES OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(highs)
+# HiGHS v1.10.0 bug (src/CMakeLists.txt:157): unconditionally adds
+# "${CMAKE_CUDA_PATH}/include" as a PUBLIC include directory. When CUDA is
+# absent CMAKE_CUDA_PATH is empty, expanding to "/include" — a stray root-level
+# path that precedes libc++ headers and breaks the C++ standard library include
+# chain on macOS (error: <cstddef> didn't find libc++'s <stddef.h>).
+if(TARGET highs)
+    get_target_property(_highs_iface_incs highs INTERFACE_INCLUDE_DIRECTORIES)
+    if(_highs_iface_incs)
+        list(REMOVE_ITEM _highs_iface_incs "/include")
+        set_target_properties(highs PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${_highs_iface_incs}")
+    endif()
+endif()
 SET(HAS_HIGHS TRUE)
 MESSAGE(STATUS "HiGHS built from source (static linking)")
 

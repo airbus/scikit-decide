@@ -51,15 +51,16 @@ SK_MCTS_SOLVER_CLASS::ActionNode::Key::operator()(const ActionNode &an) const {
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 SK_MCTS_SOLVER_CLASS::StateNode::StateNode(const State &s)
-    : state(s), terminal(false), expanded(false), expansions_count(0),
-      value(0.0), visits_count(0) {}
+    : state(s), terminal(false), expanded(false), heuristic_initialized(false),
+      expansions_count(0), value(0.0), visits_count(0), heuristic_count(0) {}
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 SK_MCTS_SOLVER_CLASS::StateNode::StateNode(const StateNode &s)
     : state(s.state), terminal((bool)s.terminal), expanded((bool)s.expanded),
+      heuristic_initialized((bool)s.heuristic_initialized),
       expansions_count((std::size_t)s.expansions_count), actions(s.actions),
       value((double)s.value), visits_count((std::size_t)s.visits_count),
-      parents(s.parents) {}
+      heuristic_count((std::size_t)s.heuristic_count), parents(s.parents) {}
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 const typename SK_MCTS_SOLVER_CLASS::State &
@@ -481,8 +482,15 @@ SK_MCTS_SOLVER_CLASS::get_last_trajectory() const {
         StateNode *current = _last_leaf_node;
         StateNode *root = _last_root_node;
 
-        // Walk backwards from leaf to root using parent pointers
+        // Walk backwards from leaf to root using parent pointers.
+        // Track visited nodes to break cycles (self-loop transitions create
+        // cycles in parent pointers that would otherwise cause infinite loops).
+        std::unordered_set<StateNode *> visited_in_trajectory;
         while (current != nullptr && current != root) {
+          if (visited_in_trajectory.count(current)) {
+            break; // Cycle detected (e.g. self-loop transition), stop here
+          }
+          visited_in_trajectory.insert(current);
           if (!current->parents.empty()) {
             ActionNode *parent_action = *current->parents.begin();
             if (parent_action && parent_action->parent) {

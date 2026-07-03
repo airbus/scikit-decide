@@ -111,6 +111,8 @@ struct FullExpand<Tsolver>::ExpandActionImplementation::Impl<
                     _heuristic(solver.domain(), next_node.state, thread_id);
                 next_node.value = h.first.reward();
                 next_node.visits_count = h.second;
+                next_node.heuristic_count = h.second;
+                next_node.heuristic_initialized = true;
               }
 
               if (next_node.actions.empty()) {
@@ -242,6 +244,8 @@ struct FullExpand<Tsolver>::ExpandActionImplementation::Impl<
                   _heuristic(solver.domain(), next_node.state, thread_id);
               next_node.value = h.first.reward();
               next_node.visits_count = h.second;
+              next_node.heuristic_count = h.second;
+              next_node.heuristic_initialized = true;
             }
           },
           next_node.mutex);
@@ -348,6 +352,23 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver &solver,
         },
         n.mutex);
 
+    // Initialize root (or any un-initialized state) with heuristic on first
+    // visit. States discovered via expand_action already have
+    // heuristic_initialized=true. The root is added directly in solve() and
+    // bypasses that path.
+    solver.execution_policy().protect(
+        [this, &n, &solver, &thread_id]() {
+          if (!n.heuristic_initialized) {
+            std::pair<typename Tsolver::Domain::Value, std::size_t> h =
+                _heuristic(solver.domain(), n.state, thread_id);
+            n.value = h.first.reward();
+            n.visits_count = h.second;
+            n.heuristic_count = h.second;
+            n.heuristic_initialized = true;
+          }
+        },
+        n.mutex);
+
     // Check for untried outcomes
     if (solver.verbose()) {
       Logger::debug("Checking for untried outcomes" +
@@ -377,7 +398,8 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver &solver,
               for (std::size_t p = 0; p < probs.size(); p++) {
                 typename Tsolver::StateNode *on = ca.dist_to_outcome[p]->first;
 
-                if (on->visits_count == 0) {
+                if ((std::size_t)on->visits_count ==
+                    (std::size_t)on->heuristic_count) {
                   untried_outcomes.push_back(std::make_pair(&ca, on));
                   weights.push_back(probs[p]);
                 }
