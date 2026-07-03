@@ -16,6 +16,7 @@ from typing import Generic, Optional, TypeVar, Union, overload
 
 import numpy as np
 import numpy.typing as npt
+import wrapt
 
 __all__ = [
     "T",
@@ -512,7 +513,7 @@ class Constraint(Generic[D.T_memory, D.T_event, D.T_state], Castable):
         """
         raise NotImplementedError
 
-    @functools.lru_cache()
+    @wrapt.lru_cache()
     def is_constraint_dependent_on_next_state(self) -> bool:
         """Indicate whether this constraint requires the next_state parameter for its computation (cached).
 
@@ -539,6 +540,19 @@ class Constraint(Generic[D.T_memory, D.T_event, D.T_state], Castable):
         True if the constraint computation depends on next_state (False otherwise).
         """
         raise NotImplementedError
+
+    def __getstate__(self):
+        """Get state for pickle.
+
+        Solve issue when instance has cached methods called. (And thus unpickable cache created.)
+        See https://github.com/GrahamDumpleton/wrapt/issues/343
+
+        """
+        return {
+            key: value
+            for key, value in super().__getstate__().items()
+            if not key.startswith("_lru_cache_")
+        }
 
 
 class ImplicitConstraint(Constraint[D.T_memory, D.T_event, D.T_state]):

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-import functools
+import wrapt
 
 from skdecide.core import D, Distribution, SingleValueDistribution, autocastable
 
@@ -64,7 +64,7 @@ class UncertainInitialized(Initializable):
         """
         return self._get_initial_state_distribution()
 
-    @functools.lru_cache()
+    @wrapt.lru_cache()
     def _get_initial_state_distribution(self) -> Distribution[D.T_state]:
         """Get the (cached) probability distribution of initial states.
 
@@ -92,6 +92,19 @@ class UncertainInitialized(Initializable):
         """
         raise NotImplementedError
 
+    def __getstate__(self):
+        """Get state for pickle.
+
+        Solve issue when instance has cached methods called. (And thus unpickable cache created.)
+        See https://github.com/GrahamDumpleton/wrapt/issues/343
+
+        """
+        return {
+            key: value
+            for key, value in super().__getstate__().items()
+            if not key.startswith("_lru_cache_")
+        }
+
 
 class DeterministicInitialized(UncertainInitialized):
     """A domain must inherit this class if it has a deterministic initial state known as white-box."""
@@ -112,7 +125,7 @@ class DeterministicInitialized(UncertainInitialized):
         """
         return self._get_initial_state()
 
-    @functools.lru_cache()
+    @wrapt.lru_cache()
     def _get_initial_state(self) -> D.T_state:
         """Get the (cached) initial state.
 

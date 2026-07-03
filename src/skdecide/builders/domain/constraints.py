@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-import functools
+import wrapt
 
 from skdecide.core import Constraint, D, autocastable
 
@@ -33,7 +33,7 @@ class Constrained:
         """
         return self._get_constraints()
 
-    @functools.lru_cache()
+    @wrapt.lru_cache()
     def _get_constraints(
         self,
     ) -> list[
@@ -72,3 +72,16 @@ class Constrained:
         The list of constraints.
         """
         raise NotImplementedError
+
+    def __getstate__(self):
+        """Get state for pickle.
+
+        Solve issue when instance has cached methods called. (And thus unpickable cache created.)
+        See https://github.com/GrahamDumpleton/wrapt/issues/343
+
+        """
+        return {
+            key: value
+            for key, value in super().__getstate__().items()
+            if not key.startswith("_lru_cache_")
+        }

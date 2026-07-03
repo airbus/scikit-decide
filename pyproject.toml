@@ -30,7 +30,8 @@ requires-python = ">=3.10"
 dependencies = [
     "pynng>=0.6.2",
     "pathos>=0.2.7",
-    "discrete-optimization>=0.5.0",
+    "discrete-optimization>=0.9.0",
+    "wrapt>=2.2.1",
 ]
 
 [project.urls]
@@ -209,6 +210,7 @@ build-backend = "scikit_build_core.build"
 
 [tool.scikit-build]
 logging.level = "INFO"
+sdist.exclude = ["cpp/tests/data"]
 wheel.packages = ["src/skdecide"]
 wheel.install-dir = "skdecide/hub"
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"

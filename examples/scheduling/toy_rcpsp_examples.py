@@ -1,6 +1,7 @@
 import random
+from collections.abc import Collection
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Optional
 
 from skdecide import DiscreteDistribution, Distribution, rollout
 from skdecide.builders.domain.scheduling.modes import (
@@ -30,7 +31,7 @@ class MyExampleRCPSPDomain(SingleModeRCPSP):
     def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return {1, 2, 3, 4, 5}
 
     def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
@@ -46,7 +47,7 @@ class MyExampleRCPSPDomain(SingleModeRCPSP):
         return ["r1", "r2"]
 
     def _get_task_duration(
-        self, task: int, mode: Optional[int] = 1, progress_from: Optional[float] = 0.0
+        self, task: int, mode: int = 1, progress_from: float = 0.0
     ) -> int:
         all_durations = {1: 0, 2: 5, 3: 6, 4: 4, 5: 0}
         return all_durations[task]
@@ -102,14 +103,14 @@ class MyExampleMRCPSPDomain_WithCost(MultiModeRCPSPWithCost):
     def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return set([1, 2, 3, 4, 5])
 
     def _get_resource_types_names(self) -> list[str]:
         return ["r1", "r2"]
 
     def _get_task_duration(
-        self, task: int, mode: Optional[int] = 1, progress_from: Optional[float] = 0.0
+        self, task: int, mode: int = 1, progress_from: float = 0.0
     ) -> int:
         all_durations = {1: 0, 2: 5, 3: 6, 4: 4, 5: 0}
         return all_durations[task]
@@ -123,8 +124,8 @@ class MyExampleSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations):
     def _get_task_duration_distribution(
         self,
         task: int,
-        mode: Optional[int] = 1,
-        progress_from: Optional[float] = 0.0,
+        mode: int = 1,
+        progress_from: float = 0.0,
         multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         all_distributions = {}
@@ -147,7 +148,7 @@ class MyExampleSRCPSPDomain(SingleModeRCPSP_Stochastic_Durations):
     def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return set([1, 2, 3, 4, 5])
 
     def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
@@ -171,8 +172,8 @@ class MyExampleSRCPSPDomain_2(SingleModeRCPSP_Stochastic_Durations):
     def _get_task_duration_distribution(
         self,
         task: int,
-        mode: Optional[int] = 1,
-        progress_from: Optional[float] = 0.0,
+        mode: int = 1,
+        progress_from: float = 0.0,
         multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         all_distributions = {}
@@ -204,7 +205,7 @@ class MyExampleSRCPSPDomain_2(SingleModeRCPSP_Stochastic_Durations):
     def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [5], 4: [5], 5: []}
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return set([1, 2, 3, 4, 5])
 
     def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
@@ -277,8 +278,8 @@ class MyExampleCondSRCPSPDomain(
     def _get_task_duration_distribution(
         self,
         task: int,
-        mode: Optional[int] = 1,
-        progress_from: Optional[float] = 0.0,
+        mode: int = 1,
+        progress_from: float = 0.0,
         multivariate_settings: Optional[dict[str, int]] = None,
     ) -> Distribution:
         all_distributions = {}
@@ -304,7 +305,7 @@ class MyExampleCondSRCPSPDomain(
     def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [7], 4: [7], 5: [7], 6: [7], 7: []}
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return {1, 2, 3, 4, 5, 6, 7}
 
     def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
@@ -382,7 +383,7 @@ class MyExampleSimulatedCondSRCPSPDomain(
     def _get_successors(self) -> dict[int, list[int]]:
         return {1: [2, 3], 2: [4], 3: [7], 4: [7], 5: [7], 6: [7], 7: []}
 
-    def _get_tasks_ids(self) -> Union[set[int], dict[int, Any], list[int]]:
+    def _get_tasks_ids(self) -> Collection[int]:
         return set([1, 2, 3, 4, 5, 6, 7])
 
     def _get_tasks_mode(self) -> dict[int, ModeConsumption]:
@@ -404,7 +405,7 @@ class MyExampleSimulatedCondSRCPSPDomain(
         return all_resource_quantities[resource]
 
     def _sample_task_duration(
-        self, task: int, mode: Optional[int] = 1, progress_from: Optional[float] = 0.0
+        self, task: int, mode: int = 1, progress_from: float = 0.0
     ) -> int:
         val = random.randint(3, 6)
         return val

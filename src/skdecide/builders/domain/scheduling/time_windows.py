@@ -28,7 +28,6 @@ class TimeWindow:
         latest_start: int,
         earliest_end: int,
         latest_end: int,
-        max_horizon: int,
     ) -> None:
         self.earliest_start = earliest_start
         self.latest_start = latest_start
@@ -39,51 +38,61 @@ class TimeWindow:
 class ClassicTimeWindow(TimeWindow):
     """Defines a time window with earliest start and latest end only."""
 
-    def __init__(self, earliest_start: int, latest_end: int, max_horizon: int) -> None:
-        self.earliest_start = earliest_start
-        self.latest_start = max_horizon
-        self.earliest_end = 0
-        self.latest_end = latest_end
+    def __init__(self, earliest_start: int, latest_end: int) -> None:
+        super().__init__(
+            earliest_start=earliest_start,
+            earliest_end=earliest_start,
+            latest_start=latest_end,
+            latest_end=latest_end,
+        )
 
 
 class StartFromOnlyTimeWindow(TimeWindow):
     """Defines a time window with an earliest start only."""
 
     def __init__(self, earliest_start: int, max_horizon: int) -> None:
-        self.earliest_start = earliest_start
-        self.latest_start = max_horizon
-        self.earliest_end = 0
-        self.latest_end = max_horizon
+        super().__init__(
+            earliest_start=earliest_start,
+            earliest_end=earliest_start,
+            latest_start=max_horizon,
+            latest_end=max_horizon,
+        )
 
 
 class StartBeforeOnlyTimeWindow(TimeWindow):
     """Defines a time window with an latest start only."""
 
     def __init__(self, latest_start: int, max_horizon: int) -> None:
-        self.earliest_start = 0
-        self.latest_start = latest_start
-        self.earliest_end = 0
-        self.latest_end = max_horizon
+        super().__init__(
+            earliest_start=0,
+            earliest_end=0,
+            latest_start=latest_start,
+            latest_end=max_horizon,
+        )
 
 
 class EndFromOnlyTimeWindow(TimeWindow):
     """Defines a time window with an earliest end only."""
 
     def __init__(self, earliest_end: int, max_horizon: int) -> None:
-        self.earliest_start = 0
-        self.latest_start = max_horizon
-        self.earliest_end = earliest_end
-        self.latest_end = max_horizon
+        super().__init__(
+            earliest_start=0,
+            earliest_end=earliest_end,
+            latest_start=max_horizon,
+            latest_end=max_horizon,
+        )
 
 
 class EndBeforeOnlyTimeWindow(TimeWindow):
     """Defines a time window with a latest end only."""
 
-    def __init__(self, latest_end: int, max_horizon: int) -> None:
-        self.earliest_start = 0
-        self.latest_start = max_horizon
-        self.earliest_end = 0
-        self.latest_end = latest_end
+    def __init__(self, latest_end: int) -> None:
+        super().__init__(
+            earliest_start=0,
+            earliest_end=0,
+            latest_start=latest_end,
+            latest_end=latest_end,
+        )
 
 
 class StartTimeWindow(TimeWindow):
@@ -92,30 +101,36 @@ class StartTimeWindow(TimeWindow):
     def __init__(
         self, earliest_start: int, latest_start: int, max_horizon: int
     ) -> None:
-        self.earliest_start = earliest_start
-        self.latest_start = latest_start
-        self.earliest_end = 0
-        self.latest_end = max_horizon
+        super().__init__(
+            earliest_start=earliest_start,
+            earliest_end=earliest_start,
+            latest_start=latest_start,
+            latest_end=max_horizon,
+        )
 
 
 class EndTimeWindow(TimeWindow):
     """Defines a time window with an earliest end and a latest end only."""
 
-    def __init__(self, earliest_end: int, latest_end: int, max_horizon: int) -> None:
-        self.earliest_start = 0
-        self.latest_start = max_horizon
-        self.earliest_end = earliest_end
-        self.latest_end = latest_end
+    def __init__(self, earliest_end: int, latest_end: int) -> None:
+        super().__init__(
+            earliest_start=0,
+            earliest_end=earliest_end,
+            latest_start=latest_end,
+            latest_end=latest_end,
+        )
 
 
 class EmptyTimeWindow(TimeWindow):
     """Defines an empty time window."""
 
     def __init__(self, max_horizon: int) -> None:
-        self.earliest_start = 0
-        self.latest_start = max_horizon
-        self.earliest_end = 0
-        self.latest_end = max_horizon
+        super().__init__(
+            earliest_start=0,
+            earliest_end=0,
+            latest_start=max_horizon,
+            latest_end=max_horizon,
+        )
 
 
 class WithTimeWindow:

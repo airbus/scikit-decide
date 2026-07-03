@@ -12,29 +12,40 @@ __all__ = [
     "WithoutTimeLag",
 ]
 
+from typing import Optional
+
 
 class TimeLag:
     """Defines a time lag with both a minimum time lag and maximum time lag."""
 
-    def __init__(self, minimum_time_lag, maximum_time_lags):
+    def __init__(
+        self,
+        minimum_time_lag: Optional[int] = None,
+        maximum_time_lag: Optional[int] = None,
+    ):
+        """
+
+        # Parameters
+        minimum_time_lag: min time lag. None means no min time lag.
+        maximum_time_lag: max time lag. None means no max time lag.
+
+        """
         self.minimum_time_lag = minimum_time_lag
-        self.maximum_time_lags = maximum_time_lags
+        self.maximum_time_lag = maximum_time_lag
 
 
 class MinimumOnlyTimeLag(TimeLag):
     """Defines a minimum time lag."""
 
-    def __init__(self, minimum_time_lag):
-        self.minimum_time_lag = minimum_time_lag
-        self.maximum_time_lags = self.get_max_horizon()
+    def __init__(self, minimum_time_lag: int):
+        super().__init__(minimum_time_lag=minimum_time_lag)
 
 
 class MaximumOnlyTimeLag(TimeLag):
     """Defines a maximum time lag."""
 
-    def __init__(self, maximum_time_lags):
-        self.minimum_time_lag = 0
-        self.maximum_time_lags = maximum_time_lags
+    def __init__(self, maximum_time_lag):
+        super().__init__(maximum_time_lag=maximum_time_lag)
 
 
 class WithTimeLag:
