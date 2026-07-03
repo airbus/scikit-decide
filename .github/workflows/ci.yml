@@ -77,7 +77,7 @@ jobs:
 
           python_version_build = ["3.10", "3.11", "3.12"]
           python_version_test = ["3.10", "3.12"]
-          test = ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
+          test = ["macos-latest", "ubuntu-latest", "windows-latest"]
           build_doc = "true"
 
           oses = ["macos", "ubuntu", "windows"]
@@ -95,7 +95,6 @@ jobs:
                   python_version_test = [v for v in python_version_test if python_filter[v]]
               os_filter = {
                   'macos-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-latest]') }}"),
-                  'macos-15-intel': to_bool("${{ contains(github.event.head_commit.message, '[ci: macos-15-intel]') }}"),
                   'ubuntu-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: ubuntu-latest]') }}"),
                   'windows-latest': to_bool("${{ contains(github.event.head_commit.message, '[ci: windows-latest]') }}"),
               }
@@ -696,9 +695,6 @@ jobs:
           wheelfile=$(ls ./wheels/scikit_decide*-cp${python_version/\./}-*macos*${arch}.whl)
           additional_specs="${additional_specs} ortools!=9.15.6755"
           additional_specs="${additional_specs} llvmlite>=0.45"
-          if ${{ matrix.os == 'macos-15-intel' }} == 'true'; then
-            additional_specs="${additional_specs} llvmlite<0.46.0"
-          fi
           uv pip install --system ${wheelfile}[all] --group test  ${additional_specs}
           uv pip list
 
