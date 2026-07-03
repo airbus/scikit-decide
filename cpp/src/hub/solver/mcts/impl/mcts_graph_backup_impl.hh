@@ -29,6 +29,13 @@ struct GraphBackup<Tsolver>::UpdateFrontierImplementation {
         std::unordered_set<typename Tsolver::StateNode *> &new_frontier,
         typename Tsolver::StateNode *f) {
       for (auto &a : f->parents) {
+        // Skip self-loop actions: if the action's parent is f itself, updating
+        // using f's current value would double-count the self-loop contribution
+        // (it was already counted when f's non-self-loop child was the
+        // frontier).
+        if (a->parent == f) {
+          continue;
+        }
         double q_value =
             a->outcomes[f].first + (solver.discount() * (f->value));
         a->value = (((a->visits_count) * (a->value)) + q_value) /
@@ -69,6 +76,12 @@ struct GraphBackup<Tsolver>::UpdateFrontierImplementation {
           },
           f->mutex);
       for (auto &a : parents) {
+        // Skip self-loop actions: if the action's parent is f itself, updating
+        // using f's current value would double-count the self-loop
+        // contribution.
+        if (a->parent == f) {
+          continue;
+        }
         solver.execution_policy().protect(
             [&a, &solver, &f, &new_frontier]() {
               double q_value =
@@ -116,7 +129,9 @@ void SK_MCTS_GRAPH_BACKUP_CLASS::operator()(
         n.mutex);
   }
 
-  std::size_t depth = 0; // used to prevent infinite loop in case of cycles
+  std::size_t depth = 0;
+  std::unordered_set<typename Tsolver::StateNode *> visited;
+  visited.insert(&n);
   std::unordered_set<typename Tsolver::StateNode *> frontier;
   frontier.insert(&n);
 
@@ -126,6 +141,16 @@ void SK_MCTS_GRAPH_BACKUP_CLASS::operator()(
 
     for (auto &f : frontier) {
       update_frontier(solver, new_frontier, f);
+    }
+
+    // Prevent cycling: remove nodes already processed in this backprop pass
+    for (auto it = new_frontier.begin(); it != new_frontier.end();) {
+      if (visited.count(*it)) {
+        it = new_frontier.erase(it);
+      } else {
+        visited.insert(*it);
+        ++it;
+      }
     }
 
     frontier = new_frontier;

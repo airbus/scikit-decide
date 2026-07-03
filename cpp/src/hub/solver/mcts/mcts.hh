@@ -225,7 +225,12 @@ template <typename Tsolver> class VoidRolloutPolicy {
 public:
   VoidRolloutPolicy() {}
   void operator()(Tsolver &solver, const std::size_t *thread_id,
-                  typename Tsolver::StateNode &n, std::size_t d) const {}
+                  typename Tsolver::StateNode &n, std::size_t d) const {
+    // Increment visits_count so the leaf is marked as "tried" by FullExpand's
+    // heuristic_count check (visits_count == heuristic_count → untried).
+    // Without this, a heuristic-initialized leaf stays perpetually untried.
+    solver.execution_policy().protect([&n]() { n.visits_count += 1; }, n.mutex);
+  }
 };
 
 /** Graph backup: update Q values using the graph ancestors (rather than
@@ -356,11 +361,15 @@ public:
     typedef typename SetTypeDeducer<ActionNode, Action>::Set ActionSet;
     State state;
     atomic_bool terminal;
-    atomic_bool expanded;           // used only for full expansion mode
+    atomic_bool expanded; // used only for full expansion mode
+    atomic_bool
+        heuristic_initialized; // true once heuristic value has been applied
     atomic_size_t expansions_count; // used only for partial expansion mode
     ActionSet actions;
     atomic_double value;
     atomic_size_t visits_count;
+    atomic_size_t heuristic_count; // heuristic-initialized visits (to
+                                   // distinguish from real backprop visits)
     std::unordered_set<ActionNode *> parents;
     mutable typename ExecutionPolicy::Mutex mutex;
 
