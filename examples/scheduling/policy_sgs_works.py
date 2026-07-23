@@ -1,10 +1,10 @@
 from examples.scheduling.rcpsp_datasets import get_complete_path
-from skdecide.hub.domain.rcpsp.rcpsp_sk import (
+from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk import (
     RCPSP,
     build_n_determinist_from_stochastic,
     build_stochastic_from_deterministic,
 )
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
+from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk_parser import load_domain
 from skdecide.hub.solver.do_solver.do_solver_scheduling import (
     DOSolver,
     SolvingMethod,

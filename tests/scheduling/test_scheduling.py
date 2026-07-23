@@ -52,7 +52,9 @@ from skdecide.builders.domain.scheduling.task_progress import DeterministicTaskP
 from skdecide.builders.domain.scheduling.time_lag import MaximumOnlyTimeLag, TimeLag
 from skdecide.builders.domain.scheduling.time_windows import EmptyTimeWindow, TimeWindow
 from skdecide.hub.domain.graph_domain.graph_domain_builders import DFS_MDP_Exploration
-from skdecide.hub.domain.rcpsp.rcpsp_sk import build_n_determinist_from_stochastic
+from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk import (
+    build_n_determinist_from_stochastic,
+)
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
 from skdecide.hub.solver.do_solver.gphh import GPHH, ParametersGPHH
 from skdecide.hub.solver.do_solver.sgs_policies import (

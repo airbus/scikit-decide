@@ -8,8 +8,8 @@ import numpy as np
 
 from examples.scheduling.rcpsp_datasets import get_complete_path, get_data_available
 from skdecide import rollout
-from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
+from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk import RCPSP
+from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk_parser import load_domain
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
 from skdecide.hub.solver.do_solver.gphh import (
     GPHH,
@@ -505,7 +505,7 @@ def run_features():
 def run_comparaison_stochastic():
     import random
 
-    from skdecide.hub.domain.rcpsp.rcpsp_sk import (
+    from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk import (
         RCPSP,
         build_n_determinist_from_stochastic,
         build_stochastic_from_deterministic,

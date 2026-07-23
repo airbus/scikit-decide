@@ -1,6 +1,6 @@
 from os.path import dirname
 
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
+from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk_parser import load_domain
 
 path_to_data = f"{dirname(__file__)}/../../../examples/scheduling/data"
 path_to_data_rcpsp = f"{path_to_data}/rcpsp"

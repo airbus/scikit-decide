@@ -232,7 +232,7 @@ def run_optuna_multisolve(
 def run_example_study():
     from discrete_optimization.rcpsp.parser import get_data_available
 
-    from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
+    from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk_parser import load_domain
 
     file = [f for f in get_data_available() if "j1201_1.sm" in f][0]
     rcpsp_domain = load_domain(file)

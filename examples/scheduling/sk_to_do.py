@@ -16,7 +16,9 @@ def create_do_from_sk():
         "Loading multimode-rcpsp domain : resulting class in DO : ", do_domain.__class__
     )
     from examples.scheduling.rcpsp_multiskill_datasets import get_data_available_ms
-    from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_multiskill_domain
+    from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk_parser import (
+        load_multiskill_domain,
+    )
 
     rcpsp_domain = load_multiskill_domain(get_data_available_ms()[0])
     do_domain = build_do_domain(rcpsp_domain)
