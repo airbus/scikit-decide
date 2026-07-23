@@ -6,8 +6,8 @@ from discrete_optimization.rcpsp.solvers_map import (
 from examples.scheduling.rcpsp_datasets import get_complete_path
 from examples.scheduling.rcpsp_multiskill_datasets import get_data_available_ms
 from skdecide import rollout
-from skdecide.hub.domain.rcpsp.rcpsp_sk import MSRCPSP, RCPSP
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import (
+from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk import MSRCPSP, RCPSP
+from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk_parser import (
     load_domain,
     load_multiskill_domain,
 )

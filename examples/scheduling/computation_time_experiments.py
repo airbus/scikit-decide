@@ -4,8 +4,8 @@ import time
 from rcpsp_datasets import get_complete_path
 
 from skdecide import rollout
-from skdecide.hub.domain.rcpsp.rcpsp_sk import RCPSP
-from skdecide.hub.domain.rcpsp.rcpsp_sk_parser import load_domain
+from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk import RCPSP
+from skdecide.hub.domain.scheduling.rcpsp.rcpsp_sk_parser import load_domain
 from skdecide.hub.solver.do_solver.do_solver_scheduling import DOSolver, SolvingMethod
 from skdecide.hub.solver.do_solver.sgs_policies import (
     BasePolicyMethod,
