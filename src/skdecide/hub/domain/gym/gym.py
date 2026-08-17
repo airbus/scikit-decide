@@ -8,7 +8,6 @@ from __future__ import annotations
 import bisect
 import random
 import struct
-from collections import OrderedDict
 from collections.abc import Callable
 from copy import deepcopy
 from itertools import product
@@ -17,7 +16,6 @@ from typing import Any, Optional
 
 import gymnasium as gym
 import numpy as np
-from gymnasium.wrappers.compatibility import EnvCompatibility, LegacyEnv
 
 from skdecide import Domain, ImplicitSpace, Space, TransitionOutcome, Value
 from skdecide.builders.domain import (
@@ -35,6 +33,8 @@ from skdecide.builders.domain import (
     UnrestrictedActions,
 )
 from skdecide.hub.space.gym import GymSpace, ListSpace
+
+from .compatibility import EnvCompatibility, LegacyEnv
 
 
 class D(
@@ -809,9 +809,7 @@ class GymDiscreteActionDomain(UnrestrictedActions):
                     ).get_elements()
                 )
             )
-            return ListSpace(
-                OrderedDict(zip(dkeys, dvalues)) for dvalues in generate(0)
-            )
+            return ListSpace(dict(zip(dkeys, dvalues)) for dvalues in generate(0))
         else:
             raise RuntimeError(
                 "Unknown Gym space element of type " + str(type(action_space))
