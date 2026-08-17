@@ -1,8 +1,16 @@
+#  Copyright (c) AIRBUS and its affiliates.
+#  This source code is licensed under the MIT license found in the
+#  LICENSE file in the root directory of this source tree.
+
+import os
+import tempfile
 from collections import namedtuple
 from enum import Enum
 from typing import Optional
 
 import gymnasium as gym
+import ray
+from pytest import fixture
 from ray.rllib.algorithms.dqn import DQN
 from ray.rllib.algorithms.ppo import PPO
 
@@ -54,13 +62,23 @@ class GridWorldFilteredActions(D):
         action: D.T_agent[D.T_concurrency[D.T_event]],
     ) -> D.T_state:
         if action == Action.left:
-            return State(max(memory.x - 1, 0), memory.y)
-        if action == Action.right:
-            return State(min(memory.x + 1, self.num_cols - 1), memory.y)
-        if action == Action.up:
-            return State(memory.x, max(memory.y - 1, 0))
-        if action == Action.down:
-            return State(memory.x, min(memory.y + 1, self.num_rows - 1))
+            next_state = State(memory.x - 1, memory.y)
+        elif action == Action.right:
+            next_state = State(memory.x + 1, memory.y)
+        elif action == Action.up:
+            next_state = State(memory.x, memory.y - 1)
+        else:
+            next_state = State(memory.x, memory.y + 1)
+
+        if (
+            next_state.x < 0
+            or next_state.x > self.num_cols - 1
+            or next_state.y < 0
+            or next_state.y > self.num_rows - 1
+        ):
+            raise ValueError("Unapplicable action!")
+
+        return next_state
 
     def _get_applicable_actions_from(
         self, memory: D.T_memory[D.T_state]
@@ -139,7 +157,50 @@ def test_as_rllib_env_with_autocast_from_singleagent_to_multiagents():
         assert isinstance(subspace, gym.spaces.Space)
 
 
-def test_ray_rllib_solver():
+def ppo_config_factory():
+    return (
+        PPO.get_default_config()
+        .env_runners(
+            # set num of CPU<1 to avoid hanging for ever in github actions on macos 11)
+            num_cpus_per_env_runner=0.5
+        )
+        .training(
+            # small batch size => fast (but bad) training
+            minibatch_size=32
+        )
+        # # uncomment next lines to debug in local mode
+        # .env_runners(num_env_runners=0)
+        # .learners(num_learners=0)
+    )
+
+
+def dqn_config_factory():
+    return (
+        DQN.get_default_config()
+        .env_runners(
+            # set num of CPU<1 to avoid hanging for ever in github actions on macos 11)
+            num_cpus_per_env_runner=0.5
+        )
+        .training(
+            # small batch size => fast (but bad) training
+            train_batch_size_per_learner=32
+        )
+        # # uncomment next lines to debug in local mode
+        # .env_runners(num_env_runners=0)
+        # .learners(num_learners=0)
+    )
+
+
+@fixture
+def ray_init():
+    # add module test_gnn_ray_rllib and thus GridWorldFilteredActions to ray runtimeenv
+    ray.init(
+        ignore_reinit_error=True,
+        runtime_env={"working_dir": os.path.dirname(__file__)},
+    )
+
+
+def test_ray_rllib_solver(ray_init):
     # define domain
     domain_factory = lambda: RockPaperScissors()
     domain = domain_factory()
@@ -148,17 +209,17 @@ def test_ray_rllib_solver():
     assert RayRLlib.check_domain(domain)
 
     # solver factory
-    # NB: we define here a config_factory instead of instancing direcly the config,
+    # NB: we use here a config_factory instead of instancing direcly the config,
     # as it cannot be reused later when loading the solver, because at that point
     # the config will have been "frozen" by the first training step
-    config_factory = lambda: PPO.get_default_config().resources(
-        num_cpus_per_worker=0.5
-    )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
     solver_kwargs = dict(
-        algo_class=PPO, train_iterations=1, gamma=0.95, train_batch_size_log2=8
+        algo_class=PPO,
+        train_iterations=1,
+        gamma=0.95,
+        train_batch_size_per_learner_log2=8,
     )
     solver_factory = lambda: RayRLlib(
-        domain_factory=domain_factory, config=config_factory(), **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config_factory(), **solver_kwargs
     )
 
     # solve
@@ -166,9 +227,9 @@ def test_ray_rllib_solver():
     solver.solve()
     assert hasattr(solver, "_algo")
 
-    assert solver._algo.config.num_cpus_per_worker == 0.5
+    assert solver._algo.config.num_cpus_per_env_runner == 0.5
     assert solver._algo.config.gamma == 0.95
-    assert solver._algo.config.train_batch_size == 256
+    assert solver._algo.config.train_batch_size_per_learner == 256
 
     # solve further
     solver.solve()
@@ -176,31 +237,31 @@ def test_ray_rllib_solver():
     # test get_policy()
     policy = solver.get_policy()
 
-    # store
-    tmp_save_dir = "TEMP_RLlib"
-    solver.save(tmp_save_dir)
+    with tempfile.TemporaryDirectory() as tmp_save_dir:
+        # store
+        solver.save(tmp_save_dir)
 
-    # rollout
-    rollout(
-        domain,
-        solver,
-        max_steps=100,
-        action_formatter=lambda a: str({k: v.name for k, v in a.items()}),
-        outcome_formatter=lambda o: f"{ {k: v.name for k, v in o.observation.items()} }"
-        f" - rewards: { {k: v.reward for k, v in o.value.items()} }",
-    )
+        # rollout
+        rollout(
+            domain,
+            solver,
+            max_steps=100,
+            action_formatter=lambda a: str({k: v.name for k, v in a.items()}),
+            outcome_formatter=lambda o: f"{ {k: v.name for k, v in o.observation.items()} }"
+            f" - rewards: { {k: v.reward for k, v in o.value.items()} }",
+        )
 
-    # load and rollout
-    solver2 = solver_factory()
-    solver2.load(tmp_save_dir)
-    rollout(
-        domain,
-        solver2,
-        max_steps=100,
-    )
+        # load and rollout
+        solver2 = solver_factory()
+        solver2.load(tmp_save_dir)
+        rollout(
+            domain,
+            solver2,
+            max_steps=100,
+        )
 
 
-def test_ray_rllib_solver_with_filtered_actions():
+def test_ray_rllib_solver_with_filtered_actions(ray_init):
     # define domain
     domain_factory = lambda: GridWorldFilteredActions()
     domain = domain_factory()
@@ -209,10 +270,10 @@ def test_ray_rllib_solver_with_filtered_actions():
     assert RayRLlib.check_domain(domain)
 
     # define and solve
-    solver_kwargs = dict(algo_class=DQN, train_iterations=1)
-    config = DQN.get_default_config().resources(
-        num_cpus_per_worker=0.5
-    )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
+    # solver_kwargs = dict(algo_class=DQN, train_iterations=1)
+    # config = dqn_config_factory()
+    solver_kwargs = dict(algo_class=PPO, train_iterations=1)
+    config = ppo_config_factory()
     solver = RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs)
     solver.solve()
     assert hasattr(solver, "_algo")
@@ -221,7 +282,7 @@ def test_ray_rllib_solver_with_filtered_actions():
     rollout(domain, solver, max_steps=100)
 
 
-def test_ray_rllib_solver_on_single_agent_domain():
+def test_ray_rllib_solver_on_single_agent_domain(ray_init):
     # define domain
     ENV_NAME = "CartPole-v1"
     domain_factory = lambda: GymDomain(gym.make(ENV_NAME))
@@ -231,10 +292,11 @@ def test_ray_rllib_solver_on_single_agent_domain():
     assert RayRLlib.check_domain(domain)
 
     # define and solve
+    solver_kwargs = dict(algo_class=DQN, train_iterations=1)
+    config = dqn_config_factory()
+
     solver_kwargs = dict(algo_class=PPO, train_iterations=1)
-    config = PPO.get_default_config().resources(
-        num_cpus_per_worker=0.5
-    )  # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
+    config = ppo_config_factory()
     solver = RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs)
     solver.solve()
     assert hasattr(solver, "_algo")

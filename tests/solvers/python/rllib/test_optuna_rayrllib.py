@@ -1,3 +1,7 @@
+#  Copyright (c) AIRBUS and its affiliates.
+#  This source code is licensed under the MIT license found in the
+#  LICENSE file in the root directory of this source tree.
+
 from __future__ import annotations
 
 import logging
@@ -80,16 +84,18 @@ def test_generic_optuna_experiment_monoproblem_with_ray_rllib():
             entropy_coeff_log = trial.params["FakeRayRLlib.entropy_coeff_log"]
             entropy_coeff = 10**entropy_coeff_log
             assert config["entropy_coeff"] == entropy_coeff
-            assert "FakeRayRLlib.train_batch_size_log2" not in trial.params
-            sgd_minibatch_size_log2 = trial.params[
-                "FakeRayRLlib.sgd_minibatch_size_log2"
-            ]
-            sgd_minibatch_size = 2**sgd_minibatch_size_log2
-            assert config["sgd_minibatch_size"] == sgd_minibatch_size
+            assert "FakeRayRLlib.train_batch_size_per_learner_log2" not in trial.params
+            minibatch_size_log2 = trial.params["FakeRayRLlib.minibatch_size_log2"]
+            minibatch_size = 2**minibatch_size_log2
+            assert config["minibatch_size"] == minibatch_size
 
         else:
             assert "FakeRayRLlib.entropy_coeff_log" not in trial.params
-            assert "FakeRayRLlib.sgd_minibatch_size_log2" not in trial.params
-            train_batch_size_log2 = trial.params["FakeRayRLlib.train_batch_size_log2"]
-            train_batch_size = 2**train_batch_size_log2
-            assert config["train_batch_size"] == train_batch_size
+            assert "FakeRayRLlib.minibatch_size_log2" not in trial.params
+            train_batch_size_per_learner_log2 = trial.params[
+                "FakeRayRLlib.train_batch_size_per_learner_log2"
+            ]
+            train_batch_size_per_learner = 2**train_batch_size_per_learner_log2
+            assert (
+                config["_train_batch_size_per_learner"] == train_batch_size_per_learner
+            )

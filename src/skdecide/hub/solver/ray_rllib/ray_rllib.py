@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
@@ -20,15 +21,27 @@ from ray.rllib import RolloutWorker
 from ray.rllib.algorithms import DQN, PPO, SAC
 from ray.rllib.algorithms.algorithm import Algorithm, AlgorithmConfig
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
+from ray.rllib.callbacks.callbacks import RLlibCallback
+from ray.rllib.connectors.connector_v2 import ConnectorV2
+from ray.rllib.connectors.env_to_module import FlattenObservations
+from ray.rllib.core.rl_module import (
+    MultiRLModule,
+    MultiRLModuleSpec,
+    RLModule,
+    RLModuleSpec,
+)
+from ray.rllib.env.multi_agent_episode import MultiAgentEpisode
 from ray.rllib.env.wrappers.multi_agent_env_compatibility import (
     MultiAgentEnvCompatibility,
 )
-from ray.rllib.models import ModelCatalog
+from ray.rllib.examples.rl_modules.classes.action_masking_rlm import (
+    ActionMaskingTorchRLModule,
+)
 from ray.rllib.policy.policy import Policy
-from ray.rllib.utils.from_config import NotProvided
+from ray.rllib.utils.typing import ModuleID
 from ray.tune.registry import register_env
 
-from skdecide import Domain, Solver
+from skdecide import Domain, Solver, StrDict
 from skdecide.builders.domain import SingleAgent, UnrestrictedActions
 from skdecide.builders.solver import Policies, Restorable
 from skdecide.core import EnumerableSpace, Mask, autocast
@@ -36,17 +49,15 @@ from skdecide.domains import MultiAgentRLDomain
 from skdecide.hub.domain.gym import AsLegacyGymV21Env
 from skdecide.hub.space.gym import GymSpace
 
-from .action_masking.models.tf.parametric_actions import TFParametricActionsModel
-from .action_masking.models.torch.masked_actions import TorchMaskedActionsModel
-from .action_masking.models.torch.parametric_actions import TorchParametricActionsModel
+from .action_masking.connectors.flatten_observations import (
+    FlattenMultiagentMaskedObservations,
+)
 from .action_masking.utils.spaces.space_utils import (
     ACTION_MASK,
     TRUE_OBS,
     create_agent_action_mask_space,
 )
 from .gnn.evaluation.rollout_worker import Graph2NodeRolloutWorker, GraphRolloutWorker
-from .gnn.models.torch.complex_input_net import GraphComplexInputNetwork
-from .gnn.models.torch.gnn import GnnBasedGraph2NodeModel, GnnBasedModel
 from .gnn.utils.monkey_patch import (
     unmonkey_patch_rllib_for_graph,
 )
@@ -54,8 +65,11 @@ from .gnn.utils.spaces.space_utils import (
     convert_graph_space_to_dict_space,
     convert_graph_to_dict,
 )
+from .utils import compute_action_new_api_stack_multi_agent
 
 logger = logging.getLogger(__name__)
+
+SK_DEFAULT_MODULE_ID = "policy"  # should be different from ray.rllib.core.DEFAULT_MODULE_ID to avoid being detected as single agent
 
 
 class D(MultiAgentRLDomain):
@@ -123,12 +137,14 @@ class RayRLlib(Solver, Policies, Restorable):
         algo_class: type[Algorithm],
         train_iterations: int,
         config: Optional[AlgorithmConfig] = None,
-        policy_configs: Optional[dict[str, dict]] = None,
-        policy_mapping_fn: Optional[
-            Callable[[str, Optional["EpisodeV2"], Optional["RolloutWorker"]], str]
+        agent2module_id: Optional[dict[str, ModuleID]] = None,
+        model_configs: Optional[dict[str, dict[str, Any]]] = None,
+        module_classes: Optional[dict[str, type[RLModule]]] = None,
+        rl_module_spec: Optional[MultiRLModuleSpec] = None,
+        env_to_module_connector: Optional[
+            Callable[[AsRLlibMultiAgentEnv, Any, Any], ConnectorV2 | list[ConnectorV2]]
         ] = None,
-        action_embed_sizes: Optional[dict[str, int]] = None,
-        callback: Callable[[RayRLlib], bool] = lambda solver: False,
+        callback: Optional[Callable[[RayRLlib], bool]] = None,
         graph_feature_extractors_kwargs: Optional[dict[str, Any]] = None,
         graph_node_action: bool = False,
         graph_node_action_net_kwargs: Optional[dict[str, Any]] = None,
@@ -142,9 +158,18 @@ class RayRLlib(Solver, Policies, Restorable):
         algo_class: The class of Ray RLlib trainer/agent to wrap.
         train_iterations: The number of iterations to call the trainer's train() method.
         config: The configuration dictionary for the trainer.
-        policy_configs: The mapping from policy id (str) to additional config (dict) (leave default for single policy).
-        policy_mapping_fn: The function mapping agent ids to policy ids (leave default for single policy).
-        action_embed_sizes: The mapping from policy id (str) to action embedding size (only used with domains filtering allowed actions per state, default to 2)
+        agent2module_id: Mapping from agent ids to module ids (leave default for single policy).
+        model_configs: The mapping from module id (str) to additional config (dict) to be passed to RLModuleSpec.
+            Missing keys correspond to default settings (as if mapped to empty dictionary).
+        module_classes: The mapping from policy id (str) to the corresponding module class to be passed to RLModuleSpec.
+            If a key is omitted or mapped to None, default module class will be used (e.g. DefaultPPOTorchRLModule for PPO).
+        rl_module_spec: RL module spec. To be used only by advanced users.
+            If specified, it is overriding parameters `model_configs` and`module_classes`.
+            The user managed itself the multiagent RL module to be used.
+            The keys of `rl_module_spec.rl_module_specs` should correspond to the values of `agent2module_id`.
+        env_to_module_connector: env-to-module-connector pipeline preprocessing (gym) observations to be feed to the rl module.
+            Default to flatten everything (e.g. discrete observations are one-hot encoded, dict/list/tuple spaces are concatenated, ...)
+            by using `ray.rllib.connectors.common.flatten_observations.FlattenObservations`.
         callback: function called at each solver iteration.
             If returning true, the solve process stops and exit the current train iteration.
             However, if train_iterations > 1, another train loop will be entered after that.
@@ -190,27 +215,32 @@ class RayRLlib(Solver, Policies, Restorable):
 
         """
         Solver.__init__(self, domain_factory=domain_factory)
+
+        # domain and wrapped action space and observation space
+        domain = self._domain_factory()
+        self._wrapped_action_space = domain.get_action_space()
+        self._wrapped_observation_space = domain.get_observation_space()
+
         self.callback = callback
         self._algo_class = algo_class
         self._train_iterations = train_iterations
         self._config = config or algo_class.get_default_config()
-        if policy_configs is None:
-            self._policy_configs = {"policy": {}}
+        if agent2module_id is None:
+            self._agent2module_id = {
+                agent: SK_DEFAULT_MODULE_ID for agent in domain.get_agents()
+            }
         else:
-            self._policy_configs = policy_configs
-        if policy_mapping_fn is None:
-            self._policy_mapping_fn = lambda agent_id, episode, worker: "policy"
+            self._agent2module_id = agent2module_id
+        if model_configs is None:
+            self._model_configs = {}
         else:
-            self._policy_mapping_fn = policy_mapping_fn
-        self._action_embed_sizes = (
-            action_embed_sizes
-            if action_embed_sizes is not None
-            else {k: 2 for k in self._policy_configs.keys()}
-        )
-        if self._action_embed_sizes.keys() != self._policy_configs.keys():
-            raise RuntimeError(
-                "Action embed size keys must be the same as policy config keys"
-            )
+            self._model_configs = model_configs
+        if module_classes is None:
+            self._module_classes = {}
+        else:
+            self._module_classes = module_classes
+        self._env_to_module_connector = env_to_module_connector
+        self._rl_module_spec = rl_module_spec
         if graph_feature_extractors_kwargs is None:
             self._graph_feature_extractors_kwargs = {}
         else:
@@ -220,15 +250,10 @@ class RayRLlib(Solver, Policies, Restorable):
         else:
             self._graph2node_action_net_kwargs = graph_node_action_net_kwargs
 
-        ray.init(ignore_reinit_error=True)
+        # ray.init(ignore_reinit_error=True)
         self._algo_callbacks: Optional[DefaultCallbacks] = None
         self._algo_worker_callbacks: Optional[DefaultCallbacks] = None
         self._algo_evaluation_worker_callbacks: Optional[DefaultCallbacks] = None
-
-        # wrapped action space and observation space
-        domain = self._domain_factory()
-        self._wrapped_action_space = domain.get_action_space()
-        self._wrapped_observation_space = domain.get_observation_space()
 
         # action masking?
         self._action_masking = (
@@ -283,12 +308,9 @@ class RayRLlib(Solver, Policies, Restorable):
         if kwargs:
             self._config.update_from_dict(kwargs)
 
-    def get_policy(self) -> dict[str, Policy]:
-        """Return the computed policy."""
-        return {
-            policy_id: self._algo.get_policy(policy_id=policy_id)
-            for policy_id in self._policy_configs
-        }
+    def get_policy(self) -> MultiRLModule:
+        """Return the computed rl module."""
+        return self._algo.env_runner.module
 
     @classmethod
     def _check_domain_additional(cls, domain: Domain) -> bool:
@@ -329,13 +351,9 @@ class RayRLlib(Solver, Policies, Restorable):
             raise ValueError(
                 "The rollout `domain` cannot be None when using action masking."
             )
-        action = {
-            k: self._algo.compute_single_action(
-                self._unwrap_obs(observation, k, domain),
-                policy_id=self._policy_mapping_fn(k, None, None),
-            )
-            for k in observation.keys()
-        }
+        action = compute_action_new_api_stack_multi_agent(
+            algo=self._algo, observation=self._unwrap_obs(observation, domain=domain)
+        )
         return self._wrap_action(action)
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
@@ -343,13 +361,39 @@ class RayRLlib(Solver, Policies, Restorable):
 
     def _save(self, path: str) -> None:
         self.forget_callback()  # avoid serializing issues
+        # make sure to have absolute path to avoid pyarrow issue
+        path = os.path.abspath(path)
         self._algo.save(path)
         self.set_callback()  # put it back in case of further solve
 
     def _load(self, path: str):
         self._init_algo()
+        # make sure to have absolute path to avoid pyarrow issue
+        path = os.path.abspath(path)
         self._algo.restore(path)
         self.set_callback()  # ensure putting back actual callback
+
+    def _wrap_action(self, action_dict: dict[str, Any]) -> dict[str, D.T_event]:
+        return _wrap_action(
+            action=action_dict, wrapped_action_space=self._wrapped_action_space
+        )
+
+    def _unwrap_obs(
+        self, obs: dict[str, D.T_observation], domain: Optional[D] = None
+    ) -> dict[str, Any]:
+        if self._action_masking:
+            assert domain is not None, (
+                "The rollout `domain` cannot be None when using action masking."
+            )
+            action_mask = (autocast(domain.get_action_mask, domain, self.T_domain))()
+        else:
+            action_mask = None
+        return _unwrap_obs(
+            obs=obs,
+            wrapped_observation_space=self._wrapped_observation_space,
+            action_masking=self._action_masking,
+            action_mask=action_mask,
+        )
 
     def _init_algo(self) -> None:
         # monkey patch rllib for graph handling
@@ -392,28 +436,20 @@ class RayRLlib(Solver, Policies, Restorable):
                     _disable_preprocessor_api=True,
                 )
                 if self._config.get("framework") not in ["torch"]:
-                    raise RuntimeError(
+                    raise NotImplementedError(
                         "Graph observation with RLlib requires PyTorch framework."
                     )
-            if self._config.get("framework") not in ["tf", "tf2", "torch"]:
-                raise RuntimeError(
-                    "Action masking (invalid action filtering) for RLlib requires TensorFlow or PyTorch to be installed"
+            if self._config.get("framework") not in ["torch"]:
+                raise NotImplementedError(
+                    "Action masking (invalid action filtering) with RLlib requires PyTorch framework"
+                )
+            if self._algo_class.__name__ not in ["PPO"]:
+                raise NotImplementedError(
+                    "Action masking (invalid action filtering) with RLlib only available for PPO for now."
                 )
             if self._graph2node:
-                ModelCatalog.register_custom_model(
-                    "skdecide_rllib_custom_model",
-                    TorchMaskedActionsModel
-                    if self._config.get("framework") == "torch"
-                    else NotProvided,
-                )
-            else:
-                ModelCatalog.register_custom_model(
-                    "skdecide_rllib_custom_model",
-                    TFParametricActionsModel
-                    if self._config.get("framework") in ["tf", "tf2"]
-                    else TorchParametricActionsModel
-                    if self._config.get("framework") == "torch"
-                    else NotProvided,
+                raise NotImplementedError(
+                    "RLlib + GNN +action masking not yet implemented with new api stack"
                 )
             if self._algo_class.__name__ == "DQN":
                 self._config.training(
@@ -426,165 +462,93 @@ class RayRLlib(Solver, Policies, Restorable):
                 )
         elif self._is_graph_obs:
             if self._config.get("framework") not in ["torch"]:
-                raise RuntimeError(
+                raise NotImplementedError(
                     "Graph observation with RLlib requires PyTorch framework."
                 )
-            if self._graph2node:
-                ModelCatalog.register_custom_model(
-                    "skdecide_rllib_graph_model",
-                    GnnBasedGraph2NodeModel
-                    if self._config.get("framework") == "torch"
-                    else NotProvided,
-                )
-            else:
-                ModelCatalog.register_custom_model(
-                    "skdecide_rllib_graph_model",
-                    GnnBasedModel
-                    if self._config.get("framework") == "torch"
-                    else NotProvided,
-                )
-            # let the observation pass as is
-            self._config.experimental(
-                _disable_preprocessor_api=True,
+            raise NotImplementedError(
+                "RLlib + GNN not yet implemented with new api stack"
             )
         elif self._is_graph_multiinput_obs:
             if self._config.get("framework") not in ["torch"]:
-                raise RuntimeError(
+                raise NotImplementedError(
                     "Graph observation with RLlib requires PyTorch framework."
                 )
-            ModelCatalog.register_custom_model(
-                "skdecide_rllib_graph_multiinput_model",
-                GraphComplexInputNetwork
-                if self._config.get("framework") == "torch"
-                else NotProvided,
-            )
-            # let the observation pass as is
-            self._config.experimental(
-                _disable_preprocessor_api=True,
+            raise NotImplementedError(
+                "RLlib + GNN not yet implemented with new api stack"
             )
 
-        self._wrap_action = lambda action: _wrap_action(
-            action=action, wrapped_action_space=self._wrapped_action_space
-        )
-        # Trick to assign o's unwrapped value to self._unwrap_obs
-        # (no unwrapping method for single elements in enumerable spaces)
-        if self._action_masking:
-            self._unwrap_obs = (
-                lambda obs, agent, domain: _unwrap_agent_obs_with_action_masking(
-                    obs=obs,
-                    agent=agent,
-                    wrapped_observation_space=self._wrapped_observation_space,
-                    action_mask=(
-                        autocast(domain.get_action_mask, domain, self.T_domain)
-                    )(),
+        # connector preprocessing observations for rl_module
+        if self._env_to_module_connector is None:
+            if self._action_masking:
+                env_to_module_connector = (
+                    lambda env, spaces, device: FlattenMultiagentMaskedObservations()
                 )
-            )
-        else:
-            self._unwrap_obs = lambda obs, agent, domain: _unwrap_agent_obs(
-                obs=obs,
-                agent=agent,
-                wrapped_observation_space=self._wrapped_observation_space,
-            )
-
-        # Overwrite multi-agent config
-        pol_obs_spaces = {
-            self._policy_mapping_fn(
-                agent, None, None
-            ): _create_agent_obs_space_for_rllib(
-                wrapped_observation_space=self._wrapped_observation_space,
-                wrapped_action_space=self._wrapped_action_space,
-                agent=agent,
-                action_masking=self._action_masking,
-                graph2node=self._graph2node,
-            )
-            for agent in self._wrapped_observation_space
-        }
-
-        pol_act_spaces = {
-            self._policy_mapping_fn(k, None, None): agent_action_space.unwrapped()
-            for k, agent_action_space in self._wrapped_action_space.items()
-        }
-
-        if self._action_masking:
-            if self._is_graph_obs or self._is_graph_multiinput_obs:
-                extra_custom_model_config_kwargs = {
-                    "features_extractor": self._graph_feature_extractors_kwargs,
-                    "graph2node": self._graph2node,
-                }
             else:
-                extra_custom_model_config_kwargs = {}
-            policies = {
-                self._policy_mapping_fn(k, None, None): (
-                    None,
-                    pol_obs_spaces[k],
-                    pol_act_spaces[k],
-                    {
-                        **(self._policy_configs[k] or {}),
-                        **{
-                            "model": {
-                                "custom_model": "skdecide_rllib_custom_model",
-                                "custom_model_config": {
-                                    "true_obs_space": pol_obs_spaces[k].spaces[
-                                        TRUE_OBS
-                                    ],
-                                    "action_embed_size": action_embed_size,
-                                    **extra_custom_model_config_kwargs,
-                                },
-                            },
-                        },
-                    },
+                env_to_module_connector = (
+                    lambda env, spaces, device: FlattenObservations(multi_agent=True)
                 )
-                for k, action_embed_size in self._action_embed_sizes.items()
-            }
-        elif self._is_graph_obs:
-            policies = {
-                self._policy_mapping_fn(k, None, None): (
-                    None,
-                    pol_obs_spaces[k],
-                    pol_act_spaces[k],
-                    {
-                        **(v or {}),
-                        **{
-                            "model": {
-                                "custom_model": "skdecide_rllib_graph_model",
-                                "custom_model_config": {
-                                    "features_extractor": self._graph_feature_extractors_kwargs,  # kwargs for GraphFeaturesExtractor
-                                },
-                            },
-                        },
-                    },
-                )
-                for k, v in self._policy_configs.items()
-            }
-        elif self._is_graph_multiinput_obs:
-            policies = {
-                self._policy_mapping_fn(k, None, None): (
-                    None,
-                    pol_obs_spaces[k],
-                    pol_act_spaces[k],
-                    {
-                        **(v or {}),
-                        **{
-                            "model": {
-                                "custom_model": "skdecide_rllib_graph_multiinput_model",
-                                "custom_model_config": {
-                                    "features_extractor": self._graph_feature_extractors_kwargs,
-                                    # kwargs for GraphFeaturesExtractor
-                                },
-                            },
-                        },
-                    },
-                )
-                for k, v in self._policy_configs.items()
-            }
+
         else:
-            policies = {
-                k: (None, pol_obs_spaces[k], pol_act_spaces[k], v or {})
-                for k, v in self._policy_configs.items()
-            }
+            env_to_module_connector = self._env_to_module_connector
+        self._config.env_runners(env_to_module_connector=env_to_module_connector)
+
+        # rl-module config
+        if self._rl_module_spec is None:
+            # rl_module_obs_spaces = {
+            #     module_id: _create_agent_obs_space_for_rllib(
+            #         wrapped_observation_space=self._wrapped_observation_space,
+            #         wrapped_action_space=self._wrapped_action_space,
+            #         agent=agent,
+            #         action_masking=self._action_masking,
+            #         graph2node=self._graph2node,
+            #     )
+            #     for agent, module_id in self._agent2module_id.items()
+            # }
+            #
+            # rl_module_act_spaces = {
+            #     module_id: self._wrapped_action_space[agent].unwrapped()
+            #     for agent, module_id in self._agent2module_id.items()
+            # }
+
+            if self._action_masking:
+                if self._algo_class.__name__ != "PPO":
+                    raise NotImplementedError(
+                        "For now action masking with new api stack only available for PPO."
+                    )
+                default_module_class = ActionMaskingTorchRLModule
+            else:
+                default_module_class = None
+
+            rl_module_spec = MultiRLModuleSpec(
+                rl_module_specs={
+                    module_id: RLModuleSpec(
+                        module_class=self._module_classes.get(
+                            module_id, default_module_class
+                        ),
+                        # action_space=rl_module_act_spaces[module_id],
+                        # observation_space=rl_module_act_spaces[module_id],
+                        model_config=self._model_configs.get(module_id, {}),
+                    )
+                    for module_id in self._agent2module_id.values()
+                }
+            )
+        else:
+            rl_module_spec = self._rl_module_spec
+        self._config.rl_module(rl_module_spec=rl_module_spec)
+
+        # multiagent settings: mapping agent -> module
+        policies = set(rl_module_spec.rl_module_specs)
+
+        # Define policy_mapping_fn from agent2module_id: m
+        # make sure to put self._agent2module_id in local context to avoid referencing self and having it pickled when pickling `algo.get_state()`
+        def policy_mapping_fn(
+            agent: str, episode: MultiAgentEpisode, mapping=self._agent2module_id
+        ) -> str:
+            return mapping[agent]
+
         self._config.multi_agent(
             policies=policies,
-            policy_mapping_fn=self._policy_mapping_fn,
+            policy_mapping_fn=policy_mapping_fn,
         )
 
         register_env(
@@ -597,17 +561,13 @@ class RayRLlib(Solver, Policies, Restorable):
                 graph2node=rayrllib._graph2node,
             ),
         )
-        if Version(ray.__version__) >= Version("2.20.0"):
-            # starting from ray 2.20, no more checks on environment are made,
-            # and `disable_env_checking` use raises an error
-            self._config.environment(env="skdecide_env")
-        else:
+        self._config.environment(
+            env="skdecide_env",
             # Disable env checking in case of action masking otherwise RLlib will try to simulate
             # next state transition with invalid actions, which might make some domains crash if
             # they require action masking
-            self._config.environment(
-                env="skdecide_env", disable_env_checking=self._action_masking
-            )
+            disable_env_checking=True,
+        )
 
         # set callback class for algo config
         self.set_callback()
@@ -624,20 +584,25 @@ class RayRLlib(Solver, Policies, Restorable):
 
         """
         # generate specific callback class
-        callbacks_class = generate_rllibcallback_class(
-            callback=self.callback, solver=self
-        )
+        if self.callback is None:
+            callbacks_class = RLlibCallback
+        else:
+            callbacks_class = generate_rllibcallback_class(
+                callback=self.callback, solver=self
+            )
         # use it in all algo config, and callbacks attributes
         self._set_callbackclass(callbacks_class=callbacks_class)
 
     def forget_callback(self):
         """Forget about actual callback to avoid serializing issues."""
         # use default callback class
-        callbacks_class = DefaultCallbacks
+        callbacks_class = RLlibCallback
         # use it in algo config & evaluation_config, worker config, and for algo.callbacks, worker.callbacks
         self._set_callbackclass(callbacks_class=callbacks_class)
 
     def _set_callbackclass(self, callbacks_class: type[DefaultCallbacks]):
+        # TMP: deactivate callback
+        return
         _set_callbackclass_in_config(
             callbacks_class=callbacks_class, config=self._config
         )
@@ -709,14 +674,15 @@ class AsRLlibMultiAgentEnv(MultiAgentEnvCompatibility):
         graph2node: bool = False,
         render_mode: Optional[str] = None,
     ) -> None:
+        self.possible_agents = domain.get_agents()
+        self.agents = domain.get_agents()
         old_env = AsLegacyRLlibMultiAgentEnv(
             domain=domain, action_masking=action_masking, graph2node=graph2node
         )
-        self._domain = domain
         super().__init__(old_env=old_env, render_mode=render_mode)
-
-    def get_agent_ids(self) -> set[str]:
-        return self._domain.get_agents()
+        # new MultiAgentEnv attributes not set by MultiAgentEnvCompatibility.__init__
+        self.observation_spaces = self.observation_space.spaces
+        self.action_spaces = self.action_space.spaces
 
 
 class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
@@ -764,25 +730,16 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
         )
 
     def _unwrap_obs(self, obs: dict[str, D.T_observation]) -> dict[str, Any]:
-        if not self._action_masking:
-            return {
-                agent: _unwrap_agent_obs(
-                    obs=obs,
-                    agent=agent,
-                    wrapped_observation_space=self._wrapped_observation_space,
-                )
-                for agent in obs
-            }
+        if self._action_masking:
+            action_mask = self._domain.get_action_mask()
         else:
-            return {
-                agent: _unwrap_agent_obs_with_action_masking(
-                    obs=obs,
-                    agent=agent,
-                    wrapped_observation_space=self._wrapped_observation_space,
-                    action_mask=self._domain.get_action_mask(),
-                )
-                for agent in obs
-            }
+            action_mask = None
+        return _unwrap_obs(
+            obs=obs,
+            wrapped_observation_space=self._wrapped_observation_space,
+            action_masking=self._action_masking,
+            action_mask=action_mask,
+        )
 
     def reset(self):
         """Resets the env and returns observations from ready agents.
@@ -816,7 +773,7 @@ class AsLegacyRLlibMultiAgentEnv(AsLegacyGymV21Env):
         return observations, rewards, done, infos
 
 
-class BaseRLlibCallback(DefaultCallbacks):
+class BaseRLlibCallback(RLlibCallback):
     callback: _CallbackWrapper
     solver: RayRLlib
 
@@ -901,6 +858,36 @@ def _create_agent_obs_space_for_rllib(
         return true_observation_space
 
 
+def _unwrap_obs(
+    obs: dict[str, D.T_observation],
+    wrapped_observation_space: dict[str, GymSpace[D.T_observation]],
+    action_masking: bool = False,
+    action_mask: Optional[dict[str, Mask]] = None,
+) -> Any:
+    if action_masking:
+        assert action_mask is not None, (
+            "action_mask cannot be None if action_masking is True"
+        )
+        return {
+            agent: _unwrap_agent_obs_with_action_masking(
+                obs=obs,
+                agent=agent,
+                wrapped_observation_space=wrapped_observation_space,
+                action_mask=action_mask,
+            )
+            for agent in obs
+        }
+    else:
+        return {
+            agent: _unwrap_agent_obs(
+                obs=obs,
+                agent=agent,
+                wrapped_observation_space=wrapped_observation_space,
+            )
+            for agent in obs
+        }
+
+
 def _unwrap_agent_obs(
     obs: dict[str, D.T_observation],
     agent: str,
@@ -956,7 +943,7 @@ def _unwrap_agent_obs_with_action_masking(
 
 def _wrap_action(
     action: dict[str, Any], wrapped_action_space: dict[str, GymSpace[D.T_event]]
-) -> dict[str, D.T_event]:
+) -> StrDict[D.T_event]:
     return {
         # Trick to get unwrapped_action's wrapped value
         # (no wrapping method for single unwrapped values in enumerable spaces)

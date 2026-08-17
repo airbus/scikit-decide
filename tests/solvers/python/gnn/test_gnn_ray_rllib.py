@@ -15,7 +15,6 @@ def ray_init():
     ray.init(
         ignore_reinit_error=True,
         runtime_env={"working_dir": os.path.dirname(__file__)},
-        # local_mode=True,  # uncomment this line and comment the one above to debug more easily
     )
 
 
@@ -29,6 +28,8 @@ def graphppo_config():
         )
         # small number to increase speed of the unit test
         .training(train_batch_size=256)
+        # uncomment next line to run in local mode and debug more easily
+        # .env_runners(num_env_runners=0).learners(num_learners=0)
     )
 
 
