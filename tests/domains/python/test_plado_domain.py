@@ -12,7 +12,7 @@ import pytest
 import torch as th
 import torch_geometric as thg
 from pytest_cases import fixture, fixture_union, param_fixture
-from ray.rllib.algorithms.dqn import DQN
+from sb3_contrib import MaskablePPO
 
 from skdecide import rollout
 from skdecide.hub.domain.plado import (
@@ -27,7 +27,6 @@ from skdecide.hub.domain.plado import (
 from skdecide.hub.domain.plado.llg_encoder import decode_llg
 from skdecide.hub.domain.plado.plado import BasePladoDomain
 from skdecide.hub.solver.p_astar import Astar
-from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.hub.solver.stable_baselines import StableBaseline
 from skdecide.hub.solver.stable_baselines.autoregressive.ppo.autoregressive_ppo import (
     AutoregressiveGraphPPO,
@@ -502,11 +501,13 @@ def test_plado_domain_planning(plado_native_domain_factory):
 def test_plado_domain_blocksworld_rl(plado_gym_naive_domain_factory):
     domain_factory = plado_gym_naive_domain_factory
 
-    assert RayRLlib.check_domain(domain_factory())
-    with RayRLlib(
+    assert StableBaseline.check_domain(domain_factory())
+    with StableBaseline(
         domain_factory=domain_factory,
-        algo_class=DQN,
-        train_iterations=1,
+        algo_class=MaskablePPO,
+        baselines_policy="MlpPolicy",
+        learn_config={"total_timesteps": 10},
+        use_action_masking=True,
     ) as solver:
         solver.solve()
         rollout(

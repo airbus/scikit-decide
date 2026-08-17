@@ -49,7 +49,10 @@ This framework was initiated at [Airbus](https://www.airbus.com) AI Research and
   - RL solvers from ray.rllib and stable-baselines3
     - existing algos with action masking
     - adaptation of RL algos for graph observation, based on GNNs from [pytorch-geometric](https://pytorch-geometric.readthedocs.io/) :new:
+      (with sb3 and ray.rllib (old api stack) in last release, only with sb3 on master since migration of ray.rllib to new api stack,
+      work in progress to do it with ray.rllib + new api stack)
     - autoregressive models with action masking component by component for parametric actions :new:
+      (only with sb3 for now, work in progress for ray.rllib + new api stack)
   - Planning solvers from [unified-planning](https://github.com/aiplan4eu/unified-planning) library
   - RDDL solvers jax and gurobi-based based on pyRDDLGym-jax and pyRDDLGym-gurobi from [pyrddl-gym project](https://github.com/pyrddlgym-project)
   - Search solvers coded in scikit-decide library:

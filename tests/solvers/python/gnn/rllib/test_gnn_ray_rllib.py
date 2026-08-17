@@ -1,6 +1,11 @@
+#  Copyright (c) AIRBUS and its affiliates.
+#  This source code is licensed under the MIT license found in the
+#  LICENSE file in the root directory of this source tree.
+
 import logging
 import os
 
+import pytest
 import ray
 from pytest_cases import fixture
 
@@ -15,7 +20,6 @@ def ray_init():
     ray.init(
         ignore_reinit_error=True,
         runtime_env={"working_dir": os.path.dirname(__file__)},
-        # local_mode=True,  # uncomment this line and comment the one above to debug more easily
     )
 
 
@@ -29,9 +33,15 @@ def graphppo_config():
         )
         # small number to increase speed of the unit test
         .training(train_batch_size=256)
+        # uncomment next line to run in local mode and debug more easily
+        # .env_runners(num_env_runners=0).learners(num_learners=0)
     )
 
 
+@pytest.mark.xfail(
+    reason="GNN not yet implemented with new api stack of ray.rllib",
+    raises=NotImplementedError,
+)
 def test_ppo(unmasked_graph_domain_factory, graphppo_config, ray_init):
     domain_factory = unmasked_graph_domain_factory
     solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
@@ -49,6 +59,10 @@ def test_ppo(unmasked_graph_domain_factory, graphppo_config, ray_init):
         )
 
 
+@pytest.mark.xfail(
+    reason="GNN not yet implemented with new api stack of ray.rllib",
+    raises=NotImplementedError,
+)
 def test_ppo_user_gnn(
     unmasked_jsp_domain_factory,
     my_gnn_class,
@@ -88,6 +102,10 @@ def test_ppo_user_gnn(
     assert gnn_class(in_channels=1, **gnn_kwargs).warning() in caplog.text
 
 
+@pytest.mark.xfail(
+    reason="GNN not yet implemented with new api stack of ray.rllib",
+    raises=NotImplementedError,
+)
 def test_ppo_user_reduction_layer(
     unmasked_jsp_domain_factory,
     my_reduction_layer_class,
@@ -130,6 +148,10 @@ def test_ppo_user_reduction_layer(
     assert reduction_layer_class(**reduction_layer_kwargs).warning() in caplog.text
 
 
+@pytest.mark.xfail(
+    reason="GNN not yet implemented with new api stack of ray.rllib",
+    raises=NotImplementedError,
+)
 def test_dict_ppo(unmasked_jsp_dict_domain_factory, graphppo_config, ray_init):
     domain_factory = unmasked_jsp_dict_domain_factory
     solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
@@ -147,6 +169,10 @@ def test_dict_ppo(unmasked_jsp_dict_domain_factory, graphppo_config, ray_init):
         )
 
 
+@pytest.mark.xfail(
+    reason="GNN not yet implemented with new api stack of ray.rllib",
+    raises=NotImplementedError,
+)
 def test_ppo_masked(graph_domain_factory, graphppo_config, ray_init):
     domain_factory = graph_domain_factory
     solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
@@ -169,6 +195,10 @@ def test_ppo_masked(graph_domain_factory, graphppo_config, ray_init):
         assert len(actions) == 9
 
 
+@pytest.mark.xfail(
+    reason="GNN not yet implemented with new api stack of ray.rllib",
+    raises=NotImplementedError,
+)
 def test_dict_ppo_masked(jsp_dict_domain_factory, graphppo_config, ray_init):
     domain_factory = jsp_dict_domain_factory
     solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
@@ -190,6 +220,10 @@ def test_dict_ppo_masked(jsp_dict_domain_factory, graphppo_config, ray_init):
     assert len(actions) == 9
 
 
+@pytest.mark.xfail(
+    reason="GNN not yet implemented with new api stack of ray.rllib",
+    raises=NotImplementedError,
+)
 def test_ppo_masked_user_gnn(
     jsp_domain_factory,
     my_gnn_class,
@@ -222,6 +256,10 @@ def test_ppo_masked_user_gnn(
     assert gnn_class(in_channels=1, **gnn_kwargs).warning() in caplog.text
 
 
+@pytest.mark.xfail(
+    reason="GNN not yet implemented with new api stack of ray.rllib",
+    raises=NotImplementedError,
+)
 def test_dict_ppo_masked_user_gnn(
     jsp_dict_domain_factory,
     my_gnn_class,
@@ -254,6 +292,10 @@ def test_dict_ppo_masked_user_gnn(
     assert gnn_class(in_channels=1, **gnn_kwargs).warning() in caplog.text
 
 
+@pytest.mark.xfail(
+    reason="GNN not yet implemented with new api stack of ray.rllib",
+    raises=NotImplementedError,
+)
 def test_graph2node_ppo(
     unmasked_jsp_domain_factory,
     graphppo_config,
@@ -281,6 +323,10 @@ def test_graph2node_ppo(
         )
 
 
+@pytest.mark.xfail(
+    reason="GNN not yet implemented with new api stack of ray.rllib",
+    raises=NotImplementedError,
+)
 def test_maskable_graph2node_ppo(
     jsp_graph2node_domain_factory,
     graphppo_config,

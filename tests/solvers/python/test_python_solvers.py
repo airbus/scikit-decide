@@ -11,7 +11,6 @@ from enum import Enum
 from typing import NamedTuple, Optional
 
 import pytest
-from ray.rllib.algorithms.dqn import DQN
 from stable_baselines3 import PPO
 
 from skdecide import DeterministicPlanningDomain, ImplicitSpace, Space, Value
@@ -120,13 +119,13 @@ class GridDomain(D):
     params=[
         {"entry": "pAstar", "config": {"verbose": False}, "optimal": True},
         {"entry": "pLRTAstar", "config": {"verbose": False}, "optimal": False},
-        {"entry": "RayRLlib", "config": {"train_iterations": 1}, "optimal": False},
         {
             "entry": "StableBaseline",
             "config": {
                 "baselines_policy": "MlpPolicy",
                 "learn_config": {"total_timesteps": 10},
                 "verbose": 1,
+                "algo_class": PPO,
             },
             "optimal": False,
         },
@@ -158,11 +157,6 @@ def test_solve_python(solver_python):
     solver_type = load_registered_solver(solver_python["entry"])
     solver_args = deepcopy(solver_python["config"])
     solver_args["domain_factory"] = GridDomain
-    if solver_python["entry"] == "StableBaseline":
-        solver_args["algo_class"] = PPO
-    elif solver_python["entry"] == "RayRLlib":
-        solver_args["algo_class"] = DQN
-
     with solver_type(**solver_args) as slv:
         slv.solve()
         plan, cost = get_plan(dom, slv)
@@ -207,10 +201,6 @@ def test_solve_python_with_cb(solver_python, caplog):
         )
     solver_args = deepcopy(solver_python["config"])
     solver_args["domain_factory"] = GridDomain
-    if solver_python["entry"] == "StableBaseline":
-        solver_args["algo_class"] = PPO
-    elif solver_python["entry"] == "RayRLlib":
-        solver_args["algo_class"] = DQN
     # Adding the callback
     solver_args["callback"] = MyCallback(solver_cls=solver_type)
 

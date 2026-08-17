@@ -6,8 +6,8 @@ import numpy as np
 from skdecide import EnumerableSpace
 from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import DEFAULT_N_NODES
 
-TRUE_OBS = "true_obs"
-ACTION_MASK = "valid_avail_actions_mask"
+TRUE_OBS = "observations"
+ACTION_MASK = "action_mask"
 
 
 def create_agent_action_mask_space(
