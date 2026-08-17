@@ -900,7 +900,8 @@ class SchedulingDomain(
         return self.update_start_tasks(state, action)
 
     def _check_time_windows_constraint_on_start(self, task: int, state: State) -> bool:
-        return state.t >= self.get_time_window()[task].earliest_start
+        time_windows = self.get_time_window()
+        return task not in time_windows or state.t >= time_windows[task].earliest_start
 
     def _check_time_lags_constraint_on_start(self, task: int, state: State) -> bool:
         time_lags = self.get_time_lags()
