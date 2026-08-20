@@ -124,18 +124,21 @@ class MultiMaskableCategoricalDistribution(Distribution):
                     marginal_logp = marginal_dist.log_prob(x[:, i_component])
                 else:
                     # add only contribution for valid samples
-                    marginal_logp = th.zeros(
-                        self.get_proba_distribution_component_batch_shape(i_component),
-                        device=x.device,
-                        dtype=x.dtype,
-                    )
                     ind_valid_samples = self._ind_valid_samples_by_distributions[
                         i_component
                     ]
+                    marginal_logp_valid_samples = marginal_dist.log_prob(
+                        x[ind_valid_samples, i_component]
+                    )
+                    marginal_logp = th.zeros(
+                        self.get_proba_distribution_component_batch_shape(i_component),
+                        device=marginal_logp_valid_samples.device,
+                        dtype=marginal_logp_valid_samples.dtype,
+                    )
                     marginal_logp.scatter_(
                         dim=0,
                         index=ind_valid_samples,
-                        src=marginal_dist.log_prob(x[ind_valid_samples, i_component]),
+                        src=marginal_logp_valid_samples,
                     )
                 marginal_logps.append(marginal_logp)
 
@@ -153,16 +156,19 @@ class MultiMaskableCategoricalDistribution(Distribution):
                     marginal_entropy = marginal_dist.entropy()
                 else:
                     # add only contribution for valid samples
-                    marginal_entropy = th.zeros(
-                        self.get_proba_distribution_component_batch_shape(i_component),
-                        device=distribution.distribution.probs.device,
-                        dtype=marginal_dist.logits.dtype,
-                    )
                     ind_valid_samples = self._ind_valid_samples_by_distributions[
                         i_component
                     ]
+                    marginal_entropy_valid_samples = marginal_dist.entropy()
+                    marginal_entropy = th.zeros(
+                        self.get_proba_distribution_component_batch_shape(i_component),
+                        device=marginal_entropy_valid_samples.device,
+                        dtype=marginal_entropy_valid_samples.dtype,
+                    )
                     marginal_entropy.scatter_(
-                        dim=0, index=ind_valid_samples, src=marginal_dist.entropy()
+                        dim=0,
+                        index=ind_valid_samples,
+                        src=marginal_entropy_valid_samples,
                     )
                 marginal_entropies.append(marginal_entropy)
 
