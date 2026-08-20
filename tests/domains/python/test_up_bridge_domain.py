@@ -133,7 +133,6 @@ def test_up_bridge_domain_planning():
     assert p[1].up_action == c
 
 
-@pytest.mark.skip("Compatibility with newer ray.rllib not yet ready.")
 @pytest.mark.skipif(
     sys.platform == "darwin",
     reason="libomp segfault on MacOS",

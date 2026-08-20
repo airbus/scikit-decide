@@ -3,7 +3,6 @@ from enum import Enum
 from typing import Optional
 
 import gymnasium as gym
-import pytest
 from ray.rllib.algorithms.dqn import DQN
 from ray.rllib.algorithms.ppo import PPO
 
@@ -16,10 +15,6 @@ from skdecide.hub.solver.ray_rllib.ray_rllib import AsRLlibMultiAgentEnv, RayRLl
 from skdecide.hub.space.gym import EnumSpace, ListSpace, SetSpace
 from skdecide.hub.space.gym.gym import MultiDiscreteSpace
 from skdecide.utils import rollout
-
-pytest.skip(
-    "Compatibility with newer ray.rllib not yet ready.", allow_module_level=True
-)
 
 # Allowed action handling in rllib requires to use Dict spaces for observations, which in turn
 # don't support NamedTuple instances as sub-observations (cloudpickle error), therefore we use

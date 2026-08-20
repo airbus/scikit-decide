@@ -4,7 +4,6 @@ import logging
 import os
 from typing import Any
 
-import pytest
 import ray
 
 from skdecide.hub.domain.maze.maze import Maze
@@ -22,7 +21,6 @@ class FakeRayRLlib(RayRLlib):
         FakeRayRLlib.generated_configs.append(self._config.to_dict())
 
 
-@pytest.mark.skip("Compatibility with newer ray.rllib not yet ready.")
 def test_generic_optuna_experiment_monoproblem_with_ray_rllib():
     ray.init(
         runtime_env={"working_dir": os.path.dirname(__file__)}
@@ -95,8 +93,3 @@ def test_generic_optuna_experiment_monoproblem_with_ray_rllib():
             train_batch_size_log2 = trial.params["FakeRayRLlib.train_batch_size_log2"]
             train_batch_size = 2**train_batch_size_log2
             assert config["train_batch_size"] == train_batch_size
-
-
-def test_dummy():
-    # avoids having no test at all => pytest return non-zero code (5)
-    ...
