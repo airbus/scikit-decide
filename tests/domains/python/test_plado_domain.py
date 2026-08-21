@@ -499,7 +499,6 @@ def test_plado_domain_planning(plado_native_domain_factory):
         )
 
 
-@pytest.mark.skip("Compatibility with newer ray.rllib not yet ready.")
 def test_plado_domain_blocksworld_rl(plado_gym_naive_domain_factory):
     domain_factory = plado_gym_naive_domain_factory
 
