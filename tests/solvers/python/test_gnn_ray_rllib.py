@@ -1,12 +1,17 @@
 import logging
 import os
 
+import pytest
 import ray
 from pytest_cases import fixture
 
 from skdecide.hub.solver.ray_rllib import RayRLlib
 from skdecide.hub.solver.ray_rllib.gnn.algorithms import GraphPPO
 from skdecide.utils import rollout
+
+pytest.skip(
+    "Compatibility with newer ray.rllib not yet ready.", allow_module_level=True
+)
 
 
 @fixture

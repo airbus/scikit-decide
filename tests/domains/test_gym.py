@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from collections.abc import Callable
 
 import gymnasium as gym
@@ -315,12 +314,12 @@ def test_discretisation():
     high = np.ones(shape, dtype=dtype)
     high[negative_row, negative_col] = -0.1
     gym_action_space = gym.spaces.Dict(
-        OrderedDict(
+        dict(
             position=gym.spaces.Box(low=low, high=high, shape=shape, dtype=dtype),
             status=gym.spaces.MultiBinary(n),
         )
     )
-    assert isinstance(gym_action_space.spaces, OrderedDict)
+    assert isinstance(gym_action_space.spaces, dict)
     keys = list(gym_action_space.spaces.keys())
     gym_env.action_space = gym_action_space
     an_original_action = gym_action_space.sample()
