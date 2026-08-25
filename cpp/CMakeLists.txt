@@ -93,6 +93,15 @@ LIST(APPEND INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
 
 # HiGHS LP solver (for LP-based solvers, built from source as static)
 INCLUDE(FetchContent)
+# All fetched libraries in scikit-decide are pinned to specific version tags,
+# so there is no need to contact the git remote on every build to check for
+# updates. Once any FetchContent download has occurred (FETCHCONTENT_BASE_DIR
+# exists), skip the ExternalProject subbuild entirely on re-configure —
+# equivalent to git submodule behavior.
+SET(FETCHCONTENT_UPDATES_DISCONNECTED ON)
+IF(IS_DIRECTORY "${FETCHCONTENT_BASE_DIR}")
+    SET(FETCHCONTENT_FULLY_DISCONNECTED ON)
+ENDIF()
 FetchContent_Declare(
     highs
     GIT_REPOSITORY https://github.com/ERGO-Code/HiGHS.git
