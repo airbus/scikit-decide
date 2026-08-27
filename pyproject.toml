@@ -216,6 +216,7 @@ wheel.install-dir = "skdecide/hub"
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 cmake.source-dir = "cpp"
 build-dir = "build/{wheel_tag}"  # speedup rebuilds (https://scikit-build-core.readthedocs.io/en/latest/configuration/index.html#other-options)
+editable.mode = "redirect"  # stable CMAKE_INSTALL_PREFIX across uv runs → prevents full C++ rebuilds on Python-only changes
 
 [tool.scikit-build.cmake.define]
 ONLY_PYTHON = true
