@@ -56,9 +56,9 @@ domains = [
     "pygrib>=2.1.6; sys_platform == 'darwin' and platform_machine != 'x86_64'",
     "pygrib==2.1.5; sys_platform == 'darwin' and platform_machine == 'x86_64'",
     "setuptools<82.0.0; sys_platform == 'darwin' and platform_machine == 'x86_64'",  # pkg_resources removed from 82.0.0, and needed by pygrib 2.1.5
-    "pyRDDLGym>=2.3, !=2.7; python_version < '3.13'",
-    "pyRDDLGym-rl>=0.2; python_version < '3.13'",
-    "numpy<2.4; python_version < '3.13'",  # incompability with pyRDDLGym-rl (https://github.com/pyrddlgym-project/pyRDDLGym-rl/issues/9)
+    "pyRDDLGym>=2.3, !=2.7",  # pyRDDLGym 2.7 is bugged (https://github.com/pyrddlgym-project/pyRDDLGym-gurobi/issues/6)
+    "pyRDDLGym-rl>=0.2",
+    "numpy<2.4",
     "rddlrepository>=2.1",
     "plado>=0.1.3",
     "pytz>=2025.2",
@@ -66,17 +66,18 @@ domains = [
 solvers = [
     "scikit-decide[shared]", # self-reference allowed by pip since 21.2 (https://github.com/pypa/pip/issues/11296)
     "joblib>=1.0.1",
-    "ray[rllib]>=2.40",
+    "ray[rllib]>=2.40; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    "dm-tree>=0.1.9; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "stable-baselines3>=2.4",
     "sb3_contrib>=2.3",
     "up-tamer>=1.1.2; python_version < '3.12' and platform_machine == 'x86_64'",
     "up-fast-downward>=0.4.1",
     "up-enhsp>=0.0.25, <0.0.28",
     "up-pyperplan>=1.1.0",
-    "pyRDDLGym-jax>=2.5; python_version < '3.13'",
+    "pyRDDLGym-jax>=2.5",
     "jax>=0.4; sys_platform == 'linux' or sys_platform == 'darwin'",
     "jax>=0.4, <0.6; sys_platform == 'win32'",
-    "pyRDDLGym-gurobi>=0.2; python_version < '3.13'",
+    "pyRDDLGym-gurobi>=0.2",
     "torch-geometric>=2.5",
     "torch>=2.3; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "torch>=2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",

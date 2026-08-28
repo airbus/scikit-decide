@@ -68,15 +68,15 @@ jobs:
     steps:
       - uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: 3.13
       - name: Generate Matrix
         id: generate-matrix
         shell: python3 {0}
         run: |
           from os import environ
 
-          python_version_build = ["3.10", "3.11", "3.12"]
-          python_version_test = ["3.10", "3.12"]
+          python_version_build = ["3.10", "3.11", "3.12", "3.13"]
+          python_version_test = ["3.10", "3.13"]
           test = ["macos-latest", "ubuntu-latest", "windows-latest"]
           build_doc = "true"
 
@@ -88,6 +88,7 @@ jobs:
               python_filter = {
                   '3.11': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.11]') }}"),
                   '3.12': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.12]') }}"),
+                  '3.13': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.13]') }}"),
                   '3.10': to_bool("${{ contains(github.event.head_commit.message, '[ci: python-3.10]') }}"),
               }
               if any(python_filter.values()):
