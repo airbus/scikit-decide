@@ -6,6 +6,9 @@ import sys
 
 import gymnasium as gym
 import pytest
+from sb3_contrib import MaskablePPO
+
+from skdecide.hub.solver.stable_baselines import StableBaseline
 
 
 @pytest.mark.parametrize(
@@ -133,14 +136,12 @@ def test_up_bridge_domain_planning():
     assert p[1].up_action == c
 
 
-@pytest.mark.skip("Compatibility with newer ray.rllib not yet ready.")
 @pytest.mark.skipif(
     sys.platform == "darwin",
     reason="libomp segfault on MacOS",
 )
 def test_up_bridge_domain_rl():
     import unified_planning
-    from ray.rllib.algorithms.dqn import DQN
     from unified_planning.shortcuts import (
         GE,
         BoolType,
@@ -151,7 +152,6 @@ def test_up_bridge_domain_rl():
     )
 
     from skdecide.hub.domain.up import UPDomain
-    from skdecide.hub.solver.ray_rllib import RayRLlib
     from skdecide.utils import rollout
 
     Location = UserType("Location")
@@ -209,7 +209,7 @@ def test_up_bridge_domain_rl():
     domain = domain_factory()
     action_space = domain.get_action_space()
     observation_space = domain.get_observation_space()
-    assert RayRLlib.check_domain(domain)
+    assert StableBaseline.check_domain(domain)
     assert isinstance(action_space.unwrapped(), gym.spaces.Discrete)
     assert action_space.unwrapped().n == 9
     assert isinstance(observation_space.unwrapped(), gym.spaces.Box)
@@ -224,15 +224,14 @@ def test_up_bridge_domain_rl():
         for i in range(2)
     )
 
-    with RayRLlib(
+    with StableBaseline(
         domain_factory=domain_factory,
-        algo_class=DQN,
-        train_iterations=1,
-        config=DQN.get_default_config().training(train_batch_size=128),
+        algo_class=MaskablePPO,
+        baselines_policy="MlpPolicy",
+        learn_config={"total_timesteps": 10},
+        use_action_masking=True,
     ) as solver:
         solver.solve()
-        # check that solver will use action masking
-        assert solver._action_masking
         rollout(
             domain_factory(),
             solver,

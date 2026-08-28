@@ -610,8 +610,10 @@ jobs:
           #  - deep-learning solvers (solvers/python)
           #  - from others
           # to avoid openmp versions conflicts
-          pytest -vv tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
-          pytest -vv tests/solvers/python/test_optuna_rayrllib.py
+          pytest -vv tests/solvers/python --ignore-glob tests/solvers/python/*/rllib
+          pytest -vv tests/solvers/python/rllib/test_optuna_rayrllib.py
+          pytest -vv tests/solvers/python/rllib/test_ray_rllib.py
+          pytest -vv tests/solvers/python/gnn/rllib
           pytest -vv tests/scheduling
           # launch alone plado tests (error with rllib), but only if not all skipped
           sh -c 'pytest -vv tests/domains/python/test_plado_domain.py ; ret=$?; [ $ret = 5 ] && exit 0 || exit $ret'
@@ -711,8 +713,10 @@ jobs:
           #  - deep-learning solvers (solvers/python)
           #  - from others
           # to avoid openmp versions conflicts
-          pytest -vv tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py --ignore tests/solvers/python/test_pyrddlgym_solvers.py
-          pytest -vv tests/solvers/python/test_optuna_rayrllib.py
+          pytest -vv tests/solvers/python --ignore-glob tests/solvers/python/*/rllib
+          pytest -vv tests/solvers/python/rllib/test_optuna_rayrllib.py
+          pytest -vv tests/solvers/python/rllib/test_ray_rllib.py
+          pytest -vv tests/solvers/python/gnn/rllib
           pytest -vv tests/scheduling
           pytest -vv --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling --ignore tests/domains/python/test_pyrddlgym_domains.py --ignore tests/solvers/python/test_pyrddlgym_solvers.py
           pytest -vv tests/domains/python/test_pyrddlgym_domains.py tests/solvers/python/test_pyrddlgym_solvers.py
@@ -818,8 +822,10 @@ jobs:
           #  - deep-learning solvers (solvers/python)
           #  - from others
           # to avoid openmp versions conflicts
-          pytest -vv tests/solvers/python --ignore tests/solvers/python/test_optuna_rayrllib.py
-          pytest -vv tests/solvers/python/test_optuna_rayrllib.py
+          pytest -vv tests/solvers/python --ignore-glob tests/solvers/python/*/rllib
+          pytest -vv tests/solvers/python/rllib/test_optuna_rayrllib.py
+          pytest -vv tests/solvers/python/rllib/test_ray_rllib.py
+          pytest -vv tests/solvers/python/gnn/rllib
           pytest -vv tests/scheduling
           pytest -vv --ignore-glob tests/*/cpp --ignore tests/solvers/python --ignore tests/scheduling
           pytest -vv --timeout=300 tests/*/cpp
