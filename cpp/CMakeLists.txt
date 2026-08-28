@@ -13,6 +13,18 @@ OPTION(ONLY_PYTHON OFF)
 OPTION(BUILD_PYTHON_BINDING ON)
 
 ENABLE_LANGUAGE(CXX)
+
+# Use ccache if available — makes repeated builds fast even when CMakeFiles/ is
+# cleared by scikit-build-core's isolated-env detection (uv creates a fresh build
+# venv each time → scikit-build-core deletes CMakeFiles/ → Ninja triggers a full
+# recompile → ccache serves all unchanged files as instant cache hits).
+FIND_PROGRAM(CCACHE_PROGRAM ccache)
+IF(CCACHE_PROGRAM)
+    SET(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "")
+    SET(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "")
+    MESSAGE(STATUS "ccache found: ${CCACHE_PROGRAM} — repeated builds will use the compiler cache")
+ENDIF()
+
 SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)

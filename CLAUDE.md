@@ -6,6 +6,8 @@ Repository: https://github.com/airbus/scikit-decide | Docs: https://airbus.githu
 ## Quick Reference
 
 ```bash
+# Install ccache once for fast repeated C++ builds (brew install ccache / apt install ccache)
+
 # Build & install (editable, all extras)
 uv sync --extra=all -v
 
