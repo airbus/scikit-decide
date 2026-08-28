@@ -13,6 +13,18 @@ OPTION(ONLY_PYTHON OFF)
 OPTION(BUILD_PYTHON_BINDING ON)
 
 ENABLE_LANGUAGE(CXX)
+
+# Use ccache if available — makes repeated builds fast even when CMakeFiles/ is
+# cleared by scikit-build-core's isolated-env detection (uv creates a fresh build
+# venv each time → scikit-build-core deletes CMakeFiles/ → Ninja triggers a full
+# recompile → ccache serves all unchanged files as instant cache hits).
+FIND_PROGRAM(CCACHE_PROGRAM ccache)
+IF(CCACHE_PROGRAM)
+    SET(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "")
+    SET(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "")
+    MESSAGE(STATUS "ccache found: ${CCACHE_PROGRAM} — repeated builds will use the compiler cache")
+ENDIF()
+
 SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -93,6 +105,15 @@ LIST(APPEND INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
 
 # HiGHS LP solver (for LP-based solvers, built from source as static)
 INCLUDE(FetchContent)
+# All fetched libraries in scikit-decide are pinned to specific version tags,
+# so there is no need to contact the git remote on every build to check for
+# updates. Once any FetchContent download has occurred (FETCHCONTENT_BASE_DIR
+# exists), skip the ExternalProject subbuild entirely on re-configure —
+# equivalent to git submodule behavior.
+SET(FETCHCONTENT_UPDATES_DISCONNECTED ON)
+IF(IS_DIRECTORY "${FETCHCONTENT_BASE_DIR}")
+    SET(FETCHCONTENT_FULLY_DISCONNECTED ON)
+ENDIF()
 FetchContent_Declare(
     highs
     GIT_REPOSITORY https://github.com/ERGO-Code/HiGHS.git
