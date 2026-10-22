@@ -10,7 +10,7 @@ from ray.rllib.core.rl_module import RLModule
 from ray.rllib.utils.metrics.metrics_logger import MetricsLogger
 from ray.rllib.utils.typing import EpisodeType
 
-from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import pad_axis
+from skdecide.hub.solver.ray_rllib.common.utils.spaces.utils import pad_axis
 
 
 class PadGraph2NodeActionLogits(ConnectorV2):

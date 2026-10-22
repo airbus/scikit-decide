@@ -1,20 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
-import tree
 from ray.rllib.utils.spaces.repeated import Repeated
-from ray.rllib.utils.spaces.space_utils import BatchedNdArray
 
-from skdecide.hub.solver.ray_rllib.action_masking.utils.spaces.space_utils import (
-    ACTION_MASK,
-    TRUE_OBS,
-    is_masked_obs,
-)
-from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.batch_original_code import (
-    original_batch,
+from skdecide.hub.solver.ray_rllib.common.utils.spaces.utils import get_item, pad_axis
+from skdecide.hub.solver.utils.gnn.space_utils import (
+    add_onehot_encoded_discrete_feature_to_box_space,
 )
 
 NODES = "nodes"
@@ -62,19 +56,6 @@ def _add_dummy_shape_to_repeated_space(space: Repeated) -> None:
         space._shape = (n_rep, 1)
     else:
         raise NotImplementedError()
-
-
-def pad_axis(
-    x: np.ndarray, max_dim: int, value: Union[int, float] = 0, axis: int = 0
-) -> np.ndarray:
-    actual_dim = x.shape[axis]
-    pad_width = np.zeros((len(x.shape), 2), dtype=int)
-    pad_width[axis, 1] = max_dim - actual_dim
-    return np.pad(
-        x,
-        pad_width=pad_width,
-        constant_values=value,
-    )
 
 
 def convert_graph_to_dict(
@@ -255,153 +236,23 @@ def is_graph_dict_multiinput_space(space: gym.spaces.Space) -> bool:
     )
 
 
-def prepare_for_batch_graph(
-    list_of_structs: list[Any],
-    individual_items_already_have_batch_dim: bool | str = False,
-) -> None:
-    individual_items_already_have_batch_dim = guess_if_individual_items_already_have_batch_dim(
-        list_of_structs,
-        individual_items_already_have_batch_dim=individual_items_already_have_batch_dim,
-    )
-    if len(list_of_structs) > 0:
-        pad_sample_batches_obs(
-            list_of_structs,
-            keys=tuple(),
-            has_batch_dim=individual_items_already_have_batch_dim,
+def add_onehot_encoded_discrete_feature_to_graph_dict_space(
+    graph_dict_space: gym.spaces.Dict, new_dim: int
+) -> gym.spaces.Dict:
+    node_space_repeated: Repeated = graph_dict_space[NODES]
+    node_space = node_space_repeated.child_space
+    if isinstance(node_space, gym.spaces.Box):
+        enriched_node_space = add_onehot_encoded_discrete_feature_to_box_space(
+            node_space, new_dim
         )
-
-
-def guess_if_individual_items_already_have_batch_dim(
-    list_of_structs: list[Any],
-    individual_items_already_have_batch_dim: bool | str = False,
-) -> bool:
-    if individual_items_already_have_batch_dim == "auto":
-        first = list_of_structs[0]
-        # Nested structures (dict/tuple) require tree traversal; leaves do not.
-        is_nested = isinstance(first, (dict, tuple))
-        if isinstance(first, BatchedNdArray):
-            individual_items_already_have_batch_dim = True
-        elif is_nested:
-            flat = tree.flatten(first)
-            individual_items_already_have_batch_dim = isinstance(
-                flat[0], BatchedNdArray
-            )
-        else:
-            individual_items_already_have_batch_dim = False
-
-    return bool(individual_items_already_have_batch_dim)
-
-
-def batch_graph(
-    list_of_structs: list[Any],
-    *,
-    individual_items_already_have_batch_dim: bool | str = False,
-) -> Any:
-    """Enhance `ray.rllib.utils.spaces.space_utils.batch` to manage graphs."""
-    prepare_for_batch_graph(
-        list_of_structs,
-        individual_items_already_have_batch_dim=individual_items_already_have_batch_dim,
-    )
-    return original_batch(
-        list_of_structs=list_of_structs,
-        individual_items_already_have_batch_dim=individual_items_already_have_batch_dim,
-    )
-
-
-def get_item(s: dict[str, Any], keys: tuple[str, ...]) -> Any:
-    if len(keys) == 0:
-        return s
     else:
-        return get_item(s[keys[0]], keys[1:])
-
-
-def set_item(s: dict[str, Any], keys: tuple[str, ...], value: Any) -> None:
-    if len(keys) == 0:
-        raise ValueError("keys must of len >=1")
-    elif len(keys) == 1:
-        s[keys[0]] = value
-    else:
-        set_item(s[keys[0]], keys=keys[1:], value=value)
-
-
-def pad_sample_batches_obs(
-    samples: list[Any], keys: tuple[str, ...], has_batch_dim: bool = True
-) -> None:
-    node_edge_id_dim = 1 if has_batch_dim else 0
-    first_subobs = get_item(samples[0], keys)
-    if is_graph_dict(first_subobs):
-        graph_dicts = tuple(get_item(s, keys) for s in samples)
-        nb_nodes_per_graph = tuple(
-            graph_dict[NODES].shape[node_edge_id_dim] for graph_dict in graph_dicts
-        )
-        nb_edges_per_graph = tuple(
-            graph_dict[EDGES].shape[node_edge_id_dim] for graph_dict in graph_dicts
-        )
-        # We compute also nb_edge_links_per_graph as it can be different from nb_edges if some graphs have been padded
-        # (=> nb_edge_links = nb_edges +1) and some not (=> nb_edge_links = nb_edges).
-        nb_edge_links_per_graph = tuple(
-            graph_dict[EDGE_LINKS].shape[node_edge_id_dim] for graph_dict in graph_dicts
-        )
-        if (
-            len(set(nb_nodes_per_graph)) > 1
-            or len(set(nb_edges_per_graph)) > 1
-            or len(set(nb_edge_links_per_graph)) > 1
-        ):
-            # different number of nodes or edges => padding
-            # different of nb of edge_links means some graph padded other not => padding
-            max_n_nodes = max(nb_nodes_per_graph)
-            max_n_edges = max(nb_edges_per_graph)
-            for i_sample, s in enumerate(samples):
-                if (
-                    (nb_nodes_per_graph[i_sample] < max_n_nodes)  # nodes to be padded
-                    or (
-                        nb_edges_per_graph[i_sample] < max_n_edges
-                    )  # edges to be padded
-                    or (
-                        nb_edge_links_per_graph[i_sample]
-                        <= nb_edges_per_graph[i_sample]
-                    )  # graph not yet padded
-                ):
-                    pad_batched_graph_dict(
-                        s,
-                        keys=keys,
-                        max_n_nodes=max_n_nodes,
-                        max_n_edges=max_n_edges,
-                        has_batch_dim=has_batch_dim,
-                    )
-    elif is_masked_obs(first_subobs):
-        # pad "true_obs" part
-        pad_sample_batches_obs(
-            samples=samples, keys=keys + (TRUE_OBS,), has_batch_dim=has_batch_dim
-        )
-        # pad action mask
-        pad_sample_batches_action_mask(
-            samples=samples, keys=keys + (ACTION_MASK,), has_batch_dim=has_batch_dim
-        )
-    elif is_graph_dict_multiinput(first_subobs):
-        # pad each subobs (that are graphs)
-        for subkey in first_subobs:
-            pad_sample_batches_obs(
-                samples=samples, keys=keys + (subkey,), has_batch_dim=has_batch_dim
-            )
-    else:
-        # not a graph => nothing to pad
-        ...
-
-
-def pad_sample_batches_action_mask(
-    samples: list[dict[str, Any]], keys: tuple[str, ...], has_batch_dim: bool = True
-) -> None:
-    node_edge_id_dim = 1 if has_batch_dim else 0
-    if len(set(get_item(s, keys).shape[node_edge_id_dim] for s in samples)) > 1:
-        # different number of nodes => padding
-        max_n_nodes = max(get_item(s, keys).shape[node_edge_id_dim] for s in samples)
-        for s in samples:
-            action_mask = get_item(s, keys)
-            set_item(
-                s,
-                keys=keys,
-                value=pad_axis(action_mask, max_n_nodes, axis=node_edge_id_dim).view(
-                    type(action_mask)
-                ),  # keep BatchedNDArray wrapper if present
-            )
+        raise NotImplementedError()
+    return gym.spaces.Dict(
+        {
+            NODES: Repeated(
+                child_space=enriched_node_space, max_len=node_space_repeated.max_len
+            ),
+            EDGES: graph_dict_space[EDGES],
+            EDGE_LINKS: graph_dict_space[EDGE_LINKS],
+        }
+    )

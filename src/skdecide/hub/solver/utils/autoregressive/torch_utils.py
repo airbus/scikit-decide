@@ -1,6 +1,34 @@
 from typing import Optional
 
 import torch as th
+from torch.nn.functional import pad
+
+
+def add_position_feature_to_node_features(
+    node_features: th.Tensor,
+    n_graph2node_components: int,
+) -> tuple[int, th.Tensor]:
+    """Init node feature encoding position of each node among graph node components.
+
+    We init the features to 0. It will be set to 1 when the node is chosen as a component.
+    We skip the final component as it will not be used by a next component.
+
+    # Parameters
+    node_features: graph node features (assumed to be flattened)
+    n_graph2node_components: number of action components to choose among graph nodes.
+
+    # Returns
+    n_node_features_before_position_feature: number of node features before adding these new ones
+    enriched_obs: new dict graph observation
+
+    """
+
+    n_node_features_before_position_feature = node_features.shape[-1]
+    node_features = pad(
+        node_features,
+        pad=(0, n_graph2node_components - 1),
+    )
+    return n_node_features_before_position_feature, node_features
 
 
 def extract_applicable_action_components(

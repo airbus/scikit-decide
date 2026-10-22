@@ -26,6 +26,7 @@ from skdecide.hub.solver.stable_baselines.gnn.common.policies import (
     BaseGNNActorCriticPolicy,
 )
 from skdecide.hub.solver.utils.autoregressive.torch_utils import (
+    add_position_feature_to_node_features,
     batched_extract_action_component_mask,
     extract_action_component_mask,
 )
@@ -725,20 +726,11 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
     def _add_position_feature_to_graph_obs(
         self, enriched_obs: thg.data.Data
     ) -> tuple[int, thg.data.Data]:
-        n_node_features_before_position_feature = enriched_obs.x.shape[1]
-        enriched_obs.x = th.cat(
-            (
-                enriched_obs.x,
-                th.zeros(
-                    (
-                        len(enriched_obs.x),
-                        self.n_graph2node_components - 1,
-                    ),
-                    device=self.device,
-                    dtype=enriched_obs.x.dtype,
-                ),
-            ),
-            -1,
+        n_node_features_before_position_feature, enriched_obs.x = (
+            add_position_feature_to_node_features(
+                node_features=enriched_obs.x,
+                n_graph2node_components=self.n_graph2node_components,
+            )
         )
         return n_node_features_before_position_feature, enriched_obs
 
