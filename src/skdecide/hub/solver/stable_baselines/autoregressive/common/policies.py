@@ -119,7 +119,11 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
 
     @property
     def _n_graphindependent_components(self) -> int:
-        return len(self.action_space.nvec) - self.n_graph2node_components
+        return self._n_action_components - self.n_graph2node_components
+
+    @property
+    def _n_action_components(self) -> int:
+        return len(self.action_space.nvec)
 
     def _reset_action_dist(self) -> None:
         """Reset action distribution to ensure all marginal are reset.
@@ -196,7 +200,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             # graph node action components position
             enriched_observation_space = (
                 add_onehot_encoded_discrete_feature_to_graph_space(
-                    enriched_observation_space, new_dim=self.n_graph2node_components
+                    enriched_observation_space, new_dim=self.n_graph2node_components - 1
                 )
             )
 
@@ -330,21 +334,21 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             # node features
             # + onehot encoded (graph independent) action components (concatenate once for efficiency)
             # + onehot encoded position of graph nodes in graph node action components (only zeros for now)
-            enriched_obs = copy.copy(obs)
+            enriched_obs: thg.data.Data = copy.copy(obs)
             enriched_obs.x = th.cat(
                 (
                     enriched_obs.x,
                     encoded_graph_independent_action_components[enriched_obs.batch, :],
                     th.zeros(
-                        (len(enriched_obs.x), self.n_graph2node_components),
+                        (len(enriched_obs.x), self.n_graph2node_components - 1),
                         device=self.device,
                         dtype=enriched_obs.x.dtype,
                     ),
                 ),
                 -1,
             )
-            n_node_features_before_position_feature = (
-                enriched_obs.x.shape[1] - self.n_graph2node_components
+            n_node_features_before_position_feature = enriched_obs.x.shape[1] - (
+                self.n_graph2node_components - 1
             )
         else:
             enriched_obs = None
@@ -420,7 +424,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                         # keep only nodes with proper flag
                         nodes_to_keep = enriched_obs.x[
                             :, action_component_node_flag_index
-                        ].nonzero(as_tuple=True)
+                        ].nonzero(as_tuple=True)[0]
                     else:
                         nodes_to_keep = None
                     action_component_full_logits = unbatch_node_logits(
@@ -450,7 +454,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                         # keep only nodes with proper flag
                         nodes_to_keep = relevant_enriched_obs.x[
                             :, action_component_node_flag_index
-                        ].nonzero(as_tuple=True)
+                        ].nonzero(as_tuple=True)[0]
                     else:
                         nodes_to_keep = None
                     action_component_logits = unbatch_node_logits(
@@ -476,25 +480,33 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
             # prepare enriched_obs for next component by adding the encoded position of the current component nodes
             if (
                 i_action_component >= self._n_graphindependent_components
+                and i_action_component
+                < self._n_action_components - 1  # skip it for last component
             ):  # the component is a graph2node one
                 position = (
                     # position of component among graph node components:
                     i_action_component - self._n_graphindependent_components
                 )
                 actions_component = actions[:, i_action_component]
-                node_shift_by_sample = enriched_obs._slice_dict["x"][
-                    : enriched_obs.num_graphs
-                ]
-                component_nodes = (  # shift node ids to match node ids in the batched graph
-                    actions_component + node_shift_by_sample.to(self.device)
-                )[
-                    actions_component >= 0
-                ].long()  # keep only relevant samples (remove -1 components)
+                if not compute_all_samples:
+                    # we want nodes_to_keep to be on the whole graph (to extract chosen_node_ids on whole graph as well)
+                    if action_component_node_flag_index is not None:
+                        # keep only nodes with proper flag
+                        nodes_to_keep = enriched_obs.x[
+                            :, action_component_node_flag_index
+                        ].nonzero(as_tuple=True)[0]
+                    else:
+                        nodes_to_keep = None
+                chosen_node_ids = _extract_node_ids_from_action_component(
+                    data=enriched_obs,
+                    actions_component=actions_component,
+                    nodes_to_keep=nodes_to_keep,
+                )
                 # NB: avoid torch.autograd.backward issue, we cannot change inplace node features
                 # (as already part of previous component gradient computation)
                 enriched_obs.x = copy.copy(enriched_obs.x)
                 enriched_obs.x[
-                    component_nodes, n_node_features_before_position_feature + position
+                    chosen_node_ids, n_node_features_before_position_feature + position
                 ] = 1
 
         log_prob = self.action_dist.log_prob(actions)
@@ -620,7 +632,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                     # keep only nodes with proper flag
                     nodes_to_keep = enriched_obs.x[
                         :, action_component_node_flag_index
-                    ].nonzero(as_tuple=True)
+                    ].nonzero(as_tuple=True)[0]
                 else:
                     nodes_to_keep = None
                 action_component_logits = unbatch_node_logits(
@@ -688,8 +700,16 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                     # add position among graph node components:
                     # ie a 1 for corresponding node (row) at corresponding position (column)
                     position = i_action_component - self._n_graphindependent_components
+                    # heterogeneous?
+                    if nodes_to_keep is None:
+                        # no => action component corresponds to the actual node index
+                        node_id = action_component
+                    else:
+                        # yes => action component is the index *among filtered nodes*
+                        node_id = nodes_to_keep[action_component]
+
                     enriched_obs.x[
-                        action_component,
+                        node_id,
                         n_node_features_before_position_feature + position,
                     ] = 1
 
@@ -712,7 +732,7 @@ class AutoregressiveActorCriticPolicy(MaskableActorCriticPolicy):
                 th.zeros(
                     (
                         len(enriched_obs.x),
-                        self.n_graph2node_components,
+                        self.n_graph2node_components - 1,
                     ),
                     device=self.device,
                     dtype=enriched_obs.x.dtype,
@@ -951,3 +971,35 @@ class AutoregressiveHeteroGraph2NodeActorCriticPolicy(
                 n_graphindependent_components = i
                 break
         return len(action_components_node_flag_indices) - n_graphindependent_components
+
+
+def _extract_node_ids_from_action_component(
+    data: thg.data.Data,
+    actions_component: th.Tensor,
+    nodes_to_keep: th.Tensor | None,
+) -> th.Tensor:
+    # Hyp: sample indices stored in data.batch are sorted (i.e. grouped by sample: 0,0, ..., 0, 1, ..., 1, 2, ...)
+    if data.batch is None:
+        raise NotImplementedError()
+    nb_samples = data.num_graphs
+    # Filtered global indices and their corresponding sample indices
+    if nodes_to_keep is None:
+        filtered_global_indices = None
+        filtered_batch: th.Tensor = data.batch
+    else:
+        filtered_global_indices = nodes_to_keep
+        filtered_batch = data.batch[filtered_global_indices]
+    # Compute start pointers for filtered nodes per sample robustly
+    filtered_counts = th.bincount(filtered_batch, minlength=nb_samples)
+    filtered_starts = th.nn.functional.pad(filtered_counts[:-1].cumsum(dim=0), (1, 0))
+    # Target positions in filtered_global_indices for each sample
+    target_positions = filtered_starts + actions_component
+    # Filter samples (avoid negative action_component without meaning)
+    target_positions = target_positions[actions_component >= 0]
+    # Extract the global node indices in x
+    if filtered_global_indices is None:
+        chosen_node_ids = target_positions
+    else:
+        chosen_node_ids = filtered_global_indices[target_positions]
+
+    return chosen_node_ids
