@@ -77,8 +77,12 @@ def extract_action_component_mask(
     action_component_mask = th.zeros(
         (action_component_dim,), dtype=th.int8, device=action_components.device
     )
-    # update with 1 for each applicable component
-    action_component_mask[applicable_action_components] = 1
+    # Use scatter_ instead of advanced indexing with assignment for speed
+    # and safe handling of potential duplicate indices.
+    if applicable_action_components.numel() > 0:
+        action_component_mask.scatter_(
+            dim=0, index=applicable_action_components.long(), value=1
+        )
     return action_component_mask
 
 
@@ -126,7 +130,10 @@ def batched_extract_action_component_mask(
                 i_action_component=i_action_component,
             )
             # update mask with 1 for each applicable component
-            action_component_mask[i_sample, applicable_action_components_sample] = 1
+            if applicable_action_components_sample.numel() > 0:
+                action_component_mask[i_sample].scatter_(
+                    dim=0, index=applicable_action_components_sample.long(), value=1
+                )
     return action_component_mask
 
 
