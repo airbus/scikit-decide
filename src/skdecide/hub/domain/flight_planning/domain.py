@@ -190,6 +190,29 @@ class WeatherDate:
 
         return WeatherDate(day, month, year, forecast=self.forecast)
 
+    def get_weather_matrix(
+        self,
+        save_to_npz=True,
+        delete_grib_from_local=False,
+        delete_npz_from_local=False,
+        download_grib=True,
+    ):
+        w_dict = self.to_dict()
+        year = w_dict["year"]
+        month = w_dict["month"]
+        day = w_dict["day"]
+        forecast = w_dict["forecast"]
+        return get_weather_matrix(
+            year=year,
+            month=month,
+            day=day,
+            forecast=forecast,
+            save_to_npz=save_to_npz,
+            delete_npz_from_local=delete_npz_from_local,
+            delete_grib_from_local=delete_grib_from_local,
+            download_grib=download_grib,
+        )
+
 
 class State:
     """
