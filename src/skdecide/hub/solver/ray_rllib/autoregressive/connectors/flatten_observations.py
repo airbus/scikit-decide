@@ -43,10 +43,12 @@ class FlattenMultiagentAutoregressiveActionObservations(
         input_action_space: Optional[gym.Space] = None,
         is_graph_dict: bool = False,
         is_multiinput: bool = False,
+        flatten_3d_obs: bool = True,
         **kwargs,
     ):
         self.is_graph_dict = is_graph_dict
         self.is_multiinput = is_multiinput
+        self.flatten_3d_obs = flatten_3d_obs
         super().__init__(input_observation_space, input_action_space, **kwargs)
 
     def flatten_agent_observation(
@@ -64,6 +66,7 @@ class FlattenMultiagentAutoregressiveActionObservations(
                 space_base_struct=observation_space_base_struct[TRUE_OBS],
                 is_graph_dict=self.is_graph_dict,
                 is_multiinput=self.is_multiinput,
+                flatten_3d_obs=self.flatten_3d_obs,
             ),
             APPLICABLE_ACTIONS: observation[APPLICABLE_ACTIONS],
         }
@@ -81,6 +84,7 @@ class FlattenMultiagentAutoregressiveActionObservations(
                     space_base_struct=observation_space_base_struct[TRUE_OBS],
                     is_graph_dict=self.is_graph_dict,
                     is_multiinput=self.is_multiinput,
+                    flatten_3d_obs=self.flatten_3d_obs,
                 ),
                 APPLICABLE_ACTIONS: observation_space[APPLICABLE_ACTIONS],
             }

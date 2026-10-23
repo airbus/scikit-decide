@@ -1,8 +1,7 @@
 #  Copyright (c) AIRBUS and its affiliates.
 #  This source code is licensed under the MIT license found in the
 #  LICENSE file in the root directory of this source tree.
-from math import prod
-from typing import Any
+from typing import Any, Optional
 
 import gymnasium as gym
 import numpy as np
@@ -12,6 +11,8 @@ from ray.rllib.utils.spaces.repeated import Repeated
 from skdecide.hub.solver.ray_rllib.common.connectors.flatten_observations import (
     PerAgentBaseFlattenObservations,
     SpaceBaseStruct,
+    flatten_ordinary_obs,
+    flatten_ordinary_space,
 )
 from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
     DEFAULT_N_EDGES,
@@ -63,6 +64,16 @@ class FlattenMultiagentGraphObservations(PerAgentBaseFlattenObservations):
 class FlattenMultiagentMultiinputObservations(PerAgentBaseFlattenObservations):
     """A connector piece that flattens each subobs from a dict obs (containing graphs)."""
 
+    def __init__(
+        self,
+        input_observation_space: Optional[gym.Space] = None,
+        input_action_space: Optional[gym.Space] = None,
+        flatten_3d_obs: bool = True,
+        **kwargs,
+    ):
+        super().__init__(input_observation_space, input_action_space, **kwargs)
+        self.flatten_3d_obs = flatten_3d_obs
+
     def flatten_agent_observation(
         self,
         observation: Any,
@@ -75,6 +86,7 @@ class FlattenMultiagentMultiinputObservations(PerAgentBaseFlattenObservations):
             input_observation_space=observation_space,
             output_observation_space=output_observation_space,
             space_base_struct=observation_space_base_struct,
+            flatten_3d_obs=self.flatten_3d_obs,
         )
 
     def flatten_agent_observation_space(
@@ -83,12 +95,16 @@ class FlattenMultiagentMultiinputObservations(PerAgentBaseFlattenObservations):
         observation_space_base_struct: SpaceBaseStruct,
     ) -> gym.Space:
         return flatten_multiinput_space(
-            space=observation_space, space_base_struct=observation_space_base_struct
+            space=observation_space,
+            space_base_struct=observation_space_base_struct,
+            flatten_3d_obs=self.flatten_3d_obs,
         )
 
 
 def flatten_multiinput_space(
-    space: gym.spaces.Dict, space_base_struct: SpaceBaseStruct
+    space: gym.spaces.Dict,
+    space_base_struct: SpaceBaseStruct,
+    flatten_3d_obs: bool = True,
 ) -> gym.spaces.Dict:
     """Flatten multiinput space
 
@@ -99,6 +115,7 @@ def flatten_multiinput_space(
     space: space to flatten
     space_base_struct: base struct representing the space (to avoid recomputing it if already done)
         Dict spaces are replaced by plain dict and Tuple spaces by plain tuple.
+    flatten_3d_obs: whether to also flatten 3d box spaces
 
     # Returns
     The flattened space
@@ -118,40 +135,6 @@ def flatten_multiinput_space(
             for key, subspace in space.items()
         }
     )
-
-
-def flatten_ordinary_space(
-    space: gym.spaces.Space, space_base_struct: SpaceBaseStruct
-) -> gym.spaces.Box:
-    """Flatten "ordinary" space
-
-    # Parameters
-    space: space to flatten
-    space_base_struct: base struct representing the space (to avoid recomputing it if already done)
-        Dict spaces are replaced by plain dict and Tuple spaces by plain tuple.
-
-    # Returns
-    The flattened space
-
-    """
-    if isinstance(space, gym.spaces.Box):
-        if prod(space.shape) == 0:
-            # special case of "no feature"
-            return gym.spaces.Box(low=0, high=0, shape=(0,), dtype=space.dtype)
-        low = space.low.min()
-        high = space.high.max()
-    elif isinstance(space, gym.spaces.Discrete) or isinstance(
-        space, gym.spaces.MultiDiscrete
-    ):
-        low = 0
-        high = 1
-    else:
-        low = float("-inf")
-        high = float("inf")
-    sample = flatten_inputs_to_1d_tensor(
-        space.sample(), space_base_struct, batch_axis=False
-    )
-    return gym.spaces.Box(low=low, high=high, shape=sample.shape, dtype=sample.dtype)
 
 
 def flatten_graph_dict_space(
@@ -220,6 +203,7 @@ def flatten_multiinput_obs(
     input_observation_space: gym.spaces.Dict,
     output_observation_space: gym.spaces.Dict,
     space_base_struct: dict[str, SpaceBaseStruct],
+    flatten_3d_obs: bool = True,
 ) -> dict[str, Any]:
     return {
         key: (
@@ -232,17 +216,8 @@ def flatten_multiinput_obs(
             else flatten_ordinary_obs(
                 observation=obs,
                 space_base_struct=space_base_struct[key],
+                flatten_3d_obs=flatten_3d_obs,
             )
         )
         for key, obs in observation.items()
     }
-
-
-def flatten_ordinary_obs(
-    observation: dict[str, Any], space_base_struct: SpaceBaseStruct
-) -> dict[str, Any]:
-    return flatten_inputs_to_1d_tensor(
-        inputs=observation,
-        spaces_struct=space_base_struct,
-        batch_axis=False,
-    )

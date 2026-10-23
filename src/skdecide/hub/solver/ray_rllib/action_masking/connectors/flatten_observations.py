@@ -12,14 +12,14 @@ from skdecide.hub.solver.ray_rllib.action_masking.utils.spaces.space_utils impor
 from skdecide.hub.solver.ray_rllib.common.connectors.flatten_observations import (
     PerAgentBaseFlattenObservations,
     SpaceBaseStruct,
+    flatten_ordinary_obs,
+    flatten_ordinary_space,
 )
 from skdecide.hub.solver.ray_rllib.gnn.connectors.flatten_observations import (
     flatten_graph_dict_obs,
     flatten_graph_dict_space,
     flatten_multiinput_obs,
     flatten_multiinput_space,
-    flatten_ordinary_obs,
-    flatten_ordinary_space,
 )
 
 
@@ -45,10 +45,12 @@ class FlattenMultiagentMaskedObservations(PerAgentBaseFlattenObservations):
         input_action_space: Optional[gym.Space] = None,
         is_graph_dict: bool = False,
         is_multiinput: bool = False,
+        flatten_3d_obs: bool = True,
         **kwargs,
     ):
         self.is_graph_dict = is_graph_dict
         self.is_multiinput = is_multiinput
+        self.flatten_3d_obs = flatten_3d_obs
         super().__init__(input_observation_space, input_action_space, **kwargs)
 
     def flatten_agent_observation(
@@ -66,6 +68,7 @@ class FlattenMultiagentMaskedObservations(PerAgentBaseFlattenObservations):
                 space_base_struct=observation_space_base_struct[TRUE_OBS],
                 is_graph_dict=self.is_graph_dict,
                 is_multiinput=self.is_multiinput,
+                flatten_3d_obs=self.flatten_3d_obs,
             ),
             ACTION_MASK: observation[ACTION_MASK],
         }
@@ -83,6 +86,7 @@ class FlattenMultiagentMaskedObservations(PerAgentBaseFlattenObservations):
                     space_base_struct=observation_space_base_struct[TRUE_OBS],
                     is_graph_dict=self.is_graph_dict,
                     is_multiinput=self.is_multiinput,
+                    flatten_3d_obs=self.flatten_3d_obs,
                 ),
                 ACTION_MASK: observation_space[ACTION_MASK],
             }
@@ -94,6 +98,7 @@ def flatten_unmasked_space(
     space_base_struct: SpaceBaseStruct,
     is_graph_dict: bool,
     is_multiinput: bool,
+    flatten_3d_obs: bool = True,
 ):
     """Flatten unmasked space
 
@@ -119,10 +124,16 @@ def flatten_unmasked_space(
         )
     elif is_multiinput:
         return flatten_multiinput_space(
-            space=space, space_base_struct=space_base_struct
+            space=space,
+            space_base_struct=space_base_struct,
+            flatten_3d_obs=flatten_3d_obs,
         )
     else:
-        return flatten_ordinary_space(space=space, space_base_struct=space_base_struct)
+        return flatten_ordinary_space(
+            space=space,
+            space_base_struct=space_base_struct,
+            flatten_3d_obs=flatten_3d_obs,
+        )
 
 
 def flatten_unmasked_obs(
@@ -132,6 +143,7 @@ def flatten_unmasked_obs(
     space_base_struct: dict[str, SpaceBaseStruct],
     is_graph_dict: bool,
     is_multiinput: bool,
+    flatten_3d_obs: bool = True,
 ):
     """Flatten unmasked observation
 
@@ -157,8 +169,11 @@ def flatten_unmasked_obs(
             input_observation_space=input_observation_space,
             output_observation_space=output_observation_space,
             space_base_struct=space_base_struct,
+            flatten_3d_obs=flatten_3d_obs,
         )
     else:
         return flatten_ordinary_obs(
-            observation=observation, space_base_struct=space_base_struct
+            observation=observation,
+            space_base_struct=space_base_struct,
+            flatten_3d_obs=flatten_3d_obs,
         )
