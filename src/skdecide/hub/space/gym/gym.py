@@ -13,7 +13,10 @@ from typing import Any, Union
 import gymnasium as gym
 import gymnasium.spaces as gym_spaces
 import numpy as np
-from gymnasium.spaces.space import T_cov
+try:
+    from gymnasium.spaces.space import T_cov
+except ImportError:
+    from gymnasium.spaces.space import _T_co as T_cov
 
 from skdecide import EnumerableSpace, SamplableSpace, SerializableSpace, T
 
