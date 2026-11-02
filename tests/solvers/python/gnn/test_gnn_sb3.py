@@ -107,7 +107,7 @@ def test_ppo_user_gnn(caplog, unmasked_jsp_domain_factory, my_gnn_class, my_gnn_
             ),
         ),
     ) as solver:
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             solver.solve()
         rollout(
             domain=domain_factory(),
@@ -149,7 +149,7 @@ def test_ppo_user_reduction_layer(
             ),
         ),
     ) as solver:
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             solver.solve()
         rollout(
             domain=domain_factory(),

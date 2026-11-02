@@ -10,14 +10,33 @@ import os
 import tempfile
 from copy import deepcopy
 from enum import Enum
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, Union
 
 import gymnasium as gym
+import numpy as np
 import pytest
 import ray
+import torch
 from pytest import fixture
+from pytest_cases import parametrize
 from ray.rllib.algorithms.dqn import DQN
+from ray.rllib.algorithms.dqn.default_dqn_rl_module import (
+    QF_LOGITS,
+    QF_PREDS,
+    QF_PROBS,
+)
+from ray.rllib.algorithms.dqn.torch.default_dqn_torch_rl_module import (
+    DefaultDQNTorchRLModule,
+)
 from ray.rllib.algorithms.ppo import PPO
+from ray.rllib.algorithms.ppo.torch.default_ppo_torch_rl_module import (
+    DefaultPPOTorchRLModule,
+)
+from ray.rllib.core import Columns
+from ray.rllib.core.models.base import Encoder, Model
+from ray.rllib.core.rl_module import MultiRLModuleSpec, RLModuleSpec
+from ray.rllib.utils.torch_utils import FLOAT_MIN, nn
+from ray.rllib.utils.typing import TensorType
 
 from skdecide import DeterministicPlanningDomain, ImplicitSpace, Space, Value
 from skdecide.builders.domain import UnrestrictedActions
@@ -25,7 +44,21 @@ from skdecide.builders.domain.events import Actions
 from skdecide.core import autocast_all
 from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.domain.rock_paper_scissors import RockPaperScissors
-from skdecide.hub.solver.ray_rllib.ray_rllib import AsRLlibMultiAgentEnv, RayRLlib
+from skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module import (
+    ActionMaskingDQNTorchRLModule,
+)
+from skdecide.hub.solver.ray_rllib.action_masking.algorithms.ppo.torch.action_masking_ppo_torch_rl_module import (
+    ActionMaskingPPOTorchRLModule,
+)
+from skdecide.hub.solver.ray_rllib.action_masking.rl_module.base import (
+    ActionMaskingRLModule,
+)
+from skdecide.hub.solver.ray_rllib.ray_rllib import (
+    SK_DEFAULT_MODULE_ID,
+    AsRLlibMultiAgentEnv,
+    RayRLlib,
+)
+from skdecide.hub.solver.utils.torch.utils import extract_module_parameters_values
 from skdecide.hub.space.gym import EnumSpace, MultiDiscreteSpace, SetSpace
 from skdecide.utils import load_registered_solver, rollout
 
@@ -254,10 +287,8 @@ def ppo_config_factory():
             # set num of CPU<1 to avoid hanging for ever in github actions on macos 11)
             num_cpus_per_env_runner=0.5
         )
-        .training(
-            # small batch size => fast (but bad) training
-            minibatch_size=32
-        )
+        # small batch size => fast (but bad) training
+        .training(minibatch_size=16, train_batch_size_per_learner=32)
         # # uncomment next lines to debug in local mode
         # .env_runners(num_env_runners=0)
         # .learners(num_learners=0)
@@ -306,7 +337,7 @@ def test_ray_rllib_solver(ray_init):
         algo_class=PPO,
         train_iterations=1,
         gamma=0.95,
-        train_batch_size_per_learner_log2=8,
+        train_batch_size_per_learner_log2=4,
     )
     solver_factory = lambda: RayRLlib(
         domain_factory=domain_factory, config=ppo_config_factory(), **solver_kwargs
@@ -319,13 +350,33 @@ def test_ray_rllib_solver(ray_init):
 
     assert solver._algo.config.num_cpus_per_env_runner == 0.5
     assert solver._algo.config.gamma == 0.95
-    assert solver._algo.config.train_batch_size_per_learner == 256
+    assert solver._algo.config.train_batch_size_per_learner == 16
+
+    # store weigths to see if they update during training
+    rl_module = solver.get_policy()[SK_DEFAULT_MODULE_ID]
+    assert isinstance(rl_module, DefaultPPOTorchRLModule)
+    value_init_params = extract_module_parameters_values(rl_module.vf)
+    action_init_params = extract_module_parameters_values(rl_module.pi)
 
     # solve further
     solver.solve()
 
-    # test get_policy()
-    policy = solver.get_policy()
+    # weights have been updated?
+    value_final_params = extract_module_parameters_values(rl_module.vf)
+    action_final_params = extract_module_parameters_values(rl_module.pi)
+    assert not (
+        all(
+            np.allclose(action_init_params[name], action_final_params[name])
+            for name in action_init_params
+        )
+    )
+
+    # assert not (
+    #     all(
+    #         np.allclose(value_init_params[name], value_final_params[name])
+    #         for name in value_init_params
+    #     )
+    # ), value_init_params
 
     with tempfile.TemporaryDirectory() as tmp_save_dir:
         # store
@@ -351,7 +402,16 @@ def test_ray_rllib_solver(ray_init):
         )
 
 
-def test_ray_rllib_solver_with_filtered_actions(ray_init):
+@parametrize(
+    "algo_class, config_factory, expected_rl_module_cls",
+    [
+        (PPO, ppo_config_factory, ActionMaskingPPOTorchRLModule),
+        (DQN, dqn_config_factory, ActionMaskingDQNTorchRLModule),
+    ],
+)
+def test_ray_rllib_solver_with_filtered_actions(
+    ray_init, algo_class, config_factory, expected_rl_module_cls
+):
     # define domain
     domain_factory = lambda: GridWorldFilteredActions()
     domain = domain_factory()
@@ -360,13 +420,156 @@ def test_ray_rllib_solver_with_filtered_actions(ray_init):
     assert RayRLlib.check_domain(domain)
 
     # define and solve
-    # solver_kwargs = dict(algo_class=DQN, train_iterations=1)
-    # config = dqn_config_factory()
-    solver_kwargs = dict(algo_class=PPO, train_iterations=1)
-    config = ppo_config_factory()
+    solver_kwargs = dict(algo_class=algo_class, train_iterations=1)
+    config = config_factory()
     solver = RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs)
     solver.solve()
     assert hasattr(solver, "_algo")
+    assert isinstance(
+        solver._algo.get_module(SK_DEFAULT_MODULE_ID), expected_rl_module_cls
+    )
+
+    # rollout
+    rollout(domain, solver, max_steps=100)
+
+
+class MyModule(ActionMaskingRLModule, DefaultDQNTorchRLModule):
+    """Custom RL module for DQN + masking."""
+
+    def _mask_action_logits(
+        self,
+        batch: dict[str, TensorType],
+        action_mask: TensorType,
+    ) -> dict[str, TensorType]:
+        """Masks the action logits for the output of `forward` methods
+
+        Args:
+            batch: A dictionary containing tensors (at least action logits).
+            action_mask: A tensor containing the action mask for the current
+                observations.
+
+        Returns:
+            A modified batch with masked action logits for the action distribution
+            inputs.
+        """
+        # Convert action mask into an `[0.0][-inf]`-type mask.
+        inf_mask = torch.clamp(torch.log(action_mask), min=FLOAT_MIN)
+
+        # Mask the logits.
+        for column in (QF_PREDS, QF_LOGITS, Columns.ACTION_DIST_INPUTS):
+            if column in batch:
+                batch[column] += inf_mask
+
+        if QF_PROBS in batch:
+            if QF_LOGITS in batch:
+                batch[QF_PROBS] = nn.functional.softmax(batch[QF_LOGITS], dim=-1)
+            else:
+                raise RuntimeError()
+
+        # Return the batch with the masked action logits.
+        return batch
+
+    def _qf_forward_helper(
+        self,
+        batch: dict[str, TensorType],
+        encoder: Encoder,
+        head: Union[Model, dict[str, Model]],
+    ) -> dict[str, TensorType]:
+        # Check, if the observations are still in `dict` form.
+        # if isinstance(batch[Columns.OBS], dict):
+        action_mask, batch = self.preprocess_batch(batch)
+        # # NOTE: Because we manipulate the batch we need to add the `action_mask`
+        # # to the batch to access them in `_forward_train`.
+        # batch["action_mask"] = action_mask
+        outs = super()._qf_forward_helper(batch, encoder, head)
+        return self._mask_action_logits(outs, action_mask)
+
+    def _forward_exploration(
+        self, batch: dict[str, TensorType], t: int
+    ) -> dict[str, TensorType]:
+        """Forward pass during exploration.
+
+        We need to override as a multinomial on Q-values is taken, originally excluding *0* valued logits.
+        But after masking, we should have FLOAT_MIN (approximating -inf) values excluded instead.
+
+        """
+        # Define the return dictionary.
+        output = {}
+
+        # Q-network forward pass.
+        qf_outs = self.compute_q_values(batch)
+
+        # Get action distribution.
+        action_dist_cls = self.get_exploration_action_dist_cls()
+        action_dist = action_dist_cls.from_logits(qf_outs[QF_PREDS])
+        # Note, the deterministic version of the categorical distribution
+        # outputs directly the `argmax` of the logits.
+        exploit_actions = action_dist.to_deterministic().sample()
+
+        # We need epsilon greedy to support exploration.
+        # TODO (simon): Implement sampling for nested spaces.
+        # Update scheduler.
+        self.epsilon_schedule.update(t)
+        # Get the actual epsilon,
+        epsilon = self.epsilon_schedule.get_current_value()
+        # Apply epsilon-greedy exploration.
+        B = qf_outs[QF_PREDS].shape[0]
+        random_actions = torch.squeeze(
+            torch.multinomial(
+                (
+                    torch.nan_to_num(
+                        qf_outs[QF_PREDS].reshape(-1, qf_outs[QF_PREDS].size(-1)),
+                        neginf=FLOAT_MIN,
+                    )
+                    != FLOAT_MIN
+                ).float(),
+                num_samples=1,
+            ),
+            dim=1,
+        )
+
+        actions = torch.where(
+            torch.rand((B,)) < epsilon,
+            random_actions,
+            exploit_actions,
+        )
+
+        # Add the actions to the return dictionary.
+        output[Columns.ACTIONS] = actions
+
+        # If this is a stateful module, add output states.
+        if Columns.STATE_OUT in qf_outs:
+            output[Columns.STATE_OUT] = qf_outs[Columns.STATE_OUT]
+
+        return output
+
+
+def test_ray_rllib_solver_with_custom_rlmodule(ray_init):
+    # define domain
+    domain_factory = lambda: GridWorldFilteredActions()
+    domain = domain_factory()
+
+    # define and solve
+    agent2module_id = {agent: "my_module_id" for agent in domain.get_agents()}
+    rl_module_spec = MultiRLModuleSpec(
+        rl_module_specs={
+            "my_module_id": RLModuleSpec(
+                module_class=MyModule,
+                model_config={},
+            )
+        }
+    )
+    solver_kwargs = dict(
+        algo_class=DQN,
+        train_iterations=1,
+        rl_module_spec=rl_module_spec,
+        agent2module_id=agent2module_id,
+    )
+    config = dqn_config_factory()
+    solver = RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs)
+    solver.solve()
+    assert hasattr(solver, "_algo")
+    assert isinstance(solver._algo.get_module("my_module_id"), MyModule)
 
     # rollout
     rollout(domain, solver, max_steps=100)
