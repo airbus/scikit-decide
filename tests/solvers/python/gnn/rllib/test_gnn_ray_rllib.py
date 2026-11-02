@@ -5,12 +5,22 @@
 import logging
 import os
 
-import pytest
+import numpy as np
 import ray
 from pytest_cases import fixture
+from ray.rllib.algorithms import PPO
+from ray.rllib.algorithms.ppo.torch.default_ppo_torch_rl_module import (
+    DefaultPPOTorchRLModule,
+)
+from ray.rllib.core.models.torch.encoder import TorchActorCriticEncoder
 
 from skdecide.hub.solver.ray_rllib import RayRLlib
-from skdecide.hub.solver.ray_rllib.gnn.algorithms import GraphPPO
+from skdecide.hub.solver.ray_rllib.gnn.models.torch.encoder import (
+    TorchGnnEncoder,
+    TorchMultiinputEncoder,
+)
+from skdecide.hub.solver.ray_rllib.ray_rllib import SK_DEFAULT_MODULE_ID
+from skdecide.hub.solver.utils.torch.utils import extract_module_parameters_values
 from skdecide.utils import rollout
 
 
@@ -19,37 +29,57 @@ def ray_init():
     # add module test_gnn_ray_rllib and thus GraphMaze to ray runtimeenv
     ray.init(
         ignore_reinit_error=True,
-        runtime_env={"working_dir": os.path.dirname(__file__)},
+        runtime_env={"working_dir": os.path.abspath(f"{os.path.dirname(__file__)}/..")},
     )
 
 
 @fixture
-def graphppo_config():
+def ppo_config():
     return (
-        GraphPPO.get_default_config()
-        # set num of CPU<1 to avoid hanging for ever in github actions on macos 11
-        .resources(
-            num_cpus_per_worker=0.5,
+        PPO.get_default_config()
+        .env_runners(
+            # set num of CPU<1 to avoid hanging for ever in github actions on macos 11)
+            num_cpus_per_env_runner=0.5
         )
         # small number to increase speed of the unit test
-        .training(train_batch_size=256)
-        # uncomment next line to run in local mode and debug more easily
-        # .env_runners(num_env_runners=0).learners(num_learners=0)
+        .training(minibatch_size=16, train_batch_size_per_learner=32)
+        # uncomment next lines to run in local mode and debug more easily
+        # .env_runners(num_env_runners=0)
+        # .learners(num_learners=0)
     )
 
 
-@pytest.mark.xfail(
-    reason="GNN not yet implemented with new api stack of ray.rllib",
-    raises=NotImplementedError,
-)
-def test_ppo(unmasked_graph_domain_factory, graphppo_config, ray_init):
+def test_ppo(unmasked_graph_domain_factory, ppo_config, ray_init):
     domain_factory = unmasked_graph_domain_factory
-    solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
+    solver_kwargs = dict(algo_class=PPO, train_iterations=1)
     with RayRLlib(
-        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config, **solver_kwargs
     ) as solver:
         assert not solver._action_masking and solver._is_graph_obs
+        solver._init_algo()
+
+        # store weigths to see if they update during training
+        rl_module = solver.get_policy()
+        agent_rl_module = rl_module.get(SK_DEFAULT_MODULE_ID)
+        assert isinstance(agent_rl_module, DefaultPPOTorchRLModule)
+        assert isinstance(agent_rl_module.encoder, TorchActorCriticEncoder)
+        assert isinstance(agent_rl_module.encoder.actor_encoder, TorchGnnEncoder)
+        encoder_init_params = extract_module_parameters_values(
+            agent_rl_module.encoder.actor_encoder
+        )
+
         solver.solve()
+
+        # check weights have been updated
+        encoder_final_params = extract_module_parameters_values(
+            agent_rl_module.encoder.actor_encoder
+        )
+        assert not (
+            all(
+                np.allclose(encoder_init_params[name], encoder_final_params[name])
+                for name in encoder_init_params
+            )
+        )
         rollout(
             domain=domain_factory(),
             solver=solver,
@@ -59,15 +89,11 @@ def test_ppo(unmasked_graph_domain_factory, graphppo_config, ray_init):
         )
 
 
-@pytest.mark.xfail(
-    reason="GNN not yet implemented with new api stack of ray.rllib",
-    raises=NotImplementedError,
-)
 def test_ppo_user_gnn(
     unmasked_jsp_domain_factory,
     my_gnn_class,
     my_gnn_kwargs,
-    graphppo_config,
+    ppo_config,
     ray_init,
     caplog,
 ):
@@ -77,19 +103,19 @@ def test_ppo_user_gnn(
     gnn_kwargs = my_gnn_kwargs(gnn_out_dim=gnn_out_dim)
 
     solver_kwargs = dict(
-        algo_class=GraphPPO,
+        algo_class=PPO,
         train_iterations=1,
         graph_feature_extractors_kwargs=dict(
             gnn_class=gnn_class,
             gnn_kwargs=gnn_kwargs,
             gnn_out_dim=gnn_out_dim,
-            features_dim=64,
+            features_dim=32,
         ),
     )
     with RayRLlib(
-        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config, **solver_kwargs
     ) as solver:
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             solver.solve()
         rollout(
             domain=domain_factory(),
@@ -102,15 +128,11 @@ def test_ppo_user_gnn(
     assert gnn_class(in_channels=1, **gnn_kwargs).warning() in caplog.text
 
 
-@pytest.mark.xfail(
-    reason="GNN not yet implemented with new api stack of ray.rllib",
-    raises=NotImplementedError,
-)
 def test_ppo_user_reduction_layer(
     unmasked_jsp_domain_factory,
     my_reduction_layer_class,
     my_reduction_layer_kwargs,
-    graphppo_config,
+    ppo_config,
     ray_init,
     caplog,
 ):
@@ -123,7 +145,7 @@ def test_ppo_user_reduction_layer(
         features_dim=features_dim,
     )
     solver_kwargs = dict(
-        algo_class=GraphPPO,
+        algo_class=PPO,
         train_iterations=1,
         graph_feature_extractors_kwargs=dict(
             gnn_out_dim=gnn_out_dim,
@@ -133,9 +155,9 @@ def test_ppo_user_reduction_layer(
         ),
     )
     with RayRLlib(
-        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config, **solver_kwargs
     ) as solver:
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             solver.solve()
         rollout(
             domain=domain_factory(),
@@ -148,18 +170,22 @@ def test_ppo_user_reduction_layer(
     assert reduction_layer_class(**reduction_layer_kwargs).warning() in caplog.text
 
 
-@pytest.mark.xfail(
-    reason="GNN not yet implemented with new api stack of ray.rllib",
-    raises=NotImplementedError,
-)
-def test_dict_ppo(unmasked_jsp_dict_domain_factory, graphppo_config, ray_init):
+def test_dict_ppo(unmasked_jsp_dict_domain_factory, ppo_config, ray_init):
     domain_factory = unmasked_jsp_dict_domain_factory
-    solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
+    solver_kwargs = dict(algo_class=PPO, train_iterations=1)
     with RayRLlib(
-        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config, **solver_kwargs
     ) as solver:
         assert not solver._action_masking and solver._is_graph_multiinput_obs
         solver.solve()
+        rl_module = solver.get_policy()
+        agent_rl_module = rl_module.get(SK_DEFAULT_MODULE_ID)
+        assert isinstance(agent_rl_module, DefaultPPOTorchRLModule)
+        assert isinstance(agent_rl_module.encoder, TorchActorCriticEncoder)
+        assert isinstance(agent_rl_module.encoder.actor_encoder, TorchMultiinputEncoder)
+        assert isinstance(
+            agent_rl_module.encoder.actor_encoder.encoders["graph"], TorchGnnEncoder
+        )
         rollout(
             domain=domain_factory(),
             solver=solver,
@@ -169,15 +195,11 @@ def test_dict_ppo(unmasked_jsp_dict_domain_factory, graphppo_config, ray_init):
         )
 
 
-@pytest.mark.xfail(
-    reason="GNN not yet implemented with new api stack of ray.rllib",
-    raises=NotImplementedError,
-)
-def test_ppo_masked(graph_domain_factory, graphppo_config, ray_init):
+def test_ppo_masked(graph_domain_factory, ppo_config, ray_init):
     domain_factory = graph_domain_factory
-    solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
+    solver_kwargs = dict(algo_class=PPO, train_iterations=1)
     with RayRLlib(
-        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config, **solver_kwargs
     ) as solver:
         assert solver._action_masking and solver._is_graph_obs
         solver.solve()
@@ -195,15 +217,11 @@ def test_ppo_masked(graph_domain_factory, graphppo_config, ray_init):
         assert len(actions) == 9
 
 
-@pytest.mark.xfail(
-    reason="GNN not yet implemented with new api stack of ray.rllib",
-    raises=NotImplementedError,
-)
-def test_dict_ppo_masked(jsp_dict_domain_factory, graphppo_config, ray_init):
+def test_dict_ppo_masked(jsp_dict_domain_factory, ppo_config, ray_init):
     domain_factory = jsp_dict_domain_factory
-    solver_kwargs = dict(algo_class=GraphPPO, train_iterations=1)
+    solver_kwargs = dict(algo_class=PPO, train_iterations=1)
     with RayRLlib(
-        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config, **solver_kwargs
     ) as solver:
         assert solver._action_masking and solver._is_graph_multiinput_obs
         solver.solve()
@@ -220,15 +238,11 @@ def test_dict_ppo_masked(jsp_dict_domain_factory, graphppo_config, ray_init):
     assert len(actions) == 9
 
 
-@pytest.mark.xfail(
-    reason="GNN not yet implemented with new api stack of ray.rllib",
-    raises=NotImplementedError,
-)
 def test_ppo_masked_user_gnn(
     jsp_domain_factory,
     my_gnn_class,
     my_gnn_kwargs,
-    graphppo_config,
+    ppo_config,
     ray_init,
     caplog,
 ):
@@ -238,7 +252,7 @@ def test_ppo_masked_user_gnn(
     gnn_kwargs = my_gnn_kwargs(gnn_out_dim=gnn_out_dim)
 
     solver_kwargs = dict(
-        algo_class=GraphPPO,
+        algo_class=PPO,
         train_iterations=1,
         graph_feature_extractors_kwargs=dict(
             gnn_class=gnn_class,
@@ -248,23 +262,19 @@ def test_ppo_masked_user_gnn(
         ),
     )
     with RayRLlib(
-        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config, **solver_kwargs
     ) as solver:
         assert solver._action_masking and solver._is_graph_obs
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             solver.solve()
     assert gnn_class(in_channels=1, **gnn_kwargs).warning() in caplog.text
 
 
-@pytest.mark.xfail(
-    reason="GNN not yet implemented with new api stack of ray.rllib",
-    raises=NotImplementedError,
-)
 def test_dict_ppo_masked_user_gnn(
     jsp_dict_domain_factory,
     my_gnn_class,
     my_gnn_kwargs,
-    graphppo_config,
+    ppo_config,
     ray_init,
     caplog,
 ):
@@ -274,7 +284,7 @@ def test_dict_ppo_masked_user_gnn(
     gnn_kwargs = my_gnn_kwargs(gnn_out_dim=gnn_out_dim)
 
     solver_kwargs = dict(
-        algo_class=GraphPPO,
+        algo_class=PPO,
         train_iterations=1,
         graph_feature_extractors_kwargs=dict(
             gnn_class=gnn_class,
@@ -284,31 +294,27 @@ def test_dict_ppo_masked_user_gnn(
         ),
     )
     with RayRLlib(
-        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config, **solver_kwargs
     ) as solver:
         assert solver._action_masking and solver._is_graph_multiinput_obs
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             solver.solve()
     assert gnn_class(in_channels=1, **gnn_kwargs).warning() in caplog.text
 
 
-@pytest.mark.xfail(
-    reason="GNN not yet implemented with new api stack of ray.rllib",
-    raises=NotImplementedError,
-)
 def test_graph2node_ppo(
     unmasked_jsp_domain_factory,
-    graphppo_config,
+    ppo_config,
     ray_init,
 ):
     domain_factory = unmasked_jsp_domain_factory
     solver_kwargs = dict(
-        algo_class=GraphPPO,
+        algo_class=PPO,
         train_iterations=1,
         graph_node_action=True,
     )
     with RayRLlib(
-        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config, **solver_kwargs
     ) as solver:
         assert (
             not solver._action_masking and solver._is_graph_obs and solver._graph2node
@@ -323,23 +329,19 @@ def test_graph2node_ppo(
         )
 
 
-@pytest.mark.xfail(
-    reason="GNN not yet implemented with new api stack of ray.rllib",
-    raises=NotImplementedError,
-)
 def test_maskable_graph2node_ppo(
     jsp_graph2node_domain_factory,
-    graphppo_config,
+    ppo_config,
     ray_init,
 ):
     domain_factory = jsp_graph2node_domain_factory
     solver_kwargs = dict(
-        algo_class=GraphPPO,
+        algo_class=PPO,
         train_iterations=1,
         graph_node_action=True,
     )
     with RayRLlib(
-        domain_factory=domain_factory, config=graphppo_config, **solver_kwargs
+        domain_factory=domain_factory, config=ppo_config, **solver_kwargs
     ) as solver:
         assert solver._action_masking and solver._is_graph_obs and solver._graph2node
         solver.solve()

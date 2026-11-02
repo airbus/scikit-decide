@@ -106,26 +106,24 @@ def test_pad_batched_dict_graph_wo_prepadding(samestruct_graphs):
     edge_space_shape = graphs[0].edges.shape[1:]
 
     batched_dict_graph = batch_graph_dicts([convert_graph_to_dict(g) for g in graphs])
-    padded_batched_graph_dict = pad_batched_graph_dict(
+    pad_batched_graph_dict(
         batched_dict_graph, max_n_nodes=max_n_nodes, max_n_edges=max_n_edges
     )
 
     assert (
-        padded_batched_graph_dict["nodes"].shape
-        == (n_batch, max_n_nodes) + node_space_shape
+        batched_dict_graph["nodes"].shape == (n_batch, max_n_nodes) + node_space_shape
     )
     assert (
-        padded_batched_graph_dict["edges"].shape
-        == (n_batch, max_n_edges) + edge_space_shape
+        batched_dict_graph["edges"].shape == (n_batch, max_n_edges) + edge_space_shape
     )
-    assert padded_batched_graph_dict["edge_links"].shape == (
+    assert batched_dict_graph["edge_links"].shape == (
         n_batch,
         max_n_edges + 1,
     ) + (2,)
 
     assert all(
         are_equal_graphs(g, convert_dict_to_graph(gd))
-        for g, gd in zip(graphs, unbatch_graph_dict(padded_batched_graph_dict))
+        for g, gd in zip(graphs, unbatch_graph_dict(batched_dict_graph))
     )
 
 
@@ -138,7 +136,7 @@ def test_pad_batched_dict_graph_with_prepadding(graphs):
     node_space_shape = graphs[0].nodes.shape[1:]
     edge_space_shape = graphs[0].edges.shape[1:]
 
-    batched_dict_graph = batch_graph_dicts(
+    batched_dict_graphs = batch_graph_dicts(
         [
             convert_graph_to_dict(
                 g,
@@ -148,24 +146,22 @@ def test_pad_batched_dict_graph_with_prepadding(graphs):
             for g in graphs
         ]
     )
-    padded_batched_graph_dict = pad_batched_graph_dict(
-        batched_dict_graph, max_n_nodes=max_n_nodes, max_n_edges=max_n_edges
+    pad_batched_graph_dict(
+        batched_dict_graphs, max_n_nodes=max_n_nodes, max_n_edges=max_n_edges
     )
 
     assert (
-        padded_batched_graph_dict["nodes"].shape
-        == (n_batch, max_n_nodes) + node_space_shape
+        batched_dict_graphs["nodes"].shape == (n_batch, max_n_nodes) + node_space_shape
     )
     assert (
-        padded_batched_graph_dict["edges"].shape
-        == (n_batch, max_n_edges) + edge_space_shape
+        batched_dict_graphs["edges"].shape == (n_batch, max_n_edges) + edge_space_shape
     )
-    assert padded_batched_graph_dict["edge_links"].shape == (
+    assert batched_dict_graphs["edge_links"].shape == (
         n_batch,
         max_n_edges + 1,
     ) + (2,)
 
     assert all(
         are_equal_graphs(g, convert_dict_to_graph(gd))
-        for g, gd in zip(graphs, unbatch_graph_dict(padded_batched_graph_dict))
+        for g, gd in zip(graphs, unbatch_graph_dict(batched_dict_graphs))
     )

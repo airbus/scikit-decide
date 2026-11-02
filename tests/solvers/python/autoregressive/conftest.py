@@ -203,7 +203,10 @@ class HeteroGraphWalkEnv(gym.Env[gym.spaces.GraphInstance, int]):
     ]  # start node 0 -> 1,3 with dist 1 and 5 resp.
 
     def __init__(
-        self, additional_position: bool = False, additional_action: bool = False
+        self,
+        additional_position: bool = False,
+        additional_action: bool = False,
+        add_start_node_in_action: bool = False,
     ):
         self.n_positions = self.TERMINAL_POSITION + 1
         if additional_position:
@@ -211,7 +214,26 @@ class HeteroGraphWalkEnv(gym.Env[gym.spaces.GraphInstance, int]):
         self.n_actions = 2
         if additional_action:
             self.n_actions += 1
-        self.action_space = gym.spaces.MultiDiscrete((self.n_actions, self.n_positions))
+        self.add_start_node_in_action = add_start_node_in_action
+        if add_start_node_in_action:
+            self.action_space = gym.spaces.MultiDiscrete(
+                (self.n_actions, self.n_positions, self.n_positions)
+            )
+        else:
+            self.action_space = gym.spaces.MultiDiscrete(
+                (self.n_actions, self.n_positions)
+            )
+
+    @property
+    def action_components_node_flag_indices(self):
+        if self.add_start_node_in_action:
+            return [
+                None,
+                HeteroGraphWalkEnv.POSITION_FEATURE,
+                HeteroGraphWalkEnv.POSITION_FEATURE,
+            ]
+        else:
+            return [None, HeteroGraphWalkEnv.POSITION_FEATURE]
 
     @property
     def n_nodes(self):
@@ -254,11 +276,19 @@ class HeteroGraphWalkEnv(gym.Env[gym.spaces.GraphInstance, int]):
         self, action: npt.NDArray[int]
     ) -> tuple[gym.spaces.GraphInstance, SupportsFloat, bool, bool, dict[str, Any]]:
         current_node = self.state2node(self.state)
-        action_id, node = action
+        if self.add_start_node_in_action:
+            action_id, start_node, node = action
+        else:
+            action_id, node = action
+            start_node = current_node
         if action_id == 1:
+            if start_node != current_node:
+                # forbidden action
+                raise RuntimeError()
             ok = False
             for node2, dist in self.edges_end_nodes_with_distance[current_node]:
                 if node2 == node:
+                    # allowed action (edge existing between current node and target node
                     ok = True
                     break
             if ok:
@@ -282,10 +312,16 @@ class HeteroGraphWalkEnv(gym.Env[gym.spaces.GraphInstance, int]):
 
     def applicable_actions(self) -> list[npt.NDArray[int]]:
         current_node = self.state2node(self.state)
-        return [np.array((0, -1))] + [
-            np.array((1, node))
-            for node, dist in self.edges_end_nodes_with_distance[current_node]
-        ]
+        if self.add_start_node_in_action:
+            return [np.array((0, -1, -1))] + [
+                np.array((1, current_node, node))
+                for node, dist in self.edges_end_nodes_with_distance[current_node]
+            ]
+        else:
+            return [np.array((0, -1))] + [
+                np.array((1, node))
+                for node, dist in self.edges_end_nodes_with_distance[current_node]
+            ]
 
 
 class D(
@@ -333,10 +369,15 @@ class GraphWalkDomain(D):
 
 class HeteroGraphWalkDomain(D):
     def __init__(
-        self, additional_position: bool = False, additional_action: bool = False
+        self,
+        additional_position: bool = False,
+        additional_action: bool = False,
+        add_start_node_in_action: bool = False,
     ):
         self._gym_env = HeteroGraphWalkEnv(
-            additional_position=additional_position, additional_action=additional_action
+            additional_position=additional_position,
+            additional_action=additional_action,
+            add_start_node_in_action=add_start_node_in_action,
         )
 
     def _state_reset(self) -> D.T_state:
@@ -361,6 +402,10 @@ class HeteroGraphWalkDomain(D):
     def _get_observation_space(self) -> D.T_agent[Space[D.T_observation]]:
         return GymSpace(gym_space=self._gym_env.observation_space)
 
+    @property
+    def action_components_node_flag_indices(self):
+        return self._gym_env.action_components_node_flag_indices
+
 
 @fixture
 def graph_walk_env():
@@ -375,11 +420,6 @@ def graph_walk_with_graph_obs_env():
 @fixture
 def graph_walk_with_heterograph_obs_env():
     return HeteroGraphWalkEnv()
-
-
-@fixture
-def action_components_node_flag_indices():
-    return [None, HeteroGraphWalkEnv.POSITION_FEATURE]
 
 
 @fixture
@@ -404,4 +444,4 @@ def graph_walk_with_heterograph_obs_domain_factory_2():
 
 @fixture
 def graph_walk_with_heterograph_obs_domain_factory_3():
-    return lambda: HeteroGraphWalkDomain(additional_action=True)
+    return lambda: HeteroGraphWalkDomain(add_start_node_in_action=True)
