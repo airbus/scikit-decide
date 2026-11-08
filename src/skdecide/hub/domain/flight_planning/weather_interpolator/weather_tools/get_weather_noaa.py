@@ -27,6 +27,9 @@ else:
 
 logger = logging.getLogger(__name__)
 
+# NOAA Open Data Dissemination (NODD) bucket hosting the GFS forecasts.
+GFS_AWS_BASE_URL = "https://noaa-gfs-bdp-pds.s3.amazonaws.com"
+
 
 def tree():
     return collections.defaultdict(tree)
@@ -136,22 +139,32 @@ def get_weather_matrix(
         files, address = UrlGeneratorWithForecastLayer.get_list_of_url_forecast(
             day=day, month=month, year=year, forecast=forecast
         )
-        list_files = []
+        failed_urls = []
         for i in range(len(files)):
             print("Downloading : ", address[i])
+            local_file = os.path.join(exportdir_grib, files[i])
             try:
-                request.urlretrieve(
-                    address[i], filename=os.path.join(exportdir_grib, files[i])
-                )
-                list_files += [os.path.join(exportdir_grib, files[i])]
+                request.urlretrieve(address[i], filename=local_file)
             except Exception as e:
-                print(e)
-                pass
+                logger.warning(f"Failed to download {address[i]}: {e}")
+                failed_urls.append(address[i])
+                # do not keep a truncated/empty file that would be parsed later
+                if os.path.exists(local_file):
+                    os.remove(local_file)
         list_files = [
             os.path.join(exportdir_grib, x) for x in os.listdir(exportdir_grib)
         ]
-        if not len(list_files) > 0:
-            return {}
+        if len(list_files) == 0:
+            raise RuntimeError(
+                f"Could not download any GFS weather file for "
+                f"{year}-{month}-{day} ({forecast}). Failed urls:\n"
+                + "\n".join(failed_urls)
+            )
+        if failed_urls:
+            logger.warning(
+                f"{len(failed_urls)} out of {len(files)} GFS files could not be "
+                "downloaded: the weather data will be incomplete."
+            )
     matrix = create_merged_matrix(list_files=list_files, params=["u", "v", "t", "r"])
     if save_to_npz:
         file_output = os.path.join(
@@ -188,6 +201,12 @@ class UrlGeneratorWithForecastLayer:
 
     @staticmethod
     def get_list_of_url(day, month, year, hours_prediction, hours_from_prediction):
+        # NCEI removed its static "grid-004-0.5-degree" HTTP archive (issue #585).
+        # The same 0.5 degree GFS files are served by the NOAA Open Data Dissemination
+        # (NODD) bucket on AWS:
+        #   {GFS_AWS_BASE_URL}/gfs.YYYYMMDD/HH/atmos/gfs.tHHz.pgrb2.0p50.fFFF
+        # Local file names keep the historical "gfs_4_..." scheme so that they stay
+        # unique per run date/hour/step and compatible with already cached data.
         files = [
             "gfs_4_"
             + year
@@ -203,16 +222,11 @@ class UrlGeneratorWithForecastLayer:
             )
         ]
         return files, [
-            "https://www.ncei.noaa.gov/data/global-forecast-system/access/grid-004-0.5-degree/forecast/"
-            + year
-            + month
-            + "/"
-            + year
-            + month
-            + day
-            + "/"
-            + file
-            for file in files
+            f"{GFS_AWS_BASE_URL}/gfs.{year}{month}{day}/{hour_prediction[:2]}/atmos/"
+            f"gfs.t{hour_prediction[:2]}z.pgrb2.0p50.f{hour_from_prediction}"
+            for hour_prediction, hour_from_prediction in zip(
+                hours_prediction, hours_from_prediction
+            )
         ]
 
     @staticmethod
@@ -338,7 +352,7 @@ class UrlGeneratorWithForecastLayer:
                 add = [
                     (
                         str(calendar.monthrange(int(year), int(month) - 1)[1]),
-                        str(int(month) - 1),
+                        f"{int(month) - 1:02d}",
                         str(year),
                     )
                 ]
