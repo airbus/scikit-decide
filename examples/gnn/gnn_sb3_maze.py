@@ -62,5 +62,4 @@ with StableBaseline(
         solver=solver,
         max_steps=100,
         num_episodes=1,
-        use_applicable_actions=True,
     )

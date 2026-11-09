@@ -178,7 +178,6 @@ def test_maskable_ppo(graph_domain_factory):
             max_steps=30,
             num_episodes=1,
             render=False,
-            use_applicable_actions=True,
             return_episodes=True,
         )
 
@@ -224,7 +223,6 @@ def test_dict_maskable_ppo(jsp_dict_domain_factory):
             max_steps=30,
             num_episodes=1,
             render=False,
-            use_applicable_actions=True,
             return_episodes=True,
         )
     # with masking only 9 steps necessary since only 9 tasks to perform
