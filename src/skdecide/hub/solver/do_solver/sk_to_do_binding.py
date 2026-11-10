@@ -12,14 +12,17 @@ from discrete_optimization.generic_tasks_tools.calendar_resource import (
 )
 from discrete_optimization.generic_tasks_tools.generic_scheduling_impl import (
     GenericSchedulingImplProblem,
+    GenericSchedulingImplSolution,
 )
 from discrete_optimization.generic_tasks_tools.generic_scheduling_utils import Objective
 from discrete_optimization.rcpsp.problem import RcpspProblem, RcpspSolution
 from discrete_optimization.rcpsp_multiskill.problem import (
     Employee,
     MultiskillRcpspProblem,
+    MultiskillRcpspSolution,
     SkillDetail,
     VariantMultiskillRcpspProblem,
+    VariantMultiskillRcpspSolution,
 )
 
 from skdecide.builders.domain.scheduling.scheduling_domains import (
@@ -39,6 +42,12 @@ from skdecide.builders.domain.scheduling.scheduling_domains import (
 DOSchedulingProblem = (
     RcpspProblem | MultiskillRcpspProblem | GenericSchedulingImplProblem
 )
+DOSchedulingSolution = Union[
+    RcpspSolution,
+    MultiskillRcpspSolution,
+    VariantMultiskillRcpspSolution,
+    GenericSchedulingImplSolution,
+]
 
 
 def from_last_state_to_solution(

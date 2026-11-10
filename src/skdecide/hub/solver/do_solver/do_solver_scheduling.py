@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from discrete_optimization.generic_tasks_tools.generic_scheduling_impl import (
     GenericSchedulingImplProblem,
@@ -34,6 +34,7 @@ from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDom
 from skdecide.hub.solver.do_solver.sgs_policies import PolicyMethodParams, PolicyRCPSP
 from skdecide.hub.solver.do_solver.sk_to_do_binding import (
     DOSchedulingProblem,
+    DOSchedulingSolution,
     build_do_domain,
 )
 from skdecide.solvers import DeterministicPolicies, Solver
@@ -154,9 +155,7 @@ def build_solver(
 
 
 def from_solution_to_policy(
-    solution: Union[
-        RcpspSolution, MultiskillRcpspSolution, VariantMultiskillRcpspSolution
-    ],
+    solution: DOSchedulingSolution,
     domain: SchedulingDomain,
     policy_method_params: PolicyMethodParams,
 ) -> PolicyRCPSP:
@@ -170,12 +169,9 @@ def from_solution_to_policy(
             key=lambda x: (solution.rcpsp_schedule[x]["start_time"], x),
         )
         schedule = solution.rcpsp_schedule
-        modes_dictionnary = {}
-        # set modes for start and end (dummy) jobs
-        modes_dictionnary[1] = 1
-        modes_dictionnary[solution.problem.n_jobs_non_dummy + 2] = 1
-        for i in range(len(solution.rcpsp_modes)):
-            modes_dictionnary[i + 2] = solution.rcpsp_modes[i]
+        modes_dictionnary = {
+            task: solution.get_mode(task) for task in solution.problem.tasks_list
+        }
     elif isinstance(solution, MultiskillRcpspSolution):
         permutation_task = sorted(
             solution.schedule, key=lambda x: (solution.schedule[x]["start_time"], x)
@@ -196,14 +192,9 @@ def from_solution_to_policy(
                         solution.priority_worker_per_task
                     )
                 }
-            modes_dictionnary = {}
-            # set modes for start and end (dummy) jobs
-            modes_dictionnary[1] = 1
-            modes_dictionnary[solution.problem.n_jobs_non_dummy + 2] = 1
-            for i in range(len(solution.modes_vector)):
-                modes_dictionnary[i + 2] = solution.modes_vector[i]
-        else:
-            modes_dictionnary = solution.modes
+        modes_dictionnary = {
+            task: solution.get_mode(task) for task in solution.problem.tasks_list
+        }
     elif isinstance(solution, GenericSchedulingImplSolution):
         schedule = {
             task: {"start_time": variable.start, "end_time": variable.end}
