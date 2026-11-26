@@ -2,4 +2,9 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from .ray_rllib import RayRLlib as RayRLlib
+from .ray_rllib import (
+    AsLegacyRLlibSingleAgentEnv as AsLegacyRLlibSingleAgentEnv,
+    AsRLlibMultiAgentEnv as AsRLlibMultiAgentEnv,
+    AsRLlibSingleAgentEnv as AsRLlibSingleAgentEnv,
+    RayRLlib as RayRLlib,
+)

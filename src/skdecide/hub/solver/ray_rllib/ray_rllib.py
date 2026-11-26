@@ -45,6 +45,7 @@ from skdecide.builders.solver import Policies, Restorable
 from skdecide.core import EnumerableSpace, Mask, autocast
 from skdecide.domains import MultiAgentRLDomain
 from skdecide.hub.domain.gym import AsLegacyGymV21Env
+from skdecide.hub.domain.gym.compatibility import EnvCompatibility
 from skdecide.hub.space.gym import GymSpace
 
 from .action_masking.connectors.flatten_observations import (
@@ -146,6 +147,7 @@ class RayRLlib(Solver, Policies, Restorable):
         graph_feature_extractors_kwargs: Optional[dict[str, Any]] = None,
         graph_node_action: bool = False,
         graph_node_action_net_kwargs: Optional[dict[str, Any]] = None,
+        single_agent: bool = False,
         **kwargs,
     ) -> None:
         """Initialize Ray RLlib.
@@ -178,6 +180,7 @@ class RayRLlib(Solver, Policies, Restorable):
             size is derived at runtime from the observation graph.
         graph_node_action_net_kwargs: if graph_node_action, these are the kwargs to the `Graph2NodeLayer` model used to
             predict actions from the observation. See `skdecide.hub.solver.utils.gnn.torch_layers.Graph2NodeLayer`.
+        single_agent: Whether to wrap environment as a single-agent gymnasium environment.
         **kwargs: used to update the algo config with kwargs automatically filled by optuna.
 
         #### Masking
@@ -247,6 +250,7 @@ class RayRLlib(Solver, Policies, Restorable):
             self._graph2node_action_net_kwargs = {}
         else:
             self._graph2node_action_net_kwargs = graph_node_action_net_kwargs
+        self._single_agent = single_agent
 
         # ray.init(ignore_reinit_error=True)
         self._algo_callbacks: Optional[DefaultCallbacks] = None
@@ -545,16 +549,28 @@ class RayRLlib(Solver, Policies, Restorable):
             policy_mapping_fn=policy_mapping_fn,
         )
 
-        register_env(
-            "skdecide_env",
-            lambda _,
-            domain_factory=self._domain_factory,
-            rayrllib=self: AsRLlibMultiAgentEnv(
-                domain=domain_factory(),
-                action_masking=rayrllib._action_masking,
-                graph2node=rayrllib._graph2node,
-            ),
-        )
+        if self._single_agent:
+            register_env(
+                "skdecide_env",
+                lambda _,
+                domain_factory=self._domain_factory,
+                rayrllib=self: AsRLlibSingleAgentEnv(
+                    domain=domain_factory(),
+                    action_masking=rayrllib._action_masking,
+                    graph2node=rayrllib._graph2node,
+                ),
+            )
+        else:
+            register_env(
+                "skdecide_env",
+                lambda _,
+                domain_factory=self._domain_factory,
+                rayrllib=self: AsRLlibMultiAgentEnv(
+                    domain=domain_factory(),
+                    action_masking=rayrllib._action_masking,
+                    graph2node=rayrllib._graph2node,
+                ),
+            )
         self._config.environment(
             env="skdecide_env",
             # Disable env checking in case of action masking otherwise RLlib will try to simulate
@@ -653,6 +669,152 @@ def _swap_callbacks(
         algo_or_worker.callbacks = [callbacks_class()]
     previous_callbacks = tmp
     return previous_callbacks
+
+
+class AsRLlibSingleAgentEnv(EnvCompatibility):
+    """This class wraps a scikit-decide domain as a single-agent gymnasium environment
+    compatible with Ray RLlib single-agent algorithms, defining action_space and observation_space.
+    """
+
+    env: AsLegacyRLlibSingleAgentEnv
+
+    def __init__(
+        self,
+        domain: D,
+        agent: Optional[str] = None,
+        action_masking: bool = False,
+        graph2node: bool = False,
+        render_mode: Optional[str] = None,
+    ) -> None:
+        old_env = AsLegacyRLlibSingleAgentEnv(
+            domain=domain,
+            agent=agent,
+            action_masking=action_masking,
+            graph2node=graph2node,
+        )
+        super().__init__(old_env=old_env, render_mode=render_mode)
+
+    @property
+    def domain(self) -> D:
+        return self.env.domain
+
+    @property
+    def agent(self) -> str:
+        return self.env.agent
+
+
+class AsLegacyRLlibSingleAgentEnv(AsLegacyGymV21Env):
+    def __init__(
+        self,
+        domain: D,
+        agent: Optional[str] = None,
+        action_masking: bool = False,
+        graph2node: bool = False,
+    ) -> None:
+        """Initialize AsLegacyRLlibSingleAgentEnv.
+
+        # Parameters
+        domain: The scikit-decide domain to wrap as a RLlib single-agent environment.
+        agent: The agent id to wrap if the domain contains multiple agents.
+            If None, the domain must contain exactly one agent.
+        action_masking: Boolean specifying whether action masking is used.
+        graph2node: Boolean specifying whether graph2node is used.
+        """
+        self._graph2node = graph2node
+        self._domain = domain
+        self._action_masking = action_masking
+
+        agents = list(domain.get_agents())
+        if agent is None:
+            if len(agents) == 1:
+                self._agent = agents[0]
+            else:
+                raise ValueError(
+                    f"Domain has multiple agents {agents}, but no agent was specified for AsLegacyRLlibSingleAgentEnv."
+                )
+        else:
+            if agent not in agents:
+                raise ValueError(f"Agent '{agent}' not found in domain agents {agents}.")
+            self._agent = agent
+
+        self._wrapped_action_space = domain.get_action_space()
+        self._wrapped_observation_space = domain.get_observation_space()
+
+        self.observation_space = _create_agent_obs_space_for_rllib(
+            wrapped_observation_space=self._wrapped_observation_space,
+            wrapped_action_space=self._wrapped_action_space,
+            agent=self._agent,
+            action_masking=self._action_masking,
+            graph2node=self._graph2node,
+        )
+
+        self.action_space = self._wrapped_action_space[self._agent].unwrapped()
+
+    @property
+    def domain(self) -> D:
+        return self._domain
+
+    @property
+    def agent(self) -> str:
+        return self._agent
+
+    def _wrap_action(self, action: Any) -> dict[str, D.T_event]:
+        return {
+            self._agent: next(
+                iter(self._wrapped_action_space[self._agent].from_unwrapped([action]))
+            )
+        }
+
+    def _unwrap_obs(self, obs: dict[str, D.T_observation]) -> Any:
+        if self._action_masking:
+            action_mask = self._domain.get_action_mask()
+            return _unwrap_agent_obs_with_action_masking(
+                obs=obs,
+                agent=self._agent,
+                wrapped_observation_space=self._wrapped_observation_space,
+                action_mask=action_mask,
+            )
+        else:
+            return _unwrap_agent_obs(
+                obs=obs,
+                agent=self._agent,
+                wrapped_observation_space=self._wrapped_observation_space,
+            )
+
+    def reset(self):
+        """Resets the env and returns observation for the agent.
+
+        # Returns
+        obs: New observation for the agent.
+        """
+        raw_observation = self._domain.reset()
+        return self._unwrap_obs(raw_observation)
+
+    def step(self, action):
+        """Returns observation, reward, done, and info for the agent.
+
+        # Parameters
+        action: Action for the agent.
+
+        # Returns
+        obs: New observation for the agent.
+        reward (float): Reward value for the agent.
+        done (bool): Done value for the agent.
+        info (dict): Optional info value for the agent.
+        """
+        action_dict = self._wrap_action(action)
+        outcome = self._domain.step(action_dict)
+        observation = self._unwrap_obs(outcome.observation)
+        reward = outcome.value[self._agent].reward
+        done = outcome.termination[self._agent]
+        info = (
+            outcome.info[self._agent]
+            if outcome.info and self._agent in outcome.info
+            else {}
+        )
+        if info is None:
+            info = {}
+        return observation, reward, done, info
 
 
 class AsRLlibMultiAgentEnv(MultiAgentEnvCompatibility):

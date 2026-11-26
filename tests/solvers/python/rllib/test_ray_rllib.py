@@ -25,7 +25,15 @@ from skdecide.builders.domain.events import Actions
 from skdecide.core import autocast_all
 from skdecide.hub.domain.gym import GymDomain
 from skdecide.hub.domain.rock_paper_scissors import RockPaperScissors
-from skdecide.hub.solver.ray_rllib.ray_rllib import AsRLlibMultiAgentEnv, RayRLlib
+from skdecide.hub.solver.ray_rllib.action_masking.utils.spaces.space_utils import (
+    ACTION_MASK,
+    TRUE_OBS,
+)
+from skdecide.hub.solver.ray_rllib.ray_rllib import (
+    AsRLlibMultiAgentEnv,
+    AsRLlibSingleAgentEnv,
+    RayRLlib,
+)
 from skdecide.hub.space.gym import EnumSpace, MultiDiscreteSpace, SetSpace
 from skdecide.utils import load_registered_solver, rollout
 
@@ -245,6 +253,85 @@ def test_as_rllib_env_with_autocast_from_singleagent_to_multiagents():
     assert env.get_agent_ids() == set(env.observation_space)
     for subspace in env.observation_space.values():
         assert isinstance(subspace, gym.spaces.Space)
+
+def test_as_rllib_single_agent_env():
+    ENV_NAME = "CartPole-v1"
+
+    upcast_domain = GymDomain(gym.make(ENV_NAME))
+    autocast_all(upcast_domain, GymDomain, RayRLlib.T_domain)
+    env = AsRLlibSingleAgentEnv(upcast_domain)
+
+    # check action space is standard single-agent space, not a Dict
+    assert isinstance(env.action_space, gym.spaces.Discrete)
+    assert env.action_space.n == 2
+
+    # check observation space is standard single-agent space, not a Dict
+    assert isinstance(env.observation_space, gym.spaces.Box)
+
+    # check reset
+    obs, info = env.reset()
+    assert obs in env.observation_space
+    assert isinstance(info, dict)
+
+    # check step
+    action = env.action_space.sample()
+    next_obs, reward, terminated, truncated, info = env.step(action)
+    assert next_obs in env.observation_space
+    assert isinstance(reward, (float, int))
+    assert isinstance(terminated, bool)
+    assert isinstance(truncated, bool)
+    assert isinstance(info, dict)
+
+
+def test_as_rllib_single_agent_env_with_action_masking():
+    domain = GridDomain()
+    autocast_all(domain, GridDomain, RayRLlib.T_domain)
+    env = AsRLlibSingleAgentEnv(domain, action_masking=True)
+
+    # check action space
+    assert isinstance(env.action_space, gym.spaces.Discrete)
+    assert env.action_space.n == 4
+
+    # check observation space has action masking
+    assert isinstance(env.observation_space, gym.spaces.Dict)
+    assert TRUE_OBS in env.observation_space.spaces
+    assert ACTION_MASK in env.observation_space.spaces
+
+    # check reset
+    obs, info = env.reset()
+    assert TRUE_OBS in obs
+    assert ACTION_MASK in obs
+    assert isinstance(info, dict)
+
+    # check step
+    action = env.action_space.sample()
+    next_obs, reward, terminated, truncated, info = env.step(action)
+    assert TRUE_OBS in next_obs
+    assert ACTION_MASK in next_obs
+    assert isinstance(reward, (float, int))
+    assert isinstance(terminated, bool)
+    assert isinstance(truncated, bool)
+    assert isinstance(info, dict)
+
+
+def test_as_rllib_single_agent_env_multiagent_selection():
+    domain = RockPaperScissors()
+
+    # Selecting specific agent works
+    env_p1 = AsRLlibSingleAgentEnv(domain, agent="player1")
+    assert isinstance(env_p1.action_space, gym.spaces.Discrete)
+    assert isinstance(env_p1.observation_space, gym.spaces.Discrete)
+    assert env_p1.agent == "player1"
+
+    env_p2 = AsRLlibSingleAgentEnv(domain, agent="player2")
+    assert isinstance(env_p2.action_space, gym.spaces.Discrete)
+    assert isinstance(env_p2.observation_space, gym.spaces.Discrete)
+    assert env_p2.agent == "player2"
+
+    # Failing to specify agent when multiple exist raises ValueError
+    with pytest.raises(ValueError, match="Domain has multiple agents"):
+        AsRLlibSingleAgentEnv(domain)
+
 
 
 def ppo_config_factory():
