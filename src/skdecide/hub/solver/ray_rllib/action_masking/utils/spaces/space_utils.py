@@ -4,7 +4,6 @@ import gymnasium as gym
 import numpy as np
 
 from skdecide import EnumerableSpace
-from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import DEFAULT_N_NODES
 
 TRUE_OBS = "observations"
 ACTION_MASK = "action_mask"
@@ -17,6 +16,11 @@ def create_agent_action_mask_space(
         # When converting obs space (Graph) to a dict, we artificially specify a number of nodes/edges
         # We need to use the same number of nodes for the dimension of the action mask space,
         # for dummy samples generation purposes
+        # NB: local import to avoid circular import
+        from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
+            DEFAULT_N_NODES,
+        )
+
         action_mask_dim = DEFAULT_N_NODES
     else:
         # we derive the action mask dim from actual action space size

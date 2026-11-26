@@ -20,8 +20,8 @@ from ray.rllib.algorithms import DQN, PPO, SAC
 from ray.rllib.algorithms.algorithm import Algorithm, AlgorithmConfig
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.callbacks.callbacks import RLlibCallback
+from ray.rllib.connectors.common.flatten_observations import FlattenObservations
 from ray.rllib.connectors.connector_v2 import ConnectorV2
-from ray.rllib.connectors.env_to_module import FlattenObservations
 from ray.rllib.core.rl_module import (
     MultiRLModule,
     MultiRLModuleSpec,
@@ -31,9 +31,6 @@ from ray.rllib.core.rl_module import (
 from ray.rllib.env.multi_agent_episode import MultiAgentEpisode
 from ray.rllib.env.wrappers.multi_agent_env_compatibility import (
     MultiAgentEnvCompatibility,
-)
-from ray.rllib.examples.rl_modules.classes.action_masking_rlm import (
-    ActionMaskingTorchRLModule,
 )
 from ray.rllib.policy.policy import Policy
 from ray.rllib.utils.typing import ModuleID
@@ -45,25 +42,51 @@ from skdecide.builders.solver import Policies, Restorable
 from skdecide.core import EnumerableSpace, Mask, autocast
 from skdecide.domains import MultiAgentRLDomain
 from skdecide.hub.domain.gym import AsLegacyGymV21Env
-from skdecide.hub.space.gym import GymSpace
-
-from .action_masking.connectors.flatten_observations import (
+from skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module import (
+    ActionMaskingDQNTorchRLModule,
+)
+from skdecide.hub.solver.ray_rllib.action_masking.algorithms.ppo.torch.action_masking_graph2node_ppo_rl_module import (
+    ActionMaskingGraph2NodePPOTorchRLModule,
+)
+from skdecide.hub.solver.ray_rllib.action_masking.algorithms.ppo.torch.action_masking_ppo_torch_rl_module import (
+    ActionMaskingPPOTorchRLModule,
+)
+from skdecide.hub.solver.ray_rllib.action_masking.connectors.flatten_observations import (
     FlattenMultiagentMaskedObservations,
 )
-from .action_masking.utils.spaces.space_utils import (
+from skdecide.hub.solver.ray_rllib.action_masking.utils.spaces.space_utils import (
     ACTION_MASK,
     TRUE_OBS,
     create_agent_action_mask_space,
 )
-from .gnn.evaluation.rollout_worker import Graph2NodeRolloutWorker, GraphRolloutWorker
-from .gnn.utils.monkey_patch import (
+from skdecide.hub.solver.ray_rllib.common.constants import TORCH_FRAMEWORK
+from skdecide.hub.solver.ray_rllib.gnn.algorithms.ppo.ppo_catalog import (
+    Graph2NodePPOCatalog,
+    GraphPPOCatalog,
+)
+from skdecide.hub.solver.ray_rllib.gnn.algorithms.ppo.torch.graph2node_ppo_torch_rl_module import (
+    Graph2NodePPOTorchRLModule,
+)
+from skdecide.hub.solver.ray_rllib.gnn.connectors.flatten_observations import (
+    FlattenMultiagentGraphObservations,
+    FlattenMultiagentMultiinputObservations,
+)
+from skdecide.hub.solver.ray_rllib.gnn.connectors.pad_action_logits import (
+    PadGraph2NodeActionLogits,
+)
+from skdecide.hub.solver.ray_rllib.gnn.env.multi_agent_env_runner import (
+    Graph2NodeMultiAgentEnvRunner,
+    GraphMultiAgentEnvRunner,
+)
+from skdecide.hub.solver.ray_rllib.gnn.utils.monkey_patch import (
     unmonkey_patch_rllib_for_graph,
 )
-from .gnn.utils.spaces.space_utils import (
+from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import (
     convert_graph_space_to_dict_space,
     convert_graph_to_dict,
 )
-from .utils import compute_action_new_api_stack_multi_agent
+from skdecide.hub.solver.ray_rllib.utils import compute_action_new_api_stack_multi_agent
+from skdecide.hub.space.gym import GymSpace
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +149,8 @@ class RayRLlib(Solver, Policies, Restorable):
         ),
     ]
 
-    MASKABLE_ALGOS = ["APPO", "BC", "DQN", "Rainbow", "IMPALA", "MARWIL", "PPO"]
-    """The only algos being able to handle action masking in ray[rllib]==2.9.0."""
+    MASKABLE_ALGOS = [DQN, PPO]
+    """The only algos being able to handle action masking with our wrapper without user-defined rl-module."""
 
     def __init__(
         self,
@@ -141,6 +164,12 @@ class RayRLlib(Solver, Policies, Restorable):
         rl_module_spec: Optional[MultiRLModuleSpec] = None,
         env_to_module_connector: Optional[
             Callable[[AsRLlibMultiAgentEnv, Any, Any], ConnectorV2 | list[ConnectorV2]]
+        ] = None,
+        learner_connector: Optional[
+            Callable[
+                [gym.spaces.Space, gym.spaces.Space, Any],
+                ConnectorV2 | list[ConnectorV2],
+            ]
         ] = None,
         callback: Optional[Callable[[RayRLlib], bool]] = None,
         graph_feature_extractors_kwargs: Optional[dict[str, Any]] = None,
@@ -166,8 +195,10 @@ class RayRLlib(Solver, Policies, Restorable):
             The user managed itself the multiagent RL module to be used.
             The keys of `rl_module_spec.rl_module_specs` should correspond to the values of `agent2module_id`.
         env_to_module_connector: env-to-module-connector pipeline preprocessing (gym) observations to be feed to the rl module.
-            Default to flatten everything (e.g. discrete observations are one-hot encoded, dict/list/tuple spaces are concatenated, ...)
-            by using `ray.rllib.connectors.common.flatten_observations.FlattenObservations`.
+            Default to flatten everything except graphs (e.g. discrete observations are one-hot encoded, dict/list/tuple spaces are concatenated, ...)
+            and transform graph instances into batched torch-geometric data.
+        learner_connector: learner-connector pipeline preprocessing (gym) observations to be feed to the rl module.
+            Default to transforming graph instances into batched torch-geometric data.
         callback: function called at each solver iteration.
             If returning true, the solve process stops and exit the current train iteration.
             However, if train_iterations > 1, another train loop will be entered after that.
@@ -183,9 +214,8 @@ class RayRLlib(Solver, Policies, Restorable):
         #### Masking
 
         If the domain has not the `UnrestrictedActions` mixin, and if the algo used allows action masking
-        (e.g. APPO, BC, DQN, Rainbow, IMPALA, MARWIL, PPO), the observations are automatically wrapped to also present
-        the action mask to the algorithm, which will used via a custom model
-        (defined in `skdecide.hub.solver.ray_rllib.action_masking.models`).
+        (PPO or DQN), the observations are automatically wrapped to also present
+        the action mask to the algorithm, which will used via a custom rl-module.
         During training, a gymnasium environment is created wrapping a domain instantiated from `domain_factory` and
         used during training rollouts to get the observation with the appropriate action mask.
         At inference, we use the method `self.get_action_mask()` which provides the proper action mask provided that
@@ -195,10 +225,10 @@ class RayRLlib(Solver, Policies, Restorable):
         #### Graph observations
 
         If the observation space wrapped gymnasium space for each agent is a `gymnasium.spaces.Graph` or a `gymnasium.spaces.Dict`
-        whose subspaces contain a `gymnasium.spaces.Graph`, the solver will use custom models adapted to graphs for its policy, using GNNs.
+        whose subspaces contain a `gymnasium.spaces.Graph`, the solver will use a custom encoder using GNNs.
 
         - If `graph_node_action` is False (default), a GNN will be used to extract (a fixed number of) features from graphs,
-          and then classical MLPs will be use for predicting action and value.
+          and then classical MLPs will be used for predicting action and value.
           See `skdecide.hub.solver.utils.gnn.torch_layers.GraphFeaturesExtractor` for more details
           and use `graph_feature_extractors_kwargs` to customize it.
         - If `graph_node_action` is True, this means that an agent action is defined by the choice of node in the observation graph.
@@ -238,6 +268,7 @@ class RayRLlib(Solver, Policies, Restorable):
         else:
             self._module_classes = module_classes
         self._env_to_module_connector = env_to_module_connector
+        self._learner_connector = learner_connector
         self._rl_module_spec = rl_module_spec
         if graph_feature_extractors_kwargs is None:
             self._graph_feature_extractors_kwargs = {}
@@ -260,11 +291,7 @@ class RayRLlib(Solver, Policies, Restorable):
                 isinstance(agent_action_space, EnumerableSpace)
                 for agent_action_space in self._wrapped_action_space.values()
             )
-            and (
-                self._algo_class.__name__ in RayRLlib.MASKABLE_ALGOS
-                or self._algo_class.__name__
-                in [f"Graph{algo_name}" for algo_name in RayRLlib.MASKABLE_ALGOS]
-            )
+            and (self._algo_class in RayRLlib.MASKABLE_ALGOS)
         )
 
         # graph obs?
@@ -338,8 +365,8 @@ class RayRLlib(Solver, Policies, Restorable):
 
         # un-monkey patch rllib for graphs
         if self._is_graph_obs or self._is_graph_multiinput_obs:
-            self._algo.env_runner_group.foreach_worker(
-                lambda worker: unmonkey_patch_rllib_for_graph()
+            self._algo.env_runner_group.foreach_env_runner(
+                lambda env_runner: unmonkey_patch_rllib_for_graph()
             )
 
     def _sample_action(
@@ -408,110 +435,116 @@ class RayRLlib(Solver, Policies, Restorable):
         # monkey patch rllib for graph handling
         # NB: We would rather do
         # ```python
-        # self._algo.env_runner_group.foreach_worker(
-        #     lambda worker: monkey_patch_rllib_for_graph()
+        # self._algo.env_runner_group.foreach_env_runner(
+        #     lambda env_runner: monkey_patch_rllib_for_graph()
         # )
         # ```
         # as for unpatching at the end of `_solve()`.
         # But at that point the env_runner_group has not been yet properly initialized with all the workers
         # only the local worker exists. (It will be updated at the beginning of the training process, from the config.)
-        # So instead we use a custom RolloutWorker class that monkey-patch when initialized.
+        # So instead we use a custom EnvRunner class that monkey-patch when initialized.
         if self._is_graph_obs or self._is_graph_multiinput_obs:
             if self._graph2node:
                 if not isinstance(
                     self._config.env_runner_cls,
-                    (type(None), Graph2NodeRolloutWorker),
+                    (type(None), Graph2NodeMultiAgentEnvRunner),
                 ):
                     logger.warning(
                         "The EnvRunner class to use for environment rollouts (data collection) will be overriden "
-                        "by Graph2NodeRolloutWorker so that buffers manage properly graphs concatenation."
+                        "by Graph2NodeMultiAgentEnvRunner so that buffers manage properly graphs concatenation."
                     )
-                self._config.env_runners(env_runner_cls=Graph2NodeRolloutWorker)
+                self._config.env_runners(env_runner_cls=Graph2NodeMultiAgentEnvRunner)
             else:
                 if not isinstance(
-                    self._config.env_runner_cls, (type(None), GraphRolloutWorker)
+                    self._config.env_runner_cls, (type(None), GraphMultiAgentEnvRunner)
                 ):
                     logger.warning(
                         "The EnvRunner class to use for environment rollouts (data collection) will be overriden "
-                        "by GraphRolloutWorker so that buffers manage properly graphs concatenation."
+                        "by GraphMultiAgentEnvRunner so that buffers manage properly graphs concatenation."
                     )
-                self._config.env_runners(env_runner_cls=GraphRolloutWorker)
+                self._config.env_runners(env_runner_cls=GraphMultiAgentEnvRunner)
 
-        # custom model?
-        if self._action_masking:
-            if self._is_graph_obs or self._is_graph_multiinput_obs:
-                # let the observation pass as is
-                self._config.experimental(
-                    _disable_preprocessor_api=True,
-                )
-                if self._config.get("framework") not in ["torch"]:
-                    raise NotImplementedError(
-                        "Graph observation with RLlib requires PyTorch framework."
-                    )
-            if self._config.get("framework") not in ["torch"]:
-                raise NotImplementedError(
-                    "Action masking (invalid action filtering) with RLlib requires PyTorch framework"
-                )
-            if self._algo_class.__name__ not in ["PPO"]:
-                raise NotImplementedError(
-                    "Action masking (invalid action filtering) with RLlib only available for PPO for now."
-                )
-            if self._graph2node:
-                raise NotImplementedError(
-                    "RLlib + GNN +action masking not yet implemented with new api stack"
-                )
-            if self._algo_class.__name__ == "DQN":
-                self._config.training(
-                    hiddens=[],
-                    dueling=False,
-                )
-
-            elif self._algo_class.__name__ == "PPO":
-                self._config.training(
-                    model={"vf_share_layers": True},
-                )
-        elif self._is_graph_obs:
-            if self._config.get("framework") not in ["torch"]:
-                raise NotImplementedError(
-                    "Graph observation with RLlib requires PyTorch framework."
-                )
-            raise NotImplementedError(
-                "RLlib + GNN not yet implemented with new api stack"
-            )
-        elif self._is_graph_multiinput_obs:
-            if self._config.get("framework") not in ["torch"]:
-                raise NotImplementedError(
-                    "Graph observation with RLlib requires PyTorch framework."
-                )
-            raise NotImplementedError(
-                "RLlib + GNN not yet implemented with new api stack"
-            )
-
-        # connector preprocessing observations for rl_module
-        if self._env_to_module_connector is None:
-            if self._action_masking:
-                env_to_module_connector = (
-                    lambda env, spaces, device: FlattenMultiagentMaskedObservations()
-                )
-            else:
-                env_to_module_connector = (
-                    lambda env, spaces, device: FlattenObservations(multi_agent=True)
-                )
-
-        else:
-            env_to_module_connector = self._env_to_module_connector
-        self._config.env_runners(env_to_module_connector=env_to_module_connector)
-
-        # rl-module config
+        # rl-module config (custom or defined according to classic vs graph obs and masking vs no masking=
         if self._rl_module_spec is None:
-            if self._action_masking:
-                if self._algo_class.__name__ != "PPO":
+            # Update:
+            # - catalog class: e.g. encoder for graph using GNN
+            # - default rl module class: e.g. apply action mask to logits
+            # - default model config: e.g. customize GNN
+            default_model_config = {}
+            default_module_class = None
+            catalog_class = None
+
+            # Catalog
+            if self._is_graph_obs or self._is_graph_multiinput_obs:
+                # Check framework
+                if self._config.get("framework") not in [TORCH_FRAMEWORK]:
                     raise NotImplementedError(
-                        "For now action masking with new api stack only available for PPO."
+                        "Graph observation with RLlib requires PyTorch framework or to use your own RL module."
                     )
-                default_module_class = ActionMaskingTorchRLModule
-            else:
-                default_module_class = None
+                # Encoder choice
+                if self._algo_class is PPO:
+                    if self._graph2node:
+                        catalog_class = Graph2NodePPOCatalog
+                    else:
+                        catalog_class = GraphPPOCatalog
+                else:
+                    raise NotImplementedError(
+                        f"Graph observation not available for {self._algo_class.__name__}, "
+                        "use your own RL module."
+                    )
+                # Customize encoder
+                default_model_config["graph_features_extractor_kwargs"] = (
+                    self._graph_feature_extractors_kwargs
+                )
+
+            # RL Module class
+            if self._action_masking:
+                # Check framework
+                if self._config.get("framework") not in [TORCH_FRAMEWORK]:
+                    raise NotImplementedError(
+                        "Action masking only available for pytorch framework "
+                        "if you do not use your own RL module."
+                    )
+                # Mask logits in RL-module
+                if self._algo_class is PPO:
+                    if self._graph2node:
+                        default_module_class = ActionMaskingGraph2NodePPOTorchRLModule
+                    else:
+                        default_module_class = ActionMaskingPPOTorchRLModule
+                elif self._algo_class is DQN:
+                    if self._graph2node:
+                        raise NotImplementedError(
+                            f"Graph node actions + action masking not available for {self._algo_class.__name__}, "
+                            "use your own RL module."
+                        )
+                    else:
+                        default_module_class = ActionMaskingDQNTorchRLModule
+                    self._config.training(
+                        hiddens=[],
+                        dueling=False,
+                    )
+                else:
+                    raise NotImplementedError(
+                        f"Action masking not available for {self._algo_class.__name__}, "
+                        "use your own RL module."
+                    )
+            elif self._graph2node:
+                # Check framework
+                if self._config.get("framework") not in [TORCH_FRAMEWORK]:
+                    raise NotImplementedError(
+                        "Graph node actions only available for pytorch framework "
+                        "if you do not use your own RL module."
+                    )
+                if self._algo_class is PPO:
+                    default_module_class = Graph2NodePPOTorchRLModule
+                    default_model_config["graph2node_action_net_kwargs"] = (
+                        self._graph2node_action_net_kwargs
+                    )
+                else:
+                    raise NotImplementedError(
+                        f"Graph node actions not available for {self._algo_class.__name__}, "
+                        "use your own RL module."
+                    )
 
             rl_module_spec = MultiRLModuleSpec(
                 rl_module_specs={
@@ -519,9 +552,10 @@ class RayRLlib(Solver, Policies, Restorable):
                         module_class=self._module_classes.get(
                             module_id, default_module_class
                         ),
-                        # action_space=rl_module_act_spaces[module_id],
-                        # observation_space=rl_module_act_spaces[module_id],
-                        model_config=self._model_configs.get(module_id, {}),
+                        model_config=self._model_configs.get(
+                            module_id, default_model_config
+                        ),
+                        catalog_class=catalog_class,
                     )
                     for module_id in self._agent2module_id.values()
                 }
@@ -545,6 +579,48 @@ class RayRLlib(Solver, Policies, Restorable):
             policy_mapping_fn=policy_mapping_fn,
         )
 
+        # connector preprocessing observations for rl_module  => flatten observations
+        if self._env_to_module_connector is None:
+            if self._action_masking:
+                env_to_module_connector = (
+                    lambda env, spaces, device: FlattenMultiagentMaskedObservations(
+                        is_multiinput=self._is_graph_multiinput_obs,
+                        is_graph_dict=self._is_graph_obs,
+                    )
+                )
+            elif self._is_graph_obs:
+                env_to_module_connector = (
+                    lambda env, spaces, device: FlattenMultiagentGraphObservations()
+                )
+            elif self._is_graph_multiinput_obs:
+                env_to_module_connector = (
+                    lambda env,
+                    spaces,
+                    device: FlattenMultiagentMultiinputObservations()
+                )
+            else:
+                env_to_module_connector = (
+                    lambda env, spaces, device: FlattenObservations(multi_agent=True)
+                )
+
+        else:
+            env_to_module_connector = self._env_to_module_connector
+
+        self._config.env_runners(
+            env_to_module_connector=env_to_module_connector,
+        )
+
+        # learner to module
+        if self._graph2node:
+            # pad action logits (as number of nodes can vary)
+            learner_connector = (
+                lambda observation_space, action_space: PadGraph2NodeActionLogits()
+            )
+        else:
+            learner_connector = None
+        self._config.learners(learner_connector=learner_connector)
+
+        # gym env wrapper for env runners
         register_env(
             "skdecide_env",
             lambda _,

@@ -96,6 +96,10 @@ class GraphFeaturesExtractor(nn.Module):
             observations.edge_attr,
             observations.batch,
         )
+        # empty edge attr => None
+        if edge_attr is not None and edge_attr.numel() == 0:
+            edge_attr = None
+
         # construct edge weights, for GNNs needing it, as the first edge feature
         if edge_attr is not None and len(edge_attr.shape) > 1:
             edge_weight = edge_attr[:, 0]
@@ -190,6 +194,9 @@ class Graph2NodeLayer(nn.Module):
             observations.edge_attr,
             observations.batch,
         )
+        # empty edge attr => None
+        if edge_attr is not None and edge_attr.numel() == 0:
+            edge_attr = None
         # construct edge weights, for GNNs needing it, as the first edge feature
         if edge_attr is not None and len(edge_attr.shape) > 1:
             edge_weight = edge_attr[:, 0]
