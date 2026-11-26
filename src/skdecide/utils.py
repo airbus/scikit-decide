@@ -234,7 +234,6 @@ def rollout(
     return_episodes: bool = False,
     goal_logging_level: int = logging.INFO,
     rollout_callback: Optional[RolloutCallback] = None,
-    use_applicable_actions: Optional[bool] = None,
 ) -> Optional[
     list[
         tuple[
