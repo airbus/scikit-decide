@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>hub.solver.rayrllib.autoregressive.connectors.flattenobservations | Scikit-decide</title>
+    <meta name="generator" content="VuePress 1.8.2">
+    
+    <meta name="description" content="This is scikit-decide documentation">
+    
+    <link rel="preload" href="/scikit-decide/assets/css/0.styles.cb4ba6a3.css" as="style"><link rel="preload" href="/scikit-decide/assets/js/app.f385147b.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/3.0d3eec02.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/6.b1520538.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/158.92fbdc11.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/8.047bff44.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/9.4edbf881.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/5.fe62d74f.js" as="script"><link rel="prefetch" href="/scikit-decide/assets/js/1.903016a6.js"><link rel="prefetch" href="/scikit-decide/assets/js/10.05aa8a53.js"><link rel="prefetch" href="/scikit-decide/assets/js/100.cf60efe7.js"><link rel="prefetch" href="/scikit-decide/assets/js/101.40f18f42.js"><link rel="prefetch" href="/scikit-decide/assets/js/102.5ddc96bc.js"><link rel="prefetch" href="/scikit-decide/assets/js/103.743a9f0c.js"><link rel="prefetch" href="/scikit-decide/assets/js/104.c79ce8b5.js"><link rel="prefetch" href="/scikit-decide/assets/js/105.f82f5e6d.js"><link rel="prefetch" href="/scikit-decide/assets/js/106.37388325.js"><link rel="prefetch" href="/scikit-decide/assets/js/107.99202d73.js"><link rel="prefetch" href="/scikit-decide/assets/js/108.812acc59.js"><link rel="prefetch" href="/scikit-decide/assets/js/109.e21abe2a.js"><link rel="prefetch" href="/scikit-decide/assets/js/11.13443afe.js"><link rel="prefetch" href="/scikit-decide/assets/js/110.908ae1e3.js"><link rel="prefetch" href="/scikit-decide/assets/js/111.8b046871.js"><link rel="prefetch" href="/scikit-decide/assets/js/112.59ab84f4.js"><link rel="prefetch" href="/scikit-decide/assets/js/113.b878e55c.js"><link rel="prefetch" href="/scikit-decide/assets/js/114.168d56d0.js"><link rel="prefetch" href="/scikit-decide/assets/js/115.6ebce209.js"><link rel="prefetch" href="/scikit-decide/assets/js/116.27e55f4c.js"><link rel="prefetch" href="/scikit-decide/assets/js/117.02483051.js"><link rel="prefetch" href="/scikit-decide/assets/js/118.34c599d5.js"><link rel="prefetch" href="/scikit-decide/assets/js/119.9668d88b.js"><link rel="prefetch" href="/scikit-decide/assets/js/12.ffbbeb9a.js"><link rel="prefetch" href="/scikit-decide/assets/js/120.865eab63.js"><link rel="prefetch" href="/scikit-decide/assets/js/121.1efef4d6.js"><link rel="prefetch" href="/scikit-decide/assets/js/122.9733fcea.js"><link rel="prefetch" href="/scikit-decide/assets/js/123.d55d4b86.js"><link rel="prefetch" href="/scikit-decide/assets/js/124.be6de484.js"><link rel="prefetch" href="/scikit-decide/assets/js/125.00c2b3f0.js"><link rel="prefetch" href="/scikit-decide/assets/js/126.1348b646.js"><link rel="prefetch" href="/scikit-decide/assets/js/127.600ecee4.js"><link rel="prefetch" href="/scikit-decide/assets/js/128.07b8166d.js"><link rel="prefetch" href="/scikit-decide/assets/js/129.5ac9d9ce.js"><link rel="prefetch" href="/scikit-decide/assets/js/13.07af27b0.js"><link rel="prefetch" href="/scikit-decide/assets/js/130.14ef35a9.js"><link rel="prefetch" href="/scikit-decide/assets/js/131.f973e07c.js"><link rel="prefetch" href="/scikit-decide/assets/js/132.0597fdc9.js"><link rel="prefetch" href="/scikit-decide/assets/js/133.212a0187.js"><link rel="prefetch" href="/scikit-decide/assets/js/134.9ffc0e06.js"><link rel="prefetch" href="/scikit-decide/assets/js/135.c5780cff.js"><link rel="prefetch" href="/scikit-decide/assets/js/136.602be395.js"><link rel="prefetch" href="/scikit-decide/assets/js/137.a9edc023.js"><link rel="prefetch" href="/scikit-decide/assets/js/138.c6477bd1.js"><link rel="prefetch" href="/scikit-decide/assets/js/139.c0c24505.js"><link rel="prefetch" href="/scikit-decide/assets/js/14.2e0790f9.js"><link rel="prefetch" href="/scikit-decide/assets/js/140.d64ef5d0.js"><link rel="prefetch" href="/scikit-decide/assets/js/141.6c6cf572.js"><link rel="prefetch" href="/scikit-decide/assets/js/142.8c14e7ef.js"><link rel="prefetch" href="/scikit-decide/assets/js/143.9c3687ca.js"><link rel="prefetch" href="/scikit-decide/assets/js/144.aee7a048.js"><link rel="prefetch" href="/scikit-decide/assets/js/145.7ad6aa2f.js"><link rel="prefetch" href="/scikit-decide/assets/js/146.dc3a411e.js"><link rel="prefetch" href="/scikit-decide/assets/js/147.ea752120.js"><link rel="prefetch" href="/scikit-decide/assets/js/148.f133fe4e.js"><link rel="prefetch" href="/scikit-decide/assets/js/149.59ebb7f4.js"><link rel="prefetch" href="/scikit-decide/assets/js/15.2b434669.js"><link rel="prefetch" href="/scikit-decide/assets/js/150.52c1134c.js"><link rel="prefetch" href="/scikit-decide/assets/js/151.37f5be81.js"><link rel="prefetch" href="/scikit-decide/assets/js/152.fb29493e.js"><link rel="prefetch" href="/scikit-decide/assets/js/153.2b7d509a.js"><link rel="prefetch" href="/scikit-decide/assets/js/154.964d495f.js"><link rel="prefetch" href="/scikit-decide/assets/js/155.8129ab84.js"><link rel="prefetch" href="/scikit-decide/assets/js/156.ad0ecf65.js"><link rel="prefetch" href="/scikit-decide/assets/js/157.e2761a7d.js"><link rel="prefetch" href="/scikit-decide/assets/js/159.e83c7ace.js"><link rel="prefetch" href="/scikit-decide/assets/js/16.d9bde08a.js"><link rel="prefetch" href="/scikit-decide/assets/js/160.b6ad631e.js"><link rel="prefetch" href="/scikit-decide/assets/js/161.6aad4f81.js"><link rel="prefetch" href="/scikit-decide/assets/js/162.8f6d9092.js"><link rel="prefetch" href="/scikit-decide/assets/js/163.fa73c335.js"><link rel="prefetch" href="/scikit-decide/assets/js/164.1e1767a5.js"><link rel="prefetch" href="/scikit-decide/assets/js/165.5dc0cbd7.js"><link rel="prefetch" href="/scikit-decide/assets/js/166.3246c880.js"><link rel="prefetch" href="/scikit-decide/assets/js/167.c7bcf935.js"><link rel="prefetch" href="/scikit-decide/assets/js/168.84e72190.js"><link rel="prefetch" href="/scikit-decide/assets/js/169.52a9c986.js"><link rel="prefetch" href="/scikit-decide/assets/js/17.b923e4b5.js"><link rel="prefetch" href="/scikit-decide/assets/js/170.fcd9a547.js"><link rel="prefetch" href="/scikit-decide/assets/js/171.3f4ddf50.js"><link rel="prefetch" href="/scikit-decide/assets/js/172.7c7d41a8.js"><link rel="prefetch" href="/scikit-decide/assets/js/173.d4c23a84.js"><link rel="prefetch" href="/scikit-decide/assets/js/174.29fe37e1.js"><link rel="prefetch" href="/scikit-decide/assets/js/175.133f2873.js"><link rel="prefetch" href="/scikit-decide/assets/js/176.27090bf2.js"><link rel="prefetch" href="/scikit-decide/assets/js/177.f2a74e0b.js"><link rel="prefetch" href="/scikit-decide/assets/js/178.e3fa0417.js"><link rel="prefetch" href="/scikit-decide/assets/js/179.e0ab83cb.js"><link rel="prefetch" href="/scikit-decide/assets/js/18.72983905.js"><link rel="prefetch" href="/scikit-decide/assets/js/180.c4b91745.js"><link rel="prefetch" href="/scikit-decide/assets/js/181.f1044c2c.js"><link rel="prefetch" href="/scikit-decide/assets/js/182.598e4955.js"><link rel="prefetch" href="/scikit-decide/assets/js/183.f9b5a43c.js"><link rel="prefetch" href="/scikit-decide/assets/js/184.5bc648be.js"><link rel="prefetch" href="/scikit-decide/assets/js/185.131aad86.js"><link rel="prefetch" href="/scikit-decide/assets/js/186.d76e9979.js"><link rel="prefetch" href="/scikit-decide/assets/js/187.060c3add.js"><link rel="prefetch" href="/scikit-decide/assets/js/188.20e1f19d.js"><link rel="prefetch" href="/scikit-decide/assets/js/189.e67de1bf.js"><link rel="prefetch" href="/scikit-decide/assets/js/19.de4438f9.js"><link rel="prefetch" href="/scikit-decide/assets/js/190.3b04ad99.js"><link rel="prefetch" href="/scikit-decide/assets/js/191.cd4e2da6.js"><link rel="prefetch" href="/scikit-decide/assets/js/192.e4ff0ef7.js"><link rel="prefetch" href="/scikit-decide/assets/js/193.7ef9471b.js"><link rel="prefetch" href="/scikit-decide/assets/js/194.85b794f3.js"><link rel="prefetch" href="/scikit-decide/assets/js/195.47e49288.js"><link rel="prefetch" href="/scikit-decide/assets/js/196.8bb746b5.js"><link rel="prefetch" href="/scikit-decide/assets/js/197.d388b04d.js"><link rel="prefetch" href="/scikit-decide/assets/js/198.07d678c9.js"><link rel="prefetch" href="/scikit-decide/assets/js/199.35d1d0da.js"><link rel="prefetch" href="/scikit-decide/assets/js/20.fb9d9504.js"><link rel="prefetch" href="/scikit-decide/assets/js/200.fe94de8a.js"><link rel="prefetch" href="/scikit-decide/assets/js/201.8c1d4979.js"><link rel="prefetch" href="/scikit-decide/assets/js/202.abec3166.js"><link rel="prefetch" href="/scikit-decide/assets/js/203.74d49cd4.js"><link rel="prefetch" href="/scikit-decide/assets/js/204.02874f2b.js"><link rel="prefetch" href="/scikit-decide/assets/js/205.c507a26f.js"><link rel="prefetch" href="/scikit-decide/assets/js/206.2439081c.js"><link rel="prefetch" href="/scikit-decide/assets/js/207.ff530ba1.js"><link rel="prefetch" href="/scikit-decide/assets/js/208.082f3381.js"><link rel="prefetch" href="/scikit-decide/assets/js/209.d246e6c7.js"><link rel="prefetch" href="/scikit-decide/assets/js/21.60f38ba1.js"><link rel="prefetch" href="/scikit-decide/assets/js/210.ba10951f.js"><link rel="prefetch" href="/scikit-decide/assets/js/211.17f651ff.js"><link rel="prefetch" href="/scikit-decide/assets/js/212.88755568.js"><link rel="prefetch" href="/scikit-decide/assets/js/213.97a0cf9a.js"><link rel="prefetch" href="/scikit-decide/assets/js/214.dda203a9.js"><link rel="prefetch" href="/scikit-decide/assets/js/215.de99f613.js"><link rel="prefetch" href="/scikit-decide/assets/js/216.53fa50a0.js"><link rel="prefetch" href="/scikit-decide/assets/js/217.3f5c7d7b.js"><link rel="prefetch" href="/scikit-decide/assets/js/218.6f0fcdef.js"><link rel="prefetch" href="/scikit-decide/assets/js/219.a9730fea.js"><link rel="prefetch" href="/scikit-decide/assets/js/22.71868176.js"><link rel="prefetch" href="/scikit-decide/assets/js/220.d4dafc11.js"><link rel="prefetch" href="/scikit-decide/assets/js/221.81a4af70.js"><link rel="prefetch" href="/scikit-decide/assets/js/222.8a4508b1.js"><link rel="prefetch" href="/scikit-decide/assets/js/223.77a4e376.js"><link rel="prefetch" href="/scikit-decide/assets/js/224.c140fbe9.js"><link rel="prefetch" href="/scikit-decide/assets/js/225.5ab07f36.js"><link rel="prefetch" href="/scikit-decide/assets/js/226.6bf7cb4f.js"><link rel="prefetch" href="/scikit-decide/assets/js/227.8c6fc6ca.js"><link rel="prefetch" href="/scikit-decide/assets/js/228.f4840de2.js"><link rel="prefetch" href="/scikit-decide/assets/js/229.c69e67e5.js"><link rel="prefetch" href="/scikit-decide/assets/js/23.b5d7f644.js"><link rel="prefetch" href="/scikit-decide/assets/js/230.d3107336.js"><link rel="prefetch" href="/scikit-decide/assets/js/231.27b5019f.js"><link rel="prefetch" href="/scikit-decide/assets/js/232.5b05e56b.js"><link rel="prefetch" href="/scikit-decide/assets/js/233.4547189d.js"><link rel="prefetch" href="/scikit-decide/assets/js/234.9d73df61.js"><link rel="prefetch" href="/scikit-decide/assets/js/235.720c02bf.js"><link rel="prefetch" href="/scikit-decide/assets/js/236.cd5ece3f.js"><link rel="prefetch" href="/scikit-decide/assets/js/24.08412097.js"><link rel="prefetch" href="/scikit-decide/assets/js/25.49cf709a.js"><link rel="prefetch" href="/scikit-decide/assets/js/26.ee0919a3.js"><link rel="prefetch" href="/scikit-decide/assets/js/27.f2620383.js"><link rel="prefetch" href="/scikit-decide/assets/js/28.e00ba5fe.js"><link rel="prefetch" href="/scikit-decide/assets/js/29.88965811.js"><link rel="prefetch" href="/scikit-decide/assets/js/30.f4e14a73.js"><link rel="prefetch" href="/scikit-decide/assets/js/31.f5cba84c.js"><link rel="prefetch" href="/scikit-decide/assets/js/32.3b8ccf1b.js"><link rel="prefetch" href="/scikit-decide/assets/js/33.cbe91420.js"><link rel="prefetch" href="/scikit-decide/assets/js/34.51d96d95.js"><link rel="prefetch" href="/scikit-decide/assets/js/35.7bae9424.js"><link rel="prefetch" href="/scikit-decide/assets/js/36.7d8de194.js"><link rel="prefetch" href="/scikit-decide/assets/js/37.e9a8c6d6.js"><link rel="prefetch" href="/scikit-decide/assets/js/38.e6fda1f1.js"><link rel="prefetch" href="/scikit-decide/assets/js/39.3851fd92.js"><link rel="prefetch" href="/scikit-decide/assets/js/4.1033bc0a.js"><link rel="prefetch" href="/scikit-decide/assets/js/40.9930b56c.js"><link rel="prefetch" href="/scikit-decide/assets/js/41.8e1c8407.js"><link rel="prefetch" href="/scikit-decide/assets/js/42.37f6bedd.js"><link rel="prefetch" href="/scikit-decide/assets/js/43.4c596e23.js"><link rel="prefetch" href="/scikit-decide/assets/js/44.09cd6422.js"><link rel="prefetch" href="/scikit-decide/assets/js/45.ccde2e64.js"><link rel="prefetch" href="/scikit-decide/assets/js/46.fffe9805.js"><link rel="prefetch" href="/scikit-decide/assets/js/47.e09314f0.js"><link rel="prefetch" href="/scikit-decide/assets/js/48.58c9acf3.js"><link rel="prefetch" href="/scikit-decide/assets/js/49.df7fbaa3.js"><link rel="prefetch" href="/scikit-decide/assets/js/50.77c0cb36.js"><link rel="prefetch" href="/scikit-decide/assets/js/51.e8e4c9a1.js"><link rel="prefetch" href="/scikit-decide/assets/js/52.1840a65b.js"><link rel="prefetch" href="/scikit-decide/assets/js/53.750b6127.js"><link rel="prefetch" href="/scikit-decide/assets/js/54.08f22a2c.js"><link rel="prefetch" href="/scikit-decide/assets/js/55.809fa556.js"><link rel="prefetch" href="/scikit-decide/assets/js/56.b382f152.js"><link rel="prefetch" href="/scikit-decide/assets/js/57.35007081.js"><link rel="prefetch" href="/scikit-decide/assets/js/58.c29cc049.js"><link rel="prefetch" href="/scikit-decide/assets/js/59.65828260.js"><link rel="prefetch" href="/scikit-decide/assets/js/60.8effb94f.js"><link rel="prefetch" href="/scikit-decide/assets/js/61.4c822e54.js"><link rel="prefetch" href="/scikit-decide/assets/js/62.0bc23270.js"><link rel="prefetch" href="/scikit-decide/assets/js/63.01f20348.js"><link rel="prefetch" href="/scikit-decide/assets/js/64.96003a71.js"><link rel="prefetch" href="/scikit-decide/assets/js/65.92385476.js"><link rel="prefetch" href="/scikit-decide/assets/js/66.110e3c9c.js"><link rel="prefetch" href="/scikit-decide/assets/js/67.4cf09c7f.js"><link rel="prefetch" href="/scikit-decide/assets/js/68.1c02f2e5.js"><link rel="prefetch" href="/scikit-decide/assets/js/69.84915bce.js"><link rel="prefetch" href="/scikit-decide/assets/js/7.645e7686.js"><link rel="prefetch" href="/scikit-decide/assets/js/70.8bbd3197.js"><link rel="prefetch" href="/scikit-decide/assets/js/71.43ff964f.js"><link rel="prefetch" href="/scikit-decide/assets/js/72.8234c098.js"><link rel="prefetch" href="/scikit-decide/assets/js/73.ff8bbb70.js"><link rel="prefetch" href="/scikit-decide/assets/js/74.ef0174ba.js"><link rel="prefetch" href="/scikit-decide/assets/js/75.0ed37424.js"><link rel="prefetch" href="/scikit-decide/assets/js/76.54118852.js"><link rel="prefetch" href="/scikit-decide/assets/js/77.3dda1884.js"><link rel="prefetch" href="/scikit-decide/assets/js/78.786310aa.js"><link rel="prefetch" href="/scikit-decide/assets/js/79.09eb920c.js"><link rel="prefetch" href="/scikit-decide/assets/js/80.dc730342.js"><link rel="prefetch" href="/scikit-decide/assets/js/81.80d789f1.js"><link rel="prefetch" href="/scikit-decide/assets/js/82.6c90c11c.js"><link rel="prefetch" href="/scikit-decide/assets/js/83.18ca4b9f.js"><link rel="prefetch" href="/scikit-decide/assets/js/84.bff644a6.js"><link rel="prefetch" href="/scikit-decide/assets/js/85.96576fb0.js"><link rel="prefetch" href="/scikit-decide/assets/js/86.a1c01577.js"><link rel="prefetch" href="/scikit-decide/assets/js/87.e57e766a.js"><link rel="prefetch" href="/scikit-decide/assets/js/88.e807e96e.js"><link rel="prefetch" href="/scikit-decide/assets/js/89.263905c5.js"><link rel="prefetch" href="/scikit-decide/assets/js/90.de544ba3.js"><link rel="prefetch" href="/scikit-decide/assets/js/91.2848b377.js"><link rel="prefetch" href="/scikit-decide/assets/js/92.55b73488.js"><link rel="prefetch" href="/scikit-decide/assets/js/93.bf998d96.js"><link rel="prefetch" href="/scikit-decide/assets/js/94.664ab078.js"><link rel="prefetch" href="/scikit-decide/assets/js/95.23f22860.js"><link rel="prefetch" href="/scikit-decide/assets/js/96.60a6ad50.js"><link rel="prefetch" href="/scikit-decide/assets/js/97.af87e8ab.js"><link rel="prefetch" href="/scikit-decide/assets/js/98.79708f48.js"><link rel="prefetch" href="/scikit-decide/assets/js/99.4153d8df.js">
+    <link rel="stylesheet" href="/scikit-decide/assets/css/0.styles.cb4ba6a3.css">
+  </head>
+  <body>
+    <div id="app" data-server-rendered="true"><div class="theme-container"><header class="navbar"><div class="sidebar-button"><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" viewBox="0 0 448 512" class="icon"><path fill="currentColor" d="M436 124H12c-6.627 0-12-5.373-12-12V80c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12z"></path></svg></div> <a href="/scikit-decide/" class="home-link router-link-active"><img src="/scikit-decide/logo.svg" alt="Scikit-decide" class="logo"> <span class="site-name can-hide">Scikit-decide</span></a> <!----> <div class="links"><div class="search-box"><input aria-label="Search" autocomplete="off" spellcheck="false" value=""> <!----></div> <nav class="nav-links can-hide"><div class="nav-item"><a href="/scikit-decide/" class="nav-link">
+  Home
+</a></div><div class="nav-item"><a href="/scikit-decide/install.html" class="nav-link">
+  Install
+</a></div><div class="nav-item"><a href="/scikit-decide/guide/" class="nav-link">
+  Guide
+</a></div><div class="nav-item"><a href="/scikit-decide/notebooks/" class="nav-link">
+  Notebooks
+</a></div><div class="nav-item"><a href="/scikit-decide/codegen/" class="nav-link">
+  Code generators
+</a></div><div class="nav-item"><a href="/scikit-decide/reference/" class="nav-link router-link-active">
+  Reference
+</a></div><div class="nav-item"><a href="/scikit-decide/contribute.html" class="nav-link">
+  Contribute
+</a></div> <a href="https://github.com/airbus/scikit-decide" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <span><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> <span class="sr-only">(opens new window)</span></span></a></nav></div></header> <div class="sidebar-mask"></div> <aside class="sidebar"><nav class="nav-links"><div class="nav-item"><a href="/scikit-decide/" class="nav-link">
+  Home
+</a></div><div class="nav-item"><a href="/scikit-decide/install.html" class="nav-link">
+  Install
+</a></div><div class="nav-item"><a href="/scikit-decide/guide/" class="nav-link">
+  Guide
+</a></div><div class="nav-item"><a href="/scikit-decide/notebooks/" class="nav-link">
+  Notebooks
+</a></div><div class="nav-item"><a href="/scikit-decide/codegen/" class="nav-link">
+  Code generators
+</a></div><div class="nav-item"><a href="/scikit-decide/reference/" class="nav-link router-link-active">
+  Reference
+</a></div><div class="nav-item"><a href="/scikit-decide/contribute.html" class="nav-link">
+  Contribute
+</a></div> <a href="https://github.com/airbus/scikit-decide" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <span><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> <span class="sr-only">(opens new window)</span></span></a></nav>  <ul class="sidebar-links"><li><section class="sidebar-group depth-0"><p class="sidebar-heading open"><span>hub.solver.rayrllib.autoregressive.connectors.flattenobservations</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#flattenmultiagentautoregressiveactionobservations" class="sidebar-link">FlattenMultiagentAutoregressiveActionObservations</a><ul class="sidebar-sub-headers"><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#constructor" class="sidebar-link">Constructor</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#add-batch-item" class="sidebar-link">add_batch_item</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#add-n-batch-items" class="sidebar-link">add_n_batch_items</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#compute-output-agent-observation-space" class="sidebar-link">compute_output_agent_observation_space</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#flatten-agent-observation" class="sidebar-link">flatten_agent_observation</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#flatten-agent-observation-space" class="sidebar-link">flatten_agent_observation_space</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#foreach-batch-item-change-in-place" class="sidebar-link">foreach_batch_item_change_in_place</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#from-checkpoint" class="sidebar-link">from_checkpoint</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#get-checkpointable-components" class="sidebar-link">get_checkpointable_components</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#get-ctor-args-and-kwargs" class="sidebar-link">get_ctor_args_and_kwargs</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#get-metadata" class="sidebar-link">get_metadata</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#get-state" class="sidebar-link">get_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#merge-states" class="sidebar-link">merge_states</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#preprocess" class="sidebar-link">preprocess</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#preprocess-agent-obs" class="sidebar-link">preprocess_agent_obs</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#recompute-output-action-space" class="sidebar-link">recompute_output_action_space</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#recompute-output-observation-space" class="sidebar-link">recompute_output_observation_space</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#reset-state" class="sidebar-link">reset_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#restore-from-path" class="sidebar-link">restore_from_path</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#save-to-path" class="sidebar-link">save_to_path</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#set-state" class="sidebar-link">set_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#single-agent-episode-iterator" class="sidebar-link">single_agent_episode_iterator</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#switch-batch-from-column-to-module-ids" class="sidebar-link">switch_batch_from_column_to_module_ids</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#annotated-type" class="sidebar-link">_annotated_type</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.autoregressive.connectors.flatten_observations.html#check-component" class="sidebar-link">_check_component</a></li></ul></li></ul></section></li></ul> </aside> <main class="page"> <div class="theme-default-content content__default"><h1 id="hub-solver-ray-rllib-autoregressive-connectors-flatten-observations"><a href="#hub-solver-ray-rllib-autoregressive-connectors-flatten-observations" class="header-anchor">#</a> hub.solver.ray_rllib.autoregressive.connectors.flatten_observations</h1> <div class="custom-block tip"><p class="custom-block-title">Domain specification</p> <div style="margin:10px 0px;" data-v-0ec7540b><div style="margin-top: 5px; margin-bottom: 10px" data-v-0ec7540b><span class="el-tag el-tag--danger el-tag--dark" style="margin-bottom:5px;" data-v-0ec7540b><strong data-v-0ec7540b>Domain</strong></span> </div> <button type="button" class="el-button el-button--info el-button--small is-round" style="margin-right:15px;margin-bottom:5px;" data-v-0ec7540b><!----><i class="el-icon-edit"></i><span><strong data-v-0ec7540b>Edit</strong></span></button> <label class="el-checkbox is-checked" data-v-0ec7540b><span class="el-checkbox__input is-checked"><span class="el-checkbox__inner"></span><input type="checkbox" aria-hidden="false" checked="checked" class="el-checkbox__original"></span><span class="el-checkbox__label">Only show finetuned characteristics<!----></span></label> <label class="el-checkbox is-checked" data-v-0ec7540b><span class="el-checkbox__input is-checked"><span class="el-checkbox__inner"></span><input type="checkbox" aria-hidden="false" checked="checked" class="el-checkbox__original"></span><span class="el-checkbox__label">Simplify signatures<!----></span></label> <div class="el-dialog__wrapper" style="display:none;" data-v-0ec7540b><div role="dialog" aria-modal="true" aria-label="Edit domain specification" class="el-dialog" style="margin-top:15vh;"><div class="el-dialog__header"><span class="el-dialog__title">Edit domain specification</span><button type="button" aria-label="Close" class="el-dialog__headerbtn"><i class="el-dialog__close el-icon el-icon-close"></i></button></div><!----><!----></div></div></div></div> <h2 id="flattenmultiagentautoregressiveactionobservations"><a href="#flattenmultiagentautoregressiveactionobservations" class="header-anchor">#</a> FlattenMultiagentAutoregressiveActionObservations</h2> <p>A connector piece that flattens &quot;true&quot; observation components into a 1D array, and keep action mask.</p> <p>It assumes that observation structure is as  follows:</p> <div class="language- extra-class"><pre class="language-text"><code>obs = {
+    agent_id: {
+        true_obs_key: true_obs
+        action_mask_key: action_mask
+    },
+}
+</code></pre></div><p>where <code>action_mask</code> is the mask already flattened and <code>true_obs</code> is the original observation.</p> <h3 id="constructor"><a href="#constructor" class="header-anchor">#</a> Constructor <span class="badge tip" style="vertical-align:top;" data-v-15b7b770>FlattenMultiagentAutoregressiveActionObservations</span></h3> <pre><code class="language-python"><span class="token function">FlattenMultiagentAutoregressiveActionObservations</span>(
+  input_observation_space: <span>typing.Optional[gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  input_action_space: <span>typing.Optional[gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  is_graph_dict: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span>,<br>  is_multiinput: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span>,<br>  flatten_3d_obs: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span>,<br>  **kwargs<!----><!----><!----><br>)<!----></code>
+</pre> <p>Initializes a ConnectorV2 instance.</p> <p>Args:
+input_observation_space: The (optional) input observation space for this
+connector piece. This is the space coming from a previous connector
+piece in the (env-to-module or learner) pipeline or is directly
+defined within the gym.Env.
+input_action_space: The (optional) input action space for this connector
+piece. This is the space coming from a previous connector piece in the
+(module-to-env) pipeline or is directly defined within the gym.Env.
+**kwargs: Forward API-compatibility kwargs.</p> <h3 id="add-batch-item"><a href="#add-batch-item" class="header-anchor">#</a> add_batch_item <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ConnectorV2</span></h3> <pre><code class="language-python"><span class="token function">add_batch_item</span>(
+  batch: <span>typing.Dict[str, typing.Any]</span><!---->,<br>  column: <span><class 'str'></span><!---->,<br>  item_to_add: <span>typing.Any</span><!---->,<br>  single_agent_episode: <span>typing.Optional[ray.rllib.env.single_agent_episode.SingleAgentEpisode]</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>)<!----></code>
+</pre> <p>Adds a data item under <code>column</code> to the given <code>batch</code>.</p> <p>The <code>item_to_add</code> is stored in the <code>batch</code> in the following manner:</p> <ol><li>If <code>single_agent_episode</code> is not provided (None), will store the item in a
+list directly under <code>column</code>:
+<code>column</code> -&gt; [item, item, ...]</li> <li>If <code>single_agent_episode</code>'s <code>agent_id</code> and <code>module_id</code> properties are None
+(<code>single_agent_episode</code> is not part of a multi-agent episode), will append
+<code>item_to_add</code> to a list under a <code>(\&lt;episodeID&gt;,)</code> key under <code>column</code>:
+<code>column</code> -&gt; <code>(\&lt;episodeID&gt;,)</code> -&gt; [item, item, ...]</li> <li>If <code>single_agent_episode</code>'s <code>agent_id</code> and <code>module_id</code> are NOT None
+(<code>single_agent_episode</code> is part of a multi-agent episode), will append
+<code>item_to_add</code> to a list under a <code>(\&lt;episodeID&gt;,\&lt;AgentID&gt;,\&lt;ModuleID&gt;)</code> key
+under <code>column</code>:
+<code>column</code> -&gt; <code>(\&lt;episodeID&gt;,\&lt;AgentID&gt;,\&lt;ModuleID&gt;)</code> -&gt; [item, item, ...]</li></ol> <p>See the these examples here for clarification of these three cases:</p> <p>.. testcode::</p> <div class="language- extra-class"><pre><code>from ray.rllib.connectors.connector_v2 import ConnectorV2
+from ray.rllib.env.multi_agent_episode import MultiAgentEpisode
+from ray.rllib.env.single_agent_episode import SingleAgentEpisode
+from ray.rllib.utils.test_utils import check
+
+# 1) Simple case (no episodes provided) -&gt; Store data in a list directly
+# under `column`:
+batch = {}
+ConnectorV2.add_batch_item(batch, &quot;test_col&quot;, item_to_add=5)
+ConnectorV2.add_batch_item(batch, &quot;test_col&quot;, item_to_add=6)
+check(batch, {&quot;test_col&quot;: [5, 6]})
+ConnectorV2.add_batch_item(batch, &quot;test_col_2&quot;, item_to_add=-10)
+check(batch, {
+    &quot;test_col&quot;: [5, 6],
+    &quot;test_col_2&quot;: [-10],
+})
+
+# 2) Single-agent case (SingleAgentEpisode provided) -&gt; Store data in a list
+# under the keys: `column` -&gt; `(\&lt;eps_id&gt;,)` -&gt; [...]:
+batch = {}
+episode = SingleAgentEpisode(
+    id_=&quot;SA-EPS0&quot;,
+    observations=[0, 1, 2, 3],
+    actions=[1, 2, 3],
+    rewards=[1.0, 2.0, 3.0],
+)
+ConnectorV2.add_batch_item(batch, &quot;test_col&quot;, 5, episode)
+ConnectorV2.add_batch_item(batch, &quot;test_col&quot;, 6, episode)
+ConnectorV2.add_batch_item(batch, &quot;test_col_2&quot;, -10, episode)
+check(batch, {
+    &quot;test_col&quot;: {(&quot;SA-EPS0&quot;,): [5, 6]},
+    &quot;test_col_2&quot;: {(&quot;SA-EPS0&quot;,): [-10]},
+})
+
+# 3) Multi-agent case (SingleAgentEpisode provided that has `agent_id` and
+# `module_id` information) -&gt; Store data in a list under the keys:
+# `column` -&gt; `(\&lt;episodeID&gt;,\&lt;AgentID&gt;,\&lt;ModuleID&gt;)` -&gt; [...]:
+batch = {}
+ma_episode = MultiAgentEpisode(
+    id_=&quot;MA-EPS1&quot;,
+    observations=[
+        {&quot;ag0&quot;: 0, &quot;ag1&quot;: 1}, {&quot;ag0&quot;: 2, &quot;ag1&quot;: 4}
+    ],
+    actions=[{&quot;ag0&quot;: 0, &quot;ag1&quot;: 1}],
+    rewards=[{&quot;ag0&quot;: -0.1, &quot;ag1&quot;: -0.2}],
+    # ag0 maps to mod0, ag1 maps to mod1, etc..
+    agent_to_module_mapping_fn=lambda aid, eps: f&quot;mod{aid[2:]}&quot;,
+)
+ConnectorV2.add_batch_item(
+    batch,
+    &quot;test_col&quot;,
+    item_to_add=5,
+    single_agent_episode=ma_episode.agent_episodes[&quot;ag0&quot;],
+)
+ConnectorV2.add_batch_item(
+    batch,
+    &quot;test_col&quot;,
+    item_to_add=6,
+    single_agent_episode=ma_episode.agent_episodes[&quot;ag0&quot;],
+)
+ConnectorV2.add_batch_item(
+    batch,
+    &quot;test_col_2&quot;,
+    item_to_add=10,
+    single_agent_episode=ma_episode.agent_episodes[&quot;ag1&quot;],
+)
+check(
+    batch,
+    {
+        &quot;test_col&quot;: {(&quot;MA-EPS1&quot;, &quot;ag0&quot;, &quot;mod0&quot;): [5, 6]},
+        &quot;test_col_2&quot;: {(&quot;MA-EPS1&quot;, &quot;ag1&quot;, &quot;mod1&quot;): [10]},
+    },
+)
+</code></pre></div><p>Args:
+batch: The batch to store <code>item_to_add</code> in.
+column: The column name (str) within the <code>batch</code> to store <code>item_to_add</code>
+under.
+item_to_add: The data item to store in the batch.
+single_agent_episode: An optional SingleAgentEpisode.
+If provided and its <code>agent_id</code> and <code>module_id</code> properties are None,
+creates a further sub dictionary under <code>column</code>, mapping from
+<code>(\&lt;episodeID&gt;,)</code> to a list of data items (to which <code>item_to_add</code> will
+be appended in this call).
+If provided and its <code>agent_id</code> and <code>module_id</code> properties are NOT None,
+creates a further sub dictionary under <code>column</code>, mapping from
+<code>(\&lt;episodeID&gt;,,\&lt;AgentID&gt;,\&lt;ModuleID&gt;)</code> to a list of data items (to which
+<code>item_to_add</code> will be appended in this call).
+If not provided, will append <code>item_to_add</code> to a list directly under
+<code>column</code>.</p> <h3 id="add-n-batch-items"><a href="#add-n-batch-items" class="header-anchor">#</a> add_n_batch_items <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ConnectorV2</span></h3> <pre><code class="language-python"><span class="token function">add_n_batch_items</span>(
+  batch: <span>typing.Dict[str, typing.Any]</span><!---->,<br>  column: <span><class 'str'></span><!---->,<br>  items_to_add: <span>typing.Any</span><!---->,<br>  num_items: <span><class 'int'></span><!---->,<br>  single_agent_episode: <span>typing.Optional[ray.rllib.env.single_agent_episode.SingleAgentEpisode]</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>)<!----></code>
+</pre> <p>Adds a list of items (or batched item) under <code>column</code> to the given <code>batch</code>.</p> <p>If <code>items_to_add</code> is not a list, but an already batched struct (of np.ndarray
+leafs), the <code>items_to_add</code> will be appended to possibly existing data under the
+same <code>column</code> as-is. A subsequent <code>BatchIndividualItems</code> ConnectorV2 piece will
+recognize this and batch the data properly into a single (batched) item.
+This is much faster than first splitting up <code>items_to_add</code> and then adding each
+item individually.</p> <p>If <code>single_agent_episode</code> is provided and its <code>agent_id</code> and <code>module_id</code>
+properties are None, creates a further sub dictionary under <code>column</code>, mapping
+from <code>(\&lt;episodeID&gt;,)</code> to a list of data items (to which <code>items_to_add</code> will
+be appended in this call).
+If <code>single_agent_episode</code> is provided and its <code>agent_id</code> and <code>module_id</code>
+properties are NOT None, creates a further sub dictionary under <code>column</code>,
+mapping from <code>(\&lt;episodeID&gt;,,\&lt;AgentID&gt;,\&lt;ModuleID&gt;)</code> to a list of data items (to
+which <code>items_to_add</code> will be appended in this call).
+If <code>single_agent_episode</code> is not provided, will append <code>items_to_add</code> to a list
+directly under <code>column</code>.</p> <p>.. testcode::</p> <div class="language- extra-class"><pre><code>import numpy as np
+
+from ray.rllib.connectors.connector_v2 import ConnectorV2
+from ray.rllib.env.multi_agent_episode import MultiAgentEpisode
+from ray.rllib.env.single_agent_episode import SingleAgentEpisode
+from ray.rllib.utils.test_utils import check
+
+# Simple case (no episodes provided) -&gt; Store data in a list directly under
+# `column`:
+batch = {}
+ConnectorV2.add_n_batch_items(
+    batch,
+    &quot;test_col&quot;,
+    # List of (complex) structs.
+    [{&quot;a&quot;: np.array(3), &quot;b&quot;: 4}, {&quot;a&quot;: np.array(5), &quot;b&quot;: 6}],
+    num_items=2,
+)
+check(
+    batch[&quot;test_col&quot;],
+    [{&quot;a&quot;: np.array(3), &quot;b&quot;: 4}, {&quot;a&quot;: np.array(5), &quot;b&quot;: 6}],
+)
+# In a new column (test_col_2), store some already batched items.
+# This way, you may avoid having to disassemble an already batched item
+# (e.g. a numpy array of shape (10, 2)) into its individual items (e.g.
+# split the array into a list of len=10) and then adding these individually.
+# The performance gains may be quite large when providing already batched
+# items (such as numpy arrays with a batch dim):
+ConnectorV2.add_n_batch_items(
+    batch,
+    &quot;test_col_2&quot;,
+    # One (complex) already batched struct.
+    {&quot;a&quot;: np.array([3, 5]), &quot;b&quot;: np.array([4, 6])},
+    num_items=2,
+)
+# Add more already batched items (this time with a different batch size)
+ConnectorV2.add_n_batch_items(
+    batch,
+    &quot;test_col_2&quot;,
+    {&quot;a&quot;: np.array([7, 7, 7]), &quot;b&quot;: np.array([8, 8, 8])},
+    num_items=3,  # \&lt;- in this case, this must be the batch size
+)
+check(
+    batch[&quot;test_col_2&quot;],
+    [
+        {&quot;a&quot;: np.array([3, 5]), &quot;b&quot;: np.array([4, 6])},
+        {&quot;a&quot;: np.array([7, 7, 7]), &quot;b&quot;: np.array([8, 8, 8])},
+    ],
+)
+
+# Single-agent case (SingleAgentEpisode provided) -&gt; Store data in a list
+# under the keys: `column` -&gt; `(\&lt;eps_id&gt;,)`:
+batch = {}
+episode = SingleAgentEpisode(
+    id_=&quot;SA-EPS0&quot;,
+    observations=[0, 1, 2, 3],
+    actions=[1, 2, 3],
+    rewards=[1.0, 2.0, 3.0],
+)
+ConnectorV2.add_n_batch_items(
+    batch=batch,
+    column=&quot;test_col&quot;,
+    items_to_add=[5, 6, 7],
+    num_items=3,
+    single_agent_episode=episode,
+)
+check(batch, {
+    &quot;test_col&quot;: {(&quot;SA-EPS0&quot;,): [5, 6, 7]},
+})
+
+# Multi-agent case (SingleAgentEpisode provided that has `agent_id` and
+# `module_id` information) -&gt; Store data in a list under the keys:
+# `column` -&gt; `(\&lt;episodeID&gt;,\&lt;AgentID&gt;,\&lt;ModuleID&gt;)`:
+batch = {}
+ma_episode = MultiAgentEpisode(
+    id_=&quot;MA-EPS1&quot;,
+    observations=[
+        {&quot;ag0&quot;: 0, &quot;ag1&quot;: 1}, {&quot;ag0&quot;: 2, &quot;ag1&quot;: 4}
+    ],
+    actions=[{&quot;ag0&quot;: 0, &quot;ag1&quot;: 1}],
+    rewards=[{&quot;ag0&quot;: -0.1, &quot;ag1&quot;: -0.2}],
+    # ag0 maps to mod0, ag1 maps to mod1, etc..
+    agent_to_module_mapping_fn=lambda aid, eps: f&quot;mod{aid[2:]}&quot;,
+)
+ConnectorV2.add_batch_item(
+    batch,
+    &quot;test_col&quot;,
+    item_to_add=5,
+    single_agent_episode=ma_episode.agent_episodes[&quot;ag0&quot;],
+)
+ConnectorV2.add_batch_item(
+    batch,
+    &quot;test_col&quot;,
+    item_to_add=6,
+    single_agent_episode=ma_episode.agent_episodes[&quot;ag0&quot;],
+)
+ConnectorV2.add_batch_item(
+    batch,
+    &quot;test_col_2&quot;,
+    item_to_add=10,
+    single_agent_episode=ma_episode.agent_episodes[&quot;ag1&quot;],
+)
+check(
+    batch,
+    {
+        &quot;test_col&quot;: {(&quot;MA-EPS1&quot;, &quot;ag0&quot;, &quot;mod0&quot;): [5, 6]},
+        &quot;test_col_2&quot;: {(&quot;MA-EPS1&quot;, &quot;ag1&quot;, &quot;mod1&quot;): [10]},
+    },
+)
+</code></pre></div><p>Args:
+batch: The batch to store n <code>items_to_add</code> in.
+column: The column name (str) within the <code>batch</code> to store <code>item_to_add</code>
+under.
+items_to_add: The list of data items to store in the batch OR an already
+batched (possibly nested) struct. In the latter case, the <code>items_to_add</code>
+will be appended to possibly existing data under the same <code>column</code>
+as-is. A subsequent <code>BatchIndividualItems</code> ConnectorV2 piece will
+recognize this and batch the data properly into a single (batched) item.
+This is much faster than first splitting up <code>items_to_add</code> and then
+adding each item individually.
+num_items: The number of items in <code>items_to_add</code>. This arg is mostly for
+asserting the correct usage of this method by checking, whether the
+given data in <code>items_to_add</code> really has the right amount of individual
+items.
+single_agent_episode: An optional SingleAgentEpisode.
+If provided and its <code>agent_id</code> and <code>module_id</code> properties are None,
+creates a further sub dictionary under <code>column</code>, mapping from
+<code>(\&lt;episodeID&gt;,)</code> to a list of data items (to which <code>items_to_add</code> will
+be appended in this call).
+If provided and its <code>agent_id</code> and <code>module_id</code> properties are NOT None,
+creates a further sub dictionary under <code>column</code>, mapping from
+<code>(\&lt;episodeID&gt;,,\&lt;AgentID&gt;,\&lt;ModuleID&gt;)</code> to a list of data items (to which
+<code>items_to_add</code> will be appended in this call).
+If not provided, will append <code>items_to_add</code> to a list directly under
+<code>column</code>.</p> <h3 id="compute-output-agent-observation-space"><a href="#compute-output-agent-observation-space" class="header-anchor">#</a> compute_output_agent_observation_space <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>PerAgentObservationPreprocessor</span></h3> <pre><code class="language-python"><span class="token function">compute_output_agent_observation_space</span>(
+  self<!----><!---->,<br>  input_agent_observation_space: <span>gym.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a></span><!---->,<br>  input_action_space: <span>gym.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a></span><!---->,<br>  agent_id: <span>str</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>gym.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a></span></code>
+</pre> <p>Compute each agent output observation space.</p> <h4 id="parameters"><a href="#parameters" class="header-anchor">#</a> Parameters</h4> <ul><li><strong>input_agent_observation_space</strong></li> <li><strong>input_action_space</strong></li> <li><strong>agent_id</strong></li></ul> <h4 id="returns"><a href="#returns" class="header-anchor">#</a> Returns</h4> <h3 id="flatten-agent-observation"><a href="#flatten-agent-observation" class="header-anchor">#</a> flatten_agent_observation <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>PerAgentBaseFlattenObservations</span></h3> <pre><code class="language-python"><span class="token function">flatten_agent_observation</span>(
+  self<!----><!---->,<br>  observation: <span>typing.Any</span><!---->,<br>  observation_space: <span><class 'gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>'></span><!---->,<br>  observation_space_base_struct: <span>gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a> | dict[str, 'SpaceBaseStruct'] | tuple['SpaceBaseStruct']</span><!---->,<br>  output_observation_space: <span><class 'gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>'></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Any</span></code>
+</pre> <p>Flatten agent observation</p> <h4 id="parameters-2"><a href="#parameters-2" class="header-anchor">#</a> Parameters</h4> <ul><li><strong>observation</strong>: agent observation to flatten</li> <li><strong>observation_space</strong>: agent observation space</li> <li><strong>observation_space_base_struct</strong>: base struct of the agent observation space</li> <li><strong>output_observation_space</strong>: expected flattened observation space</li></ul> <h4 id="returns-2"><a href="#returns-2" class="header-anchor">#</a> Returns</h4> <p>The flattened agent observation space</p> <h3 id="flatten-agent-observation-space"><a href="#flatten-agent-observation-space" class="header-anchor">#</a> flatten_agent_observation_space <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>PerAgentBaseFlattenObservations</span></h3> <pre><code class="language-python"><span class="token function">flatten_agent_observation_space</span>(
+  self<!----><!---->,<br>  observation_space: <span><class 'gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>'></span><!---->,<br>  observation_space_base_struct: <span>gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a> | dict[str, 'SpaceBaseStruct'] | tuple['SpaceBaseStruct']</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>'></span></code>
+</pre> <p>Flatten agent observation space</p> <h4 id="parameters-3"><a href="#parameters-3" class="header-anchor">#</a> Parameters</h4> <ul><li><strong>observation_space</strong>: agent observation space to flatten</li> <li><strong>observation_space_base_struct</strong>: base struct of the agent observation space</li></ul> <h4 id="returns-3"><a href="#returns-3" class="header-anchor">#</a> Returns</h4> <p>The flattened agent observation space</p> <h3 id="foreach-batch-item-change-in-place"><a href="#foreach-batch-item-change-in-place" class="header-anchor">#</a> foreach_batch_item_change_in_place <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ConnectorV2</span></h3> <pre><code class="language-python"><span class="token function">foreach_batch_item_change_in_place</span>(
+  batch: <span>typing.Dict[str, typing.Any]</span><!---->,<br>  column: <span>typing.Union[str, typing.List[str], typing.Tuple[str]]</span><!---->,<br>  func: <span>typing.Callable[[typing.Any, typing.Optional[int], typing.Union[typing.Hashable, str, NoneType], typing.Optional[str]], typing.Any]</span><!----><!----><br>)<!----></code>
+</pre> <p>Runs the provided <code>func</code> on all items under one or more columns in the batch.</p> <p>Use this method to conveniently loop through all items in a batch
+and transform them in place.</p> <p><code>func</code> takes the following as arguments:</p> <ul><li>The item itself. If column is a list of column names, this argument is a tuple
+of items.</li> <li>The EpisodeID. This value might be None.</li> <li>The AgentID. This value might be None in the single-agent case.</li> <li>The ModuleID. This value might be None in the single-agent case.</li></ul> <p>The return value(s) of <code>func</code> are used to directly override the values in the
+given <code>batch</code>.</p> <p>Args:
+batch: The batch to process in-place.
+column: A single column name (str) or a list thereof. If a list is provided,
+the first argument to <code>func</code> is a tuple of items. If a single
+str is provided, the first argument to <code>func</code> is an individual
+item.
+func: The function to call on each item or tuple of item(s).</p> <p>.. testcode::</p> <div class="language- extra-class"><pre><code>from ray.rllib.connectors.connector_v2 import ConnectorV2
+from ray.rllib.utils.test_utils import check
+
+# Simple case: Batch items are in lists directly under their column names.
+batch = {
+    &quot;col1&quot;: [0, 1, 2, 3],
+    &quot;col2&quot;: [0, -1, -2, -3],
+}
+# Increase all ints by 1.
+ConnectorV2.foreach_batch_item_change_in_place(
+    batch=batch,
+    column=&quot;col1&quot;,
+    func=lambda item, *args: item + 1,
+)
+check(batch[&quot;col1&quot;], [1, 2, 3, 4])
+
+# Further increase all ints by 1 in col1 and flip sign in col2.
+ConnectorV2.foreach_batch_item_change_in_place(
+    batch=batch,
+    column=[&quot;col1&quot;, &quot;col2&quot;],
+    func=(lambda items, *args: (items[0] + 1, -items[1])),
+)
+check(batch[&quot;col1&quot;], [2, 3, 4, 5])
+check(batch[&quot;col2&quot;], [0, 1, 2, 3])
+
+# Single-agent case: Batch items are in lists under (eps_id,)-keys in a dict
+# under their column names.
+batch = {
+    &quot;col1&quot;: {
+        (&quot;eps1&quot;,): [0, 1, 2, 3],
+        (&quot;eps2&quot;,): [400, 500, 600],
+    },
+}
+# Increase all ints of eps1 by 1 and divide all ints of eps2 by 100.
+ConnectorV2.foreach_batch_item_change_in_place(
+    batch=batch,
+    column=&quot;col1&quot;,
+    func=lambda item, eps_id, *args: (
+        item + 1 if eps_id == &quot;eps1&quot; else item / 100
+    ),
+)
+check(batch[&quot;col1&quot;], {
+    (&quot;eps1&quot;,): [1, 2, 3, 4],
+    (&quot;eps2&quot;,): [4, 5, 6],
+})
+
+# Multi-agent case: Batch items are in lists under
+# (eps_id, agent_id, module_id)-keys in a dict
+# under their column names.
+batch = {
+    &quot;col1&quot;: {
+        (&quot;eps1&quot;, &quot;ag1&quot;, &quot;mod1&quot;): [1, 2, 3, 4],
+        (&quot;eps2&quot;, &quot;ag1&quot;, &quot;mod2&quot;): [400, 500, 600],
+        (&quot;eps2&quot;, &quot;ag2&quot;, &quot;mod3&quot;): [-1, -2, -3, -4, -5],
+    },
+}
+# Decrease all ints of &quot;eps1&quot; by 1, divide all ints of &quot;mod2&quot; by 100, and
+# flip sign of all ints of &quot;ag2&quot;.
+ConnectorV2.foreach_batch_item_change_in_place(
+    batch=batch,
+    column=&quot;col1&quot;,
+    func=lambda item, eps_id, ag_id, mod_id: (
+        item - 1
+        if eps_id == &quot;eps1&quot;
+        else item / 100
+        if mod_id == &quot;mod2&quot;
+        else -item
+    ),
+)
+check(batch[&quot;col1&quot;], {
+    (&quot;eps1&quot;, &quot;ag1&quot;, &quot;mod1&quot;): [0, 1, 2, 3],
+    (&quot;eps2&quot;, &quot;ag1&quot;, &quot;mod2&quot;): [4, 5, 6],
+    (&quot;eps2&quot;, &quot;ag2&quot;, &quot;mod3&quot;): [1, 2, 3, 4, 5],
+})
+</code></pre></div><h3 id="from-checkpoint"><a href="#from-checkpoint" class="header-anchor">#</a> from_checkpoint <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">from_checkpoint</span>(
+  path: <span>typing.Union[str, pathlib.Path]</span><!---->,<br>  filesystem: <span>typing.Optional[ForwardRef('pyarrow.fs.FileSystem')]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  **kwargs<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Creates a new Checkpointable instance from the given location and returns it.</p> <p>Args:
+path: The checkpoint path to load (a) the information on how to construct
+a new instance of the implementing class and (b) the state to restore
+the created instance to.
+filesystem: PyArrow FileSystem to use to access data at the <code>path</code>. If not
+specified, this is inferred from the URI scheme of <code>path</code>.
+kwargs: Forward compatibility kwargs. Note that these kwargs are sent to
+each subcomponent's <code>from_checkpoint()</code> call.</p> <p>Returns:
+A new instance of the implementing class, already set to the state stored
+under <code>path</code>.</p> <h3 id="get-checkpointable-components"><a href="#get-checkpointable-components" class="header-anchor">#</a> get_checkpointable_components <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">get_checkpointable_components</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.List[typing.Tuple[str, ForwardRef('Checkpointable')]]</span></code>
+</pre> <p>Returns the implementing class's own Checkpointable subcomponents.</p> <p>Returns:
+A list of 2-tuples (name, subcomponent) describing the implementing class'
+subcomponents, all of which have to be <code>Checkpointable</code> themselves and
+whose state is therefore written into subdirectories (rather than the main
+state file (self.STATE_FILE_NAME) when calling <code>self.save_to_path()</code>).</p> <h3 id="get-ctor-args-and-kwargs"><a href="#get-ctor-args-and-kwargs" class="header-anchor">#</a> get_ctor_args_and_kwargs <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">get_ctor_args_and_kwargs</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Tuple[typing.Tuple, typing.Dict[str, typing.Any]]</span></code>
+</pre> <p>Returns the args/kwargs used to create <code>self</code> from its constructor.</p> <p>Returns:
+A tuple of the args (as a tuple) and kwargs (as a Dict[str, Any]) used to
+construct <code>self</code> from its class constructor.</p> <h3 id="get-metadata"><a href="#get-metadata" class="header-anchor">#</a> get_metadata <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">get_metadata</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict</span></code>
+</pre> <p>Returns JSON writable metadata further describing the implementing class.</p> <p>Note that this metadata is NOT part of any state and is thus NOT needed to
+restore the state of a Checkpointable instance from a directory. Rather, the
+metadata will be written into <code>self.METADATA_FILE_NAME</code> when calling
+<code>self.save_to_path()</code> for the user's convenience.</p> <p>Returns:
+A JSON-encodable dict of metadata information.</p> <h3 id="get-state"><a href="#get-state" class="header-anchor">#</a> get_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">get_state</span>(
+  self<!----><!---->,<br>  components: <span>typing.Union[str, typing.Collection[str], NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  not_components: <span>typing.Union[str, typing.Collection[str], NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  **kwargs<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Any]</span></code>
+</pre> <p>Returns the implementing class's current state as a dict.</p> <p>The returned dict must only contain msgpack-serializable data if you want to
+use the <code>AlgorithmConfig._msgpack_checkpoints</code> option. Consider returning your
+non msgpack-serializable data from the <code>Checkpointable.get_ctor_args_and_kwargs</code>
+method, instead.</p> <p>Args:
+components: An optional collection of string keys to be included in the
+returned state. This might be useful, if getting certain components
+of the state is expensive (e.g. reading/compiling the weights of a large
+NN) and at the same time, these components are not required by the
+caller.
+not_components: An optional list of string keys to be excluded in the
+returned state, even if the same string is part of <code>components</code>.
+This is useful to get the complete state of the class, except
+one or a few components.
+kwargs: Forward-compatibility kwargs.</p> <p>Returns:
+The current state of the implementing class (or only the <code>components</code>
+specified, w/o those in <code>not_components</code>).</p> <h3 id="merge-states"><a href="#merge-states" class="header-anchor">#</a> merge_states <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ConnectorV2</span></h3> <pre><code class="language-python"><span class="token function">merge_states</span>(
+  self<!----><!---->,<br>  states: <span>typing.List[typing.Dict[str, typing.Any]]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Any]</span></code>
+</pre> <p>Computes a resulting state given self's state and a list of other states.</p> <p>Algorithms should use this method for merging states between connectors
+running on parallel EnvRunner workers. For example, to synchronize the connector
+states of n remote workers and a local worker, one could:</p> <ul><li>Gather all remote worker connector states in a list.</li> <li>Call <code>self.merge_states()</code> on the local worker passing it the states list.</li> <li>Broadcast the resulting local worker's connector state back to all remote
+workers. After this, all workers (including the local one) hold a
+merged/synchronized new connecto state.</li></ul> <p>Args:
+states: The list of n other ConnectorV2 states to merge with self's state
+into a single resulting state.</p> <p>Returns:
+The resulting state dict.</p> <h3 id="preprocess"><a href="#preprocess" class="header-anchor">#</a> preprocess <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>MultiAgentObservationPreprocessor</span></h3> <pre><code class="language-python"><span class="token function">preprocess</span>(
+  self<!----><!---->,<br>  observations: <span>dict[str, typing.Any]</span><!---->,<br>  episode: <span><class 'ray.rllib.env.multi_agent_episode.MultiAgentEpisode'></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>dict[str, typing.Any]</span></code>
+</pre> <p>Override to implement the preprocessing logic.</p> <p>Args:
+observations: An observation dict containing each stepping agents'
+(non-batched) observation to be preprocessed by this connector.
+episode: The MultiAgentEpisode instance, where the <code>observation</code> dict
+originated from.</p> <p>Returns:
+The new multi-agent observation dict after <code>observations</code> has been
+preprocessed.</p> <h3 id="preprocess-agent-obs"><a href="#preprocess-agent-obs" class="header-anchor">#</a> preprocess_agent_obs <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>PerAgentObservationPreprocessor</span></h3> <pre><code class="language-python"><span class="token function">preprocess_agent_obs</span>(
+  self<!----><!---->,<br>  observation: <span>Any</span><!---->,<br>  agent_id: <span>str</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>Any</span></code>
+</pre> <p>Override to implement the preprocessing logic per agent.</p> <h4 id="parameters-4"><a href="#parameters-4" class="header-anchor">#</a> Parameters</h4> <ul><li><strong>observation</strong>: An observation from an agent to be preprocessed</li> <li><strong>agent_id</strong></li></ul> <h4 id="returns-4"><a href="#returns-4" class="header-anchor">#</a> Returns</h4> <p>The new agent observation</p> <h3 id="recompute-output-action-space"><a href="#recompute-output-action-space" class="header-anchor">#</a> recompute_output_action_space <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ConnectorV2</span></h3> <pre><code class="language-python"><span class="token function">recompute_output_action_space</span>(
+  self<!----><!---->,<br>  input_observation_space: <span><class 'gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>'></span><!---->,<br>  input_action_space: <span><class 'gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>'></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>'></span></code>
+</pre> <p>Re-computes a new (output) action space based on the input space.</p> <p>This method should be overridden by users to make sure a ConnectorPipelineV2
+knows how the input spaces through its individual ConnectorV2 pieces are being
+transformed.</p> <p>If this ConnectorV2 does not change the action space in any way, leave
+this parent method implementation untouched.</p> <p>Args:
+input_observation_space: The input observation space (either coming from the
+environment if <code>self</code> is the first connector piece in the pipeline or
+from the previous connector piece in the pipeline).
+input_action_space: The input action space (either coming from the
+environment if <code>self</code> is the first connector piece in the pipeline or
+from the previous connector piece in the pipeline).</p> <p>Returns:
+The new action space (after data has passed through this ConenctorV2
+piece).</p> <h3 id="recompute-output-observation-space"><a href="#recompute-output-observation-space" class="header-anchor">#</a> recompute_output_observation_space <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ConnectorV2</span></h3> <pre><code class="language-python"><span class="token function">recompute_output_observation_space</span>(
+  self<!----><!---->,<br>  input_observation_space: <span>gym.spaces.Dict</span><!---->,<br>  input_action_space: <span>gym.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>gym.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a></span></code>
+</pre> <p>Re-computes a new (output) observation space based on the input spaces.</p> <p>This method should be overridden by users to make sure a ConnectorPipelineV2
+knows how the input spaces through its individual ConnectorV2 pieces are being
+transformed.</p> <p>.. testcode::</p> <div class="language- extra-class"><pre><code>from gymnasium.spaces import Box, Discrete
+import numpy as np
+
+from ray.rllib.connectors.connector_v2 import ConnectorV2
+from ray.rllib.utils.numpy import one_hot
+from ray.rllib.utils.test_utils import check
+
+class OneHotConnector(ConnectorV2):
+    def recompute_output_observation_space(
+        self,
+        input_observation_space,
+        input_action_space,
+    ):
+        return Box(0.0, 1.0, (input_observation_space.n,), np.float32)
+
+    def __call__(
+        self,
+        *,
+        rl_module,
+        batch,
+        episodes,
+        explore=None,
+        shared_data=None,
+        metrics=None,
+        **kwargs,
+    ):
+        assert &quot;obs&quot; in batch
+        batch[&quot;obs&quot;] = one_hot(batch[&quot;obs&quot;])
+        return batch
+
+connector = OneHotConnector(input_observation_space=Discrete(2))
+batch = {&quot;obs&quot;: np.array([1, 0, 0], np.int32)}
+output = connector(rl_module=None, batch=batch, episodes=None)
+
+check(output, {&quot;obs&quot;: np.array([[0.0, 1.0], [1.0, 0.0], [1.0, 0.0]])})
+</code></pre></div><p>If this ConnectorV2 does not change the observation space in any way, leave
+this parent method implementation untouched.</p> <p>Args:
+input_observation_space: The input observation space (either coming from the
+environment if <code>self</code> is the first connector piece in the pipeline or
+from the previous connector piece in the pipeline).
+input_action_space: The input action space (either coming from the
+environment if <code>self</code> is the first connector piece in the pipeline or
+from the previous connector piece in the pipeline).</p> <p>Returns:
+The new observation space (after data has passed through this ConnectorV2
+piece).</p> <h3 id="reset-state"><a href="#reset-state" class="header-anchor">#</a> reset_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ConnectorV2</span></h3> <pre><code class="language-python"><span class="token function">reset_state</span>(
+  self<!----><!----><!----><br>)<!----></code>
+</pre> <p>Resets the state of this ConnectorV2 to some initial value.</p> <p>Note that this may NOT be the exact state that this ConnectorV2 was originally
+constructed with.</p> <h3 id="restore-from-path"><a href="#restore-from-path" class="header-anchor">#</a> restore_from_path <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">restore_from_path</span>(
+  self<!----><!---->,<br>  path: <span>typing.Union[str, pathlib.Path]</span><!---->,<br>  component: <span>typing.Optional[str]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  filesystem: <span>typing.Optional[ForwardRef('pyarrow.fs.FileSystem')]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  **kwargs<!----><!----><!----><br>)<!----></code>
+</pre> <p>Restores the state of the implementing class from the given path.</p> <p>If the <code>component</code> arg is provided, <code>path</code> refers to a checkpoint of a
+subcomponent of <code>self</code>, thus allowing the user to load only the subcomponent's
+state into <code>self</code> without affecting any of the other state information (for
+example, loading only the NN state into a Checkpointable, which contains such
+an NN, but also has other state information that should NOT be changed by
+calling this method).</p> <p>The given <code>path</code> should have the following structure and contain the following
+files:</p> <p>.. testcode::
+:skipif: True</p> <div class="language- extra-class"><pre><code>path/
+    [component1]/
+        [component1 subcomponentA]/
+            ...
+        [component1 subcomponentB]/
+            ...
+    [component2]/
+            ...
+    [cls.METADATA_FILE_NAME] (json)
+    [cls.STATE_FILE_NAME] (pkl|msgpack)
+</code></pre></div><p>Note that the self.METADATA_FILE_NAME file is not required to restore the state.</p> <p>Args:
+path: The path to load the implementing class' state from or to load the
+state of only one subcomponent's state of the implementing class (if
+<code>component</code> is provided).
+component: If provided, <code>path</code> is interpreted as the checkpoint path of only
+the subcomponent and thus, only that subcomponent's state is
+restored/loaded. All other state of <code>self</code> remains unchanged in this
+case.
+filesystem: PyArrow FileSystem to use to access data at the <code>path</code>. If not
+specified, this is inferred from the URI scheme of <code>path</code>.
+**kwargs: Forward compatibility kwargs.</p> <h3 id="save-to-path"><a href="#save-to-path" class="header-anchor">#</a> save_to_path <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">save_to_path</span>(
+  self<!----><!---->,<br>  path: <span>typing.Union[str, pathlib.Path, NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  state: <span>typing.Optional[typing.Dict[str, typing.Any]]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  filesystem: <span>typing.Optional[ForwardRef('pyarrow.fs.FileSystem')]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  use_msgpack: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span><class 'str'></span></code>
+</pre> <p>Saves the state of the implementing class (or <code>state</code>) to <code>path</code>.</p> <p>The state of the implementing class is always saved in the following format:</p> <p>.. testcode::
+:skipif: True</p> <div class="language- extra-class"><pre><code>path/
+    [component1]/
+        [component1 subcomponentA]/
+            ...
+        [component1 subcomponentB]/
+            ...
+    [component2]/
+            ...
+    [cls.METADATA_FILE_NAME] (json)
+    [cls.STATE_FILE_NAME] (pkl|msgpack)
+</code></pre></div><p>The main logic is to loop through all subcomponents of this Checkpointable
+and call their respective <code>save_to_path</code> methods. Then save the remaining
+(non subcomponent) state to this Checkpointable's STATE_FILE_NAME.
+In the exception that a component is a FaultTolerantActorManager instance,
+instead of calling <code>save_to_path</code> directly on that manager, the first healthy
+actor is interpreted as the component and its <code>save_to_path</code> method is called.
+Even if that actor is located on another node, the created file is automatically
+synced to the local node.</p> <p>Args:
+path: The path to the directory to save the state of the implementing class
+to. If <code>path</code> doesn't exist or is None, then a new directory will be
+created (and returned).
+state: An optional state dict to be used instead of getting a new state of
+the implementing class through <code>self.get_state()</code>.
+filesystem: PyArrow FileSystem to use to access data at the <code>path</code>.
+If not specified, this is inferred from the URI scheme of <code>path</code>.
+use_msgpack: Whether the state file should be written using msgpack and
+msgpack_numpy (file extension is <code>.msgpack</code>), rather than pickle (file
+extension is <code>.pkl</code>).</p> <p>Returns:
+The path (str) where the state has been saved.</p> <h3 id="set-state"><a href="#set-state" class="header-anchor">#</a> set_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">set_state</span>(
+  self<!----><!---->,<br>  state: <span>typing.Dict[str, typing.Any]</span><!----><!----><br>)<!----></code>
+</pre> <p>Sets the implementing class' state to the given state dict.</p> <p>If component keys are missing in <code>state</code>, these components of the implementing
+class will not be updated/set.</p> <p>Args:
+state: The state dict to restore the state from. Maps component keys
+to the corresponding subcomponent's own state.</p> <h3 id="single-agent-episode-iterator"><a href="#single-agent-episode-iterator" class="header-anchor">#</a> single_agent_episode_iterator <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ConnectorV2</span></h3> <pre><code class="language-python"><span class="token function">single_agent_episode_iterator</span>(
+  episodes: <span>typing.List[typing.Union[ForwardRef('SingleAgentEpisode'), ForwardRef('MultiAgentEpisode')]]</span><!---->,<br>  agents_that_stepped_only: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span>,<br>  zip_with_batch_column: <span>typing.Union[typing.List[typing.Any], typing.Dict[typing.Tuple, typing.Any], NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Iterator[ray.rllib.env.single_agent_episode.SingleAgentEpisode]</span></code>
+</pre> <p>An iterator over a list of episodes yielding always SingleAgentEpisodes.</p> <p>In case items in the list are MultiAgentEpisodes, these are broken down
+into their individual agents' SingleAgentEpisodes and those are then yielded
+one after the other.</p> <p>Useful for connectors that operate on both single-agent and multi-agent
+episodes.</p> <p>Args:
+episodes: The list of SingleAgent- or MultiAgentEpisode objects.
+agents_that_stepped_only: If True (and multi-agent setup), will only place
+items of those agents into the batch that have just stepped in the
+actual MultiAgentEpisode (this is checked via a
+<code>MultiAgentEpside.episode.get_agents_to_act()</code>). Note that this setting
+is ignored in a single-agent setups b/c the agent steps at each timestep
+regardless.
+zip_with_batch_column: If provided, must be a list of batch items
+corresponding to the given <code>episodes</code> (single agent case) or a dict
+mapping (AgentID, ModuleID) tuples to lists of individual batch items
+corresponding to this agent/module combination. The iterator will then
+yield tuples of SingleAgentEpisode objects (1st item) along with the
+data item (2nd item) that this episode was responsible for generating
+originally.</p> <p>Yields:
+All SingleAgentEpisodes in the input list, whereby MultiAgentEpisodes will
+be broken down into their individual SingleAgentEpisode components.</p> <h3 id="switch-batch-from-column-to-module-ids"><a href="#switch-batch-from-column-to-module-ids" class="header-anchor">#</a> switch_batch_from_column_to_module_ids <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ConnectorV2</span></h3> <pre><code class="language-python"><span class="token function">switch_batch_from_column_to_module_ids</span>(
+  batch: <span>typing.Dict[str, typing.Dict[str, typing.Any]]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Dict[str, typing.Any]]</span></code>
+</pre> <p>Switches the first two levels of a <code>col_name -&gt; ModuleID -&gt; data</code> type batch.</p> <p>Assuming that the top level consists of column names as keys and the second
+level (under these columns) consists of ModuleID keys, the resulting batch
+will have these two reversed and thus map ModuleIDs to dicts mapping column
+names to data items.</p> <p>.. testcode::</p> <div class="language- extra-class"><pre><code>from ray.rllib.utils.test_utils import check
+
+batch = {
+    &quot;obs&quot;: {&quot;module_0&quot;: [1, 2, 3]},
+    &quot;actions&quot;: {&quot;module_0&quot;: [4, 5, 6], &quot;module_1&quot;: [7]},
+}
+switched_batch = ConnectorV2.switch_batch_from_column_to_module_ids(batch)
+check(
+    switched_batch,
+    {
+        &quot;module_0&quot;: {&quot;obs&quot;: [1, 2, 3], &quot;actions&quot;: [4, 5, 6]},
+        &quot;module_1&quot;: {&quot;actions&quot;: [7]},
+    },
+)
+</code></pre></div><p>Args:
+batch: The batch to switch from being column name based (then ModuleIDs)
+to being ModuleID based (then column names).</p> <p>Returns:
+A new batch dict mapping ModuleIDs to dicts mapping column names (e.g.
+&quot;obs&quot;) to data.</p> <h3 id="annotated-type"><a href="#annotated-type" class="header-anchor">#</a> _annotated_type <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <h3 id="check-component"><a href="#check-component" class="header-anchor">#</a> _check_component <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">_check_component</span>(
+  self<!----><!---->,<br>  name<!----><!---->,<br>  components<!----><!---->,<br>  not_components<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'bool'></span></code>
+</pre> <p>Returns True if a component should be checkpointed.</p> <p>Args:
+name: The checkpoint name.
+components: A list of components that should be checkpointed.
+non_components: A list of components that should not be checkpointed.</p> <p>Returns:
+True, if the component should be checkpointed and otherwise False.</p></div> <footer class="page-edit"><!----> <!----></footer> <!----> </main></div><div class="global-ui"><!----></div></div>
+    <script src="/scikit-decide/assets/js/app.f385147b.js" defer></script><script src="/scikit-decide/assets/js/3.0d3eec02.js" defer></script><script src="/scikit-decide/assets/js/6.b1520538.js" defer></script><script src="/scikit-decide/assets/js/158.92fbdc11.js" defer></script><script src="/scikit-decide/assets/js/8.047bff44.js" defer></script><script src="/scikit-decide/assets/js/9.4edbf881.js" defer></script><script src="/scikit-decide/assets/js/5.fe62d74f.js" defer></script>
+  </body>
+</html>

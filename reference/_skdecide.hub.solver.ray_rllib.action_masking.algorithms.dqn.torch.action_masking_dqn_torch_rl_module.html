@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>hub.solver.rayrllib.actionmasking.algorithms.dqn.torch.actionmaskingdqntorchrl_module | Scikit-decide</title>
+    <meta name="generator" content="VuePress 1.8.2">
+    
+    <meta name="description" content="This is scikit-decide documentation">
+    
+    <link rel="preload" href="/scikit-decide/assets/css/0.styles.cb4ba6a3.css" as="style"><link rel="preload" href="/scikit-decide/assets/js/app.f385147b.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/3.0d3eec02.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/6.b1520538.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/149.59ebb7f4.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/8.047bff44.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/9.4edbf881.js" as="script"><link rel="preload" href="/scikit-decide/assets/js/5.fe62d74f.js" as="script"><link rel="prefetch" href="/scikit-decide/assets/js/1.903016a6.js"><link rel="prefetch" href="/scikit-decide/assets/js/10.05aa8a53.js"><link rel="prefetch" href="/scikit-decide/assets/js/100.cf60efe7.js"><link rel="prefetch" href="/scikit-decide/assets/js/101.40f18f42.js"><link rel="prefetch" href="/scikit-decide/assets/js/102.5ddc96bc.js"><link rel="prefetch" href="/scikit-decide/assets/js/103.743a9f0c.js"><link rel="prefetch" href="/scikit-decide/assets/js/104.c79ce8b5.js"><link rel="prefetch" href="/scikit-decide/assets/js/105.f82f5e6d.js"><link rel="prefetch" href="/scikit-decide/assets/js/106.37388325.js"><link rel="prefetch" href="/scikit-decide/assets/js/107.99202d73.js"><link rel="prefetch" href="/scikit-decide/assets/js/108.812acc59.js"><link rel="prefetch" href="/scikit-decide/assets/js/109.e21abe2a.js"><link rel="prefetch" href="/scikit-decide/assets/js/11.13443afe.js"><link rel="prefetch" href="/scikit-decide/assets/js/110.908ae1e3.js"><link rel="prefetch" href="/scikit-decide/assets/js/111.8b046871.js"><link rel="prefetch" href="/scikit-decide/assets/js/112.59ab84f4.js"><link rel="prefetch" href="/scikit-decide/assets/js/113.b878e55c.js"><link rel="prefetch" href="/scikit-decide/assets/js/114.168d56d0.js"><link rel="prefetch" href="/scikit-decide/assets/js/115.6ebce209.js"><link rel="prefetch" href="/scikit-decide/assets/js/116.27e55f4c.js"><link rel="prefetch" href="/scikit-decide/assets/js/117.02483051.js"><link rel="prefetch" href="/scikit-decide/assets/js/118.34c599d5.js"><link rel="prefetch" href="/scikit-decide/assets/js/119.9668d88b.js"><link rel="prefetch" href="/scikit-decide/assets/js/12.ffbbeb9a.js"><link rel="prefetch" href="/scikit-decide/assets/js/120.865eab63.js"><link rel="prefetch" href="/scikit-decide/assets/js/121.1efef4d6.js"><link rel="prefetch" href="/scikit-decide/assets/js/122.9733fcea.js"><link rel="prefetch" href="/scikit-decide/assets/js/123.d55d4b86.js"><link rel="prefetch" href="/scikit-decide/assets/js/124.be6de484.js"><link rel="prefetch" href="/scikit-decide/assets/js/125.00c2b3f0.js"><link rel="prefetch" href="/scikit-decide/assets/js/126.1348b646.js"><link rel="prefetch" href="/scikit-decide/assets/js/127.600ecee4.js"><link rel="prefetch" href="/scikit-decide/assets/js/128.07b8166d.js"><link rel="prefetch" href="/scikit-decide/assets/js/129.5ac9d9ce.js"><link rel="prefetch" href="/scikit-decide/assets/js/13.07af27b0.js"><link rel="prefetch" href="/scikit-decide/assets/js/130.14ef35a9.js"><link rel="prefetch" href="/scikit-decide/assets/js/131.f973e07c.js"><link rel="prefetch" href="/scikit-decide/assets/js/132.0597fdc9.js"><link rel="prefetch" href="/scikit-decide/assets/js/133.212a0187.js"><link rel="prefetch" href="/scikit-decide/assets/js/134.9ffc0e06.js"><link rel="prefetch" href="/scikit-decide/assets/js/135.c5780cff.js"><link rel="prefetch" href="/scikit-decide/assets/js/136.602be395.js"><link rel="prefetch" href="/scikit-decide/assets/js/137.a9edc023.js"><link rel="prefetch" href="/scikit-decide/assets/js/138.c6477bd1.js"><link rel="prefetch" href="/scikit-decide/assets/js/139.c0c24505.js"><link rel="prefetch" href="/scikit-decide/assets/js/14.2e0790f9.js"><link rel="prefetch" href="/scikit-decide/assets/js/140.d64ef5d0.js"><link rel="prefetch" href="/scikit-decide/assets/js/141.6c6cf572.js"><link rel="prefetch" href="/scikit-decide/assets/js/142.8c14e7ef.js"><link rel="prefetch" href="/scikit-decide/assets/js/143.9c3687ca.js"><link rel="prefetch" href="/scikit-decide/assets/js/144.aee7a048.js"><link rel="prefetch" href="/scikit-decide/assets/js/145.7ad6aa2f.js"><link rel="prefetch" href="/scikit-decide/assets/js/146.dc3a411e.js"><link rel="prefetch" href="/scikit-decide/assets/js/147.ea752120.js"><link rel="prefetch" href="/scikit-decide/assets/js/148.f133fe4e.js"><link rel="prefetch" href="/scikit-decide/assets/js/15.2b434669.js"><link rel="prefetch" href="/scikit-decide/assets/js/150.52c1134c.js"><link rel="prefetch" href="/scikit-decide/assets/js/151.37f5be81.js"><link rel="prefetch" href="/scikit-decide/assets/js/152.fb29493e.js"><link rel="prefetch" href="/scikit-decide/assets/js/153.2b7d509a.js"><link rel="prefetch" href="/scikit-decide/assets/js/154.964d495f.js"><link rel="prefetch" href="/scikit-decide/assets/js/155.8129ab84.js"><link rel="prefetch" href="/scikit-decide/assets/js/156.ad0ecf65.js"><link rel="prefetch" href="/scikit-decide/assets/js/157.e2761a7d.js"><link rel="prefetch" href="/scikit-decide/assets/js/158.92fbdc11.js"><link rel="prefetch" href="/scikit-decide/assets/js/159.e83c7ace.js"><link rel="prefetch" href="/scikit-decide/assets/js/16.d9bde08a.js"><link rel="prefetch" href="/scikit-decide/assets/js/160.b6ad631e.js"><link rel="prefetch" href="/scikit-decide/assets/js/161.6aad4f81.js"><link rel="prefetch" href="/scikit-decide/assets/js/162.8f6d9092.js"><link rel="prefetch" href="/scikit-decide/assets/js/163.fa73c335.js"><link rel="prefetch" href="/scikit-decide/assets/js/164.1e1767a5.js"><link rel="prefetch" href="/scikit-decide/assets/js/165.5dc0cbd7.js"><link rel="prefetch" href="/scikit-decide/assets/js/166.3246c880.js"><link rel="prefetch" href="/scikit-decide/assets/js/167.c7bcf935.js"><link rel="prefetch" href="/scikit-decide/assets/js/168.84e72190.js"><link rel="prefetch" href="/scikit-decide/assets/js/169.52a9c986.js"><link rel="prefetch" href="/scikit-decide/assets/js/17.b923e4b5.js"><link rel="prefetch" href="/scikit-decide/assets/js/170.fcd9a547.js"><link rel="prefetch" href="/scikit-decide/assets/js/171.3f4ddf50.js"><link rel="prefetch" href="/scikit-decide/assets/js/172.7c7d41a8.js"><link rel="prefetch" href="/scikit-decide/assets/js/173.d4c23a84.js"><link rel="prefetch" href="/scikit-decide/assets/js/174.29fe37e1.js"><link rel="prefetch" href="/scikit-decide/assets/js/175.133f2873.js"><link rel="prefetch" href="/scikit-decide/assets/js/176.27090bf2.js"><link rel="prefetch" href="/scikit-decide/assets/js/177.f2a74e0b.js"><link rel="prefetch" href="/scikit-decide/assets/js/178.e3fa0417.js"><link rel="prefetch" href="/scikit-decide/assets/js/179.e0ab83cb.js"><link rel="prefetch" href="/scikit-decide/assets/js/18.72983905.js"><link rel="prefetch" href="/scikit-decide/assets/js/180.c4b91745.js"><link rel="prefetch" href="/scikit-decide/assets/js/181.f1044c2c.js"><link rel="prefetch" href="/scikit-decide/assets/js/182.598e4955.js"><link rel="prefetch" href="/scikit-decide/assets/js/183.f9b5a43c.js"><link rel="prefetch" href="/scikit-decide/assets/js/184.5bc648be.js"><link rel="prefetch" href="/scikit-decide/assets/js/185.131aad86.js"><link rel="prefetch" href="/scikit-decide/assets/js/186.d76e9979.js"><link rel="prefetch" href="/scikit-decide/assets/js/187.060c3add.js"><link rel="prefetch" href="/scikit-decide/assets/js/188.20e1f19d.js"><link rel="prefetch" href="/scikit-decide/assets/js/189.e67de1bf.js"><link rel="prefetch" href="/scikit-decide/assets/js/19.de4438f9.js"><link rel="prefetch" href="/scikit-decide/assets/js/190.3b04ad99.js"><link rel="prefetch" href="/scikit-decide/assets/js/191.cd4e2da6.js"><link rel="prefetch" href="/scikit-decide/assets/js/192.e4ff0ef7.js"><link rel="prefetch" href="/scikit-decide/assets/js/193.7ef9471b.js"><link rel="prefetch" href="/scikit-decide/assets/js/194.85b794f3.js"><link rel="prefetch" href="/scikit-decide/assets/js/195.47e49288.js"><link rel="prefetch" href="/scikit-decide/assets/js/196.8bb746b5.js"><link rel="prefetch" href="/scikit-decide/assets/js/197.d388b04d.js"><link rel="prefetch" href="/scikit-decide/assets/js/198.07d678c9.js"><link rel="prefetch" href="/scikit-decide/assets/js/199.35d1d0da.js"><link rel="prefetch" href="/scikit-decide/assets/js/20.fb9d9504.js"><link rel="prefetch" href="/scikit-decide/assets/js/200.fe94de8a.js"><link rel="prefetch" href="/scikit-decide/assets/js/201.8c1d4979.js"><link rel="prefetch" href="/scikit-decide/assets/js/202.abec3166.js"><link rel="prefetch" href="/scikit-decide/assets/js/203.74d49cd4.js"><link rel="prefetch" href="/scikit-decide/assets/js/204.02874f2b.js"><link rel="prefetch" href="/scikit-decide/assets/js/205.c507a26f.js"><link rel="prefetch" href="/scikit-decide/assets/js/206.2439081c.js"><link rel="prefetch" href="/scikit-decide/assets/js/207.ff530ba1.js"><link rel="prefetch" href="/scikit-decide/assets/js/208.082f3381.js"><link rel="prefetch" href="/scikit-decide/assets/js/209.d246e6c7.js"><link rel="prefetch" href="/scikit-decide/assets/js/21.60f38ba1.js"><link rel="prefetch" href="/scikit-decide/assets/js/210.ba10951f.js"><link rel="prefetch" href="/scikit-decide/assets/js/211.17f651ff.js"><link rel="prefetch" href="/scikit-decide/assets/js/212.88755568.js"><link rel="prefetch" href="/scikit-decide/assets/js/213.97a0cf9a.js"><link rel="prefetch" href="/scikit-decide/assets/js/214.dda203a9.js"><link rel="prefetch" href="/scikit-decide/assets/js/215.de99f613.js"><link rel="prefetch" href="/scikit-decide/assets/js/216.53fa50a0.js"><link rel="prefetch" href="/scikit-decide/assets/js/217.3f5c7d7b.js"><link rel="prefetch" href="/scikit-decide/assets/js/218.6f0fcdef.js"><link rel="prefetch" href="/scikit-decide/assets/js/219.a9730fea.js"><link rel="prefetch" href="/scikit-decide/assets/js/22.71868176.js"><link rel="prefetch" href="/scikit-decide/assets/js/220.d4dafc11.js"><link rel="prefetch" href="/scikit-decide/assets/js/221.81a4af70.js"><link rel="prefetch" href="/scikit-decide/assets/js/222.8a4508b1.js"><link rel="prefetch" href="/scikit-decide/assets/js/223.77a4e376.js"><link rel="prefetch" href="/scikit-decide/assets/js/224.c140fbe9.js"><link rel="prefetch" href="/scikit-decide/assets/js/225.5ab07f36.js"><link rel="prefetch" href="/scikit-decide/assets/js/226.6bf7cb4f.js"><link rel="prefetch" href="/scikit-decide/assets/js/227.8c6fc6ca.js"><link rel="prefetch" href="/scikit-decide/assets/js/228.f4840de2.js"><link rel="prefetch" href="/scikit-decide/assets/js/229.c69e67e5.js"><link rel="prefetch" href="/scikit-decide/assets/js/23.b5d7f644.js"><link rel="prefetch" href="/scikit-decide/assets/js/230.d3107336.js"><link rel="prefetch" href="/scikit-decide/assets/js/231.27b5019f.js"><link rel="prefetch" href="/scikit-decide/assets/js/232.5b05e56b.js"><link rel="prefetch" href="/scikit-decide/assets/js/233.4547189d.js"><link rel="prefetch" href="/scikit-decide/assets/js/234.9d73df61.js"><link rel="prefetch" href="/scikit-decide/assets/js/235.720c02bf.js"><link rel="prefetch" href="/scikit-decide/assets/js/236.cd5ece3f.js"><link rel="prefetch" href="/scikit-decide/assets/js/24.08412097.js"><link rel="prefetch" href="/scikit-decide/assets/js/25.49cf709a.js"><link rel="prefetch" href="/scikit-decide/assets/js/26.ee0919a3.js"><link rel="prefetch" href="/scikit-decide/assets/js/27.f2620383.js"><link rel="prefetch" href="/scikit-decide/assets/js/28.e00ba5fe.js"><link rel="prefetch" href="/scikit-decide/assets/js/29.88965811.js"><link rel="prefetch" href="/scikit-decide/assets/js/30.f4e14a73.js"><link rel="prefetch" href="/scikit-decide/assets/js/31.f5cba84c.js"><link rel="prefetch" href="/scikit-decide/assets/js/32.3b8ccf1b.js"><link rel="prefetch" href="/scikit-decide/assets/js/33.cbe91420.js"><link rel="prefetch" href="/scikit-decide/assets/js/34.51d96d95.js"><link rel="prefetch" href="/scikit-decide/assets/js/35.7bae9424.js"><link rel="prefetch" href="/scikit-decide/assets/js/36.7d8de194.js"><link rel="prefetch" href="/scikit-decide/assets/js/37.e9a8c6d6.js"><link rel="prefetch" href="/scikit-decide/assets/js/38.e6fda1f1.js"><link rel="prefetch" href="/scikit-decide/assets/js/39.3851fd92.js"><link rel="prefetch" href="/scikit-decide/assets/js/4.1033bc0a.js"><link rel="prefetch" href="/scikit-decide/assets/js/40.9930b56c.js"><link rel="prefetch" href="/scikit-decide/assets/js/41.8e1c8407.js"><link rel="prefetch" href="/scikit-decide/assets/js/42.37f6bedd.js"><link rel="prefetch" href="/scikit-decide/assets/js/43.4c596e23.js"><link rel="prefetch" href="/scikit-decide/assets/js/44.09cd6422.js"><link rel="prefetch" href="/scikit-decide/assets/js/45.ccde2e64.js"><link rel="prefetch" href="/scikit-decide/assets/js/46.fffe9805.js"><link rel="prefetch" href="/scikit-decide/assets/js/47.e09314f0.js"><link rel="prefetch" href="/scikit-decide/assets/js/48.58c9acf3.js"><link rel="prefetch" href="/scikit-decide/assets/js/49.df7fbaa3.js"><link rel="prefetch" href="/scikit-decide/assets/js/50.77c0cb36.js"><link rel="prefetch" href="/scikit-decide/assets/js/51.e8e4c9a1.js"><link rel="prefetch" href="/scikit-decide/assets/js/52.1840a65b.js"><link rel="prefetch" href="/scikit-decide/assets/js/53.750b6127.js"><link rel="prefetch" href="/scikit-decide/assets/js/54.08f22a2c.js"><link rel="prefetch" href="/scikit-decide/assets/js/55.809fa556.js"><link rel="prefetch" href="/scikit-decide/assets/js/56.b382f152.js"><link rel="prefetch" href="/scikit-decide/assets/js/57.35007081.js"><link rel="prefetch" href="/scikit-decide/assets/js/58.c29cc049.js"><link rel="prefetch" href="/scikit-decide/assets/js/59.65828260.js"><link rel="prefetch" href="/scikit-decide/assets/js/60.8effb94f.js"><link rel="prefetch" href="/scikit-decide/assets/js/61.4c822e54.js"><link rel="prefetch" href="/scikit-decide/assets/js/62.0bc23270.js"><link rel="prefetch" href="/scikit-decide/assets/js/63.01f20348.js"><link rel="prefetch" href="/scikit-decide/assets/js/64.96003a71.js"><link rel="prefetch" href="/scikit-decide/assets/js/65.92385476.js"><link rel="prefetch" href="/scikit-decide/assets/js/66.110e3c9c.js"><link rel="prefetch" href="/scikit-decide/assets/js/67.4cf09c7f.js"><link rel="prefetch" href="/scikit-decide/assets/js/68.1c02f2e5.js"><link rel="prefetch" href="/scikit-decide/assets/js/69.84915bce.js"><link rel="prefetch" href="/scikit-decide/assets/js/7.645e7686.js"><link rel="prefetch" href="/scikit-decide/assets/js/70.8bbd3197.js"><link rel="prefetch" href="/scikit-decide/assets/js/71.43ff964f.js"><link rel="prefetch" href="/scikit-decide/assets/js/72.8234c098.js"><link rel="prefetch" href="/scikit-decide/assets/js/73.ff8bbb70.js"><link rel="prefetch" href="/scikit-decide/assets/js/74.ef0174ba.js"><link rel="prefetch" href="/scikit-decide/assets/js/75.0ed37424.js"><link rel="prefetch" href="/scikit-decide/assets/js/76.54118852.js"><link rel="prefetch" href="/scikit-decide/assets/js/77.3dda1884.js"><link rel="prefetch" href="/scikit-decide/assets/js/78.786310aa.js"><link rel="prefetch" href="/scikit-decide/assets/js/79.09eb920c.js"><link rel="prefetch" href="/scikit-decide/assets/js/80.dc730342.js"><link rel="prefetch" href="/scikit-decide/assets/js/81.80d789f1.js"><link rel="prefetch" href="/scikit-decide/assets/js/82.6c90c11c.js"><link rel="prefetch" href="/scikit-decide/assets/js/83.18ca4b9f.js"><link rel="prefetch" href="/scikit-decide/assets/js/84.bff644a6.js"><link rel="prefetch" href="/scikit-decide/assets/js/85.96576fb0.js"><link rel="prefetch" href="/scikit-decide/assets/js/86.a1c01577.js"><link rel="prefetch" href="/scikit-decide/assets/js/87.e57e766a.js"><link rel="prefetch" href="/scikit-decide/assets/js/88.e807e96e.js"><link rel="prefetch" href="/scikit-decide/assets/js/89.263905c5.js"><link rel="prefetch" href="/scikit-decide/assets/js/90.de544ba3.js"><link rel="prefetch" href="/scikit-decide/assets/js/91.2848b377.js"><link rel="prefetch" href="/scikit-decide/assets/js/92.55b73488.js"><link rel="prefetch" href="/scikit-decide/assets/js/93.bf998d96.js"><link rel="prefetch" href="/scikit-decide/assets/js/94.664ab078.js"><link rel="prefetch" href="/scikit-decide/assets/js/95.23f22860.js"><link rel="prefetch" href="/scikit-decide/assets/js/96.60a6ad50.js"><link rel="prefetch" href="/scikit-decide/assets/js/97.af87e8ab.js"><link rel="prefetch" href="/scikit-decide/assets/js/98.79708f48.js"><link rel="prefetch" href="/scikit-decide/assets/js/99.4153d8df.js">
+    <link rel="stylesheet" href="/scikit-decide/assets/css/0.styles.cb4ba6a3.css">
+  </head>
+  <body>
+    <div id="app" data-server-rendered="true"><div class="theme-container"><header class="navbar"><div class="sidebar-button"><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" viewBox="0 0 448 512" class="icon"><path fill="currentColor" d="M436 124H12c-6.627 0-12-5.373-12-12V80c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12z"></path></svg></div> <a href="/scikit-decide/" class="home-link router-link-active"><img src="/scikit-decide/logo.svg" alt="Scikit-decide" class="logo"> <span class="site-name can-hide">Scikit-decide</span></a> <!----> <div class="links"><div class="search-box"><input aria-label="Search" autocomplete="off" spellcheck="false" value=""> <!----></div> <nav class="nav-links can-hide"><div class="nav-item"><a href="/scikit-decide/" class="nav-link">
+  Home
+</a></div><div class="nav-item"><a href="/scikit-decide/install.html" class="nav-link">
+  Install
+</a></div><div class="nav-item"><a href="/scikit-decide/guide/" class="nav-link">
+  Guide
+</a></div><div class="nav-item"><a href="/scikit-decide/notebooks/" class="nav-link">
+  Notebooks
+</a></div><div class="nav-item"><a href="/scikit-decide/codegen/" class="nav-link">
+  Code generators
+</a></div><div class="nav-item"><a href="/scikit-decide/reference/" class="nav-link router-link-active">
+  Reference
+</a></div><div class="nav-item"><a href="/scikit-decide/contribute.html" class="nav-link">
+  Contribute
+</a></div> <a href="https://github.com/airbus/scikit-decide" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <span><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> <span class="sr-only">(opens new window)</span></span></a></nav></div></header> <div class="sidebar-mask"></div> <aside class="sidebar"><nav class="nav-links"><div class="nav-item"><a href="/scikit-decide/" class="nav-link">
+  Home
+</a></div><div class="nav-item"><a href="/scikit-decide/install.html" class="nav-link">
+  Install
+</a></div><div class="nav-item"><a href="/scikit-decide/guide/" class="nav-link">
+  Guide
+</a></div><div class="nav-item"><a href="/scikit-decide/notebooks/" class="nav-link">
+  Notebooks
+</a></div><div class="nav-item"><a href="/scikit-decide/codegen/" class="nav-link">
+  Code generators
+</a></div><div class="nav-item"><a href="/scikit-decide/reference/" class="nav-link router-link-active">
+  Reference
+</a></div><div class="nav-item"><a href="/scikit-decide/contribute.html" class="nav-link">
+  Contribute
+</a></div> <a href="https://github.com/airbus/scikit-decide" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <span><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> <span class="sr-only">(opens new window)</span></span></a></nav>  <ul class="sidebar-links"><li><section class="sidebar-group depth-0"><p class="sidebar-heading open"><span>hub.solver.rayrllib.actionmasking.algorithms.dqn.torch.actionmaskingdqntorchrl_module</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#actionmaskingdqntorchrlmodule" class="sidebar-link">ActionMaskingDQNTorchRLModule</a><ul class="sidebar-sub-headers"><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#constructor" class="sidebar-link">Constructor</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#add-module" class="sidebar-link">add_module</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#apply" class="sidebar-link">apply</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#as-multi-rl-module" class="sidebar-link">as_multi_rl_module</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#bfloat16" class="sidebar-link">bfloat16</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#buffers" class="sidebar-link">buffers</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#children" class="sidebar-link">children</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#compile" class="sidebar-link">compile</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#compute-advantage-distribution" class="sidebar-link">compute_advantage_distribution</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#compute-q-values" class="sidebar-link">compute_q_values</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#cpu" class="sidebar-link">cpu</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#cuda" class="sidebar-link">cuda</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#double" class="sidebar-link">double</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#eval" class="sidebar-link">eval</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#extra-repr" class="sidebar-link">extra_repr</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#float" class="sidebar-link">float</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#forward" class="sidebar-link">forward</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#forward-exploration" class="sidebar-link">forward_exploration</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#forward-inference" class="sidebar-link">forward_inference</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#forward-target" class="sidebar-link">forward_target</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#forward-train" class="sidebar-link">forward_train</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#from-checkpoint" class="sidebar-link">from_checkpoint</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-buffer" class="sidebar-link">get_buffer</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-checkpointable-components" class="sidebar-link">get_checkpointable_components</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-ctor-args-and-kwargs" class="sidebar-link">get_ctor_args_and_kwargs</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-exploration-action-dist-cls" class="sidebar-link">get_exploration_action_dist_cls</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-extra-state" class="sidebar-link">get_extra_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-inference-action-dist-cls" class="sidebar-link">get_inference_action_dist_cls</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-initial-state" class="sidebar-link">get_initial_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-metadata" class="sidebar-link">get_metadata</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-non-inference-attributes" class="sidebar-link">get_non_inference_attributes</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-parameter" class="sidebar-link">get_parameter</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-state" class="sidebar-link">get_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-submodule" class="sidebar-link">get_submodule</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-target-network-pairs" class="sidebar-link">get_target_network_pairs</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-train-action-dist-cls" class="sidebar-link">get_train_action_dist_cls</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#half" class="sidebar-link">half</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#ipu" class="sidebar-link">ipu</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#is-stateful" class="sidebar-link">is_stateful</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#load-state-dict" class="sidebar-link">load_state_dict</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#make-target-networks" class="sidebar-link">make_target_networks</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#modules" class="sidebar-link">modules</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#mtia" class="sidebar-link">mtia</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#named-buffers" class="sidebar-link">named_buffers</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#named-children" class="sidebar-link">named_children</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#named-modules" class="sidebar-link">named_modules</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#named-parameters" class="sidebar-link">named_parameters</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#parameters" class="sidebar-link">parameters</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#preprocess-batch" class="sidebar-link">preprocess_batch</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-backward-hook" class="sidebar-link">register_backward_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-buffer" class="sidebar-link">register_buffer</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-forward-hook" class="sidebar-link">register_forward_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-forward-pre-hook" class="sidebar-link">register_forward_pre_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-full-backward-hook" class="sidebar-link">register_full_backward_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-full-backward-pre-hook" class="sidebar-link">register_full_backward_pre_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-load-state-dict-post-hook" class="sidebar-link">register_load_state_dict_post_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-load-state-dict-pre-hook" class="sidebar-link">register_load_state_dict_pre_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-module" class="sidebar-link">register_module</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-parameter" class="sidebar-link">register_parameter</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-state-dict-post-hook" class="sidebar-link">register_state_dict_post_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-state-dict-pre-hook" class="sidebar-link">register_state_dict_pre_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#requires-grad" class="sidebar-link">requires_grad_</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#restore-from-path" class="sidebar-link">restore_from_path</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#save-to-path" class="sidebar-link">save_to_path</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#set-extra-state" class="sidebar-link">set_extra_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#set-state" class="sidebar-link">set_state</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#set-submodule" class="sidebar-link">set_submodule</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#setup" class="sidebar-link">setup</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#share-memory" class="sidebar-link">share_memory</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#state-dict" class="sidebar-link">state_dict</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#to" class="sidebar-link">to</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#to-empty" class="sidebar-link">to_empty</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#train" class="sidebar-link">train</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#type" class="sidebar-link">type</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#unwrapped" class="sidebar-link">unwrapped</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#xpu" class="sidebar-link">xpu</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#zero-grad" class="sidebar-link">zero_grad</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#annotated-type" class="sidebar-link">_annotated_type</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#check-batch" class="sidebar-link">_check_batch</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#check-component" class="sidebar-link">_check_component</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#forward-2" class="sidebar-link">_forward</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#forward-exploration-2" class="sidebar-link">_forward_exploration</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#forward-inference-2" class="sidebar-link">_forward_inference</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#forward-train-2" class="sidebar-link">_forward_train</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#get-backward-hooks" class="sidebar-link">_get_backward_hooks</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#load-from-state-dict" class="sidebar-link">_load_from_state_dict</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#mask-action-logits" class="sidebar-link">_mask_action_logits</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#named-members" class="sidebar-link">_named_members</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#qf-forward-helper" class="sidebar-link">_qf_forward_helper</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-load-state-dict-pre-hook-2" class="sidebar-link">_register_load_state_dict_pre_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#register-state-dict-hook" class="sidebar-link">_register_state_dict_hook</a></li><li class="sidebar-sub-header"><a href="/scikit-decide/reference/_skdecide.hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module.html#save-to-state-dict" class="sidebar-link">_save_to_state_dict</a></li></ul></li></ul></section></li></ul> </aside> <main class="page"> <div class="theme-default-content content__default"><h1 id="hub-solver-ray-rllib-action-masking-algorithms-dqn-torch-action-masking-dqn-torch-rl-module"><a href="#hub-solver-ray-rllib-action-masking-algorithms-dqn-torch-action-masking-dqn-torch-rl-module" class="header-anchor">#</a> hub.solver.ray_rllib.action_masking.algorithms.dqn.torch.action_masking_dqn_torch_rl_module</h1> <div class="custom-block tip"><p class="custom-block-title">Domain specification</p> <div style="margin:10px 0px;" data-v-0ec7540b><div style="margin-top: 5px; margin-bottom: 10px" data-v-0ec7540b><span class="el-tag el-tag--danger el-tag--dark" style="margin-bottom:5px;" data-v-0ec7540b><strong data-v-0ec7540b>Domain</strong></span> </div> <button type="button" class="el-button el-button--info el-button--small is-round" style="margin-right:15px;margin-bottom:5px;" data-v-0ec7540b><!----><i class="el-icon-edit"></i><span><strong data-v-0ec7540b>Edit</strong></span></button> <label class="el-checkbox is-checked" data-v-0ec7540b><span class="el-checkbox__input is-checked"><span class="el-checkbox__inner"></span><input type="checkbox" aria-hidden="false" checked="checked" class="el-checkbox__original"></span><span class="el-checkbox__label">Only show finetuned characteristics<!----></span></label> <label class="el-checkbox is-checked" data-v-0ec7540b><span class="el-checkbox__input is-checked"><span class="el-checkbox__inner"></span><input type="checkbox" aria-hidden="false" checked="checked" class="el-checkbox__original"></span><span class="el-checkbox__label">Simplify signatures<!----></span></label> <div class="el-dialog__wrapper" style="display:none;" data-v-0ec7540b><div role="dialog" aria-modal="true" aria-label="Edit domain specification" class="el-dialog" style="margin-top:15vh;"><div class="el-dialog__header"><span class="el-dialog__title">Edit domain specification</span><button type="button" aria-label="Close" class="el-dialog__headerbtn"><i class="el-dialog__close el-icon el-icon-close"></i></button></div><!----><!----></div></div></div></div> <h2 id="actionmaskingdqntorchrlmodule"><a href="#actionmaskingdqntorchrlmodule" class="header-anchor">#</a> ActionMaskingDQNTorchRLModule</h2> <p>Custom RL module for DQN + masking.</p> <h3 id="constructor"><a href="#constructor" class="header-anchor">#</a> Constructor <span class="badge tip" style="vertical-align:top;" data-v-15b7b770>ActionMaskingDQNTorchRLModule</span></h3> <pre><code class="language-python"><span class="token function">ActionMaskingDQNTorchRLModule</span>(
+  observation_space: <span>typing.Optional[gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  action_space: <span>typing.Optional[gymnasium.spaces.space.<a class="linkto" data-link="/reference/_skdecide.core.html#space">Space</a>]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  inference_only: <span>typing.Optional[bool]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  learner_only: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span>,<br>  model_config: <span>typing.Union[dict, ray.rllib.core.rl_module.default_model_config.DefaultModelConfig, NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  catalog_class<!----> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  **kwargs<!----><!----><!----><br>)<!----></code>
+</pre> <p>Initialize self.  See help(type(self)) for accurate signature.</p> <h3 id="add-module"><a href="#add-module" class="header-anchor">#</a> add_module <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">add_module</span>(
+  self<!----><!---->,<br>  name: <span><class 'str'></span><!---->,<br>  module: <span>typing.Optional[ForwardRef('Module')]</span><!----><!----><br>)<!----></code>
+</pre> <p>Add a child module to the current module.</p> <p>The module can be accessed as an attribute using the given name.</p> <p>Args:
+name (str): name of the child module. The child module can be
+accessed from this module using the given name
+module (Module): child module to be added to the module.</p> <h3 id="apply"><a href="#apply" class="header-anchor">#</a> apply <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">apply</span>(
+  self<!----><!---->,<br>  fn: <span>collections.abc.Callable[['Module'], None]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Apply <code>fn</code> recursively to every submodule (as returned by <code>.children()</code>) as well as self.</p> <p>Typical use includes initializing the parameters of a model
+(see also :ref:<code>nn-init-doc</code>).</p> <p>Args:
+fn (:class:<code>Module</code> -&gt; None): function to be applied to each submodule</p> <p>Returns:
+Module: self</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; @torch.no_grad()
+&gt;&gt;&gt; def init_weights(m):
+&gt;&gt;&gt;     print(m)
+&gt;&gt;&gt;     if type(m) is nn.Linear:
+&gt;&gt;&gt;         m.weight.fill_(1.0)
+&gt;&gt;&gt;         print(m.weight)
+&gt;&gt;&gt; net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
+&gt;&gt;&gt; net.apply(init_weights)
+Linear(in_features=2, out_features=2, bias=True)
+Parameter containing:
+tensor([[1., 1.],
+        [1., 1.]], requires_grad=True)
+Linear(in_features=2, out_features=2, bias=True)
+Parameter containing:
+tensor([[1., 1.],
+        [1., 1.]], requires_grad=True)
+Sequential(
+  (0): Linear(in_features=2, out_features=2, bias=True)
+  (1): Linear(in_features=2, out_features=2, bias=True)
+)
+</code></pre></div><h3 id="as-multi-rl-module"><a href="#as-multi-rl-module" class="header-anchor">#</a> as_multi_rl_module <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">as_multi_rl_module</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>MultiRLModule</span></code>
+</pre> <p>Returns a multi-agent wrapper around this module.</p> <h3 id="bfloat16"><a href="#bfloat16" class="header-anchor">#</a> bfloat16 <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">bfloat16</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Casts all floating point parameters and buffers to <code>bfloat16</code> datatype.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Returns:
+Module: self</p> <h3 id="buffers"><a href="#buffers" class="header-anchor">#</a> buffers <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">buffers</span>(
+  self<!----><!---->,<br>  recurse: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator[torch.Tensor]</span></code>
+</pre> <p>Return an iterator over module buffers.</p> <p>Args:
+recurse (bool): if True, then yields buffers of this module
+and all submodules. Otherwise, yields only buffers that
+are direct members of this module.</p> <p>Yields:
+torch.Tensor: module buffer</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; for buf in model.buffers():
+&gt;&gt;&gt;     print(type(buf), buf.size())
+\&lt;class 'torch.Tensor'&gt; (20L,)
+\&lt;class 'torch.Tensor'&gt; (20L, 1L, 5L, 5L)
+</code></pre></div><h3 id="children"><a href="#children" class="header-anchor">#</a> children <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">children</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator['Module']</span></code>
+</pre> <p>Return an iterator over immediate children modules.</p> <p>Yields:
+Module: a child module</p> <h3 id="compile"><a href="#compile" class="header-anchor">#</a> compile <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">compile</span>(
+  self<!----><!---->,<br>  compile_config: <span><class 'ray.rllib.core.rl_module.torch.torch_compile_config.TorchCompileConfig'></span><!----><!----><br>)<!----></code>
+</pre> <p>Compile the forward methods of this module.</p> <p>This is a convenience method that calls <code>compile_wrapper</code> with the given
+compile_config.</p> <p>Args:
+compile_config: The compile config to use.</p> <h3 id="compute-advantage-distribution"><a href="#compute-advantage-distribution" class="header-anchor">#</a> compute_advantage_distribution <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>QNetAPI</span></h3> <pre><code class="language-python"><span class="token function">compute_advantage_distribution</span>(
+  self<!----><!---->,<br>  batch: <span>typing.Dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span></code>
+</pre> <p>Computes the advantage distribution.</p> <p>Note this distribution is identical to the Q-distribution in case no dueling
+architecture is used.</p> <p>Args:
+batch: A dictionary containing a tensor with the outputs of the
+forward pass of the Q-head or advantage stream head.</p> <p>Returns:
+A <code>dict</code> containing the support of the discrete distribution for
+either Q-values or advantages (in case of a dueling architecture),
+(&quot;atoms&quot;), the logits per action and atom and the probabilities
+of the discrete distribution (per action and atom of the support).</p> <h3 id="compute-q-values"><a href="#compute-q-values" class="header-anchor">#</a> compute_q_values <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>QNetAPI</span></h3> <pre><code class="language-python"><span class="token function">compute_q_values</span>(
+  self<!----><!---->,<br>  batch: <span>typing.Dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span></code>
+</pre> <p>Computes Q-values, given encoder, q-net and (optionally), advantage net.</p> <p>Note, these can be accompanied by logits and probabilities
+in case of distributional Q-learning, i.e. <code>self.num_atoms &gt; 1</code>.</p> <p>Args:
+batch: The batch received in the forward pass.</p> <p>Results:
+A dictionary containing the Q-value predictions (&quot;qf_preds&quot;)
+and in case of distributional Q-learning - in addition to the Q-value
+predictions (&quot;qf_preds&quot;) - the support atoms (&quot;atoms&quot;), the Q-logits
+(&quot;qf_logits&quot;), and the probabilities (&quot;qf_probs&quot;).</p> <h3 id="cpu"><a href="#cpu" class="header-anchor">#</a> cpu <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">cpu</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Move all model parameters and buffers to the CPU.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Returns:
+Module: self</p> <h3 id="cuda"><a href="#cuda" class="header-anchor">#</a> cuda <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">cuda</span>(
+  self<!----><!---->,<br>  device: <span>int | torch.device | None</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Move all model parameters and buffers to the GPU.</p> <p>This also makes associated parameters and buffers different objects. So
+it should be called before constructing the optimizer if the module will
+live on GPU while being optimized.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Args:
+device (int, optional): if specified, all parameters will be
+copied to that device</p> <p>Returns:
+Module: self</p> <h3 id="double"><a href="#double" class="header-anchor">#</a> double <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">double</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Casts all floating point parameters and buffers to <code>double</code> datatype.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Returns:
+Module: self</p> <h3 id="eval"><a href="#eval" class="header-anchor">#</a> eval <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">eval</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Set the module in evaluation mode.</p> <p>This has an effect only on certain modules. See the documentation of
+particular modules for details of their behaviors in training/evaluation
+mode, i.e. whether they are affected, e.g. :class:<code>Dropout</code>, :class:<code>BatchNorm</code>,
+etc.</p> <p>This is equivalent with :meth:<code>self.train(False) \&lt;torch.nn.Module.train&gt;</code>.</p> <p>See :ref:<code>locally-disable-grad-doc</code> for a comparison between
+<code>.eval()</code> and several similar mechanisms that may be confused with it.</p> <p>Returns:
+Module: self</p> <h3 id="extra-repr"><a href="#extra-repr" class="header-anchor">#</a> extra_repr <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">extra_repr</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'str'></span></code>
+</pre> <p>Return the extra representation of the module.</p> <p>To print customized extra information, you should re-implement
+this method in your own modules. Both single-line and multi-line
+strings are acceptable.</p> <h3 id="float"><a href="#float" class="header-anchor">#</a> float <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">float</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Casts all floating point parameters and buffers to <code>float</code> datatype.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Returns:
+Module: self</p> <h3 id="forward"><a href="#forward" class="header-anchor">#</a> forward <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">forward</span>(
+  self<!----><!---->,<br>  batch: <span>typing.Dict[str, typing.Any]</span><!---->,<br>  **kwargs<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Any]</span></code>
+</pre> <p>DO NOT OVERRIDE!</p> <p>This is aliased to <code>self.forward_train</code> because Torch DDP requires a forward
+method to be implemented for backpropagation to work.</p> <p>Instead, override:
+<code>_forward()</code> to define a generic forward pass for all phases (exploration,
+inference, training)
+<code>_forward_inference()</code> to define the forward pass for action inference in
+deployment/production (no exploration).
+<code>_forward_exploration()</code> to define the forward pass for action inference during
+training sample collection (w/ exploration behavior).
+<code>_forward_train()</code> to define the forward pass prior to loss computation.</p> <h3 id="forward-exploration"><a href="#forward-exploration" class="header-anchor">#</a> forward_exploration <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">forward_exploration</span>(
+  self<!----><!---->,<br>  batch: <span>typing.Dict[str, typing.Any]</span><!---->,<br>  **kwargs<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Any]</span></code>
+</pre> <p>DO NOT OVERRIDE! Forward-pass during exploration, called from the sampler.</p> <p>This method should not be overridden. Override the <code>self._forward_exploration()</code>
+method instead.</p> <p>Args:
+batch: The input batch.
+**kwargs: Additional keyword arguments.</p> <p>Returns:
+The output of the forward pass.</p> <h3 id="forward-inference"><a href="#forward-inference" class="header-anchor">#</a> forward_inference <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">forward_inference</span>(
+  self<!----><!---->,<br>  batch: <span>typing.Dict[str, typing.Any]</span><!---->,<br>  **kwargs<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Any]</span></code>
+</pre> <p>DO NOT OVERRIDE! Forward-pass during evaluation, called from the sampler.</p> <p>This method should not be overridden. Override the <code>self._forward_inference()</code>
+method instead.</p> <p>Args:
+batch: The input batch.
+**kwargs: Additional keyword arguments.</p> <p>Returns:
+The output of the forward pass. This output should comply with the
+ouptut_specs_inference().</p> <h3 id="forward-target"><a href="#forward-target" class="header-anchor">#</a> forward_target <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>TargetNetworkAPI</span></h3> <pre><code class="language-python"><span class="token function">forward_target</span>(
+  self<!----><!---->,<br>  batch: <span>typing.Dict[str, typing.Any]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Any]</span></code>
+</pre> <p>Computes Q-values from the target network.</p> <p>Note, these can be accompanied by logits and probabilities
+in case of distributional Q-learning, i.e. <code>self.num_atoms &gt; 1</code>.</p> <p>Args:
+batch: The batch received in the forward pass.</p> <p>Results:
+A dictionary containing the target Q-value predictions (&quot;qf_preds&quot;)
+and in case of distributional Q-learning in addition to the target
+Q-value predictions (&quot;qf_preds&quot;) the support atoms (&quot;atoms&quot;), the target
+Q-logits  (&quot;qf_logits&quot;), and the probabilities (&quot;qf_probs&quot;).</p> <h3 id="forward-train"><a href="#forward-train" class="header-anchor">#</a> forward_train <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">forward_train</span>(
+  self<!----><!---->,<br>  batch: <span>typing.Dict[str, typing.Any]</span><!---->,<br>  **kwargs<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Any]</span></code>
+</pre> <p>DO NOT OVERRIDE! Forward-pass during training called from the learner.</p> <p>This method should not be overridden. Override the <code>self._forward_train()</code>
+method instead.</p> <p>Args:
+batch: The input batch.
+**kwargs: Additional keyword arguments.</p> <p>Returns:
+The output of the forward pass.</p> <h3 id="from-checkpoint"><a href="#from-checkpoint" class="header-anchor">#</a> from_checkpoint <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">from_checkpoint</span>(
+  path: <span>typing.Union[str, pathlib.Path]</span><!---->,<br>  filesystem: <span>typing.Optional[ForwardRef('pyarrow.fs.FileSystem')]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  **kwargs<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Creates a new Checkpointable instance from the given location and returns it.</p> <p>Args:
+path: The checkpoint path to load (a) the information on how to construct
+a new instance of the implementing class and (b) the state to restore
+the created instance to.
+filesystem: PyArrow FileSystem to use to access data at the <code>path</code>. If not
+specified, this is inferred from the URI scheme of <code>path</code>.
+kwargs: Forward compatibility kwargs. Note that these kwargs are sent to
+each subcomponent's <code>from_checkpoint()</code> call.</p> <p>Returns:
+A new instance of the implementing class, already set to the state stored
+under <code>path</code>.</p> <h3 id="get-buffer"><a href="#get-buffer" class="header-anchor">#</a> get_buffer <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">get_buffer</span>(
+  self<!----><!---->,<br>  target: <span><class 'str'></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.Tensor'></span></code>
+</pre> <p>Return the buffer given by <code>target</code> if it exists, otherwise throw an error.</p> <p>See the docstring for <code>get_submodule</code> for a more detailed
+explanation of this method's functionality as well as how to
+correctly specify <code>target</code>.</p> <p>Args:
+target: The fully-qualified string name of the buffer
+to look for. (See <code>get_submodule</code> for how to specify a
+fully-qualified string.)</p> <p>Returns:
+torch.Tensor: The buffer referenced by <code>target</code></p> <p>Raises:
+AttributeError: If the target string references an invalid
+path or resolves to something that is not a
+buffer</p> <h3 id="get-checkpointable-components"><a href="#get-checkpointable-components" class="header-anchor">#</a> get_checkpointable_components <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">get_checkpointable_components</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.List[typing.Tuple[str, ForwardRef('Checkpointable')]]</span></code>
+</pre> <p>Returns the implementing class's own Checkpointable subcomponents.</p> <p>Returns:
+A list of 2-tuples (name, subcomponent) describing the implementing class'
+subcomponents, all of which have to be <code>Checkpointable</code> themselves and
+whose state is therefore written into subdirectories (rather than the main
+state file (self.STATE_FILE_NAME) when calling <code>self.save_to_path()</code>).</p> <h3 id="get-ctor-args-and-kwargs"><a href="#get-ctor-args-and-kwargs" class="header-anchor">#</a> get_ctor_args_and_kwargs <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">get_ctor_args_and_kwargs</span>(
+  self<!----><!----><!----><br>)<!----></code>
+</pre> <p>Returns the args/kwargs used to create <code>self</code> from its constructor.</p> <p>Returns:
+A tuple of the args (as a tuple) and kwargs (as a Dict[str, Any]) used to
+construct <code>self</code> from its class constructor.</p> <h3 id="get-exploration-action-dist-cls"><a href="#get-exploration-action-dist-cls" class="header-anchor">#</a> get_exploration_action_dist_cls <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">get_exploration_action_dist_cls</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Type[ray.rllib.core.distribution.torch.torch_distribution.TorchDistribution]</span></code>
+</pre> <p>Returns the action distribution class for this RLModule used for exploration.</p> <p>This class is used to create action distributions from outputs of the
+forward_exploration method. If the case that no action distribution class is
+needed, this method can return None.</p> <p>Note that RLlib's distribution classes all implement the <code>Distribution</code>
+interface. This requires two special methods: <code>Distribution.from_logits()</code> and
+<code>Distribution.to_deterministic()</code>. See the documentation of the
+:py:class:<code>~ray.rllib.core.distribution.distribution.Distribution</code> class for
+more details.</p> <h3 id="get-extra-state"><a href="#get-extra-state" class="header-anchor">#</a> get_extra_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">get_extra_state</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Any</span></code>
+</pre> <p>Return any extra state to include in the module's state_dict.</p> <p>Implement this and a corresponding :func:<code>set_extra_state</code> for your module
+if you need to store extra state. This function is called when building the
+module's <code>state_dict()</code>.</p> <p>Note that extra state should be picklable to ensure working serialization
+of the state_dict. We only provide backwards compatibility guarantees
+for serializing Tensors; other objects may break backwards compatibility if
+their serialized pickled form changes.</p> <p>Returns:
+object: Any extra state to store in the module's state_dict</p> <h3 id="get-inference-action-dist-cls"><a href="#get-inference-action-dist-cls" class="header-anchor">#</a> get_inference_action_dist_cls <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">get_inference_action_dist_cls</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Type[ray.rllib.core.distribution.torch.torch_distribution.TorchDistribution]</span></code>
+</pre> <p>Returns the action distribution class for this RLModule used for inference.</p> <p>This class is used to create action distributions from outputs of the forward
+inference method. If the case that no action distribution class is needed,
+this method can return None.</p> <p>Note that RLlib's distribution classes all implement the <code>Distribution</code>
+interface. This requires two special methods: <code>Distribution.from_logits()</code> and
+<code>Distribution.to_deterministic()</code>. See the documentation of the
+:py:class:<code>~ray.rllib.core.distribution.distribution.Distribution</code> class for
+more details.</p> <h3 id="get-initial-state"><a href="#get-initial-state" class="header-anchor">#</a> get_initial_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">get_initial_state</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'dict'></span></code>
+</pre> <p>Returns the initial state of the RLModule, in case this is a stateful module.</p> <p>Returns:
+A tensor or any nested struct of tensors, representing an initial state for
+this (stateful) RLModule.</p> <h3 id="get-metadata"><a href="#get-metadata" class="header-anchor">#</a> get_metadata <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">get_metadata</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict</span></code>
+</pre> <p>Returns JSON writable metadata further describing the implementing class.</p> <p>Note that this metadata is NOT part of any state and is thus NOT needed to
+restore the state of a Checkpointable instance from a directory. Rather, the
+metadata will be written into <code>self.METADATA_FILE_NAME</code> when calling
+<code>self.save_to_path()</code> for the user's convenience.</p> <p>Returns:
+A JSON-encodable dict of metadata information.</p> <h3 id="get-non-inference-attributes"><a href="#get-non-inference-attributes" class="header-anchor">#</a> get_non_inference_attributes <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>InferenceOnlyAPI</span></h3> <pre><code class="language-python"><span class="token function">get_non_inference_attributes</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.List[str]</span></code>
+</pre> <p>Returns a list of attribute names (str) of components NOT used for inference.</p> <p>RLlib will use this information to remove those attributes/components from an
+RLModule, whose <code>config.inference_only</code> is set to True. This so-called
+&quot;inference-only setup&quot; is activated. Normally, all RLModules located on
+EnvRunners are constructed this way (because they are only used for computing
+actions). Similarly, when deployed into a production environment, users should
+consider building their RLModules with this flag set to True as well.</p> <p>For example:</p> <p>.. code-block:: python</p> <div class="language- extra-class"><pre><code>from ray.rllib.core.rl_module.rl_module import RLModuleSpec
+
+spec = RLModuleSpec(module_class=..., inference_only=True)
+</code></pre></div><p>If an RLModule has the following setup() implementation:</p> <p>.. testcode::
+:skipif: True</p> <div class="language- extra-class"><pre><code>class MyRLModule(RLModule):
+
+    def setup(self):
+        self._policy_head = [some NN component]
+        self._value_function_head = [some NN component]
+
+        self._encoder = [some NN component with attributes: pol and vf
+                         (policy- and value func. encoder)]
+</code></pre></div><p>Then its <code>get_non_inference_attributes()</code> should return:
+[&quot;_value_function_head&quot;, &quot;_encoder.vf&quot;].</p> <p>Note the &quot;.&quot; notation to separate attributes and their sub-attributes in case
+you need more fine-grained control over which exact sub-attributes to exclude in
+the inference-only setup.</p> <p>Returns:
+A list of names (str) of those attributes (or sub-attributes) that should be
+excluded (deleted) from this RLModule in case it's setup in
+<code>inference_only</code> mode.</p> <h3 id="get-parameter"><a href="#get-parameter" class="header-anchor">#</a> get_parameter <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">get_parameter</span>(
+  self<!----><!---->,<br>  target: <span><class 'str'></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.nn.parameter.Parameter'></span></code>
+</pre> <p>Return the parameter given by <code>target</code> if it exists, otherwise throw an error.</p> <p>See the docstring for <code>get_submodule</code> for a more detailed
+explanation of this method's functionality as well as how to
+correctly specify <code>target</code>.</p> <p>Args:
+target: The fully-qualified string name of the Parameter
+to look for. (See <code>get_submodule</code> for how to specify a
+fully-qualified string.)</p> <p>Returns:
+torch.nn.Parameter: The Parameter referenced by <code>target</code></p> <p>Raises:
+AttributeError: If the target string references an invalid
+path or resolves to something that is not an
+<code>nn.Parameter</code></p> <h3 id="get-state"><a href="#get-state" class="header-anchor">#</a> get_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">get_state</span>(
+  self<!----><!---->,<br>  components: <span>typing.Union[str, typing.Collection[str], NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  not_components: <span>typing.Union[str, typing.Collection[str], NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  inference_only: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span>,<br>  **kwargs<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Any]</span></code>
+</pre> <p>Returns the state dict of the module.</p> <p>Args:
+inference_only: Whether the returned state should be an inference-only
+state (w/o those model components that are not needed for action
+computations, such as a value function or a target network).
+Note that setting this to <code>False</code> might raise an error if
+<code>self.inference_only</code> is True.</p> <p>Returns:
+This RLModule's state dict.</p> <h3 id="get-submodule"><a href="#get-submodule" class="header-anchor">#</a> get_submodule <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">get_submodule</span>(
+  self<!----><!---->,<br>  target: <span><class 'str'></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>Module</span></code>
+</pre> <p>Return the submodule given by <code>target</code> if it exists, otherwise throw an error.</p> <p>For example, let's say you have an <code>nn.Module</code> <code>A</code> that
+looks like this:</p> <p>.. code-block:: text</p> <div class="language- extra-class"><pre><code>A(
+    (net_b): Module(
+        (net_c): Module(
+            (conv): Conv2d(16, 33, kernel_size=(3, 3), stride=(2, 2))
+        )
+        (linear): Linear(in_features=100, out_features=200, bias=True)
+    )
+)
+</code></pre></div><p>(The diagram shows an <code>nn.Module</code> <code>A</code>. <code>A</code> which has a nested
+submodule <code>net_b</code>, which itself has two submodules <code>net_c</code>
+and <code>linear</code>. <code>net_c</code> then has a submodule <code>conv</code>.)</p> <p>To check whether or not we have the <code>linear</code> submodule, we
+would call <code>get_submodule(&quot;net_b.linear&quot;)</code>. To check whether
+we have the <code>conv</code> submodule, we would call
+<code>get_submodule(&quot;net_b.net_c.conv&quot;)</code>.</p> <p>The runtime of <code>get_submodule</code> is bounded by the degree
+of module nesting in <code>target</code>. A query against
+<code>named_modules</code> achieves the same result, but it is O(N) in
+the number of transitive modules. So, for a simple check to see
+if some submodule exists, <code>get_submodule</code> should always be
+used.</p> <p>Args:
+target: The fully-qualified string name of the submodule
+to look for. (See above example for how to specify a
+fully-qualified string.)</p> <p>Returns:
+torch.nn.Module: The submodule referenced by <code>target</code></p> <p>Raises:
+AttributeError: If at any point along the path resulting from
+the target string the (sub)path resolves to a non-existent
+attribute name or an object that is not an instance of <code>nn.Module</code>.</p> <h3 id="get-target-network-pairs"><a href="#get-target-network-pairs" class="header-anchor">#</a> get_target_network_pairs <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>TargetNetworkAPI</span></h3> <pre><code class="language-python"><span class="token function">get_target_network_pairs</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.List[typing.Tuple[typing.Union[ForwardRef('torch.nn.Module'), ForwardRef('keras.Model')], typing.Union[ForwardRef('torch.nn.Module'), ForwardRef('keras.Model')]]]</span></code>
+</pre> <p>Returns a list of 2-tuples of (main_net, target_net).</p> <p>For example, if your RLModule has a property: <code>self.q_net</code> and this network
+has a corresponding target net <code>self.target_q_net</code>, return from this
+(overridden) method: [(self.q_net, self.target_q_net)].</p> <p>Note that you need to create all target nets in your overridden
+<code>make_target_networks</code> method and store the target nets in any properly of your
+choice.</p> <p>Returns:
+A list of 2-tuples of (main_net, target_net)</p> <h3 id="get-train-action-dist-cls"><a href="#get-train-action-dist-cls" class="header-anchor">#</a> get_train_action_dist_cls <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">get_train_action_dist_cls</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Type[ray.rllib.core.distribution.torch.torch_distribution.TorchDistribution]</span></code>
+</pre> <p>Returns the action distribution class for this RLModule used for training.</p> <p>This class is used to get the correct action distribution class to be used by
+the training components. In case that no action distribution class is needed,
+this method can return None.</p> <p>Note that RLlib's distribution classes all implement the <code>Distribution</code>
+interface. This requires two special methods: <code>Distribution.from_logits()</code> and
+<code>Distribution.to_deterministic()</code>. See the documentation of the
+:py:class:<code>~ray.rllib.core.distribution.distribution.Distribution</code> class for
+more details.</p> <h3 id="half"><a href="#half" class="header-anchor">#</a> half <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">half</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Casts all floating point parameters and buffers to <code>half</code> datatype.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Returns:
+Module: self</p> <h3 id="ipu"><a href="#ipu" class="header-anchor">#</a> ipu <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">ipu</span>(
+  self<!----><!---->,<br>  device: <span>int | torch.device | None</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Move all model parameters and buffers to the IPU.</p> <p>This also makes associated parameters and buffers different objects. So
+it should be called before constructing the optimizer if the module will
+live on IPU while being optimized.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Arguments:
+device (int, optional): if specified, all parameters will be
+copied to that device</p> <p>Returns:
+Module: self</p> <h3 id="is-stateful"><a href="#is-stateful" class="header-anchor">#</a> is_stateful <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">is_stateful</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'bool'></span></code>
+</pre> <p>By default, returns False if the initial state is an empty dict (or None).</p> <p>By default, RLlib assumes that the module is non-recurrent, if the initial
+state is an empty dict and recurrent otherwise.
+This behavior can be customized by overriding this method.</p> <h3 id="load-state-dict"><a href="#load-state-dict" class="header-anchor">#</a> load_state_dict <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">load_state_dict</span>(
+  self<!----><!---->,<br>  state_dict: <span>collections.abc.Mapping[str, typing.Any]</span><!---->,<br>  strict: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span>,<br>  assign: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>)<!----></code>
+</pre> <p>Copy parameters and buffers from :attr:<code>state_dict</code> into this module and its descendants.</p> <p>If :attr:<code>strict</code> is <code>True</code>, then
+the keys of :attr:<code>state_dict</code> must exactly match the keys returned
+by this module's :meth:<code>~torch.nn.Module.state_dict</code> function.</p> <p>.. warning::
+If :attr:<code>assign</code> is <code>True</code> the optimizer must be created after
+the call to :attr:<code>load_state_dict</code> unless
+:func:<code>~torch.__future__.get_swap_module_params_on_conversion</code> is <code>True</code>.</p> <p>Args:
+state_dict (dict): a dict containing parameters and
+persistent buffers.
+strict (bool, optional): whether to strictly enforce that the keys
+in :attr:<code>state_dict</code> match the keys returned by this module's
+:meth:<code>~torch.nn.Module.state_dict</code> function. Default: <code>True</code>
+assign (bool, optional): When set to <code>False</code>, the properties of the tensors
+in the current module are preserved whereas setting it to <code>True</code> preserves
+properties of the Tensors in the state dict. The only
+exception is the <code>requires_grad</code> field of :class:<code>~torch.nn.Parameter</code>
+for which the value from the module is preserved. Default: <code>False</code></p> <p>Returns:
+<code>NamedTuple</code> with <code>missing_keys</code> and <code>unexpected_keys</code> fields:
+* <code>missing_keys</code> is a list of str containing any keys that are expected
+by this module but missing from the provided <code>state_dict</code>.
+* <code>unexpected_keys</code> is a list of str containing the keys that are not
+expected by this module but present in the provided <code>state_dict</code>.</p> <p>Note:
+If a parameter or buffer is registered as <code>None</code> and its corresponding key
+exists in :attr:<code>state_dict</code>, :meth:<code>load_state_dict</code> will raise a
+<code>RuntimeError</code>.</p> <h3 id="make-target-networks"><a href="#make-target-networks" class="header-anchor">#</a> make_target_networks <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>TargetNetworkAPI</span></h3> <pre><code class="language-python"><span class="token function">make_target_networks</span>(
+  self<!----><!----><!----><br>)<!----></code>
+</pre> <p>Creates the required target nets for this RLModule.</p> <p>Use the convenience <code>ray.rllib.core.learner.utils.make_target_network()</code> utility
+when implementing this method. Pass in an already existing, corresponding &quot;main&quot;
+net (for which you need a target net).
+This function already takes care of initialization (from the &quot;main&quot; net).</p> <h3 id="modules"><a href="#modules" class="header-anchor">#</a> modules <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">modules</span>(
+  self<!----><!---->,<br>  remove_duplicate: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator['Module']</span></code>
+</pre> <p>Return an iterator over all modules in the network.</p> <p>Args:
+remove_duplicate: whether to remove the duplicated module instances in the result
+or not.</p> <p>Yields:
+Module: a module in the network</p> <p>Note:
+Duplicate modules are returned only once by default. In the following
+example, <code>l</code> will be returned only once.</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; l = nn.Linear(2, 2)
+&gt;&gt;&gt; net = nn.Sequential(l, l)
+&gt;&gt;&gt; for idx, m in enumerate(net.modules()):
+...     print(idx, '-&gt;', m)
+
+0 -&gt; Sequential(
+  (0): Linear(in_features=2, out_features=2, bias=True)
+  (1): Linear(in_features=2, out_features=2, bias=True)
+)
+1 -&gt; Linear(in_features=2, out_features=2, bias=True)
+</code></pre></div><h3 id="mtia"><a href="#mtia" class="header-anchor">#</a> mtia <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">mtia</span>(
+  self<!----><!---->,<br>  device: <span>int | torch.device | None</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Move all model parameters and buffers to the MTIA.</p> <p>This also makes associated parameters and buffers different objects. So
+it should be called before constructing the optimizer if the module will
+live on MTIA while being optimized.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Arguments:
+device (int, optional): if specified, all parameters will be
+copied to that device</p> <p>Returns:
+Module: self</p> <h3 id="named-buffers"><a href="#named-buffers" class="header-anchor">#</a> named_buffers <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">named_buffers</span>(
+  self<!----><!---->,<br>  prefix: <span><class 'str'></span><!---->,<br>  recurse: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span>,<br>  remove_duplicate: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator[tuple[str, torch.Tensor]]</span></code>
+</pre> <p>Return an iterator over module buffers, yielding both the name of the buffer as well as the buffer itself.</p> <p>Args:
+prefix (str): prefix to prepend to all buffer names.
+recurse (bool, optional): if True, then yields buffers of this module
+and all submodules. Otherwise, yields only buffers that
+are direct members of this module. Defaults to True.
+remove_duplicate (bool, optional): whether to remove the duplicated buffers in the result. Defaults to True.</p> <p>Yields:
+(str, torch.Tensor): Tuple containing the name and buffer</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; for name, buf in self.named_buffers():
+&gt;&gt;&gt;     if name in ['running_var']:
+&gt;&gt;&gt;         print(buf.size())
+</code></pre></div><h3 id="named-children"><a href="#named-children" class="header-anchor">#</a> named_children <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">named_children</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator[tuple[str, 'Module']]</span></code>
+</pre> <p>Return an iterator over immediate children modules, yielding both the name of the module as well as the module itself.</p> <p>Yields:
+(str, Module): Tuple containing a name and child module</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; for name, module in model.named_children():
+&gt;&gt;&gt;     if name in ['conv4', 'conv5']:
+&gt;&gt;&gt;         print(module)
+</code></pre></div><h3 id="named-modules"><a href="#named-modules" class="header-anchor">#</a> named_modules <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">named_modules</span>(
+  self<!----><!---->,<br>  memo: <span>set['Module'] | None</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  prefix: <span><class 'str'></span><!---->,<br>  remove_duplicate: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>)<!----></code>
+</pre> <p>Return an iterator over all modules in the network, yielding both the name of the module as well as the module itself.</p> <p>Args:
+memo: a memo to store the set of modules already added to the result
+prefix: a prefix that will be added to the name of the module
+remove_duplicate: whether to remove the duplicated module instances in the result
+or not</p> <p>Yields:
+(str, Module): Tuple of name and module</p> <p>Note:
+Duplicate modules are returned only once. In the following
+example, <code>l</code> will be returned only once.</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; l = nn.Linear(2, 2)
+&gt;&gt;&gt; net = nn.Sequential(l, l)
+&gt;&gt;&gt; for idx, m in enumerate(net.named_modules()):
+...     print(idx, '-&gt;', m)
+
+0 -&gt; ('', Sequential(
+  (0): Linear(in_features=2, out_features=2, bias=True)
+  (1): Linear(in_features=2, out_features=2, bias=True)
+))
+1 -&gt; ('0', Linear(in_features=2, out_features=2, bias=True))
+</code></pre></div><h3 id="named-parameters"><a href="#named-parameters" class="header-anchor">#</a> named_parameters <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">named_parameters</span>(
+  self<!----><!---->,<br>  prefix: <span><class 'str'></span><!---->,<br>  recurse: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span>,<br>  remove_duplicate: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator[tuple[str, torch.nn.parameter.Parameter]]</span></code>
+</pre> <p>Return an iterator over module parameters, yielding both the name of the parameter as well as the parameter itself.</p> <p>Args:
+prefix (str): prefix to prepend to all parameter names.
+recurse (bool): if True, then yields parameters of this module
+and all submodules. Otherwise, yields only parameters that
+are direct members of this module.
+remove_duplicate (bool, optional): whether to remove the duplicated
+parameters in the result. Defaults to True.</p> <p>Yields:
+(str, Parameter): Tuple containing the name and parameter</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; for name, param in self.named_parameters():
+&gt;&gt;&gt;     if name in ['bias']:
+&gt;&gt;&gt;         print(param.size())
+</code></pre></div><h3 id="parameters"><a href="#parameters" class="header-anchor">#</a> parameters <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">parameters</span>(
+  self<!----><!---->,<br>  recurse: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>collections.abc.Iterator[torch.nn.parameter.Parameter]</span></code>
+</pre> <p>Return an iterator over module parameters.</p> <p>The exact order of the returned parameters is unspecified, but repeated
+calls to the <code>parameters()</code> method of an unchanged module return the
+parameters in the same order.</p> <p>This is typically passed to an optimizer.</p> <p>Args:
+recurse (bool): if True, then yields parameters of this module
+and all submodules. Otherwise, yields only parameters that
+are direct members of this module.</p> <p>Yields:
+Parameter: module parameter</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; for param in model.parameters():
+&gt;&gt;&gt;     print(type(param), param.size())
+\&lt;class 'torch.Tensor'&gt; (20L,)
+\&lt;class 'torch.Tensor'&gt; (20L, 1L, 5L, 5L)
+</code></pre></div><h3 id="preprocess-batch"><a href="#preprocess-batch" class="header-anchor">#</a> preprocess_batch <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ActionMaskingRLModule</span></h3> <pre><code class="language-python"><span class="token function">preprocess_batch</span>(
+  self<!----><!---->,<br>  batch: <span>dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span><!---->,<br>  **kwargs<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>tuple[typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')], dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]]</span></code>
+</pre> <p>Extracts observations and action mask from the batch</p> <p>Args:
+batch: A dictionary containing tensors (at least <code>Columns.OBS</code>)</p> <p>Returns:
+A tuple with the action mask tensor and the modified batch containing
+the original observations.</p> <h3 id="register-backward-hook"><a href="#register-backward-hook" class="header-anchor">#</a> register_backward_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_backward_hook</span>(
+  self<!----><!---->,<br>  hook: <span>collections.abc.Callable[['Module', tuple[torch.Tensor, ...] | torch.Tensor, tuple[torch.Tensor, ...] | torch.Tensor], tuple[torch.Tensor, ...] | torch.Tensor | None]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.utils.hooks.RemovableHandle'></span></code>
+</pre> <p>Register a backward hook on the module.</p> <p>This function is deprecated in favor of :meth:<code>~torch.nn.Module.register_full_backward_hook</code> and
+the behavior of this function will change in future versions.</p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-buffer"><a href="#register-buffer" class="header-anchor">#</a> register_buffer <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_buffer</span>(
+  self<!----><!---->,<br>  name: <span><class 'str'></span><!---->,<br>  tensor: <span>torch.Tensor | None</span><!---->,<br>  persistent: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>)<!----></code>
+</pre> <p>Add a buffer to the module.</p> <p>This is typically used to register a buffer that should not be
+considered a model parameter. For example, BatchNorm's <code>running_mean</code>
+is not a parameter, but is part of the module's state. Buffers, by
+default, are persistent and will be saved alongside parameters. This
+behavior can be changed by setting :attr:<code>persistent</code> to <code>False</code>. The
+only difference between a persistent buffer and a non-persistent buffer
+is that the latter will not be a part of this module's
+:attr:<code>state_dict</code>.</p> <p>Buffers can be accessed as attributes using given names.</p> <p>Args:
+name (str): name of the buffer. The buffer can be accessed
+from this module using the given name
+tensor (Tensor or None): buffer to be registered. If <code>None</code>, then operations
+that run on buffers, such as :attr:<code>cuda</code>, are ignored. If <code>None</code>,
+the buffer is <strong>not</strong> included in the module's :attr:<code>state_dict</code>.
+persistent (bool): whether the buffer is part of this module's
+:attr:<code>state_dict</code>.</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; self.register_buffer('running_mean', torch.zeros(num_features))
+</code></pre></div><h3 id="register-forward-hook"><a href="#register-forward-hook" class="header-anchor">#</a> register_forward_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_forward_hook</span>(
+  self<!----><!---->,<br>  hook: <span>collections.abc.Callable[[~T, tuple[typing.Any, ...], typing.Any], typing.Optional[typing.Any]] | collections.abc.Callable[[~T, tuple[typing.Any, ...], dict[str, typing.Any], typing.Any], typing.Optional[typing.Any]]</span><!---->,<br>  prepend: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span>,<br>  with_kwargs: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span>,<br>  always_call: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.utils.hooks.RemovableHandle'></span></code>
+</pre> <p>Register a forward hook on the module.</p> <p>The hook will be called every time after :func:<code>forward</code> has computed an output.</p> <p>If <code>with_kwargs</code> is <code>False</code> or not specified, the input contains only
+the positional arguments given to the module. Keyword arguments won't be
+passed to the hooks and only to the <code>forward</code>. The hook can modify the
+output. It can modify the input inplace but it will not have effect on
+forward since this is called after :func:<code>forward</code> is called. The hook
+should have the following signature::</p> <div class="language- extra-class"><pre><code>hook(module, args, output) -&gt; None or modified output
+</code></pre></div><p>If <code>with_kwargs</code> is <code>True</code>, the forward hook will be passed the
+<code>kwargs</code> given to the forward function and be expected to return the
+output possibly modified. The hook should have the following signature::</p> <div class="language- extra-class"><pre><code>hook(module, args, kwargs, output) -&gt; None or modified output
+</code></pre></div><p>Args:
+hook (Callable): The user defined hook to be registered.
+prepend (bool): If <code>True</code>, the provided <code>hook</code> will be fired
+before all existing <code>forward</code> hooks on this
+:class:<code>torch.nn.Module</code>. Otherwise, the provided
+<code>hook</code> will be fired after all existing <code>forward</code> hooks on
+this :class:<code>torch.nn.Module</code>. Note that global
+<code>forward</code> hooks registered with
+:func:<code>register_module_forward_hook</code> will fire before all hooks
+registered by this method.
+Default: <code>False</code>
+with_kwargs (bool): If <code>True</code>, the <code>hook</code> will be passed the
+kwargs given to the forward function.
+Default: <code>False</code>
+always_call (bool): If <code>True</code> the <code>hook</code> will be run regardless of
+whether an exception is raised while calling the Module.
+Default: <code>False</code></p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-forward-pre-hook"><a href="#register-forward-pre-hook" class="header-anchor">#</a> register_forward_pre_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_forward_pre_hook</span>(
+  self<!----><!---->,<br>  hook: <span>collections.abc.Callable[[~T, tuple[typing.Any, ...]], typing.Optional[typing.Any]] | collections.abc.Callable[[~T, tuple[typing.Any, ...], dict[str, typing.Any]], tuple[typing.Any, dict[str, typing.Any]] | None]</span><!---->,<br>  prepend: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span>,<br>  with_kwargs: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.utils.hooks.RemovableHandle'></span></code>
+</pre> <p>Register a forward pre-hook on the module.</p> <p>The hook will be called every time before :func:<code>forward</code> is invoked.</p> <p>If <code>with_kwargs</code> is false or not specified, the input contains only
+the positional arguments given to the module. Keyword arguments won't be
+passed to the hooks and only to the <code>forward</code>. The hook can modify the
+input. User can either return a tuple or a single modified value in the
+hook. We will wrap the value into a tuple if a single value is returned
+(unless that value is already a tuple). The hook should have the
+following signature::</p> <div class="language- extra-class"><pre><code>hook(module, args) -&gt; None or modified input
+</code></pre></div><p>If <code>with_kwargs</code> is true, the forward pre-hook will be passed the
+kwargs given to the forward function. And if the hook modifies the
+input, both the args and kwargs should be returned. The hook should have
+the following signature::</p> <div class="language- extra-class"><pre><code>hook(module, args, kwargs) -&gt; None or a tuple of modified input and kwargs
+</code></pre></div><p>Args:
+hook (Callable): The user defined hook to be registered.
+prepend (bool): If true, the provided <code>hook</code> will be fired before
+all existing <code>forward_pre</code> hooks on this
+:class:<code>torch.nn.Module</code>. Otherwise, the provided
+<code>hook</code> will be fired after all existing <code>forward_pre</code> hooks
+on this :class:<code>torch.nn.Module</code>. Note that global
+<code>forward_pre</code> hooks registered with
+:func:<code>register_module_forward_pre_hook</code> will fire before all
+hooks registered by this method.
+Default: <code>False</code>
+with_kwargs (bool): If true, the <code>hook</code> will be passed the kwargs
+given to the forward function.
+Default: <code>False</code></p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-full-backward-hook"><a href="#register-full-backward-hook" class="header-anchor">#</a> register_full_backward_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_full_backward_hook</span>(
+  self<!----><!---->,<br>  hook: <span>collections.abc.Callable[['Module', tuple[torch.Tensor, ...] | torch.Tensor, tuple[torch.Tensor, ...] | torch.Tensor], tuple[torch.Tensor, ...] | torch.Tensor | None]</span><!---->,<br>  prepend: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.utils.hooks.RemovableHandle'></span></code>
+</pre> <p>Register a backward hook on the module.</p> <p>The hook will be called every time the gradients with respect to a module are computed, and its firing rules are as follows:</p> <div class="language- extra-class"><pre><code>1. Ordinarily, the hook fires when the gradients are computed with respect to the module inputs.
+2. If none of the module inputs require gradients, the hook will fire when the gradients are computed
+   with respect to module outputs.
+3. If none of the module outputs require gradients, then the hooks will not fire.
+</code></pre></div><p>The hook should have the following signature::</p> <div class="language- extra-class"><pre><code>hook(module, grad_input, grad_output) -&gt; tuple(Tensor) or None
+</code></pre></div><p>The :attr:<code>grad_input</code> and :attr:<code>grad_output</code> are tuples that contain the gradients
+with respect to the inputs and outputs respectively. The hook should
+not modify its arguments, but it can optionally return a new gradient with
+respect to the input that will be used in place of :attr:<code>grad_input</code> in
+subsequent computations. :attr:<code>grad_input</code> will only correspond to the inputs given
+as positional arguments and all kwarg arguments are ignored. Entries
+in :attr:<code>grad_input</code> and :attr:<code>grad_output</code> will be <code>None</code> for all non-Tensor
+arguments.</p> <p>For technical reasons, when this hook is applied to a Module, its forward function will
+receive a view of each Tensor passed to the Module. Similarly the caller will receive a view
+of each Tensor returned by the Module's forward function.</p> <p>.. warning ::
+Modifying inputs or outputs inplace is not allowed when using backward hooks and
+will raise an error.</p> <p>Args:
+hook (Callable): The user-defined hook to be registered.
+prepend (bool): If true, the provided <code>hook</code> will be fired before
+all existing <code>backward</code> hooks on this
+:class:<code>torch.nn.Module</code>. Otherwise, the provided
+<code>hook</code> will be fired after all existing <code>backward</code> hooks on
+this :class:<code>torch.nn.Module</code>. Note that global
+<code>backward</code> hooks registered with
+:func:<code>register_module_full_backward_hook</code> will fire before
+all hooks registered by this method.</p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-full-backward-pre-hook"><a href="#register-full-backward-pre-hook" class="header-anchor">#</a> register_full_backward_pre_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_full_backward_pre_hook</span>(
+  self<!----><!---->,<br>  hook: <span>collections.abc.Callable[['Module', tuple[torch.Tensor, ...] | torch.Tensor], tuple[torch.Tensor, ...] | torch.Tensor | None]</span><!---->,<br>  prepend: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span><class 'torch.utils.hooks.RemovableHandle'></span></code>
+</pre> <p>Register a backward pre-hook on the module.</p> <p>The hook will be called every time the gradients for the module are computed.
+The hook should have the following signature::</p> <div class="language- extra-class"><pre><code>hook(module, grad_output) -&gt; tuple[Tensor, ...], Tensor or None
+</code></pre></div><p>The :attr:<code>grad_output</code> is a tuple. The hook should
+not modify its arguments, but it can optionally return a new gradient with
+respect to the output that will be used in place of :attr:<code>grad_output</code> in
+subsequent computations. Entries in :attr:<code>grad_output</code> will be <code>None</code> for
+all non-Tensor arguments.</p> <p>For technical reasons, when this hook is applied to a Module, its forward function will
+receive a view of each Tensor passed to the Module. Similarly the caller will receive a view
+of each Tensor returned by the Module's forward function.</p> <p>.. warning ::
+Modifying inputs inplace is not allowed when using backward hooks and
+will raise an error.</p> <p>Args:
+hook (Callable): The user-defined hook to be registered.
+prepend (bool): If true, the provided <code>hook</code> will be fired before
+all existing <code>backward_pre</code> hooks on this
+:class:<code>torch.nn.Module</code>. Otherwise, the provided
+<code>hook</code> will be fired after all existing <code>backward_pre</code> hooks
+on this :class:<code>torch.nn.Module</code>. Note that global
+<code>backward_pre</code> hooks registered with
+:func:<code>register_module_full_backward_pre_hook</code> will fire before
+all hooks registered by this method.</p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-load-state-dict-post-hook"><a href="#register-load-state-dict-post-hook" class="header-anchor">#</a> register_load_state_dict_post_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_load_state_dict_post_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!----><!----><br>)<!----></code>
+</pre> <p>Register a post-hook to be run after module's :meth:<code>~nn.Module.load_state_dict</code> is called.</p> <p>It should have the following signature::
+hook(module, incompatible_keys) -&gt; None</p> <p>The <code>module</code> argument is the current module that this hook is registered
+on, and the <code>incompatible_keys</code> argument is a <code>NamedTuple</code> consisting
+of attributes <code>missing_keys</code> and <code>unexpected_keys</code>. <code>missing_keys</code>
+is a <code>list</code> of <code>str</code> containing the missing keys and
+<code>unexpected_keys</code> is a <code>list</code> of <code>str</code> containing the unexpected keys.</p> <p>The given incompatible_keys can be modified inplace if needed.</p> <p>Note that the checks performed when calling :func:<code>load_state_dict</code> with
+<code>strict=True</code> are affected by modifications the hook makes to
+<code>missing_keys</code> or <code>unexpected_keys</code>, as expected. Additions to either
+set of keys will result in an error being thrown when <code>strict=True</code>, and
+clearing out both missing and unexpected keys will avoid an error.</p> <p>Returns:
+:class:<code>torch.utils.hooks.RemovableHandle</code>:
+a handle that can be used to remove the added hook by calling
+<code>handle.remove()</code></p> <h3 id="register-load-state-dict-pre-hook"><a href="#register-load-state-dict-pre-hook" class="header-anchor">#</a> register_load_state_dict_pre_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_load_state_dict_pre_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!----><!----><br>)<!----></code>
+</pre> <p>Register a pre-hook to be run before module's :meth:<code>~nn.Module.load_state_dict</code> is called.</p> <p>It should have the following signature::
+hook(module, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs) -&gt; None  # noqa: B950</p> <p>Arguments:
+hook (Callable): Callable hook that will be invoked before
+loading the state dict.</p> <h3 id="register-module"><a href="#register-module" class="header-anchor">#</a> register_module <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_module</span>(
+  self<!----><!---->,<br>  name: <span><class 'str'></span><!---->,<br>  module: <span>typing.Optional[ForwardRef('Module')]</span><!----><!----><br>)<!----></code>
+</pre> <p>Alias for :func:<code>add_module</code>.</p> <h3 id="register-parameter"><a href="#register-parameter" class="header-anchor">#</a> register_parameter <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_parameter</span>(
+  self<!----><!---->,<br>  name: <span><class 'str'></span><!---->,<br>  param: <span>torch.nn.parameter.Parameter | None</span><!----><!----><br>)<!----></code>
+</pre> <p>Add a parameter to the module.</p> <p>The parameter can be accessed as an attribute using given name.</p> <p>Args:
+name (str): name of the parameter. The parameter can be accessed
+from this module using the given name
+param (Parameter or None): parameter to be added to the module. If
+<code>None</code>, then operations that run on parameters, such as :attr:<code>cuda</code>,
+are ignored. If <code>None</code>, the parameter is <strong>not</strong> included in the
+module's :attr:<code>state_dict</code>.</p> <h3 id="register-state-dict-post-hook"><a href="#register-state-dict-post-hook" class="header-anchor">#</a> register_state_dict_post_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_state_dict_post_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!----><!----><br>)<!----></code>
+</pre> <p>Register a post-hook for the :meth:<code>~torch.nn.Module.state_dict</code> method.</p> <p>It should have the following signature::
+hook(module, state_dict, prefix, local_metadata) -&gt; None</p> <p>The registered hooks can modify the <code>state_dict</code> inplace.</p> <h3 id="register-state-dict-pre-hook"><a href="#register-state-dict-pre-hook" class="header-anchor">#</a> register_state_dict_pre_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">register_state_dict_pre_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!----><!----><br>)<!----></code>
+</pre> <p>Register a pre-hook for the :meth:<code>~torch.nn.Module.state_dict</code> method.</p> <p>It should have the following signature::
+hook(module, prefix, keep_vars) -&gt; None</p> <p>The registered hooks can be used to perform pre-processing before the <code>state_dict</code>
+call is made.</p> <h3 id="requires-grad"><a href="#requires-grad" class="header-anchor">#</a> requires_grad_ <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">requires_grad_</span>(
+  self<!----><!---->,<br>  requires_grad: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Change if autograd should record operations on parameters in this module.</p> <p>This method sets the parameters' :attr:<code>requires_grad</code> attributes
+in-place.</p> <p>This method is helpful for freezing part of the module for finetuning
+or training parts of a model individually (e.g., GAN training).</p> <p>See :ref:<code>locally-disable-grad-doc</code> for a comparison between
+<code>.requires_grad_()</code> and several similar mechanisms that may be confused with it.</p> <p>Args:
+requires_grad (bool): whether autograd should record operations on
+parameters in this module. Default: <code>True</code>.</p> <p>Returns:
+Module: self</p> <h3 id="restore-from-path"><a href="#restore-from-path" class="header-anchor">#</a> restore_from_path <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">restore_from_path</span>(
+  self<!----><!---->,<br>  path: <span>typing.Union[str, pathlib.Path]</span><!---->,<br>  component: <span>typing.Optional[str]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  filesystem: <span>typing.Optional[ForwardRef('pyarrow.fs.FileSystem')]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  **kwargs<!----><!----><!----><br>)<!----></code>
+</pre> <p>Restores the state of the implementing class from the given path.</p> <p>If the <code>component</code> arg is provided, <code>path</code> refers to a checkpoint of a
+subcomponent of <code>self</code>, thus allowing the user to load only the subcomponent's
+state into <code>self</code> without affecting any of the other state information (for
+example, loading only the NN state into a Checkpointable, which contains such
+an NN, but also has other state information that should NOT be changed by
+calling this method).</p> <p>The given <code>path</code> should have the following structure and contain the following
+files:</p> <p>.. testcode::
+:skipif: True</p> <div class="language- extra-class"><pre><code>path/
+    [component1]/
+        [component1 subcomponentA]/
+            ...
+        [component1 subcomponentB]/
+            ...
+    [component2]/
+            ...
+    [cls.METADATA_FILE_NAME] (json)
+    [cls.STATE_FILE_NAME] (pkl|msgpack)
+</code></pre></div><p>Note that the self.METADATA_FILE_NAME file is not required to restore the state.</p> <p>Args:
+path: The path to load the implementing class' state from or to load the
+state of only one subcomponent's state of the implementing class (if
+<code>component</code> is provided).
+component: If provided, <code>path</code> is interpreted as the checkpoint path of only
+the subcomponent and thus, only that subcomponent's state is
+restored/loaded. All other state of <code>self</code> remains unchanged in this
+case.
+filesystem: PyArrow FileSystem to use to access data at the <code>path</code>. If not
+specified, this is inferred from the URI scheme of <code>path</code>.
+**kwargs: Forward compatibility kwargs.</p> <h3 id="save-to-path"><a href="#save-to-path" class="header-anchor">#</a> save_to_path <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">save_to_path</span>(
+  self<!----><!---->,<br>  path: <span>typing.Union[str, pathlib.Path, NoneType]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  state: <span>typing.Optional[typing.Dict[str, typing.Any]]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  filesystem: <span>typing.Optional[ForwardRef('pyarrow.fs.FileSystem')]</span> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  use_msgpack: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>) <span class="token operator">-&gt;</span> <span><class 'str'></span></code>
+</pre> <p>Saves the state of the implementing class (or <code>state</code>) to <code>path</code>.</p> <p>The state of the implementing class is always saved in the following format:</p> <p>.. testcode::
+:skipif: True</p> <div class="language- extra-class"><pre><code>path/
+    [component1]/
+        [component1 subcomponentA]/
+            ...
+        [component1 subcomponentB]/
+            ...
+    [component2]/
+            ...
+    [cls.METADATA_FILE_NAME] (json)
+    [cls.STATE_FILE_NAME] (pkl|msgpack)
+</code></pre></div><p>The main logic is to loop through all subcomponents of this Checkpointable
+and call their respective <code>save_to_path</code> methods. Then save the remaining
+(non subcomponent) state to this Checkpointable's STATE_FILE_NAME.
+In the exception that a component is a FaultTolerantActorManager instance,
+instead of calling <code>save_to_path</code> directly on that manager, the first healthy
+actor is interpreted as the component and its <code>save_to_path</code> method is called.
+Even if that actor is located on another node, the created file is automatically
+synced to the local node.</p> <p>Args:
+path: The path to the directory to save the state of the implementing class
+to. If <code>path</code> doesn't exist or is None, then a new directory will be
+created (and returned).
+state: An optional state dict to be used instead of getting a new state of
+the implementing class through <code>self.get_state()</code>.
+filesystem: PyArrow FileSystem to use to access data at the <code>path</code>.
+If not specified, this is inferred from the URI scheme of <code>path</code>.
+use_msgpack: Whether the state file should be written using msgpack and
+msgpack_numpy (file extension is <code>.msgpack</code>), rather than pickle (file
+extension is <code>.pkl</code>).</p> <p>Returns:
+The path (str) where the state has been saved.</p> <h3 id="set-extra-state"><a href="#set-extra-state" class="header-anchor">#</a> set_extra_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">set_extra_state</span>(
+  self<!----><!---->,<br>  state: <span>typing.Any</span><!----><!----><br>)<!----></code>
+</pre> <p>Set extra state contained in the loaded <code>state_dict</code>.</p> <p>This function is called from :func:<code>load_state_dict</code> to handle any extra state
+found within the <code>state_dict</code>. Implement this function and a corresponding
+:func:<code>get_extra_state</code> for your module if you need to store extra state within its
+<code>state_dict</code>.</p> <p>Args:
+state (dict): Extra state from the <code>state_dict</code></p> <h3 id="set-state"><a href="#set-state" class="header-anchor">#</a> set_state <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">set_state</span>(
+  self<!----><!---->,<br>  state: <span>typing.Dict[str, typing.Any]</span><!----><!----><br>)<!----></code>
+</pre> <p>Sets the implementing class' state to the given state dict.</p> <p>If component keys are missing in <code>state</code>, these components of the implementing
+class will not be updated/set.</p> <p>Args:
+state: The state dict to restore the state from. Maps component keys
+to the corresponding subcomponent's own state.</p> <h3 id="set-submodule"><a href="#set-submodule" class="header-anchor">#</a> set_submodule <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">set_submodule</span>(
+  self<!----><!---->,<br>  target: <span><class 'str'></span><!---->,<br>  module: <span>Module</span><!---->,<br>  strict: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>)<!----></code>
+</pre> <p>Set the submodule given by <code>target</code> if it exists, otherwise throw an error.</p> <p>.. note::
+If <code>strict</code> is set to <code>False</code> (default), the method will replace an existing submodule
+or create a new submodule if the parent module exists. If <code>strict</code> is set to <code>True</code>,
+the method will only attempt to replace an existing submodule and throw an error if
+the submodule does not exist.</p> <p>For example, let's say you have an <code>nn.Module</code> <code>A</code> that
+looks like this:</p> <p>.. code-block:: text</p> <div class="language- extra-class"><pre><code>A(
+    (net_b): Module(
+        (net_c): Module(
+            (conv): Conv2d(3, 3, 3)
+        )
+        (linear): Linear(3, 3)
+    )
+)
+</code></pre></div><p>(The diagram shows an <code>nn.Module</code> <code>A</code>. <code>A</code> has a nested
+submodule <code>net_b</code>, which itself has two submodules <code>net_c</code>
+and <code>linear</code>. <code>net_c</code> then has a submodule <code>conv</code>.)</p> <p>To override the <code>Conv2d</code> with a new submodule <code>Linear</code>, you
+could call <code>set_submodule(&quot;net_b.net_c.conv&quot;, nn.Linear(1, 1))</code>
+where <code>strict</code> could be <code>True</code> or <code>False</code></p> <p>To add a new submodule <code>Conv2d</code> to the existing <code>net_b</code> module,
+you would call <code>set_submodule(&quot;net_b.conv&quot;, nn.Conv2d(1, 1, 1))</code>.</p> <p>In the above if you set <code>strict=True</code> and call
+<code>set_submodule(&quot;net_b.conv&quot;, nn.Conv2d(1, 1, 1), strict=True)</code>, an AttributeError
+will be raised because <code>net_b</code> does not have a submodule named <code>conv</code>.</p> <p>Args:
+target: The fully-qualified string name of the submodule
+to look for. (See above example for how to specify a
+fully-qualified string.)
+module: The module to set the submodule to.
+strict: If <code>False</code>, the method will replace an existing submodule
+or create a new submodule if the parent module exists. If <code>True</code>,
+the method will only attempt to replace an existing submodule and throw an error
+if the submodule doesn't already exist.</p> <p>Raises:
+ValueError: If the <code>target</code> string is empty or if <code>module</code> is not an instance of <code>nn.Module</code>.
+AttributeError: If at any point along the path resulting from
+the <code>target</code> string the (sub)path resolves to a non-existent
+attribute name or an object that is not an instance of <code>nn.Module</code>.</p> <h3 id="setup"><a href="#setup" class="header-anchor">#</a> setup <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">setup</span>(
+  self<!----><!----><!----><br>)<!----></code>
+</pre> <p>Sets up the components of the module.</p> <p>This is called automatically during the <strong>init</strong> method of this class,
+therefore, the subclass should call super.<strong>init</strong>() in its constructor. This
+abstraction can be used to create any components (e.g. NN layers) that your
+RLModule needs.</p> <h3 id="share-memory"><a href="#share-memory" class="header-anchor">#</a> share_memory <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">share_memory</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>See :meth:<code>torch.Tensor.share_memory_</code>.</p> <h3 id="state-dict"><a href="#state-dict" class="header-anchor">#</a> state_dict <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">state_dict</span>(
+  self<!----><!---->,<br>  *args<!----><!---->,<br>  destination<!----> <span class="token operator">=</span> <span class="token boolean">None</span>,<br>  prefix<!----><!---->,<br>  keep_vars<!----> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>)<!----></code>
+</pre> <p>Return a dictionary containing references to the whole state of the module.</p> <p>Both parameters and persistent buffers (e.g. running averages) are
+included. Keys are corresponding parameter and buffer names.
+Parameters and buffers set to <code>None</code> are not included.</p> <p>.. note::
+The returned object is a shallow copy. It contains references
+to the module's parameters and buffers.</p> <p>.. warning::
+Currently <code>state_dict()</code> also accepts positional arguments for
+<code>destination</code>, <code>prefix</code> and <code>keep_vars</code> in order. However,
+this is being deprecated and keyword arguments will be enforced in
+future releases.</p> <p>.. warning::
+Please avoid the use of argument <code>destination</code> as it is not
+designed for end-users.</p> <p>Args:
+destination (dict, optional): If provided, the state of module will
+be updated into the dict and the same object is returned.
+Otherwise, an <code>OrderedDict</code> will be created and returned.
+Default: <code>None</code>.
+prefix (str, optional): a prefix added to parameter and buffer
+names to compose the keys in state_dict. Default: <code>''</code>.
+keep_vars (bool, optional): by default the :class:<code>~torch.Tensor</code> s
+returned in the state dict are detached from autograd. If it's
+set to <code>True</code>, detaching will not be performed.
+Default: <code>False</code>.</p> <p>Returns:
+dict:
+a dictionary containing a whole state of the module</p> <p>Example::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +SKIP(&quot;undefined vars&quot;)
+&gt;&gt;&gt; module.state_dict().keys()
+['bias', 'weight']
+</code></pre></div><h3 id="to"><a href="#to" class="header-anchor">#</a> to <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">to</span>(
+  self<!----><!---->,<br>  *args<!----><!---->,<br>  **kwargs<!----><!----><!----><br>)<!----></code>
+</pre> <p>Move and/or cast the parameters and buffers.</p> <p>This can be called as</p> <p>.. function:: to(device=None, dtype=None, non_blocking=False)
+:noindex:</p> <p>.. function:: to(dtype, non_blocking=False)
+:noindex:</p> <p>.. function:: to(tensor, non_blocking=False)
+:noindex:</p> <p>.. function:: to(memory_format=torch.channels_last)
+:noindex:</p> <p>Its signature is similar to :meth:<code>torch.Tensor.to</code>, but only accepts
+floating point or complex :attr:<code>dtype</code>\ s. In addition, this method will
+only cast the floating point or complex parameters and buffers to :attr:<code>dtype</code>
+(if given). The integral parameters and buffers will be moved
+:attr:<code>device</code>, if that is given, but with dtypes unchanged. When
+:attr:<code>non_blocking</code> is set, it tries to convert/move asynchronously
+with respect to the host if possible, e.g., moving CPU Tensors with
+pinned memory to CUDA devices.</p> <p>See below for examples.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Args:
+device (:class:<code>torch.device</code>): the desired device of the parameters
+and buffers in this module
+dtype (:class:<code>torch.dtype</code>): the desired floating point or complex dtype of
+the parameters and buffers in this module
+tensor (torch.Tensor): Tensor whose dtype and device are the desired
+dtype and device for all parameters and buffers in this module
+memory_format (:class:<code>torch.memory_format</code>): the desired memory
+format for 4D parameters and buffers in this module (keyword
+only argument)</p> <p>Returns:
+Module: self</p> <p>Examples::</p> <div class="language- extra-class"><pre><code>&gt;&gt;&gt; # xdoctest: +IGNORE_WANT(&quot;non-deterministic&quot;)
+&gt;&gt;&gt; linear = nn.Linear(2, 2)
+&gt;&gt;&gt; linear.weight
+Parameter containing:
+tensor([[ 0.1913, -0.3420],
+        [-0.5113, -0.2325]])
+&gt;&gt;&gt; linear.to(torch.double)
+Linear(in_features=2, out_features=2, bias=True)
+&gt;&gt;&gt; linear.weight
+Parameter containing:
+tensor([[ 0.1913, -0.3420],
+        [-0.5113, -0.2325]], dtype=torch.float64)
+&gt;&gt;&gt; # xdoctest: +REQUIRES(env:TORCH_DOCTEST_CUDA1)
+&gt;&gt;&gt; gpu1 = torch.device(&quot;cuda:1&quot;)
+&gt;&gt;&gt; linear.to(gpu1, dtype=torch.half, non_blocking=True)
+Linear(in_features=2, out_features=2, bias=True)
+&gt;&gt;&gt; linear.weight
+Parameter containing:
+tensor([[ 0.1914, -0.3420],
+        [-0.5112, -0.2324]], dtype=torch.float16, device='cuda:1')
+&gt;&gt;&gt; cpu = torch.device(&quot;cpu&quot;)
+&gt;&gt;&gt; linear.to(cpu)
+Linear(in_features=2, out_features=2, bias=True)
+&gt;&gt;&gt; linear.weight
+Parameter containing:
+tensor([[ 0.1914, -0.3420],
+        [-0.5112, -0.2324]], dtype=torch.float16)
+
+&gt;&gt;&gt; linear = nn.Linear(2, 2, bias=None).to(torch.cdouble)
+&gt;&gt;&gt; linear.weight
+Parameter containing:
+tensor([[ 0.3741+0.j,  0.2382+0.j],
+        [ 0.5593+0.j, -0.4443+0.j]], dtype=torch.complex128)
+&gt;&gt;&gt; linear(torch.ones(3, 2, dtype=torch.cdouble))
+tensor([[0.6122+0.j, 0.1150+0.j],
+        [0.6122+0.j, 0.1150+0.j],
+        [0.6122+0.j, 0.1150+0.j]], dtype=torch.complex128)
+</code></pre></div><h3 id="to-empty"><a href="#to-empty" class="header-anchor">#</a> to_empty <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">to_empty</span>(
+  self<!----><!---->,<br>  device: <span>str | torch.device | int | None</span><!---->,<br>  recurse: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Move the parameters and buffers to the specified device without copying storage.</p> <p>Args:
+device (:class:<code>torch.device</code>): The desired device of the parameters
+and buffers in this module.
+recurse (bool): Whether parameters and buffers of submodules should
+be recursively moved to the specified device.</p> <p>Returns:
+Module: self</p> <h3 id="train"><a href="#train" class="header-anchor">#</a> train <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">train</span>(
+  self<!----><!---->,<br>  mode: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Set the module in training mode.</p> <p>This has an effect only on certain modules. See the documentation of
+particular modules for details of their behaviors in training/evaluation
+mode, i.e., whether they are affected, e.g. :class:<code>Dropout</code>, :class:<code>BatchNorm</code>,
+etc.</p> <p>Args:
+mode (bool): whether to set training mode (<code>True</code>) or evaluation
+mode (<code>False</code>). Default: <code>True</code>.</p> <p>Returns:
+Module: self</p> <h3 id="type"><a href="#type" class="header-anchor">#</a> type <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">type</span>(
+  self<!----><!---->,<br>  dst_type: <span>torch.dtype | str</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Casts all parameters and buffers to :attr:<code>dst_type</code>.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Args:
+dst_type (type or string): the desired type</p> <p>Returns:
+Module: self</p> <h3 id="unwrapped"><a href="#unwrapped" class="header-anchor">#</a> unwrapped <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">unwrapped</span>(
+  self<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>RLModule</span></code>
+</pre> <p>Returns the underlying module if this module is a wrapper.</p> <p>An example of a wrapped is the TorchDDPRLModule class, which wraps
+a TorchRLModule.</p> <p>Returns:
+The underlying module.</p> <h3 id="xpu"><a href="#xpu" class="header-anchor">#</a> xpu <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">xpu</span>(
+  self<!----><!---->,<br>  device: <span>int | torch.device | None</span> <span class="token operator">=</span> <span class="token boolean">None</span><!----><br>) <span class="token operator">-&gt;</span> <span>typing_extensions.Self</span></code>
+</pre> <p>Move all model parameters and buffers to the XPU.</p> <p>This also makes associated parameters and buffers different objects. So
+it should be called before constructing optimizer if the module will
+live on XPU while being optimized.</p> <p>.. note::
+This method modifies the module in-place.</p> <p>Arguments:
+device (int, optional): if specified, all parameters will be
+copied to that device</p> <p>Returns:
+Module: self</p> <h3 id="zero-grad"><a href="#zero-grad" class="header-anchor">#</a> zero_grad <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">zero_grad</span>(
+  self<!----><!---->,<br>  set_to_none: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>)<!----></code>
+</pre> <p>Reset gradients of all model parameters.</p> <p>See similar function under :class:<code>torch.optim.Optimizer</code> for more context.</p> <p>Args:
+set_to_none (bool): instead of setting to zero, set the grads to None.
+See :meth:<code>torch.optim.Optimizer.zero_grad</code> for details.</p> <h3 id="annotated-type"><a href="#annotated-type" class="header-anchor">#</a> _annotated_type <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>QNetAPI</span></h3> <h3 id="check-batch"><a href="#check-batch" class="header-anchor">#</a> _check_batch <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>ActionMaskingRLModule</span></h3> <pre><code class="language-python"><span class="token function">_check_batch</span>(
+  self<!----><!---->,<br>  batch: <span>dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span><!----><!----><br>)<!----></code>
+</pre> <p>Assert that the batch includes action mask and observations.</p> <p>Args:
+batch: A dicitonary containing tensors (at least <code>Columns.OBS</code>) to be
+checked.</p> <p>Raises:
+<code>ValueError</code> if the column <code>Columns.OBS</code>  does not contain observations
+and action mask.</p> <h3 id="check-component"><a href="#check-component" class="header-anchor">#</a> _check_component <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Checkpointable</span></h3> <pre><code class="language-python"><span class="token function">_check_component</span>(
+  self<!----><!---->,<br>  name<!----><!---->,<br>  components<!----><!---->,<br>  not_components<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span><class 'bool'></span></code>
+</pre> <p>Returns True if a component should be checkpointed.</p> <p>Args:
+name: The checkpoint name.
+components: A list of components that should be checkpointed.
+non_components: A list of components that should not be checkpointed.</p> <p>Returns:
+True, if the component should be checkpointed and otherwise False.</p> <h3 id="forward-2"><a href="#forward-2" class="header-anchor">#</a> _forward <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">_forward</span>(
+  self<!----><!---->,<br>  batch: <span>typing.Dict[str, typing.Any]</span><!---->,<br>  **kwargs<!----><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Any]</span></code>
+</pre> <p>Generic forward pass method, used in all phases of training and evaluation.</p> <p>If you need a more nuanced distinction between forward passes in the different
+phases of training and evaluation, override the following methods instead:</p> <p>For distinct action computation logic w/o exploration, override the
+<code>self._forward_inference()</code> method.
+For distinct action computation logic with exploration, override the
+<code>self._forward_exploration()</code> method.
+For distinct forward pass logic before loss computation, override the
+<code>self._forward_train()</code> method.</p> <p>Args:
+batch: The input batch.
+**kwargs: Additional keyword arguments.</p> <p>Returns:
+The output of the forward pass.</p> <h3 id="forward-exploration-2"><a href="#forward-exploration-2" class="header-anchor">#</a> _forward_exploration <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">_forward_exploration</span>(
+  self<!----><!---->,<br>  batch: <span>dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span><!---->,<br>  t: <span><class 'int'></span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span></code>
+</pre> <p>Forward pass during exploration.</p> <p>We need to override as a multinomial on Q-values is taken, originally excluding <em>0</em> valued logits.
+But after masking, we should have FLOAT_MIN (approximating -inf) values excluded instead.</p> <h3 id="forward-inference-2"><a href="#forward-inference-2" class="header-anchor">#</a> _forward_inference <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">_forward_inference</span>(
+  self<!----><!---->,<br>  batch: <span>typing.Dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span></code>
+</pre> <p>Forward-pass used for action computation without exploration behavior.</p> <p>Override this method only, if you need specific behavior for non-exploratory
+action computation behavior. If you have only one generic behavior for all
+phases of training and evaluation, override <code>self._forward()</code> instead.</p> <p>By default, this calls the generic <code>self._forward()</code> method.</p> <h3 id="forward-train-2"><a href="#forward-train-2" class="header-anchor">#</a> _forward_train <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>RLModule</span></h3> <pre><code class="language-python"><span class="token function">_forward_train</span>(
+  self<!----><!---->,<br>  batch: <span>typing.Dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>typing.Dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor'), dict, tuple]]</span></code>
+</pre> <p>Forward-pass used before the loss computation (training).</p> <p>Override this method only, if you need specific behavior and outputs for your
+loss computations. If you have only one generic behavior for all
+phases of training and evaluation, override <code>self._forward()</code> instead.</p> <p>By default, this calls the generic <code>self._forward()</code> method.</p> <h3 id="get-backward-hooks"><a href="#get-backward-hooks" class="header-anchor">#</a> _get_backward_hooks <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_get_backward_hooks</span>(
+  self<!----><!----><!----><br>)<!----></code>
+</pre> <p>Return the backward hooks for use in the call function.</p> <p>It returns two lists, one with the full backward hooks and one with the non-full
+backward hooks.</p> <h3 id="load-from-state-dict"><a href="#load-from-state-dict" class="header-anchor">#</a> _load_from_state_dict <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_load_from_state_dict</span>(
+  self<!----><!---->,<br>  state_dict<!----><!---->,<br>  prefix<!----><!---->,<br>  local_metadata<!----><!---->,<br>  strict<!----><!---->,<br>  missing_keys<!----><!---->,<br>  unexpected_keys<!----><!---->,<br>  error_msgs<!----><!----><!----><br>)<!----></code>
+</pre> <p>Copy parameters and buffers from :attr:<code>state_dict</code> into only this module, but not its descendants.</p> <p>This is called on every submodule
+in :meth:<code>~torch.nn.Module.load_state_dict</code>. Metadata saved for this
+module in input :attr:<code>state_dict</code> is provided as :attr:<code>local_metadata</code>.
+For state dicts without metadata, :attr:<code>local_metadata</code> is empty.
+Subclasses can achieve class-specific backward compatible loading using
+the version number at <code>local_metadata.get(&quot;version&quot;, None)</code>.
+Additionally, :attr:<code>local_metadata</code> can also contain the key
+<code>assign_to_params_buffers</code> that indicates whether keys should be
+assigned their corresponding tensor in the state_dict.</p> <p>.. note::
+:attr:<code>state_dict</code> is not the same object as the input
+:attr:<code>state_dict</code> to :meth:<code>~torch.nn.Module.load_state_dict</code>. So
+it can be modified.</p> <p>Args:
+state_dict (dict): a dict containing parameters and
+persistent buffers.
+prefix (str): the prefix for parameters and buffers used in this
+module
+local_metadata (dict): a dict containing the metadata for this module.
+See
+strict (bool): whether to strictly enforce that the keys in
+:attr:<code>state_dict</code> with :attr:<code>prefix</code> match the names of
+parameters and buffers in this module
+missing_keys (list of str): if <code>strict=True</code>, add missing keys to
+this list
+unexpected_keys (list of str): if <code>strict=True</code>, add unexpected
+keys to this list
+error_msgs (list of str): error messages should be added to this
+list, and will be reported together in
+:meth:<code>~torch.nn.Module.load_state_dict</code></p> <h3 id="mask-action-logits"><a href="#mask-action-logits" class="header-anchor">#</a> _mask_action_logits <span class="badge tip" style="vertical-align:top;" data-v-15b7b770>ActionMaskingDQNTorchRLModule</span></h3> <pre><code class="language-python"><span class="token function">_mask_action_logits</span>(
+  self<!----><!---->,<br>  batch: <span>dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span><!---->,<br>  action_mask: <span>typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span></code>
+</pre> <p>Masks the action logits for the output of <code>forward</code> methods</p> <p>Args:
+batch: A dictionary containing tensors (at least action logits).
+action_mask: A tensor containing the action mask for the current
+observations.</p> <p>Returns:
+A modified batch with masked action logits for the action distribution
+inputs.</p> <h3 id="named-members"><a href="#named-members" class="header-anchor">#</a> _named_members <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_named_members</span>(
+  self<!----><!---->,<br>  get_members_fn<!----><!---->,<br>  prefix<!----><!---->,<br>  recurse<!----> <span class="token operator">=</span> <span class="token boolean">True</span>,<br>  remove_duplicate: <span><class 'bool'></span> <span class="token operator">=</span> <span class="token boolean">True</span><!----><br>)<!----></code>
+</pre> <p>Help yield various names + members of modules.</p> <h3 id="qf-forward-helper"><a href="#qf-forward-helper" class="header-anchor">#</a> _qf_forward_helper <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>DefaultDQNRLModule</span></h3> <pre><code class="language-python"><span class="token function">_qf_forward_helper</span>(
+  self<!----><!---->,<br>  batch: <span>dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span><!---->,<br>  encoder: <span><class 'ray.rllib.core.models.base.Encoder'></span><!---->,<br>  head: <span>ray.rllib.core.models.base.Model | dict[str, ray.rllib.core.models.base.Model]</span><!----><!----><br>) <span class="token operator">-&gt;</span> <span>dict[str, typing.Union[ForwardRef('NDArray[Any]'), ForwardRef('jnp.ndarray'), ForwardRef('tf.Tensor'), ForwardRef('torch.Tensor')]]</span></code>
+</pre> <p>Computes Q-values.</p> <p>This is a helper function that takes care of all different cases,
+i.e. if we use a dueling architecture or not and if we use distributional
+Q-learning or not.</p> <p>Args:
+batch: The batch received in the forward pass.
+encoder: The encoder network to use. Here we have a single encoder
+for all heads (Q or advantages and value in case of a dueling
+architecture).
+head: Either a head model or a dictionary of head model (dueling
+architecture) containing advantage and value stream heads.</p> <p>Returns:
+In case of expectation learning the Q-value predictions (&quot;qf_preds&quot;)
+and in case of distributional Q-learning in addition to the predictions
+the atoms (&quot;atoms&quot;), the Q-value predictions (&quot;qf_preds&quot;), the Q-logits
+(&quot;qf_logits&quot;) and the probabilities for the support atoms (&quot;qf_probs&quot;).</p> <h3 id="register-load-state-dict-pre-hook-2"><a href="#register-load-state-dict-pre-hook-2" class="header-anchor">#</a> _register_load_state_dict_pre_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_register_load_state_dict_pre_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!---->,<br>  with_module<!----> <span class="token operator">=</span> <span class="token boolean">False</span><!----><br>)<!----></code>
+</pre> <p>See :meth:<code>~torch.nn.Module.register_load_state_dict_pre_hook</code> for details.</p> <p>A subtle difference is that if <code>with_module</code> is set to <code>False</code>, then the
+hook will not take the <code>module</code> as the first argument whereas
+:meth:<code>~torch.nn.Module.register_load_state_dict_pre_hook</code> always takes the
+<code>module</code> as the first argument.</p> <p>Arguments:
+hook (Callable): Callable hook that will be invoked before
+loading the state dict.
+with_module (bool, optional): Whether or not to pass the module
+instance to the hook as the first parameter.</p> <h3 id="register-state-dict-hook"><a href="#register-state-dict-hook" class="header-anchor">#</a> _register_state_dict_hook <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_register_state_dict_hook</span>(
+  self<!----><!---->,<br>  hook<!----><!----><!----><br>)<!----></code>
+</pre> <p>Register a post-hook for the :meth:<code>~torch.nn.Module.state_dict</code> method.</p> <p>It should have the following signature::
+hook(module, state_dict, prefix, local_metadata) -&gt; None or state_dict</p> <p>The registered hooks can modify the <code>state_dict</code> inplace or return a new one.
+If a new <code>state_dict</code> is returned, it will only be respected if it is the root
+module that :meth:<code>~nn.Module.state_dict</code> is called from.</p> <h3 id="save-to-state-dict"><a href="#save-to-state-dict" class="header-anchor">#</a> _save_to_state_dict <span class="badge warn" style="vertical-align:top;" data-v-15b7b770>Module</span></h3> <pre><code class="language-python"><span class="token function">_save_to_state_dict</span>(
+  self<!----><!---->,<br>  destination<!----><!---->,<br>  prefix<!----><!---->,<br>  keep_vars<!----><!----><!----><br>)<!----></code>
+</pre> <p>Save module state to the <code>destination</code> dictionary.</p> <p>The <code>destination</code> dictionary will contain the state
+of the module, but not its descendants. This is called on every
+submodule in :meth:<code>~torch.nn.Module.state_dict</code>.</p> <p>In rare cases, subclasses can achieve class-specific behavior by
+overriding this method with custom logic.</p> <p>Args:
+destination (dict): a dict where state will be stored
+prefix (str): the prefix for parameters and buffers used in this
+module</p></div> <footer class="page-edit"><!----> <!----></footer> <!----> </main></div><div class="global-ui"><!----></div></div>
+    <script src="/scikit-decide/assets/js/app.f385147b.js" defer></script><script src="/scikit-decide/assets/js/3.0d3eec02.js" defer></script><script src="/scikit-decide/assets/js/6.b1520538.js" defer></script><script src="/scikit-decide/assets/js/149.59ebb7f4.js" defer></script><script src="/scikit-decide/assets/js/8.047bff44.js" defer></script><script src="/scikit-decide/assets/js/9.4edbf881.js" defer></script><script src="/scikit-decide/assets/js/5.fe62d74f.js" defer></script>
+  </body>
+</html>
