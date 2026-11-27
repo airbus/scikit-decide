@@ -2,15 +2,15 @@
 #  This source code is licensed under the MIT license found in the
 #  LICENSE file in the root directory of this source tree.
 
-import torch
 from ray.rllib.algorithms.ppo.torch.default_ppo_torch_rl_module import (
     DefaultPPOTorchRLModule,
 )
 from ray.rllib.core import Columns
-from ray.rllib.utils.torch_utils import FLOAT_MIN
 from ray.rllib.utils.typing import TensorType
-from torch.nn.functional import pad
 
+from skdecide.hub.solver.ray_rllib.action_masking.distribution.mask import (
+    mask_categorical_logits,
+)
 from skdecide.hub.solver.ray_rllib.action_masking.rl_module.base import (
     ActionMaskingRLModule,
 )
@@ -61,16 +61,7 @@ class ActionMaskingPPOTorchRLModule(ActionMaskingRLModule, DefaultPPOTorchRLModu
             A modified batch with masked action logits for the action distribution
             inputs.
         """
-        # Convert action mask into an `[0.0][-inf]`-type mask.
-        inf_mask = torch.clamp(torch.log(action_mask), min=FLOAT_MIN)
-        # Pad mask if necessary (may happen in graph2node context where logits can have been padded)
-        nb_logits = batch[Columns.ACTION_DIST_INPUTS].shape[-1]
-        mask_size = inf_mask.shape[-1]
-        if mask_size < nb_logits:
-            inf_mask = pad(inf_mask, pad=(0, nb_logits - mask_size), value=FLOAT_MIN)
-
-        # Mask the logits.
-        batch[Columns.ACTION_DIST_INPUTS] += inf_mask
-
-        # Return the batch with the masked action logits.
+        batch[Columns.ACTION_DIST_INPUTS] = mask_categorical_logits(
+            logits=batch[Columns.ACTION_DIST_INPUTS], mask=action_mask
+        )
         return batch

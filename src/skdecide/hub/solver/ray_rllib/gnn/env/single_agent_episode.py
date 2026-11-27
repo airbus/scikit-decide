@@ -11,20 +11,7 @@ from ray.rllib.core import Columns
 from ray.rllib.env.single_agent_episode import SingleAgentEpisode
 from ray.rllib.env.utils.infinite_lookback_buffer import InfiniteLookbackBuffer
 
-from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import pad_axis
-
-
-def monkey_patch_single_agent_episode_for_graph2node() -> None:
-    if not hasattr(SingleAgentEpisode, "_to_numpy_unpatched"):
-        # store true method only if not already done
-        SingleAgentEpisode._to_numpy_unpatched = SingleAgentEpisode.to_numpy
-    SingleAgentEpisode.to_numpy = graph2node_single_agent_episode_to_numpy
-
-
-def unmonkey_patch_single_agent_episode() -> None:
-    if hasattr(SingleAgentEpisode, "_to_numpy_unpatched"):
-        SingleAgentEpisode.to_numpy = SingleAgentEpisode._to_numpy_unpatched
-        del SingleAgentEpisode._to_numpy_unpatched
+from skdecide.hub.solver.ray_rllib.common.utils.spaces.utils import pad_axis
 
 
 def graph2node_single_agent_episode_to_numpy(
@@ -38,10 +25,11 @@ def graph2node_single_agent_episode_to_numpy(
     key = Columns.ACTION_DIST_INPUTS
     if key in self.extra_model_outputs:
         logits_seq: InfiniteLookbackBuffer = self.extra_model_outputs[key]
-        if len(set(len(logits) for logits in logits_seq)) > 1:
+        n_nodes_seq = tuple((len(logits) for logits in logits_seq))
+        if len(set(n_nodes_seq)) > 1:
             assert not logits_seq.finalized
             minus_infty_approx = np.finfo(logits_seq[0].dtype).min
-            max_n_nodes = max(len(logits) for logits in logits_seq)
+            max_n_nodes = max(n_nodes_seq)
             logits_seq.data = [
                 pad_axis(logits, max_dim=max_n_nodes, value=minus_infty_approx)
                 for logits in logits_seq

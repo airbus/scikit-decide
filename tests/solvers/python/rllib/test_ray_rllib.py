@@ -14,9 +14,9 @@ from typing import NamedTuple, Optional, Union
 
 import gymnasium as gym
 import numpy as np
-import pytest
 import ray
 import torch
+from gymnasium.envs.classic_control import PendulumEnv
 from pytest import fixture
 from pytest_cases import parametrize
 from ray.rllib.algorithms.dqn import DQN
@@ -34,6 +34,11 @@ from ray.rllib.algorithms.ppo.torch.default_ppo_torch_rl_module import (
 )
 from ray.rllib.core import Columns
 from ray.rllib.core.models.base import Encoder, Model
+from ray.rllib.core.models.torch.encoder import (
+    TorchActorCriticEncoder,
+    TorchCNNEncoder,
+    TorchMLPEncoder,
+)
 from ray.rllib.core.rl_module import MultiRLModuleSpec, RLModuleSpec
 from ray.rllib.utils.torch_utils import FLOAT_MIN, nn
 from ray.rllib.utils.typing import TensorType
@@ -575,24 +580,54 @@ def test_ray_rllib_solver_with_custom_rlmodule(ray_init):
     rollout(domain, solver, max_steps=100)
 
 
-def test_ray_rllib_solver_on_single_agent_domain(ray_init):
+class Pendulum3dEnv(PendulumEnv):
+    obs_shape = (3, 1, 1)
+    observation_space: gym.spaces.Box
+
+    def __init__(self, render_mode: str | None = None, g=10.0):
+        super().__init__(render_mode, g)
+        self.observation_space = gym.spaces.Box(
+            low=self.observation_space.low.reshape(self.obs_shape),
+            high=self.observation_space.low.reshape(self.obs_shape),
+            dtype=self.observation_space.dtype,
+            shape=self.obs_shape,
+        )
+
+    def _get_obs(self):
+        return super()._get_obs().reshape(self.obs_shape)
+
+
+@parametrize("flatten_3d_obs", [True, False])
+def test_ray_rllib_solver_on_single_agent_domain(ray_init, flatten_3d_obs):
     # define domain
-    ENV_NAME = "CartPole-v1"
-    domain_factory = lambda: GymDomain(gym.make(ENV_NAME))
+    domain_factory = lambda: GymDomain(
+        gym.make(gym.envs.registration.EnvSpec("pendulum", entry_point=Pendulum3dEnv))
+    )
     domain = domain_factory()
 
     # check compatibility
     assert RayRLlib.check_domain(domain)
 
     # define and solve
-    solver_kwargs = dict(algo_class=DQN, train_iterations=1)
-    config = dqn_config_factory()
-
-    solver_kwargs = dict(algo_class=PPO, train_iterations=1)
     config = ppo_config_factory()
-    solver = RayRLlib(domain_factory=domain_factory, config=config, **solver_kwargs)
+    solver = RayRLlib(
+        domain_factory=domain_factory,
+        algo_class=PPO,
+        config=config,
+        flatten_3d_obs=flatten_3d_obs,
+        train_iterations=1,
+        model_configs={SK_DEFAULT_MODULE_ID: {"conv_filters": [(2, (2, 1), (2, 1))]}},
+    )
     solver.solve()
     assert hasattr(solver, "_algo")
+    rl_module = solver.get_policy()
+    agent_rl_module = rl_module.get(SK_DEFAULT_MODULE_ID)
+    assert isinstance(agent_rl_module, DefaultPPOTorchRLModule)
+    assert isinstance(agent_rl_module.encoder, TorchActorCriticEncoder)
+    if flatten_3d_obs:
+        assert isinstance(agent_rl_module.encoder.actor_encoder, TorchMLPEncoder)
+    else:
+        assert isinstance(agent_rl_module.encoder.actor_encoder, TorchCNNEncoder)
 
     # rollout
     rollout(

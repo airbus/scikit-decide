@@ -1,6 +1,34 @@
 from typing import Optional
 
 import torch as th
+from torch.nn.functional import pad
+
+
+def add_position_feature_to_node_features(
+    node_features: th.Tensor,
+    n_graph2node_components: int,
+) -> tuple[int, th.Tensor]:
+    """Init node feature encoding position of each node among graph node components.
+
+    We init the features to 0. It will be set to 1 when the node is chosen as a component.
+    We skip the final component as it will not be used by a next component.
+
+    # Parameters
+    node_features: graph node features (assumed to be flattened)
+    n_graph2node_components: number of action components to choose among graph nodes.
+
+    # Returns
+    n_node_features_before_position_feature: number of node features before adding these new ones
+    enriched_obs: new dict graph observation
+
+    """
+
+    n_node_features_before_position_feature = node_features.shape[-1]
+    node_features = pad(
+        node_features,
+        pad=(0, n_graph2node_components - 1),
+    )
+    return n_node_features_before_position_feature, node_features
 
 
 def extract_applicable_action_components(
@@ -49,8 +77,12 @@ def extract_action_component_mask(
     action_component_mask = th.zeros(
         (action_component_dim,), dtype=th.int8, device=action_components.device
     )
-    # update with 1 for each applicable component
-    action_component_mask[applicable_action_components] = 1
+    # Use scatter_ instead of advanced indexing with assignment for speed
+    # and safe handling of potential duplicate indices.
+    if applicable_action_components.numel() > 0:
+        action_component_mask.scatter_(
+            dim=0, index=applicable_action_components.long(), value=1
+        )
     return action_component_mask
 
 
@@ -98,7 +130,10 @@ def batched_extract_action_component_mask(
                 i_action_component=i_action_component,
             )
             # update mask with 1 for each applicable component
-            action_component_mask[i_sample, applicable_action_components_sample] = 1
+            if applicable_action_components_sample.numel() > 0:
+                action_component_mask[i_sample].scatter_(
+                    dim=0, index=applicable_action_components_sample.long(), value=1
+                )
     return action_component_mask
 
 

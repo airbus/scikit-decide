@@ -66,7 +66,7 @@ def thg_data_to_graph_instance(
 
 def unbatch_node_logits(
     data: thg.data.Data,
-    nodes_to_keep: Optional[th.Tensor] = None,
+    nodes_to_keep: Optional[tuple[th.Tensor, ...]] = None,
     max_n_nodes: int | None = None,
 ) -> th.Tensor:
     """Extract node logits from graph embeddings as batched (padded) logits

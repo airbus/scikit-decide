@@ -15,6 +15,25 @@ from skdecide.hub.solver.utils.gnn.torch_utils import (
 )
 
 
+def compute_max_nb_of_nodes_in_graph_dict(
+    batched_graph_dict: dict[str, th.Tensor],
+    node_flag_index: int | None = None,
+) -> int | None:
+    """
+
+    # Parameters
+    batched_graph_dict: graph as a batched dict of tensors
+    node_flag_index: if not None, filter nodes with binary node feature corresponding given index to 1
+
+    # Returns
+
+    """
+    if node_flag_index is None:
+        return batched_graph_dict[NODES].shape[1]
+    else:
+        return None
+
+
 def batched_torch_graph_dict_to_thg_data(
     batched_graph_dict: dict[str, th.Tensor],
     device: Optional[str] = None,

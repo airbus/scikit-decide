@@ -3,13 +3,13 @@
 #  LICENSE file in the root directory of this source tree.
 from ray.rllib.utils.spaces.space_utils import batch
 
-from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.batch_original_code import (
+from skdecide.hub.solver.ray_rllib.common.utils.spaces.batch import batch_skdecide
+from skdecide.hub.solver.ray_rllib.common.utils.spaces.batch_original_code import (
     original_batch,
 )
-from skdecide.hub.solver.ray_rllib.gnn.utils.spaces.space_utils import batch_graph
 
 
-def monkey_patch_batch(graph2node: bool = False) -> None:
+def monkey_patch_batch() -> None:
     """Monkey patch rllib so that batch() pad graph arrays if necessary.
 
     Note we need to update function's
@@ -30,7 +30,7 @@ def monkey_patch_batch(graph2node: bool = False) -> None:
         original_batch._original_globals = dict(batch.__globals__)
         original_batch.__globals__.update(batch.__globals__)
 
-    new_batch = batch_graph
+    new_batch = batch_skdecide
     batch.__code__ = new_batch.__code__
     for name in batch.__code__.co_names:
         batch.__globals__[name] = new_batch.__globals__[name]
